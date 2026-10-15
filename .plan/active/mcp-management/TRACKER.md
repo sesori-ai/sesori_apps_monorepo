@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-client-forms`, `0483482b2e`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-form-controls`, `0483482b2e`, in the provided `copper-heron` worktree.
 - Current step: 23/29 is in review as [#1993][pr-1993]; latest merged step: 22/29 as [#1992][pr-1992].
+  Step 24/29 is implemented locally; native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
@@ -47,7 +48,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 21/29 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
 | 22/29 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
 | 23/29 | Client typed draft lifecycle (9.c.1) | In review | [#1993][pr-1993] |
-| 24/29 | Shared typed form controls (9.c.2) | Not started | — |
+| 24/29 | Shared typed form controls (9.c.2) | Verified locally | Shared widgets, both shells, 23 cases and analysis |
 | 25/29 | Codex inventory/actions/authentication | Not started | — |
 | 26/29 | Codex forms and offered connectors | Not started | — |
 | 27/29 | Secondary harness support and explicit gaps | Not started | — |
@@ -1375,3 +1376,22 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   `8201540472` integrated the parent; all three conflicting incoming documents
   matched the already integrated parent byte-for-byte. Production/test inputs and
   dependencies did not change, so no unchanged passing suite was repeated.
+- Step-23 review corrected four publication/Markdown notes in `84aea1db7a`.
+  Connection retirement intentionally retains the independent submission snapshot:
+  the consumer prioritizes the connection-changed explanation and disables all
+  response controls. Existing source checks remain unchanged. The narrow ApiError
+  catch suppressions preserve the repository's expected typed transport causes.
+- Step-24 shared form controls preserve keyed text/focus ownership, raw numeric
+  drafts, optional omission, explicit Yes/No and opaque choice values. Declared
+  bounds and requiredness are visible. Error/status space stays reserved; busy
+  inputs are read-only, and settlement preserves content during the closing
+  transition. Both shells provide the factory through the presentation scope.
+  Native recording remains deferred in timing only; final qualification is unchanged.
+- Step-24 verification passes: eight shared form widget cases, two form/URL
+  settlement scheduler cases and 13 desktop session composition cases. Form
+  controls retain focus/selection and field height through busy/validation states;
+  raw drafts, optional clearing, boolean/choice typing, narrow 2x text, reduced
+  motion, unknown-schema refusal and retired-connection presentation are covered.
+  The final widget run has no missed-tap warnings. Client-root analysis with the
+  repository plugin passes. Architecture implementation review pass 1 approved
+  the shared modal/editor, scope and shell composition without findings.

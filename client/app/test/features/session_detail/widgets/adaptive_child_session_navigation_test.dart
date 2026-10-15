@@ -25,6 +25,7 @@ Widget _presentationScope({required BuildContext context, required Widget child}
     imageClipboard: _MockImageClipboard.new,
     imageSharer: _MockImageSharer.new,
     sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+    createPendingFormCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
     createExternalActionCubit: ({required requestId, required sessionId}) =>
         throw UnimplementedError("External actions are not under test"),
     canShareImages: true,

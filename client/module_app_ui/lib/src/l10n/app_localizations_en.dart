@@ -3356,6 +3356,91 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpNativeRequestTitle => 'MCP request';
 
   @override
+  String get mcpFormReady => 'Review the fields, then send your answers. Closing leaves this request pending.';
+
+  @override
+  String get mcpFormReplySent => 'The coding agent accepted your response.';
+
+  @override
+  String get mcpFormReplyFailed =>
+      'Your response could not be confirmed. Your answers are kept here; you can try again.';
+
+  @override
+  String get mcpFormInvalid => 'Check the highlighted fields. Your other answers are kept.';
+
+  @override
+  String get mcpFormRequired => 'Required';
+
+  @override
+  String get mcpFormOptional => 'Optional';
+
+  @override
+  String get mcpFormClearAnswer => 'Clear answer';
+
+  @override
+  String get mcpFormAnswerHint => 'Enter an answer';
+
+  @override
+  String get mcpFormYes => 'Yes';
+
+  @override
+  String get mcpFormNo => 'No';
+
+  @override
+  String get mcpFormWholeNumber => 'Whole number';
+
+  @override
+  String mcpFormMinimum(num value) {
+    return 'Minimum: $value';
+  }
+
+  @override
+  String mcpFormMaximum(num value) {
+    return 'Maximum: $value';
+  }
+
+  @override
+  String mcpFormMinCharacters(int count) {
+    return 'At least $count characters';
+  }
+
+  @override
+  String mcpFormMaxCharacters(int count) {
+    return 'At most $count characters';
+  }
+
+  @override
+  String mcpFormMinChoices(int count) {
+    return 'Choose at least $count';
+  }
+
+  @override
+  String mcpFormMaxChoices(int count) {
+    return 'Choose at most $count';
+  }
+
+  @override
+  String get mcpFormIssueRequired => 'An answer is required.';
+
+  @override
+  String get mcpFormIssueType => 'Enter a value of the requested type.';
+
+  @override
+  String get mcpFormIssueChoice => 'Choose one of the offered options.';
+
+  @override
+  String get mcpFormIssueRange => 'This value is outside the allowed range.';
+
+  @override
+  String get mcpFormIssueLength => 'Check the answer length or number of choices.';
+
+  @override
+  String get mcpFormIssueFormat => 'Use the requested format.';
+
+  @override
+  String get mcpFormIssueUnknown => 'The coding agent could not validate this answer.';
+
+  @override
   String get mcpNativeRequestClientUnsupported =>
       'This client cannot complete this MCP request. You can cancel it here.';
 

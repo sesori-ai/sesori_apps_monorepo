@@ -41,6 +41,7 @@ Widget _app({
         imageClipboard: () => throw UnimplementedError(),
         imageSharer: () => throw UnimplementedError(),
         sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+        createPendingFormCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
         createExternalActionCubit: ({required requestId, required sessionId}) =>
             throw UnimplementedError("External actions are not under test"),
         canShareImages: false,

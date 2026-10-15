@@ -364,8 +364,16 @@ Validation/transport failure preserves drafts; disconnect or bridge replacement
 retires controls while retaining visible drafts, and late replies cannot settle
 the replacement connection. Closing the owner sends no native intent. Form API
 responses use existing sensitive-body redaction while retaining typed error causes.
-Current clients still display only the static cancel notice; visible form controls
-remain unimplemented.
+Current clients open a shared typed modal from the form marker on both shells.
+Text/numeric editors keep their controllers, focus and selection through busy and
+validation transitions. Boolean Yes/No choices distinguish an unanswered field
+from false; single/multiple choices submit opaque IDs. Clear answer removes the
+draft explicitly. Per-field error space stays reserved; large text scrolls and
+status transitions honor reduced motion. Closing leaves the native request pending.
+Accepted or authoritative settlement closes the observer through the existing
+pending-list owner, which advances the next question even before a late HTTP reply.
+Retired connections show the connection-changed explanation ahead of any retained
+submission snapshot, with all editors read-only and response controls disabled.
 
 Coverage includes `bridge/app/test/bridge/repositories/form_repository_test.dart`
 with real JSON route round trips and concurrent reply/cancel ordering, existing
@@ -373,7 +381,9 @@ pending-interaction/permission/question regressions, Claude schema, pending-owne
 and legacy-client fixtures, plus:
 `shared/sesori_shared/test/models/pending_form_test.dart`, client
 `pending_form_service_test.dart`, `session_forms_api_test.dart` and
-`pending_form_cubit_test.dart`. Failure signals include defaults reappearing after
+`pending_form_cubit_test.dart`, shared `pending_form_modal_test.dart`, the mobile
+form/URL settlement scheduler and desktop session composition. Failure signals
+include defaults reappearing after
 clearing, numeric text coercion, draft loss after validation, answer-bearing error
 diagnostics and stale-connection replies advancing the active request.
 
@@ -411,8 +421,8 @@ displays only the HTTPS destination origin. Browser launch and native acceptance
 are separate outcomes; neither confirms OAuth completion. Only declared known
 choices are offered, with distinct accept, decline and cancel semantics. Unknown
 purpose or unsafe destination cannot be opened or accepted; declared decline and
-cancel responses remain available. Form/unknown interaction markers
-retain an explicit cancel-only handoff rather than ordinary scalar controls.
+cancel responses remain available. Unknown interaction markers retain an explicit
+cancel-only handoff. Form markers open the typed form modal described above.
 After dismissal, the pending card retains neutral request wording and a Review
 action. Typed cancellation does not emit ordinary-question analytics.
 

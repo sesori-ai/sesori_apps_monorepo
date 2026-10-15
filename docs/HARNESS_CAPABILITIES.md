@@ -733,8 +733,12 @@ active-only reads, deleted-target checks and archived-owner rejection. Unsupport
 return empty snapshots and explicit unsupported mutation outcomes. Shared client typed
 draft conversion and request-scoped connection/submission ownership are **implemented**,
 including draft retention after validation or transport failure and sensitive response
-redaction. Visible form controls remain **not implemented**; current clients see only
-a static cancel notice.
+redaction. Visible typed form controls are **implemented** on desktop and phone:
+draft-preserving text/numeric inputs, explicit boolean and opaque choice controls,
+field errors, submit/decline/cancel, and original-owner settlement. Unknown schemas
+cannot be accepted. Retired connections preserve drafts with read-only controls.
+Native presentation recording remains deferred; full provider/package qualification
+is still required before claiming the priority journeys qualified.
 
 The Claude native plugin authentication API is **implemented** for an existing
 resident's native-configured HTTP server: no-browser sign-in, matching callback,

@@ -103,6 +103,7 @@ Future<({List<String> taps, List<String> closes})> _pump(
         imageClipboard: _unused,
         imageSharer: _unused,
         sessionRepository: () => sessionRepository,
+        createPendingFormCubit: ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
         createExternalActionCubit: ({required requestId, required sessionId}) =>
             throw UnimplementedError("External actions are not under test"),
         canShareImages: false,
