@@ -188,6 +188,33 @@ eagerly "just in case."
   wrapper's presentation privacy-safe when the original may contain sensitive
   payload data.
 
+## Delivery Over Bookkeeping
+
+- Bookkeeping serves delivery; it is not a separate deliverable to perfect. Keep
+  decisions, supported behavior, meaningful verification, blockers and remaining
+  work useful. Apply this principle to plans, trackers, PR bodies, evidence,
+  skills and review feedback, including instructions to keep them synchronized.
+- Correct inaccuracies when they could change an implementation, safety,
+  release, review or handoff decision. Do not chase harmless estimate drift,
+  cosmetic wording, incidental counts or historical minutiae. Estimates are
+  estimates; update them when the difference changes the work, not merely
+  because reality differs. This is a general consequence-based rule, not an
+  exception limited to line counts.
+- Never create a commit, standalone PR or fresh review cycle solely to polish
+  inconsequential bookkeeping. Batch useful documentation and acceptance notes
+  into the current implementation change or the next substantive PR. The
+  default publication rule does not require a separate bookkeeping PR.
+- Apply the same judgment to review comments: explain why an immaterial nit
+  needs no change instead of feeding another fix/push/review loop. Do not
+  conceal failed checks, unsupported claims, material gaps or unsafe guidance.
+- If a standalone routine documentation-only PR is necessary, squash-merge once
+  required checks and repository protections allow; do not wait for automated
+  review comments. Arrange one post-merge comment check about 20 minutes later
+  through a native asynchronous wake-up, never a blocking wait or polling loop.
+  Fold meaningful late findings into follow-up work. This fast path does not
+  bypass review of code, security, release authority or substantive contracts
+  merely because their changes happen to be written in Markdown.
+
 ## PR Sizing And Review Convergence
 
 - Target **~1,500 changed lines per PR as a soft cap**. Count additions plus

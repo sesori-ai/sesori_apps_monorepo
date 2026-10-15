@@ -4,6 +4,10 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/linux-repository.yml'
+      - '.github/scripts/publish_linux_repository.py'
+      - '.github/scripts/test_publish_linux_repository.py'
+      - '.github/scripts/provision_linux_repository.sh'
       - '.github/workflows/desktop-linux-release.yml'
       - '.github/scripts/publish_desktop_linux.py'
       - '.github/scripts/test_publish_desktop_linux.py'
@@ -38,6 +42,10 @@ on:
       - '.github/scripts/test_publish_desktop_release.py'
   pull_request:
     paths:
+      - '.github/workflows/linux-repository.yml'
+      - '.github/scripts/publish_linux_repository.py'
+      - '.github/scripts/test_publish_linux_repository.py'
+      - '.github/scripts/provision_linux_repository.sh'
       - '.github/workflows/desktop-linux-release.yml'
       - '.github/scripts/publish_desktop_linux.py'
       - '.github/scripts/test_publish_desktop_linux.py'
@@ -96,8 +104,9 @@ jobs:
           python -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'
           python -m unittest discover -s .github/scripts -p 'test_publish_desktop_release.py'
           python -m unittest discover -s .github/scripts -p 'test_publish_desktop_linux.py'
-      - name: Lint release gate
-        run: shellcheck .github/scripts/check_internal_release.sh
+          python -m unittest discover -s .github/scripts -p 'test_publish_linux_repository.py'
+      - name: Lint release gate and scoped repository provisioning
+        run: shellcheck .github/scripts/check_internal_release.sh .github/scripts/provision_linux_repository.sh
       - name: Test automatic release decisions and attempt recording
         run: python3 .github/scripts/test_check_internal_release.py
       - uses: actions/setup-node@v4

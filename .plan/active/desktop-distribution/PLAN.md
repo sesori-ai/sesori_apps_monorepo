@@ -505,17 +505,21 @@ Bounded slices, keeping the same signing key, shared cycle and ordinal total:
   250–400 authored lines. Preserve GUI/upgrade/stable/repository limitations and keep
   the original 14-ordinal plan active. No new qualification or deployment is needed.
 
-**Remaining Linux continuation (D13):** preserve the original 14 ordinals and step 9;
+**Linux repository/stable continuation (D13):** preserve the original 14 ordinals and step 9;
 these are executable substeps, not a new plan or a Windows dependency.
 
 - `🚧 [desktop-distribution] Build signed Linux repository metadata [step 11.g/14]`:
   consume the existing prepared release, preserve signed package bytes, use
   `apt-ftparchive`/`createrepo_c`, sign APT `Release`/`InRelease` and RPM `repomd.xml`,
   and verify both CPUs with disposable keys and real APT/DNF clients. About 800–1,100
-  authored lines including tests/docs. No cloud writes or publication in this PR.
+  authored lines including tests/docs. Merged as #1983; no cloud writes or publication in that PR.
 - `🚧 [desktop-distribution] Publish Linux preview repositories [step 11.h/14]`:
   provision the approved public bucket and a dedicated narrowly scoped GitHub identity;
   leave Cloud Run source storage and Firebase federation permissions unchanged.
+  On 2026-10-15, after domain-restricted sharing blocked public access, the user
+  approved a scoped policy exception: attach a dedicated tag only to the package
+  bucket and preserve the prior domain allowlist for untagged resources. No blanket
+  project-wide disablement or publisher policy/tag-management permission.
   Separate signing from publishing, publish immutable payloads/content-addressed
   indexes before signed entrypoints, and join the existing shared internal cycle.
   Bootstrap matching existing preview artifacts without rebuilding stores. Before
@@ -552,7 +556,9 @@ require retry; do not add a custom update coordinator to hide that safe failure.
 
 Complexity budget: one public package bucket, one dedicated federation identity/service
 account and existing transient CI artifacts, plus a weekly metadata-maintenance trigger
-owned by the same repository publisher. No new persistent pointer, product release
+owned by the same repository publisher. One dedicated bucket tag and conditional
+project policy are necessary for the observed domain-sharing refusal; the default
+rule preserves the existing restriction elsewhere. No new persistent pointer, product release
 scheduler, cloud service, application state or updater. Reuse the existing signing owner and one
 website cache; immutable
 release assets plus per-platform completion markers own availability. Remove replaced

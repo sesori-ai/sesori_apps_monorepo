@@ -15,6 +15,7 @@ import xml.etree.ElementTree as ET
 
 import build_linux_repository as repository
 import linux_signing as keys
+import publish_linux_repository as hosting
 import sign_desktop_linux as signing
 
 
@@ -194,6 +195,8 @@ class LinuxRepositoryTests(unittest.TestCase):
         expires = parsedate_to_datetime(fields["Valid-Until"])
         self.assertEqual(issued, issued_at.replace(microsecond=0))
         self.assertEqual(expires - issued, timedelta(days=30))
+        with self.assertRaisesRegex(ValueError, "expired"):
+            hosting.verify(root=output, fingerprint=self.fingerprint)
         keyring = self.public_keyring(output=output)
         keys.run(command=["gpgv", "--homedir", str(keyring.parent), "--keyring", str(keyring),
                           str(release.with_name("InRelease"))], env=self.env)
@@ -206,6 +209,40 @@ class LinuxRepositoryTests(unittest.TestCase):
         self.build(root=self.releases[42], output=refreshed)
         shutil.copytree(refreshed, output, dirs_exist_ok=True)
         keys.run(command=[*apt, "update"], env=self.env)
+
+    def test_publication_authenticates_references_not_just_producer_inventory(self):
+        original = self.work / "original"
+        self.build(root=self.releases[42], output=original)
+        hosting.verify(root=original, fingerprint=self.fingerprint)
+        targets = ["apt/dists/internal/main/binary-amd64/Packages",
+                   next(original.glob("apt/pool/internal/amd64/*.deb")).relative_to(original).as_posix(),
+                   next(original.glob("rpm/internal/x86_64/repodata/*primary*")).relative_to(original).as_posix(),
+                   "rpm/internal/x86_64/repodata/repomd.xml.asc"]
+        for index, target in enumerate(targets):
+            with self.subTest(target=target):
+                output = self.work / f"tampered-{index}"
+                shutil.copytree(original, output)
+                path = output / target
+                path.write_bytes(b"invalid signature" if target.endswith(".asc") else path.read_bytes() + b"changed")
+                report = json.loads((output / repository.REPORT).read_text())
+                for row in report["files"]:
+                    if row["name"] == target:
+                        row.update(sha256=keys.sha256(path=path), bytes=path.stat().st_size)
+                (output / repository.REPORT).write_text(json.dumps(report))
+                with self.assertRaises((ValueError, subprocess.CalledProcessError)):
+                    hosting.verify(root=output, fingerprint=self.fingerprint)
+        report = json.loads((original / repository.REPORT).read_text())
+        report["signerFingerprint"] = "0" * 40
+        (original / repository.REPORT).write_text(json.dumps(report))
+        with self.assertRaisesRegex(ValueError, "Unexpected repository signer"):
+            hosting.verify(root=original, fingerprint="0" * 40)
+        report["signerFingerprint"] = self.fingerprint
+        extra = original / "unrelated-private-file"
+        extra.write_text("must never be published")
+        report["files"].append({"name": extra.name, "sha256": keys.sha256(path=extra), "bytes": extra.stat().st_size})
+        (original / repository.REPORT).write_text(json.dumps(report))
+        with self.assertRaisesRegex(ValueError, "unauthenticated"):
+            hosting.verify(root=original, fingerprint=self.fingerprint)
 
     def test_mixed_channel_missing_cpu_wrong_signer_and_tampering_refuse_completion(self):
         for failure in ("channel", "missing", "signer", "package", "checksums", "signature"):

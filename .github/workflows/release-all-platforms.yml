@@ -171,12 +171,14 @@ jobs:
     permissions:
       contents: write
       actions: read
+      id-token: write
     uses: ./.github/workflows/desktop-linux-release.yml
     with:
       source_sha: ${{ github.sha }}
       version: ${{ needs.preflight.outputs.version }}
       build_number: ${{ needs.next-build-number.outputs.build_number }}
       packaging_run: ${{ github.run_id }}
+    secrets: inherit
 
   desktop-macos:
     name: Build and qualify macOS desktop (internal)
