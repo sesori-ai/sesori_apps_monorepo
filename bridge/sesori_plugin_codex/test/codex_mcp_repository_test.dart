@@ -63,7 +63,7 @@ void main() {
     test("session authentication uses verified native context support: $userAgent", () {
       final mapper = CodexMcpMapper(userAgent: userAgent);
       for (final scope in [const PluginMcpHarnessScope(), const PluginMcpSessionScope(sessionId: "thread")]) {
-        for (final authStatus in ["notLoggedIn", "unsupported"]) {
+        for (final authStatus in ["notLoggedIn", "unsupported", "future-auth"]) {
           final entry =
               mapper
                       .map(
@@ -75,7 +75,7 @@ void main() {
                       .entries
                       .single
                   as PluginMcpServerSnapshot;
-          if (authStatus == "unsupported" || scope is PluginMcpSessionScope && !supported) {
+          if (authStatus != "notLoggedIn" || scope is PluginMcpSessionScope && !supported) {
             expect(
               entry.authentication,
               isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
@@ -83,6 +83,8 @@ void main() {
                 "reason",
                 authStatus == "unsupported"
                     ? PluginMcpAuthenticationCapabilityUnavailableReason.notSupported
+                    : authStatus == "future-auth"
+                    ? PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented
                     : PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
               ),
             );

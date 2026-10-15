@@ -1507,3 +1507,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   addressed. Fixed-query callback machinery was declined: both pinned native
   listeners advertise query-free callback URIs, so no supported flow alters a
   fixed callback query. No third architecture review was invoked.
+- A later code review found unknown native auth status could enable sign-in.
+  Unknown/omitted status now declares unavailability and stops both harness and
+  session starts at inventory, with no OAuth RPC. Focused mapper/service coverage
+  retains known-version and native-unsupported behavior without a new contract.
