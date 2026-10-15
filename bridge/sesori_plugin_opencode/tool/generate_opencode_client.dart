@@ -208,6 +208,19 @@ Future<void> main(List<String> args) async {
       }
     }
   }
+  for (final name in surface.sealedUnions) {
+    final schema = specSchemas[name] as Map<String, dynamic>;
+    final key = schema.containsKey('anyOf') ? 'anyOf' : 'oneOf';
+    schema[key] = (schema[key] as List).map((value) {
+      final variant = value as Map<String, dynamic>;
+      final ref = variant[r'$ref'];
+      final rawName = ref is String ? _schemaNameFromRef(ref) : null;
+      final inline = rawName == null ? variant : specSchemas[rawName] as Map<String, dynamic>;
+      if (inline['type'] != 'object') throw StateError('Sealed union $name requires object variants');
+      return {...inline, if (rawName != null) 'x-sesori-variant-name': _pascalFromSnake(rawName)};
+    }).toList();
+    schema['x-sesori-sealed'] = true;
+  }
   // Collapse first: a collapsed named schema becomes a primitive whose
   // refs are then inlined.
   _collapseOpenStringUnions(spec);
@@ -1234,6 +1247,9 @@ class SurfaceSpec({
 
   /// Target-schema fields absent in a supported native version.
   required final Map<String, List<String>> optionalProperties,
+
+  /// Object unions emitted with all variants in the same Dart library.
+  required final List<String> sealedUnions,
 }) {
   factory load(String path) {
     final file = File(path);
@@ -1255,6 +1271,7 @@ class SurfaceSpec({
       optionalProperties: ((json['optionalProperties'] as Map?) ?? const {}).map(
         (key, value) => MapEntry(key as String, (value as List).cast<String>()),
       ),
+      sealedUnions: ((json['sealedUnions'] as List?) ?? const []).cast<String>(),
     );
   }
 }
@@ -1688,6 +1705,7 @@ class ModelWriter({
     final b = StringBuffer();
 
     final variants = ((schema['anyOf'] ?? schema['oneOf']) as List).cast<Map<String, dynamic>>();
+    final declaration = schema['x-sesori-sealed'] == true ? 'sealed class' : 'abstract interface class';
 
     final disc = _findDiscriminator(variants);
     final inlineVariantClasses = <_InlineVariantClassEntry>[];
@@ -1697,9 +1715,7 @@ class ModelWriter({
     // A union nested inside another union implements the outer one, so
     // the outer `fromJson` can return the nested union's decode.
     b.writeln(
-      implementsClass != null
-          ? 'abstract interface class $name implements $implementsClass {'
-          : 'abstract interface class $name {',
+      implementsClass != null ? '$declaration $name implements $implementsClass {' : '$declaration $name {',
     );
     b.writeln('  const $name();');
     b.writeln();
@@ -1733,7 +1749,7 @@ class ModelWriter({
         } else {
           final d = _inlineDiscriminatorValue(v, disc);
           if (d != null) {
-            final inlineName = '$name${_pascalCore(d)}';
+            final inlineName = v['x-sesori-variant-name'] as String? ?? '$name${_pascalCore(d)}';
             inlineVariantClasses.add(
               _InlineVariantClassEntry(
                 className: inlineName,
@@ -1813,7 +1829,8 @@ class ModelWriter({
     b.writeln('/// Carries the raw JSON so newer OpenCode servers do not break');
     b.writeln('/// decoding; `toJson` returns the payload unchanged.');
     b.writeln('@immutable');
-    b.writeln('class ${name}Unknown implements $name {');
+    final variantModifier = schema['x-sesori-sealed'] == true ? 'final ' : '';
+    b.writeln('${variantModifier}class ${name}Unknown implements $name {');
     b.writeln('  const ${name}Unknown({required this.raw});');
     b.writeln();
     b.writeln('  final Object? raw;');
@@ -2122,7 +2139,10 @@ class ModelWriter({
 
     _usesImmutable = true;
     b.writeln('@immutable');
-    b.writeln(implementsClass != null ? 'class $className implements $implementsClass {' : 'class $className {');
+    final modifier = schema['x-sesori-sealed'] == true && implementsClass != null ? 'final ' : '';
+    b.writeln(
+      implementsClass != null ? '${modifier}class $className implements $implementsClass {' : 'class $className {',
+    );
     if (fields.isEmpty) {
       // Empty class: `const Name({});` is a Dart parse error (empty `{}`
       // parameter list). Use `()` instead.

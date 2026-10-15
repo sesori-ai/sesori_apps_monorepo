@@ -6,11 +6,10 @@ import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/src/open_code_raw_http_client.dart";
 import "package:opencode_plugin/src/v2/api/opencode_v2_api.dart";
-import "package:opencode_plugin/src/v2/models/openapi/connection_credential_info.g.dart";
-import "package:opencode_plugin/src/v2/models/openapi/connection_env_info.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/connection_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/integration_attempt_encoded.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/integration_attempt_status.g.dart";
-import "package:opencode_plugin/src/v2/models/openapi/integration_oauth_method.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/integration_method.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_decode_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -57,10 +56,19 @@ void main() {
     );
     final result = await api.getMcpIntegration(directory: _directory, integrationId: _integrationId);
     expect(result.id, _integrationId);
-    expect((result.methods.single as IntegrationOAuthMethod).id, "native-method");
+    expect(switch (result.methods.single) {
+      IntegrationOAuthMethod(:final id) => id,
+      IntegrationCommandMethod() ||
+      IntegrationKeyMethod() ||
+      IntegrationEnvMethod() ||
+      IntegrationMethodUnknown() => null,
+    }, "native-method");
     expect((result.connections.first as ConnectionCredentialInfo).id, _credentialId);
     expect((result.connections.first as ConnectionCredentialInfo).method, isNull);
-    expect(result.connections.last, isA<ConnectionEnvInfo>());
+    expect(switch (result.connections.last) {
+      ConnectionEnvInfo() => true,
+      ConnectionCredentialInfo() || ConnectionInfoUnknown() => false,
+    }, isTrue);
   });
 
   test("starts only the native declared method and decodes the attempt handle", () async {
@@ -112,6 +120,13 @@ void main() {
         attemptId: _attemptId,
       );
       expect(result, matcher);
+      expect(switch (result) {
+        IntegrationAttemptStatusPending() => "pending",
+        IntegrationAttemptStatusComplete() => "complete",
+        IntegrationAttemptStatusFailed() => "failed",
+        IntegrationAttemptStatusExpired() => "expired",
+        IntegrationAttemptStatusUnknown() => "future",
+      }, status);
       if (result is IntegrationAttemptStatusFailed) expect(result.message, "Fixture denial");
     });
   }

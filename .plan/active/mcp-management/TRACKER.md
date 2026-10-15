@@ -57,9 +57,9 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 27/37 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/37 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
 | 29/37 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
-| 30/37 | OpenCode v2 inventory and connection controls (11.a) | Merged | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
-| 31/37 | OpenCode v1 inventory and connection controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both native pins |
-| 32/37 | OpenCode v2 native authentication contracts (11.c.1) | Verified locally | 61 cases; both native pins; architecture approved |
+| 30/37 | OpenCode v2 inventory/controls (11.a) | Merged | [#2006][pr-2006]; evidence below |
+| 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
+| 32/37 | OpenCode v2 auth contracts (11.c.1) | Verified locally | 61 cases; both pins; architecture approved |
 | 33/37 | OpenCode v2 native authentication ownership (11.c.2) | Not started | — |
 | 34/37 | OpenCode v1 native MCP authentication (11.d) | Not started | — |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
@@ -75,9 +75,20 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-32 review corrections wrap the new tracker rows/command and generate
+  `ConnectionInfo`, `IntegrationMethod` and `IntegrationAttemptStatus` as sealed
+  bases with final variants in their own library. The surface opts only these
+  new families into generation; six obsolete separate variant files are removed.
+  Existing class names and native wire decoding remain unchanged. Exhaustive
+  test switches cover all three families. All 61 focused cases, package analysis
+  and both exact native typed probes pass again; private evidence uses
+  `/private/tmp/copper-heron-mcp-step32-review1-{tests,analyze,native}.log`.
+  Final architecture implementation review approved the closed families (pass 2).
+
 - Step-32 API contracts pass 61 focused tests and package analysis with pinned
   Dart (Flutter 3.47.7-stable). Cwd `bridge/sesori_plugin_opencode`:
-  `dart test test/v2/opencode_v2_mcp_authentication_api_test.dart test/v2/opencode_v2_mcp_test.dart test/v2/opencode_v2_api_test.dart`.
+  Tests: `dart test` with `test/v2/opencode_v2_mcp_authentication_api_test.dart`,
+  `test/v2/opencode_v2_mcp_test.dart`, and `test/v2/opencode_v2_api_test.dart`.
   Cwd `bridge`: `dart analyze --fatal-infos sesori_plugin_opencode`.
   Both isolated 2.0.11 and 2.0.24 native probes pass through the production typed
   API: returned integration/method IDs, acknowledged cancellation, automatic
