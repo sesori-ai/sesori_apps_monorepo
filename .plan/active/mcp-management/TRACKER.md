@@ -3,10 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-session-external-actions`, `533093e0e2`, in the provided `copper-heron` worktree.
-- Current step: 16/24 is in review [#1971][pr-1971]; latest merged step: 15/24 as [#1969][pr-1969].
+- Branch/base: `sesori/mcp-session-external-actions`, `ea65f5b045`, in the provided `copper-heron` worktree.
+- Current step: 17/24 is ready for PR; latest merged step: 16/24 as [#1971][pr-1971].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
-  Step 17/24 prepares the wire boundary locally;
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -37,8 +36,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 13/24 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
 | 14/24 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
 | 15/24 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/24 | Visible auth and controls (8.c.2.b) | In review | [#1971][pr-1971]; 17 widgets and native fixture flow |
-| 17/24 | External-action transport (8.d.1) | Local draft | 61 shared cases and architecture approval |
+| 16/24 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/24 | External-action transport (8.d.1) | Ready for PR | 61 shared cases and architecture approval |
 | 18/24 | Session external-action routing (8.d.2) | Not started | — |
 | 19/24 | Claude approvals and form/URL elicitation | Not started | — |
 | 20/24 | Codex inventory/actions/authentication | Not started | — |
@@ -1019,3 +1018,15 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Earlier draft controls CI reported 19/19 passing. GitHub rejected that
   auto-merge attempt because the PR was draft. Native presentation qualification
   subsequently passed; the current controls head is in review.
+
+- Step 16 accepted head `533093e0e2` merged as `ea65f5b045` after all nine
+  findings received prefixed replies and the follow-up review approved with zero
+  issues. CI passed 20/20 before merge; the terminal report had a new post-merge
+  check running, so it is not recorded as 21 passing checks.
+- Step 17 synchronized onto that squash and the newer main toolchain. Public
+  production remains v1.9.1; compatibility comments use the current product
+  version v1.9.2 without treating that development version as released. Filtered
+  code generation completed with Dart 3.13.5 / Flutter 3.47.7, and 143 unrelated
+  tracked generated deletions were restored. The same 61 shared cases pass on
+  the synchronized source, and its shared analyzer is clean. The preceding
+  architecture approval and exact public codec proof remain applicable.

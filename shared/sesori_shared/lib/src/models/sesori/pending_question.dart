@@ -27,7 +27,7 @@ sealed class PendingQuestion with _$PendingQuestion {
     /// back to [sessionID].
     required String? displaySessionId,
     required List<QuestionInfo> questions,
-    // COMPATIBILITY 2026-10-14 (v1.9.1): Released bridges omit this marker and
+    // COMPATIBILITY 2026-10-15 (v1.9.2): Released bridges omit this marker and
     // expose ordinary questions. Retire this default when those bridges are unsupported.
     @JsonKey(unknownEnumValue: QuestionInteractionKind.unknown)
     @Default(QuestionInteractionKind.question)
