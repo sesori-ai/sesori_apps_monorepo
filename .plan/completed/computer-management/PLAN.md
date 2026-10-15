@@ -316,7 +316,9 @@ Run the matrix below, record the results in `TRACKER.md`, and move the plan to `
 - **Platforms.** Headless iOS simulator plus macOS desktop. Android, Windows and Linux are covered by the shared
   widgets and unit tests.
 - **Plugin scope.** None (bridge-neutral).
-- **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement.
+- **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement. Accepted
+  (user, 2026-10-15): the plan retires on automated coverage and fixture renders. The live iOS simulator and
+  macOS desktop cells are not executed; the user runs the checklist in `TRACKER.md` on the next build.
 
 ## Risks and accepted behavior
 
