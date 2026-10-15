@@ -199,6 +199,8 @@ import 'package:sesori_dart_core/src/services/notification_preferences_service.d
     as _i906;
 import 'package:sesori_dart_core/src/services/notification_registration_service.dart'
     as _i659;
+import 'package:sesori_dart_core/src/services/pending_form_service.dart'
+    as _i426;
 import 'package:sesori_dart_core/src/services/plugin_authentication_browser_service.dart'
     as _i674;
 import 'package:sesori_dart_core/src/services/plugin_management_service.dart'
@@ -675,6 +677,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i74.NewSessionOptionsService(
         sessionRepository: gh<_i7.SessionRepository>(),
       ),
+    );
+    gh.lazySingleton<_i426.PendingFormService>(
+      () => _i426.PendingFormService(repository: gh<_i7.SessionRepository>()),
     );
     gh.lazySingleton<_i386.SessionAbortService>(
       () => _i386.SessionAbortService(repository: gh<_i7.SessionRepository>()),

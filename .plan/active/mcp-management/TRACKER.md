@@ -3,8 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-headless-forms`, `5765963a81`, in the provided `copper-heron` worktree.
-- Current step: 22/28 is in review; latest merged step: 21/28 as [#1991][pr-1991].
+- Branch/base: `sesori/mcp-client-forms`, `5765963a81`, in the provided `copper-heron` worktree.
+- Current step: 22/29 is in review; 23/29 is implemented locally; latest merged step: 21/29 as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
@@ -23,34 +23,35 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/28 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/28 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/28 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/28 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/28 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/28 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/28 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/28 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/28 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/28 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/28 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/28 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/28 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/28 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/28 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/28 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
-| 17/28 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/28 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
-| 19/28 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
-| 20/28 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
-| 21/28 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
-| 22/28 | Canonical headless forms (9.b.2) | In review | Active-only canonical snapshots and ordered typed replies |
-| 23/28 | Shared typed form controls (9.c) | Not started | — |
-| 24/28 | Codex inventory/actions/authentication | Not started | — |
-| 25/28 | Codex forms and offered connectors | Not started | — |
-| 26/28 | Secondary harness support and explicit gaps | Not started | — |
-| 27/28 | Reconcile regression/capability documents | Not started | — |
-| 28/28 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/29 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/29 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/29 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/29 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/29 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/29 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/29 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/29 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/29 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/29 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/29 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/29 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/29 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/29 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/29 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/29 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/29 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
+| 18/29 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
+| 19/29 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
+| 20/29 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
+| 21/29 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
+| 22/29 | Canonical headless forms (9.b.2) | In review | [#1992][pr-1992]; active-only canonical snapshots and ordered typed replies |
+| 23/29 | Client typed draft lifecycle (9.c.1) | Verified locally | 29 form cases, 9 shell DI cases, client analysis and architecture review pass |
+| 24/29 | Shared typed form controls (9.c.2) | Not started | — |
+| 25/29 | Codex inventory/actions/authentication | Not started | — |
+| 26/29 | Codex forms and offered connectors | Not started | — |
+| 27/29 | Secondary harness support and explicit gaps | Not started | — |
+| 28/29 | Reconcile regression/capability documents | Not started | — |
+| 29/29 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -1280,7 +1281,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   - `native-capability-fixture.mjs`: `6ec0a109276d05d154ee1eb10b8990fdb64f00b5f497d72aaafc38664d5d72d8`.
   Inputs and result log are retained under the private `copper-heron-mcp-step21-`
   artifact prefix. Fixture/model sources originate in `tool/mcp-contracts/fixture.mjs`.
-- Published PR titles 1–20 now use the current /28 total. Historical squash
+- Published PR titles 1–20 now use the current /29 total. Historical squash
   messages remain unchanged. The final qualification matrix is not reduced.
 - Step-21 architecture implementation review pass 1 approved source range
   `1d284e4629..75ac1b1a95` without findings. The later tracker evidence record
@@ -1293,6 +1294,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   from approved source `ced5e6797a`, so no unchanged passing suite was rerun.
 
 [pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
+[pr-1992]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1992
 
 - Step 20's later terminal monitor snapshot records 33 passing checks; the 32
   above is the earlier pre-merge snapshot. Step 21 was
@@ -1349,3 +1351,18 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   display parent must not retire an active child's independently answerable form.
   The new direct/display-read and original-child reply regression passes with
   all 16 form cases; targeted analysis passes. Source: `fc8a80e766`.
+- Step 23 is split into client foundation (9.c.1, ordinal 23) and visible controls
+  (9.c.2, ordinal 24): the foundation alone measures about 1,000 lines before UI.
+  Former ordinals 24–28 become 25–29. This independently compiling split adds no
+  compatibility scaffolding and does not change the final qualification matrix.
+  The complete client architecture plan was approved before implementation.
+- Step-23 foundation preserves typed defaults and optional omission, raw numeric
+  drafts, field-specific validation and typed error causes. One modal-scoped Cubit
+  retains drafts on failure and permanently retires old-connection controls;
+  existing pending-list ownership remains unchanged. All 29 core form cases,
+  two desktop DI cases and seven mobile DI cases pass. Client-root analysis with
+  the repository plugin passes. Visible controls are the next independent step;
+  no native recording or provider/package qualification is claimed here.
+- Step-23 architecture implementation review pass 1 approved the complete client
+  foundation without findings. Production boundaries and test inputs were unchanged
+  after the passing focused checks; generated DI output remains with its source.

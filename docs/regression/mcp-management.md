@@ -353,14 +353,29 @@ Replies require the original owner and reuse existing session ordering and archi
 validation. Unknown answer variants produce keyed invalid-type errors; unknown
 dismissals and unsupported APIs cannot mutate native requests. Missing/settled
 requests remain explicitly settled. Native write failure returns 503 and retains
-pending state. Current clients still have only the static cancel notice;
-draft-preserving controls remain unimplemented.
+pending state. The shared client foundation reads exact request/original-owner
+matches and retains typed drafts in one modal-scoped Cubit. Only explicit defaults
+initialize answers; clearing an optional answer omits it without restoring its
+default. Empty text, false, zero and opaque choices remain distinct. Raw numeric
+input survives validation errors; missing required or invalid numeric drafts never
+reach transport. Native field constraints remain authoritative. Unknown schema or
+text-format variants block submission while explicit negative choices remain usable.
+Validation/transport failure preserves drafts; disconnect or bridge replacement
+retires controls while retaining visible drafts, and late replies cannot settle
+the replacement connection. Closing the owner sends no native intent. Form API
+responses use existing sensitive-body redaction while retaining typed error causes.
+Current clients still display only the static cancel notice; visible form controls
+remain unimplemented.
 
 Coverage includes `bridge/app/test/bridge/repositories/form_repository_test.dart`
 with real JSON route round trips and concurrent reply/cancel ordering, existing
 pending-interaction/permission/question regressions, Claude schema, pending-owner
 and legacy-client fixtures, plus:
-`shared/sesori_shared/test/models/pending_form_test.dart`.
+`shared/sesori_shared/test/models/pending_form_test.dart`, client
+`pending_form_service_test.dart`, `session_forms_api_test.dart` and
+`pending_form_cubit_test.dart`. Failure signals include defaults reappearing after
+clearing, numeric text coercion, draft loss after validation, answer-bearing error
+diagnostics and stale-connection replies advancing the active request.
 
 ## Session external actions
 
