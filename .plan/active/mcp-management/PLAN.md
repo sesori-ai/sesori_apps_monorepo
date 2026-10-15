@@ -83,6 +83,13 @@ denial/cancel/expiry semantics before advertising cancellation. Retain the nativ
 Minimum Codex status lacks target-only connection/discovery-error/origin metadata and must show honest absence.
 Authenticated connector offers remain a catalog/runtime qualification gate.
 
+Step-26 same-name override verification found that Codex 0.139.0 ignores the
+OAuth login thread and selects harness configuration. Session sign-in therefore
+requires an initialized version at least 0.160.1; older/unknown runtimes expose
+native-configuration handoff before OAuth. Harness sign-in remains available on
+the minimum. This preserves the supported minimum without authenticating a
+different target. Native version comes from the existing initialize response.
+
 The result fixes adapter mappings before production contracts land. A missing native capability becomes a versioned
 limitation with an actionable handoff. It must not become inferred support or a second implementation of the harness's
 credential store. If the primary requested journey cannot be supported, record the evidence and obtain a product

@@ -38,11 +38,11 @@ class _Transport({required List<Object?> responses}) implements CodexAppServerTr
 
 CodexMcpRepository _repository({required _Transport transport}) => CodexMcpRepository(
   appServerApi: CodexAppServerApi(client: transport),
-  mapper: const CodexMcpMapper(),
+  mapper: CodexMcpMapper(userAgent: "fixture/0.160.1 (fixture)"),
 );
 
 PluginMcpServerSnapshot _mapped({required Map<String, Object?> server}) =>
-    const CodexMcpMapper()
+    CodexMcpMapper(userAgent: "fixture/0.160.1 (fixture)")
             .map(
               servers: [CodexMcpServerStatusDto.fromJson(server)],
               scope: const PluginMcpHarnessScope(),
@@ -52,6 +52,50 @@ PluginMcpServerSnapshot _mapped({required Map<String, Object?> server}) =>
         as PluginMcpServerSnapshot;
 
 void main() {
+  for (final (userAgent, supported) in [
+    ("fixture/0.139.0 (fixture)", false),
+    ("unknown", false),
+    ("fixture/invalid (fixture)", false),
+    ("fixture/0.160.1-alpha.1 (fixture)", false),
+    ("fixture/0.160.1 (fixture)", true),
+    ("fixture/0.161.0 (fixture)", true),
+  ]) {
+    test("session authentication uses verified native context support: $userAgent", () {
+      final mapper = CodexMcpMapper(userAgent: userAgent);
+      for (final scope in [const PluginMcpHarnessScope(), const PluginMcpSessionScope(sessionId: "thread")]) {
+        for (final authStatus in ["notLoggedIn", "unsupported", "future-auth"]) {
+          final entry =
+              mapper
+                      .map(
+                        servers: [
+                          CodexMcpServerStatusDto.fromJson({..._server, "authStatus": authStatus}),
+                        ],
+                        scope: scope,
+                      )
+                      .entries
+                      .single
+                  as PluginMcpServerSnapshot;
+          if (authStatus != "notLoggedIn" || scope is PluginMcpSessionScope && !supported) {
+            expect(
+              entry.authentication,
+              isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
+                (value) => value.reason,
+                "reason",
+                authStatus == "unsupported"
+                    ? PluginMcpAuthenticationCapabilityUnavailableReason.notSupported
+                    : authStatus == "future-auth"
+                    ? PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented
+                    : PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+              ),
+            );
+          } else {
+            expect(entry.authentication, isA<PluginMcpAuthenticationCapabilityAvailable>());
+          }
+        }
+      }
+    });
+  }
+
   test("reads every native page using the exact thread without starting agent work", () async {
     final transport = _Transport(
       responses: [
@@ -155,10 +199,10 @@ void main() {
     expect(tools.clear, throwsUnsupportedError);
     expect(
       entry.authentication,
-      isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
-        (value) => value.reason,
-        "reason",
-        PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
+      isA<PluginMcpAuthenticationCapabilityAvailable>().having(
+        (value) => value.effectScope,
+        "effect scope",
+        PluginMcpActionEffectScope.harness,
       ),
     );
     expect(
