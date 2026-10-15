@@ -3,9 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-claude-forms`, `3efd585b99`, in the provided `copper-heron` worktree.
-- Current step: 19/27 is in review as [#1986][pr-1986]; 20/27 is in progress locally.
-  Latest merged step: 18/27 as [#1984][pr-1984].
+- Branch/base: `sesori/mcp-claude-forms`, `db22ff3b68`, in the provided `copper-heron` worktree.
+- Current step: 20/27 is in review; latest merged step: 19/27 as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -40,8 +39,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 16/27 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
 | 17/27 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
 | 18/27 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
-| 19/27 | External-action client presentation (8.d.2.b) | In review | [#1986][pr-1986] |
-| 20/27 | Typed form transport (9.a) | In progress | Local shared contracts |
+| 19/27 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
+| 20/27 | Typed form transport (9.a) | In review | Shared typed form contracts |
 | 21/27 | Claude native/headless forms (9.b) | Not started | — |
 | 22/27 | Shared typed form controls (9.c) | Not started | — |
 | 23/27 | Codex inventory/actions/authentication | Not started | — |
@@ -1223,3 +1222,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   The full-screen SSE sequencing regression still passes; workspace-plugin analysis
   of `session_detail_body.dart` passes. Each replacement source commit above is an
   ancestor of the pushed head and differs from its tested snapshot only in TRACKER.md.
+- Step 19 merged at accepted head `3efd585b99`, squash `db22ff3b68` after all 20
+  pre-merge checks passed (21 in the terminal report). The two declared-negative-response
+  policy threads remain deliberately open with prefixed explanations. Step 20 merged
+  current main, preserving concurrent computer-management and Linux-distribution work.
+  Its shared source, tests, dependencies and SDK pin are unchanged from tested commit
+  `d62d2d501b`; no unchanged passing suite was rerun solely for confidence.

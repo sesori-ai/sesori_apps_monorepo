@@ -29,4 +29,12 @@ final class const ComputerSwitcherState({
   /// Whether [bridgeId] is the computer this surface runs on. Never true on a
   /// surface without a computer of its own (the phone).
   bool isThisComputer({required String bridgeId}) => bridgeId == localId;
+
+  /// Whether [bridgeId] can be removed from the account: a listed computer
+  /// that is offline and not this surface's own. An online one would only be
+  /// taken off the list until its bridge reports in again, and this computer
+  /// stops being reachable by turning its bridge off instead.
+  bool canRemove({required String bridgeId}) =>
+      !isThisComputer(bridgeId: bridgeId) &&
+      computers.any((computer) => computer.id == bridgeId && computer.status == BridgeRegistrationStatus.inactive);
 }

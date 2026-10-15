@@ -865,7 +865,7 @@ class FakeSelectedComputerService() implements SelectedComputerService {
   Future<void> select({required String bridgeId, required ComputerSwitchSource source}) async {}
 
   @override
-  String? replacementAfterRemoving({required String bridgeId}) => null;
+  Future<String?> replacementAfterRemoving({required String bridgeId, required bool wasCurrent}) async => null;
 }
 
 /// [ActiveBridgeLocality] of a surface that supervises no bridge.

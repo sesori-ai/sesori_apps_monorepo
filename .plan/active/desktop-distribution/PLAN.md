@@ -7,17 +7,18 @@
 - **Status:** Active — steps 1–5 and private Windows/Linux packaging are merged.
   The user retired Gate C and the listed remaining macOS QA prerequisites on
   2026-09-26, accepting their coverage gaps. MacOS publication is admitted;
-  signed/notarized internal packages are public on both CPUs. Ordinary shared build
-  `1.9.1+991` completed automatic attachment, and the deployed website selected
-  `1.9.1+993` during live verification on 2026-09-26. Stable macOS publication remains
-  pending its ordinary production submission. Stable build 981's authenticated/Off
-  acceptance and the 82-test shutdown audit retain their recorded scope; later public
-  links do not establish fresh authenticated replacement or shared-store qualification.
-  Private Linux signing is delivered in #1941; native run `38372268594` qualified
-  both CPUs and all six signed-package fixtures at `1.9.1+147`. Independent artifact
-  hashes and public-key-pinned checksum signatures passed. Windows signing/winget,
-  Linux signed repositories/shared-cycle publication, six-target onboarding and final
-  reconciliation/retirement remain open. Linux stays ahead of Windows.
+  signed/notarized stable and internal packages are public on both CPUs. Stable
+  `v1.9.1` ships build `1017` from source `8bfeda9416c96ea5de70ffc701a36b738f24eff7`,
+  packaging run `38537594836`; both live website DMG links returned HTTP 200.
+  Stable build 981's authenticated/Off acceptance and the 82-test shutdown audit
+  retain their recorded scope; public links do not establish fresh authenticated
+  replacement or shared-store qualification.
+  Linux CLI signatures, signed desktop internal previews and website discovery are
+  delivered through 11.f. The user approved GCS hosting/scoped publishing IAM and
+  directed finishing Linux through stable publication on 2026-10-14 (D13).
+  Repository trust, native desktop/account checks and genuine package upgrades still
+  precede stable admission. Windows signing/winget, six-target onboarding and final
+  reconciliation/retirement remain open; Linux stays ahead of Windows.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -77,6 +78,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D10 | User-directed order: Linux before Windows; private signing now, public repositories separately. |
 | D11 | Public Linux internal previews approved with stated desktop QA gaps; stable/repository gates stay closed. |
 | D12 | Sign Linux Bridge CLI archives with OpenPGP too; keep CLI and desktop artifacts distinct. |
+| D13 | 2026-10-14: finish Linux, including stable publication, before Windows. GCS package hosting and narrowly scoped GitHub publishing IAM in `sesori-ai` are approved with ordinary storage/download costs. Preserve signing, repository trust, native QA and production approvals; no new release backend. |
 
 ### User-retired QA gate and macOS admission — 2026-09-26
 
@@ -88,9 +90,10 @@ L3 sweep. Keep the configured macOS 12 minimum without claiming it was executed.
 Enable the existing `DESKTOP_MACOS_PUBLICATION_ENABLED` admission and continue
 macOS public distribution. Existing `store-production`, native signing/notarization,
 immutable asset/public-hash verification and private-evidence exclusion remain intact.
-Windows and stable Linux publication remain unadmitted. D11 separately admits Linux
-internal previews with the listed desktop QA gaps; APT/RPM repository hosting stays gated.
-No additional credentials, scheduler, mutable owner or application state is needed.
+Windows publication remains unadmitted. D11 admits Linux internal previews with the
+listed desktop QA gaps. D13 authorizes repository hosting and completion through stable
+Linux publication, without waiving its remaining qualification gates. No new scheduler,
+release service, mutable release pointer or application state is needed.
 
 ### Proposed implementation defaults
 
@@ -450,8 +453,9 @@ On 2026-10-13 the user explicitly authorized public opt-in Linux internal deskto
 previews with GUI/login/keyring and real version-upgrade checks still unverified
 (D11), plus OpenPGP signatures for the public Linux Bridge CLI archives (D12).
 This accepts those gaps for internal previews only, not stable Linux or APT/RPM
-repository admission. No cloud provisioning is authorized. Build 147 remains private;
-never relabel it as an existing shared release.
+repository admission. D13 subsequently approved GCS hosting and completion through
+stable publication; those preview-only QA waivers do not expand. Build 147 remains
+private; never relabel it as an existing shared release.
 
 Bounded slices, keeping the same signing key, shared cycle and ordinal total:
 
@@ -501,8 +505,56 @@ Bounded slices, keeping the same signing key, shared cycle and ordinal total:
   250–400 authored lines. Preserve GUI/upgrade/stable/repository limitations and keep
   the original 14-ordinal plan active. No new qualification or deployment is needed.
 
-Complexity budget: no new persistent pointer, scheduler, release service, application
-state or updater. Reuse the existing signing owner and one website cache; immutable
+**Remaining Linux continuation (D13):** preserve the original 14 ordinals and step 9;
+these are executable substeps, not a new plan or a Windows dependency.
+
+- `🚧 [desktop-distribution] Build signed Linux repository metadata [step 11.g/14]`:
+  consume the existing prepared release, preserve signed package bytes, use
+  `apt-ftparchive`/`createrepo_c`, sign APT `Release`/`InRelease` and RPM `repomd.xml`,
+  and verify both CPUs with disposable keys and real APT/DNF clients. About 800–1,100
+  authored lines including tests/docs. No cloud writes or publication in this PR.
+- `🚧 [desktop-distribution] Publish Linux preview repositories [step 11.h/14]`:
+  provision the approved public bucket and a dedicated narrowly scoped GitHub identity;
+  leave Cloud Run source storage and Firebase federation permissions unchanged.
+  Separate signing from publishing, publish immutable payloads/content-addressed
+  indexes before signed entrypoints, and join the existing shared internal cycle.
+  Bootstrap matching existing preview artifacts without rebuilding stores. Before
+  hosting, wire production-key repository signing and weekly metadata-only refresh of
+  accepted packages for each published channel through this same GitHub publisher.
+  APT validity is 30 days; failures stay visible in CI and manual repair must precede
+  expiry. Refresh never creates releases, changes completion markers or dispatches stores.
+  About 900–1,300 authored lines; verify anonymous retrieval and independent pinned trust.
+- `🚧 [desktop-distribution] Qualify native Linux desktop upgrades [step 11.i/14]`:
+  native x64/ARM64 GUI, account/keyring, tray/no-tray, Wayland/X11, login launch, safe
+  Quit and real version upgrades with shared-data preservation. Reuse existing native
+  producers/probes; split if the actual implementation exceeds one reviewable PR.
+  Container/inert-package checks are not substitutes. Record unavailable sessions
+  honestly; stable stays gated until the required evidence or explicit acceptance.
+- `⚙️ [desktop-distribution] Add Linux repository and stable download guidance [step 11.j/14]`:
+  update `sesori-ai/landingpage` using its existing release cache and truthful public
+  availability. Stable entries stay hidden until qualified stable completion exists.
+  Preserve every installed-app anchor and verify fixture/live desktop/mobile rendering.
+- `🚧 [desktop-distribution] Publish qualified stable Linux releases [step 11.k/14]`:
+  extend the existing shared production path after native acceptance; preserve
+  `store-production`, source/version/build/channel identity and core/macOS ownership.
+  Require repository delivery before stable completion becomes discoverable. Bootstrap
+  only a matching already-approved stable tag, never relabel internal binaries or
+  dispatch stores for proof. Record live anonymous package/repository/site acceptance
+  with this substantive continuation, not another acceptance-only PR.
+
+The first two slices are release tooling, not application architecture changes.
+Review architecture only if native qualification requires architecture-bearing product
+changes. L2 uses real tools with inert fixtures; L3 delivery requires actual signed
+packages/native sessions/public HTTPS and website acceptance. APT by-hash objects and
+RPM checksum-named metadata prevent missing-index races; old referenced content stays
+available. RPM's separate XML/signature replacement can briefly refuse refresh and
+require retry; do not add a custom update coordinator to hide that safe failure.
+
+Complexity budget: one public package bucket, one dedicated federation identity/service
+account and existing transient CI artifacts, plus a weekly metadata-maintenance trigger
+owned by the same repository publisher. No new persistent pointer, product release
+scheduler, cloud service, application state or updater. Reuse the existing signing owner and one
+website cache; immutable
 release assets plus per-platform completion markers own availability. Remove replaced
 Mac-only wording/retention assumptions and duplicated signing setup as each slice lands.
 

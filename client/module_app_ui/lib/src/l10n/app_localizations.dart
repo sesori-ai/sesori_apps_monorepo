@@ -763,7 +763,7 @@ abstract class AppLocalizations {
   /// **'Switch computer'**
   String get computerMenuSwitchHint;
 
-  /// Last item of the computer menu, below a divider. Opens the Computers page, where the user can switch to and rename the account's computers.
+  /// Last item of the computer menu, below a divider. Opens the Computers page, where the user can switch to, rename and remove the account's computers.
   ///
   /// In en, this message translates to:
   /// **'Manage computers…'**
@@ -816,6 +816,72 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Failed to rename computer'**
   String get computersRenameFailed;
+
+  /// Item of a computer's '⋯' menu on the Computers page. For an offline computer it asks to confirm removing it from the account; on desktop, for the computer in use, it explains why that one cannot be removed.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove…'**
+  String get computersRemove;
+
+  /// Line under the disabled 'Remove…' item of an online computer's menu on the Computers page; only offline computers can be removed. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Quit Sesori on {name} to remove it'**
+  String computersRemoveOnlineHint(String name);
+
+  /// Title of the dialog that confirms removing an offline computer from the account. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove {name}?'**
+  String computersRemoveTitle(String name);
+
+  /// Body of the dialog that confirms removing an offline computer from the account. There is no undo.
+  ///
+  /// In en, this message translates to:
+  /// **'It disappears from every device. Starting Sesori on it signs it back in as a new computer.'**
+  String get computersRemoveMessage;
+
+  /// Button that closes the remove-computer dialog without removing anything.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get computersRemoveCancel;
+
+  /// Destructive button of the remove-computer dialog that removes the computer from the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Remove'**
+  String get computersRemoveConfirm;
+
+  /// Error alert shown when removing a computer fails; the computer stays on the account.
+  ///
+  /// In en, this message translates to:
+  /// **'Failed to remove computer'**
+  String get computersRemoveFailed;
+
+  /// Title of the desktop dialog shown by 'Remove…' on the row of the computer the app runs on, which cannot be removed.
+  ///
+  /// In en, this message translates to:
+  /// **'This computer can\'t be removed'**
+  String get computersThisComputerTitle;
+
+  /// Body of the desktop dialog shown by 'Remove…' on the row of the computer the app runs on.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re using this computer, so it can\'t be removed. Turning off its bridge makes it unreachable from every device, this one included.'**
+  String get computersThisComputerMessage;
+
+  /// Button that closes the dialog explaining that the computer in use cannot be removed.
+  ///
+  /// In en, this message translates to:
+  /// **'Close'**
+  String get computersThisComputerClose;
+
+  /// Desktop button in the dialog explaining that the computer in use cannot be removed. Turns off this computer's bridge; hidden while the bridge is already off.
+  ///
+  /// In en, this message translates to:
+  /// **'Turn off bridge'**
+  String get computersTurnOffBridge;
 
   /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
   ///

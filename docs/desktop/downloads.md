@@ -7,10 +7,14 @@ plus `linux-package-managers`, and its contract checks fail when one is renamed 
 removed. Its `src/lib/desktop-downloads.ts` resolves completed public shared releases;
 individual preview builds do not need a source edit or website redeployment.
 
-**Internal macOS installers and native Linux DEB/RPM previews are public for both CPUs.**
+**Stable/internal macOS installers and native Linux DEB/RPM previews are public for both CPUs.**
 Both platforms' website downloads are live, independently selected by completion marker.
-Stable macOS, Windows and stable Linux are not published yet. Linux internal build
-`1.9.1+1013` passed independent anonymous package/signature verification on 2026-10-13.
+Stable macOS `v1.9.1` ships build `1017` from source
+`8bfeda9416c96ea5de70ffc701a36b738f24eff7`, packaging run `38537594836`.
+Both stable DMG links appeared on the live website and returned HTTP 200 on 2026-10-14;
+this is publication evidence, not new native/account upgrade qualification.
+Windows and stable Linux are not published yet. Linux internal build `1.9.1+1013`
+passed independent anonymous package/signature verification on 2026-10-13.
 The website selects each platform's newest completed preview rather than pinning
 its first publication.
 Private CI artifacts are not public links. This index never substitutes a mobile/CLI
@@ -60,11 +64,15 @@ GitHub's generic Latest release to choose a desktop installer.
 
 ## Stable macOS x64
 
-No public download is available.
+Available in the newest stable [shared release][shared-releases] with a desktop completion manifest:
+`Sesori-macos-x64.dmg` or `Sesori-macos-x64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
 ## Stable macOS arm64
 
-No public download is available.
+Available in the newest stable [shared release][shared-releases] with a desktop completion manifest:
+`Sesori-macos-arm64.dmg` or `Sesori-macos-arm64.zip`. Verify against its
+`desktop-checksums.txt` and `desktop-release.json`, not bridge `checksums.txt`.
 
 ## Internal macOS x64
 

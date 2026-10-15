@@ -423,6 +423,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computersRenameFailed => 'Failed to rename computer';
 
   @override
+  String get computersRemove => 'Remove…';
+
+  @override
+  String computersRemoveOnlineHint(String name) {
+    return 'Quit Sesori on $name to remove it';
+  }
+
+  @override
+  String computersRemoveTitle(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String get computersRemoveMessage =>
+      'It disappears from every device. Starting Sesori on it signs it back in as a new computer.';
+
+  @override
+  String get computersRemoveCancel => 'Cancel';
+
+  @override
+  String get computersRemoveConfirm => 'Remove';
+
+  @override
+  String get computersRemoveFailed => 'Failed to remove computer';
+
+  @override
+  String get computersThisComputerTitle => 'This computer can\'t be removed';
+
+  @override
+  String get computersThisComputerMessage =>
+      'You\'re using this computer, so it can\'t be removed. Turning off its bridge makes it unreachable from every device, this one included.';
+
+  @override
+  String get computersThisComputerClose => 'Close';
+
+  @override
+  String get computersTurnOffBridge => 'Turn off bridge';
+
+  @override
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override

@@ -1,0 +1,3 @@
+# Build the existing pinned signer locally first; do not fetch an unowned parent image.
+FROM sesori-linux-signing
+RUN dnf install -y apt-utils dpkg createrepo_c && dnf clean all
