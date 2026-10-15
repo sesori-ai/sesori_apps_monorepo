@@ -4,7 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-opencode-v1-oauth`, in the provided `copper-heron` worktree.
-- Current step: 34/37 OpenCode v1 native authentication ownership is local.
+- Current step: 34/37 OpenCode v1 native authentication ownership is in review
+  as [#2010][pr-2010].
   Parent 33/37 merged as [#2009][pr-2009] at accepted head `760ec2e428`.
   Latest squash: `37f62d4837`, with 19 passing pre-merge and 20 terminal checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
@@ -62,11 +63,12 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | Local | 172 cases; both native pins |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; both native pins |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
+[pr-2010]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2010
 [pr-2009]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2009
 [pr-2008]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2008
 [pr-2007]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2007
@@ -78,6 +80,19 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-34 PR review preserves only non-secret OAuth redirect metadata in a
+  disabled/enabled configuration sum. Unsupported callback overrides now declare
+  native configuration requirements before start; forgetting stays independent.
+  Both exact v1 pins reject the override through the production owner with no
+  native mutation. Disabled callback results complete authentication after native
+  token persistence; both pins verify two token exchanges without enabling the
+  server or changing configuration. Known OAuth query and fragment secrets are
+  redacted while useful paths and diagnostic context remain under local-log rules.
+  All 80 directly affected cases and owning analysis pass; 95 earlier affected
+  API/repository/plugin cases remain unchanged (175 unique cases across runs).
+  Source generation passes. The pure challenge value retains its invariant
+  methods; no separate parser/lifecycle collaborator is justified by that review
+  suggestion. Native recording and original final qualification remain pending.
 - Step 33 merged at accepted head `760ec2e428`, squash `37f62d4837`, with
   all 19 pre-merge and 20 terminal checks passing. Cubic approved, current-head
   Code/Security reviews completed, and four architecture/native-shape suggestions

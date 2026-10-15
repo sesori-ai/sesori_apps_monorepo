@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../models/open_code_mcp_authentication_dto.dart";
+import "../models/open_code_mcp_login_challenge.dart";
 import "../models/openapi/mcpstatus.g.dart";
 import "../models/openapi/mcpstatus_connected.g.dart";
 import "../models/openapi/mcpstatus_disabled.g.dart";
@@ -32,9 +33,19 @@ class const OpenCodeMcpMapper() {
     required PluginMcpScope scope,
     required OpenCodeMcpServerConfigurationDto? configuration,
   }) {
+    final oauth = configuration?.oauth;
+    final requiresNativeConfiguration =
+        status is MCPStatusNeedsClientRegistration ||
+        switch (oauth) {
+          OpenCodeMcpOAuthEnabled(:final parameters) => !supportsOpenCodeMcpCallbackOverride(
+            value: parameters.redirectUri,
+          ),
+          _ => false,
+        };
     final PluginMcpAuthenticationCapability credentials =
-        configuration?.transport == OpenCodeMcpTransport.remote &&
-            configuration!.oauthEnabled &&
+        configuration != null &&
+            configuration.transport == OpenCodeMcpTransport.remote &&
+            oauth is OpenCodeMcpOAuthEnabled &&
             configuration.url != null
         ? const PluginMcpAuthenticationCapabilityAvailable(effectScope: PluginMcpActionEffectScope.harness)
         : const PluginMcpAuthenticationCapabilityUnavailable(
@@ -57,7 +68,7 @@ class const OpenCodeMcpMapper() {
       authorization: status is MCPStatusNeedsAuth || status is MCPStatusNeedsClientRegistration
           ? PluginMcpAuthorizationState.required
           : PluginMcpAuthorizationState.unknown,
-      authentication: status is MCPStatusNeedsClientRegistration
+      authentication: requiresNativeConfiguration
           ? const PluginMcpAuthenticationCapabilityUnavailable(
               reason: PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
             )

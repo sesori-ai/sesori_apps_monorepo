@@ -126,7 +126,7 @@ class OpenCodeV2Repository({
       // diagnostic locally for an opted-in support log.
       Log.w(
         "[opencode-v2] Native MCP authentication failed for ${target.integrationId}/$attemptId",
-        redactMcpOAuthQuerySecrets(message: message),
+        redactMcpOAuthParameterSecrets(message: message),
       );
     }
     return switch (status) {
