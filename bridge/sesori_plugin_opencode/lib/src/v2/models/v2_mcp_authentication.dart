@@ -58,6 +58,7 @@ final class const V2McpLoginChallenge({
         callback.queryParameters["state"] != state ||
         (callback.queryParametersAll["code"]?.length ?? 0) > 1 ||
         (callback.queryParametersAll["error"]?.length ?? 0) > 1 ||
+        (callback.queryParameters.containsKey("code") && callback.queryParameters.containsKey("error")) ||
         hasCode == hasError ||
         callbackUri.queryParametersAll.entries.any(
           (entry) => !const ListEquality<String>().equals(callback.queryParametersAll[entry.key], entry.value),
@@ -71,6 +72,12 @@ final class const V2McpLoginChallenge({
 }
 
 bool _loopback({required Uri uri}) => const {"localhost", "127.0.0.1", "::1"}.contains(uri.host);
+
+/// Retain native diagnostic context without recording OAuth query secrets.
+String redactMcpOAuthQuerySecrets({required String message}) => message.replaceAllMapped(
+  RegExp(r'''([?&](?:code|state|access_token|refresh_token|client_secret)=)[^&#\s"']*''', caseSensitive: false),
+  (match) => "${match[1]}[redacted]",
+);
 
 sealed class const V2McpAuthenticationAttempt({required final String attemptId});
 final class const V2McpAuthenticationReady({required super.attemptId, required final V2McpLoginChallenge challenge})

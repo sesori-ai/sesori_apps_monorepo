@@ -437,7 +437,17 @@ Native connected, pending, disabled, needs-auth, failed and unknown states remai
 distinct. Unknown tools, endpoints, configuration and authentication are not
 inferred. The MCP API exposes no offered-connector inventory. Native integration
 OAuth/forgetting are implemented for servers declaring an `integrationID`, and
-unsupported for servers without one. Connect/reconnect and disable
+unsupported for servers without one. Authentication requires exactly one
+form-free OAuth method, as registered by the pinned native MCP core; preparation
+validates fresh metadata. Forgetting is independent of OAuth method eligibility.
+Read-only preparation precedes subscription; native attempt creation starts only
+on subscription. Cancellation before subscription starts no native work. Runtime
+teardown waits within its cleanup budget for a pending start's returned handle.
+Confirmed native attempt disappearance settles as unresolved failure outside
+acknowledged cancellation; unknown status retains ownership. Callback validation
+rejects both `code` and `error` keys even if either value is empty. Native failure
+logs preserve endpoint context while redacting OAuth query secrets.
+Connect/reconnect and disable
 use only the named existing server's location-scoped native controls; they do not
 write server configuration or create/resume sessions. Headless orchestration
 performs the existing authoritative refresh after native completion.

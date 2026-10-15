@@ -53,29 +53,37 @@ class V2McpAuthenticationService({
 }
 
 sealed class const _LoginState();
+final class const _Unactivated() extends _LoginState;
 final class const _Preparing() extends _LoginState;
 final class const _Active({required final V2McpAuthenticationAttempt attempt}) extends _LoginState;
 final class const _Uncertain() extends _LoginState;
 final class const _Retired() extends _LoginState;
+
+sealed class const _Cancellation();
+final class const _NotCancelling() extends _Cancellation;
+final class const _Removing({required final Completer<void> result}) extends _Cancellation;
+final class const _Settling({required final Completer<void> result}) extends _Cancellation;
 
 final class _V2McpLogin({
   required final OpenCodeV2Repository _repository,
   required final V2McpAuthenticationTarget _target,
   required final Duration _pollInterval,
 }) {
-  _LoginState _state = const _Preparing();
-  final _started = Completer<void>();
+  _LoginState _state = const _Unactivated();
+  final _started = Completer<V2McpAuthenticationAttempt?>();
   final _done = Completer<void>();
   late final StreamController<PluginMcpAuthenticationEvent> _events;
-  Future<void>? _cancellation;
+  _Cancellation _cancellation = const _NotCancelling();
 
   Future<void> get done => _done.future;
 
   PluginMcpCancelableAuthentication operation({required void Function() activate}) {
     _events = StreamController(
       onListen: () {
+        if (_state is _Retired) return;
         try {
           activate();
+          _state = const _Preparing();
           unawaited(_run());
         } on Object catch (error, stackTrace) {
           _finish(
@@ -96,14 +104,8 @@ final class _V2McpLogin({
   Future<void> _run() async {
     try {
       final attempt = await _repository.startMcpAuthentication(target: _target);
-      if (_state is _Retired) {
-        try {
-          await _repository.cancelMcpAuthentication(target: _target, attemptId: attempt.attemptId);
-        } on Object catch (error, stackTrace) {
-          Log.w("[opencode-v2] Retired MCP start cleanup failed for ${_target.integrationId}", error, stackTrace);
-        }
-        return;
-      }
+      _started.complete(attempt);
+      if (_state is _Retired) return;
       _state = _Active(attempt: attempt);
       if (attempt case V2McpAuthenticationReady(:final challenge)) {
         _events.add(
@@ -120,14 +122,10 @@ final class _V2McpLogin({
     } on Object catch (error, stackTrace) {
       if (_state is! _Retired) {
         _state = const _Uncertain();
-        Log.w(
-          "[opencode-v2] MCP start uncertain for ${_target.integrationId}; retaining native ownership",
-          error,
-          stackTrace,
-        );
       }
+      Log.w("[opencode-v2] MCP start uncertain for ${_target.integrationId}", error, stackTrace);
     } finally {
-      _started.complete();
+      if (!_started.isCompleted) _started.complete(null);
     }
     if (_state case _Active(attempt: V2McpAuthenticationInvalid())) {
       // An unusable challenge still owns the returned native attempt.
@@ -146,7 +144,14 @@ final class _V2McpLogin({
           _finish(event: event);
           return;
         }
-        if (observation is V2McpAuthenticationUnknown || observation is V2McpAuthenticationRemoved) {
+        if (observation case V2McpAuthenticationRemoved(:final innerError, :final stackTrace)
+            when _cancellation is! _Removing) {
+          _finish(
+            event: _failure(error: innerError, stackTrace: stackTrace),
+          );
+          return;
+        }
+        if (observation is V2McpAuthenticationUnknown) {
           Log.w("[opencode-v2] Unknown MCP attempt status for ${_target.integrationId}; retaining native ownership");
         }
       } on Object catch (error, stackTrace) {
@@ -168,10 +173,35 @@ final class _V2McpLogin({
     throw PluginMcpAuthenticationCallbackRejectedException(innerError: StateError("No active OpenCode MCP challenge"));
   }
 
-  Future<void> _cancel() => _cancellation ??= _cancelNative().whenComplete(() => _cancellation = null);
+  Future<void> _cancel() {
+    switch (_cancellation) {
+      case _Removing(:final result) || _Settling(:final result):
+        return result.future;
+      case _NotCancelling():
+        final result = Completer<void>();
+        _cancellation = _Removing(result: result);
+        unawaited(
+          _cancelNative(result: result).then(
+            (_) {
+              _cancellation = const _NotCancelling();
+              result.complete();
+            },
+            onError: (Object error, StackTrace stackTrace) {
+              _cancellation = const _NotCancelling();
+              result.completeError(error, stackTrace);
+            },
+          ),
+        );
+        return result.future;
+    }
+  }
 
-  Future<void> _cancelNative() async {
+  Future<void> _cancelNative({required Completer<void> result}) async {
     if (_state is _Retired) return;
+    if (_state is _Unactivated) {
+      _finish(event: null);
+      return;
+    }
     await _started.future;
     if (_state is _Retired) return;
     if (_state case _Active(:final attempt)) {
@@ -202,6 +232,7 @@ final class _V2McpLogin({
       }
       // Native cancellation is a no-op while a credential is persisting. Keep
       // polling and let its terminal outcome win instead of reporting cancelled.
+      _cancellation = _Settling(result: result);
       await done;
       return;
     }
@@ -214,16 +245,19 @@ final class _V2McpLogin({
     _finish(
       event: _failure(error: StateError("OpenCode runtime stopped"), stackTrace: StackTrace.current),
     );
-    if (previous case _Active(:final attempt)) {
-      try {
-        // This bounds runtime teardown only; it never reports cancellation or
-        // releases a live product attempt on an ordinary request deadline.
-        await _retireNative(attempt: attempt).timeout(const Duration(seconds: 3));
-      } on Object catch (error, stackTrace) {
-        Log.w("[opencode-v2] Runtime MCP cleanup uncertain for ${_target.integrationId}", error, stackTrace);
-      }
-    } else {
-      Log.w("[opencode-v2] Runtime retired with uncertain MCP start for ${_target.integrationId}");
+    try {
+      // Bound the entire teardown, including a start reply still in flight,
+      // while the native HTTP client is still available for cleanup.
+      await (() async {
+        final attempt = switch (previous) {
+          _Active(:final attempt) => attempt,
+          _ => await _started.future,
+        };
+        if (attempt == null) throw StateError("Native start has no acknowledged attempt handle");
+        await _retireNative(attempt: attempt);
+      })().timeout(const Duration(seconds: 3));
+    } on Object catch (error, stackTrace) {
+      Log.w("[opencode-v2] Runtime MCP cleanup uncertain for ${_target.integrationId}", error, stackTrace);
     }
   }
 
