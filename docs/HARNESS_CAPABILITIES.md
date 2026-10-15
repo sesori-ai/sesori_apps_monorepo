@@ -863,10 +863,15 @@ tools and credential state are not inferred. Offered connectors are **not
 supported by this seam**. V1 authentication and credential forgetting are
 **implemented** for configured remote servers with OAuth enabled. Native
 configuration is read through a minimal projection that discards credentials;
-local, OAuth-disabled and unknown server types remain unsupported. Sign-in starts
+local, OAuth-disabled and unknown server types remain unsupported. Unsupported
+configured callback overrides require native configuration before sign-in starts;
+only non-secret redirect metadata is retained and forgetting stays independent.
+Sign-in starts
 on subscription and requires manual callback delivery through native OpenCode's
 code-only API; a browser loopback return alone does not settle this flow. The
-native callback's connected result is completion. Forgetting affects the native
+native callback's connected or disabled result is authentication completion;
+disabled follows successful native token persistence without enabling the server.
+Forgetting affects the native
 harness profile and does not write server configuration.
 V1 has no credential-preserving cancellation or pending-status seam. DELETE auth
 also removes credentials, so it is never used for cancellation or retirement.

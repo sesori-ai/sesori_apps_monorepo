@@ -29,7 +29,7 @@ _OpenCodeMcpServerConfigurationDto _$OpenCodeMcpServerConfigurationDtoFromJson(
     unknownValue: OpenCodeMcpTransport.unknown,
   ),
   url: json['url'] as String?,
-  oauthEnabled: _oauthEnabled(json['oauth']),
+  oauth: _oauthConfiguration(json['oauth']),
 );
 
 const _$OpenCodeMcpTransportEnumMap = {
@@ -37,6 +37,11 @@ const _$OpenCodeMcpTransportEnumMap = {
   OpenCodeMcpTransport.remote: 'remote',
   OpenCodeMcpTransport.unknown: 'unknown',
 };
+
+_OpenCodeMcpOAuthParametersDto _$OpenCodeMcpOAuthParametersDtoFromJson(
+  Map json,
+) =>
+    _OpenCodeMcpOAuthParametersDto(redirectUri: json['redirectUri'] as String?);
 
 _OpenCodeMcpAuthenticationResponseDto
 _$OpenCodeMcpAuthenticationResponseDtoFromJson(Map json) =>

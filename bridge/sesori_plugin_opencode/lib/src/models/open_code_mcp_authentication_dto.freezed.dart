@@ -61,7 +61,7 @@ class _OpenCodeMcpConfigurationDto implements OpenCodeMcpConfigurationDto {
 /// @nodoc
 mixin _$OpenCodeMcpServerConfigurationDto {
 
-@JsonKey(name: "type", unknownEnumValue: OpenCodeMcpTransport.unknown) OpenCodeMcpTransport? get transport; String? get url;@JsonKey(name: "oauth", fromJson: _oauthEnabled) bool get oauthEnabled;
+@JsonKey(name: "type", unknownEnumValue: OpenCodeMcpTransport.unknown) OpenCodeMcpTransport? get transport; String? get url;@JsonKey(fromJson: _oauthConfiguration) OpenCodeMcpOAuthConfiguration get oauth;
 
 
 
@@ -79,12 +79,51 @@ mixin _$OpenCodeMcpServerConfigurationDto {
 @JsonSerializable(createToJson: false)
 
 class _OpenCodeMcpServerConfigurationDto implements OpenCodeMcpServerConfigurationDto {
-  const _OpenCodeMcpServerConfigurationDto({@JsonKey(name: "type", unknownEnumValue: OpenCodeMcpTransport.unknown) required this.transport, required this.url, @JsonKey(name: "oauth", fromJson: _oauthEnabled) required this.oauthEnabled});
+  const _OpenCodeMcpServerConfigurationDto({@JsonKey(name: "type", unknownEnumValue: OpenCodeMcpTransport.unknown) required this.transport, required this.url, @JsonKey(fromJson: _oauthConfiguration) required this.oauth});
   factory _OpenCodeMcpServerConfigurationDto.fromJson(Map<String, dynamic> json) => _$OpenCodeMcpServerConfigurationDtoFromJson(json);
 
 @override@JsonKey(name: "type", unknownEnumValue: OpenCodeMcpTransport.unknown) final  OpenCodeMcpTransport? transport;
 @override final  String? url;
-@override@JsonKey(name: "oauth", fromJson: _oauthEnabled) final  bool oauthEnabled;
+@override@JsonKey(fromJson: _oauthConfiguration) final  OpenCodeMcpOAuthConfiguration oauth;
+
+
+
+
+
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+mixin _$OpenCodeMcpOAuthParametersDto {
+
+ String? get redirectUri;
+
+
+
+
+
+
+
+}
+
+
+
+
+
+/// @nodoc
+@JsonSerializable(createToJson: false)
+
+class _OpenCodeMcpOAuthParametersDto implements OpenCodeMcpOAuthParametersDto {
+  const _OpenCodeMcpOAuthParametersDto({required this.redirectUri});
+  factory _OpenCodeMcpOAuthParametersDto.fromJson(Map<String, dynamic> json) => _$OpenCodeMcpOAuthParametersDtoFromJson(json);
+
+@override final  String? redirectUri;
 
 
 

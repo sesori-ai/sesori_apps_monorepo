@@ -64,7 +64,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; 172 cases; both pins |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; 175 cases; both pins |
 | 35/37 | Bounded Pi/ACP source and capability audit (11.e) | Local | Source audit; no production change |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
@@ -100,6 +100,21 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   behavior or analytics event changes; no causal code cleanup was found.
   This is source evidence, not native runtime/provider/platform qualification.
   Original final L4 and deferred native recording gates remain unchanged.
+- Step-34 PR review preserves only non-secret OAuth redirect metadata in a
+  disabled/enabled configuration sum. Unsupported callback overrides now declare
+  native configuration requirements before start; forgetting stays independent.
+  Both exact v1 pins reject the override through the production owner with no
+  native mutation. Disabled callback results complete authentication after native
+  token persistence; both pins verify two token exchanges without enabling the
+  server or changing configuration. Known OAuth query and fragment secrets are
+  redacted while useful paths and diagnostic context remain under local-log rules.
+  All 80 directly affected cases and owning analysis pass; 95 earlier affected
+  API/repository/plugin cases remain unchanged (175 unique cases across runs).
+  Source generation passes. The pure challenge value retains its invariant
+  methods; no separate parser/lifecycle collaborator is justified by that review
+  suggestion. Native recording and original final qualification remain pending.
+  Final architecture implementation review approved (pass 2) on `ff8c9447d1`;
+  the full reviewed step is 1,460 lines, including 231 generated lines.
 - Step 33 merged at accepted head `760ec2e428`, squash `37f62d4837`, with
   all 19 pre-merge and 20 terminal checks passing. Cubic approved, current-head
   Code/Security reviews completed, and four architecture/native-shape suggestions

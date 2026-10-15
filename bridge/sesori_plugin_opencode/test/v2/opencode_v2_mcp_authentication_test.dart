@@ -143,15 +143,17 @@ class _Observation({required final PluginMcpCancelableAuthentication operation})
 }
 
 void main() {
-  test("OAuth diagnostic redaction preserves endpoint and non-secret context", () {
+  test("OAuth query and fragment redaction preserves endpoint and non-secret context", () {
     expect(
-      redactMcpOAuthQuerySecrets(
+      redactMcpOAuthParameterSecrets(
         message:
             "Rejected https://fixture.invalid/callback?code=secret-code&state=secret-state&reason=denied "
-            "http://localhost/token?access_token=secret-access&refresh_token=secret-refresh&client_secret=secret-client",
+            "http://localhost/token?access_token=secret-access&refresh_token=secret-refresh&client_secret=secret-client "
+            "https://fixture.invalid/callback#access_token=fragment-access&state=fragment-state",
       ),
       "Rejected https://fixture.invalid/callback?code=[redacted]&state=[redacted]&reason=denied "
-      "http://localhost/token?access_token=[redacted]&refresh_token=[redacted]&client_secret=[redacted]",
+      "http://localhost/token?access_token=[redacted]&refresh_token=[redacted]&client_secret=[redacted] "
+      "https://fixture.invalid/callback#access_token=[redacted]&state=[redacted]",
     );
   });
 

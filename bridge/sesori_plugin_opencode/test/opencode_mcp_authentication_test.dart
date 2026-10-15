@@ -114,7 +114,7 @@ void main() {
     final fixture = _Fixture(override: null);
     final server = (await fixture.api.getMcpConfiguration(directory: _directory)).mcp[_name]!;
     expect(server.transport, OpenCodeMcpTransport.remote);
-    expect(server.oauthEnabled, isTrue);
+    expect(server.oauth, isA<OpenCodeMcpOAuthEnabled>());
     expect(server.toString(), isNot(contains("fixture-sensitive")));
   });
 
@@ -151,6 +151,58 @@ void main() {
     await operation.submitCallback(callbackUri: _callback);
     expect(await observation.terminal.future, isA<PluginMcpAuthenticationFailed>());
     await observation.done.future;
+  });
+
+  test("disabled native callback completes authentication independently of connection state", () async {
+    final fixture = _Fixture(override: null)
+      ..status = "disabled"
+      ..callbackStatus = "disabled";
+    final operation = await fixture.begin();
+    final observation = _Observation(operation: operation);
+    await observation.challenge.future;
+    await operation.submitCallback(callbackUri: _callback);
+    expect(await observation.terminal.future, isA<PluginMcpAuthenticationCompleted>());
+    await observation.done.future;
+    expect(fixture.calls.any((request) => request.method == "DELETE"), isFalse);
+  });
+
+  test("unsupported configured redirect blocks sign-in before native start but permits forgetting", () async {
+    final fixture = _Fixture(override: null)
+      ..oauth = {"redirectUri": "https://fixture.invalid/callback", "clientSecret": "fixture-sensitive"};
+    final configuration = await fixture.api.getMcpConfiguration(directory: _directory);
+    final oauth = configuration.mcp[_name]!.oauth as OpenCodeMcpOAuthEnabled;
+    expect(oauth.parameters.redirectUri, "https://fixture.invalid/callback");
+    expect(oauth.parameters.toString(), isNot(contains("fixture-sensitive")));
+    final inventory = await fixture.service.getMcpInventory(scope: _target.scope) as PluginMcpInventorySnapshot;
+    final server = inventory.entries.single as PluginMcpServerSnapshot;
+    expect(
+      server.authentication,
+      isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
+        (capability) => capability.reason,
+        "reason",
+        PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+      ),
+    );
+    expect(server.credentialForgetting, isA<PluginMcpAuthenticationCapabilityAvailable>());
+    await expectLater(
+      fixture.begin(),
+      throwsA(
+        isA<PluginMcpAuthenticationUnavailableException>().having(
+          (error) => error.reason,
+          "reason",
+          PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+        ),
+      ),
+    );
+    expect(fixture.calls.every((request) => request.method == "GET"), isTrue);
+    await fixture.authentication.forget(target: _target);
+    expect(fixture.calls.where((request) => request.method == "DELETE"), hasLength(1));
+  });
+
+  test("configured loopback redirect remains eligible", () async {
+    final fixture = _Fixture(override: null)..oauth = {"redirectUri": "http://127.0.0.1:3456/callback"};
+    await fixture.begin();
+    expect(fixture.calls.every((request) => request.method == "GET"), isTrue);
   });
 
   test("the native no-challenge sentinel maps to explicit already-authorized completion", () async {

@@ -21,14 +21,26 @@ sealed class OpenCodeMcpServerConfigurationDto with _$OpenCodeMcpServerConfigura
   const factory({
     @JsonKey(name: "type", unknownEnumValue: OpenCodeMcpTransport.unknown) required OpenCodeMcpTransport? transport,
     required String? url,
-    @JsonKey(name: "oauth", fromJson: _oauthEnabled) required bool oauthEnabled,
+    @JsonKey(fromJson: _oauthConfiguration) required OpenCodeMcpOAuthConfiguration oauth,
   }) = _OpenCodeMcpServerConfigurationDto;
   factory fromJson(Map<String, dynamic> json) => _$OpenCodeMcpServerConfigurationDtoFromJson(json);
 }
 
-bool _oauthEnabled(Object? value) => switch (value) {
-  null || Map() => true,
-  false => false,
+sealed class const OpenCodeMcpOAuthConfiguration();
+final class const OpenCodeMcpOAuthDisabled() extends OpenCodeMcpOAuthConfiguration;
+final class const OpenCodeMcpOAuthEnabled({required final OpenCodeMcpOAuthParametersDto parameters})
+    extends OpenCodeMcpOAuthConfiguration;
+
+@Freezed(copyWith: false, toJson: false, equal: false, toStringOverride: false)
+sealed class OpenCodeMcpOAuthParametersDto with _$OpenCodeMcpOAuthParametersDto {
+  const factory({required String? redirectUri}) = _OpenCodeMcpOAuthParametersDto;
+  factory fromJson(Map<String, dynamic> json) => _$OpenCodeMcpOAuthParametersDtoFromJson(json);
+}
+
+OpenCodeMcpOAuthConfiguration _oauthConfiguration(Object? value) => switch (value) {
+  null => const OpenCodeMcpOAuthEnabled(parameters: OpenCodeMcpOAuthParametersDto(redirectUri: null)),
+  Map() => OpenCodeMcpOAuthEnabled(parameters: OpenCodeMcpOAuthParametersDto.fromJson(value.cast<String, dynamic>())),
+  false => const OpenCodeMcpOAuthDisabled(),
   _ => throw const FormatException("Unsupported native MCP OAuth configuration"),
 };
 
