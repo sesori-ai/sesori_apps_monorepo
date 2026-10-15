@@ -163,6 +163,14 @@ jobs:
           channel: ${{ needs.changes.outputs.flutter-channel }}
           cache: true
 
+      - name: Install native asset build dependencies
+        if: matrix.command == 'flutter test'
+        # `flutter test` runs cnativeapi's (tray_manager) native-asset build
+        # hook, which needs GTK 3, X11, and Xi headers.
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y clang pkg-config libgtk-3-dev libx11-dev libxi-dev
+
       - name: Get dependencies (workspace)
         run: dart pub get
         working-directory: client
