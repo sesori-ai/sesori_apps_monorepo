@@ -8,17 +8,18 @@ on:
       - '.github/scripts/qualify_desktop_linux_session.py'
       - '.github/scripts/test_qualify_desktop_linux_session.py'
       - '.github/scripts/publish_desktop_linux.py'
+      - '.github/scripts/publish_linux_repository.py'
       - 'client/desktop/test/native/packaged_platform_probe.dart'
   workflow_dispatch:
     inputs:
       previous_run:
         description: Successful signed Linux producer run before replacement (artifacts must still be retained)
         type: string
-        default: '38737038757'
+        default: '38774801356'
       current_run:
         description: Successful signed Linux producer run after replacement (artifacts must still be retained)
         type: string
-        default: '38745368680'
+        default: '38791726962'
 
 permissions:
   contents: read
@@ -67,29 +68,29 @@ jobs:
           sudo apt-get install --yes --no-install-recommends \
             clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
             libsecret-1-dev libx11-dev libxi-dev dpkg-dev rpm gnupg \
-            dbus-x11 python3-dbus gnome-keyring libsecret-tools \
+            dbus-x11 python3-dbus python3-pyatspi gnome-keyring libsecret-tools \
             gnome-shell plasma-desktop plasma-workspace kwin-x11 \
-            xvfb xauth wmctrl imagemagick mesa-utils
+            xvfb xauth wmctrl xdotool imagemagick mesa-utils
       # Release objects roll away by design. Bind QA to original signed producer
       # artifacts instead; do not change retention or recreate historical releases.
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.previous_run || '38737038757' }}
+          run-id: ${{ inputs.previous_run || '38774801356' }}
           pattern: desktop-linux-*
           path: build/linux-session-producers/previous
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.current_run || '38745368680' }}
+          run-id: ${{ inputs.current_run || '38791726962' }}
           pattern: desktop-linux-*
           path: build/linux-session-producers/current
       - name: Verify unchanged signed producer inputs
         id: inputs
         env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_RUN: ${{ inputs.previous_run || '38737038757' }}
-          CURRENT_RUN: ${{ inputs.current_run || '38745368680' }}
+          PREVIOUS_RUN: ${{ inputs.previous_run || '38774801356' }}
+          CURRENT_RUN: ${{ inputs.current_run || '38791726962' }}
         run: |
           python .github/scripts/qualify_desktop_linux_session.py prepare \
             --previous "$PREVIOUS_RUN" --current "$CURRENT_RUN" --tooling-sha "$GITHUB_SHA" \

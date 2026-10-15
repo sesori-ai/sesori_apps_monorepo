@@ -11,9 +11,10 @@ import qualify_desktop_linux_session as qualification
 
 
 class LinuxSessionQualificationTest(unittest.TestCase):
-    def test_preparation_preserves_selected_sources_and_requires_genuine_upgrade(self):
+    def test_preparation_preserves_sources_and_requires_increasing_package_versions(self):
         for old_build, new_build, same_source, accepted in ((1, 2, False, True), (2, 1, False, False),
-                                                            (1, 1, False, False), (1, 2, True, False)):
+                                                            (1, 1, False, False), (1, 2, True, True),
+                                                            (1, 1, True, False)):
             with self.subTest(old=old_build, new=new_build, same_source=same_source):
                 with tempfile.TemporaryDirectory() as directory:
                     root = Path(directory)
@@ -41,7 +42,8 @@ class LinuxSessionQualificationTest(unittest.TestCase):
                         if accepted:
                             qualification.prepare(**arguments)
                             self.assertIn("previous_source=" + "a" * 40, output_file.read_text())
-                            self.assertIn("current_source=" + "b" * 40, output_file.read_text())
+                            self.assertIn("current_source=" + ("a" if same_source else "b") * 40,
+                                          output_file.read_text())
                         else:
                             with self.assertRaises(ValueError):
                                 qualification.prepare(**arguments)
@@ -88,6 +90,9 @@ class LinuxSessionQualificationTest(unittest.TestCase):
         self.assertIn("max-parallel: 2", workflow)
         self.assertIn("actions: read", workflow)
         self.assertIn("pattern: desktop-linux-*", workflow)
+        self.assertIn("'.github/scripts/publish_desktop_linux.py'", workflow)
+        self.assertIn("'.github/scripts/publish_linux_repository.py'", workflow)
+        self.assertIn("python3-pyatspi", workflow)
         self.assertNotIn("previous_tag", workflow)
         self.assertIn("/usr/bin/python3", workflow)
         self.assertIn("dbus-run-session", workflow)

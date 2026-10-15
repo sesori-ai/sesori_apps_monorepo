@@ -58,7 +58,6 @@ def prepare(*, inputs: Path, output: Path, previous: int, current: int, tooling_
     versions = [version_order(version=f"{releases[label]['version']}-{releases[label]['buildNumber']}")
                 for label in ("previous", "current")]
     require(versions[0] < versions[1], "Select a genuine increasing package upgrade")
-    require(releases["previous"]["sourceSha"] != releases["current"]["sourceSha"], "Select different product sources")
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as target:
         for label, release in releases.items():
             target.write(f"{label}_source={release['sourceSha']}\n")
@@ -85,7 +84,8 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
         env = {**os.environ, "HOME": str(home), "XDG_CONFIG_HOME": str(home / ".config"),
                "XDG_DATA_HOME": str(home / ".local/share"), "XDG_CACHE_HOME": str(home / ".cache"),
                "XDG_RUNTIME_DIR": str(home / "runtime"), "LIBGL_ALWAYS_SOFTWARE": "1",
-               "QT_QUICK_BACKEND": "software", "NO_AT_BRIDGE": "0", "LC_ALL": "C.UTF-8"}
+               "QT_QUICK_BACKEND": "software", "QT_LINUX_ACCESSIBILITY_ALWAYS_ON": "1",
+               "NO_AT_BRIDGE": "0", "LC_ALL": "C.UTF-8"}
         Path(env["XDG_RUNTIME_DIR"]).mkdir(mode=0o700)
         bus = dbus.SessionBus()
 
@@ -112,28 +112,52 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             rows = run(arguments=["wmctrl", "-lp"], env=env).splitlines()
             return [row.split()[0] for row in rows if len(row.split()) > 3 and row.split()[2] == str(process.pid)]
 
-        def tray_quit(*, process):
+        def tray_quit(*, process, label: str):
+            import pyatspi
+            from gi.repository import GLib
+
             watcher = bus.get_object("org.kde.StatusNotifierWatcher", "/StatusNotifierWatcher")
             items = dbus.Interface(watcher, "org.freedesktop.DBus.Properties").Get(
                 "org.kde.StatusNotifierWatcher", "RegisteredStatusNotifierItems")
             connection = dbus.Interface(bus.get_object("org.freedesktop.DBus", "/org/freedesktop/DBus"),
                                         "org.freedesktop.DBus")
+            plasma_pid = int(connection.GetConnectionUnixProcessID("org.kde.plasmashell"))
+
+            def accessible(*, name: str):
+                # Drain accessibility cache updates after the host opens its menu.
+                context = GLib.MainContext.default()
+                while context.iteration(False):
+                    pass
+                for application in pyatspi.Registry.getDesktop(0):
+                    if application.get_process_id() == plasma_pid:
+                        return pyatspi.findDescendant(
+                            application, lambda node: node.name == name
+                            and node.getState().contains(pyatspi.STATE_SHOWING))
+                return None
+
+            def click(*, node):
+                bounds = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
+                require(bounds.width > 0 and bounds.height > 0, "Native tray target has no visible bounds")
+                run(arguments=["xdotool", "mousemove", "--sync", str(bounds.x + bounds.width // 2),
+                               str(bounds.y + bounds.height // 2), "click", "1"], env=env)
+
             for item in items:
                 service, _, path = str(item).partition("/")
                 if int(connection.GetConnectionUnixProcessID(service)) != process.pid:
                     continue
                 properties = dbus.Interface(bus.get_object(service, "/" + path), "org.freedesktop.DBus.Properties")
-                menu_path = properties.Get("org.kde.StatusNotifierItem", "Menu")
-                menu = dbus.Interface(bus.get_object(service, str(menu_path)), "com.canonical.dbusmenu")
-                _, layout = menu.GetLayout(dbus.Int32(0), dbus.Int32(-1), dbus.Array([], signature="s"))
-                pending = [layout]
-                while pending:
-                    node, attributes, children = pending.pop()
-                    if str(attributes.get("label", "")) == "Quit Sesori":
-                        menu.Event(node, "clicked", dbus.Int32(0, variant_level=1), dbus.UInt32(0))
-                        return True
-                    pending.extend(children)
-            return False
+                menu_path = str(properties.Get("org.kde.StatusNotifierItem", "Menu"))
+                require(menu_path not in ("/", "/NO_DBUSMENU"), "Native tray does not advertise a usable menu")
+                title = str(properties.Get("org.kde.StatusNotifierItem", "Title"))
+                icon = wait_for(description=f"visible native tray icon {title!r}", check=lambda: accessible(name=title))
+                click(node=icon)
+                quit_item = wait_for(description="visible native Quit item",
+                                     check=lambda: accessible(name="Quit Sesori"))
+                time.sleep(0.3)  # Let the native popup transition render before capture and click.
+                run(arguments=["import", "-window", "root", str(output / f"{label}-anonymous-menu.png")], env=env)
+                click(node=quit_item)
+                return
+            raise ValueError("No StatusNotifier item belongs to the application")
 
         def probe(*, label: str, phase: str):
             report = output / f"{label}-storage.txt"
@@ -167,6 +191,7 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                 wait_for(description="GNOME compositor", check=lambda: bus.name_has_owner("org.gnome.Shell"))
                 require(not bus.name_has_owner("org.kde.StatusNotifierWatcher"), "Expected GNOME without a tray host")
             else:
+                run(arguments=["gsettings", "set", "org.gnome.desktop.interface", "toolkit-accessibility", "true"], env=env)
                 start(arguments=["Xvfb", ":95", "-screen", "0", "1280x800x24", "-nolisten", "tcp"], label="x11")
                 wait_for(description="X11 socket", check=lambda: Path("/tmp/.X11-unix/X95").exists())
                 start(arguments=["startplasma-x11"], label="desktop")
@@ -202,7 +227,7 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                     run(arguments=["wmctrl", "-ic", bounds[0]], env=env)
                     wait_for(description="close-to-tray", check=lambda: not window(process=process))
                     run(arguments=["import", "-window", "root", str(output / f"{label}-anonymous-tray.png")], env=env)
-                    wait_for(description="native tray Quit", check=lambda: tray_quit(process=process))
+                    tray_quit(process=process, label=label)
                 process.wait(timeout=30)
                 require(process.returncode == 0, f"Normal Quit failed: {process.returncode}")
                 helper = subprocess.run(["pgrep", "-f", r"^/opt/sesori-desktop/bridge/bin/bridge( |$)"],
@@ -216,6 +241,8 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             (output / "result.json").write_text(json.dumps({
                 "desktop": desktop, "architecture": architecture, "hostArchitecture": platform.machine(),
                 "observations": observations, "nativeStorageSurvivesUpgrade": True,
+                "productSourceChanged": (observations[0]["identity"]["sourceSha"]
+                                         != observations[1]["identity"]["sourceSha"]),
                 "loginRegistrationRoundTrip": True, "authenticatedAccountQualified": False,
                 "loginSessionAutostartQualified": False, "stableAdmission": False,
             }, indent=2) + "\n")

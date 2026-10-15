@@ -32,10 +32,11 @@ D13 authorizes public GCS package hosting and narrowly scoped GitHub publishing 
 in `sesori-ai`, then completion through stable Linux publication before Windows.
 11.g/#1983 and 11.h/#1997 are merged. Run `38754986125` published `1.9.2-1022`;
 pinned public verification and real HTTPS APT/DNF refresh/download passed for both CPUs.
-Native QA then exposed a Linux tray-menu defect. The user approved landing the focused
-11.i.a fix before fresh signed-build visual qualification. #2002 is paused, not abandoned;
-it resumes as 11.i.b. Authenticated/session-login qualification follows as 11.i.c.
-No native or stable gate is waived.
+Native QA exposed a Linux tray-menu defect; 11.i.a/#2004 merged the focused fix before
+fresh signed-build visual qualification, as approved by the user. #2002 resumes as
+11.i.b against separately compiled, signed versions of that corrected source. The user
+approved same-source version replacement on 2026-10-15, without a code/schema migration
+claim. Authenticated/session-login qualification follows as 11.i.c. Stable remains gated.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing
 Cloud Run source storage and Firebase federation remain outside the publisher's authority.

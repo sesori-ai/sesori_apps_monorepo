@@ -204,12 +204,18 @@ permissions are available to this workflow.
 The credential-free sequence verifies original signed producer artifacts, builds nonshipping
 storage probes against each corresponding source, installs the old real package, renders
 its anonymous window, performs normal close/native tray Quit, then installs and exercises
-the newer package. Encrypted fixture values must survive replacement; login registration
+the newer package. KDE identifies the app-owned StatusNotifier title, locates visible
+Plasma targets through accessibility and uses real pointer clicks for the icon and Quit.
+A captured visible menu is required, not just direct DBusMenu event delivery.
+Encrypted fixture values must survive replacement; login registration
 must create/read/remove correctly. Inspect the captured anonymous windows before accepting
 native UI evidence. A window PID or passing mocked driver test is not a rendered-app pass.
 Public internal release objects roll away; QA binds to retained successful main producer
 runs instead. Expired artifacts require an explicitly selected new increasing pair, not
 changed release retention, a silently substituted version or same-version fallback.
+Separately compiled signed builds from the same source may verify increasing package
+versions and persistence; report that source did not change and do not claim code/schema
+migration coverage from that case.
 
 Real account restoration, helper On/Off behavior, actual session autostart, unavailable
 Secret Service and remaining distro upgrade rows stay separate gates. This workflow does
