@@ -93,6 +93,33 @@ void main() {
     await subscription.cancel();
   });
 
+  for (final opened in [false, true]) {
+    test("automatic inventory refresh preserves setup feedback until explicit refresh: $opened", () async {
+      final original = await load();
+      final operation = service.executeAction(action: setupAction);
+      repository.actions.single.complete(setupResult);
+      await Future<void>.value();
+      launcher.pending.single.complete(opened);
+      await operation;
+      final feedback = service.currentAction;
+      expect(feedback, opened ? isA<McpConnectorSetupOpened>() : isA<McpConnectorSetupFailed>());
+
+      connection.stale.add(null);
+      await _pump();
+      expect(repository.requests, hasLength(2));
+      repository.pending.last.complete(McpReadSuccess(inventory: original.inventory));
+      await _pump();
+      expect(service.currentAction, same(feedback));
+      expect(launcher.urls, hasLength(1));
+
+      final refresh = service.refresh();
+      repository.pending.last.complete(McpReadSuccess(inventory: original.inventory));
+      await refresh;
+      expect(service.currentAction, isA<McpActionIdle>());
+      expect(launcher.urls, hasLength(1));
+    });
+  }
+
   test("failed setup resolution does not launch or claim an uncertain native mutation", () async {
     await load();
     final logs = <String>[];

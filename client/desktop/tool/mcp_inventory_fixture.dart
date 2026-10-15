@@ -114,6 +114,11 @@ class _FixtureService() implements McpService {
   @override
   Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
   final _states = BehaviorSubject<McpInventoryState>.seeded(const McpInventoryInitial());
+  final _actions = BehaviorSubject<McpActionClientState>.seeded(const McpActionsReadOnly());
+  @override
+  ValueStream<McpActionClientState> get actions => _actions.stream;
+  @override
+  McpActionClientState get currentAction => _actions.value;
   @override
   ValueStream<McpInventoryState> get states => _states.stream;
   @override
@@ -142,7 +147,9 @@ class _FixtureService() implements McpService {
   }
 
   @override
-  Future<void> dispose() => _states.close();
+  Future<void> dispose() async {
+    await Future.wait([_states.close(), _actions.close()]);
+  }
 }
 
 class _ReadOnlyAuthentication() implements McpAuthenticationService {

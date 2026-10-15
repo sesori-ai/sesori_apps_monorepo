@@ -66,6 +66,16 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-29 review follow-up preserves ordinary server/forget response diagnostics
+  and compression, while setup responses retain destination redaction. Automatic
+  inventory reads preserve terminal setup feedback; explicit refresh clears it.
+  All 43 affected API/service cases pass, including ordinary HTTP-error details
+  and both opened/failed feedback across stale-data reads. CI-style analysis of
+  `module_core` and `desktop/tool/mcp_inventory_fixture.dart` passes. The versioned
+  desktop inventory fixture now supplies and disposes its read-only action stream.
+  Commands use pinned Flutter 3.47.7-stable with its `FLUTTER_ROOT`; no native
+  recording is claimed.
+
 - Step 29 resolves native setup destinations through the existing scoped headless
   action route and launches only an explicit, current client action. Destinations
   remain request-local; opened feedback never claims connection. At tested draft
