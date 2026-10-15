@@ -33,7 +33,7 @@ class McpService({
                 request.pluginId == pluginId &&
                 (scope is McpHarnessScope || request.scope == scope)) {
               _staleVersion++;
-              unawaited(refresh());
+              unawaited(_readInventory(clearSetupFeedback: false));
             }
           }
         }),
@@ -41,7 +41,7 @@ class McpService({
       ..add(
         _connectionService.dataMayBeStale.listen((_) {
           _staleVersion++;
-          unawaited(refresh());
+          unawaited(_readInventory(clearSetupFeedback: false));
         }),
       );
   }
@@ -66,7 +66,7 @@ class McpService({
     _request = request;
     _actions.add(mutationsAllowed ? const McpActionIdle() : const McpActionsReadOnly());
     _state.add(const McpInventoryWaitingForConnection());
-    unawaited(refresh());
+    unawaited(_readInventory(clearSetupFeedback: false));
   }
 
   Future<void> executeAction({required McpEntryAction action}) async {
@@ -99,7 +99,7 @@ class McpService({
         }
         _actions.add(McpActionUncertain(request: operation, cause: cause));
         _staleVersion++;
-        unawaited(refresh());
+        unawaited(_readInventory(clearSetupFeedback: false));
       case McpActionReceived(:final result):
         if (result is McpExternalSetup) {
           final destination = action is McpConnectorSetupEntryAction
@@ -149,12 +149,14 @@ class McpService({
               refresh: const McpInventoryRefreshIdle(),
             ),
           });
-          if (_staleVersion > staleVersion) unawaited(refresh());
+          if (_staleVersion > staleVersion) unawaited(_readInventory(clearSetupFeedback: false));
         }
     }
   }
 
-  Future<void> refresh() async {
+  Future<void> refresh() => _readInventory(clearSetupFeedback: true);
+
+  Future<void> _readInventory({required bool clearSetupFeedback}) async {
     final request = _request;
     if (_state.isClosed ||
         request == null ||
@@ -165,11 +167,13 @@ class McpService({
     final generation = _generation;
     final staleVersion = _staleVersion;
     _readingGeneration = generation;
-    if (currentAction
-        case McpConnectorSetupOpened() ||
-            McpConnectorSetupFailed() ||
-            McpActionReceivedState(request: McpEntryActionRequest(action: McpConnectorSetupEntryAction()))) {
-      _actions.add(const McpActionIdle());
+    if (clearSetupFeedback) {
+      if (currentAction
+          case McpConnectorSetupOpened() ||
+              McpConnectorSetupFailed() ||
+              McpActionReceivedState(request: McpEntryActionRequest(action: McpConnectorSetupEntryAction()))) {
+        _actions.add(const McpActionIdle());
+      }
     }
     final previous = currentState;
     _state.add(switch (previous) {
@@ -255,7 +259,7 @@ class McpService({
     // A signal received during the read still needs its own authoritative result.
     // A failed result remains stale in state; reconnect or explicit refresh re-arms
     // the read without a second stale signal. Do not poll a failed native process.
-    if (_staleVersion > staleVersion) unawaited(refresh());
+    if (_staleVersion > staleVersion) unawaited(_readInventory(clearSetupFeedback: false));
   }
 
   void _onConnectionStatus(ConnectionStatus next) {
@@ -288,7 +292,7 @@ class McpService({
     }
     if (isConnected && (!wasConnected || oldConfig != nextConfig)) {
       if (currentAction is McpActionOffline) _actions.add(const McpActionIdle());
-      unawaited(refresh());
+      unawaited(_readInventory(clearSetupFeedback: false));
     }
   }
 

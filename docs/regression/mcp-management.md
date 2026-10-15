@@ -396,8 +396,10 @@ remain distinct. No native authentication attempt or browser callback is created
 The client view's existing action owner launches only after an explicit setup
 action resolves on the same live connection/binding. Setup URLs remain local
 response data, absent from observed action states, inventory, SSE, replay,
-persistence and analytics. Entry-action responses use the existing sensitive
+persistence and analytics. Connector setup responses use the existing sensitive
 decoder, omitting raw setup destinations from parse and HTTP-error diagnostics.
+Server controls and credential forgetting retain ordinary response diagnostics
+and compressed-response support.
 False/throwing launchers show failure and permit retry.
 Disconnect, rebind or disposal fences late resolution/launch results. Lost setup
 resolution is a retryable read failure, not an uncertain native mutation; its
@@ -405,8 +407,9 @@ original cause and target context remain in local diagnostics. Server controls
 filter pending feedback by target while retaining the shared action-blocking gate.
 
 Opened feedback says to finish in the browser and refresh. It does not set any
-connected/available state. Explicit refresh clears that feedback and reads fresh
-native catalog truth. Offer controls honor read-only/offline/pending gates; fixed
+connected/available state. Automatic invalidation reads preserve setup feedback;
+explicit refresh clears it and reads fresh native catalog truth.
+Offer controls honor read-only/offline/pending gates; fixed
 header feedback crossfades without changing the catalog scroll position. Reduced
 motion uses no animation. Narrow/large-text layouts place the setup control below
 its offer metadata; capability changes animate the row height. Shared phone/desktop

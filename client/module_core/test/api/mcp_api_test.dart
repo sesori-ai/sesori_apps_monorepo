@@ -62,6 +62,36 @@ void main() {
     });
   }
 
+  test("ordinary native action errors retain response diagnostics and compression support", () async {
+    final connection = MockConnectionService();
+    final relay = MockRelayClient();
+    when(() => connection.relayClient).thenReturn(relay);
+    when(() => relay.isConnected).thenReturn(true);
+    when(
+      () => relay.sendRequest(
+        request: any(named: "request"),
+        timeout: any(named: "timeout"),
+      ),
+    ).thenAnswer((invocation) async {
+      final request = invocation.namedArguments[#request] as RelayRequest;
+      expect(request.acceptsDeflatedResponse, isTrue);
+      return const RelayResponse(id: "fixture", status: 500, headers: {}, body: "Native reconnect failed");
+    });
+    final response = await McpApi(client: RelayHttpApiClient(connection)).executeAction(
+      request: const McpEntryActionRequest(
+        pluginId: "fixture",
+        action: McpServerEntryAction(
+          target: McpServerTarget(scope: McpHarnessScope(), serverKey: "fixture"),
+          action: McpServerAction.reconnect,
+        ),
+      ),
+    );
+    expect(
+      ((response as ErrorResponse<McpEntryActionResult>).error as NonSuccessCodeError).rawErrorString,
+      "Native reconnect failed",
+    );
+  });
+
   test("a slow native management action completes after the ordinary relay request budget", () {
     fakeAsync((clock) {
       final connection = MockConnectionService();
