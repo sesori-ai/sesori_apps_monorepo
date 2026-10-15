@@ -1302,3 +1302,5 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   match that release byte-for-byte; Step 17's executable proof already covers
   both form and external-action markers. No new legacy wire fallback is needed.
   Corrected final qualification to step 28 and clarified the branch/main merge.
+- Step-21 architecture implementation review pass 2 approved the complete PR
+  through source `5d9fa31baf`, including archive settlement, without findings.
