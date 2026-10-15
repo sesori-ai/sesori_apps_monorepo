@@ -315,6 +315,53 @@ presentation retains its issued challenge for explicit retry. The transport seam
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
 
+## Session forms
+
+Typed form transport codecs preserve original/display session ownership, typed
+defaults and constraints, and explicit optional-field omission. Text, integers,
+finite numbers, booleans and single/multiple opaque choice IDs remain distinct.
+Integer decoding rejects fractional values instead of truncating them. Number
+values/defaults/bounds reject nonfinite values, including overflowing JSON
+exponents. Unknown schemas, values, formats, dismissal choices and validation
+issues remain explicit unsupported/unknown values. Form contents are excluded
+from generated diagnostic strings.
+
+Claude normalizes native flat plain text, integer, finite number, boolean, string
+choices and choice arrays into typed plugin fields. The plugin keeps native keys
+and choice values beside the original pending request; opaque IDs and labels are
+separate. Supported defaults and inclusive bounds are validated before insertion.
+Native format constraints, nested/secret fields and unsupported keywords decline
+with a visible warning. Optional omission remains distinct from false, zero and
+empty text; choice labels never become native answer values.
+
+Validation errors and failed writes keep the native request pending. Accepted or
+negative replies settle it once. Existing stop/archive notification/process-exit
+and teardown paths cancel waits. A failed archive cancellation retains the request
+and emits no settled event; a later cancellation or teardown can retry the write.
+Choice descriptions remain visible in their normalized labels, with native values
+kept separately. Static form notices contain no fields/defaults;
+legacy question routes can only cancel, never submit flattened string answers.
+Verified native MCP server context enriches tool permission detail without
+changing tool names or grant rules.
+
+`POST /session/forms`, `/form/reply` and `/form/decline` expose the same optional
+plugin API headlessly. Snapshots map canonical original/display IDs, hide archived
+actual owners and deleted owners/display parents, and never start inactive plugins.
+An archived display parent alone does not retire an active child's form; archive
+enforcement belongs to the actual owner, whose original ID is required for replies.
+Replies require the original owner and reuse existing session ordering and archive
+validation. Unknown answer variants produce keyed invalid-type errors; unknown
+dismissals and unsupported APIs cannot mutate native requests. Missing/settled
+requests remain explicitly settled. Native write failure returns 503 and retains
+pending state. Current clients still have only the static cancel notice;
+draft-preserving controls remain unimplemented.
+
+Coverage includes `bridge/app/test/bridge/repositories/form_repository_test.dart`
+with real JSON route round trips and concurrent reply/cancel ordering, existing
+pending-interaction/permission/question regressions, Claude schema, pending-owner
+and legacy-client fixtures, plus:
+`shared/sesori_shared/test/models/pending_form_test.dart`.
+
 ## Session external actions
 
 Neutral pending URL-action snapshot and reply codecs retain the original session
@@ -340,13 +387,32 @@ retain the pending request. Teardown sends native cancellation.
 
 The pending-interaction service requires absolute HTTPS destinations with a host
 and no user information before snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
-destination. URLs never enter question broadcasts, replay or persistence. Legacy
-question replies accept only Cancel or rejection and send native `action: cancel`.
-Current clients preserve the interaction marker through cold loading and show an
-honest cancel-only handoff with no ordinary answer controls. Closing the layer
-does not cancel the request; the pending card retains neutral request wording and
-a Review action. Typed cancellation does not emit ordinary-question analytics.
-Browser/consent presentation follows separately.
+destination. URLs never enter question broadcasts, replay or persistence.
+Snapshot response-error bodies are redacted while retaining typed parse causes.
+Legacy question replies accept only Cancel or rejection and send native `action: cancel`.
+Current clients preserve the interaction marker through cold loading and open a
+typed modal above the transcript. Browser launch requires an explicit tap and
+displays only the HTTPS destination origin. Browser launch and native acceptance
+are separate outcomes; neither confirms OAuth completion. Only declared known
+choices are offered, with distinct accept, decline and cancel semantics. Unknown
+purpose or unsafe destination cannot be opened or accepted; declared decline and
+cancel responses remain available. Form/unknown interaction markers
+retain an explicit cancel-only handoff rather than ordinary scalar controls.
+After dismissal, the pending card retains neutral request wording and a Review
+action. Typed cancellation does not emit ordinary-question analytics.
+
+Closing the layer only disposes its observer. Reopening reads the current native
+request. A disconnect or bridge replacement retires that modal's controls and
+fences late reads, launches and reply results, even after reconnection. Native
+settlement dismisses the layer through the existing pending-request owner and
+advances to the next request even when SSE precedes the reply response. Late
+results cannot repopulate the list. A failed read retains an explicit legacy
+cancel path. A failed browser launch retains its request for retry; thrown launch
+failures retain their original cause/stack, while false returns have a synthetic
+failure. Submission failure does not imply cancellation or trigger automatic
+resubmission. Status space stays fixed during changes; large text scrolls and
+transitions respect reduced motion. Native presentation recording is deferred
+at the user's request and remains part of final qualification.
 Unsupported native forms receive a decline attempt and a session-attributed
 warning through the existing desktop/mobile toast presenter. A successful native
 write settles the request. A failed write is logged with the native request and
@@ -357,5 +423,8 @@ Coverage: `shared/sesori_shared/test/models/pending_external_action_test.dart`,
 `shared/sesori_shared/test/models/sesori_sse_event_test.dart`,
 `bridge/app/test/bridge/repositories/external_action_repository_test.dart`, the
 Claude registry/stream-client/plugin tests, the core session-detail permission
-tests and shared UI question-modal tests. Native and mixed-peer qualification
+tests, `client/module_core/test/api/session_external_actions_api_test.dart`,
+`client/module_core/test/services/session_external_action_service_test.dart`,
+`client/module_core/test/cubits/session_detail/session_external_action_cubit_test.dart`
+and shared UI question/external-action modal tests. Native and mixed-peer qualification
 remain in the active plan.

@@ -14,10 +14,12 @@ import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart" as core_testing;
 import "package:sesori_mobile/features/session_detail/widgets/session_detail_composer_controls.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
@@ -61,6 +63,7 @@ Widget _buildApp({
   SessionDetailMenuEntriesBuilder? menuEntriesBuilder,
   DiffSummaryState diffSummary = const DiffSummaryState.unknown(),
   bool readOnly = false,
+  SessionExternalActionCubitFactory? createExternalActionCubit,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -89,6 +92,10 @@ Widget _buildApp({
             imageClipboard: () => imageClipboard,
             imageSharer: MockImageSharer.new,
             sessionRepository: MockSessionRepository.new,
+            createExternalActionCubit:
+                createExternalActionCubit ??
+                ({required requestId, required sessionId}) =>
+                    throw UnimplementedError("External actions are not under test"),
             canShareImages: true,
             openExternalLink: ({required url, required mode}) async => false,
             openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
@@ -256,6 +263,13 @@ void main() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
     registerFallbackValue(SessionAbortSubAgentPolicy.stop);
+    registerFallbackValue(
+      const ReplyToExternalActionRequest(
+        requestId: "external",
+        sessionId: "session-1",
+        choice: ExternalActionChoice.decline,
+      ),
+    );
   });
 
   Finder semanticsWithLabel(String label) =>
@@ -2656,6 +2670,76 @@ void main() {
     final card = find.byType(SessionDetailNeedsYouCard);
     expect(find.descendant(of: card, matching: find.text("Review")), findsOneWidget);
     expect(find.descendant(of: card, matching: find.text("Answer")), findsNothing);
+  });
+
+  testWidgets("SSE settlement opens the next question before a late external reply", (tester) async {
+    final external = SesoriQuestionAsked(
+      id: "external",
+      sessionID: "session-1",
+      displaySessionId: null,
+      interactionKind: QuestionInteractionKind.externalAction,
+      questions: _question.questions,
+    );
+    const action = PendingExternalAction(
+      id: "external",
+      sessionID: "session-1",
+      displaySessionId: null,
+      title: "Fixture MCP",
+      message: "Review the fixture request.",
+      authorizationUrl: "https://fixture.example",
+      purpose: ExternalActionPurpose.authorization,
+      choices: [ExternalActionChoice.decline, ExternalActionChoice.cancel],
+    );
+    const connected = ConnectionStatus.connected(
+      config: ServerConnectionConfig(relayHost: "fixture", authToken: "fixture", bridgeId: "fixture"),
+      health: HealthResponse(healthy: true, version: "1.9.2", filesystemAccessDegraded: false),
+    );
+    final connection = core_testing.MockConnectionService();
+    final statuses = BehaviorSubject<ConnectionStatus>.seeded(connected);
+    addTearDown(statuses.close);
+    when(() => connection.currentStatus).thenReturn(connected);
+    when(() => connection.status).thenAnswer((_) => statuses);
+    final repository = MockSessionRepository();
+    when(() => repository.getPendingExternalActions(sessionId: "session-1"))
+        .thenAnswer((_) async => ApiResponse.success(const PendingExternalActionsResponse(data: [action])));
+    final reply = Completer<ApiResponse<ExternalActionReplyResult>>();
+    when(() => repository.replyToExternalAction(request: any(named: "request"))).thenAnswer((_) => reply.future);
+    final questions = StreamController<SesoriQuestionAsked>.broadcast();
+    final states = StreamController<SessionDetailState>.broadcast();
+    addTearDown(() async {
+      if (!reply.isCompleted) reply.complete(ApiResponse.success(const ExternalActionReplyAccepted()));
+      await questions.close();
+      await states.close();
+    });
+    final state = _loadedState(pendingQuestions: [external, _question], pendingPermissions: const []);
+    whenListen(cubit, states.stream, initialState: state);
+    when(() => cubit.questionStream).thenAnswer((_) => questions.stream);
+    await tester.pumpWidget(
+      _buildApp(
+        cubit: cubit,
+        createExternalActionCubit: ({required requestId, required sessionId}) => SessionExternalActionCubit(
+          service: SessionExternalActionService(repository: repository),
+          connectionService: connection,
+          urlLauncher: core_testing.MockUrlLauncher(),
+          requestId: requestId,
+          sessionId: sessionId,
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    questions.add(external);
+    await tester.pumpAndSettle();
+    expect(find.byType(ExternalActionModal), findsOneWidget);
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Decline request"));
+    await tester.pump();
+    states.add(state.copyWith(pendingQuestions: const [_question]));
+    await tester.pumpAndSettle();
+    await tester.pump(const Duration(milliseconds: 250));
+    await tester.pumpAndSettle();
+    expect(find.byType(QuestionModal), findsOneWidget);
+    reply.complete(ApiResponse.success(const ExternalActionReplyAccepted()));
+    await tester.pumpAndSettle();
+    expect(find.byType(QuestionModal), findsOneWidget);
   });
 
   testWidgets("needs-you cards dock above the composer at its width and open their modals", (tester) async {

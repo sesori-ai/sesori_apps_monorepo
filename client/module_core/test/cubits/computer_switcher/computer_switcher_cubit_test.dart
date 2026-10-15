@@ -1,6 +1,7 @@
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
@@ -80,7 +81,12 @@ void main() {
   });
 
   test("marks the list's first computer while no target is known, as the relay serves it", () {
-    registeredBridges.emitBridges(bridges: [testBridgeSummary(id: "a"), testBridgeSummary(id: "b")]);
+    registeredBridges.emitBridges(
+      bridges: [
+        testBridgeSummary(id: "a"),
+        testBridgeSummary(id: "b"),
+      ],
+    );
 
     final state = build().state;
 
@@ -147,6 +153,22 @@ void main() {
     expect(desktop.isThisComputer(bridgeId: "local"), isTrue);
     expect(desktop.isThisComputer(bridgeId: "other"), isFalse);
     expect(phone.isThisComputer(bridgeId: "local"), isFalse);
+  });
+
+  test("only an offline computer other than this one can be removed", () {
+    final computers = [
+      testBridgeSummary(id: "local", status: BridgeRegistrationStatus.inactive),
+      testBridgeSummary(id: "online"),
+      testBridgeSummary(id: "offline", status: BridgeRegistrationStatus.inactive),
+    ];
+    final desktop = ComputerSwitcherState(computers: computers, targetId: "online", localId: "local");
+    final phone = ComputerSwitcherState(computers: computers, targetId: "online", localId: null);
+
+    expect(desktop.canRemove(bridgeId: "offline"), isTrue);
+    expect(desktop.canRemove(bridgeId: "online"), isFalse);
+    expect(desktop.canRemove(bridgeId: "local"), isFalse);
+    expect(desktop.canRemove(bridgeId: "unlisted"), isFalse);
+    expect(phone.canRemove(bridgeId: "local"), isTrue);
   });
 
   test("a connection without a target keeps the picked computer", () async {

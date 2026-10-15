@@ -3,8 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-native-session-actions`, `cfecaf9494`, in the provided `copper-heron` worktree.
-- Current step: 18/25 is in review as [#1984][pr-1984]; latest merged step: 17/25 as [#1981][pr-1981].
+- Branch/base: `sesori/mcp-headless-forms`, `5765963a81`, in the provided `copper-heron` worktree.
+- Current step: 22/28 is in review; latest merged step: 21/28 as [#1991][pr-1991].
+  Typed transport merged as [#1989][pr-1989].
+  External-action client presentation merged as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -21,31 +23,34 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/25 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/25 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/25 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/25 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/25 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/25 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/25 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/25 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/25 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/25 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/25 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/25 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/25 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/25 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/25 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
-| 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/25 | Native external-action routing (8.d.2.a) | In review | [#1984][pr-1984] |
-| 19/25 | External-action client presentation (8.d.2.b) | Not started | — |
-| 20/25 | Claude approvals and form/URL elicitation | Not started | — |
-| 21/25 | Codex inventory/actions/authentication | Not started | — |
-| 22/25 | Codex forms and offered connectors | Not started | — |
-| 23/25 | Secondary harness support and explicit gaps | Not started | — |
-| 24/25 | Reconcile regression/capability documents | Not started | — |
-| 25/25 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/28 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/28 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/28 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/28 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/28 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/28 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/28 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/28 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/28 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/28 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/28 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/28 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/28 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/28 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/28 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/28 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/28 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
+| 18/28 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
+| 19/28 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
+| 20/28 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
+| 21/28 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
+| 22/28 | Canonical headless forms (9.b.2) | In review | Active-only canonical snapshots and ordered typed replies |
+| 23/28 | Shared typed form controls (9.c) | Not started | — |
+| 24/28 | Codex inventory/actions/authentication | Not started | — |
+| 25/28 | Codex forms and offered connectors | Not started | — |
+| 26/28 | Secondary harness support and explicit gaps | Not started | — |
+| 27/28 | Reconcile regression/capability documents | Not started | — |
+| 28/28 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -1115,6 +1120,28 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   four-file bridge command above now passes 47 cases; `bridge/app` analyzer is clean.
   Verified source tree: `32764caae11fb0f193e26d2c0ce8fc1660e3feaf`; subsequent
   edits add only this evidence reference, with production and tests unchanged.
+
+- Step 19 implements shared typed external-action controls through the existing
+  SessionApi/Repository layers, a stateless service and a per-modal Cubit. The
+  existing pending-request list remains authoritative. Both shells supply the
+  typed factory; shared presentation resolves no service locator. Explicit
+  browser intent, declared native choices, dismissal-only close, read-failure
+  legacy cancellation and connection fencing are covered locally.
+- Focused Step 19 checks: 19 core API/service/lifecycle cases, 29 shared modal
+  widgets, 207 mobile session-body/navigation cases and 13 desktop session-view
+  cases. Core, shared UI, mobile and desktop analyzers are clean. DI and
+  localization outputs are generated from source. Native presentation recording
+  remains deferred; local widgets do not establish packaged/native qualification.
+- The analytics checklist was applied: browser opening and native response
+  acceptance cannot prove authorization completion. No new event is added
+  without an honest product outcome/reporting contract. Architecture plan review
+  approved the concrete client-only flow after its file/layer map was clarified.
+- Step 19 architecture implementation review approved without findings. The two
+  final targeted cases retain a thrown browser error and stack without URL
+  presentation, and acknowledge/dismiss a request already settled while closed.
+  Their commands are the corresponding test files with `--plain-name 'thrown
+  browser failures retain'` and `--plain-name 'a request settled while closed'`;
+  they pass in addition to the preceding 18 core and 28 shared UI cases.
 - Step-18 second review fixes move destination policy into PendingInteractionService
   for both snapshot reads and acceptance, retaining canonical access in the repository.
   Public-client cancel projections now carry dated retirement conditions. Typed
@@ -1128,8 +1155,197 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   analysis pass. Architecture implementation review pass 2 approves without findings.
   Verified review-fix tree: `767dcaf79a75c1d3dd8342db0d6d819827ed2c0d`;
   subsequent edits add only this evidence reference. Final diff is 1,641 changed lines.
+- Step 19's initial implementation is recorded in `10660b7f2b`, based on
+  `e6162c78b9`. Integrated parent fixes `4086e6e93c` without rewriting either history;
+  localization outputs were regenerated from the combined source. Verified merged
+  source commit: `a8a8a5695e`; its production/test sources match the verified merge.
+  With Flutter 3.47.7 / Dart 3.13.5, affected integration checks pass: from
+  `client/module_core`, `flutter test --no-pub test/cubits/session_detail/session_detail_cubit_permission_test.dart test/api/session_external_actions_api_test.dart test/services/session_external_action_service_test.dart test/cubits/session_detail/session_external_action_cubit_test.dart`
+  (32); from `client/module_app_ui`, `flutter test --no-pub test/features/session_detail/widgets/question_modal_test.dart test/features/session_detail/widgets/external_action_modal_test.dart`
+  (29); from `client/app`, `flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/widgets/adaptive_child_session_navigation_test.dart`
+  (208). Each of those three modules passes `flutter analyze --no-pub --fatal-infos`.
 - CI at `4086e6e93c` found `prefer_exhaustive_switch` in the new analytics guard.
   Package-level analysis had missed the workspace plugin diagnostic. Replaced its
   wildcard with all three non-loaded sealed states; behavior is unchanged. Source
   tree `988213c63ffbf663634de63615747c0c474d9193` records that correction.
   `dart analyze --fatal-infos` from `client` now passes with the CI plugin enabled.
+- Step 19 incorporates `935f4c79e4`. CI-equivalent workspace analysis identified
+  four successor-only lint issues, corrected with promoted local state snapshots,
+  an explicit nullable-destination check and directional padding. `dart analyze
+  --fatal-infos` from `client` passes. The affected Cubit and modal test files
+  pass 9 and 7 cases respectively; modal taps target the actual buttons with no
+  hit-test warnings. Verified source commit: `22358bd5f2`.
+- Step 18 merged at accepted head `935f4c79e4`, squash `834374b34f`; 31 checks
+  passed before merge and 32 in the terminal monitor report. Three deliberately
+  declined threads retain their prefixed explanations. Step 19 merged current
+  main without rewriting history and preserves its Computers-page changes.
+  Synchronized source commit `1585422cc5` passes the same
+  32 core, 29 shared modal, 208 mobile and 13 desktop cases using commands above
+  (desktop: `flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart`).
+  Client-root `dart analyze --fatal-infos` also passes. The published commit differs
+  from the tested snapshot only in tracker publication state and this record.
+
+[pr-1986]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1986
+
+- Step 19 is published as #1986 at `1585422cc5`, with 1,318 changed lines
+  (1,173 authored and 145 generated). Its monitor is active; native recording remains
+  deferred. Old form step 20 is split into contracts/native-headless/client substeps
+  9.a–9.c, ordinals 20–22. Old steps 21–25 become 23–27; the new series total is 27.
+  Feature scope and final L4/native/provider/package requirements remain unchanged.
+- Step 20 implements shared-only typed form contracts, strict integer/finite-number
+  serialization and explicit unknown variants. No native/client capability is
+  claimed yet. Architecture plan and implementation reviews both approved without
+  findings. New mutable-state budget: zero. Published PR titles 1–19 now use /27;
+  historical squash commit messages remain unchanged.
+- Step-20 checks on Flutter 3.47.7 / Dart 3.13.5, from `shared/sesori_shared`:
+  ```sh
+  dart test test/models/pending_form_test.dart \
+    test/models/pending_external_action_test.dart test/models/sesori_sse_event_test.dart
+  ```
+  The command passes 70; `dart analyze --fatal-infos` passes. Full `dart run build_runner build`
+  succeeds, preserving all pre-existing generated codecs. Filtered generation had
+  deleted 166 unrelated generated files; those were restored before the full run.
+  Codec/default/validation contents do not appear in generated diagnostic strings.
+  Verified source commit: `d62d2d501b`; its production/test sources match the
+  tested snapshot, with only the tracker evidence reference differing.
+
+- Step-19 review fixes redact URL-bearing snapshot error bodies, remove copy that
+  promises undeclared actions, reconcile tracker publication state and distinguish
+  thrown browser errors from false-return failures. Declared decline/cancel for
+  unsupported destinations remain intentional; browser access and acceptance stay blocked.
+- The SSE-before-reply regression was behaviorally red at `1585422cc5`: the modal
+  closed without opening the next request. The existing pending-dismissal guard now
+  notifies its presentation owner once; no new mutable state or late-reply owner.
+  That full session-screen case passes, as do both new error-body redaction cases.
+  Checks: 3 API tests, 40 shared request-modal widgets, 209 mobile session/navigation
+  tests; client-root `dart analyze --fatal-infos` passes. Commands use the same
+  pinned SDK and package paths above; new API/sequence regressions extend those files.
+  Architecture implementation review pass 2 approved without findings.
+  Verified review-fix source commit: `f46ee6b4c9`; its production/test sources
+  match the verified tree. References above use published commits reachable from
+  this PR, rather than intermediate local-only trees.
+- Follow-up review adds the existing mounted-page guard to the dismissal callback.
+  The full-screen SSE sequencing regression still passes; workspace-plugin analysis
+  of `session_detail_body.dart` passes. Each replacement source commit above is an
+  ancestor of the pushed head and differs from its tested snapshot only in TRACKER.md.
+- Step 19 merged at accepted head `3efd585b99`, squash `db22ff3b68` after all 20
+  pre-merge checks passed (21 in the terminal report). The two declared-negative-response
+  policy threads remain deliberately open with prefixed explanations. The Step-20 branch incorporated
+  current main while #1989 remains in review, preserving concurrent computer-management and Linux-distribution work.
+  Its shared source, tests, dependencies and SDK pin are unchanged from tested commit
+  `d62d2d501b`; no unchanged passing suite was rerun solely for confidence.
+- Step-20 review reproduced a real JSON-decoding failure: generated code cast
+  `fieldErrors` to `Map<String, String>` before conversion. The decoder now accepts
+  the JSON map boundary and validates string entries inside the converter.
+  The JSON-round-trip regression failed before the fix and passes afterward;
+  all 71 focused shared tests and `dart analyze --fatal-infos` pass at source
+  commit `9eaf60b35a`. Full code generation succeeds. Native date-time spellings
+  remain plugin-owned; all normalized Sesori text-format names round trip.
+
+[pr-1989]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1989
+
+- Step 21 separates native form handling (9.b.1) from canonical headless routing
+  (9.b.2, new ordinal 22). Native production/tests already exceed 1,100 lines before
+  route coverage. Client forms move to 23, Codex to 24–25, secondary harnesses to
+  26, reconciliation to 27 and final qualification to 28. Scope and retirement
+  matrix are unchanged. No new pending registry, timer, queue or persistence.
+- Architecture plan review identified the existing repository interaction-kind
+  mapper as the required shared boundary. Added its form case for both live SSE
+  and REST notices; no parallel mapping in handlers or event consumers.
+- Inspection of canonical archive confirmed it is permanent and does not stop
+  Claude. The existing plugin archive notification now delegates to the existing
+  pending owner cancellation; a native form cannot remain unanswerable afterward.
+  No new lifecycle subscription or owner is introduced.
+- Step-21 source commit `75ac1b1a95` implements the native plugin boundary only;
+  headless form routes and client forms remain unimplemented. The first focused
+  run passes 92 cases across `claude_form_schema_test.dart`,
+  `claude_approval_registry_test.dart` and `claude_plugin_impl_test.dart` from
+  `bridge/sesori_plugin_claude`. After adding archive cancellation, the changed
+  plugin integration file passes all 40 cases. Use pinned Dart 3.13.5 `dart test`
+  with those paths. Bridge-root `dart analyze --fatal-infos` for
+  `sesori_plugin_claude`, `sesori_plugin_interface` and the changed repository
+  interaction-kind mapper passes; the archive source/test analysis also passes.
+  Full plugin-interface code generation succeeds and changes only its form enum entry.
+- Ten exact-pin native fixture cases pass on Claude 2.1.221 and 2.1.291: both
+  form accept/decline/cancel sets, target URL accept/decline/cancel and minimum
+  native URL rejection before forwarding. The native MCP peer observes the
+  production registry's exact typed content, distinct option values, optional
+  text omission and negative replies. An invalid submission retains the same
+  request before correction. This qualifies the isolated native adapter seam,
+  not headless/relay/client ownership, real providers, packaged clients or UI feel.
+  Recording remains deferred; final coverage remains required.
+- Private Step-21 probe input SHA-256 values:
+  - `native-probe.mjs`: `93f5533750b22f21b6a51447d9ca13aaf32771b9210687f133765adae77ae179`.
+  - `native-worker.dart`: `6e3a445d5ec90113889965b1d13e419401bdfdf095d97c804adca3975f596fbe`.
+  - `native-capability-fixture.mjs`: `6ec0a109276d05d154ee1eb10b8990fdb64f00b5f497d72aaafc38664d5d72d8`.
+  Inputs and result log are retained under the private `copper-heron-mcp-step21-`
+  artifact prefix. Fixture/model sources originate in `tool/mcp-contracts/fixture.mjs`.
+- Published PR titles 1–20 now use the current /28 total. Historical squash
+  messages remain unchanged. The final qualification matrix is not reduced.
+- Step-21 architecture implementation review pass 1 approved source range
+  `1d284e4629..75ac1b1a95` without findings. The later tracker evidence record
+  changes no production or test sources.
+- Step 20 merged at accepted head `1d284e4629`, squash `feb6f77858`, with 32
+  checks in the pre-merge snapshot and a clean final Cubic approval. The normalized native-format
+  spelling suggestion remains deliberately declined with a prefixed explanation.
+  The Step-21 branch incorporated current main; each conflicting incoming document was verified
+  byte-identical to the already incorporated parent. The merge changes no files
+  from approved source `ced5e6797a`, so no unchanged passing suite was rerun.
+
+[pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
+
+- Step 20's later terminal monitor snapshot records 33 passing checks; the 32
+  above is the earlier pre-merge snapshot. Step 21 was
+  published as #1991 at `0dd7b76ca1`: 1,340 changed lines, one generated and
+  1,339 authored. Its monitor was started at publication. Native recording remains deferred.
+- Step 22 implements FormRepository, neutral mappings and the three form routes
+  through the existing PendingInteractionService, dispatcher and archive validator.
+  Optional-plugin reads remain active-only, snapshots filter the actual owner,
+  replies require the exact original backend session, and typed unknown values
+  cannot reach native submission. No new mutable owner, persistence or coordination.
+- Step-22 source `04fb37e065` passes the initial 59 focused cases from
+  `bridge/app`, using pinned Dart 3.13.5:
+  ```sh
+  dart test test/bridge/repositories/form_repository_test.dart \
+    test/bridge/repositories/external_action_repository_test.dart \
+    test/bridge/services/pending_interaction_service_test.dart \
+    test/bridge/routing/reply_to_question_handler_test.dart \
+    test/bridge/routing/reject_question_handler_test.dart \
+    test/bridge/routing/reply_to_permission_handler_test.dart
+  ```
+  After adding unsupported-plugin and both archive-route checks, the changed
+  `form_repository_test.dart` passes all 15 cases. Bridge-root
+  `dart analyze --fatal-infos app` passes. Architecture implementation review
+  pass 1 approves all 15 changed files without findings. Initial authored churn:
+  787 lines; zero generated. Native/relay/client/provider/package boundaries and
+  deferred recording remain unqualified by these headless API fixtures.
+- Step-21 review regressions failed before their fixes: a failed archive write
+  lost the pending request and emitted false settlement, and equal option titles
+  discarded differentiating descriptions. Source `5d9fa31baf` retains failed
+  archive cancellations in the same owner and includes descriptions in labels,
+  preserving opaque IDs/native values. Existing teardown still retires stopped
+  requests. All 95 focused schema/registry/plugin cases and Claude analysis pass.
+- Rechecked public v1.9.1 source `8bfeda9416c96ea5de70ffc701a36b738f24eff7`:
+  its snapshot/SSE question models have no interaction-kind enum, and generated
+  decoders ignore the additive marker. All nine source/generated fixture files
+  match that release byte-for-byte; Step 17's executable proof already covers
+  both form and external-action markers. No new legacy wire fallback is needed.
+  Corrected final qualification to step 28 and clarified the branch/main merge.
+- Step-21 architecture implementation review pass 2 approved the complete PR
+  through source `5d9fa31baf`, including archive settlement, without findings.
+- Step 21 merged at accepted head `b9f0cad1db`, squash `5765963a81`, with 19
+  pre-merge and 20 terminal checks passing. The declined released-codec concern
+  remains open with its prefixed source-backed explanation. Final native diff:
+  1,447 lines, one generated. Step 22 incorporated those review fixes and current
+  main, preserving concurrent debug-server response-lifetime fix `10b6e87325`.
+  Each conflicting incoming document matched the integrated native parent
+  byte-for-byte. At that integration checkpoint, Step-22 production, tests,
+  contracts and dependencies matched tested `04fb37e065`; the unrelated
+  debug-server file was outside those route fixtures. The later review-only
+  regression in `fc8a80e766` expanded the form suite from 15 to 16 cases, as
+  recorded below. No unchanged passing suite was rerun solely for confidence.
+- Step-22 review clarifies 32 pre-merge versus 33 later terminal checks for
+  Step 20. Actual-owner archive policy remains intentional: archiving only a
+  display parent must not retire an active child's independently answerable form.
+  The new direct/display-read and original-child reply regression passes with
+  all 16 form cases; targeted analysis passes. Source: `fc8a80e766`.

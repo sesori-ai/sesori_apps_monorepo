@@ -2955,6 +2955,9 @@ class SessionDetailCubit(
     emit(current.copyWith(pendingQuestions: pending));
   }
 
+  /// A typed native request settled through the external-action service.
+  void acknowledgeQuestionSettlement({required String requestId}) => _onQuestionResolved(requestId);
+
   void _onPermissionAsked(SesoriPermissionAsked permission) {
     final current = state;
     if (current is! SessionDetailLoaded) return;

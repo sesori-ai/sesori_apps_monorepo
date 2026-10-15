@@ -255,7 +255,10 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
           ),
         ),
         BlocProvider(
-          create: (_) => ComputersCubit(registeredBridgesService: getIt<RegisteredBridgesService>()),
+          create: (_) => ComputersCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+          ),
         ),
       ],
       child: _DesktopBridgeSettingsTab(
@@ -367,10 +370,36 @@ class const _DesktopBridgeSettingsTab({
                 onBack: () => onShowComputers(shows: false),
               ),
               onSwitchComputer: _switchComputer,
+              localBridgeTurnOffActionBuilder: (_) => const _TurnOffLocalBridgeAction(),
             ),
           ),
       ],
     ),
+  );
+}
+
+/// Turns off this computer's own bridge from the dialog that explains why this
+/// computer cannot be removed. Nothing while the bridge is off or on its way
+/// off.
+class const _TurnOffLocalBridgeAction() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => BlocBuilder<BridgeControlCubit, BridgeControlState>(
+    builder: (context, state) => switch (state.toggleTarget) {
+      BridgeProcessDesiredState.on => const SizedBox(width: double.infinity),
+      BridgeProcessDesiredState.off => Padding(
+        padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+        child: PregoButtonsSolid(
+          key: const Key("desktop-computers-turn-off-bridge"),
+          label: context.loc.computersTurnOffBridge,
+          hierarchy: PregoButtonsSolidHierarchy.primary,
+          size: PregoButtonsSolidSize.lg,
+          fullWidth: true,
+          onPressed: state.activity.locksCommands
+              ? null
+              : () => unawaited(context.read<BridgeControlCubit>().stopBridge()),
+        ),
+      ),
+    },
   );
 }
 

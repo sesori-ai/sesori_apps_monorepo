@@ -443,7 +443,7 @@ class RecordingSelectedComputerService({required final RecordingRouteDispatcher 
   Future<void> followLocalComputer({required String bridgeId}) async {}
 
   @override
-  String? replacementAfterRemoving({required String bridgeId}) => null;
+  Future<String?> replacementAfterRemoving({required String bridgeId, required bool wasCurrent}) async => null;
 
   @override
   void forgetPick() {}

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:sesori_bridge/src/repositories/bridge_settings_repository.dart";
 import "package:sesori_bridge/src/repositories/external_action_repository.dart";
+import "package:sesori_bridge/src/repositories/form_repository.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/permission_repository.dart";
@@ -40,6 +41,7 @@ void main() {
       await settingsRepository.loadSettings();
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
       service = PendingInteractionService(
+        formRepository: _FormRepository(),
         externalActionRepository: _ExternalActionRepository(),
         permissionRepository: permissionRepository,
         questionRepository: questionRepository,
@@ -319,6 +321,11 @@ void main() {
       });
     });
   });
+}
+
+class _FormRepository() implements FormRepository {
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _ExternalActionRepository() implements ExternalActionRepository {

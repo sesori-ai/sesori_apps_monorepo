@@ -41,6 +41,8 @@ Widget _app({
         imageClipboard: () => throw UnimplementedError(),
         imageSharer: () => throw UnimplementedError(),
         sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
+        createExternalActionCubit: ({required requestId, required sessionId}) =>
+            throw UnimplementedError("External actions are not under test"),
         canShareImages: false,
         openExternalLink: ({required url, required mode}) async => false,
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},

@@ -1,9 +1,11 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show PendingExternalAction, PendingPermission, PendingQuestion;
+import "package:sesori_shared/sesori_shared.dart"
+    show PendingExternalAction, PendingForm, PendingPermission, PendingQuestion;
 
 import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/session_table.dart";
 import "mappers/plugin_external_action_mapper.dart";
+import "mappers/plugin_form_mapper.dart";
 import "mappers/plugin_permission_mapper.dart";
 import "mappers/plugin_question_mapper.dart";
 import "models/session_operation.dart";
@@ -105,6 +107,24 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
             action.toShared(
               sessionId: session.sessionId,
               displaySessionId: action.displaySessionId == null ? null : bindings[action.displaySessionId]!.sessionId,
+            ),
+    ];
+  }
+
+  Future<List<PendingForm>> mapForms({required String pluginId, required List<PluginPendingForm> forms}) async {
+    final bindings = await _bindings(
+      pluginId: pluginId,
+      interactions: [
+        for (final form in forms) (sessionID: form.sessionID, displaySessionId: form.displaySessionId),
+      ],
+    );
+    return [
+      for (final form in forms)
+        if (bindings[form.sessionID] case final session? when session.archivedAt == null)
+          if (form.displaySessionId == null || bindings.containsKey(form.displaySessionId))
+            form.toShared(
+              sessionId: session.sessionId,
+              displaySessionId: form.displaySessionId == null ? null : bindings[form.displaySessionId]!.sessionId,
             ),
     ];
   }

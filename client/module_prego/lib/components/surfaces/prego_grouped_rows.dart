@@ -41,7 +41,7 @@ class const PregoGroupedRows({
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           for (var index = 0; index < children.length; index++)
-            _GroupedRowPosition(
+            PregoGroupedRowPosition(
               key: switch (children[index].key) {
                 final key? => ValueKey<Key>(key),
                 null => null,
@@ -55,12 +55,17 @@ class const PregoGroupedRows({
   }
 }
 
-class const _GroupedRowPosition({super.key, required final bool isLast, required super.child}) extends InheritedWidget {
+/// Tells the [PregoGroupedRow]s below it whether they end their card, which
+/// drops the divider under them. [PregoGroupedRows] places one per child; a
+/// card whose rows come from a nested list (an animated one) places one per
+/// row itself.
+class const PregoGroupedRowPosition({super.key, required final bool isLast, required super.child})
+    extends InheritedWidget {
   static bool isLastOf(BuildContext context) =>
-      context.dependOnInheritedWidgetOfExactType<_GroupedRowPosition>()?.isLast ?? false;
+      context.dependOnInheritedWidgetOfExactType<PregoGroupedRowPosition>()?.isLast ?? false;
 
   @override
-  bool updateShouldNotify(_GroupedRowPosition oldWidget) => isLast != oldWidget.isLast;
+  bool updateShouldNotify(PregoGroupedRowPosition oldWidget) => isLast != oldWidget.isLast;
 }
 
 /// A settings row (Figma "Row"): optional 20px leading glyph, `text-md` title,
@@ -149,7 +154,7 @@ class const PregoGroupedRow({
       tile = InkWell(mouseCursor: WidgetStateMouseCursor.clickable, onTap: onTap, child: tile);
     }
 
-    if (_GroupedRowPosition.isLastOf(context)) return tile;
+    if (PregoGroupedRowPosition.isLastOf(context)) return tile;
 
     // Hairline between rows, aligned with the title column like the Figma
     // rows' top border (which starts after the leading slot).

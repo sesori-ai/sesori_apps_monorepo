@@ -103,6 +103,8 @@ Future<({List<String> taps, List<String> closes})> _pump(
         imageClipboard: _unused,
         imageSharer: _unused,
         sessionRepository: () => sessionRepository,
+        createExternalActionCubit: ({required requestId, required sessionId}) =>
+            throw UnimplementedError("External actions are not under test"),
         canShareImages: false,
         openExternalLink: ({required url, required mode}) => _unused(),
         openSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},

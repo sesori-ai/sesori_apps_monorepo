@@ -345,7 +345,7 @@
   },
   "computerMenuManage": "Manage computers…",
   "@computerMenuManage": {
-    "description": "Last item of the computer menu, below a divider. Opens the Computers page, where the user can switch to and rename the account's computers."
+    "description": "Last item of the computer menu, below a divider. Opens the Computers page, where the user can switch to, rename and remove the account's computers."
   },
   "computersTitle": "Computers",
   "@computersTitle": {
@@ -384,6 +384,62 @@
   "computersRenameFailed": "Failed to rename computer",
   "@computersRenameFailed": {
     "description": "Error alert shown when renaming a computer fails; the computer keeps its previous name."
+  },
+  "computersRemove": "Remove…",
+  "@computersRemove": {
+    "description": "Item of a computer's '⋯' menu on the Computers page. For an offline computer it asks to confirm removing it from the account; on desktop, for the computer in use, it explains why that one cannot be removed."
+  },
+  "computersRemoveOnlineHint": "Quit Sesori on {name} to remove it",
+  "@computersRemoveOnlineHint": {
+    "description": "Line under the disabled 'Remove…' item of an online computer's menu on the Computers page; only offline computers can be removed. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "workstation"
+      }
+    }
+  },
+  "computersRemoveTitle": "Remove {name}?",
+  "@computersRemoveTitle": {
+    "description": "Title of the dialog that confirms removing an offline computer from the account. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "workstation"
+      }
+    }
+  },
+  "computersRemoveMessage": "It disappears from every device. Starting Sesori on it signs it back in as a new computer.",
+  "@computersRemoveMessage": {
+    "description": "Body of the dialog that confirms removing an offline computer from the account. There is no undo."
+  },
+  "computersRemoveCancel": "Cancel",
+  "@computersRemoveCancel": {
+    "description": "Button that closes the remove-computer dialog without removing anything."
+  },
+  "computersRemoveConfirm": "Remove",
+  "@computersRemoveConfirm": {
+    "description": "Destructive button of the remove-computer dialog that removes the computer from the account."
+  },
+  "computersRemoveFailed": "Failed to remove computer",
+  "@computersRemoveFailed": {
+    "description": "Error alert shown when removing a computer fails; the computer stays on the account."
+  },
+  "computersThisComputerTitle": "This computer can't be removed",
+  "@computersThisComputerTitle": {
+    "description": "Title of the desktop dialog shown by 'Remove…' on the row of the computer the app runs on, which cannot be removed."
+  },
+  "computersThisComputerMessage": "You're using this computer, so it can't be removed. Turning off its bridge makes it unreachable from every device, this one included.",
+  "@computersThisComputerMessage": {
+    "description": "Body of the desktop dialog shown by 'Remove…' on the row of the computer the app runs on."
+  },
+  "computersThisComputerClose": "Close",
+  "@computersThisComputerClose": {
+    "description": "Button that closes the dialog explaining that the computer in use cannot be removed."
+  },
+  "computersTurnOffBridge": "Turn off bridge",
+  "@computersTurnOffBridge": {
+    "description": "Desktop button in the dialog explaining that the computer in use cannot be removed. Turns off this computer's bridge; hidden while the bridge is already off."
   },
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
@@ -2317,6 +2373,21 @@
   "mcpNativeRequestTitle": "MCP request",
   "mcpNativeRequestClientUnsupported": "This client cannot complete this MCP request. You can cancel it here.",
   "mcpCancelRequest": "Cancel request",
+  "mcpExternalLoading": "Reading the pending MCP request…",
+  "mcpExternalDisconnected": "The connection changed. Close this request and reopen it after reconnecting.",
+  "mcpExternalReady": "Open the browser if needed, then choose how to respond.",
+  "mcpExternalBrowserOpening": "Opening the browser…",
+  "mcpExternalBrowserOpened": "Browser opened. This does not confirm authorization. Return here to respond.",
+  "mcpExternalBrowserFailed": "The browser could not open. You can try again.",
+  "mcpExternalSubmitting": "Sending your response to the coding agent…",
+  "mcpExternalReplySent": "The coding agent accepted your response. Authorization may still be in progress.",
+  "mcpExternalSettled": "This request is no longer pending.",
+  "mcpExternalReplyFailed": "The response could not be confirmed. The request may have settled in the coding agent.",
+  "mcpExternalDestinationUnavailable": "This request cannot be opened or accepted.",
+  "mcpExternalReplyExplanation": "Continue sends acceptance to the coding agent. Decline refuses the request. Cancel stops this request. Closing this window leaves it pending.",
+  "mcpExternalContinue": "Continue in coding agent",
+  "mcpExternalAcceptConsent": "Accept connection request",
+  "mcpExternalDecline": "Decline request",
   "pendingRequestBannerSingle": "1 pending request",
   "pendingRequestBannerMultiple": "{count} pending requests",
   "@pendingRequestBannerMultiple": {

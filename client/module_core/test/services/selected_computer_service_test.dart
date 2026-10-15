@@ -77,14 +77,38 @@ void main() {
   });
 
   group("replacementAfterRemoving", () {
-    String? replacement({required List<BridgeSummary> bridges, required String removed}) {
+    Future<String?> replacement({
+      required List<BridgeSummary> bridges,
+      required String removed,
+      required String? stored,
+      required bool wasCurrent,
+    }) {
       registeredBridges.emitBridges(bridges: bridges);
-      return build(stored: null, local: null).replacementAfterRemoving(bridgeId: removed);
+      when(() => connection.currentStatus).thenReturn(const ConnectionStatus.disconnected());
+      return build(stored: stored, local: null).replacementAfterRemoving(bridgeId: removed, wasCurrent: wasCurrent);
     }
 
-    test("prefers the first other online computer", () {
+    final two = [testBridgeSummary(id: "removed"), testBridgeSummary(id: "other")];
+
+    test("moves away from the stored target", () async {
+      expect(await replacement(bridges: two, removed: "removed", stored: "removed", wasCurrent: false), "other");
+    });
+
+    test("moves away from a current computer without a stored target", () async {
+      expect(await replacement(bridges: two, removed: "removed", stored: null, wasCurrent: true), "other");
+    });
+
+    test("keeps a switch elsewhere made while the removal ran", () async {
+      expect(await replacement(bridges: two, removed: "removed", stored: "other", wasCurrent: true), isNull);
+    });
+
+    test("moves nowhere when the removed computer was not current", () async {
+      expect(await replacement(bridges: two, removed: "removed", stored: null, wasCurrent: false), isNull);
+    });
+
+    test("prefers the first other online computer", () async {
       expect(
-        replacement(
+        await replacement(
           bridges: [
             testBridgeSummary(id: "removed"),
             testBridgeSummary(id: "offline", status: BridgeRegistrationStatus.inactive),
@@ -92,34 +116,40 @@ void main() {
             testBridgeSummary(id: "online-older"),
           ],
           removed: "removed",
+          stored: null,
+          wasCurrent: true,
         ),
         "online",
       );
     });
 
-    test("falls back to the first other computer when none is online", () {
+    test("falls back to the first other computer when none is online", () async {
       expect(
-        replacement(
+        await replacement(
           bridges: [
             testBridgeSummary(id: "offline", status: BridgeRegistrationStatus.inactive),
             testBridgeSummary(id: "removed"),
             testBridgeSummary(id: "offline-older", status: BridgeRegistrationStatus.inactive),
           ],
           removed: "removed",
+          stored: null,
+          wasCurrent: true,
         ),
         "offline",
       );
     });
 
-    test("is null when no other computer remains", () {
+    test("is null when no other computer remains", () async {
       expect(
-        replacement(
+        await replacement(
           bridges: [testBridgeSummary(id: "removed")],
           removed: "removed",
+          stored: null,
+          wasCurrent: true,
         ),
         isNull,
       );
-      expect(replacement(bridges: const [], removed: "removed"), isNull);
+      expect(await replacement(bridges: const [], removed: "removed", stored: null, wasCurrent: true), isNull);
     });
   });
 

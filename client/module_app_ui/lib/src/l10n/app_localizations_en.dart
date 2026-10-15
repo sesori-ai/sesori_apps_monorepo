@@ -423,6 +423,45 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computersRenameFailed => 'Failed to rename computer';
 
   @override
+  String get computersRemove => 'Remove…';
+
+  @override
+  String computersRemoveOnlineHint(String name) {
+    return 'Quit Sesori on $name to remove it';
+  }
+
+  @override
+  String computersRemoveTitle(String name) {
+    return 'Remove $name?';
+  }
+
+  @override
+  String get computersRemoveMessage =>
+      'It disappears from every device. Starting Sesori on it signs it back in as a new computer.';
+
+  @override
+  String get computersRemoveCancel => 'Cancel';
+
+  @override
+  String get computersRemoveConfirm => 'Remove';
+
+  @override
+  String get computersRemoveFailed => 'Failed to remove computer';
+
+  @override
+  String get computersThisComputerTitle => 'This computer can\'t be removed';
+
+  @override
+  String get computersThisComputerMessage =>
+      'You\'re using this computer, so it can\'t be removed. Turning off its bridge makes it unreachable from every device, this one included.';
+
+  @override
+  String get computersThisComputerClose => 'Close';
+
+  @override
+  String get computersTurnOffBridge => 'Turn off bridge';
+
+  @override
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override
@@ -3322,6 +3361,53 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpCancelRequest => 'Cancel request';
+
+  @override
+  String get mcpExternalLoading => 'Reading the pending MCP request…';
+
+  @override
+  String get mcpExternalDisconnected => 'The connection changed. Close this request and reopen it after reconnecting.';
+
+  @override
+  String get mcpExternalReady => 'Open the browser if needed, then choose how to respond.';
+
+  @override
+  String get mcpExternalBrowserOpening => 'Opening the browser…';
+
+  @override
+  String get mcpExternalBrowserOpened => 'Browser opened. This does not confirm authorization. Return here to respond.';
+
+  @override
+  String get mcpExternalBrowserFailed => 'The browser could not open. You can try again.';
+
+  @override
+  String get mcpExternalSubmitting => 'Sending your response to the coding agent…';
+
+  @override
+  String get mcpExternalReplySent => 'The coding agent accepted your response. Authorization may still be in progress.';
+
+  @override
+  String get mcpExternalSettled => 'This request is no longer pending.';
+
+  @override
+  String get mcpExternalReplyFailed =>
+      'The response could not be confirmed. The request may have settled in the coding agent.';
+
+  @override
+  String get mcpExternalDestinationUnavailable => 'This request cannot be opened or accepted.';
+
+  @override
+  String get mcpExternalReplyExplanation =>
+      'Continue sends acceptance to the coding agent. Decline refuses the request. Cancel stops this request. Closing this window leaves it pending.';
+
+  @override
+  String get mcpExternalContinue => 'Continue in coding agent';
+
+  @override
+  String get mcpExternalAcceptConsent => 'Accept connection request';
+
+  @override
+  String get mcpExternalDecline => 'Decline request';
 
   @override
   String get pendingRequestBannerSingle => '1 pending request';
