@@ -3,9 +3,11 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-connector-setup`, in the provided `copper-heron` worktree.
-- Current step: 29/32 connector setup is in PR [#2005][pr-2005].
-  Latest merged: 28/32 as [#2003][pr-2003] (`74b6cb6747`).
+- Branch: `sesori/mcp-secondary-harnesses`, in the provided `copper-heron` worktree.
+- Current step: 30/35 OpenCode v2 management is in PR [#2006][pr-2006].
+  Latest merged: 29/35 as [#2005][pr-2005] (`6d0d7bcce0`).
+  Secondary-harness work is
+  split into four native-contract steps; final qualification is unchanged.
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -26,45 +28,88 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/32 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/32 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/32 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/32 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/32 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/32 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/32 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/32 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/32 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/32 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/32 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/32 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/32 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/32 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/32 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/32 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
-| 17/32 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/32 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
-| 19/32 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
-| 20/32 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
-| 21/32 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
-| 22/32 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
-| 23/32 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
-| 24/32 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
-| 25/32 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
-| 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
-| 27/32 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
-| 28/32 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
-| 29/32 | Connector setup actions and browser handoff | In PR | [#2005][pr-2005]; evidence below |
-| 30/32 | Secondary harness support and explicit gaps | Not started | — |
-| 31/32 | Reconcile regression/capability documents | Not started | — |
-| 32/32 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/35 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/35 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/35 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/35 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/35 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/35 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/35 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/35 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/35 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/35 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/35 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/35 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/35 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/35 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/35 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/35 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/35 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
+| 18/35 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
+| 19/35 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
+| 20/35 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
+| 21/35 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
+| 22/35 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
+| 23/35 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
+| 24/35 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
+| 25/35 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
+| 26/35 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
+| 27/35 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
+| 28/35 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
+| 29/35 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
+| 30/35 | OpenCode v2 inventory and connection controls (11.a) | In PR | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
+| 31/35 | OpenCode v1 inventory and connection controls (11.b) | Not started | — |
+| 32/35 | OpenCode v1 native MCP authentication (11.c) | Not started | — |
+| 33/35 | Bounded Pi/ACP support and capability audit (11.d) | Not started | — |
+| 34/35 | Reconcile regression/capability documents | Not started | — |
+| 35/35 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 [pr-2000]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000
 [pr-2001]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001
 [pr-2003]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2003
 [pr-2005]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2005
+[pr-2006]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2006
 
 ## Evidence and decisions
+
+- Step-30 review corrections: existing service owns scope resolution, fresh-target
+  validation and action dispatch; the repository exposes mapped directory reads
+  and mutations. MCP API calls preserve original failures for one headless log,
+  including native session lookup. Native writes remain unbounded; response loss
+  retains the client's existing uncertain-action behavior. Project effects
+  invalidate all plugin inventories so other session/project views refresh.
+  Final implementation architecture review approved (pass 2). All 72 affected
+  v2 cases and 26 headless route cases pass; owning analysis is clean. The same
+  v2 command below runs from its package; headless command from `bridge/app` is
+  `dart test test/bridge/routing/post_mcp_inventory_handler_test.dart`.
+  Both exact native pins pass again through service/repository/API, preserving
+  configuration bytes and replacing the resident fixture process on reconnect.
+  The historical Step-17 CI denominator remains 32/32; plan renumbering does not
+  rewrite measured results. Deferred/external qualification remains unchanged.
+
+- Step 30 tested source `51bcf3f5f4`: both architecture reviews approved; all 69
+  affected v2 cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
+
+  ```sh
+  dart test test/v2/opencode_v2_mcp_test.dart \
+    test/v2/opencode_v2_api_test.dart \
+    test/v2/opencode_v2_repository_test.dart \
+    test/v2/opencode_v2_plugin_test.dart
+  ```
+
+  Cwd `bridge`: `dart analyze --fatal-infos sesori_plugin_opencode`. Both commands
+  use the pinned Flutter 3.47.7-stable Dart SDK. Exact native 2.0.11 and 2.0.24
+  archives matched npm SHA-512 integrity; target SHA-256 also matches the runtime
+  manifest. The private probe `/private/tmp/copper-heron-mcp-step30-native.py`
+  uses isolated profiles, a synthetic local password and test-only native server
+  overrides. Both pins pass production API/repository inventory, enable, resident
+  reconnect, disable and exact session lookup; reconnect replaces the fixture
+  process and configuration bytes remain unchanged. It executes no model/tool
+  call or provider login. Private log: `/private/tmp/copper-heron-mcp-step30-native.log`.
+  Parent #2005 merged after passing CI and clean completed code/security reviews.
+  Incoming squash-conflict files exactly match reviewed parent `ae59986031`;
+  the entire successor diff is unchanged after integration. Provider/package/client/L4
+  qualification remains pending.
 
 - Step-29 review follow-up preserves ordinary server/forget response diagnostics
   and compression, while setup responses retain destination redaction. Automatic

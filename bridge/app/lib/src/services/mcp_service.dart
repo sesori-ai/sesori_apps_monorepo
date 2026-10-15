@@ -54,10 +54,10 @@ class McpService({
           McpInventoryRequest(
             pluginId: request.pluginId,
             scope: switch (effectScope) {
-              McpActionEffectScope.harness => const McpHarnessScope(),
-              McpActionEffectScope.project ||
-              McpActionEffectScope.session ||
-              McpActionEffectScope.unknown => target.scope,
+              // Session views cannot correlate another session's project locally.
+              // A project effect invalidates all views for this plugin.
+              McpActionEffectScope.harness || McpActionEffectScope.project => const McpHarnessScope(),
+              McpActionEffectScope.session || McpActionEffectScope.unknown => target.scope,
             },
           ),
         );

@@ -12,6 +12,7 @@ import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
 import "../models/openapi/location_public_info.g.dart";
 import "../models/openapi/location_public_ref.g.dart";
+import "../models/openapi/mcp_server.g.dart";
 import "../models/openapi/model_info.g.dart";
 import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
@@ -68,6 +69,40 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       ),
       operation: path,
       fromJson: LocationPublicInfo.fromJson,
+    );
+  }
+
+  Future<String> getMcpSessionDirectory({required String sessionId}) async {
+    final path = _sessionPath(sessionId: sessionId);
+    final session = _data<SessionInfo>(
+      response: await _client.get(path: path),
+      operation: path,
+      fromJson: (value) => SessionInfo.fromJson(jsonCastMap(value)),
+    );
+    return session.location.directory;
+  }
+
+  Future<List<McpServer>> listMcpServers({required String directory}) async => _data<List<McpServer>>(
+    // MCP returns typed failures to the headless owner, which logs the cause.
+    response: await _client.get(
+      path: "/api/mcp",
+      queryParameters: _location(directory: directory),
+    ),
+    operation: "/api/mcp",
+    fromJson: (value) => (value! as List<Object?>).map((item) => McpServer.fromJson(jsonCastMap(item))).toList(),
+  );
+
+  Future<void> connectMcpServer({required String directory, required String name}) async {
+    await _client.post(
+      path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/connect",
+      queryParameters: _location(directory: directory),
+    );
+  }
+
+  Future<void> disconnectMcpServer({required String directory, required String name}) async {
+    await _client.post(
+      path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/disconnect",
+      queryParameters: _location(directory: directory),
     );
   }
 

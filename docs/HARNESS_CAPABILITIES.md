@@ -814,12 +814,30 @@ macOS arm64 native fixtures at both pins; other hosts, real providers and packag
 browser return remain unqualified.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
-authenticated connector setup. Other harness management remains **not
-implemented**, with native support still to be audited. Real provider policy,
+authenticated connector setup. Management outside Claude, Codex and OpenCode v2
+remains **not implemented**, with native support still to be audited. Real provider policy,
 credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
 ownership were not qualified by these probes. See the
 [versioned contract evidence](../.plan/active/mcp-management/evidence/native-contracts.md)
 and [reproduction tools](../tool/mcp-contracts/README.md).
+
+OpenCode v2 configured MCP inventory and connect/reconnect/disable controls are
+**implemented** through the existing location-scoped API. Project and exact
+native-session locations are supported; harness scope is explicitly unavailable.
+The adapter exposes native connection status without inferring tools, endpoint
+metadata, configuration ownership or authentication success. Effects are scoped
+to the native project/location, with authoritative refresh after controls.
+Project effects invalidate all open inventories for that plugin, covering views
+of other sessions at the same native location.
+The v2 MCP API provides no offered-connector catalog or OAuth/forgetting route;
+those operations are **not supported by this seam**. Other native integration
+authentication remains a separate audit. Exact integrity-verified 2.0.11 and
+2.0.24 pass inventory, enable, resident-process reconnect, disable and exact
+session-location lookup through the production adapter in isolated fixtures.
+Controls preserve the fixture configuration file. This proves native local
+control behavior, not authenticated providers or packaged client journeys.
+OpenCode v1 management/authentication and the bounded Pi/ACP audit remain later
+steps. Original provider/package/client/L4 qualification is unchanged.
 
 ## Context compaction row
 

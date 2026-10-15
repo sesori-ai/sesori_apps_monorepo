@@ -425,6 +425,41 @@ Exact pinned binaries pass fresh empty catalog reads; real offered connector
 entitlements/setup, native motion, packaged return and the final L4 matrix remain
 unqualified. Fixture success does not establish provider completion.
 
+## OpenCode v2 MCP management
+
+The v2 adapter implements configured-server inventory and connection controls
+through its existing API, repository, service and concrete plugin. Project scope
+uses its native directory; session scope resolves the native session's exact
+location. Harness scope is explicitly unavailable and performs no native work.
+Targets remain distinct across locations even when server names match.
+
+Native connected, pending, disabled, needs-auth, failed and unknown states remain
+distinct. Unknown tools, endpoints, configuration and authentication are not
+inferred. The MCP API exposes no offered-connector inventory or OAuth/forgetting
+flow, so those capabilities remain explicit gaps. Connect/reconnect and disable
+use only the named existing server's location-scoped native controls; they do not
+write server configuration or create/resume sessions. Headless orchestration
+performs the existing authoritative refresh after native completion.
+The plugin service owns scope resolution, fresh-target validation and action
+dispatch; the repository maps native directory reads and mutations. Native
+connect/disconnect writes remain unbounded because abandoning HTTP does not
+cancel their native mutation. Client response loss retains its existing uncertain
+action posture. MCP HTTP failures propagate to the headless logging owner with
+their original cause rather than logging at both API and headless layers.
+Project effects invalidate every open inventory for that plugin, including other
+session/project views; the authoritative completion still reads the requested scope.
+
+Coverage: `opencode_v2_mcp_test.dart` exercises exact project/session attribution,
+independent locations, all states, missing targets, typed read failures and the
+concrete plugin HTTP seam. The 69 affected v2 API/repository/plugin cases pass;
+package analysis is clean. Integrity-verified native 2.0.11 and 2.0.24 pass
+inventory, enable, resident-process reconnect, disable and exact session lookup
+through the production adapter. A test-only native override seeds the isolated
+existing-server fixture; production exposes no add/remove/configuration route.
+Both native runs replace the resident fixture process on reconnect and leave the
+configuration file unchanged. No model/tool execution or provider sign-in occurs.
+Provider, client, package and final L4 coverage remain pending.
+
 ## Codex native authentication
 
 Codex sign-in uses the attached app-server and the existing canonical headless
