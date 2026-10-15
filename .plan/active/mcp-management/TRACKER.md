@@ -4,9 +4,9 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-secondary-harnesses`, in the provided `copper-heron` worktree.
-- Current step: 29/35 connector setup is in PR [#2005][pr-2005].
-  Latest merged: 28/35 as [#2003][pr-2003] (`74b6cb6747`).
-  OpenCode v2 management is the approved local successor. Secondary-harness work is
+- Current step: 30/35 OpenCode v2 management is verified and ready for PR.
+  Latest merged: 29/35 as [#2005][pr-2005] (`6d0d7bcce0`).
+  Secondary-harness work is
   split into four native-contract steps; final qualification is unchanged.
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
@@ -56,7 +56,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 26/35 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
 | 27/35 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/35 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
-| 29/35 | Connector setup actions and browser handoff | In PR | [#2005][pr-2005]; evidence below |
+| 29/35 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
 | 30/35 | OpenCode v2 inventory and connection controls (11.a) | Verified locally | 69 cases; both native pins |
 | 31/35 | OpenCode v1 inventory and connection controls (11.b) | Not started | — |
 | 32/35 | OpenCode v1 native MCP authentication (11.c) | Not started | — |
@@ -90,8 +90,10 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   reconnect, disable and exact session lookup; reconnect replaces the fixture
   process and configuration bytes remain unchanged. It executes no model/tool
   call or provider login. Private log: `/private/tmp/copper-heron-mcp-step30-native.log`.
-  The successor remains local while #2005 is reviewed; provider/package/client/L4
-  qualification is unchanged and remains pending.
+  Parent #2005 merged after passing CI and clean completed code/security reviews.
+  Incoming squash-conflict files exactly match reviewed parent `ae59986031`;
+  the entire successor diff is unchanged after integration. Provider/package/client/L4
+  qualification remains pending.
 
 - Step-29 review follow-up preserves ordinary server/forget response diagnostics
   and compression, while setup responses retain destination redaction. Automatic
