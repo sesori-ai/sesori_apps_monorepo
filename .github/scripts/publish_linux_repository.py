@@ -219,13 +219,15 @@ def publication_order(*, name: str) -> int:
 
 def publish(*, root: Path) -> None:
     report = verify(root=root)
-    # A failed older run may be retried after a newer run succeeded. The existing
-    # signed RPM revision already owns the package version; no new release pointer.
-    current = public_bytes(name="rpm/internal/x86_64/repodata/repomd.xml")
-    if current is not None:
-        previous = ET.fromstring(current).find("{*}revision").text
-        incoming = version_order(version=f"{report['version']}-{report['buildNumber']}")
-        require(incoming >= version_order(version=previous), "Refusing to downgrade an already-published repository")
+    # A newer run can fail between architecture entrypoints. Inspect both before
+    # writing anything; their existing revisions own the version, not a new pointer.
+    incoming = version_order(version=f"{report['version']}-{report['buildNumber']}")
+    for _, rpm_arch in ARCHITECTURES.values():
+        current = public_bytes(name=f"rpm/internal/{rpm_arch}/repodata/repomd.xml")
+        if current is not None:
+            previous = ET.fromstring(current).find("{*}revision").text
+            require(incoming >= version_order(version=previous),
+                    "Refusing to downgrade an already-published repository")
     for row in sorted(report["files"], key=lambda row: (publication_order(name=row["name"]), row["name"])):
         name, digest = row["name"], row["sha256"]
         immutable = publication_order(name=name) == 1

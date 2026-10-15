@@ -448,6 +448,8 @@ historical evidence as shared-store qualification.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
   build. Verify the browser lands on the website section matching the build's channel,
   OS and CPU. No published installer is needed to check browser dispatch.
+  Linux repository delivery additionally requires production-key/federated publication,
+  anonymous public files and real APT/DNF refresh against HTTPS.
 - **L4:** Actual publisher verification and signed N→N+1 manual replacement with
   helper On/Off, failed-stop refusal, normal Quit/no relaunch, and data preservation.
 - **L5:** All recorded native platform/package/host gates in the active distribution

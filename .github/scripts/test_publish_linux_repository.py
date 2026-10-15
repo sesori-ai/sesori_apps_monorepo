@@ -81,11 +81,18 @@ class RepositoryPublicationTest(unittest.TestCase):
         self.assertEqual(len(self.writes), 1)
         self.assertNotIn("apt/dists/internal/InRelease", self.remote)
 
-    def test_old_failed_run_cannot_downgrade_newer_repository(self):
-        self.remote["rpm/internal/x86_64/repodata/repomd.xml"] = b"<repomd><revision>9.8.7-43</revision></repomd>"
-        with self.assertRaisesRegex(ValueError, "downgrade"):
-            publisher.publish(root=self.root)
-        self.assertEqual(self.writes, [])
+    def test_old_failed_run_cannot_downgrade_either_partially_published_architecture(self):
+        for advanced in ("aarch64", "x86_64"):
+            with self.subTest(advanced=advanced):
+                self.remote.clear()
+                self.writes.clear()
+                for arch in ("aarch64", "x86_64"):
+                    revision = 43 if arch == advanced else 42
+                    self.remote[f"rpm/internal/{arch}/repodata/repomd.xml"] = (
+                        f"<repomd><revision>9.8.7-{revision}</revision></repomd>".encode())
+                with self.assertRaisesRegex(ValueError, "downgrade"):
+                    publisher.publish(root=self.root)
+                self.assertEqual(self.writes, [])
 
     def test_verification_failure_prevents_any_publication(self):
         with mock.patch.object(publisher, "verify", side_effect=ValueError("bad signature")):
@@ -145,6 +152,20 @@ class RepositoryDownloadTest(unittest.TestCase):
 
 
 class RepositoryWorkflowTest(unittest.TestCase):
+    def test_bootstrap_refusal_preserves_error_and_explains_scoped_prerequisite(self):
+        with tempfile.TemporaryDirectory() as directory:
+            gcloud = Path(directory) / "gcloud"
+            gcloud.write_text("#!/bin/sh\ncase \"$*\" in *--member=allUsers*) "
+                              "echo 'fixture: sharing policy denied' >&2; exit 1;; esac\n")
+            gcloud.chmod(0o700)
+            result = subprocess.run(["/bin/bash", str(SCRIPTS / "provision_linux_repository.sh")],
+                                    env={"PATH": directory}, capture_output=True, text=True, timeout=10)
+        self.assertEqual(result.returncode, 1)
+        self.assertIn("fixture: sharing policy denied", result.stderr)
+        self.assertIn("resources created above remain", result.stderr)
+        self.assertIn("bucket-only tag/policy prerequisite", result.stderr)
+        self.assertIn("retry only the failed binding", result.stderr)
+
     def test_separate_signing_and_scoped_cloud_authority_with_weekly_refresh(self):
         workflow = (SCRIPTS.parent / "workflows/linux-repository.yml").read_text()
         sign, publish = workflow.split("\n  publish:\n")

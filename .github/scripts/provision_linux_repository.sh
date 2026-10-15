@@ -29,5 +29,12 @@ gcloud iam service-accounts add-iam-policy-binding "$account" --project="$projec
   --role=roles/iam.workloadIdentityUser --member="$principal" --quiet
 gcloud storage buckets add-iam-policy-binding "gs://$bucket" \
   --member="serviceAccount:$account" --role=roles/storage.objectUser --quiet
-gcloud storage buckets add-iam-policy-binding "gs://$bucket" \
-  --member=allUsers --role=roles/storage.objectViewer --quiet
+# Public read requires the approved bucket tag and scoped sharing-policy exception.
+# Policy administration stays an explicit operator action, never a blanket relaxation here.
+if ! gcloud storage buckets add-iam-policy-binding "gs://$bucket" \
+  --member=allUsers --role=roles/storage.objectViewer --quiet; then
+  echo 'Public-read grant failed; the resources created above remain in place.' >&2
+  echo 'Check IAM and the bucket-only tag/policy prerequisite in docs/desktop/linux-repositories.md.' >&2
+  echo 'Do not disable project-wide restrictions or rerun this creation script; retry only the failed binding.' >&2
+  exit 1
+fi
