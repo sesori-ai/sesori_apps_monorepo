@@ -10,6 +10,39 @@ import "package:opencode_plugin/opencode_plugin.dart";
 import "package:test/test.dart";
 
 void main() {
+  test("native MCP callback does not forward server auth or follow a redirect", () async {
+    final transport = MockClient((request) async {
+      expect(request.url.host, "127.0.0.1");
+      expect(request.headers["authorization"], isNull);
+      expect(request.followRedirects, isFalse);
+      return http.Response("Fixture redirect", 302, headers: {"location": "https://fixture.invalid"});
+    });
+    addTearDown(transport.close);
+    final client = OpenCodeRawHttpClient(serverURL: "http://localhost:4096", password: "fixture", client: transport);
+    await expectLater(
+      client.deliverMcpCallback(callbackUri: Uri.parse("http://127.0.0.1:3456/callback?code=fixture")),
+      throwsA(isA<OpenCodeApiException>().having((error) => error.statusCode, "status", 302)),
+    );
+  });
+
+  test("stalled native MCP callback delivery has a bounded transport wait", () {
+    fakeAsync((clock) {
+      final transport = MockClient((_) => Completer<http.Response>().future);
+      addTearDown(transport.close);
+      final client = OpenCodeRawHttpClient(serverURL: "http://localhost:4096", password: "fixture", client: transport);
+      Object? failure;
+      unawaited(
+        client.deliverMcpCallback(callbackUri: Uri.parse("http://127.0.0.1:3456/callback?code=fixture")).catchError((
+          Object error,
+        ) {
+          failure = error;
+        }),
+      );
+      clock.elapse(const Duration(seconds: 31));
+      expect(failure, isA<TimeoutException>());
+    });
+  });
+
   group("OpenCodeRawHttpClient", () {
     test("builds the URL with query params and merges Basic auth + caller headers", () async {
       late http.BaseRequest captured;

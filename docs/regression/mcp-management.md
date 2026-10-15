@@ -436,8 +436,8 @@ Targets remain distinct across locations even when server names match.
 Native connected, pending, disabled, needs-auth, failed and unknown states remain
 distinct. Unknown tools, endpoints, configuration and authentication are not
 inferred. The MCP API exposes no offered-connector inventory. Native integration
-OAuth/forgetting remain unimplemented in Sesori for servers declaring an
-`integrationID`, and unsupported for servers without one. Connect/reconnect and disable
+OAuth/forgetting are implemented for servers declaring an `integrationID`, and
+unsupported for servers without one. Connect/reconnect and disable
 use only the named existing server's location-scoped native controls; they do not
 write server configuration or create/resume sessions. Headless orchestration
 performs the existing authoritative refresh after native completion.
@@ -465,8 +465,8 @@ Provider, client, package and final L4 coverage remain pending.
 
 The location-scoped API can read native integration metadata, start a declared
 OAuth method, observe its attempt, cancel that exact attempt, and remove an exact
-credential ID. These internal contracts do not enable sign-in or forgetting in
-the product yet. IDs come from native metadata; no integration hash is recreated.
+credential ID. The plugin implements the existing authentication interface using
+these contracts. IDs come from native metadata; no integration hash is recreated.
 Only secret-free integration connections are read; the secret credential-list
 endpoint is never needed. Every operation retains the requested native directory.
 Cancellation uses the attempt endpoint and never deletes a credential.
@@ -482,6 +482,33 @@ The minimum 2.0.11 credential metadata omits `method`; its generated field is
 nullable through a documented surface override, while target 2.0.24's enum
 still decodes. Both versions pass the typed production API probe, including a
 post-removal integration read that confirms no credential connection remains.
+
+The general service retains project/session directory resolution. The stateless
+repository prepares fresh targets and maps native states; a focused service owns
+the native attempt, polling and retirement. Preparation performs no mutation and
+discarding it starts nothing. Only subscription starts OAuth. Native pending,
+unknown and read failures retain ownership; only native terminal states settle.
+Callback HTTP acknowledgement is delivery evidence only. Invalid callback host,
+port, path, state, duplicate response values and fragments fail before HTTP.
+Delivery follows no redirects and sends no native server Basic-auth header.
+
+Cancellation first preserves an already-terminal result, then deletes the exact
+attempt and checks native status. A 404 after acknowledged deletion confirms
+removal; surviving pending state can be credential persistence, whose eventual
+native outcome wins. Cancellation failure cannot release ownership. An invalid
+challenge retains its returned handle for cleanup; malformed/lost start replies
+retain uncertainty without retry until runtime retirement. Disposal interrupts
+local observation and attempts native cleanup within a three-second teardown
+budget before transport closes; unresolved cleanup remains logged. This is not
+an authentication deadline or proof of native cancellation.
+
+Forgetting resolves fresh native credential connections and never environment
+values or the secret credential list. It returns harness effects for existing
+headless invalidation. Synthetic controls show sign-in and forgetting with that
+effect scope. Recording remains deferred. Both exact native versions pass through
+production service/repository/API using an exact native session: confirmed
+cancellation, callback, native completion, forgetting and another sign-in, with
+configuration unchanged. Provider/client/package/relay/device/L4 remain pending.
 
 ## OpenCode v1 MCP management
 

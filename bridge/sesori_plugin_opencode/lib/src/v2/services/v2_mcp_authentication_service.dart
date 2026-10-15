@@ -24,8 +24,7 @@ class V2McpAuthenticationService({
   }) async {
     if (_ownership is _Disposed) throw StateError("OpenCode runtime has stopped");
     final native = await _repository.prepareMcpAuthentication(directory: directory, name: target.serverKey);
-    late final _V2McpLogin login;
-    login = _V2McpLogin(repository: _repository, target: native, pollInterval: _pollInterval);
+    final login = _V2McpLogin(repository: _repository, target: native, pollInterval: _pollInterval);
     return login.operation(
       activate: () {
         if (_ownership is _Disposed) throw StateError("OpenCode runtime stopped before MCP login");

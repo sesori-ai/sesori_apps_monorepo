@@ -4,13 +4,13 @@ import "package:sesori_shared/sesori_shared.dart" as shared;
 import "../../open_code_raw_http_client.dart";
 import "../../opencode_message_id.dart";
 import "../api/opencode_v2_api.dart";
-import "../models/openapi/connection_credential_info.g.dart";
+import "../models/openapi/connection_info.g.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
 import "../models/openapi/integration_attempt_encoded.g.dart";
 import "../models/openapi/integration_attempt_status.g.dart";
 import "../models/openapi/integration_info.g.dart";
-import "../models/openapi/integration_oauth_method.g.dart";
+import "../models/openapi/integration_method.g.dart";
 import "../models/openapi/location_public_ref.g.dart";
 import "../models/openapi/mcp_status_failed.g.dart";
 import "../models/openapi/mcp_status_needs_auth.g.dart";
@@ -91,6 +91,7 @@ class OpenCodeV2Repository({
       );
     } on OpenCodeApiException catch (error, stackTrace) {
       if (error.statusCode < 400 || error.statusCode >= 500) rethrow;
+      Log.w("[opencode-v2] Native MCP start rejected for ${target.integrationId}", error, stackTrace);
       Error.throwWithStackTrace(V2McpAuthenticationStartRejected(innerError: error), stackTrace);
     }
     try {
@@ -139,7 +140,7 @@ class OpenCodeV2Repository({
           causeStackTrace: StackTrace.current,
         ),
       ),
-      _ => const V2McpAuthenticationUnknown(),
+      IntegrationAttemptStatusUnknown() => const V2McpAuthenticationUnknown(),
     };
   }
 

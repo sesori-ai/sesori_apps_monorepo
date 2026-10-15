@@ -830,15 +830,20 @@ to the native project/location, with authoritative refresh after controls.
 Project effects invalidate all open inventories for that plugin, covering views
 of other sessions at the same native location.
 The v2 MCP API provides no offered-connector catalog. Native MCP OAuth and
-credential removal are supported through the Integration API when the server
-declares an `integrationID`; Sesori authentication/forgetting remain **not
-implemented** for those servers and **not supported** for servers without one.
-Typed native integration metadata, OAuth start/status/cancel and credential
-removal contracts are available internally; no product authentication action is
-enabled yet. Integration metadata exposes credential IDs without reading secret
-credential values. Isolated 2.0.11 and 2.0.24 probes verify native cancellation,
-automatic loopback completion and exact credential removal without configuration
-writes. This is native API evidence, not full client/provider qualification.
+credential removal are **implemented** through the Integration API when the
+server declares an `integrationID`, and **not supported** for servers without
+one. Project and exact session locations use native integration/method IDs;
+authentication and forgetting affect the native harness profile. Native work
+starts only after subscription. A plugin-local operation observes native status,
+validates/forwards the exact loopback callback without server credentials, and
+confirms attempt removal after cancellation. DELETE can be a no-op during native
+credential persistence; native completion wins that race. Lost start responses
+remain uncertain until runtime retirement; no retry or invented timeout outcome.
+Forgetting reads fresh secret-free integration credential IDs and excludes
+environment connections. Isolated 2.0.11 and 2.0.24 production-owner probes verify
+confirmed cancellation, automatic callback completion, forgetting and signing in
+again, with configuration unchanged. This is native fixture evidence, not full
+client/provider qualification.
 Exact integrity-verified 2.0.11 and
 2.0.24 pass inventory, enable, resident-process reconnect, disable and exact
 session-location lookup through the production adapter in isolated fixtures.
