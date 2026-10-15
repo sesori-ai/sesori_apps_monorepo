@@ -59,6 +59,7 @@
     "Integration.Info",
     "Integration.AttemptEncoded",
     "Integration.AttemptStatus",
+    "IntegrationAttemptNotFoundErrorEncoded",
     "Location.PublicInfo",
     "Location.PublicRef",
     "Mcp.Server",

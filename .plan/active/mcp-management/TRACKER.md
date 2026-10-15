@@ -5,8 +5,8 @@
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-opencode-v2-oauth`, in the provided `copper-heron` worktree.
 - Current step: 33/37 OpenCode v2 native authentication ownership is local.
-  Parent 32/37 is under review as [#2008][pr-2008] at `c4e41691cb`.
-  Latest merged: 31/37 as [#2007][pr-2007] (`35a0e40be4`).
+  Parent 32/37 merged as [#2008][pr-2008] at accepted head `c4e41691cb`.
+  Latest squash: `a0e1d6c3e4`, with 19 passing pre-merge and 20 terminal checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
   Split contracts, v2 ownership and v1 ownership for review; final qualification is unchanged.
   Native recording remains deferred by the user.
@@ -60,7 +60,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 29/37 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
 | 30/37 | OpenCode v2 inventory/controls (11.a) | Merged | [#2006][pr-2006]; evidence below |
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
-| 32/37 | OpenCode v2 auth contracts (11.c.1) | In review | [#2008][pr-2008]; 61 cases; both pins |
+| 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Local | 76 focused cases; both native pins |
 | 34/37 | OpenCode v1 native MCP authentication (11.d) | Not started | — |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
@@ -76,6 +76,16 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 [pr-2006]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2006
 
 ## Evidence and decisions
+
+- Step-33 architecture implementation pass 1 found transport status branching in
+  repository/service. Native rejection and exact attempt-not-found translation
+  now live in the API; repository maps them to typed domain outcomes retaining
+  original causes and stack traces. The native generated error contract checks
+  the tag and exact integration/attempt IDs, so a different 404 cannot confirm
+  cancellation. Lifecycle code imports no raw transport type. The new tests
+  preserve original causes and distinguish integration absence from attempt
+  removal. Both native production-owner probes pass after this correction.
+  Evidence uses `step33-review1-{tests,analyze,native}` private logs.
 
 - Step-33 architecture plan review approved the precise repository/domain/service
   ownership. Existing general service resolves scope; existing repository maps

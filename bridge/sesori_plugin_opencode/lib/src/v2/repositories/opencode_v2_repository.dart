@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
-import "../../open_code_raw_http_client.dart";
 import "../../opencode_message_id.dart";
 import "../api/opencode_v2_api.dart";
 import "../models/openapi/connection_info.g.dart";
@@ -23,6 +22,7 @@ import "../models/openapi/session_info.g.dart";
 import "../models/openapi/session_message_info.g.dart";
 import "../models/openapi/worktree_remove_input.g.dart";
 import "../models/v2_agent_names.dart";
+import "../models/v2_mcp_api_exception.dart";
 import "../models/v2_mcp_authentication.dart";
 import "../models/v2_message_filter.dart";
 import "../models/v2_request_bodies.dart";
@@ -89,10 +89,9 @@ class OpenCodeV2Repository({
         integrationId: target.integrationId,
         methodId: target.methodId,
       );
-    } on OpenCodeApiException catch (error, stackTrace) {
-      if (error.statusCode < 400 || error.statusCode >= 500) rethrow;
-      Log.w("[opencode-v2] Native MCP start rejected for ${target.integrationId}", error, stackTrace);
-      Error.throwWithStackTrace(V2McpAuthenticationStartRejected(innerError: error), stackTrace);
+    } on V2McpStartRejectedException catch (error, stackTrace) {
+      Log.w("[opencode-v2] Native MCP start rejected for ${target.integrationId}", error.innerError, stackTrace);
+      Error.throwWithStackTrace(V2McpAuthenticationStartRejected(innerError: error.innerError), stackTrace);
     }
     try {
       if (response.mode != IntegrationAttemptEncodedMode.auto) {
@@ -111,11 +110,16 @@ class OpenCodeV2Repository({
     required V2McpAuthenticationTarget target,
     required String attemptId,
   }) async {
-    final status = await _api.getMcpAuthenticationStatus(
-      directory: target.directory,
-      integrationId: target.integrationId,
-      attemptId: attemptId,
-    );
+    final IntegrationAttemptStatus status;
+    try {
+      status = await _api.getMcpAuthenticationStatus(
+        directory: target.directory,
+        integrationId: target.integrationId,
+        attemptId: attemptId,
+      );
+    } on V2McpAttemptNotFoundException catch (error, stackTrace) {
+      return V2McpAuthenticationRemoved(innerError: error.innerError, stackTrace: stackTrace);
+    }
     if (status case IntegrationAttemptStatusFailed(:final message)) {
       // The event wrapper stays privacy-safe; retain the original native
       // diagnostic locally for an opted-in support log.

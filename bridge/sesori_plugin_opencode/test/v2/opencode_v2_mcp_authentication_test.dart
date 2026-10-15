@@ -86,7 +86,17 @@ class _Fixture({required final Future<http.Response>? Function(http.Request)? ov
         return http.Response("", 204);
       }
       expect(request.url.path, "/api/integration/native-integration/connect/oauth/attempt-fixture");
-      if (removed) return http.Response("Fixture attempt not found", 404);
+      if (removed) {
+        return http.Response(
+          jsonEncode({
+            "_tag": "IntegrationAttemptNotFoundError",
+            "integrationID": "native-integration",
+            "attemptID": "attempt-fixture",
+            "message": "Fixture attempt not found",
+          }),
+          404,
+        );
+      }
       return _data(
         data: {
           "status": status,

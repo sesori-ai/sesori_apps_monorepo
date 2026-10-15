@@ -84,5 +84,7 @@ final class const V2McpAuthenticationInvalid({
 sealed class const V2McpAuthenticationObservation();
 final class const V2McpAuthenticationPending() extends V2McpAuthenticationObservation;
 final class const V2McpAuthenticationUnknown() extends V2McpAuthenticationObservation;
+final class const V2McpAuthenticationRemoved({required final Object innerError, required final StackTrace stackTrace})
+    extends V2McpAuthenticationObservation;
 final class const V2McpAuthenticationTerminal({required final PluginMcpAuthenticationEvent event})
     extends V2McpAuthenticationObservation;

@@ -11,6 +11,7 @@ import "../models/openapi/command_info.g.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
 import "../models/openapi/integration_attempt_encoded.g.dart";
+import "../models/openapi/integration_attempt_not_found_error_encoded.g.dart";
 import "../models/openapi/integration_attempt_status.g.dart";
 import "../models/openapi/integration_info.g.dart";
 import "../models/openapi/location_public_info.g.dart";
@@ -33,6 +34,7 @@ import "../models/openapi/sessions_response.g.dart";
 import "../models/openapi/worktree_remove_input.g.dart";
 import "../models/v2_data_response.dart";
 import "../models/v2_decode_exception.dart";
+import "../models/v2_mcp_api_exception.dart";
 import "../models/v2_message_filter.dart";
 import "../models/v2_page_order.dart";
 import "../models/v2_request_bodies.dart";
@@ -129,12 +131,17 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   }) async {
     final path = "/api/integration/${Uri.encodeComponent(integrationId)}/connect/oauth";
     return _data<IntegrationAttemptEncoded>(
-      response: await _client.post(
-        path: path,
-        queryParameters: _location(directory: directory),
-        headers: _jsonHeaders,
-        body: jsonEncode({"methodID": methodId}),
-      ),
+      response: await _client
+          .post(
+            path: path,
+            queryParameters: _location(directory: directory),
+            headers: _jsonHeaders,
+            body: jsonEncode({"methodID": methodId}),
+          )
+          .onError<OpenCodeApiException>((error, stackTrace) {
+            if (error.statusCode < 400 || error.statusCode >= 500) Error.throwWithStackTrace(error, stackTrace);
+            Error.throwWithStackTrace(V2McpStartRejectedException(innerError: error), stackTrace);
+          }),
       operation: path,
       fromJson: (value) => IntegrationAttemptEncoded.fromJson(jsonCastMap(value)),
     );
@@ -147,10 +154,28 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   }) async {
     final path = _mcpAttemptPath(integrationId: integrationId, attemptId: attemptId);
     return _data<IntegrationAttemptStatus>(
-      response: await _client.get(
-        path: path,
-        queryParameters: _location(directory: directory),
-      ),
+      response: await _client
+          .get(
+            path: path,
+            queryParameters: _location(directory: directory),
+          )
+          .onError<OpenCodeApiException>((error, stackTrace) {
+            if (error.statusCode == HttpStatus.notFound && error.responseBody != null) {
+              try {
+                final missing = IntegrationAttemptNotFoundErrorEncoded.fromJson(jsonDecodeMap(error.responseBody!));
+                if (missing.tag == "IntegrationAttemptNotFoundError" &&
+                    missing.integrationID == integrationId &&
+                    missing.attemptID == attemptId) {
+                  Error.throwWithStackTrace(V2McpAttemptNotFoundException(innerError: error), stackTrace);
+                }
+              } on V2McpAttemptNotFoundException {
+                rethrow;
+              } on Object {
+                // A different/malformed native 404 cannot confirm attempt removal.
+              }
+            }
+            Error.throwWithStackTrace(error, stackTrace);
+          }),
       operation: path,
       fromJson: (value) => IntegrationAttemptStatus.fromJson(jsonCastMap(value)),
     );

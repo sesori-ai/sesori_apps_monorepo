@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
-import "../../open_code_raw_http_client.dart";
 import "../models/v2_mcp_authentication.dart";
 import "../repositories/opencode_v2_repository.dart";
 
@@ -147,7 +146,7 @@ final class _V2McpLogin({
           _finish(event: event);
           return;
         }
-        if (observation is V2McpAuthenticationUnknown) {
+        if (observation is V2McpAuthenticationUnknown || observation is V2McpAuthenticationRemoved) {
           Log.w("[opencode-v2] Unknown MCP attempt status for ${_target.integrationId}; retaining native ownership");
         }
       } on Object catch (error, stackTrace) {
@@ -182,14 +181,15 @@ final class _V2McpLogin({
         _finish(event: event);
         return;
       }
+      if (before case V2McpAuthenticationRemoved(:final innerError, :final stackTrace)) {
+        Error.throwWithStackTrace(V2McpAuthenticationException(innerError: innerError), stackTrace);
+      }
       await _repository.cancelMcpAuthentication(target: _target, attemptId: attempt.attemptId);
       if (_state is _Retired) return;
-      try {
-        final observation = await _repository.getMcpAuthenticationStatus(target: _target, attemptId: attempt.attemptId);
-        if (_state is _Retired) return;
-        if (observation case V2McpAuthenticationTerminal(:final event)) _finish(event: event);
-      } on OpenCodeApiException catch (error) {
-        if (error.statusCode != 404) rethrow;
+      final observation = await _repository.getMcpAuthenticationStatus(target: _target, attemptId: attempt.attemptId);
+      if (_state is _Retired) return;
+      if (observation case V2McpAuthenticationTerminal(:final event)) _finish(event: event);
+      if (observation is V2McpAuthenticationRemoved) {
         _finish(
           event: switch (attempt) {
             V2McpAuthenticationInvalid(:final cause, :final stackTrace) => _failure(
@@ -229,13 +229,9 @@ final class _V2McpLogin({
 
   Future<void> _retireNative({required V2McpAuthenticationAttempt attempt}) async {
     await _repository.cancelMcpAuthentication(target: _target, attemptId: attempt.attemptId);
-    try {
-      final observation = await _repository.getMcpAuthenticationStatus(target: _target, attemptId: attempt.attemptId);
-      if (observation is! V2McpAuthenticationTerminal) {
-        throw StateError("Native MCP attempt still exists after runtime cleanup");
-      }
-    } on OpenCodeApiException catch (error) {
-      if (error.statusCode != 404) rethrow;
+    final observation = await _repository.getMcpAuthenticationStatus(target: _target, attemptId: attempt.attemptId);
+    if (observation is! V2McpAuthenticationTerminal && observation is! V2McpAuthenticationRemoved) {
+      throw StateError("Native MCP attempt still exists after runtime cleanup");
     }
   }
 
