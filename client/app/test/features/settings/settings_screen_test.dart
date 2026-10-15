@@ -342,13 +342,14 @@ void main() {
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    // Its own card, between the section header and the settings for it.
+    // A flat row outside any card, lined up with the section header above it
+    // and sitting above the settings for it.
     final entry = find.byKey(const Key("computer_settings_entry"));
     expect(find.descendant(of: entry, matching: find.text("studio-mac")), findsOneWidget);
     expect(find.descendant(of: entry, matching: find.text("Online")), findsOneWidget);
     expect(find.descendant(of: entry, matching: find.byIcon(TablerRegular.brand_apple)), findsOneWidget);
-    final entryCard = find.ancestor(of: entry, matching: find.byType(PregoGroupedRows));
-    expect(find.descendant(of: entryCard, matching: find.text("Harnesses")), findsNothing);
+    expect(find.ancestor(of: entry, matching: find.byType(PregoGroupedRows)), findsNothing);
+    expect(tester.getTopLeft(find.text("Bridge")).dx, tester.getTopLeft(entry).dx);
     expect(tester.getTopLeft(find.text("Bridge")).dy, lessThan(tester.getTopLeft(entry).dy));
     expect(tester.getBottomLeft(entry).dy, lessThan(tester.getTopLeft(find.text("Harnesses")).dy));
 

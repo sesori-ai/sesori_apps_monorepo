@@ -9,9 +9,10 @@ import "../../../widgets/computer_menu.dart";
 /// Gap between the computer entry and the settings that apply to it.
 const double _entryGap = PregoSpacing.lg;
 
-/// The computer the bridge settings below it apply to, in a card of its own:
-/// platform, name, and whether it is online. Tapping it opens the computer
-/// menu; picking another computer switches with the Settings source.
+/// The computer the bridge settings below it apply to, as a flat row on the
+/// page background: platform, name, and whether it is online. It lines up with
+/// the section caption above it. Tapping it opens the computer menu; picking
+/// another computer switches with the Settings source.
 ///
 /// Renders nothing until the account's list names the current computer, and
 /// grows into place when it does instead of pushing the settings down at once.
@@ -24,6 +25,7 @@ class const ComputerSettingsEntry({
     final state = context.watch<ComputerSwitcherCubit>().state;
     final currentId = state.currentId;
     final computer = state.computers.where((computer) => computer.id == currentId).firstOrNull;
+    final prego = context.prego;
     return AnimatedSize(
       duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
       curve: Curves.easeOut,
@@ -35,21 +37,49 @@ class const ComputerSettingsEntry({
               child: ComputerMenu(
                 onSelect: ({required bridgeId}) =>
                     onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
-                triggerBuilder: (context, toggle) => PregoGroupedRows(
-                  children: [
-                    Semantics(
-                      hint: context.loc.computerMenuSwitchHint,
-                      child: PregoGroupedRow(
-                        key: const Key("computer_settings_entry"),
-                        leading: PregoAvatarUser(icon: ComputerMenu.platformIcon(platform: computer.platform)),
-                        leadingWidth: 40,
-                        title: Text(computer.name, maxLines: 1, overflow: TextOverflow.ellipsis),
-                        subtitle: Text(ComputerMenu.presenceLabel(context: context, computer: computer)),
-                        trailing: const Icon(TablerRegular.selector),
-                        onTap: toggle,
+                triggerBuilder: (context, toggle) => Semantics(
+                  hint: context.loc.computerMenuSwitchHint,
+                  child: Material(
+                    type: MaterialType.transparency,
+                    child: InkWell(
+                      key: const Key("computer_settings_entry"),
+                      mouseCursor: WidgetStateMouseCursor.clickable,
+                      borderRadius: BorderRadius.circular(PregoRadius.md),
+                      onTap: toggle,
+                      child: Padding(
+                        padding: const EdgeInsets.symmetric(vertical: PregoSpacing.sm),
+                        child: Row(
+                          spacing: PregoSpacing.md,
+                          children: [
+                            Icon(
+                              ComputerMenu.platformIcon(platform: computer.platform),
+                              size: PregoIconSize.lg,
+                              color: prego.colors.textTertiary,
+                            ),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Text(
+                                    computer.name,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+                                  ),
+                                  Text(
+                                    ComputerMenu.presenceLabel(context: context, computer: computer),
+                                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            Icon(TablerRegular.selector, size: PregoIconSize.lg, color: prego.colors.textTertiary),
+                          ],
+                        ),
                       ),
                     ),
-                  ],
+                  ),
                 ),
               ),
             ),
