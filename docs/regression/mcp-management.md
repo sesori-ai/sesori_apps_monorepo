@@ -608,6 +608,37 @@ The extracted callback validator preserves v2 behavior. Synthetic product-widget
 captures show available controls; native recording remains deferred. Real
 provider, packaged client, relay/device and original final L4 remain unqualified.
 
+## Secondary harness capability boundaries
+
+Pi and the ACP family retain existing command, permission and bounded-form
+flows. They do not implement the optional structured MCP inventory/authentication
+interfaces. An inactive adapter returns `pluginInactive`; an active adapter
+without the optional interface returns `unsupportedHarness`. Neither read
+creates/resumes a session, executes a command, opens a browser or writes
+configuration. Generic approvals still select only native offered
+options; supported legacy ACP forms still preserve native reply encoding and
+unsupported forms decline. This audit changes no production behavior.
+
+The versioned [secondary source/adapter audit][secondary-mcp-audit] distinguishes
+missing integration from native protocol limits. Pi's pinned RPC method set has
+no structured MCP management request. Preserve its offered `/mcp` command through
+normal command dispatch; do not parse text into server identities or actions.
+The separate native JSON list starts fresh connections and cannot substitute for
+resident inventory. Native login can open the bridge host's browser; it is not a
+Sesori-owned OAuth challenge. ACP server transport flags and session activation
+server definitions likewise do not declare inventory or authentication controls.
+Vendor management extensions remain unqualified rather than assumed absent.
+
+Material failure signals: an inventory read launches a native process, connects
+a server, executes a slash command or opens a browser; an ACP transport flag
+enables Sign in; an MCP UI path bypasses existing permission/form ownership; a
+generic account-auth method is used for server OAuth. Recheck the native seam
+before adding any future capability. Source inspection does not prove external
+provider policy, packaged behavior or platform runtime compatibility. Original
+final L4 and deferred recording requirements remain pending.
+
+[secondary-mcp-audit]: ../HARNESS_CAPABILITIES.md#secondary-mcp-source-and-adapter-audit
+
 ## Codex native authentication
 
 Codex sign-in uses the attached app-server and the existing canonical headless
