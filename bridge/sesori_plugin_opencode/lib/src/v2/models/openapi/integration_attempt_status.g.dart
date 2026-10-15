@@ -5,7 +5,7 @@ import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
-abstract interface class IntegrationAttemptStatus {
+sealed class IntegrationAttemptStatus {
   const IntegrationAttemptStatus();
 
   /// Serialize the underlying variant. Variants must override this.
@@ -36,7 +36,7 @@ abstract interface class IntegrationAttemptStatus {
 }
 
 @immutable
-class IntegrationAttemptStatusPending implements IntegrationAttemptStatus {
+final class IntegrationAttemptStatusPending implements IntegrationAttemptStatus {
   const IntegrationAttemptStatusPending({
     required this.time,
   });
@@ -79,7 +79,7 @@ class IntegrationAttemptStatusPending implements IntegrationAttemptStatus {
 
 
 @immutable
-class IntegrationAttemptStatusComplete implements IntegrationAttemptStatus {
+final class IntegrationAttemptStatusComplete implements IntegrationAttemptStatus {
   const IntegrationAttemptStatusComplete({
     required this.time,
   });
@@ -122,7 +122,7 @@ class IntegrationAttemptStatusComplete implements IntegrationAttemptStatus {
 
 
 @immutable
-class IntegrationAttemptStatusFailed implements IntegrationAttemptStatus {
+final class IntegrationAttemptStatusFailed implements IntegrationAttemptStatus {
   const IntegrationAttemptStatusFailed({
     required this.message,
     required this.time,
@@ -172,7 +172,7 @@ class IntegrationAttemptStatusFailed implements IntegrationAttemptStatus {
 
 
 @immutable
-class IntegrationAttemptStatusExpired implements IntegrationAttemptStatus {
+final class IntegrationAttemptStatusExpired implements IntegrationAttemptStatus {
   const IntegrationAttemptStatusExpired({
     required this.time,
   });
@@ -218,7 +218,7 @@ class IntegrationAttemptStatusExpired implements IntegrationAttemptStatus {
 /// Carries the raw JSON so newer OpenCode servers do not break
 /// decoding; `toJson` returns the payload unchanged.
 @immutable
-class IntegrationAttemptStatusUnknown implements IntegrationAttemptStatus {
+final class IntegrationAttemptStatusUnknown implements IntegrationAttemptStatus {
   const IntegrationAttemptStatusUnknown({required this.raw});
 
   final Object? raw;
