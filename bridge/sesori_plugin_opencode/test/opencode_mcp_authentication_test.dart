@@ -42,14 +42,15 @@ class _Fixture({required final Future<http.Response>? Function(http.Request)? ov
       expect(request.headers["x-opencode-directory"], Uri.encodeFull(_directory));
       final custom = override?.call(request);
       if (custom != null) return await custom;
-      if (request.url.path == "/mcp")
+      if (request.url.path == "/mcp") {
         return http.Response(
           jsonEncode({
             if (present) _name: {"status": status, "error": "Fixture native diagnostic"},
           }),
           200,
         );
-      if (request.url.path == "/config")
+      }
+      if (request.url.path == "/config") {
         return http.Response(
           jsonEncode({
             "mcp": {
@@ -64,6 +65,7 @@ class _Fixture({required final Future<http.Response>? Function(http.Request)? ov
           }),
           200,
         );
+      }
       expect(request.url.pathSegments.take(3), ["mcp", _name, "auth"]);
       if (request.method == "DELETE") return http.Response('{"success":true}', 200);
       expect(request.method, "POST");

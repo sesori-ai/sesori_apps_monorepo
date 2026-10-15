@@ -497,7 +497,8 @@ The general service retains project/session directory resolution. The stateless
 repository prepares fresh targets and maps native states; a focused service owns
 the native attempt, polling and retirement. Preparation performs no mutation and
 discarding it starts nothing. Only subscription starts OAuth. Native pending,
-unknown and read failures retain ownership; only native terminal states settle.
+unknown and read failures retain ownership; native terminal states or confirmed
+attempt absence settle.
 Callback HTTP acknowledgement is delivery evidence only. Invalid callback host,
 port, path, state, duplicate response values and fragments fail before HTTP.
 Delivery follows no redirects and sends no native server Basic-auth header.
@@ -533,13 +534,17 @@ Connected, disabled, failed and unknown connection states remain distinct.
 Needs-auth and needs-client-registration require authentication; registration
 also declares a native-configuration requirement. Endpoints, configuration
 ownership, tools and authenticated state are not inferred from status alone.
-The status map has no offered-connector catalog. OAuth/forgetting remain explicit
-not-implemented capabilities until their separate native owner lands.
+The status map has no offered-connector catalog. Authentication and forgetting
+are available for configured remote servers with OAuth enabled. A minimal native
+configuration projection discards headers, OAuth secrets and unrelated fields.
+Local, OAuth-disabled and unknown types are unsupported; client registration
+requires native configuration before sign-in. Forgetting remains independent of
+that registration requirement and affects the native harness profile.
 
 Fresh target lookup precedes each enable/reconnect/disable request. Only the
 native named connect/disconnect route is used, with project effect scope and
 the existing headless authoritative refresh. No config/add/remove route,
-provider sign-in or tool execution is added. HTTP errors retain their response
+or tool execution is added. HTTP errors retain their response
 diagnostics; malformed native status/session payloads retain original errors and
 stacks through typed failures, rather than appearing as empty success.
 The plugin service owns scope resolution, fresh-target validation and action
@@ -557,6 +562,36 @@ the existing runtime floor. Both pass isolated production-adapter inventory,
 enable, resident reconnect, disable and exact session lookup; configuration bytes
 remain unchanged and reconnect replaces the fixture process. Fixture success
 does not qualify provider/package/client/L4 or deferred native recording.
+
+V1 authentication starts only when its prepared operation is subscribed. It uses
+the existing project/session directory resolver and validates fresh status and
+configuration before mutation. The native start response's OAuth state must
+match its authorization URI. The shared plugin validator checks the exact
+loopback scheme/origin/port/path/state and rejects duplicate or conflicting
+result keys. V1 sends only the authorization code to the native callback API;
+it does not request the callback URI or open a browser on the bridge. The native
+callback's connected status completes sign-in; known failure states settle as
+failure, while unknown or lost responses retain uncertainty. The 1.17.7 explicit
+no-challenge result maps to already-authorized completion. On 1.14.17 the same
+native path returns a serialization failure; Sesori retains uncertainty until
+runtime retirement instead of guessing from inventory or retrying.
+
+No safe cancellation or pending-status/expiry endpoint exists for this native
+flow. Its DELETE auth endpoint also erases credentials and is reserved for
+explicit forgetting, with a fresh target read. Provider-denial callbacks are
+rejected without deleting credentials or claiming native settlement. Runtime
+retirement closes local observation and logs unavailable native cleanup; attached
+servers can retain pending transports. Neither browser return nor request
+timeout is authentication completion. No native auth files are read or written.
+
+Coverage: 20 new v1 authentication cases plus affected controls and shared v2
+callback regressions pass (77 cases), with owning analysis clean. Both exact v1
+pins pass the production service/repository/API fixture using an exact native
+session: manual callback, completion, harness-profile forgetting and another
+sign-in, unchanged configuration and two verified fixture token exchanges.
+The extracted callback validator preserves v2 behavior. Synthetic product-widget
+captures show available controls; native recording remains deferred. Real
+provider, packaged client, relay/device and original final L4 remain unqualified.
 
 ## Codex native authentication
 

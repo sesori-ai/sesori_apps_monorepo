@@ -860,14 +860,32 @@ scope is unavailable without native work. Connection effects are project-scoped.
 Needs-auth and needs-client-registration remain authentication-required, with
 client registration explicitly requiring native configuration. Unknown metadata,
 tools and credential state are not inferred. Offered connectors are **not
-supported by this seam**; v1 authentication/forgetting are **not implemented**
-until the separate native authentication step. The existing PATH floor remains
+supported by this seam**. V1 authentication and credential forgetting are
+**implemented** for configured remote servers with OAuth enabled. Native
+configuration is read through a minimal projection that discards credentials;
+local, OAuth-disabled and unknown server types remain unsupported. Sign-in starts
+on subscription and requires manual callback delivery through native OpenCode's
+code-only API; a browser loopback return alone does not settle this flow. The
+native callback's connected result is completion. Forgetting affects the native
+harness profile and does not write server configuration.
+V1 has no credential-preserving cancellation or pending-status seam. DELETE auth
+also removes credentials, so it is never used for cancellation or retirement.
+Provider-denial callbacks cannot safely settle native pending work; Sesori rejects
+them and retains ownership until native completion or runtime retirement. Lost
+start/callback replies remain uncertain without retry or invented expiry.
+Attached runtimes may retain pending native transports after local retirement.
+An already-authorized start completes directly on 1.17.7; 1.14.17 returns a native
+serialization failure, which remains uncertain until runtime retirement.
+The existing PATH floor remains
 1.14.0, but no exact Git tag/npm artifact exists for it; qualification uses the
 earliest published 1.14.x artifact, 1.14.17, plus target 1.17.7.
 Both integrity-verified binaries pass the production adapter's isolated inventory,
 enable, resident reconnect, disable and exact session lookup; configuration bytes
 remain unchanged and reconnect replaces the fixture process. No model/tool call
-or external provider sign-in occurs.
+or external provider sign-in occurs. Both exact versions also pass the production
+authentication service/repository/API using an exact native session, manual
+callback completion, profile credential forgetting and signing in again, with
+configuration unchanged and two fixture token exchanges verified.
 The bounded Pi/ACP audit and original provider/package/client/L4 qualification
 remain later steps.
 

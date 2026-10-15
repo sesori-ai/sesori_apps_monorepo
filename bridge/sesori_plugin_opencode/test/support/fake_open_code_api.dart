@@ -36,10 +36,19 @@ class FakeOpenCodeApi({
   int updateProjectCalls = 0;
 
   Future<Map<String, MCPStatus>> getMcpStatus({required String directory}) async => throw UnimplementedError();
-  Future<OpenCodeMcpConfigurationDto> getMcpConfiguration({required String directory}) async => throw UnimplementedError();
-  Future<OpenCodeMcpAuthenticationResponseDto> startMcpAuthentication({required String directory, required String name}) async => throw UnimplementedError();
-  Future<MCPStatus> completeMcpAuthentication({required String directory, required String name, required String code}) async => throw UnimplementedError();
-  Future<void> forgetMcpAuthentication({required String directory, required String name}) async => throw UnimplementedError();
+  Future<OpenCodeMcpConfigurationDto> getMcpConfiguration({required String directory}) async =>
+      throw UnimplementedError();
+  Future<OpenCodeMcpAuthenticationResponseDto> startMcpAuthentication({
+    required String directory,
+    required String name,
+  }) async => throw UnimplementedError();
+  Future<MCPStatus> completeMcpAuthentication({
+    required String directory,
+    required String name,
+    required String code,
+  }) async => throw UnimplementedError();
+  Future<void> forgetMcpAuthentication({required String directory, required String name}) async =>
+      throw UnimplementedError();
   Future<void> connectMcpServer({required String directory, required String name}) async => throw UnimplementedError();
   Future<void> disconnectMcpServer({required String directory, required String name}) async =>
       throw UnimplementedError();

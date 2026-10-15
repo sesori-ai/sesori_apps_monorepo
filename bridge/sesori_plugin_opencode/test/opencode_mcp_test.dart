@@ -26,7 +26,9 @@ const _session = {
 };
 
 OpenCodeService _service({required Future<http.Response> Function(http.Request) handler}) {
-  final client = MockClient((request) => request.url.path == "/config" ? Future.value(_configuration()) : handler(request));
+  final client = MockClient(
+    (request) => request.url.path == "/config" ? Future.value(_configuration()) : handler(request),
+  );
   addTearDown(client.close);
   final repository = OpenCodeRepository(
     OpenCodeApi(
@@ -45,7 +47,14 @@ http.Response _inventory({required String status}) => http.Response(
   200,
 );
 
-http.Response _configuration() => http.Response(jsonEncode({"mcp": {_name: {"type": "remote", "url": "https://fixture.invalid/mcp"}}}), 200);
+http.Response _configuration() => http.Response(
+  jsonEncode({
+    "mcp": {
+      _name: {"type": "remote", "url": "https://fixture.invalid/mcp"},
+    },
+  }),
+  200,
+);
 
 void main() {
   for (final disconnect in [false, true]) {
@@ -92,14 +101,20 @@ void main() {
       expect(server.endpointOrigin, isNull);
       expect(server.tools, isA<PluginMcpToolsUnavailable>());
       if (native == "needs_client_registration") {
-        expect((server.authentication as PluginMcpAuthenticationCapabilityUnavailable).reason,
-          PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired);
+        expect(
+          (server.authentication as PluginMcpAuthenticationCapabilityUnavailable).reason,
+          PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+        );
       } else {
-        expect((server.authentication as PluginMcpAuthenticationCapabilityAvailable).effectScope,
-          PluginMcpActionEffectScope.harness);
+        expect(
+          (server.authentication as PluginMcpAuthenticationCapabilityAvailable).effectScope,
+          PluginMcpActionEffectScope.harness,
+        );
       }
-      expect((server.credentialForgetting as PluginMcpAuthenticationCapabilityAvailable).effectScope,
-        PluginMcpActionEffectScope.harness);
+      expect(
+        (server.credentialForgetting as PluginMcpAuthenticationCapabilityAvailable).effectScope,
+        PluginMcpActionEffectScope.harness,
+      );
       expect(
         server.authorization,
         native == "needs_auth" || native == "needs_client_registration"

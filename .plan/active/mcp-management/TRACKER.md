@@ -62,7 +62,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | In review | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | Not started | — |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | Local | 77 cases; both native pins |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
@@ -78,6 +78,19 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-34 architecture plan review approved the minimal v1 configuration
+  projection, existing scope resolver, manual callback owner and shared plugin
+  callback validator. Native DELETE auth destroys credentials, so this operation
+  exposes native settlement without cancellation. Provider denial cannot safely
+  settle native work; retirement logs unavailable cleanup for attached runtimes.
+  Both exact 1.14.17/1.17.7 production owners pass exact session attribution,
+  manual callback completion, harness-profile forgetting and sign-in again.
+  Configuration bytes are unchanged and two fixture token exchanges are verified
+  per pin. All 77 authentication/controls/shared-validator cases pass; owning
+  analysis is clean. Native 1.14.17 already-authorized serialization failure
+  remains uncertain; 1.17.7's explicit no-challenge maps to completion. Analytics
+  assessment retains the existing shared lifecycle seam and adds no tap event.
+  Recording and original provider/package/relay/device/L4 gates remain pending.
 - Step-33 PR review fixes cancellation before subscription, waits for a pending
   start handle within runtime teardown's existing budget, and settles confirmed
   attempt disappearance as unresolved failure outside acknowledged cancellation.
