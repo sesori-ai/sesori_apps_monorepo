@@ -13,18 +13,39 @@ class _MockComputerSwitcherCubit() extends MockCubit<ComputerSwitcherState> impl
 
 class _MockComputersCubit() extends MockCubit<ComputersState> implements ComputersCubit;
 
-BridgeSummary _computer({required String id, required String name, required String hostname}) => BridgeSummary(
+BridgeSummary _computer({
+  required String id,
+  required String name,
+  required String hostname,
+  required BridgeRegistrationStatus status,
+}) => BridgeSummary(
   id: id,
   name: name,
   hostname: hostname,
   platform: BridgePlatform.macos,
-  status: BridgeRegistrationStatus.active,
+  status: status,
   addedAt: DateTime.utc(2026),
   lastSeenAt: null,
 );
 
-final _studio = _computer(id: "a", name: "Studio", hostname: "studio-mac.local");
-final _workLaptop = _computer(id: "b", name: "work-laptop", hostname: "work-laptop");
+final _studio = _computer(
+  id: "a",
+  name: "Studio",
+  hostname: "studio-mac.local",
+  status: BridgeRegistrationStatus.active,
+);
+final _workLaptop = _computer(
+  id: "b",
+  name: "work-laptop",
+  hostname: "work-laptop",
+  status: BridgeRegistrationStatus.active,
+);
+final _buildBox = _computer(
+  id: "c",
+  name: "build-box",
+  hostname: "build-box",
+  status: BridgeRegistrationStatus.inactive,
+);
 
 void main() {
   late _MockComputersCubit computersCubit;
@@ -41,17 +62,22 @@ void main() {
         name: any(named: "name"),
       ),
     ).thenAnswer((_) async {});
+    when(() => computersCubit.remove(bridgeId: any(named: "bridgeId"))).thenAnswer((_) async => null);
     switched = [];
   });
 
-  Future<void> pumpView(WidgetTester tester) async {
+  Future<void> pumpView(
+    WidgetTester tester, {
+    String targetId = "b",
+    WidgetBuilder? localBridgeTurnOffActionBuilder,
+  }) async {
     final switcherCubit = _MockComputerSwitcherCubit();
     whenListen(
       switcherCubit,
       const Stream<ComputerSwitcherState>.empty(),
       initialState: ComputerSwitcherState(
-        computers: [_studio, _workLaptop],
-        targetId: "b",
+        computers: [_studio, _workLaptop, _buildBox],
+        targetId: targetId,
         localId: "a",
       ),
     );
@@ -67,6 +93,7 @@ void main() {
             child: ComputersView(
               chrome: SettingsPageOwnBar(title: "Computers", connectionBanner: null),
               onSwitchComputer: ({required bridgeId, required source}) => switched.add((bridgeId, source)),
+              localBridgeTurnOffActionBuilder: localBridgeTurnOffActionBuilder,
             ),
           ),
         ),
@@ -165,5 +192,70 @@ void main() {
     await openRename(tester, id: "b");
 
     expect(find.byKey(const Key("computers-rename-use-hostname")), findsNothing);
+  });
+
+  Future<void> tapRemove(WidgetTester tester, {required String id}) async {
+    await openActions(tester, id: id);
+    await tester.tap(find.byKey(ValueKey("computers-remove-$id")));
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets("an online computer's Remove is disabled and says to quit Sesori there", (tester) async {
+    await pumpView(tester);
+    await tapRemove(tester, id: "b");
+
+    expect(find.text("Quit Sesori on work-laptop to remove it"), findsOneWidget);
+    expect(find.text("Remove work-laptop?"), findsNothing);
+    verifyNever(() => computersCubit.remove(bridgeId: any(named: "bridgeId")));
+  });
+
+  testWidgets("removing an offline computer asks first, and Cancel keeps it", (tester) async {
+    await pumpView(tester);
+    await tapRemove(tester, id: "c");
+
+    expect(find.text("Remove build-box?"), findsOneWidget);
+    expect(
+      find.text("It disappears from every device. Starting Sesori on it signs it back in as a new computer."),
+      findsOneWidget,
+    );
+    await tester.tap(find.byKey(const Key("computers-remove-cancel")));
+    await tester.pumpAndSettle();
+    verifyNever(() => computersCubit.remove(bridgeId: any(named: "bridgeId")));
+
+    await tapRemove(tester, id: "c");
+    await tester.tap(find.byKey(const Key("computers-remove-confirm")));
+    await tester.pumpAndSettle();
+    verify(() => computersCubit.remove(bridgeId: "c")).called(1);
+    expect(switched, isEmpty);
+  });
+
+  testWidgets("removing the computer the app works on switches to the replacement", (tester) async {
+    when(() => computersCubit.remove(bridgeId: "c")).thenAnswer((_) async => "a");
+    await pumpView(tester, targetId: "c");
+    await tapRemove(tester, id: "c");
+    await tester.tap(find.byKey(const Key("computers-remove-confirm")));
+    await tester.pumpAndSettle();
+
+    expect(switched, [("a", ComputerSwitchSource.computersPage)]);
+  });
+
+  testWidgets("Remove on this computer explains instead, with the shell's turn-off action", (tester) async {
+    await pumpView(tester, localBridgeTurnOffActionBuilder: (_) => const Text("Turn off bridge"));
+    await tapRemove(tester, id: "a");
+
+    expect(find.text("This computer can't be removed"), findsOneWidget);
+    expect(find.text("Turn off bridge"), findsOneWidget);
+    await tester.tap(find.byKey(const Key("computers-this-computer-close")));
+    await tester.pumpAndSettle();
+    expect(find.text("This computer can't be removed"), findsNothing);
+    verifyNever(() => computersCubit.remove(bridgeId: any(named: "bridgeId")));
+  });
+
+  testWidgets("the explanation has no turn-off action without one from the shell", (tester) async {
+    await pumpView(tester);
+    await tapRemove(tester, id: "a");
+
+    expect(find.text("This computer can't be removed"), findsOneWidget);
+    expect(find.text("Turn off bridge"), findsNothing);
   });
 }

@@ -40,6 +40,18 @@ class _MockDesktopAttentionService() extends Mock implements DesktopAttentionSer
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
 
+/// A desktop whose own bridge is [bridgeId].
+class const _LocalBridge({required final String bridgeId}) implements ActiveBridgeLocality {
+  @override
+  String? get localBridgeId => bridgeId;
+
+  @override
+  Stream<String?> get localBridgeIdStream => Stream.value(bridgeId);
+
+  @override
+  bool isLocalBridge({required String bridgeId}) => bridgeId == this.bridgeId;
+}
+
 const AuthUser _user = AuthUser(
   id: "user-1",
   provider: AuthProvider.github,
@@ -559,6 +571,59 @@ void main() {
       () => computerSwitchDispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.computersPage),
     ).called(1);
     expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+  });
+
+  testWidgets("Remove on this computer offers to turn its bridge off only while it is on", (tester) async {
+    await getIt.unregister<ActiveBridgeLocality>();
+    getIt.registerSingleton<ActiveBridgeLocality>(const _LocalBridge(bridgeId: "a"));
+    final bridgeStates = StreamController<BridgeControlState>();
+    addTearDown(bridgeStates.close);
+    whenListen(
+      bridgeControl,
+      bridgeStates.stream,
+      initialState: const BridgeControlState(
+        trayAvailability: SystemTrayAvailability.available,
+        activity: BridgeControlActivity.idle,
+        statusLabel: "Running",
+        processState: BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+        toggleTarget: BridgeProcessDesiredState.off,
+        launchAtLoginEnabled: false,
+        controlStatus: BridgeControlStatus.offline,
+      ),
+    );
+    when(bridgeControl.stopBridge).thenAnswer((_) async => bridgeStates.add(_bridgeState));
+    registeredBridges.emitBridges(
+      bridges: [
+        BridgeSummary(
+          id: "a",
+          name: "Studio",
+          hostname: "studio-mac.local",
+          platform: BridgePlatform.macos,
+          status: BridgeRegistrationStatus.active,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: DateTime.utc(2026, 7),
+        ),
+      ],
+    );
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+    await tester.tap(find.byKey(const Key("computer_settings_entry")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey("computer-menu-manage")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey("computers-actions-a")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey("computers-remove-a")));
+    await tester.pumpAndSettle();
+
+    expect(find.text("This computer can't be removed"), findsOneWidget);
+    await tester.tap(find.byKey(const Key("desktop-computers-turn-off-bridge")));
+    await tester.pumpAndSettle();
+
+    verify(bridgeControl.stopBridge).called(1);
+    expect(find.byKey(const Key("desktop-computers-turn-off-bridge")), findsNothing);
+    expect(find.text("This computer can't be removed"), findsOneWidget);
+    verifyNever(() => registeredBridges.remove(bridgeId: any(named: "bridgeId")));
   });
 
   testWidgets("Notifications uses desktop attention and Account retains supervised logout", (tester) async {

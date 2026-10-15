@@ -7,13 +7,24 @@ import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
+class _MockSelectedComputerService() extends Mock implements SelectedComputerService;
+
 void main() {
   late MockRegisteredBridgesService registeredBridges;
+  late _MockSelectedComputerService selectedComputer;
 
-  setUp(() => registeredBridges = MockRegisteredBridgesService());
+  setUp(() {
+    registeredBridges = MockRegisteredBridgesService();
+    selectedComputer = _MockSelectedComputerService();
+    when(selectedComputer.targetBridgeId).thenAnswer((_) async => "current");
+    when(() => selectedComputer.replacementAfterRemoving(bridgeId: "current")).thenReturn("next");
+  });
 
   ComputersCubit build() {
-    final cubit = ComputersCubit(registeredBridgesService: registeredBridges);
+    final cubit = ComputersCubit(
+      registeredBridgesService: registeredBridges,
+      selectedComputerService: selectedComputer,
+    );
     addTearDown(cubit.close);
     return cubit;
   }
@@ -75,5 +86,37 @@ void main() {
     await cubit.rename(computer: unnamed, name: "Studio");
 
     expect(cubit.state, isA<ComputersRenameFailed>().having((state) => state.bridgeId, "bridgeId", "a"));
+  });
+
+  test("a removal runs, then settles back to idle without a switch for another computer", () async {
+    final response = Completer<ApiResponse<void>>();
+    when(() => registeredBridges.remove(bridgeId: "a")).thenAnswer((_) => response.future);
+    final cubit = build();
+
+    final remove = cubit.remove(bridgeId: "a");
+    expect(cubit.state, isA<ComputersRemoving>().having((state) => state.bridgeId, "bridgeId", "a"));
+
+    response.complete(ApiResponse.success(null));
+    expect(await remove, isNull);
+    expect(cubit.state, isA<ComputersIdle>());
+    verifyNever(() => selectedComputer.replacementAfterRemoving(bridgeId: any(named: "bridgeId")));
+  });
+
+  test("removing the computer the app works on returns its replacement", () async {
+    when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) async => ApiResponse.success(null));
+    final cubit = build();
+
+    expect(await cubit.remove(bridgeId: "current"), "next");
+    expect(cubit.state, isA<ComputersIdle>());
+  });
+
+  test("a refused removal reports the failure for that computer and switches nowhere", () async {
+    when(
+      () => registeredBridges.remove(bridgeId: "current"),
+    ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    final cubit = build();
+
+    expect(await cubit.remove(bridgeId: "current"), isNull);
+    expect(cubit.state, isA<ComputersRemoveFailed>().having((state) => state.bridgeId, "bridgeId", "current"));
   });
 }
