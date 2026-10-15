@@ -1255,3 +1255,29 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Claude. The existing plugin archive notification now delegates to the existing
   pending owner cancellation; a native form cannot remain unanswerable afterward.
   No new lifecycle subscription or owner is introduced.
+- Step-21 source commit `75ac1b1a95` implements the native plugin boundary only;
+  headless form routes and client forms remain unimplemented. The first focused
+  run passes 92 cases across `claude_form_schema_test.dart`,
+  `claude_approval_registry_test.dart` and `claude_plugin_impl_test.dart` from
+  `bridge/sesori_plugin_claude`. After adding archive cancellation, the changed
+  plugin integration file passes all 40 cases. Use pinned Dart 3.13.5 `dart test`
+  with those paths. Bridge-root `dart analyze --fatal-infos` for
+  `sesori_plugin_claude`, `sesori_plugin_interface` and the changed repository
+  interaction-kind mapper passes; the archive source/test analysis also passes.
+  Full plugin-interface code generation succeeds and changes only its form enum entry.
+- Ten exact-pin native fixture cases pass on Claude 2.1.221 and 2.1.291: both
+  form accept/decline/cancel sets, target URL accept/decline/cancel and minimum
+  native URL rejection before forwarding. The native MCP peer observes the
+  production registry's exact typed content, distinct option values, optional
+  text omission and negative replies. An invalid submission retains the same
+  request before correction. This qualifies the isolated native adapter seam,
+  not headless/relay/client ownership, real providers, packaged clients or UI feel.
+  Recording remains deferred; final coverage remains required.
+- Private Step-21 probe input SHA-256 values:
+  - `native-probe.mjs`: `93f5533750b22f21b6a51447d9ca13aaf32771b9210687f133765adae77ae179`.
+  - `native-worker.dart`: `6e3a445d5ec90113889965b1d13e419401bdfdf095d97c804adca3975f596fbe`.
+  - `native-capability-fixture.mjs`: `6ec0a109276d05d154ee1eb10b8990fdb64f00b5f497d72aaafc38664d5d72d8`.
+  Inputs and result log are retained under the private `copper-heron-mcp-step21-`
+  artifact prefix. Fixture/model sources originate in `tool/mcp-contracts/fixture.mjs`.
+- Published PR titles 1–20 now use the current /28 total. Historical squash
+  messages remain unchanged. The final qualification matrix is not reduced.
