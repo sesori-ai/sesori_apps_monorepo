@@ -821,6 +821,19 @@ ownership were not qualified by these probes. See the
 [versioned contract evidence](../.plan/active/mcp-management/evidence/native-contracts.md)
 and [reproduction tools](../tool/mcp-contracts/README.md).
 
+OpenCode v2 configured MCP inventory and connect/reconnect/disable controls are
+**implemented** through the existing location-scoped API. Project and exact
+native-session locations are supported; harness scope is explicitly unavailable.
+The adapter exposes native connection status without inferring tools, endpoint
+metadata, configuration ownership or authentication success. Effects are scoped
+to the native project/location, with authoritative refresh after controls.
+The v2 MCP API provides no offered-connector catalog or OAuth/forgetting route;
+those operations are **not supported by this seam**. Other native integration
+authentication remains a separate audit. The 2.0.11/2.0.24 schemas and local
+adapter tests pass; exact native control qualification is still in progress.
+OpenCode v1 management/authentication and the bounded Pi/ACP audit remain later
+steps. Original provider/package/client/L4 qualification is unchanged.
+
 ## Context compaction row
 
 The transcript marks a context compaction with a row. Where the harness

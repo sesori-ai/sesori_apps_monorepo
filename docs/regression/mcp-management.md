@@ -420,6 +420,28 @@ Exact pinned binaries pass fresh empty catalog reads; real offered connector
 entitlements/setup, native motion, packaged return and the final L4 matrix remain
 unqualified. Fixture success does not establish provider completion.
 
+## OpenCode v2 MCP management
+
+The v2 adapter implements configured-server inventory and connection controls
+through its existing API, repository, service and concrete plugin. Project scope
+uses its native directory; session scope resolves the native session's exact
+location. Harness scope is explicitly unavailable and performs no native work.
+Targets remain distinct across locations even when server names match.
+
+Native connected, pending, disabled, needs-auth, failed and unknown states remain
+distinct. Unknown tools, endpoints, configuration and authentication are not
+inferred. The MCP API exposes no offered-connector inventory or OAuth/forgetting
+flow, so those capabilities remain explicit gaps. Connect/reconnect and disable
+use only the named existing server's location-scoped native controls; they do not
+write server configuration or create/resume sessions. Headless orchestration
+performs the existing authoritative refresh after native completion.
+
+Coverage: `opencode_v2_mcp_test.dart` exercises exact project/session attribution,
+independent locations, all states, missing targets, typed read failures and the
+concrete plugin HTTP seam. The 69 affected v2 API/repository/plugin cases pass;
+package analysis is clean. Exact native minimum/target control qualification is
+still in progress. Provider, client, package and final L4 coverage remain pending.
+
 ## Codex native authentication
 
 Codex sign-in uses the attached app-server and the existing canonical headless

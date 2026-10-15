@@ -12,6 +12,7 @@ import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
 import "../models/openapi/location_public_info.g.dart";
 import "../models/openapi/location_public_ref.g.dart";
+import "../models/openapi/mcp_server.g.dart";
 import "../models/openapi/model_info.g.dart";
 import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
@@ -68,6 +69,32 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       ),
       operation: path,
       fromJson: LocationPublicInfo.fromJson,
+    );
+  }
+
+  Future<List<McpServer>> listMcpServers({required String directory}) => _getList(
+    path: "/api/mcp",
+    directory: directory,
+    fromJson: McpServer.fromJson,
+  );
+
+  Future<void> connectMcpServer({required String directory, required String name}) async {
+    await _response(
+      request: _client.post(
+        path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/connect",
+        queryParameters: _location(directory: directory),
+        timeout: const Duration(minutes: 3),
+      ),
+    );
+  }
+
+  Future<void> disconnectMcpServer({required String directory, required String name}) async {
+    await _response(
+      request: _client.post(
+        path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/disconnect",
+        queryParameters: _location(directory: directory),
+        timeout: const Duration(minutes: 3),
+      ),
     );
   }
 

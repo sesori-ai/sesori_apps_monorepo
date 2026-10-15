@@ -74,6 +74,12 @@ class OpenCodeV2Service({
   void invalidateBaseline() => _tracker.invalidateBaseline();
 
   Future<bool> healthCheck() => _repository.healthCheck();
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
+      _repository.getMcpInventory(scope: scope);
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) => _repository.executeMcpServerAction(target: target, action: action);
   Future<List<PluginProject>> getProjects() => _repository.getProjects();
   Future<PluginProject> getProject({required String projectId}) => _repository.getProject(directory: projectId);
   Future<PluginProject> renameProject({required String projectId, required String name}) =>

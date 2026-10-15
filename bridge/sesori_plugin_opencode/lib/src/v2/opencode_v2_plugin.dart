@@ -28,7 +28,7 @@ class OpenCodeV2Plugin._({
   required String? password,
   required void Function() onConnected,
   required void Function() onDisconnected,
-}) implements OpenCodeManagedApi {
+}) implements OpenCodeManagedApi, McpManagementPluginApi {
   static final _id = Harness.opencode.name;
   static const _parser = V2EventParser();
   final _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
@@ -95,6 +95,15 @@ class OpenCodeV2Plugin._({
   Stream<PluginWorkState> get workState => _workState.stream;
   @override
   PluginWorkState get currentWorkState => _workState.current;
+
+  @override
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
+      _service.getMcpInventory(scope: scope);
+  @override
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) => _service.executeMcpServerAction(target: target, action: action);
 
   @override
   Future<void> initialize() => _initializeFuture ??= _initialize();
