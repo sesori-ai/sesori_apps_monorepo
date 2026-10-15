@@ -231,7 +231,7 @@ void main() {
     states.add(_ready(entries: entries, refresh: const McpInventoryRefreshIdle()));
     await tester.pumpWidget(app(scale: 1));
     await tester.pumpAndSettle();
-    await tester.drag(find.byType(ListView), const Offset(0, -500));
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -500));
     await tester.pumpAndSettle();
     final scroll = tester.state<ScrollableState>(find.byType(Scrollable));
     final offset = scroll.position.pixels;
@@ -254,6 +254,38 @@ void main() {
     );
     await tester.pumpAndSettle();
     expect(scroll.position.pixels, offset);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("large connector catalogs build lazily and remain reachable after refresh", (tester) async {
+    final entries = [
+      _server,
+      for (var i = 0; i < 2000; i++)
+        McpConnectorOfferSnapshot(
+          offerTarget: McpConnectorOfferTarget(scope: _scope, offerKey: "offer-$i"),
+          name: "Connector $i",
+          description: null,
+          availability: McpConnectorOfferAvailability.setupRequired,
+        ),
+    ];
+    states.add(_ready(entries: entries, refresh: const McpInventoryRefreshIdle()));
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("Fixture server"), findsOneWidget);
+    expect(find.text("Connector 0"), findsOneWidget);
+    expect(find.text("Connector 1999"), findsNothing);
+    expect(find.byType(PregoGroupedRow).evaluate().length, lessThan(30));
+    await tester.scrollUntilVisible(find.text("Connector 1999"), 5000, maxScrolls: 50);
+    await tester.pumpAndSettle();
+    expect(find.text("Connector 1999"), findsOneWidget);
+    expect(find.text("Connector 0"), findsNothing);
+    expect(find.byType(PregoGroupedRow).evaluate().length, lessThan(30));
+    final scroll = tester.state<ScrollableState>(find.byType(Scrollable));
+    final offset = scroll.position.pixels;
+    states.add(_ready(entries: entries, refresh: const McpInventoryRefreshIdle()));
+    await tester.pumpAndSettle();
+    expect(scroll.position.pixels, offset);
+    expect(find.text("Connector 1999"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

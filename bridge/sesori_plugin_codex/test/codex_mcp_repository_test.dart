@@ -249,6 +249,28 @@ void main() {
     expect(transport.calls, hasLength(1));
   });
 
+  test("connector names are trimmed and sorted without depending on opaque IDs", () async {
+    final transport = _Transport(
+      responses: [
+        {"data": <Object>[]},
+        {
+          "data": [
+            {"id": "asdk_b", "name": " BETA "},
+            {"id": "z-fallback", "name": "  "},
+            {"id": "asdk_z", "name": " Alpha "},
+            {"id": "asdk_a", "name": "beta"},
+          ],
+        },
+      ],
+    );
+    final result = await _repository(
+      transport: transport,
+    ).read(scope: const PluginMcpHarnessScope()) as PluginMcpInventorySnapshot;
+    final offers = result.entries.whereType<PluginMcpConnectorOfferSnapshot>().toList();
+    expect(offers.map((offer) => offer.target.offerKey), ["asdk_z", "asdk_a", "asdk_b", "z-fallback"]);
+    expect(offers.map((offer) => offer.name), ["Alpha", "beta", "BETA", "z-fallback"]);
+  });
+
   for (final failure in [
     StateError("fixture catalog transport failure"),
     {

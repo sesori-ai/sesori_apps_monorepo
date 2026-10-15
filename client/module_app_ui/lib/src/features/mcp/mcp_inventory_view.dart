@@ -163,81 +163,80 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
   Widget build(BuildContext context) {
     final loc = context.loc;
     final hasUnknownEntries = inventory.entries.any((entry) => entry is McpUnknownInventoryEntry);
-    return ListView(
+    final servers = inventory.entries.whereType<McpServerSnapshot>().toList(growable: false);
+    final offers = inventory.entries.whereType<McpConnectorOfferSnapshot>().toList(growable: false);
+    return CustomScrollView(
       key: const PageStorageKey("mcp_inventory"),
-      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
-      children: [
+      slivers: [
         _Section(
           title: loc.mcpServers,
           availability: inventory.servers,
           hasUnknownEntries: hasUnknownEntries,
-          entries: inventory.entries
-              .whereType<McpServerSnapshot>()
-              .map(
-                (server) => PregoGroupedRow(
-                  key: ValueKey(server.serverTarget),
-                  title: Text(server.name),
-                  subtitle: Text(_connection(connection: server.connection, loc: loc)),
-                  trailing: const Icon(TablerRegular.chevron_right, size: PregoIconSize.sm),
-                  onTap: () => _showServer(context: context, target: server.serverTarget),
-                ),
-              )
-              .toList(growable: false),
+          itemCount: servers.length,
+          itemBuilder: (context, index) {
+            final server = servers[index];
+            return PregoGroupedRow(
+              key: ValueKey(server.serverTarget),
+              title: Text(server.name),
+              subtitle: Text(_connection(connection: server.connection, loc: loc)),
+              trailing: const Icon(TablerRegular.chevron_right, size: PregoIconSize.sm),
+              onTap: () => _showServer(context: context, target: server.serverTarget),
+            );
+          },
         ),
-        const SizedBox(height: PregoSpacing.xl),
+        const SliverToBoxAdapter(child: SizedBox(height: PregoSpacing.xl)),
         _Section(
           title: loc.mcpConnectors,
           availability: inventory.connectors,
           hasUnknownEntries: hasUnknownEntries,
-          entries: inventory.entries
-              .whereType<McpConnectorOfferSnapshot>()
-              .map(
-                (offer) => LayoutBuilder(
-                  key: ValueKey(offer.offerTarget),
-                  builder: (context, constraints) {
-                    final stacked = constraints.maxWidth < MediaQuery.textScalerOf(context).scale(440);
-                    final button = offer.actions.contains(McpConnectorAction.setup)
-                        ? _SetupButton(target: offer.offerTarget, fullWidth: stacked)
-                        : null;
-                    final status = switch (offer.availability) {
-                      McpConnectorOfferAvailability.unknown => loc.mcpUnknown,
-                      McpConnectorOfferAvailability.available => loc.mcpOfferAvailable,
-                      McpConnectorOfferAvailability.setupRequired
-                          when !offer.actions.contains(McpConnectorAction.setup) =>
-                        loc.mcpSetupInHarness,
-                      McpConnectorOfferAvailability.setupRequired => loc.mcpSetupRequired,
-                      McpConnectorOfferAvailability.unavailable => loc.mcpUnavailable,
-                    };
-                    return AnimatedSize(
-                      duration: MediaQuery.disableAnimationsOf(context)
-                          ? Duration.zero
-                          : const Duration(milliseconds: 180),
-                      alignment: Alignment.topCenter,
-                      child: PregoGroupedRow(
-                        title: Text(offer.name),
-                        subtitle: stacked && button != null
-                            ? Column(
-                                crossAxisAlignment: CrossAxisAlignment.stretch,
-                                children: [
-                                  Text(status),
-                                  const SizedBox(height: PregoSpacing.md),
-                                  button,
-                                ],
-                              )
-                            : Text(status),
-                        trailing: stacked ? null : button,
-                      ),
-                    );
-                  },
-                ),
-              )
-              .toList(growable: false),
+          itemCount: offers.length,
+          itemBuilder: (context, index) {
+            final offer = offers[index];
+            return LayoutBuilder(
+              key: ValueKey(offer.offerTarget),
+              builder: (context, constraints) {
+                final stacked = constraints.maxWidth < MediaQuery.textScalerOf(context).scale(440);
+                final button = offer.actions.contains(McpConnectorAction.setup)
+                    ? _SetupButton(target: offer.offerTarget, fullWidth: stacked)
+                    : null;
+                final status = switch (offer.availability) {
+                  McpConnectorOfferAvailability.unknown => loc.mcpUnknown,
+                  McpConnectorOfferAvailability.available => loc.mcpOfferAvailable,
+                  McpConnectorOfferAvailability.setupRequired when !offer.actions.contains(McpConnectorAction.setup) =>
+                    loc.mcpSetupInHarness,
+                  McpConnectorOfferAvailability.setupRequired => loc.mcpSetupRequired,
+                  McpConnectorOfferAvailability.unavailable => loc.mcpUnavailable,
+                };
+                return AnimatedSize(
+                  duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
+                  alignment: Alignment.topCenter,
+                  child: PregoGroupedRow(
+                    title: Text(offer.name),
+                    subtitle: stacked && button != null
+                        ? Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Text(status),
+                              const SizedBox(height: PregoSpacing.md),
+                              button,
+                            ],
+                          )
+                        : Text(status),
+                    trailing: stacked ? null : button,
+                  ),
+                );
+              },
+            );
+          },
         ),
         if (hasUnknownEntries)
-          Padding(
-            padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
-            child: Text(loc.mcpUnknownResponse),
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+              child: Text(loc.mcpUnknownResponse),
+            ),
           ),
+        const SliverToBoxAdapter(child: SizedBox(height: PregoSpacing.xl)),
       ],
     );
   }
@@ -271,20 +270,40 @@ class const _SetupButton({required final McpConnectorOfferTarget target, require
 class const _Section({
   required final String title,
   required final McpCatalogAvailability availability,
-  required final List<Widget> entries,
+  required final int itemCount,
+  required final IndexedWidgetBuilder itemBuilder,
   required final bool hasUnknownEntries,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    return SettingsSection(
-      title: title,
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: [
-          if (entries.isNotEmpty) PregoGroupedRows(color: context.prego.colors.bgSurface2, children: entries),
-          if (availability is! McpCatalogAvailable || entries.isEmpty && !hasUnknownEntries)
-            Padding(
+    return SliverMainAxisGroup(
+      slivers: [
+        SliverToBoxAdapter(
+          child: SettingsSection(title: title, child: const SizedBox.shrink()),
+        ),
+        SliverList.builder(
+          itemCount: itemCount,
+          itemBuilder: (context, index) {
+            final row = itemBuilder(context, index);
+            return PregoGroupedRowPosition(
+              key: row.key,
+              isLast: index == itemCount - 1,
+              child: Material(
+                color: context.prego.colors.bgSurface2,
+                clipBehavior: Clip.antiAlias,
+                borderRadius: BorderRadius.vertical(
+                  top: index == 0 ? const Radius.circular(PregoRadius.x5l) : Radius.zero,
+                  bottom: index == itemCount - 1 ? const Radius.circular(PregoRadius.x5l) : Radius.zero,
+                ),
+                child: row,
+              ),
+            );
+          },
+        ),
+        if (availability is! McpCatalogAvailable || itemCount == 0 && !hasUnknownEntries)
+          SliverToBoxAdapter(
+            child: Padding(
               padding: const EdgeInsets.all(PregoSpacing.md),
               child: Text(switch (availability) {
                 McpCatalogAvailable() => loc.mcpEmptyCatalog,
@@ -293,8 +312,8 @@ class const _Section({
                 McpCatalogUnknown() => loc.mcpUnknownResponse,
               }),
             ),
-        ],
-      ),
+          ),
+      ],
     );
   }
 }
