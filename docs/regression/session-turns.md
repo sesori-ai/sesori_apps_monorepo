@@ -8,6 +8,14 @@ defaults and queued client sends coherent.
 
 ## Required Behavior
 
+- Opening MCP inventory or dismissing its overlays leaves the transcript scroll
+  position and composer draft untouched. A live session's typed form or external
+  action replies to its native owner even when displayed under a root session.
+  External settlement advances the pending interaction scheduler once; dismissal
+  leaves it pending. Stop/archive and native process exit use their authoritative
+  lifecycle paths, without inventing OAuth cancellation for a native API that
+  cannot provide it. See the [MCP matrix](mcp-management.md#regression-levels)
+  for the client, concurrency and recorded feel checks.
 - A terminal quota interruption can offer per-session opt-in through the chat
   hint or overflow menu. Scheduling uses the bridge's observed reset plus two
   minutes and the ordinary prompt path with existing selection and permission

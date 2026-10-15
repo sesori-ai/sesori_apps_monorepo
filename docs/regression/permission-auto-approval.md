@@ -22,6 +22,12 @@ user present. It is a bridge policy, not a client feature.
 - Each request is approved at most once. A failed approval is not recorded as
   approved and can be retried.
 - Questions are never auto-answered.
+- MCP forms, URL/connector setup consent and server sign-in are not tool
+  permissions and never inherit YOLO approval. A real MCP tool permission keeps
+  the existing one-time policy; neither that approval nor native authentication
+  grants installation/login consent. Exercise both asking and YOLO modes with
+  typed requests and legacy views in the
+  [MCP matrix](mcp-management.md#regression-levels).
 - Disabling restores user-answered behavior for later requests without changing
   already-approved ones.
 - A session can override the bridge setting with its own choice, "ask" or

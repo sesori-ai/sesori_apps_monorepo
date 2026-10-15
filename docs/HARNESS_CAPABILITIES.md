@@ -655,7 +655,8 @@ API/repository/connection-fenced lifecycle are implemented. The observing Cubit
 does not cancel on view closure. Request-scoped recovery never auto-launches a
 browser; busy retains the challenge, and reconnect fences callbacks to the old
 bridge. Visible client controls use declared capabilities. Native MCP sign-in is
-implemented for Claude and Codex; other harness adapters remain **not implemented**.
+implemented for Claude, Codex and eligible OpenCode v1/v2 servers. Secondary
+adapter limits are recorded in the source/adapter audit below.
 The shared entry-action API/repository, per-view request owner and observing Cubit
 are implemented for reconnect, enable/disable and credential forgetting. Shells
 provide the read-only posture; pending requests retain readable inventory, late
@@ -682,8 +683,8 @@ availability, including native effect scopes and explicit configuration/platform
 Headless credential forgetting is **implemented** through `POST /mcp/entry/action`;
 it shares the native authentication owner, preserves server definitions, and refreshes
 inventory without claiming that an existing resident connection has disconnected.
-Shared client action UI is **implemented**; other native action adapters remain
-**not implemented** or explicitly **not supported** as recorded below.
+Shared client action UI is **implemented**; native actions remain capability-gated
+per adapter as recorded below.
 Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See
@@ -864,7 +865,8 @@ supported by this seam**. V1 authentication and credential forgetting are
 **implemented** for configured remote servers with OAuth enabled. Native
 configuration is read through a minimal projection that discards credentials;
 local, OAuth-disabled and unknown server types remain unsupported. Unsupported
-configured callback overrides require native configuration before sign-in starts;
+configured callback overrides and malformed remote URLs require native
+configuration before sign-in starts;
 only non-secret redirect metadata is retained and forgetting stays independent.
 Sign-in starts
 on subscription and requires manual callback delivery through native OpenCode's
@@ -893,7 +895,8 @@ callback completion, profile credential forgetting and signing in again, with
 configuration unchanged and two fixture token exchanges verified.
 The bounded Pi/ACP source audit follows below. Original provider/package/client/
 L4 qualification remains partial; native fixture success does not establish those
-boundaries.
+boundaries. The cumulative [regression matrix](regression/mcp-management.md#regression-levels)
+records the required coverage, including selected packaged/external checks.
 
 ### Secondary MCP source and adapter audit
 
