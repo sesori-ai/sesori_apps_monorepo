@@ -362,4 +362,30 @@ void main() {
     expect(harness.settlements, 1);
     verifyNever(() => harness.repository.replyToForm(request: any(named: "request")));
   });
+
+  testWidgets("empty text and an emptied selection stay explicit instead of becoming omission", (tester) async {
+    await open(tester: tester);
+    await tester.enterText(input(id: "text"), "");
+    await tap(tester: tester, label: "No");
+    await tap(tester: tester, label: "Visible multiple option");
+    await tap(tester: tester, label: "Visible multiple option");
+    await tap(tester: tester, label: "Submit answers");
+    final request =
+        verify(() => harness.repository.replyToForm(request: captureAny(named: "request"))).captured.single
+            as ReplyToFormRequest;
+    expect(request.values["text"], const FormTextValue(value: ""));
+    expect(request.values["choices"], const FormChoicesValue(optionIds: []));
+    expect(request.values.containsKey("choice"), isFalse);
+  });
+
+  testWidgets("phone form viewport leaves space for the software keyboard", (tester) async {
+    await open(tester: tester, size: const Size(390, 844));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 320);
+    addTearDown(tester.view.resetViewInsets);
+    await tester.pumpAndSettle();
+    final viewport = find.descendant(of: find.byType(PendingFormModal), matching: find.byType(SingleChildScrollView));
+    expect(tester.getRect(viewport).bottom, lessThanOrEqualTo(844 - 320));
+    await tap(tester: tester, label: "Cancel request");
+    expect(harness.settlements, 1);
+  });
 }

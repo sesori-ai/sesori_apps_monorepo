@@ -370,6 +370,8 @@ validation transitions. Boolean Yes/No choices distinguish an unanswered field
 from false; single/multiple choices submit opaque IDs. Clear answer removes the
 draft explicitly. Per-field error space stays reserved; large text scrolls and
 status transitions honor reduced motion. Closing leaves the native request pending.
+These layout/motion properties have widget coverage; native feel checks and the
+user-deferred recording remain required by the final qualification matrix.
 Accepted or authoritative settlement closes the observer through the existing
 pending-list owner, which advances the next question even before a late HTTP reply.
 Retired connections show the connection-changed explanation ahead of any retained

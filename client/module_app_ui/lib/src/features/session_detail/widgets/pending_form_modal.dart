@@ -58,11 +58,9 @@ class const PendingFormModal({
     builder: (context, state) {
       final loc = context.loc;
       final cubit = context.read<PendingFormCubit>();
-      final available =
-          MediaQuery.sizeOf(context).height -
-          topInset -
-          PregoBottomSheet.contentTopInset -
-          MediaQuery.paddingOf(context).bottom;
+      final keyboard = MediaQuery.viewInsetsOf(context).bottom;
+      final bottomInset = keyboard > 0 ? keyboard : MediaQuery.paddingOf(context).bottom;
+      final available = MediaQuery.sizeOf(context).height - topInset - PregoBottomSheet.contentTopInset - bottomInset;
       return PregoModalSurface(
         title: loc.mcpNativeRequestTitle,
         subtitle: null,
