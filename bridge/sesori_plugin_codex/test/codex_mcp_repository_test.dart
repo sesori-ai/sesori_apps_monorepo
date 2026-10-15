@@ -141,7 +141,7 @@ void main() {
       expect(transport.calls.map((call) => call.method), ["mcpServerStatus/list", "app/list", "app/list"]);
       expect(transport.calls.skip(1).map((call) => call.params), [
         {"threadId": ?threadId, "limit": 100, "forceRefetch": true},
-        {"threadId": ?threadId, "cursor": "catalog-cursor", "limit": 100, "forceRefetch": true},
+        {"threadId": ?threadId, "cursor": "catalog-cursor", "limit": 100, "forceRefetch": false},
       ]);
     });
   }
@@ -172,7 +172,7 @@ void main() {
         "threadId": ?(scope is PluginMcpSessionScope ? scope.sessionId : null),
         "cursor": "next",
         "limit": 100,
-        "forceRefetch": true,
+        "forceRefetch": false,
       });
     });
   }

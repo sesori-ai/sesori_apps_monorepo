@@ -49,7 +49,7 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
         "threadId": ?threadId,
         "cursor": ?cursor,
         "limit": 100,
-        "forceRefetch": true,
+        "forceRefetch": cursor == null,
       },
     );
     if (result is! Map) throw StateError("expected a Codex app catalog page, got ${result.runtimeType}");

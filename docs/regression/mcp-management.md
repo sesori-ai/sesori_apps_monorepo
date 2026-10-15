@@ -396,7 +396,9 @@ remain distinct. No native authentication attempt or browser callback is created
 The client view's existing action owner launches only after an explicit setup
 action resolves on the same live connection/binding. Setup URLs remain local
 response data, absent from observed action states, inventory, SSE, replay,
-persistence and analytics. False/throwing launchers show failure and permit retry.
+persistence and analytics. Entry-action responses use the existing sensitive
+decoder, omitting raw setup destinations from parse and HTTP-error diagnostics.
+False/throwing launchers show failure and permit retry.
 Disconnect, rebind or disposal fences late resolution/launch results. Lost setup
 resolution is a retryable read failure, not an uncertain native mutation.
 
@@ -410,7 +412,7 @@ widgets use the same owner.
 
 Coverage: shared MCP codecs verify strict target types, released missing-action
 defaults, unknown actions and request-scoped setup results. Codex repository/plugin
-tests cover fresh pagination, policy/missing/unsafe URLs, typed failures and cold
+tests cover first-page-only refetch, policy/missing/unsafe URLs, typed failures and cold
 runtime refusal. Headless route tests exercise native target binding, archive/owner
 guards and the full destination policy. Client/widget tests cover explicit launch,
 retry, URL-free state, stale-result fencing, native-tool handoff and stable feedback.
