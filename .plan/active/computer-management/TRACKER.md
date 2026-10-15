@@ -3,11 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-<<<<<<< HEAD
 - Current step: 5/8 in PR.
-=======
-- Current step: 4/8 in PR.
->>>>>>> origin/main
 - User decisions: D1–D9 in `PLAN.md`, agreed 2026-10-15 over two review rounds.
 
 ## Delivery
@@ -17,13 +13,8 @@
 | 1/8 | monorepo | Publish the plan | Done | #1977 (merged 2026-10-15) |
 | 2/8 | auth | Nicknames stored; summaries and pushes use them | Done | sesori_auth_server#96 (merged 2026-10-15) |
 | 3/8 | monorepo | Flat Settings computer entry | Done | #1978 (merged 2026-10-15) |
-<<<<<<< HEAD
-| 4/8 | monorepo | Hostname, rename and remove in the computer list | Done | #1979 |
-| 5/8 | monorepo | Computers page with switch and rename | In PR | — |
-=======
-| 4/8 | monorepo | Hostname, rename and remove in the computer list | In PR | — |
-| 5/8 | monorepo | Computers page with switch and rename | Not started | — |
->>>>>>> origin/main
+| 4/8 | monorepo | Hostname, rename and remove in the computer list | Done | #1979 (merged 2026-10-15) |
+| 5/8 | monorepo | Computers page with switch and rename | In PR | #1982 |
 | 6/8 | monorepo | Remove offline computers | Not started | — |
 | 7/8 | monorepo | Reconcile regression documents | Not started | — |
 | 8/8 | monorepo | Run the L3 matrix; retire | Not started | — |
