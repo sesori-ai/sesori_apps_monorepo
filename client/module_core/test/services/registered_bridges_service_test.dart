@@ -572,6 +572,31 @@ void main() {
       verify(() => bridgeRepository.getRegisteredBridges()).called(2);
     });
 
+    test("a removal while a fetch persists the latch cannot bring the computer back", () async {
+      final latch = Completer<void>();
+      when(() => store.markRegistered()).thenAnswer((_) => latch.future);
+      final responses = [
+        Future.value(ApiResponse.success([laptop, desktop])),
+        Future.value(ApiResponse.success([desktop])),
+      ];
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => responses.removeAt(0));
+      when(() => bridgeRepository.deleteBridge(bridgeId: "a")).thenAnswer((_) async => ApiResponse.success(null));
+      final service = build();
+      final published = <List<BridgeSummary>>[];
+      final subscription = service.bridges.listen(published.add);
+      addTearDown(subscription.cancel);
+
+      final fetch = service.getRegisteredBridges();
+      await _settle();
+      await service.remove(bridgeId: "a");
+      latch.complete();
+      await fetch;
+      await _settle();
+
+      expect(service.bridges.value, [desktop]);
+      expect(published, everyElement(isNot(contains(laptop))));
+    });
+
     test("removing the last computer makes the next read ask the server", () async {
       final service = await buildListed();
       when(() => bridgeRepository.deleteBridge(bridgeId: any(named: "bridgeId")))
