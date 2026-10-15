@@ -1042,6 +1042,151 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a prompt that wakes an idle session keeps Working… below it from send to delivery", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(400, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "user-0", role: "user", text: "Earlier"),
+          _message(messageId: "assistant-0", role: "assistant", text: "Earlier reply"),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    final harness = harnessKey.currentState!;
+    double top(Finder finder) => tester.getTopLeft(finder).dy;
+    final working = find.byType(TranscriptWorkingRow);
+
+    // Sent while idle; the session wakes for it, and a prompt sent after it
+    // waits below Working.
+    harness.sendDirectly(_textSubmission(promptId: "prm_wake", text: "wake it"));
+    await tester.pump();
+    harness.setBusy(true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    harness.enqueueSubmission(_textSubmission(promptId: "prm_next", text: "next"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(top(find.text("wake it")), lessThan(top(working)));
+    expect(top(working), lessThan(top(find.text("next"))));
+
+    final workingTop = top(working);
+    final workingHeight = tester.getSize(working).height;
+    final workingRow = tester.element(working);
+    Future<void> expectStill() async {
+      for (var frame = 0; frame < 12; frame++) {
+        await tester.pump(const Duration(milliseconds: 25));
+        expect(top(working), moreOrLessEquals(workingTop, epsilon: 0.5), reason: "frame $frame");
+        expect(tester.getSize(working).height, moreOrLessEquals(workingHeight, epsilon: 0.5), reason: "frame $frame");
+        expect(tester.getBottomLeft(find.text("wake it")).dy, lessThan(workingTop), reason: "frame $frame");
+      }
+      expect(tester.element(working), same(workingRow));
+    }
+
+    harness.acceptSendingSubmission();
+    await expectStill();
+    harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          id: "prm_wake",
+          text: "wake it",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.dispatched,
+        ),
+      ],
+      attachments: const {},
+    );
+    await expectStill();
+    harness.deliverBridgePrompt(
+      promptId: "prm_wake",
+      message: _message(messageId: "user-1", role: "user", text: "wake it", promptId: "prm_wake"),
+      insertionIndex: 2,
+    );
+    await expectStill();
+    expect(find.widgetWithText(UserMessageCard, "wake it"), findsOneWidget);
+    expect(top(working), lessThan(top(find.text("next"))));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a prompt from another surface that wakes the session sits above Working… when busy lands first", (
+    tester,
+  ) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [_message(messageId: "user-0", role: "user", text: "Earlier")],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    final harness = harnessKey.currentState!..setBusy(true);
+    await tester.pump();
+    harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          id: "prm_remote",
+          text: "from the desktop",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.dispatched,
+        ),
+      ],
+      attachments: const {},
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final working = find.byType(TranscriptWorkingRow);
+    expect(tester.getBottomLeft(find.text("from the desktop")).dy, lessThan(tester.getTopLeft(working).dy));
+
+    harness.deliverBridgePrompt(
+      promptId: "prm_remote",
+      message: _message(messageId: "user-1", role: "user", text: "from the desktop", promptId: "prm_remote"),
+      insertionIndex: 1,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.getBottomLeft(find.text("from the desktop")).dy, lessThan(tester.getTopLeft(working).dy));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
+  testWidgets("a steer sent while the session works waits below Working…", (tester) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [_message(messageId: "user-0", role: "user", text: "Earlier")],
+        initialStreamingText: const {},
+      ),
+    );
+    final harness = harnessKey.currentState!..setBusy(true);
+    Future<void> settle() async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    // The turn is under way: its reply has started.
+    harness.appendNewestMessage(_message(messageId: "assistant-0", role: "assistant", text: "On it"));
+    await settle();
+    double top(Finder finder) => tester.getTopLeft(finder).dy;
+    final working = find.byType(TranscriptWorkingRow);
+
+    harness.sendDirectly(_textSubmission(promptId: "prm_steer", text: "steer it"));
+    await settle();
+    expect(top(working), lessThan(top(find.text("steer it"))));
+    harness.acceptSendingSubmission();
+    await settle();
+    expect(top(working), lessThan(top(find.text("steer it"))));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("launch follow-ups sit after the first message and ahead of this screen's queue, with their actions", (
     tester,
   ) async {

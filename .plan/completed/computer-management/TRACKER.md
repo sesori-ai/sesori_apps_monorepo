@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 7/8 in PR.
+- Current step: complete; retired 2026-10-15 in step 8.
 - User decisions: D1–D9 in `PLAN.md`, agreed 2026-10-15 over two review rounds.
 
 ## Delivery
@@ -16,8 +16,8 @@
 | 4/8 | monorepo | Hostname, rename and remove in the computer list | Done | #1979 (merged 2026-10-15) |
 | 5/8 | monorepo | Computers page with switch and rename | Done | #1982 (merged 2026-10-15) |
 | 6/8 | monorepo | Remove offline computers | Done | #1985 (merged 2026-10-15) |
-| 7/8 | monorepo | Reconcile regression documents | In PR | — |
-| 8/8 | monorepo | Run the L3 matrix; retire | Not started | — |
+| 7/8 | monorepo | Reconcile regression documents | Done | #1988 (merged 2026-10-15) |
+| 8/8 | monorepo | Run the L3 matrix; retire | Done | This change; live cells accepted, not executed |
 
 ## Evidence and decisions
 
@@ -54,3 +54,40 @@
 - 2026-10-15: `architecture-implementation-review` of step 6 approved with no findings. It confirmed that the
   replacement pick lives in `SelectedComputerService`, that switching goes through the shell callback, and that making
   `PregoGroupedRowPosition` public (two users) is acceptable.
+
+## Retirement matrix
+
+Accepted reduction (user, 2026-10-15): the plan retires on automated coverage. The auth route, service and tracker
+suites passed in their repository, and the client unit and widget suites for every step passed in CI. Headless iOS
+simulator renders with fixture data (no live account) are in the #1982 and #1985 PR bodies. The live cells below
+were not executed; the user runs them on the next build, and any failure becomes an ordinary bug PR.
+
+| Boundary | Cell | State |
+|---|---|---|
+| Auth server | Nickname storage, summary names and push titles | Passed (automated, sesori_auth_server#96) |
+| Client, iOS simulator | Settings → menu footer → Computers opens | Accepted, not executed |
+| Client, iOS simulator | A rename shows on the page with the hostname under it and in the Projects header; Use hostname reverts | Accepted, not executed |
+| Client, iOS simulator | An online computer's Remove is disabled | Accepted, not executed |
+| Client, iOS simulator | Removing an offline, non-viewed computer drops it | Accepted, not executed |
+| Client, iOS simulator | Removing the viewed offline computer switches to the next one | Accepted, not executed |
+| Client, macOS desktop | The “Viewing:” footer opens the Computers page in Settings | Accepted, not executed |
+| Client, macOS desktop | Remove on “This computer” shows the D4 explanation | Accepted, not executed |
+| Client, macOS desktop | “Turn off bridge” stops the bridge and the button hides once it is off | Accepted, not executed |
+
+### Checklist for the next build
+
+Use an account with at least two computers, one of them offline.
+
+1. Phone: Settings → computer entry → “Manage computers…” opens Computers; Back returns to Settings.
+2. Phone: rename a computer. The page shows the new name with the hostname under it, and the Projects header shows
+   the new name. “Use hostname” in the rename sheet brings the hostname back and the line under it disappears.
+3. Phone: on an online computer, Remove… is greyed out with “Quit Sesori on <name> to remove it”.
+4. Phone: remove an offline computer you are not viewing. A confirmation comes first, then its row closes smoothly
+   and it is gone from the menu.
+5. Phone: view an offline computer, then remove it. The app moves to another computer's Projects.
+6. macOS desktop: “Viewing:” menu → “Manage computers…” opens Computers inside the Settings window, with Back staying
+   in the window.
+7. macOS desktop: Remove… on “This computer” shows the explanation instead of removing.
+8. macOS desktop: “Turn off bridge” in that explanation stops the local bridge, and the button disappears once it is
+   off.
+

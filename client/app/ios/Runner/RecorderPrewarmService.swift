@@ -67,6 +67,12 @@ final class RecorderPrewarmService {
     bitRate: Int,
     numChannels: Int
   ) throws {
+    let session = AVAudioSession.sharedInstance()
+    // Preparing the recorder activates a non-mixable session, which pauses
+    // other apps' music or video without resuming it. A slower first
+    // recording is the better trade than stealing audio on every chat open.
+    guard !session.isOtherAudioPlaying else { return }
+
     let fileManager = FileManager.default
     let outputUrl = fileManager.temporaryDirectory
       .appendingPathComponent("sesori-recorder-prewarm.m4a")
@@ -74,7 +80,6 @@ final class RecorderPrewarmService {
       try fileManager.removeItem(at: outputUrl)
     }
 
-    let session = AVAudioSession.sharedInstance()
     let previousSession = AudioSessionSnapshot(session: session)
     var recorder: AVAudioRecorder?
     defer {
