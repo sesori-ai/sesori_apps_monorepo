@@ -557,12 +557,17 @@ void main() {
       await _settle();
 
       await service.remove(bridgeId: "a");
+      final published = <List<BridgeSummary>>[];
+      final subscription = service.bridges.skip(1).listen(published.add);
+      addTearDown(subscription.cancel);
       // A second unknown notice queues behind the same stale fetch and shares its refetch.
       connectionService.emitBridgePresence(bridgeId: "d", online: true);
       staleFetch.complete(ApiResponse.success([laptop, desktop]));
       await _settle();
 
       expect(service.bridges.value, [desktop]);
+      // The stale snapshot is never published, so the removed row does not flash back.
+      expect(published, everyElement(isNot(contains(laptop))));
       expect(responses, isEmpty);
       verify(() => bridgeRepository.getRegisteredBridges()).called(2);
     });

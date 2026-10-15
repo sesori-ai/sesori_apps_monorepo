@@ -96,6 +96,11 @@ class RegisteredBridgesService({
   /// bridge-offline flow.
   int _authGeneration = 0;
 
+  /// Bumped on every confirmed rename or removal. A fetch that started before
+  /// one carries the older list, so it leaves [bridges] to the refetch queued
+  /// behind it instead of briefly reverting the change.
+  int _mutationGeneration = 0;
+
   StreamSubscription<ConnectionStatus>? _statusSubscription;
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<BridgePresenceMessage>? _presenceSubscription;
@@ -174,6 +179,7 @@ class RegisteredBridgesService({
 
   Future<List<BridgeSummary>> _fetchRegisteredBridges() async {
     final generation = _authGeneration;
+    final mutationGeneration = _mutationGeneration;
     try {
       final response = await _bridgeRepository.getRegisteredBridges();
       // A logout during the in-flight request retires this result: the account
@@ -182,6 +188,7 @@ class RegisteredBridgesService({
       if (generation != _authGeneration) return const [];
       switch (response) {
         case SuccessResponse(:final data):
+          if (mutationGeneration != _mutationGeneration) return _bridges.value;
           if (data.isEmpty) {
             _emitBridges(bridges: const []);
             return const [];
@@ -239,6 +246,7 @@ class RegisteredBridgesService({
   }
 
   void _afterMutation({required ComputerManageAction action}) {
+    _mutationGeneration++;
     // A fetch already running may have read the list before this change and
     // would publish that older snapshot, so fetch again once it settles.
     if (_activeFetch != null) _refetchAfterRunningFetch();
