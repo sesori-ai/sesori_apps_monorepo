@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-client-forms`, `5765963a81`, in the provided `copper-heron` worktree.
-- Current step: 22/29 is in review; 23/29 is implemented locally; latest merged step: 21/29 as [#1991][pr-1991].
+- Branch/base: `sesori/mcp-client-forms`, `0483482b2e`, in the provided `copper-heron` worktree.
+- Current step: 23/29 is ready for PR; latest merged step: 22/29 as [#1992][pr-1992].
+  Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
@@ -44,7 +45,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 19/29 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
 | 20/29 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
 | 21/29 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
-| 22/29 | Canonical headless forms (9.b.2) | In review | [#1992][pr-1992]; active-only canonical snapshots and ordered typed replies |
+| 22/29 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992]; active-only canonical snapshots and ordered typed replies |
 | 23/29 | Client typed draft lifecycle (9.c.1) | Verified locally | 29 form cases, 9 shell DI cases, client analysis and architecture review pass |
 | 24/29 | Shared typed form controls (9.c.2) | Not started | — |
 | 25/29 | Codex inventory/actions/authentication | Not started | — |
@@ -1366,3 +1367,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step-23 architecture implementation review pass 1 approved the complete client
   foundation without findings. Production boundaries and test inputs were unchanged
   after the passing focused checks; generated DI output remains with its source.
+- Step 22 merged at accepted head `960468bf0f`, squash `0483482b2e`, with 19
+  pre-merge and 20 terminal checks passing. The latest Cubic review approved with
+  zero new issues; the declined actual-owner cascade concern retains its explanation.
+  Step-23 source `065329c44d` contains the verified client foundation. Merge
+  `8201540472` integrated the parent; all three conflicting incoming documents
+  matched the already integrated parent byte-for-byte. Production/test inputs and
+  dependencies did not change, so no unchanged passing suite was repeated.
