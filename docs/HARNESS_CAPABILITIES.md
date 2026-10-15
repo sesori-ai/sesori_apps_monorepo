@@ -708,9 +708,9 @@ Plain-pipe login does not expose the
 no-browser URL/paste journey. Codex completion must be correlated by the
 adapter; a browser open does not confirm success. Claude live-session reconnect
 and enable/disable are **implemented** as Sesori management actions. Claude plugin
-HTTP authentication and its headless attempt routes are implemented. Client authentication
-actions, elicitation and the remaining native-supported management rows are **not implemented**
-at this checkpoint.
+HTTP authentication, its headless attempt routes and shared client controls are
+implemented. Elicitation and the remaining native-supported management rows are
+**not implemented**.
 
 The Claude native plugin authentication API is **implemented** for an existing
 resident's native-configured HTTP server: no-browser sign-in, matching callback,
@@ -719,8 +719,9 @@ Both pins passed isolated OAuth on macOS arm64, including reconnect/tools in the
 existing resident. Server definitions remain unchanged; the CLI may update its
 own credential and preference bookkeeping. Headless read/start/continue/cancel
 routes are **implemented**, with one bridge-owned leased attempt and request-only
-URLs. Client authentication actions remain **not implemented** at this checkpoint. Linux's terminal path is implemented
-but unqualified; Windows integration and SSE authentication are **not implemented**.
+URLs. Shared client authentication actions are **implemented**. Linux's terminal
+path is implemented but unqualified; Windows integration and SSE authentication
+are **not implemented**.
 Dynamic/unknown session configuration cannot be safely addressed by named CLI
 credential operations and returns an explicit native-configuration handoff.
 Stdio OAuth is **not supported** by this native method. Other harness native

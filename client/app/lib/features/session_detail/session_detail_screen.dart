@@ -161,16 +161,24 @@ class const _MobileSessionDetailBody({
             subtitle: null,
             isSelected: false,
             shortcutLabel: null,
-            onTap: () => showMcpInventory(
-              context: context,
-              request: McpInventoryRequest(
-                pluginId: session.pluginId,
-                scope: McpSessionScope(sessionId: session.id),
-              ),
-              createService: getIt.call<McpService>,
-              authenticationService: getIt.call<McpAuthenticationService>,
-              mutationsAllowed: !readOnly && !auditView && session.parentID == null && session.time?.archived == null,
-            ),
+            onTap: () async {
+              final state = context.read<SessionDetailCubit>().state;
+              await showMcpInventory(
+                context: context,
+                request: McpInventoryRequest(
+                  pluginId: session.pluginId,
+                  scope: McpSessionScope(sessionId: session.id),
+                ),
+                createService: getIt.call<McpService>,
+                authenticationService: getIt.call<McpAuthenticationService>,
+                mutationsAllowed:
+                    !readOnly &&
+                    !auditView &&
+                    session.parentID == null &&
+                    session.time?.archived == null &&
+                    !(state is SessionDetailLoaded && state.isArchived),
+              );
+            },
           ),
           if (!auditView && session.parentID == null)
             ..._sessionActions.sessionMenuEntries(

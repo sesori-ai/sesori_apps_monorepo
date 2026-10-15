@@ -5812,13 +5812,13 @@ abstract class AppLocalizations {
   /// No description provided for @mcpActionNotSupported.
   ///
   /// In en, this message translates to:
-  /// **'This server does not support this authentication method.'**
+  /// **'This server does not support this action.'**
   String get mcpActionNotSupported;
 
   /// No description provided for @mcpActionNotImplemented.
   ///
   /// In en, this message translates to:
-  /// **'This integration does not yet support this authentication method.'**
+  /// **'This integration does not yet support this action.'**
   String get mcpActionNotImplemented;
 
   /// No description provided for @mcpNativeConfigurationRequired.
@@ -5938,7 +5938,7 @@ abstract class AppLocalizations {
   /// No description provided for @mcpAuthBrowserBusy.
   ///
   /// In en, this message translates to:
-  /// **'Another sign-in owns the browser. Your challenge is retained; open the browser when it is free.'**
+  /// **'Another sign-in is using the browser. Your challenge is retained; open the browser when it is free.'**
   String get mcpAuthBrowserBusy;
 
   /// No description provided for @mcpAuthBrowserFailed.

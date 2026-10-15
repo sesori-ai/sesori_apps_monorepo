@@ -10,9 +10,9 @@ server-details view backed by the typed loading lifecycle. `POST /mcp/entry/acti
 exposes explicit live-session Claude reconnect, enable and disable controls to
 headless consumers. Claude native plugin authentication is implemented for
 existing configured HTTP servers. Headless read/start/continue/cancel routes are
-implemented; product action UI remains pending.
+implemented, with shared phone/desktop controls for declared native actions.
 The shared client authentication API, repository, connection-fenced owner and
-observing Cubit are implemented; the next presentation step exposes their intents.
+observing Cubit are implemented and exposed by the shared connection controls.
 Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
@@ -126,8 +126,10 @@ archived session if its native process remains live; it grants no session mutati
   reopening reads its current state.
 - Credential forgetting requires confirmation explaining native effect scope,
   preserved server definitions and the possibility of an existing live connection.
-  Cancelling the confirmation dispatches nothing. Pending native work disables
-  repeated management requests, including observed busy authentication operations.
+  Cancelling the confirmation dispatches nothing. Pending entry actions disable
+  repeated management requests. An active or observed busy authentication operation
+  disables sign-in and credential forgetting; reconnect, enable and disable remain
+  available through their independent native path.
 - An action result retains its server target and is not presented as another
   server's outcome. Large text on a phone-sized surface remains scrollable.
 - Focused widget coverage: `mcp_inventory_view_test.dart` and
@@ -166,13 +168,12 @@ state and enum values degrade explicitly. Callback request presentation and
 malformed-body errors do not reflect credential input, while errors retain a
 typed original cause. Codec and privacy coverage lives in
 `shared/sesori_shared/test/models/mcp_authentication_test.dart`.
-Headless read/start/continue/cancel routes use this contract. Client authentication
-actions remain pending.
+Headless read/start/continue/cancel routes and shared client authentication actions
+use this contract.
 
 The optional plugin API can sign in to an existing live Claude session's
 native-configured HTTP server and clear its native credentials. This is a
-native plugin boundary used by the headless attempt owner. Client action UI
-remains pending.
+native plugin boundary used by the headless attempt owner and shared client controls.
 
 - Resolve the exact server and resident directory without starting a session.
   Dynamic/unknown configuration returns a handoff instead of addressing a
@@ -311,5 +312,5 @@ Automated adapter/route coverage:
 The existing browser transport now accepts bridge/connection/purpose-bound owner handles and returns typed busy for a
 competing flow. Matching retry/cancel protects provider and MCP callback listeners in both start orders. Provider busy
 presentation retains its issued challenge for explicit retry. The transport seam and shared MCP client lifecycle are
-implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls remain
-pending. The headless owner and final qualification matrix are unchanged.
+implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
+these intents. The headless owner and final qualification matrix are unchanged.

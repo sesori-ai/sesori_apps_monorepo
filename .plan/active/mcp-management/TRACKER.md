@@ -4,9 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-visible-controls`, `c3716bfce5`, in the provided `copper-heron` worktree.
-- Current step: 11/24 merged as [#1957][pr-1957];
-  steps 12/24 and 13/24 merged as [#1962][pr-1962] and [#1964][pr-1964];
-  step 14/24 merged as [#1966][pr-1966]; step 15/24 merged as [#1969][pr-1969]; Step 16/24 is in review [#1971][pr-1971];
+- Current step: 16/24 is in review [#1971][pr-1971]; latest merged step: 15/24 as [#1969][pr-1969].
+  Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -980,3 +979,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Owned fixture PID 78941 was stopped; production PID 7903 was preserved. No
   account, bridge, real browser, persistence or credential operation ran. These
   checks qualify native presentation only; final L4/provider/package checks remain required.
+
+- Step 16 review fixes: mobile menu activation now reads the current loaded
+  archive flag as well as hydrated session metadata. A shell regression failed
+  with mutations allowed before the fix and passes with read-only inventory
+  when the native archive flag precedes the session timestamp. All seven mobile
+  shell cases and 17 shared MCP widget cases pass. Mobile/shared UI analyzers
+  pass; localization was regenerated from its action-neutral English source.
+  Authentication busy state blocks sign-in and forgetting; independent resident
+  reconnect/enable/disable controls remain available. Capability/regression docs
+  now describe the implemented presentation consistently. Native motion evidence
+  predates these wording and mobile-gating fixes; desktop layout is unchanged.

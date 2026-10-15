@@ -224,8 +224,9 @@ schema keys, connector IDs, persistence metadata, and answer encoding in the own
   introducing a second request-ID registry. Its wire payload contains request/session/display-session IDs, explanatory
   text, a validated URL, purpose, and the declared native reply choices. Add matching session-scoped snapshot/reply
   routes and a URL-free normalized invalidation event; bridge replies pass through the same
-  `SessionOperationDispatcher` as existing interactions. This pending contract does not represent the non-pending catalog setup result above; explicit server
-  authentication uses the separately defined scope-bound `McpAuthenticationService` attempt.
+  `SessionOperationDispatcher` as existing interactions. This pending contract does not represent the non-pending
+  catalog setup result above; explicit server authentication uses the separately defined scope-bound
+  `McpAuthenticationService` attempt.
 - Before forwarding any authorization, elicitation, or connector-setup destination, its bridge service requires an
   absolute HTTPS URI with a nonempty host and no user info. Reject relative URLs, HTTP, `file:`, `data:`, `javascript:`,
   and custom schemes with a typed unsupported/error result before client browser launch. Native loopback callback

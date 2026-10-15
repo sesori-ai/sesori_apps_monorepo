@@ -3303,10 +3303,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpActionUncertain => 'The action could not be confirmed. Refreshing inventory before you try again.';
 
   @override
-  String get mcpActionNotSupported => 'This server does not support this authentication method.';
+  String get mcpActionNotSupported => 'This server does not support this action.';
 
   @override
-  String get mcpActionNotImplemented => 'This integration does not yet support this authentication method.';
+  String get mcpActionNotImplemented => 'This integration does not yet support this action.';
 
   @override
   String get mcpNativeConfigurationRequired => 'Finish native configuration or project trust on the bridge host.';
@@ -3369,7 +3369,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpAuthBrowserBusy =>
-      'Another sign-in owns the browser. Your challenge is retained; open the browser when it is free.';
+      'Another sign-in is using the browser. Your challenge is retained; open the browser when it is free.';
 
   @override
   String get mcpAuthBrowserFailed =>
