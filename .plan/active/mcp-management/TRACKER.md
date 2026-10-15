@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-form-controls`, `0483482b2e`, in the provided `copper-heron` worktree.
-- Current step: 23/29 is in review as [#1993][pr-1993]; latest merged step: 22/29 as [#1992][pr-1992].
-  Step 24/29 is implemented locally; native recording remains deferred by the user.
+- Branch/base: `sesori/mcp-form-controls`, `9c4b5341d6`, in the provided `copper-heron` worktree.
+- Current step: 24/29 is verified locally; latest merged step: 23/29 as [#1993][pr-1993].
+  Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
@@ -47,7 +47,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 20/29 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
 | 21/29 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
 | 22/29 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
-| 23/29 | Client typed draft lifecycle (9.c.1) | In review | [#1993][pr-1993] |
+| 23/29 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
 | 24/29 | Shared typed form controls (9.c.2) | Verified locally | Shared widgets, both shells, 23 cases and analysis |
 | 25/29 | Codex inventory/actions/authentication | Not started | — |
 | 26/29 | Codex forms and offered connectors | Not started | — |
@@ -1395,3 +1395,15 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   The final widget run has no missed-tap warnings. Client-root analysis with the
   repository plugin passes. Architecture implementation review pass 1 approved
   the shared modal/editor, scope and shell composition without findings.
+- Step 23 merged at accepted head `84aea1db7a`, squash `9c4b5341d6`, with 20
+  pre-merge and 21 terminal checks passing. Its declined snapshot-reset concern
+  remains explained; the UI regression verifies connection-changed presentation
+  takes priority over retained submission state and that late acceptance is fenced.
+  Merge `eebc0578c3` integrated the foundation into Step 24. All three conflicting
+  incoming documents matched the already integrated parent byte-for-byte.
+- Step-24 source `83971467a5` includes fixture-driven compact constraint captions.
+  Eight widget cases and a separate synthetic before/after render pass together,
+  with zero missed-tap warnings; final client-root analysis passes. The two
+  scheduler and 13 desktop composition cases passed before the caption-only change.
+  Inspected fixture images contain synthetic data only; native motion recording
+  and the real provider/relay/package matrix remain deferred qualification work.
