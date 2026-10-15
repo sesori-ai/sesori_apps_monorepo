@@ -5968,13 +5968,13 @@ abstract class AppLocalizations {
   /// No description provided for @mcpFormMinCharacters.
   ///
   /// In en, this message translates to:
-  /// **'At least {count} characters'**
+  /// **'Minimum characters: {count}'**
   String mcpFormMinCharacters(int count);
 
   /// No description provided for @mcpFormMaxCharacters.
   ///
   /// In en, this message translates to:
-  /// **'At most {count} characters'**
+  /// **'Maximum characters: {count}'**
   String mcpFormMaxCharacters(int count);
 
   /// No description provided for @mcpFormMinChoices.

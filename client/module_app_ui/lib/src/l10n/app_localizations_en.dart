@@ -3401,12 +3401,12 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String mcpFormMinCharacters(int count) {
-    return 'At least $count characters';
+    return 'Minimum characters: $count';
   }
 
   @override
   String mcpFormMaxCharacters(int count) {
-    return 'At most $count characters';
+    return 'Maximum characters: $count';
   }
 
   @override

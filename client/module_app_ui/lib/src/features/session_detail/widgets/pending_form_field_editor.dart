@@ -51,8 +51,12 @@ class _PendingFormFieldEditorState() extends State<PendingFormFieldEditor> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(field.label, style: Theme.of(context).textTheme.titleSmall),
-          Text(field.isRequired ? loc.mcpFormRequired : loc.mcpFormOptional),
-          for (final hint in _hints(schema: field.schema, loc: loc)) Text(hint),
+          Text(
+            [
+              field.isRequired ? loc.mcpFormRequired : loc.mcpFormOptional,
+              ..._hints(schema: field.schema, loc: loc),
+            ].join(" · "),
+          ),
           if (field.description case final description?) Text(description),
           const SizedBox(height: PregoSpacing.sm),
           _input(context: context),

@@ -221,9 +221,7 @@ void main() {
           ApiResponse.success(const FormValidationFailed(fieldErrors: {"count": FormValidationIssue.outOfRange})),
     );
     await open(tester: tester);
-    expect(find.text("Whole number"), findsOneWidget);
-    expect(find.text("Minimum: 0"), findsOneWidget);
-    expect(find.text("Maximum: 3"), findsOneWidget);
+    expect(find.text("Required · Whole number · Minimum: 0 · Maximum: 3"), findsOneWidget);
     final controller = tester.widget<TextField>(input(id: "count")).controller!;
     await tester.enterText(input(id: "count"), "99");
     await tap(tester: tester, label: "No");
