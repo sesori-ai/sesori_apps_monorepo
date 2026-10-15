@@ -96,7 +96,7 @@ void main() {
         ),
       );
 
-  test("unknown action variants reject before native mutation", () async {
+  test("unknown actions and mismatched targets reject before native access", () async {
     for (final type in [null, "future", "connectorSetup"]) {
       final body = const McpEntryActionRequest(
         pluginId: "fixture",
@@ -116,6 +116,99 @@ void main() {
     }
     expect(plugin.actions, isEmpty);
     expect(plugin.scopes, isEmpty);
+    expect(changes, isEmpty);
+  });
+
+  Future<RelayResponse> setup({required String pluginId, required McpScope scope}) => actionHandler.routeForTest(
+    makeRequest(
+      "POST",
+      "/mcp/entry/action",
+      body: jsonEncode(
+        McpEntryActionRequest(
+          pluginId: pluginId,
+          action: McpConnectorSetupEntryAction(
+            offerTarget: McpConnectorOfferTarget(scope: scope, offerKey: "opaque-server"),
+          ),
+        ),
+      ),
+    ),
+  );
+
+  test("connector setup resolves the native offer without server mutation or invalidation", () async {
+    final response = await setup(
+      pluginId: "fixture",
+      scope: const McpSessionScope(sessionId: "bridge-session"),
+    );
+    expect(response.status, 200);
+    final result =
+        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>) as McpExternalSetup;
+    expect(result.setupUrl, "https://fixture.example/setup?private=secret");
+    expect(result.toString(), isNot(contains("private=secret")));
+    expect(plugin.setupTargets.single.offerKey, "opaque-server");
+    expect((plugin.setupTargets.single.scope as PluginMcpSessionScope).sessionId, "native-session");
+    expect(plugin.actions, isEmpty);
+    expect(plugin.scopes, isEmpty);
+    expect(changes, isEmpty);
+  });
+
+  test("bridge rejects unsafe plugin setup destinations before forwarding", () async {
+    for (final url in [
+      "/setup",
+      "http://fixture.example",
+      "file:///setup",
+      "data:text/plain,setup",
+      "javascript:void(0)",
+      "custom://setup",
+      "https://user:secret@fixture.example",
+    ]) {
+      plugin.setupResult = PluginMcpConnectorExternalSetup(destination: Uri.parse(url));
+      final response = await setup(pluginId: "fixture", scope: const McpHarnessScope());
+      expect(
+        McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>),
+        const McpActionUnavailable(reason: McpActionUnavailableReason.nativeConfigurationRequired),
+      );
+      expect(response.body, isNot(contains(url)));
+    }
+    expect(changes, isEmpty);
+  });
+
+  test("setup checks archived and foreign session ownership before plugin access", () async {
+    expect(
+      (await setup(
+        pluginId: "other",
+        scope: const McpSessionScope(sessionId: "bridge-session"),
+      )).status,
+      400,
+    );
+    expect(
+      (await setup(
+        pluginId: "fixture",
+        scope: const McpSessionScope(sessionId: "missing"),
+      )).status,
+      404,
+    );
+    await (db.update(
+      db.sessionTable,
+    )..where((r) => r.sessionId.equals("bridge-session"))).write(const SessionTableCompanion(archivedAt: Value(1)));
+    expect(
+      (await setup(
+        pluginId: "fixture",
+        scope: const McpSessionScope(sessionId: "bridge-session"),
+      )).status,
+      409,
+    );
+    expect(plugin.setupTargets, isEmpty);
+    expect(changes, isEmpty);
+  });
+
+  test("native setup failure stays a safe typed response", () async {
+    plugin.setupResult = PluginMcpConnectorSetupFailed(
+      cause: Exception("fixture-secret"),
+      causeStackTrace: StackTrace.current,
+    );
+    final response = await setup(pluginId: "fixture", scope: const McpHarnessScope());
+    expect(McpEntryActionResult.fromJson(jsonDecode(response.body!) as Map<String, dynamic>), isA<McpActionFailed>());
+    expect(response.body, isNot(contains("fixture-secret")));
     expect(changes, isEmpty);
   });
 
@@ -303,6 +396,26 @@ void main() {
     expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
   });
 
+  for (final scope in [
+    const McpSessionScope(sessionId: "bridge-session"),
+    const McpProjectScope(projectId: "opaque-project"),
+  ]) {
+    test("project-wide control invalidates every plugin view when invoked from $scope", () async {
+      plugin.actionResult = const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.project);
+      final response = await act(pluginId: "fixture", scope: scope, action: McpServerAction.reconnect);
+      expect(response.status, 200);
+      expect(changes.single, const McpInventoryRequest(pluginId: "fixture", scope: McpHarnessScope()));
+      expect(
+        ((McpEntryActionResult.fromJson(
+                  jsonDecode(response.body!) as Map<String, dynamic>,
+                ) as McpActionCompleted).inventory
+                as McpInventorySnapshot)
+            .scope,
+        scope,
+      );
+    });
+  }
+
   test("native control failure retains diagnostics locally without refreshing or exporting errors", () async {
     plugin.actionResult = PluginMcpActionFailed(
       cause: Exception("fixture-secret"),
@@ -427,6 +540,7 @@ void main() {
           name: "Fixture offer",
           description: null,
           availability: PluginMcpConnectorOfferAvailability.setupRequired,
+          actions: [],
         ),
       ],
     );
@@ -517,6 +631,19 @@ void main() {
       unavailable,
       isA<McpControlUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.unsupportedHarness),
     );
+    final setup =
+        await McpRepository(
+          runtime: unsupportedRuntime,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+        ).resolveConnectorSetup(
+          pluginId: "unsupported",
+          target: const McpConnectorOfferTarget(scope: McpHarnessScope(), offerKey: "fixture"),
+        );
+    expect(
+      setup,
+      isA<McpControlUnavailable>().having((r) => r.reason, "reason", McpActionUnavailableReason.unsupportedHarness),
+    );
     await unsupportedRuntime.dispose();
   });
 
@@ -537,11 +664,25 @@ void main() {
   });
 }
 
-class _InventoryPlugin() extends FakeDerivedBridgePlugin implements McpManagementPluginApi, McpAuthenticationPluginApi {
+class _InventoryPlugin()
+    extends FakeDerivedBridgePlugin
+    implements McpManagementPluginApi, McpAuthenticationPluginApi, McpConnectorSetupPluginApi {
   this : super(id: "fixture", launchDirectory: "/fixture", allSessions: const []);
   final forgotten = <PluginMcpServerTarget>[];
   Exception? forgettingError;
   PluginMcpActionEffectScope forgettingScope = PluginMcpActionEffectScope.harness;
+  final setupTargets = <PluginMcpConnectorOfferTarget>[];
+  PluginMcpConnectorSetupResult setupResult = PluginMcpConnectorExternalSetup(
+    destination: Uri.parse("https://fixture.example/setup?private=secret"),
+  );
+
+  @override
+  Future<PluginMcpConnectorSetupResult> resolveMcpConnectorSetup({
+    required PluginMcpConnectorOfferTarget target,
+  }) async {
+    setupTargets.add(target);
+    return setupResult;
+  }
 
   @override
   Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) =>

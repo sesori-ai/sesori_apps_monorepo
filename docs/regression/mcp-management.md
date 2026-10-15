@@ -33,8 +33,9 @@ archived session if its native process remains live; it grants no session mutati
   descriptions, native server titles/descriptions, safe endpoint origins and separate native auth/runtime state
   reach neutral consumers. No config provenance or per-server control is guessed.
   Config reload is not advertised as resident reconnect. Native OAuth uses the
-  existing attempt owner; offered connectors remain explicitly not implemented,
-  and toggles/forgetting are unsupported.
+  existing attempt owner. Offered-connector inventory is implemented through
+  app/list; catalog-resolved setup uses a distinct offer/browser handoff. Toggles/forgetting
+  are unsupported.
   Coverage: `codex_mcp_repository_test.dart` and `codex_mcp_plugin_test.dart`
   in `bridge/sesori_plugin_codex/test/`, including exact scope/pagination,
   malformed payloads, typed failure causes and detached/disconnected lifecycle.
@@ -87,8 +88,9 @@ archived session if its native process remains live; it grants no session mutati
 - Each server declares supported controls and their effect scope separately from
   configuration source/access. Claude controls affect only the resident session;
   they do not rewrite configuration or grant authentication/tool permission.
-- Action requests carry a server target; connector targets are rejected even with
-  equal key text. The bridge validates stored session ownership and rejects archived
+- Server-control/forgetting requests carry a server target; connector setup carries
+  an offer target. Mismatched variants reject even with equal key text. The bridge
+  validates stored session ownership and rejects archived
   mutations. Unsupported/inactive scopes do not activate a plugin or agent session.
 - Completed controls return an authoritative inventory read. A failed read after
   completion remains read-failed; an acknowledgement never implies connection.
@@ -338,6 +340,186 @@ competing flow. Matching retry/cancel protects provider and MCP callback listene
 presentation retains its issued challenge for explicit retry. The transport seam and shared MCP client lifecycle are
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
+
+## Codex offered connector catalog
+
+Codex inventory reads native `app/list` after its scoped server snapshot, using
+all pages and the exact thread or harness context. Offers remain distinct from
+configured servers, including identical native key text. Native enabled/access
+defaults determine unavailable, available or setup-required status. Offers sort
+by trimmed, case-insensitive display name with native ID as the tie-breaker;
+blank names fall back to the ID. The full catalog remains available, while the
+shared inventory builds only rows near the viewport, including large public
+directories. Rounded groups, independent section status and refresh scroll
+position remain intact. Reads request fresh native catalog data, including after
+browser setup. A server transport/decoder error retains local diagnostics and
+still reads the independent connector section. Unsupported/live-session-required
+scopes retain their explicit result without requesting a fallback catalog.
+A catalog error logs original context locally and leaves server
+entries visible with a generic unavailable catalog section. Partial catalog pages
+are not presented as complete. Unsupported/cold server scope retains its existing
+result without activating native work or falling back to harness scope.
+
+Server authentication uses a server-only read, never a connector catalog fetch.
+No setup destination, provider credential, native installation API, configuration
+writer or connector-to-server conversion is introduced by discovery. Setup uses
+the separate explicit action below. Existing clients consume the already released
+connector variants; peers without setup declarations expose no setup action.
+
+Coverage: `codex_mcp_repository_test.dart` exercises pagination, defaults, exact
+scope, stable identity/order, same-name server/offer distinction and catalog
+failure preserving servers and useful local logs. Authentication and plugin
+regressions retain server-only validation and no implicit connection/mutation.
+Shared inventory widget coverage uses 2,000 offers to check bounded row
+construction, access to the final offer and retained scroll position on refresh.
+Both exact native pins passed the production catalog API/repository read as an
+available empty catalog in isolated homes; authentication issued no `app/list`.
+Real authenticated offers, entitlement and setup remain unqualified.
+
+## Connector setup handoff
+
+The optional connector setup API resolves an existing offer in its native scope;
+it does not install, authenticate, start/resume a session or write configuration.
+Codex refreshes all app/list pages and rechecks the exact offer's enabled/access
+policy and native installUrl. It never constructs a URL from a connector ID.
+Only enabled inaccessible offers with an eligible HTTPS destination declare the
+setup action. Missing destinations give a native-tool handoff; changed entitlement,
+missing offers and unsupported/inactive scopes return explicit unavailable state.
+
+The existing entry/action route accepts a distinct connector target, verifies
+stored session/plugin ownership and rejects archived mutations. The bridge service
+requires an absolute HTTPS destination with a nonempty host and no user info.
+Relative, HTTP, file, data, javascript, custom-scheme and user-info destinations
+are rejected before browser forwarding. Server control/authentication targets
+remain distinct. No native authentication attempt or browser callback is created.
+
+The client view's existing action owner launches only after an explicit setup
+action resolves on the same live connection/binding. Setup URLs remain local
+response data, absent from observed action states, inventory, SSE, replay,
+persistence and analytics. Connector setup responses use the existing sensitive
+decoder, omitting raw setup destinations from parse and HTTP-error diagnostics.
+Server controls and credential forgetting retain ordinary response diagnostics
+and compressed-response support.
+False/throwing launchers show failure and permit retry.
+Disconnect, rebind or disposal fences late resolution/launch results. Lost setup
+resolution is a retryable read failure, not an uncertain native mutation; its
+original cause and target context remain in local diagnostics. Server controls
+filter pending feedback by target while retaining the shared action-blocking gate.
+
+Opened feedback says to finish in the browser and refresh. It does not set any
+connected/available state. Automatic invalidation reads preserve setup feedback;
+explicit refresh clears it and reads fresh native catalog truth.
+Offer controls honor read-only/offline/pending gates; fixed
+header feedback crossfades without changing the catalog scroll position. Reduced
+motion uses no animation. Narrow/large-text layouts place the setup control below
+its offer metadata; capability changes animate the row height. Shared phone/desktop
+widgets use the same owner.
+
+Coverage: shared MCP codecs verify strict target types, released missing-action
+defaults, unknown actions and request-scoped setup results. Codex repository/plugin
+tests cover first-page-only refetch, policy/missing/unsafe URLs, typed failures and cold
+runtime refusal. Headless route tests exercise native target binding, archive/owner
+guards and the full destination policy. Client/widget tests cover explicit launch,
+retry, URL-free state, stale-result fencing, native-tool handoff and stable feedback.
+Exact pinned binaries pass fresh empty catalog reads; real offered connector
+entitlements/setup, native motion, packaged return and the final L4 matrix remain
+unqualified. Fixture success does not establish provider completion.
+
+## OpenCode v2 MCP management
+
+The v2 adapter implements configured-server inventory and connection controls
+through its existing API, repository, service and concrete plugin. Project scope
+uses its native directory; session scope resolves the native session's exact
+location. Harness scope is explicitly unavailable and performs no native work.
+Targets remain distinct across locations even when server names match.
+
+Native connected, pending, disabled, needs-auth, failed and unknown states remain
+distinct. Unknown tools, endpoints, configuration and authentication are not
+inferred. The MCP API exposes no offered-connector inventory. Native integration
+OAuth/forgetting remain unimplemented in Sesori for servers declaring an
+`integrationID`, and unsupported for servers without one. Connect/reconnect and disable
+use only the named existing server's location-scoped native controls; they do not
+write server configuration or create/resume sessions. Headless orchestration
+performs the existing authoritative refresh after native completion.
+The plugin service owns scope resolution, fresh-target validation and action
+dispatch; the repository maps native directory reads and mutations. Native
+connect/disconnect writes remain unbounded because abandoning HTTP does not
+cancel their native mutation. Client response loss retains its existing uncertain
+action posture. MCP HTTP failures propagate to the headless logging owner with
+their original cause rather than logging at both API and headless layers.
+Project effects invalidate every open inventory for that plugin, including other
+session/project views; the authoritative completion still reads the requested scope.
+
+Coverage: `opencode_v2_mcp_test.dart` exercises exact project/session attribution,
+independent locations, all states, missing targets, typed read failures and the
+concrete plugin HTTP seam. The 69 affected v2 API/repository/plugin cases pass;
+package analysis is clean. Integrity-verified native 2.0.11 and 2.0.24 pass
+inventory, enable, resident-process reconnect, disable and exact session lookup
+through the production adapter. A test-only native override seeds the isolated
+existing-server fixture; production exposes no add/remove/configuration route.
+Both native runs replace the resident fixture process on reconnect and leave the
+configuration file unchanged. No model/tool execution or provider sign-in occurs.
+Provider, client, package and final L4 coverage remain pending.
+
+### OpenCode v2 authentication contracts
+
+The location-scoped API can read native integration metadata, start a declared
+OAuth method, observe its attempt, cancel that exact attempt, and remove an exact
+credential ID. These internal contracts do not enable sign-in or forgetting in
+the product yet. IDs come from native metadata; no integration hash is recreated.
+Only secret-free integration connections are read; the secret credential-list
+endpoint is never needed. Every operation retains the requested native directory.
+Cancellation uses the attempt endpoint and never deletes a credential.
+
+`opencode_v2_mcp_authentication_api_test.dart` covers encoded native IDs, Unicode
+directory attribution, method-only start bodies, distinct native attempt states
+and unknown variants, malformed payload causes, original transport failures and
+unbounded native start. The inventory regression distinguishes servers with and
+without a native integration ID. Isolated native 2.0.11 and 2.0.24 OAuth fixtures
+prove cancellation, native automatic callback settlement and credential removal
+with unchanged configuration. Provider and client journeys remain pending.
+The minimum 2.0.11 credential metadata omits `method`; its generated field is
+nullable through a documented surface override, while target 2.0.24's enum
+still decodes. Both versions pass the typed production API probe, including a
+post-removal integration read that confirms no credential connection remains.
+
+## OpenCode v1 MCP management
+
+The v1 adapter uses its separate native name-keyed status map. Project scope
+uses the project directory; session scope resolves that exact native session's
+directory without creating or resuming it. Harness scope is explicitly unavailable
+before HTTP. Native status and controls use the established directory header,
+including non-ASCII encoding. Same-name servers in different directories retain
+independent targets.
+
+Connected, disabled, failed and unknown connection states remain distinct.
+Needs-auth and needs-client-registration require authentication; registration
+also declares a native-configuration requirement. Endpoints, configuration
+ownership, tools and authenticated state are not inferred from status alone.
+The status map has no offered-connector catalog. OAuth/forgetting remain explicit
+not-implemented capabilities until their separate native owner lands.
+
+Fresh target lookup precedes each enable/reconnect/disable request. Only the
+native named connect/disconnect route is used, with project effect scope and
+the existing headless authoritative refresh. No config/add/remove route,
+provider sign-in or tool execution is added. HTTP errors retain their response
+diagnostics; malformed native status/session payloads retain original errors and
+stacks through typed failures, rather than appearing as empty success.
+The plugin service owns scope resolution, fresh-target validation and action
+dispatch; the repository maps directory reads and native mutations. Native
+writes remain unbounded because HTTP abandonment does not cancel a native
+mutation. Project effects use the shared plugin-wide inventory invalidation.
+
+Coverage: `opencode_mcp_test.dart` plus the affected v1 API/repository/plugin
+suites pass 118 cases; owning package analysis is clean. Tests cover all native
+statuses, scope resolution/isolation, encoded names/directories, missing targets,
+empty inventory, malformed payloads, HTTP failures and the concrete plugin seam.
+Exact floor 1.14.0 has no published tag/npm artifact; native qualification uses
+the earliest published 1.14.x version, 1.14.17, and target 1.17.7 without changing
+the existing runtime floor. Both pass isolated production-adapter inventory,
+enable, resident reconnect, disable and exact session lookup; configuration bytes
+remain unchanged and reconnect replaces the fixture process. Fixture success
+does not qualify provider/package/client/L4 or deferred native recording.
 
 ## Codex native authentication
 

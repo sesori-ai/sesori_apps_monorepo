@@ -307,9 +307,49 @@ class McpRepository({
     return result ?? const McpControlUnavailable(reason: McpActionUnavailableReason.pluginInactive);
   }
 
+  Future<McpControlResult> resolveConnectorSetup({
+    required String pluginId,
+    required McpConnectorOfferTarget target,
+  }) async {
+    final scope = await _resolveScope(pluginId: pluginId, scope: target.scope, operation: McpOperation.executeAction);
+    final result = await _runtime.useIfActive(
+      pluginId: pluginId,
+      operation: McpOperation.executeAction,
+      body: (plugin, _) async {
+        if (plugin is! McpConnectorSetupPluginApi) {
+          return const McpControlUnavailable(reason: McpActionUnavailableReason.unsupportedHarness);
+        }
+        final native = await (plugin as McpConnectorSetupPluginApi).resolveMcpConnectorSetup(
+          target: PluginMcpConnectorOfferTarget(scope: scope, offerKey: target.offerKey),
+        );
+        return switch (native) {
+          PluginMcpConnectorExternalSetup(:final destination) => McpControlExternalSetup(destination: destination),
+          PluginMcpConnectorSetupUnavailable(:final reason) => McpControlUnavailable(
+            reason: switch (reason) {
+              PluginMcpConnectorSetupUnavailableReason.unsupportedScope => McpActionUnavailableReason.unsupportedScope,
+              PluginMcpConnectorSetupUnavailableReason.liveSessionRequired =>
+                McpActionUnavailableReason.liveSessionRequired,
+              PluginMcpConnectorSetupUnavailableReason.targetNotFound => McpActionUnavailableReason.targetNotFound,
+              PluginMcpConnectorSetupUnavailableReason.nativeConfigurationRequired =>
+                McpActionUnavailableReason.nativeConfigurationRequired,
+              PluginMcpConnectorSetupUnavailableReason.notSupported => McpActionUnavailableReason.notSupported,
+            },
+          ),
+          PluginMcpConnectorSetupFailed(:final cause, :final causeStackTrace) => _actionFailed(
+            pluginId: pluginId,
+            target: target,
+            cause: cause,
+            stackTrace: causeStackTrace,
+          ),
+        };
+      },
+    );
+    return result ?? const McpControlUnavailable(reason: McpActionUnavailableReason.pluginInactive);
+  }
+
   McpControlFailed _actionFailed({
     required String pluginId,
-    required McpServerTarget target,
+    required McpEntryTarget target,
     required Exception cause,
     required StackTrace stackTrace,
   }) {

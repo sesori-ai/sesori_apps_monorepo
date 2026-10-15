@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/mcp_repository.dart";
@@ -15,14 +16,18 @@ class McpService({
   Stream<McpInventoryRequest> get inventoryChanges => _changes.stream;
 
   Future<McpEntryActionResult> execute({required McpEntryActionRequest request}) async {
-    final target = request.action.target;
+    final target = request.action.entryTarget;
     final result = switch (request.action) {
-      McpServerEntryAction(:final action) => await _repository.executeServerAction(
+      McpServerEntryAction(:final target, :final action) => await _repository.executeServerAction(
         pluginId: request.pluginId,
         target: target,
         action: action,
       ),
-      McpForgetAuthenticationEntryAction() => await _authenticationService.forgetAuthentication(
+      McpForgetAuthenticationEntryAction(:final target) => await _authenticationService.forgetAuthentication(
+        pluginId: request.pluginId,
+        target: target,
+      ),
+      McpConnectorSetupEntryAction(offerTarget: final target) => await _repository.resolveConnectorSetup(
         pluginId: request.pluginId,
         target: target,
       ),
@@ -32,15 +37,27 @@ class McpService({
         return McpActionUnavailable(reason: reason);
       case McpControlFailed():
         return const McpActionFailed();
+      case McpControlExternalSetup(:final destination):
+        if (destination.scheme != "https" ||
+            !destination.hasAuthority ||
+            destination.host.isEmpty ||
+            destination.userInfo.isNotEmpty) {
+          Log.w(
+            "MCP connector setup destination rejected for ${request.pluginId} on $target: "
+            "scheme=${destination.scheme}, host=${destination.host}",
+          );
+          return const McpActionUnavailable(reason: McpActionUnavailableReason.nativeConfigurationRequired);
+        }
+        return McpExternalSetup(setupUrl: destination.toString());
       case McpControlCompleted(:final effectScope):
         _changes.add(
           McpInventoryRequest(
             pluginId: request.pluginId,
             scope: switch (effectScope) {
-              McpActionEffectScope.harness => const McpHarnessScope(),
-              McpActionEffectScope.project ||
-              McpActionEffectScope.session ||
-              McpActionEffectScope.unknown => target.scope,
+              // Session views cannot correlate another session's project locally.
+              // A project effect invalidates all views for this plugin.
+              McpActionEffectScope.harness || McpActionEffectScope.project => const McpHarnessScope(),
+              McpActionEffectScope.session || McpActionEffectScope.unknown => target.scope,
             },
           ),
         );

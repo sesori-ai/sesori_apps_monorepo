@@ -12,6 +12,23 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAgent,
         PluginApiException,
         PluginCommand,
+        PluginMcpActionCompleted,
+        PluginMcpActionEffectScope,
+        PluginMcpActionFailed,
+        PluginMcpActionResult,
+        PluginMcpActionUnavailable,
+        PluginMcpActionUnavailableReason,
+        PluginMcpHarnessScope,
+        PluginMcpInventoryReadFailed,
+        PluginMcpInventoryResult,
+        PluginMcpInventoryUnavailable,
+        PluginMcpInventoryUnavailableReason,
+        PluginMcpProjectScope,
+        PluginMcpScope,
+        PluginMcpServerAction,
+        PluginMcpServerSnapshot,
+        PluginMcpServerTarget,
+        PluginMcpSessionScope,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -25,6 +42,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart" show ProjectActivitySummary, StringExtensions;
 
 import "../opencode_plugin.dart";
+import "models/open_code_mcp_decode_exception.dart";
 
 class OpenCodeService(
   final OpenCodeRepository repository,
@@ -61,6 +79,62 @@ class OpenCodeService(
   /// localhost within milliseconds, so 1s is enough to catch them while keeping
   /// the phone's "accepted" feedback snappy.
   this;
+
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
+    try {
+      final directory = await _mcpDirectory(scope: scope);
+      if (directory == null) {
+        return const PluginMcpInventoryUnavailable(
+          reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
+          message: "Open MCP from a project or session.",
+        );
+      }
+      return await repository.getMcpInventory(directory: directory, scope: scope);
+    } on Object catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(
+        cause: error is Exception ? error : OpenCodeMcpDecodeException(operation: "MCP inventory", innerError: error),
+        causeStackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) async {
+    try {
+      final directory = await _mcpDirectory(scope: target.scope);
+      if (directory == null) {
+        return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
+      }
+      final inventory = await repository.getMcpInventory(directory: directory, scope: target.scope);
+      if (!inventory.entries.whereType<PluginMcpServerSnapshot>().any(
+        (server) => server.target.serverKey == target.serverKey,
+      )) {
+        return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.targetNotFound);
+      }
+      switch (action) {
+        case PluginMcpServerAction.reconnect || PluginMcpServerAction.enable:
+          await repository.connectMcpServer(directory: directory, name: target.serverKey);
+        case PluginMcpServerAction.disable:
+          await repository.disconnectMcpServer(directory: directory, name: target.serverKey);
+      }
+      return const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.project);
+    } on Object catch (error, stackTrace) {
+      return PluginMcpActionFailed(
+        cause: error is Exception
+            ? error
+            : OpenCodeMcpDecodeException(operation: "MCP server action", innerError: error),
+        causeStackTrace: stackTrace,
+      );
+    }
+  }
+
+  Future<String?> _mcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
+    PluginMcpHarnessScope() => null,
+    PluginMcpProjectScope(:final projectId) => projectId,
+    PluginMcpSessionScope(:final sessionId) => await repository.getSessionDirectory(sessionId: sessionId),
+  };
 
   Future<List<PluginProject>> getProjects() async {
     final projects = await repository.getProjects();

@@ -79,6 +79,12 @@ class const McpMapper() {
       name: entry.name,
       description: entry.description,
       availability: _offerAvailability(availability: entry.availability),
+      actions: [
+        for (final action in entry.actions)
+          switch (action) {
+            PluginMcpConnectorAction.setup => McpConnectorAction.setup,
+          },
+      ],
     ),
   };
 

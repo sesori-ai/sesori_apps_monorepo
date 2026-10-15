@@ -3,9 +3,11 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-codex-auth`, in the provided `copper-heron` worktree.
-- Current step: 27/32 is in PR [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001). Latest merged: 26/32 as
-  [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000).
+- Branch: `sesori/mcp-opencode-authentication`, in the provided `copper-heron` worktree.
+- Current step: 32/37 OpenCode v2 native authentication contracts are verified locally.
+  Latest merged: 31/37 as [#2007][pr-2007] (`35a0e40be4`).
+  Native v2 OAuth support was verified through its Integration API on both pins.
+  Split contracts, v2 ownership and v1 ownership for review; final qualification is unchanged.
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -26,40 +28,251 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/32 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/32 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/32 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/32 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/32 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/32 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/32 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/32 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/32 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/32 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/32 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/32 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/32 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/32 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/32 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/32 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
-| 17/32 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/32 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
-| 19/32 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
-| 20/32 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
-| 21/32 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
-| 22/32 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
-| 23/32 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
-| 24/32 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
-| 25/32 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
-| 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000); native pins and review fixes pass |
-| 27/32 | Codex typed forms and URL requests | In PR | [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001); implementation/native fixtures approved |
-| 28/32 | Codex offered connector catalog | In progress | Verified local draft; setup separate |
-| 29/32 | Connector setup actions and browser handoff | Not started | — |
-| 30/32 | Secondary harness support and explicit gaps | Not started | — |
-| 31/32 | Reconcile regression/capability documents | Not started | — |
-| 32/32 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/37 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/37 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/37 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/37 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/37 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/37 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/37 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/37 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/37 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/37 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/37 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/37 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/37 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/37 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/37 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/37 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/37 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
+| 18/37 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
+| 19/37 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
+| 20/37 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
+| 21/37 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
+| 22/37 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
+| 23/37 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
+| 24/37 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
+| 25/37 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
+| 26/37 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
+| 27/37 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
+| 28/37 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
+| 29/37 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
+| 30/37 | OpenCode v2 inventory/controls (11.a) | Merged | [#2006][pr-2006]; evidence below |
+| 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
+| 32/37 | OpenCode v2 auth contracts (11.c.1) | Verified locally | 61 cases; both pins; architecture approved |
+| 33/37 | OpenCode v2 native authentication ownership (11.c.2) | Not started | — |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | Not started | — |
+| 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
+| 36/37 | Reconcile regression/capability documents | Not started | — |
+| 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
+
+[pr-2007]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2007
+[pr-2000]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000
+[pr-2001]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001
+[pr-2003]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2003
+[pr-2005]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2005
+[pr-2006]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2006
 
 ## Evidence and decisions
+
+- Step-32 review corrections wrap the new tracker rows/command and generate
+  `ConnectionInfo`, `IntegrationMethod` and `IntegrationAttemptStatus` as sealed
+  bases with final variants in their own library. The surface opts only these
+  new families into generation; six obsolete separate variant files are removed.
+  Existing class names and native wire decoding remain unchanged. Exhaustive
+  test switches cover all three families. All 61 focused cases, package analysis
+  and both exact native typed probes pass again; private evidence uses
+  `/private/tmp/copper-heron-mcp-step32-review1-{tests,analyze,native}.log`.
+  Final architecture implementation review approved the closed families (pass 2).
+
+- Step-32 API contracts pass 61 focused tests and package analysis with pinned
+  Dart (Flutter 3.47.7-stable). Cwd `bridge/sesori_plugin_opencode`:
+  Tests: `dart test` with `test/v2/opencode_v2_mcp_authentication_api_test.dart`,
+  `test/v2/opencode_v2_mcp_test.dart`, and `test/v2/opencode_v2_api_test.dart`.
+  Cwd `bridge`: `dart analyze --fatal-infos sesori_plugin_opencode`.
+  Both isolated 2.0.11 and 2.0.24 native probes pass through the production typed
+  API: returned integration/method IDs, acknowledged cancellation, automatic
+  callback plus native completed status, exact credential removal and unchanged
+  configuration bytes. The typed probe exposed a real minimum-version omission:
+  2.0.11 credential metadata has no `method`; a source-controlled generator
+  override makes that field nullable instead of inventing a value. Native
+  target metadata still decodes its enum. Private evidence:
+  `/private/tmp/copper-heron-mcp-step32-{tests,analyze,typed-native}.log`.
+  Architecture plan and implementation pass 1 approved the API-only scope.
+  Synthetic control screenshots pass the product widget fixture and are hosted
+  on `pr-media` commit `95aed578bbcf9643a668219c7da30b3d99637679` under
+  `sesori/mcp-opencode-authentication/`. No motion changes; native recording
+  remains deferred. Product authentication remains unavailable until step 33.
+
+- Step 31 merged as #2007 at accepted head `b364c8b2f7`, squash `35a0e40be4`.
+  Nineteen checks passed before merge, Cubic approved and current-head code/security
+  reviews completed without findings. Its native recording remains deferred.
+- The revised series has 37 steps: native v2 Integration OAuth exists on both
+  2.0.11 and 2.0.24, so contracts and ownership are separate from v1 authentication.
+  Step-32 architecture plan review approved this API-only boundary. Raw native
+  probes pass cancellation, automatic callback completion and exact credential
+  removal on both v2 pins, with unchanged configuration. Native v1 1.14.17 and
+  1.17.7 separately pass manual callback exchange/removal; browser return alone
+  fails and deletion also removes credentials, so it cannot serve as safe cancel.
+  None of this reduces the original final L4/package/provider/device matrix.
+
+- Step-31 tested source `790caa38cc` follows the accepted step-30 corrections: existing
+  service coordinates scope/target/action; repository maps directory reads and
+  mutations. Native writes remain unbounded, with two new slow-write regressions.
+  All 118 affected v1 cases and owning analysis pass; both exact native versions
+  pass again through service/repository/API, replacing resident fixture processes
+  and retaining configuration bytes. Logs use the `step31-final-*` private paths.
+  The original presentation fixture is unchanged. Final architecture review
+  approved the aligned ownership (pass 2). Parent #2006 merged after passing CI
+  and completed code/security reviews; its additional presentation-capability
+  guard was declined because native controls remain valid across status changes.
+  All incoming squash-conflict files matched reviewed parent `c8aa783df3`;
+  the entire v1 diff is unchanged after integration.
+
+- Step 31 tested source `a00726445c`: architecture plan and implementation reviews
+  approved. All 116 affected MCP/API/repository/plugin
+  cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
+
+  ```sh
+  dart test test/opencode_mcp_test.dart test/opencode_api_http_test.dart \
+    test/opencode_repository_test.dart test/opencode_plugin_impl_test.dart
+  ```
+
+  Cwd `bridge`: `dart analyze --fatal-infos sesori_plugin_opencode`. Both use
+  pinned Flutter 3.47.7-stable's bundled Dart. The existing PATH floor 1.14.0
+  has no upstream Git tag/npm artifact; npm's first published 1.14.x version is
+  1.14.17. Its schema confirms the same status/connect/disconnect seam as target
+  1.17.7. Native qualification uses those two exact integrity-verified binaries,
+  without changing runtime policy. Both pass production API/repository inventory,
+  enable, resident reconnect, disable and exact session lookup; resident fixture
+  processes are replaced and config bytes remain unchanged. Fixture preparation
+  includes its schema declaration to avoid OpenCode's first-read metadata rewrite.
+  No model/tool call or provider sign-in occurs. Private probe/log:
+  `/private/tmp/copper-heron-mcp-step31-native.py` and corresponding `.log`.
+  Original provider/package/client/L4 and deferred native recording remain pending.
+  Synthetic before/after/control widget renders pass and were inspected. Media:
+  orphan `pr-media` commit `e174f0dabdfe4a37260a0380168ab88b94294b9c`, under
+  `sesori/mcp-opencode-v1-controls/`. This is shared presentation evidence only.
+
+- Step-30 review corrections: existing service owns scope resolution, fresh-target
+  validation and action dispatch; the repository exposes mapped directory reads
+  and mutations. MCP API calls preserve original failures for one headless log,
+  including native session lookup. Native writes remain unbounded; response loss
+  retains the client's existing uncertain-action behavior. Project effects
+  invalidate all plugin inventories so other session/project views refresh.
+  Final implementation architecture review approved (pass 2). All 72 affected
+  v2 cases and 26 headless route cases pass; owning analysis is clean. The same
+  v2 command below runs from its package; headless command from `bridge/app` is
+  `dart test test/bridge/routing/post_mcp_inventory_handler_test.dart`.
+  Both exact native pins pass again through service/repository/API, preserving
+  configuration bytes and replacing the resident fixture process on reconnect.
+  The historical Step-17 CI denominator remains 32/32; plan renumbering does not
+  rewrite measured results. Deferred/external qualification remains unchanged.
+
+- Step 30 tested source `51bcf3f5f4`: both architecture reviews approved; all 69
+  affected v2 cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
+
+  ```sh
+  dart test test/v2/opencode_v2_mcp_test.dart \
+    test/v2/opencode_v2_api_test.dart \
+    test/v2/opencode_v2_repository_test.dart \
+    test/v2/opencode_v2_plugin_test.dart
+  ```
+
+  Cwd `bridge`: `dart analyze --fatal-infos sesori_plugin_opencode`. Both commands
+  use the pinned Flutter 3.47.7-stable Dart SDK. Exact native 2.0.11 and 2.0.24
+  archives matched npm SHA-512 integrity; target SHA-256 also matches the runtime
+  manifest. The private probe `/private/tmp/copper-heron-mcp-step30-native.py`
+  uses isolated profiles, a synthetic local password and test-only native server
+  overrides. Both pins pass production API/repository inventory, enable, resident
+  reconnect, disable and exact session lookup; reconnect replaces the fixture
+  process and configuration bytes remain unchanged. It executes no model/tool
+  call or provider login. Private log: `/private/tmp/copper-heron-mcp-step30-native.log`.
+  Parent #2005 merged after passing CI and clean completed code/security reviews.
+  Incoming squash-conflict files exactly match reviewed parent `ae59986031`;
+  the entire successor diff is unchanged after integration. Provider/package/client/L4
+  qualification remains pending.
+
+- Step-29 review follow-up preserves ordinary server/forget response diagnostics
+  and compression, while setup responses retain destination redaction. Automatic
+  inventory reads preserve terminal setup feedback; explicit refresh clears it.
+  All 43 affected API/service cases pass, including ordinary HTTP-error details
+  and both opened/failed feedback across stale-data reads. CI-style analysis of
+  `module_core` and `desktop/tool/mcp_inventory_fixture.dart` passes. The versioned
+  desktop inventory fixture now supplies and disposes its read-only action stream.
+  Commands use pinned Flutter 3.47.7-stable with its `FLUTTER_ROOT`; no native
+  recording is claimed.
+
+- Step 29 resolves native setup destinations through the existing scoped headless
+  action route and launches only an explicit, current client action. Destinations
+  remain request-local; opened feedback never claims connection. At tested draft
+  `d2d4a7bb00`, 143 affected cases and six owning analyzers passed, including phone layout/motion at normal and
+  doubled text size. Desktop/phone fixture renders were inspected after integrating
+  lazy catalog rows. Both exact Codex pins passed fresh empty-catalog reads.
+  Real offers/provider completion, native recording and final L4/package/device
+  qualification remain pending. Step 28 merged with 32 passing checks and clean
+  completed code/security reviews. Squash-integration conflicts matched the
+  already-integrated parent byte-for-byte; setup source remains unchanged.
+  CI on published `081a65797c` then found three custom exhaustive-switch lint
+  errors and an unstubbed action-state getter in an existing mobile archive
+  fixture. These are follow-up corrections, not passing CI evidence for that head.
+  Reproducible local checkpoints, from the provided `copper-heron` worktree:
+
+  Cwd `shared/sesori_shared`, 11 passed:
+
+  ```sh
+  dart test test/models/mcp_test.dart
+  ```
+
+  Cwd `bridge`, 50 passed:
+
+  ```sh
+  dart test \
+    sesori_plugin_codex/test/codex_mcp_repository_test.dart \
+    sesori_plugin_codex/test/codex_mcp_plugin_test.dart
+  ```
+
+  Cwd `bridge/app`, 24 passed:
+
+  ```sh
+  dart test test/bridge/routing/post_mcp_inventory_handler_test.dart
+  ```
+
+  Cwd `client/module_core`, 36 passed:
+
+  ```sh
+  dart test test/services/mcp_service_test.dart
+  ```
+
+  Cwd `client/module_app_ui`, 22 passed:
+
+  ```sh
+  flutter test --no-pub \
+    test/features/mcp/mcp_inventory_view_test.dart \
+    test/features/mcp/mcp_server_controls_view_test.dart
+  ```
+
+  Commands used pinned Flutter 3.47.7-stable and its bundled Dart, with
+  `FLUTTER_ROOT` set to that SDK for client commands. The owning analyzer commands
+  were `dart analyze --fatal-infos .` for shared/plugin interface/client core,
+  `dart analyze --fatal-infos app` and `dart analyze --fatal-infos sesori_plugin_codex`
+  from `bridge`, and `flutter analyze --no-pub` from shared UI. The CI-only custom
+  lint result above limits that earlier local analysis claim.
+
+  Follow-up `55ed930a05` fixes those CI findings. The same 22 UI cases pass,
+  including unclipped feedback with the product font. Cwd `client/app`, all seven
+  cases pass with:
+
+  ```sh
+  flutter test --no-pub test/features/session_detail/session_detail_title_hydration_test.dart
+  ```
+
+  Cwd `client`, the CI-style custom analyzer passes for both corrected owners:
+
+  ```sh
+  dart analyze --fatal-infos module_app_ui
+  dart analyze --fatal-infos app/test/features/session_detail/session_detail_title_hydration_test.dart
+  ```
 
 - 2026-10-13: inspected current plugin contracts, Claude process/control ownership, Codex approvals, shared
   question/permission models, client browser auth ownership, bridge routing, harness capabilities, and regression proof
@@ -1546,6 +1759,19 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   fall back to native names/values; opaque aliases protect submitted IDs.
   Connector catalog/setup split into 28/29 keeps future boundaries reviewable;
   remaining series total is 32 and final qualification is unchanged.
+- Step 28 separates read-only native catalog discovery from setup across the
+  plugin/wire/headless/client browser boundaries (now 29). Existing connector
+  variants serve inventory without a contract change; setup requires its own
+  reviewed action/result boundary. Total 32; final L4 scope is unchanged.
+  Architecture plan review approved catalog mapping and server-only auth reads.
+- Step-28 verification: all 69 focused inventory/authentication/plugin cases
+  pass, package analysis is clean and normal DTO generation passes. Both exact
+  native binaries return an available empty catalog through production API and
+  repository mapping. Their authentication journeys issue no app/list calls;
+  minimum session handoff and native expiry/denial/success remain verified.
+  This does not qualify real authenticated offers, entitlement or setup.
+  Architecture implementation review approved the catalog boundary; synthetic
+  before/after inventory captures are prepared. Native recording stays deferred.
 - Step-27 follow-up review: forwarded legacy titled enums retain matching
   enumNames. Native 0.139.0 omits enumNames, so its production snapshot falls
   back to native values; 0.160.1 forwards and displays the provided titles.
@@ -1563,3 +1789,29 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Second/final step-27 architecture implementation review approved. Base
   `1742753442` already owns pending mutation/SSE in the shared registry;
   settlement extraction adds no owner. Relocation would widen this feature.
+- Step 27 merged as `0beb720550` with 20/20 checks passing; current-head code
+  and security reviews completed, Cubic approved. The pre-existing registry
+  relocation request is declined with architecture evidence. Catalog integration
+  changes no bytes: incoming conflicted files exactly match reviewed `10f44c1153`.
+  Catalog before/after fixture images are published on orphan pr-media commit
+  `579348b385d58962281b163e57f128251ea37965`.
+- Step-28 review reconciles the top-level regression summary with the detailed
+  implemented catalog section and capability document. Setup remains separate.
+  Delivery rows use short references; the current state points to PR #2003.
+- Step-28 server failure now preserves healthy connector discovery. Unsupported
+  or live-session-required scopes still stop before catalog access. Server
+  transport/decoder failures retain original local diagnostics and expose only
+  that section as unavailable. All 45 affected repository/plugin cases pass;
+  package analysis is clean. Earlier 25 authentication cases are unchanged.
+- Step-29 plan and implementation architecture reviews approved. The local
+  setup draft resolves native catalog destinations through distinct offer
+  actions, validates HTTPS at the bridge boundary, and uses the existing client
+  view action owner/UrlLauncher with no URL observables or new callback state.
+  All 138 directly relevant wire/plugin/route/client/widget cases pass. Owning
+  analyzers are clean. Both exact Codex binaries pass force-refetched empty
+  native catalogs; original OAuth scope/completion behavior remains intact.
+  Synthetic controls/opened-feedback renders pass and were inspected. Native
+  recording and real connector/provider/package/L4 qualification remain pending.
+- Step-28 diagnostic follow-up names harness or the actual native thread in
+  failed server reads, retaining original causes/stacks. All 42 repository tests
+  pass with both contexts asserted; package analysis is clean.

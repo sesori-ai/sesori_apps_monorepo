@@ -1229,13 +1229,20 @@ String toString() {
 @JsonSerializable()
 
 class McpConnectorOfferSnapshot implements McpInventoryEntry {
-  const McpConnectorOfferSnapshot({@JsonKey(name: "target") required this.offerTarget, required this.name, required this.description, @JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown) required this.availability,  String? $type}): $type = $type ?? 'connectorOffer';
+  const McpConnectorOfferSnapshot({@JsonKey(name: "target") required this.offerTarget, required this.name, required this.description, @JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown) required this.availability, @JsonKey(unknownEnumValue: McpConnectorAction.unknown)  List<McpConnectorAction> actions = const [],  String? $type}): _actions = actions,$type = $type ?? 'connectorOffer';
   factory McpConnectorOfferSnapshot.fromJson(Map<String, dynamic> json) => _$McpConnectorOfferSnapshotFromJson(json);
 
 @JsonKey(name: "target") final  McpConnectorOfferTarget offerTarget;
  final  String name;
  final  String? description;
 @JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown) final  McpConnectorOfferAvailability availability;
+ final  List<McpConnectorAction> _actions;
+@JsonKey(unknownEnumValue: McpConnectorAction.unknown) List<McpConnectorAction> get actions {
+  if (_actions is EqualUnmodifiableListView) return _actions;
+  // ignore: implicit_dynamic_type
+  return EqualUnmodifiableListView(_actions);
+}
+
 
 @JsonKey(name: 'type')
 final String $type;
@@ -1249,18 +1256,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpConnectorOfferSnapshot&&const DeepCollectionEquality().equals(other.offerTarget, offerTarget)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.availability, availability) || other.availability == availability));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpConnectorOfferSnapshot&&const DeepCollectionEquality().equals(other.offerTarget, offerTarget)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.availability, availability) || other.availability == availability)&&const DeepCollectionEquality().equals(other.actions, _actions));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(offerTarget),name,description,availability);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(offerTarget),name,description,availability,const DeepCollectionEquality().hash(_actions));
 }
 
 @override
 String toString() {
-    return 'McpInventoryEntry.connectorOffer(offerTarget: $offerTarget, name: $name, description: $description, availability: $availability)';
+    return 'McpInventoryEntry.connectorOffer(offerTarget: $offerTarget, name: $name, description: $description, availability: $availability, actions: $actions)';
 }
 
 

@@ -5713,6 +5713,48 @@ abstract class AppLocalizations {
   /// **'Setup required'**
   String get mcpSetupRequired;
 
+  /// No description provided for @mcpOpenSetup.
+  ///
+  /// In en, this message translates to:
+  /// **'Open setup'**
+  String get mcpOpenSetup;
+
+  /// No description provided for @mcpSetupInHarness.
+  ///
+  /// In en, this message translates to:
+  /// **'Set up this connector with your coding tool.'**
+  String get mcpSetupInHarness;
+
+  /// No description provided for @mcpSetupOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening setup in your browser…'**
+  String get mcpSetupOpening;
+
+  /// No description provided for @mcpSetupOpened.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish in your browser, then refresh.'**
+  String get mcpSetupOpened;
+
+  /// No description provided for @mcpSetupOpenFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not open setup. Try again.'**
+  String get mcpSetupOpenFailed;
+
+  /// No description provided for @mcpInventoryReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Inspect servers and connectors.'**
+  String get mcpInventoryReady;
+
+  /// No description provided for @mcpOfferNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This connector is no longer in the inventory.'**
+  String get mcpOfferNotFound;
+
   /// No description provided for @mcpEmptyCatalog.
   ///
   /// In en, this message translates to:

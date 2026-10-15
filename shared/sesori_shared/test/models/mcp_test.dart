@@ -2,6 +2,33 @@ import 'package:sesori_shared/sesori_shared.dart';
 import 'package:test/test.dart';
 
 void main() {
+  test('connector setup is a distinct typed action with a request-scoped handoff', () {
+    const action = McpConnectorSetupEntryAction(
+      offerTarget: McpConnectorOfferTarget(scope: McpHarnessScope(), offerKey: 'same-key'),
+    );
+    expect(McpEntryAction.fromJson(action.toJson()), action);
+    final wrong = action.toJson()
+      ..['target'] = const McpServerTarget(scope: McpHarnessScope(), serverKey: 'same-key').toJson();
+    expect(() => McpEntryAction.fromJson(wrong), throwsA(isA<FormatException>()));
+    const handoff = McpExternalSetup(setupUrl: 'https://fixture.example/setup?private=secret');
+    expect(McpEntryActionResult.fromJson(handoff.toJson()), handoff);
+    expect(handoff.toString(), isNot(contains('private=secret')));
+    expect(McpEntryActionResult.fromJson({'type': 'future'}), const McpActionUnknown());
+    final oldOffer = {
+      'type': 'connectorOffer',
+      'target': action.offerTarget.toJson(),
+      'name': 'Fixture connector',
+      'availability': 'setupRequired',
+    };
+    expect((McpInventoryEntry.fromJson(oldOffer) as McpConnectorOfferSnapshot).actions, isEmpty);
+    final offer = McpInventoryEntry.fromJson({
+      ...oldOffer,
+      'actions': ['setup', 'future'],
+    }) as McpConnectorOfferSnapshot;
+    expect(offer.actions, [McpConnectorAction.setup, McpConnectorAction.unknown]);
+    expect(offer.toJson().containsKey('setupUrl'), isFalse);
+  });
+
   test('forgetting credentials is a distinct server-only action', () {
     const action = McpForgetAuthenticationEntryAction(
       target: McpServerTarget(

@@ -321,6 +321,28 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
+  testWidgets("pending connector setup blocks controls without claiming a native server action", (tester) async {
+    actionStates.add(
+      const McpActionPending(
+        request: McpEntryActionRequest(
+          pluginId: "fixture",
+          action: McpConnectorSetupEntryAction(
+            offerTarget: McpConnectorOfferTarget(
+              scope: McpSessionScope(sessionId: "fixture"),
+              offerKey: "connector",
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpWidget(app(controls: true, scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("Applying native action…"), findsNothing);
+    expect(find.text("Choose a supported action."), findsOneWidget);
+    expect(tester.widget<PregoButtonsSolid>(button("Reconnect")).onPressed, isNull);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets("phone-sized large text keeps controls scrollable without overflow", (tester) async {
     tester.view.physicalSize = const Size(360, 800);
     tester.view.devicePixelRatio = 1;

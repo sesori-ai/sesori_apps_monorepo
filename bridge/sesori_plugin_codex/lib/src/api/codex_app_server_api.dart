@@ -4,6 +4,7 @@ import "../codex_app_server_client.dart";
 import "../models/codex_collaboration_mode.dart";
 import "../models/codex_service_tier.dart";
 import "models/codex_account_dto.dart";
+import "models/codex_apps_dto.dart";
 import "models/codex_collaboration_mode_dto.dart";
 import "models/codex_mcp_oauth_dto.dart";
 import "models/codex_mcp_status_dto.dart";
@@ -39,6 +40,20 @@ class CodexAppServerApi({required final CodexAppServerTransport _client}) {
     );
     if (result is! Map) throw StateError("expected a Codex MCP login response, got ${result.runtimeType}");
     return CodexMcpOAuthLoginDto.fromJson(result.cast<String, dynamic>());
+  }
+
+  Future<CodexAppsPageDto> listAppsPage({required String? threadId, required String? cursor}) async {
+    final result = await _client.request(
+      method: "app/list",
+      params: {
+        "threadId": ?threadId,
+        "cursor": ?cursor,
+        "limit": 100,
+        "forceRefetch": cursor == null,
+      },
+    );
+    if (result is! Map) throw StateError("expected a Codex app catalog page, got ${result.runtimeType}");
+    return CodexAppsPageDto.fromJson(result.cast<String, dynamic>());
   }
 
   Future<CodexMcpStatusPageDto> listMcpServersPage({required String? threadId, required String? cursor}) async {

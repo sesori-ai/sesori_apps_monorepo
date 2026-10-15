@@ -6,6 +6,8 @@ import "../api/opencode_v2_api.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
 import "../models/openapi/location_public_ref.g.dart";
+import "../models/openapi/mcp_status_failed.g.dart";
+import "../models/openapi/mcp_status_needs_auth.g.dart";
 import "../models/openapi/model_ref.g.dart";
 import "../models/openapi/permission_reply.g.dart";
 import "../models/openapi/permission_request.g.dart";
@@ -17,6 +19,7 @@ import "../models/openapi/worktree_remove_input.g.dart";
 import "../models/v2_agent_names.dart";
 import "../models/v2_message_filter.dart";
 import "../models/v2_request_bodies.dart";
+import "v2_mcp_mapper.dart";
 import "v2_message_mapper.dart";
 import "v2_model_mapper.dart";
 
@@ -27,6 +30,27 @@ class OpenCodeV2Repository({
   required final V2MessageMapper _messageMapper,
 }) {
   Future<bool> healthCheck() => _api.healthCheck();
+
+  Future<PluginMcpInventorySnapshot> getMcpInventory({
+    required String directory,
+    required PluginMcpScope scope,
+  }) async {
+    final servers = await _api.listMcpServers(directory: directory);
+    for (final server in servers) {
+      if (server.status case McpStatusFailed(:final error) || McpStatusNeedsAuth(:final error)) {
+        Log.w("[opencode-v2] MCP server ${server.name} in $directory", error);
+      }
+    }
+    return const V2McpMapper().map(servers: servers, scope: scope);
+  }
+
+  Future<String> getSessionDirectory({required String sessionId}) => _api.getMcpSessionDirectory(sessionId: sessionId);
+
+  Future<void> connectMcpServer({required String directory, required String name}) =>
+      _api.connectMcpServer(directory: directory, name: name);
+
+  Future<void> disconnectMcpServer({required String directory, required String name}) =>
+      _api.disconnectMcpServer(directory: directory, name: name);
 
   Future<List<PluginProject>> getProjects() async {
     final (projects, sessions) = await shared.wait2(

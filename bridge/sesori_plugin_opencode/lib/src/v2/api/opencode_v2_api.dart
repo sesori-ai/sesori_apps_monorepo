@@ -10,8 +10,12 @@ import "../models/openapi/agent_info.g.dart";
 import "../models/openapi/command_info.g.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
+import "../models/openapi/integration_attempt_encoded.g.dart";
+import "../models/openapi/integration_attempt_status.g.dart";
+import "../models/openapi/integration_info.g.dart";
 import "../models/openapi/location_public_info.g.dart";
 import "../models/openapi/location_public_ref.g.dart";
+import "../models/openapi/mcp_server.g.dart";
 import "../models/openapi/model_info.g.dart";
 import "../models/openapi/permission_request.g.dart";
 import "../models/openapi/project.g.dart";
@@ -70,6 +74,108 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       fromJson: LocationPublicInfo.fromJson,
     );
   }
+
+  Future<String> getMcpSessionDirectory({required String sessionId}) async {
+    final path = _sessionPath(sessionId: sessionId);
+    final session = _data<SessionInfo>(
+      response: await _client.get(path: path),
+      operation: path,
+      fromJson: (value) => SessionInfo.fromJson(jsonCastMap(value)),
+    );
+    return session.location.directory;
+  }
+
+  Future<List<McpServer>> listMcpServers({required String directory}) async => _data<List<McpServer>>(
+    // MCP returns typed failures to the headless owner, which logs the cause.
+    response: await _client.get(
+      path: "/api/mcp",
+      queryParameters: _location(directory: directory),
+    ),
+    operation: "/api/mcp",
+    fromJson: (value) => (value! as List<Object?>).map((item) => McpServer.fromJson(jsonCastMap(item))).toList(),
+  );
+
+  Future<void> connectMcpServer({required String directory, required String name}) async {
+    await _client.post(
+      path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/connect",
+      queryParameters: _location(directory: directory),
+    );
+  }
+
+  Future<void> disconnectMcpServer({required String directory, required String name}) async {
+    await _client.post(
+      path: "/api/experimental/mcp/${Uri.encodeComponent(name)}/disconnect",
+      queryParameters: _location(directory: directory),
+    );
+  }
+
+  /// Native integration metadata contains connection IDs, without credential values.
+  Future<IntegrationInfo> getMcpIntegration({required String directory, required String integrationId}) async {
+    final path = "/api/integration/${Uri.encodeComponent(integrationId)}";
+    return _data<IntegrationInfo>(
+      response: await _client.get(
+        path: path,
+        queryParameters: _location(directory: directory),
+      ),
+      operation: path,
+      fromJson: (value) => IntegrationInfo.fromJson(jsonCastMap(value)),
+    );
+  }
+
+  Future<IntegrationAttemptEncoded> startMcpAuthentication({
+    required String directory,
+    required String integrationId,
+    required String methodId,
+  }) async {
+    final path = "/api/integration/${Uri.encodeComponent(integrationId)}/connect/oauth";
+    return _data<IntegrationAttemptEncoded>(
+      response: await _client.post(
+        path: path,
+        queryParameters: _location(directory: directory),
+        headers: _jsonHeaders,
+        body: jsonEncode({"methodID": methodId}),
+      ),
+      operation: path,
+      fromJson: (value) => IntegrationAttemptEncoded.fromJson(jsonCastMap(value)),
+    );
+  }
+
+  Future<IntegrationAttemptStatus> getMcpAuthenticationStatus({
+    required String directory,
+    required String integrationId,
+    required String attemptId,
+  }) async {
+    final path = _mcpAttemptPath(integrationId: integrationId, attemptId: attemptId);
+    return _data<IntegrationAttemptStatus>(
+      response: await _client.get(
+        path: path,
+        queryParameters: _location(directory: directory),
+      ),
+      operation: path,
+      fromJson: (value) => IntegrationAttemptStatus.fromJson(jsonCastMap(value)),
+    );
+  }
+
+  Future<void> cancelMcpAuthentication({
+    required String directory,
+    required String integrationId,
+    required String attemptId,
+  }) async {
+    await _client.delete(
+      path: _mcpAttemptPath(integrationId: integrationId, attemptId: attemptId),
+      queryParameters: _location(directory: directory),
+    );
+  }
+
+  Future<void> removeMcpCredential({required String directory, required String credentialId}) async {
+    await _client.delete(
+      path: "/api/credential/${Uri.encodeComponent(credentialId)}",
+      queryParameters: _location(directory: directory),
+    );
+  }
+
+  String _mcpAttemptPath({required String integrationId, required String attemptId}) =>
+      "/api/integration/${Uri.encodeComponent(integrationId)}/connect/oauth/${Uri.encodeComponent(attemptId)}";
 
   /// Lists the locations the server has loaded, without loading any. OpenCode
   /// tags this endpoint "debug"; it exists from the minimum supported v2.0.11.

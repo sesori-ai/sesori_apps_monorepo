@@ -725,7 +725,19 @@ no action is advertised. A 2026-10-15 isolated probe at both pins found status
 discovery can open a fresh connection while the resident tool call retains its
 original connection, including after `config/mcpServer/reload`. Reloading
 configuration therefore does not establish resident reconnect support.
-Offered-connector inventory remains **not implemented**. Codex typed MCP forms
+Offered-connector inventory is **implemented** through native `app/list`, with
+complete pagination and exact thread/harness context. Offers retain distinct
+targets and native enabled/accessibility state. A catalog failure preserves the
+server inventory; server authentication never fetches the connector catalog.
+Catalog-resolved connector setup is **implemented** through a distinct offer
+action. Enabled inaccessible offers with a verified native HTTPS installUrl expose
+Open setup; offers without one give a native-tool handoff. Setup refreshes the
+native catalog and never installs, writes configuration or logs into an account.
+The headless service validates the destination before forwarding; the client opens
+it only for a current explicit setup request. Browser opening does not prove
+connection. Fresh inventory remains authoritative. Exact-pin fixtures verify
+force-refetched empty catalogs; real authenticated offers, setup destinations and
+native entitlement policy remain unqualified. Codex typed MCP forms
 and URL requests are **implemented**, reusing the existing native pending owner
 and shared request-scoped controls. Supported scalar/choice forms retain native
 types and opaque key/value aliases; invalid replies remain pending. Unsupported
@@ -765,8 +777,9 @@ requests. Stop, archive notification, process exit and teardown cancel existing 
 Failed archive cancellation retains pending state without a false settlement event.
 Choice descriptions are retained in visible option labels.
 Codex typed form/external-action management is **implemented** through the same
-shared controls, with cancel-only legacy notices. Offered connectors remain
-**not implemented** in this slice.
+shared controls, with cancel-only legacy notices. Offered-connector inventory
+and catalog-resolved setup are **implemented**. Other harnesses without a declared
+connector setup API remain explicitly unavailable for that action.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
 Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed
@@ -801,12 +814,53 @@ macOS arm64 native fixtures at both pins; other hosts, real providers and packag
 browser return remain unqualified.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
-authenticated connector setup. Other harness management remains **not
-implemented**, with native support still to be audited. Real provider policy,
+authenticated connector setup. Management outside Claude, Codex and OpenCode
+remains **not implemented**, with native support still to be audited. Real provider policy,
 credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
 ownership were not qualified by these probes. See the
 [versioned contract evidence](../.plan/active/mcp-management/evidence/native-contracts.md)
 and [reproduction tools](../tool/mcp-contracts/README.md).
+
+OpenCode v2 configured MCP inventory and connect/reconnect/disable controls are
+**implemented** through the existing location-scoped API. Project and exact
+native-session locations are supported; harness scope is explicitly unavailable.
+The adapter exposes native connection status without inferring tools, endpoint
+metadata, configuration ownership or authentication success. Effects are scoped
+to the native project/location, with authoritative refresh after controls.
+Project effects invalidate all open inventories for that plugin, covering views
+of other sessions at the same native location.
+The v2 MCP API provides no offered-connector catalog. Native MCP OAuth and
+credential removal are supported through the Integration API when the server
+declares an `integrationID`; Sesori authentication/forgetting remain **not
+implemented** for those servers and **not supported** for servers without one.
+Typed native integration metadata, OAuth start/status/cancel and credential
+removal contracts are available internally; no product authentication action is
+enabled yet. Integration metadata exposes credential IDs without reading secret
+credential values. Isolated 2.0.11 and 2.0.24 probes verify native cancellation,
+automatic loopback completion and exact credential removal without configuration
+writes. This is native API evidence, not full client/provider qualification.
+Exact integrity-verified 2.0.11 and
+2.0.24 pass inventory, enable, resident-process reconnect, disable and exact
+session-location lookup through the production adapter in isolated fixtures.
+Controls preserve the fixture configuration file. This proves native local
+control behavior, not authenticated providers or packaged client journeys.
+OpenCode v1 configured-server inventory and enable/reconnect/disable are also
+**implemented** through its separate name-keyed status map and directory-scoped
+native routes. Exact native session lookup determines its directory; harness
+scope is unavailable without native work. Connection effects are project-scoped.
+Needs-auth and needs-client-registration remain authentication-required, with
+client registration explicitly requiring native configuration. Unknown metadata,
+tools and credential state are not inferred. Offered connectors are **not
+supported by this seam**; v1 authentication/forgetting are **not implemented**
+until the separate native authentication step. The existing PATH floor remains
+1.14.0, but no exact Git tag/npm artifact exists for it; qualification uses the
+earliest published 1.14.x artifact, 1.14.17, plus target 1.17.7.
+Both integrity-verified binaries pass the production adapter's isolated inventory,
+enable, resident reconnect, disable and exact session lookup; configuration bytes
+remain unchanged and reconnect replaces the fixture process. No model/tool call
+or external provider sign-in occurs.
+The bounded Pi/ACP audit and original provider/package/client/L4 qualification
+remain later steps.
 
 ## Context compaction row
 

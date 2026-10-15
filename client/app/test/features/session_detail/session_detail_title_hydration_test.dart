@@ -296,6 +296,10 @@ void main() {
       scope: McpSessionScope(sessionId: "session-1"),
     );
     final service = MockMcpService();
+    final actions = BehaviorSubject<McpActionClientState>.seeded(const McpActionsReadOnly());
+    when(() => service.currentAction).thenAnswer((_) => actions.value);
+    when(() => service.actions).thenAnswer((_) => actions.stream);
+    addTearDown(actions.close);
     final states = BehaviorSubject<McpInventoryState>.seeded(
       const McpInventoryReady(
         inventory: McpInventoryUnavailable(
