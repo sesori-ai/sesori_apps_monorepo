@@ -392,7 +392,8 @@ client action lifecycle (8.c.2.a, ordinal 15), visible controls (8.c.2.b, ordina
 (8.d.2.b, ordinal 19).
 Original step 9 is split into typed form contracts (9.a, ordinal 20), native handling
 (9.b.1, ordinal 21), canonical headless routing (9.b.2, ordinal 22), and draft-preserving
-client lifecycle (9.c.1, ordinal 23) and shared controls (9.c.2, ordinal 24). A measured native draft already exceeds 1,100 lines
+client lifecycle (9.c.1, ordinal 23) and shared controls (9.c.2, ordinal 24).
+A measured native draft already exceeds 1,100 lines
 before headless routes/tests; these are independently compiling review boundaries.
 Its field/value codec generation, native schema validation and client draft ownership
 are separate review boundaries; the original full boundary exceeds one coherent PR.

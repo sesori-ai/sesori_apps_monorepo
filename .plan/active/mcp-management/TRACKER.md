@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-client-forms`, `0483482b2e`, in the provided `copper-heron` worktree.
-- Current step: 23/29 is ready for PR; latest merged step: 22/29 as [#1992][pr-1992].
+- Current step: 23/29 is in review as [#1993][pr-1993]; latest merged step: 22/29 as [#1992][pr-1992].
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
@@ -45,8 +45,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 19/29 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
 | 20/29 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
 | 21/29 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
-| 22/29 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992]; active-only canonical snapshots and ordered typed replies |
-| 23/29 | Client typed draft lifecycle (9.c.1) | Verified locally | 29 form cases, 9 shell DI cases, client analysis and architecture review pass |
+| 22/29 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
+| 23/29 | Client typed draft lifecycle (9.c.1) | In review | [#1993][pr-1993] |
 | 24/29 | Shared typed form controls (9.c.2) | Not started | — |
 | 25/29 | Codex inventory/actions/authentication | Not started | — |
 | 26/29 | Codex forms and offered connectors | Not started | — |
@@ -1296,6 +1296,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
 [pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
 [pr-1992]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1992
+[pr-1993]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1993
 
 - Step 20's later terminal monitor snapshot records 33 passing checks; the 32
   above is the earlier pre-merge snapshot. Step 21 was
