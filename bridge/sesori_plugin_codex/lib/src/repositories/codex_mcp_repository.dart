@@ -24,7 +24,8 @@ class CodexMcpRepository({required final CodexAppServerApi _appServerApi, requir
         serverEntries = entries;
         serverAvailability = servers;
       case PluginMcpInventoryReadFailed(:final cause, :final causeStackTrace):
-        Log.w("[codex] MCP server inventory unavailable in $scope", cause, causeStackTrace);
+        final context = scope is PluginMcpSessionScope ? "thread ${scope.sessionId}" : "harness";
+        Log.w("[codex] MCP server inventory unavailable in $context", cause, causeStackTrace);
         serverEntries = const [];
         serverAvailability = const PluginMcpCatalogUnavailable(message: "Server inventory is unavailable.");
     }

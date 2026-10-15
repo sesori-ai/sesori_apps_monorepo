@@ -1604,3 +1604,6 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   native catalogs; original OAuth scope/completion behavior remains intact.
   Synthetic controls/opened-feedback renders pass and were inspected. Native
   recording and real connector/provider/package/L4 qualification remain pending.
+- Step-28 diagnostic follow-up names harness or the actual native thread in
+  failed server reads, retaining original causes/stacks. All 42 repository tests
+  pass with both contexts asserted; package analysis is clean.
