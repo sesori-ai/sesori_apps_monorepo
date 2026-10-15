@@ -33,8 +33,9 @@ archived session if its native process remains live; it grants no session mutati
   descriptions, native server titles/descriptions, safe endpoint origins and separate native auth/runtime state
   reach neutral consumers. No config provenance or per-server control is guessed.
   Config reload is not advertised as resident reconnect. Native OAuth uses the
-  existing attempt owner; offered connectors remain explicitly not implemented,
-  and toggles/forgetting are unsupported.
+  existing attempt owner. Offered-connector inventory is implemented through
+  app/list; catalog-resolved setup remains not implemented. Toggles/forgetting
+  are unsupported.
   Coverage: `codex_mcp_repository_test.dart` and `codex_mcp_plugin_test.dart`
   in `bridge/sesori_plugin_codex/test/`, including exact scope/pagination,
   malformed payloads, typed failure causes and detached/disconnected lifecycle.
