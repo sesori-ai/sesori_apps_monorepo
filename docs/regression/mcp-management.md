@@ -347,6 +347,8 @@ changing tool names or grant rules.
 `POST /session/forms`, `/form/reply` and `/form/decline` expose the same optional
 plugin API headlessly. Snapshots map canonical original/display IDs, hide archived
 actual owners and deleted owners/display parents, and never start inactive plugins.
+An archived display parent alone does not retire an active child's form; archive
+enforcement belongs to the actual owner, whose original ID is required for replies.
 Replies require the original owner and reuse existing session ordering and archive
 validation. Unknown answer variants produce keyed invalid-type errors; unknown
 dismissals and unsupported APIs cannot mutate native requests. Missing/settled

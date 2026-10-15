@@ -233,6 +233,14 @@ void main() {
     expect(await repository.getPending(sessionId: "root"), isEmpty);
   });
 
+  test("an archived display parent does not retire an active child's own form", () async {
+    await db.sessionDao.setArchived(sessionId: "root", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
+    expect((await repository.getPending(sessionId: "child")).single.sessionID, "child");
+    expect((await repository.getPending(sessionId: "root")).single.sessionID, "child");
+    expect(await service.replyToForm(request: reply), isA<FormReplyAccepted>());
+    expect(plugin.replies.single.sessionId, "child-native");
+  });
+
   test("canonical archived rejection precedes reads and native mutations", () async {
     await db.sessionDao.setArchived(sessionId: "child", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
     final result = await ReplyToFormHandler(service: service).routeInternal(

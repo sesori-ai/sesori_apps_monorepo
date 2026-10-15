@@ -1286,7 +1286,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   `1d284e4629..75ac1b1a95` without findings. The later tracker evidence record
   changes no production or test sources.
 - Step 20 merged at accepted head `1d284e4629`, squash `feb6f77858`, with 32
-  passing checks and a clean final Cubic approval. The normalized native-format
+  checks in the pre-merge snapshot and a clean final Cubic approval. The normalized native-format
   spelling suggestion remains deliberately declined with a prefixed explanation.
   The Step-21 branch incorporated current main; each conflicting incoming document was verified
   byte-identical to the already incorporated parent. The merge changes no files
@@ -1294,9 +1294,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 
 [pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
 
-- Step 20's terminal monitor report records 33 passing checks. Step 21 is
+- Step 20's later terminal monitor snapshot records 33 passing checks; the 32
+  above is the earlier pre-merge snapshot. Step 21 was
   published as #1991 at `0dd7b76ca1`: 1,340 changed lines, one generated and
-  1,339 authored. Its monitor is active. Native recording remains deferred.
+  1,339 authored. Its monitor was started at publication. Native recording remains deferred.
 - Step 22 implements FormRepository, neutral mappings and the three form routes
   through the existing PendingInteractionService, dispatcher and archive validator.
   Optional-plugin reads remain active-only, snapshots filter the actual owner,
