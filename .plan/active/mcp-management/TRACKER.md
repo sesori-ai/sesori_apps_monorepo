@@ -4,10 +4,9 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-opencode-v1-controls`, in the provided `copper-heron` worktree.
-- Current step: 30/35 OpenCode v2 management is in PR [#2006][pr-2006].
-  Step 31 v1 management is the one local successor; 118 cases and both native
-  versions pass. Its final architecture review approved the aligned ownership.
-  Latest merged: 29/35 as [#2005][pr-2005] (`6d0d7bcce0`).
+- Current step: 31/35 OpenCode v1 management is verified and ready for PR.
+  All 118 cases and both native versions pass; final architecture review approved.
+  Latest merged: 30/35 as [#2006][pr-2006] (`ac75750eae`).
   Secondary-harness work is
   split into four native-contract steps; final qualification is unchanged.
   Native recording remains deferred by the user.
@@ -59,7 +58,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 27/35 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/35 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
 | 29/35 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
-| 30/35 | OpenCode v2 inventory and connection controls (11.a) | In PR | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
+| 30/35 | OpenCode v2 inventory and connection controls (11.a) | Merged | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
 | 31/35 | OpenCode v1 inventory and connection controls (11.b) | Verified locally; final architecture approved | 118 cases; native 1.14.17 and 1.17.7 |
 | 32/35 | OpenCode v1 native MCP authentication (11.c) | Not started | — |
 | 33/35 | Bounded Pi/ACP support and capability audit (11.d) | Not started | — |
@@ -81,7 +80,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   pass again through service/repository/API, replacing resident fixture processes
   and retaining configuration bytes. Logs use the `step31-final-*` private paths.
   The original presentation fixture is unchanged. Final architecture review
-  approved the aligned ownership (pass 2); source remains local while #2006 is reviewed.
+  approved the aligned ownership (pass 2). Parent #2006 merged after passing CI
+  and completed code/security reviews; its additional presentation-capability
+  guard was declined because native controls remain valid across status changes.
+  All incoming squash-conflict files matched reviewed parent `c8aa783df3`;
+  the entire v1 diff is unchanged after integration.
 
 - Step 31 tested source `a00726445c`: architecture plan and implementation reviews
   approved. All 116 affected MCP/API/repository/plugin
