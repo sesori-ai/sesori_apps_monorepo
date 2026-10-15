@@ -1156,7 +1156,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step 19's initial implementation is recorded in `10660b7f2b`, based on
   `e6162c78b9`. Integrated parent fixes `4086e6e93c` without rewriting either history;
   localization outputs were regenerated from the combined source. Verified merged
-  tree: `2d3c7f081125099b527bd576d36bf429eeb636e4`; only this evidence note follows.
+  source commit: `a8a8a5695e`; its production/test sources match the verified merge.
   With Flutter 3.47.7 / Dart 3.13.5, affected integration checks pass: from
   `client/module_core`, `flutter test --no-pub test/cubits/session_detail/session_detail_cubit_permission_test.dart test/api/session_external_actions_api_test.dart test/services/session_external_action_service_test.dart test/cubits/session_detail/session_external_action_cubit_test.dart`
   (32); from `client/module_app_ui`, `flutter test --no-pub test/features/session_detail/widgets/question_modal_test.dart test/features/session_detail/widgets/external_action_modal_test.dart`
@@ -1172,16 +1172,16 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   an explicit nullable-destination check and directional padding. `dart analyze
   --fatal-infos` from `client` passes. The affected Cubit and modal test files
   pass 9 and 7 cases respectively; modal taps target the actual buttons with no
-  hit-test warnings. Verified tree: `42ca6d584acce156f500ff09db2e8688843aad4d`.
+  hit-test warnings. Verified source commit: `22358bd5f2`.
 - Step 18 merged at accepted head `935f4c79e4`, squash `834374b34f`; 31 checks
   passed before merge and 32 in the terminal monitor report. Three deliberately
   declined threads retain their prefixed explanations. Step 19 merged current
   main without rewriting history and preserves its Computers-page changes.
-  Synchronized tree `c590f12d873a5b30596c995bed23673d246d3f9c` passes the same
+  Synchronized source commit `1585422cc5` passes the same
   32 core, 29 shared modal, 208 mobile and 13 desktop cases using commands above
   (desktop: `flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart`).
-  Client-root `dart analyze --fatal-infos` also passes. Subsequent edits change
-  only tracker publication state and this validation record.
+  Client-root `dart analyze --fatal-infos` also passes. The published commit differs
+  from the tested snapshot only in tracker publication state and this record.
 
 [pr-1986]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1986
 
@@ -1216,5 +1216,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   tests; client-root `dart analyze --fatal-infos` passes. Commands use the same
   pinned SDK and package paths above; new API/sequence regressions extend those files.
   Architecture implementation review pass 2 approved without findings.
-  Verified review-fix tree: `ed4cd02f5a4db3f6bced6e64cc6a2b0446d2ea5c`;
-  subsequent edits add only this immutable evidence reference.
+  Verified review-fix source commit: `f46ee6b4c9`; its production/test sources
+  match the verified tree. References above use published commits reachable from
+  this PR, rather than intermediate local-only trees.
+- Follow-up review adds the existing mounted-page guard to the dismissal callback.
+  The full-screen SSE sequencing regression still passes; workspace-plugin analysis
+  of `session_detail_body.dart` passes. Each replacement source commit above is an
+  ancestor of the pushed head and differs from its tested snapshot only in TRACKER.md.
