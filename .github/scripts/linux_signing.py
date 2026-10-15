@@ -55,6 +55,12 @@ class LinuxSigningKey:
         # Verification must not rely on the signing home's private key.
         run(command=["gpg", "--batch", "--verify", str(signature), str(source)], env=self.public_env)
 
+    def sign_cleartext(self, *, source: Path, signature: Path) -> None:
+        run(command=["gpg", "--batch", "--pinentry-mode", "loopback", "--passphrase-file", str(self.password),
+                     "--local-user", self.fingerprint, "--digest-algo", "SHA256", "--clearsign",
+                     "--output", str(signature), str(source)], env=self.env)
+        run(command=["gpg", "--batch", "--verify", str(signature)], env=self.public_env)
+
 
 @contextlib.contextmanager
 def signing_key(*, output: Path, fingerprint: str) -> Iterator[LinuxSigningKey]:

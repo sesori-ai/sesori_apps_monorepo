@@ -70,6 +70,11 @@ on:
       - '.github/scripts/test_package_desktop_linux.py'
       - '.github/scripts/sign_desktop_linux.py'
       - '.github/scripts/test_sign_desktop_linux.py'
+      - '.github/scripts/build_linux_repository.py'
+      - '.github/scripts/test_build_linux_repository.py'
+      - '.github/scripts/publish_desktop_linux.py'
+      - '.github/scripts/prepare_desktop_release.py'
+      - '.github/scripts/Dockerfile.linux-repository'
       - '.github/scripts/Dockerfile.linux-signing'
       - '.github/scripts/linux_signing.py'
       - '.github/scripts/sign_bridge_linux.py'
@@ -1021,6 +1026,11 @@ jobs:
           docker run --rm --network none -v "$GITHUB_WORKSPACE:/workspace:ro" \
             -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-signing \
             python3 -m unittest discover -s .github/scripts -p 'test_sign_desktop_linux.py'
+          docker build --file .github/scripts/Dockerfile.linux-repository \
+            --tag sesori-linux-repository .github/scripts
+          docker run --rm --network none -v "$GITHUB_WORKSPACE:/workspace:ro" \
+            -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-repository \
+            python3 -m unittest discover -s .github/scripts -p 'test_build_linux_repository.py'
 
   macos-native-build:
     # Retain native check names while the GUI compiler runs in the ARM producer.
