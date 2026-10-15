@@ -72,7 +72,7 @@ Then run `dart pub get`.
 
 Pure Dart — no Flutter dependency. Works in any Dart environment including native binaries and Flutter apps.
 
-Requires Dart 3.13.0 or a Dart 3.13 prerelease.
+Requires the Dart SDK version declared by `environment.sdk` in `pubspec.yaml`.
 
 ## License
 
