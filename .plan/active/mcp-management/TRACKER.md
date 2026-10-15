@@ -74,7 +74,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
-- Step 31 architecture plan and implementation reviews approved. All 116 affected MCP/API/repository/plugin
+- Step 31 tested source `a00726445c`: architecture plan and implementation reviews
+  approved. All 116 affected MCP/API/repository/plugin
   cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
 
   ```sh
@@ -94,6 +95,9 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   No model/tool call or provider sign-in occurs. Private probe/log:
   `/private/tmp/copper-heron-mcp-step31-native.py` and corresponding `.log`.
   Original provider/package/client/L4 and deferred native recording remain pending.
+  Synthetic before/after/control widget renders pass and were inspected. Media:
+  orphan `pr-media` commit `e174f0dabdfe4a37260a0380168ab88b94294b9c`, under
+  `sesori/mcp-opencode-v1-controls/`. This is shared presentation evidence only.
 
 - Step 30 tested source `51bcf3f5f4`: both architecture reviews approved; all 69
   affected v2 cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
