@@ -179,6 +179,7 @@ class const V2ModelMapper({required final String _pluginId}) {
       return null;
     }
     return PluginPendingQuestion(
+      interactionKind: PluginQuestionInteractionKind.question,
       id: form.id,
       sessionID: form.sessionID,
       displaySessionId: displaySessionId,

@@ -159,6 +159,7 @@ void main() {
         (
           name: "question asked",
           event: const BridgeSseQuestionAsked(
+            interactionKind: PluginQuestionInteractionKind.question,
             id: "question",
             sessionID: "backend-session",
             displaySessionId: "backend-parent",

@@ -976,6 +976,68 @@ void main() {
       await subscription.cancel();
     });
 
+    for (final reject in [false, true]) {
+      test("legacy ${reject ? 'reject' : 'Cancel'} cancels the original native URL request", () async {
+        await harness.createSession();
+        final process = harness.processes.single;
+        await waitForFrame(process, "user");
+        process.emit({
+          "type": "control_request",
+          "request_id": "external-request",
+          "request": {
+            "subtype": "elicitation",
+            "mode": "url",
+            "mcp_server_name": "Fixture server",
+            "message": "Authorize fixture",
+            "url": "https://fixture.example/setup",
+            "elicitation_id": "fixture",
+          },
+        });
+        await pump();
+        final pending = (await harness.plugin.getPendingExternalActions(sessionId: testSessionId)).single;
+        expect(pending.sessionID, testSessionId);
+        await expectLater(
+          harness.plugin.replyToQuestion(
+            questionId: pending.id,
+            sessionId: otherTestSessionId,
+            answers: const [
+              ["Cancel"],
+            ],
+          ),
+          throwsA(isA<PluginOperationException>()),
+        );
+        await expectLater(
+          harness.plugin.replyToQuestion(
+            questionId: pending.id,
+            sessionId: testSessionId,
+            answers: const [
+              ["Approve"],
+            ],
+          ),
+          throwsA(isA<PluginOperationException>()),
+        );
+        expect(await harness.plugin.getPendingExternalActions(sessionId: testSessionId), hasLength(1));
+        if (reject) {
+          await harness.plugin.rejectQuestion(questionId: pending.id, sessionId: testSessionId);
+        } else {
+          await harness.plugin.replyToQuestion(
+            questionId: pending.id,
+            sessionId: testSessionId,
+            answers: const [
+              ["Cancel"],
+            ],
+          );
+        }
+        final frame = await waitForFrame(process, "control_response");
+        expect(frame["response"], {
+          "subtype": "success",
+          "request_id": "external-request",
+          "response": {"action": "cancel"},
+        });
+        expect(await harness.plugin.getPendingExternalActions(sessionId: testSessionId), isEmpty);
+      });
+    }
+
     test("publishes Default prompt defaults after approving ExitPlanMode", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);

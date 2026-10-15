@@ -584,6 +584,7 @@ final class PiPlugin._({
     _eventBuffer.add(
       switch (event) {
         PiExtensionUiQuestionAsked(:final question) => BridgeSseQuestionAsked(
+          interactionKind: question.interactionKind,
           id: question.id,
           sessionID: question.sessionID,
           displaySessionId: question.displaySessionId,

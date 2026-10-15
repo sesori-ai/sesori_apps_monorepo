@@ -9,6 +9,7 @@ extension PluginPendingQuestionMapping on PluginPendingQuestion {
     required String sessionId,
     required String? displaySessionId,
   }) => PendingQuestion(
+    interactionKind: interactionKind.toShared(),
     id: id,
     sessionID: sessionId,
     displaySessionId: displaySessionId,

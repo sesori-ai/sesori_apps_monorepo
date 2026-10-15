@@ -36,7 +36,11 @@ final class ClaudePlugin({
   required final ClaudeSessionIdGenerator _generateSessionId,
   required String launchDirectory,
 }) extends BridgeDerivedProjectsPluginApi
-    implements PersistedSessionCleanupApi, McpManagementPluginApi, McpAuthenticationPluginApi {
+    implements
+        PersistedSessionCleanupApi,
+        McpManagementPluginApi,
+        McpAuthenticationPluginApi,
+        SessionExternalActionsPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
     _sessions.dispatches.listen(_handleTurnDispatched).addTo(_subscriptions);
@@ -368,6 +372,17 @@ final class ClaudePlugin({
       _approvals.pendingQuestionsForSession(sessionId: sessionId);
 
   @override
+  Future<List<PluginPendingExternalAction>> getPendingExternalActions({required String sessionId}) async =>
+      _approvals.pendingExternalActionsForSession(sessionId: sessionId);
+
+  @override
+  Future<PluginExternalActionReply> replyToExternalAction({
+    required String requestId,
+    required String sessionId,
+    required PluginExternalActionChoice choice,
+  }) async => _approvals.replyExternalAction(id: requestId, sessionId: sessionId, choice: choice);
+
+  @override
   Future<List<PluginPendingPermission>> getPendingPermissions({required String sessionId}) async =>
       _approvals.pendingPermissionsForSession(sessionId: sessionId);
 
@@ -385,6 +400,19 @@ final class ClaudePlugin({
     required String sessionId,
     required List<List<String>> answers,
   }) async {
+    // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 answers through question routes.
+    // Remove when all supported production clients consume typed external actions.
+    if (_approvals.hasExternalAction(id: questionId)) {
+      if (answers.length != 1 || answers.single.length != 1 || answers.single.single != "Cancel") {
+        throw const PluginOperationException(
+          "replyToQuestion",
+          statusCode: 400,
+          message: "this external-action notice can only be cancelled",
+        );
+      }
+      _cancelLegacyExternalAction(id: questionId, sessionId: sessionId);
+      return;
+    }
     final exitsPlanMode = _approvals.isExitPlanModeQuestion(id: questionId);
     if (!_approvals.hasQuestion(id: questionId)) {
       throw const PluginOperationException.notFound("replyToQuestion", message: "question not found");
@@ -417,11 +445,41 @@ final class ClaudePlugin({
 
   @override
   Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
+    // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 rejects through question routes.
+    // Remove when all supported production clients consume typed external actions.
+    if (_approvals.hasExternalAction(id: questionId)) {
+      _cancelLegacyExternalAction(id: questionId, sessionId: sessionId);
+      return;
+    }
     if (!_approvals.hasQuestion(id: questionId)) {
       throw const PluginOperationException.notFound("rejectQuestion", message: "question not found");
     }
     if (!_approvals.rejectQuestion(id: questionId)) {
       throw const PluginOperationException("rejectQuestion", message: "Claude rejected the question response");
+    }
+  }
+
+  void _cancelLegacyExternalAction({required String id, required String? sessionId}) {
+    if (sessionId == null) {
+      throw const PluginOperationException.notFound("cancelExternalAction", message: "owning session is required");
+    }
+    switch (_approvals.replyExternalAction(id: id, sessionId: sessionId, choice: PluginExternalActionChoice.cancel)) {
+      case PluginExternalActionReply.accepted:
+        return;
+      case PluginExternalActionReply.alreadySettled:
+        throw const PluginOperationException.notFound("cancelExternalAction", message: "native request is not pending");
+      case PluginExternalActionReply.unsupportedChoice:
+        throw const PluginOperationException(
+          "cancelExternalAction",
+          statusCode: 400,
+          message: "unsupported native choice",
+        );
+      case PluginExternalActionReply.unavailable:
+        throw const PluginOperationException(
+          "cancelExternalAction",
+          statusCode: 503,
+          message: "native reply unavailable",
+        );
     }
   }
 

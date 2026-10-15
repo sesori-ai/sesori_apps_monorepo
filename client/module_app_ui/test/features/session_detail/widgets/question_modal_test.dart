@@ -87,6 +87,37 @@ SesoriQuestionAsked _questionAsked({required List<QuestionInfo> questions}) {
 }
 
 void main() {
+  testWidgets("typed external requests offer a cancel handoff instead of ordinary answers", (tester) async {
+    final capture = _ReplyCapture();
+    final router = _createRouter(
+      question: const SesoriQuestionAsked(
+        id: "external-request",
+        sessionID: "session-1",
+        displaySessionId: null,
+        interactionKind: QuestionInteractionKind.externalAction,
+        questions: [
+          QuestionInfo(
+            header: "MCP authorization",
+            question: "Update the client or cancel this request.",
+            options: [QuestionOption(label: "Cancel", description: "Cancel the native request.")],
+            multiple: false,
+            custom: false,
+          ),
+        ],
+      ),
+      capture: capture,
+    );
+    addTearDown(router.dispose);
+    await tester.pumpWidget(_buildApp(router: router));
+    await _openQuestionModal(tester);
+    expect(find.byKey(const Key("question-primary-action")), findsNothing);
+    expect(find.byType(TextField), findsNothing);
+    await tester.tap(find.text("Cancel request"));
+    await tester.pumpAndSettle();
+    expect(capture.rejectedRequestId, "external-request");
+    expect(capture.answers, isNull);
+  });
+
   for (final omitCustom in [false, true]) {
     testWidgets("checkbox and separate text questions preserve ${omitCustom ? 'omission' : 'identical values'}", (
       tester,

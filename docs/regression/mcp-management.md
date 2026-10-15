@@ -315,7 +315,7 @@ presentation retains its issued challenge for explicit retry. The transport seam
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
 
-## Session external-action transport foundation
+## Session external actions
 
 Neutral pending URL-action snapshot and reply codecs retain the original session
 owner, optional display parent, explanatory text, destination, purpose and declared
@@ -329,8 +329,33 @@ omitted marker remains an ordinary question for public v1.9.1 bridges. Marked
 form/external notices can retain cancel-only, custom-disabled legacy projection;
 exact released v1.9.1 snapshot and SSE question codecs tolerate these added fields.
 
-This foundation only defines codecs. Canonical native ownership, URL validation,
-capability advertisement, routes, legacy cancellation, modern filtering and
-visible session actions remain the integration step. No requests are emitted yet.
-Coverage: `shared/sesori_shared/test/models/pending_external_action_test.dart` and
-`shared/sesori_shared/test/models/sesori_sse_event_test.dart`; native and mixed-peer gates remain in the active plan.
+Claude's existing pending-input owner retains native URL requests. Headless
+`POST /session/external-actions` reads request-scoped destinations without starting
+an inactive integration. `POST /external-action/reply` preserves native accept,
+decline and cancel, validates the original owning session and runs through the
+existing archive/operation boundary. A display parent cannot answer for a child.
+Deleted and archived owners are hidden, including a child surfaced through a
+display parent; settled requests are idempotent. Failed native writes
+retain the pending request. Teardown sends native cancellation.
+
+The pending-interaction service requires absolute HTTPS destinations with a host
+and no user information before snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
+destination. URLs never enter question broadcasts, replay or persistence. Legacy
+question replies accept only Cancel or rejection and send native `action: cancel`.
+Current clients preserve the interaction marker through cold loading and show an
+honest cancel-only handoff with no ordinary answer controls. Closing the layer
+does not cancel the request; the pending card retains neutral request wording and
+a Review action. Typed cancellation does not emit ordinary-question analytics.
+Browser/consent presentation follows separately.
+Unsupported native forms receive a decline attempt and a session-attributed
+warning through the existing desktop/mobile toast presenter. A successful native
+write settles the request. A failed write is logged with the native request and
+session IDs; the unsupported request is not retained or retried and may remain
+unresolved until native teardown.
+
+Coverage: `shared/sesori_shared/test/models/pending_external_action_test.dart`,
+`shared/sesori_shared/test/models/sesori_sse_event_test.dart`,
+`bridge/app/test/bridge/repositories/external_action_repository_test.dart`, the
+Claude registry/stream-client/plugin tests, the core session-detail permission
+tests and shared UI question-modal tests. Native and mixed-peer qualification
+remain in the active plan.

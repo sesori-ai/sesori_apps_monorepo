@@ -281,6 +281,7 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
         return [
           if (form != null)
             BridgeSseQuestionAsked(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: form.id,
               sessionID: form.sessionID,
               displaySessionId: displaySessionId,

@@ -1,6 +1,13 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+extension PluginQuestionInteractionKindMapping on PluginQuestionInteractionKind {
+  QuestionInteractionKind toShared() => switch (this) {
+    PluginQuestionInteractionKind.question => QuestionInteractionKind.question,
+    PluginQuestionInteractionKind.externalAction => QuestionInteractionKind.externalAction,
+  };
+}
+
 /// Maps [PluginToolStatus] to the shared [ToolStatus] with compile-time
 /// exhaustiveness — a new plugin status forces a compile error here rather than
 /// silently leaking a wire string. Unlike [PluginMessagePartType], `unknown` is

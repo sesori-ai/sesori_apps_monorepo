@@ -25,8 +25,15 @@ Map<String, dynamic> _$PluginQuestionInfoToJson(_PluginQuestionInfo instance) =>
 Map<String, dynamic> _$PluginPendingQuestionToJson(
   _PluginPendingQuestion instance,
 ) => <String, dynamic>{
+  'interactionKind':
+      _$PluginQuestionInteractionKindEnumMap[instance.interactionKind]!,
   'id': instance.id,
   'sessionID': instance.sessionID,
   'displaySessionId': ?instance.displaySessionId,
   'questions': instance.questions.map((e) => e.toJson()).toList(),
+};
+
+const _$PluginQuestionInteractionKindEnumMap = {
+  PluginQuestionInteractionKind.question: 'question',
+  PluginQuestionInteractionKind.externalAction: 'externalAction',
 };

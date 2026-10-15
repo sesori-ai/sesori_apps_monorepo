@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/repositories/external_action_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_session_status_mapper.dart";
@@ -19,6 +20,7 @@ import "package:sesori_bridge/src/repositories/models/session_continuation_recor
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
+import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/pr_source_repository.dart";
 import "package:sesori_bridge/src/repositories/pull_request_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -38,6 +40,7 @@ import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/fakes/fake_bridge_plugin.dart";
 import "../../helpers/fakes/fake_repository_fakes.dart";
+import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/single_plugin_repository_test_support.dart";
 
 export "../../helpers/fakes/fake_bridge_plugin.dart";
@@ -77,6 +80,10 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
   return (
     dispatcher: dispatcher,
     service: PendingInteractionService(
+      externalActionRepository: ExternalActionRepository(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),
+      ),
       permissionRepository: singlePluginPermissionRepository(
         plugin: plugin,
         sessionDao: database.sessionDao,

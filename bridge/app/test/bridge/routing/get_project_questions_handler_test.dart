@@ -57,6 +57,7 @@ void main() {
     test("maps fields including nested question info and options", () async {
       plugin.pendingQuestionsResult = [
         const PluginPendingQuestion(
+          interactionKind: PluginQuestionInteractionKind.question,
           id: "q-1",
           sessionID: "s-1",
           displaySessionId: null,

@@ -121,6 +121,7 @@ final class PiExtensionUiTracker() {
 }
 
 PluginPendingQuestion _pending(PiTrackedExtensionDialog dialog) => PluginPendingQuestion(
+  interactionKind: PluginQuestionInteractionKind.question,
   id: dialog.questionId,
   sessionID: dialog.ownerSessionId,
   displaySessionId: dialog.displaySessionId,

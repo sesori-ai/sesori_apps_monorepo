@@ -169,15 +169,20 @@ class _SessionDetailLoadedViewState() extends State<SessionDetailLoadedView> {
           LocalSendIdle() || LocalSendSending() => false,
         };
     final questionCount = state.pendingQuestions.fold<int>(0, (sum, q) => sum + q.questions.length);
+    final hasTypedRequest = state.pendingQuestions.any((q) => q.interactionKind != QuestionInteractionKind.question);
     // An archived session's requests can never be answered.
     final canAnswer = !widget.readOnly && !state.isArchived && state.interaction.canInteract;
     final needsYou = [
       if (state.pendingQuestions.firstOrNull?.questions.firstOrNull case final question? when canAnswer)
         SessionDetailNeedsYouCard(
           icon: TablerRegular.help,
-          label: questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount),
+          label: hasTypedRequest
+              ? (state.pendingQuestions.length == 1
+                    ? loc.pendingRequestBannerSingle
+                    : loc.pendingRequestBannerMultiple(state.pendingQuestions.length))
+              : (questionCount == 1 ? loc.questionBannerSingle : loc.questionBannerMultiple(questionCount)),
           request: _firstLine(question.question),
-          action: loc.needsYouAnswer,
+          action: hasTypedRequest ? loc.needsYouReview : loc.needsYouAnswer,
           onPressed: widget.onShowPendingQuestions,
         ),
       if (state.pendingPermissions.firstOrNull case final permission? when canAnswer)

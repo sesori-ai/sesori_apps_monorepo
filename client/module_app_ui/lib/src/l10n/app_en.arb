@@ -2314,6 +2314,14 @@
   "mcpUserManaged": "User managed",
   "mcpReadOnlyConfiguration": "Read only",
   "mcpManageConnection": "Manage connection",
+  "mcpNativeRequestTitle": "MCP request",
+  "mcpNativeRequestClientUnsupported": "This client cannot complete this MCP request. You can cancel it here.",
+  "mcpCancelRequest": "Cancel request",
+  "pendingRequestBannerSingle": "1 pending request",
+  "pendingRequestBannerMultiple": "{count} pending requests",
+  "@pendingRequestBannerMultiple": {
+    "placeholders": {"count": {"type": "int"}}
+  },
   "mcpReconnect": "Reconnect",
   "mcpEnable": "Enable",
   "mcpDisable": "Disable",

@@ -3314,6 +3314,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpManageConnection => 'Manage connection';
 
   @override
+  String get mcpNativeRequestTitle => 'MCP request';
+
+  @override
+  String get mcpNativeRequestClientUnsupported =>
+      'This client cannot complete this MCP request. You can cancel it here.';
+
+  @override
+  String get mcpCancelRequest => 'Cancel request';
+
+  @override
+  String get pendingRequestBannerSingle => '1 pending request';
+
+  @override
+  String pendingRequestBannerMultiple(int count) {
+    return '$count pending requests';
+  }
+
+  @override
   String get mcpReconnect => 'Reconnect';
 
   @override

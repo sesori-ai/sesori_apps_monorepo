@@ -2638,6 +2638,26 @@ void main() {
     });
   }
 
+  testWidgets("external input remains a reviewable request after its modal is closed", (tester) async {
+    final external = SesoriQuestionAsked(
+      id: "external",
+      sessionID: "session-1",
+      displaySessionId: null,
+      interactionKind: QuestionInteractionKind.externalAction,
+      questions: _question.questions,
+    );
+    final state = _loadedState(pendingQuestions: [external], pendingPermissions: const []);
+    when(() => cubit.state).thenReturn(state);
+    whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    expect(find.text("1 pending request"), findsOneWidget);
+    expect(find.text("1 pending question"), findsNothing);
+    final card = find.byType(SessionDetailNeedsYouCard);
+    expect(find.descendant(of: card, matching: find.text("Review")), findsOneWidget);
+    expect(find.descendant(of: card, matching: find.text("Answer")), findsNothing);
+  });
+
   testWidgets("needs-you cards dock above the composer at its width and open their modals", (tester) async {
     final state = _loadedState(pendingQuestions: const [_question], pendingPermissions: const [_permission]);
     when(() => cubit.state).thenReturn(state);

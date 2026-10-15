@@ -4,6 +4,11 @@ part "plugin_pending_question.freezed.dart";
 
 part "plugin_pending_question.g.dart";
 
+enum PluginQuestionInteractionKind() {
+  question,
+  externalAction,
+}
+
 @freezed
 sealed class PluginQuestionOption with _$PluginQuestionOption {
   const factory({
@@ -26,6 +31,7 @@ sealed class PluginQuestionInfo with _$PluginQuestionInfo {
 @freezed
 sealed class PluginPendingQuestion with _$PluginPendingQuestion {
   const factory({
+    required PluginQuestionInteractionKind interactionKind,
     required String id,
     required String sessionID,
 

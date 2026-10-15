@@ -676,7 +676,8 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).pendingPermissions, [relevantPermission]);
     });
 
-    test("rejecting a surfaced child question targets the child (owner) session", () async {
+    test("cold-loaded external request retains its marker and cancellation owner", () async {
+      final analytics = stubbedProductAnalyticsService();
       when(() => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const PendingQuestionResponse(
@@ -685,6 +686,7 @@ void main() {
                 id: "q-child",
                 sessionID: "child-1",
                 displaySessionId: sessionId,
+                interactionKind: QuestionInteractionKind.externalAction,
                 questions: [],
               ),
             ],
@@ -707,18 +709,29 @@ void main() {
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
+        productAnalyticsService: analytics,
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
 
       // The child question surfaced on the root.
       expect((cubit.state as SessionDetailLoaded).pendingQuestions.map((q) => q.id), ["q-child"]);
+      expect(
+        (cubit.state as SessionDetailLoaded).pendingQuestions.single.interactionKind,
+        QuestionInteractionKind.externalAction,
+      );
 
       final ok = await cubit.rejectQuestion("q-child");
 
       expect(ok, isTrue);
       // Reject targets the owning child session, not the open root.
       verify(() => mockSessionService.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
+      verifyNever(
+        () => analytics.logEvent(
+          event: const ProductAnalyticsEvent.sessionQuestionRejected(),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
     });
 
     test("archived sessions refuse prompts, permission replies, and question replies", () async {

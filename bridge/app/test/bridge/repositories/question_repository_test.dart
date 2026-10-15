@@ -102,6 +102,7 @@ void main() {
         questionsBySession: const {
           "dialog": [
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "question-1",
               sessionID: "dialog",
               displaySessionId: null,
@@ -184,6 +185,7 @@ void main() {
         questionsBySession: {
           "w1": const [
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "q-w1",
               sessionID: "w1",
               displaySessionId: null,
@@ -222,6 +224,7 @@ void main() {
         parentStableId: null,
       );
       const pendingQuestion = PluginPendingQuestion(
+        interactionKind: PluginQuestionInteractionKind.question,
         id: "q-s1",
         sessionID: "s1",
         displaySessionId: null,
@@ -361,7 +364,13 @@ void main() {
         allSessions: [_session(worktree, id: "w1")],
         questionsBySession: {
           "w1": const [
-            PluginPendingQuestion(id: "q-w1", sessionID: "w1", displaySessionId: null, questions: []),
+            PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
+              id: "q-w1",
+              sessionID: "w1",
+              displaySessionId: null,
+              questions: [],
+            ),
           ],
         },
       );
@@ -396,11 +405,23 @@ void main() {
         ],
         questionsBySession: {
           "gone": const [
-            PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
+            PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
+              id: "q-gone",
+              sessionID: "gone",
+              displaySessionId: null,
+              questions: [],
+            ),
           ],
         },
         ownProjectQuestions: const [
-          PluginPendingQuestion(id: "q-gone", sessionID: "gone", displaySessionId: null, questions: []),
+          PluginPendingQuestion(
+            interactionKind: PluginQuestionInteractionKind.question,
+            id: "q-gone",
+            sessionID: "gone",
+            displaySessionId: null,
+            questions: [],
+          ),
         ],
       );
       final repo = singlePluginQuestionRepository(
@@ -432,14 +453,32 @@ void main() {
         allSessions: [_session(parent, id: "s1")],
         questionsBySession: {
           "s1": const [
-            PluginPendingQuestion(id: "q-s1", sessionID: "s1", displaySessionId: null, questions: []),
+            PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
+              id: "q-s1",
+              sessionID: "s1",
+              displaySessionId: null,
+              questions: [],
+            ),
           ],
         },
         ownProjectQuestions: const [
           // Duplicated with the per-session aggregation — must appear once.
-          PluginPendingQuestion(id: "q-s1", sessionID: "s1", displaySessionId: null, questions: []),
+          PluginPendingQuestion(
+            interactionKind: PluginQuestionInteractionKind.question,
+            id: "q-s1",
+            sessionID: "s1",
+            displaySessionId: null,
+            questions: [],
+          ),
           // Known only to the plugin's live in-memory scoping.
-          PluginPendingQuestion(id: "q-fresh", sessionID: "s-fresh", displaySessionId: null, questions: []),
+          PluginPendingQuestion(
+            interactionKind: PluginQuestionInteractionKind.question,
+            id: "q-fresh",
+            sessionID: "s-fresh",
+            displaySessionId: null,
+            questions: [],
+          ),
         ],
       );
       final repo = singlePluginQuestionRepository(
@@ -468,7 +507,13 @@ void main() {
         allSessions: const [],
         questionsBySession: {
           "w-fresh": const [
-            PluginPendingQuestion(id: "q-fresh", sessionID: "w-fresh", displaySessionId: null, questions: []),
+            PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
+              id: "q-fresh",
+              sessionID: "w-fresh",
+              displaySessionId: null,
+              questions: [],
+            ),
           ],
         },
       );
@@ -509,10 +554,22 @@ void main() {
         ],
         questionsBySession: {
           "s1": const [
-            PluginPendingQuestion(id: "q-1", sessionID: "s1", displaySessionId: null, questions: []),
+            PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
+              id: "q-1",
+              sessionID: "s1",
+              displaySessionId: null,
+              questions: [],
+            ),
           ],
           "s2": const [
-            PluginPendingQuestion(id: "q-1", sessionID: "s2", displaySessionId: null, questions: []),
+            PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
+              id: "q-1",
+              sessionID: "s2",
+              displaySessionId: null,
+              questions: [],
+            ),
           ],
         },
       );
@@ -541,7 +598,13 @@ void main() {
         ],
         questionsBySession: {
           "s2": const [
-            PluginPendingQuestion(id: "q-s2", sessionID: "s2", displaySessionId: null, questions: []),
+            PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
+              id: "q-s2",
+              sessionID: "s2",
+              displaySessionId: null,
+              questions: [],
+            ),
           ],
         },
       );
@@ -569,6 +632,7 @@ void main() {
         questionsBySession: {
           "gone": const [
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "q-gone",
               sessionID: "gone",
               displaySessionId: null,
@@ -625,18 +689,21 @@ void main() {
         questionsBySession: {
           "root": const [
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "deleted-child",
               sessionID: "gone-child",
               displaySessionId: "root",
               questions: [],
             ),
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "deleted-root",
               sessionID: "live-child",
               displaySessionId: "gone-root",
               questions: [],
             ),
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "visible",
               sessionID: "live-child",
               displaySessionId: "root",
@@ -670,6 +737,7 @@ void main() {
         questionsBySession: {
           "live-child": const [
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "q-stale",
               sessionID: "live-child",
               displaySessionId: "gone-root",
@@ -707,6 +775,7 @@ void main() {
         questionsBySession: {
           "live-root": const [
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "q-stale-child",
               sessionID: "gone-child",
               displaySessionId: "live-root",
@@ -746,6 +815,7 @@ void main() {
         questionsBySession: {
           "s1": const [
             PluginPendingQuestion(
+              interactionKind: PluginQuestionInteractionKind.question,
               id: "aggregated",
               sessionID: "child-a",
               displaySessionId: "gone-root",
@@ -755,6 +825,7 @@ void main() {
         },
         ownProjectQuestions: const [
           PluginPendingQuestion(
+            interactionKind: PluginQuestionInteractionKind.question,
             id: "own",
             sessionID: "child-b",
             displaySessionId: "gone-root",

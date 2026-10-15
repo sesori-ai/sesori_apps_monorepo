@@ -3,8 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-session-external-actions`, `ea65f5b045`, in the provided `copper-heron` worktree.
-- Current step: 17/24 is in review [#1981][pr-1981]; latest merged step: 16/24 as [#1971][pr-1971].
+- Branch/base: `sesori/mcp-native-session-actions`, `cfecaf9494`, in the provided `copper-heron` worktree.
+- Current step: 18/25 is in review as [#1984][pr-1984]; latest merged step: 17/25 as [#1981][pr-1981].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -21,30 +21,31 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/24 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/24 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/24 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/24 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/24 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/24 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/24 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/24 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/24 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/24 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/24 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/24 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/24 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/24 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/24 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/24 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
-| 17/24 | External-action transport (8.d.1) | In review | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/24 | Session external-action routing (8.d.2) | Not started | — |
-| 19/24 | Claude approvals and form/URL elicitation | Not started | — |
-| 20/24 | Codex inventory/actions/authentication | Not started | — |
-| 21/24 | Codex forms and offered connectors | Not started | — |
-| 22/24 | Secondary harness support and explicit gaps | Not started | — |
-| 23/24 | Reconcile regression/capability documents | Not started | — |
-| 24/24 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/25 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/25 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/25 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/25 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/25 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/25 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/25 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/25 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/25 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/25 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/25 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/25 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/25 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/25 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/25 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
+| 18/25 | Native external-action routing (8.d.2.a) | In review | [#1984][pr-1984] |
+| 19/25 | External-action client presentation (8.d.2.b) | Not started | — |
+| 20/25 | Claude approvals and form/URL elicitation | Not started | — |
+| 21/25 | Codex inventory/actions/authentication | Not started | — |
+| 22/25 | Codex forms and offered connectors | Not started | — |
+| 23/25 | Secondary harness support and explicit gaps | Not started | — |
+| 24/25 | Reconcile regression/capability documents | Not started | — |
+| 25/25 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -1044,3 +1045,91 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   step changes no localization source or generated localization output.
 
 [pr-1981]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1981
+
+- Step 17 accepted head `253e167066` merged as `cfecaf9494`. Both documentation
+  findings were fixed and the follow-up review approved with zero issues. The
+  codec/runtime split finding received a reasoned prefixed decline and remains
+  deliberately unresolved; it did not identify a runtime defect. CI reported
+  32/32 passing before merge and 33/33 in the terminal report.
+- Original 8.d.2 splits into headless/native routing (ordinal 18, 8.d.2.a) and
+  typed client presentation (ordinal 19, 8.d.2.b). The native draft already totals
+  637 changed lines across 35 files before route tests, client presentation and
+  docs. This keeps both complete review boundaries near the soft cap. Native
+  producers land with URL-free cancel-only notices and a safe client handoff;
+  the typed browser/consent modal follows immediately. The current series total
+  is 25; final L4/native/provider/package requirements remain unchanged.
+
+- Step 18 implements native URL requests in Claude's existing approval owner,
+  active-only headless snapshot/reply routes and archive validation, plus the
+  client's explicit cancel-only handoff. It preserves original child ownership,
+  keeps URLs out of broadcasts, rejects unsafe destinations before disclosure or
+  acceptance, and uses native cancellation for legacy replies and teardown.
+- Focused checks: 89 Claude cases; 46 bridge repository/service/mapping cases;
+  33 route/service cases after final routing edits; 22 question-modal widgets;
+  13 core permission/cold-load cases. The cold-load test preserves the external
+  marker and child cancellation owner. Seven owning package/module analyzers
+  pass. Architecture implementation review approved with no findings.
+- Exact isolated macOS arm64 native runs exercised the production registry:
+  Claude 2.1.291 URL accept/decline/cancel all settled with the original native
+  request ID; 2.1.221 rejected URL elicitation before forwarding. Both pins
+  forwarded unsupported forms and received native decline plus the existing
+  session-attributed warning. This checks protocol/registry integration, not
+  real-provider authorization, browser completion or packaged app qualification.
+- Native synthetic handoff fixture built successfully. On 2026-10-15 the user
+  explicitly deferred recording and asked to continue code work while the Mac
+  was locked. Publish the native routing step with that presentation evidence
+  pending; record it later. This defers timing only and does not reduce the
+  final L4/native/provider/package qualification matrix.
+
+[pr-1984]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1984
+
+- Step 18's initial checks above ran from the uncommitted implementation later
+  recorded in `fa2c98fd97f10e3b4c49b005b64344fa92ef3fb8`; publication head
+  `84b723c661e82f7748e48f24008014ceeb19d494` changes only the recording-deferral note.
+  SDK: Dart 3.13.5 from Flutter 3.47.7. Working directories below are relative to
+  this repository's dedicated `copper-heron` checkout. Focused commands:
+  - `bridge/sesori_plugin_claude`: `dart test test/claude_stream_client_test.dart test/claude_approval_registry_test.dart test/claude_plugin_impl_test.dart` (89).
+  - `bridge/app`: `dart test test/bridge/repositories/external_action_repository_test.dart test/bridge/services/pending_interaction_service_test.dart test/bridge/repositories/question_repository_test.dart test/bridge/repositories/mappers/session_event_mapper_test.dart` (46).
+  - `bridge/app`: `dart test test/bridge/repositories/external_action_repository_test.dart test/bridge/services/pending_interaction_service_test.dart test/bridge/routing/get_project_questions_handler_test.dart test/bridge/routing/get_session_questions_handler_test.dart` (33).
+  - `client/module_app_ui`: `flutter test --no-pub test/features/session_detail/widgets/question_modal_test.dart` (22).
+  - `client/module_core`: `flutter test --no-pub test/cubits/session_detail/session_detail_cubit_permission_test.dart` (13).
+  - `bridge`: `dart analyze --fatal-infos <package>` for `app`, `sesori_plugin_interface`,
+    `sesori_plugin_claude`, `sesori_plugin_opencode`, `sesori_plugin_pi`; both client
+    modules: `flutter analyze --no-pub --fatal-infos`.
+- Native protocol and UI-fixture checks are explicitly uncommitted fixture runs,
+  not packaged-product checks. From checkout root, native command:
+  `node /private/tmp/copper-heron-mcp-step18-native-probe.mjs`; source package
+  configuration: `bridge/.dart_tool/package_config.json`. At production head
+  `84b723c661`, the stronger review probe captured MCP initialize capabilities:
+  2.1.221 sends `elicitation: {}`; 2.1.291 sends `elicitation: {form: {}, url: {}}`.
+  All six native cases pass with URL-mode negotiation asserted. The host's empty
+  elicitation opt-in is not the native MCP capability advertisement.
+  Fixture SHA-256 values: probe `164b0ac2273708faf17a371c5beb437344955f5bad5e452d5d384a2880bd26e1`,
+  production-registry worker `0b31b67b02105e8020bbabf24f89c0d2a5ddb2c29c7494a257b381f931250737`,
+  capability capture `c22e033f1eb2e9fa067f06e6eea315876fe16fdfdf990e5ffa3f2457c02f4002`.
+  UI command from `client/desktop`: `flutter build macos --debug --no-pub --target /private/tmp/copper-heron-mcp-step18-handoff-fixture.dart`;
+  fixture SHA-256 `9ff466ca3cb25a178e3f5c81df7e35e171d577c1e3ee947108a395e62ea4c3ee`.
+  Build succeeds; native presentation remains unrecorded per the user's deferral.
+- Review archive-read regression failed before the one-owner binding filter and
+  passes afterward, through both direct and display-parent reads. The same
+  four-file bridge command above now passes 47 cases; `bridge/app` analyzer is clean.
+  Verified source tree: `32764caae11fb0f193e26d2c0ce8fc1660e3feaf`; subsequent
+  edits add only this evidence reference, with production and tests unchanged.
+- Step-18 second review fixes move destination policy into PendingInteractionService
+  for both snapshot reads and acceptance, retaining canonical access in the repository.
+  Public-client cancel projections now carry dated retirement conditions. Typed
+  notices retain neutral request/Review wording after dismissal and do not emit
+  ordinary-question outcome analytics. The banner and analytics regressions failed
+  behaviorally at published head `e6162c78b9` before the fixes.
+- Review-fix checks use the same pinned SDK and working-directory conventions above:
+  the four-file bridge command passes 47 cases; the core permission command passes
+  13; from `client/app`, `flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart`
+  passes 197. Full bridge, core, shared-UI and mobile analyzers plus targeted Claude
+  analysis pass. Architecture implementation review pass 2 approves without findings.
+  Verified review-fix tree: `767dcaf79a75c1d3dd8342db0d6d819827ed2c0d`;
+  subsequent edits add only this evidence reference. Final diff is 1,641 changed lines.
+- CI at `4086e6e93c` found `prefer_exhaustive_switch` in the new analytics guard.
+  Package-level analysis had missed the workspace plugin diagnostic. Replaced its
+  wildcard with all three non-loaded sealed states; behavior is unchanged. Source
+  tree `988213c63ffbf663634de63615747c0c474d9193` records that correction.
+  `dart analyze --fatal-infos` from `client` now passes with the CI plugin enabled.
