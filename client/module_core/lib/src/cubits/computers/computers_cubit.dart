@@ -28,14 +28,25 @@ class ComputersCubit({
     if (nickname == currentNickname) return;
     final bridgeId = computer.id;
     emit(ComputersRenaming(bridgeId: bridgeId));
-    final response = await _registeredBridgesService.rename(bridgeId: bridgeId, nickname: nickname);
+    final outcome = await _renameOutcome(bridgeId: bridgeId, nickname: nickname);
+    // The page may have closed meanwhile; the failure is logged either way.
     if (isClosed) return;
-    switch (response) {
-      case SuccessResponse():
-        emit(const ComputersIdle());
-      case ErrorResponse(:final error):
-        logw("Failed to rename computer $bridgeId", error);
-        emit(ComputersRenameFailed(bridgeId: bridgeId));
+    emit(outcome);
+  }
+
+  Future<ComputersState> _renameOutcome({required String bridgeId, required String? nickname}) async {
+    try {
+      final response = await _registeredBridgesService.rename(bridgeId: bridgeId, nickname: nickname);
+      switch (response) {
+        case SuccessResponse():
+          return const ComputersIdle();
+        case ErrorResponse(:final error):
+          logw("Failed to rename computer $bridgeId", error);
+          return ComputersRenameFailed(bridgeId: bridgeId);
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to rename computer $bridgeId (unexpected error)", error, stackTrace);
+      return ComputersRenameFailed(bridgeId: bridgeId);
     }
   }
 
@@ -44,17 +55,32 @@ class ComputersCubit({
   /// remains; the switch itself is the caller's.
   Future<String?> remove({required String bridgeId}) async {
     emit(ComputersRemoving(bridgeId: bridgeId));
-    final response = await _registeredBridgesService.remove(bridgeId: bridgeId);
+    final removed = await _removeOnServer(bridgeId: bridgeId);
+    // The page may have closed meanwhile; a failure is logged either way.
     if (isClosed) return null;
-    switch (response) {
-      case SuccessResponse():
-        emit(const ComputersIdle());
-        if (await _selectedComputerService.targetBridgeId() != bridgeId) return null;
-        return _selectedComputerService.replacementAfterRemoving(bridgeId: bridgeId);
-      case ErrorResponse(:final error):
-        logw("Failed to remove computer $bridgeId", error);
-        emit(ComputersRemoveFailed(bridgeId: bridgeId));
-        return null;
+    if (removed) {
+      emit(const ComputersIdle());
+      if (await _selectedComputerService.targetBridgeId() != bridgeId) return null;
+      return _selectedComputerService.replacementAfterRemoving(bridgeId: bridgeId);
+    }
+    emit(ComputersRemoveFailed(bridgeId: bridgeId));
+    return null;
+  }
+
+  /// Whether the server removed [bridgeId]; logs why when it did not.
+  Future<bool> _removeOnServer({required String bridgeId}) async {
+    try {
+      final response = await _registeredBridgesService.remove(bridgeId: bridgeId);
+      switch (response) {
+        case SuccessResponse():
+          return true;
+        case ErrorResponse(:final error):
+          logw("Failed to remove computer $bridgeId", error);
+          return false;
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to remove computer $bridgeId (unexpected error)", error, stackTrace);
+      return false;
     }
   }
 }
