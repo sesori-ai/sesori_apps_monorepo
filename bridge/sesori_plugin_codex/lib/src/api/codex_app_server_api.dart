@@ -5,6 +5,7 @@ import "../models/codex_collaboration_mode.dart";
 import "../models/codex_service_tier.dart";
 import "models/codex_account_dto.dart";
 import "models/codex_collaboration_mode_dto.dart";
+import "models/codex_mcp_oauth_dto.dart";
 import "models/codex_mcp_status_dto.dart";
 import "models/codex_model_dto.dart";
 import "models/codex_skill_dto.dart";
@@ -19,6 +20,27 @@ final class const CodexMcpThreadNotLoadedException({required final CodexRpcExcep
 
 /// Layer-1 typed boundary for migrated Codex app-server operations.
 class CodexAppServerApi({required final CodexAppServerTransport _client}) {
+  Stream<CodexMcpOAuthCompletionDto> get mcpOAuthCompletions => _client.notifications
+      .where((notification) => notification.method == "mcpServer/oauthLogin/completed")
+      .map((notification) => CodexMcpOAuthCompletionDto.fromJson(notification.params));
+
+  Future<CodexMcpOAuthLoginDto> startMcpOAuth({
+    required String name,
+    required String? threadId,
+    required int timeoutSecs,
+  }) async {
+    final result = await _client.request(
+      method: "mcpServer/oauth/login",
+      params: {
+        "name": name,
+        "threadId": ?threadId,
+        "timeoutSecs": timeoutSecs,
+      },
+    );
+    if (result is! Map) throw StateError("expected a Codex MCP login response, got ${result.runtimeType}");
+    return CodexMcpOAuthLoginDto.fromJson(result.cast<String, dynamic>());
+  }
+
   Future<CodexMcpStatusPageDto> listMcpServersPage({required String? threadId, required String? cursor}) async {
     final result = await _client
         .request(

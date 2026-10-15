@@ -32,8 +32,9 @@ archived session if its native process remains live; it grants no session mutati
 - Codex server names remain opaque target keys. Only declared tool names and
   descriptions, native server titles/descriptions, safe endpoint origins and separate native auth/runtime state
   reach neutral consumers. No config provenance or per-server control is guessed.
-  Config reload is not advertised as resident reconnect. Native OAuth and offered
-  connectors remain explicitly not implemented; toggles/forgetting are unsupported.
+  Config reload is not advertised as resident reconnect. Native OAuth uses the
+  existing attempt owner; offered connectors remain explicitly not implemented,
+  and toggles/forgetting are unsupported.
   Coverage: `codex_mcp_repository_test.dart` and `codex_mcp_plugin_test.dart`
   in `bridge/sesori_plugin_codex/test/`, including exact scope/pagination,
   malformed payloads, typed failure causes and detached/disconnected lifecycle.
@@ -337,6 +338,44 @@ competing flow. Matching retry/cancel protects provider and MCP callback listene
 presentation retains its issued challenge for explicit retry. The transport seam and shared MCP client lifecycle are
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
+
+## Codex native authentication
+
+Codex sign-in uses the attached app-server and the existing canonical headless
+authentication owner. Preparation validates the exact configured target and starts
+no login until the returned operation is observed. Session context is sent to
+native login; harness scope omits it. Minimum completion has no thread identity;
+target completion must match when present. Both match the exact native server.
+Credential effects are harness-scoped. Project/unsupported targets and detached
+runtimes return explicit limitations without connecting or inventing native work.
+
+The operation declares native settlement, with no cancellation RPC or synthetic
+attempt identity. The shared owner keeps its lease through native expiry,
+provider denial or completion. Unknown/lost login responses and malformed native
+completions retain ownership until native settlement or teardown, with typed local
+diagnostics; they do not free a later attempt to consume a delayed completion.
+Known RPC rejection settles failure. Teardown retires the old operation before
+replacement. A completion already received suppresses a stale challenge.
+
+Callbacks match the exact native HTTP loopback origin, path and unique state,
+with one code or provider error and no user info/fragment. HTTP delivery disables
+redirects and discards response bodies. HTTP success is not authentication success;
+the native notification supplies the outcome. Both pinned versions consume provider
+denial with HTTP 400, then emit failure; this is completed callback delivery.
+The native owns credentials and callback state. Browser URLs remain request-only;
+the headless HTTPS destination policy is unchanged. No provider-account login,
+new credential storage, reconnect, configuration writer or credential forgetting.
+
+Coverage: `codex_mcp_authentication_test.dart` exercises lazy/early/foreign/native
+settlement, denial/expiry, exact callback validation, no redirects, uncertain
+responses and teardown through production API/repository/service objects.
+`codex_mcp_plugin_test.dart` also covers a real WebSocket disconnect during sign-in,
+detached reads/start, explicit unsupported forgetting and no implicit connection.
+Both exact Codex binaries passed production-adapter loopback fixtures for expiry,
+denial, success and authenticated inventory on macOS arm64. These fixtures exercise
+the plugin below the headless browser-policy boundary. The production HTTPS browser
+policy remains unchanged. Real provider,
+relay/client, other native hosts and packaged browser return remain unqualified.
 
 ## Session forms
 

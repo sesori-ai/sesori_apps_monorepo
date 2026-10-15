@@ -155,10 +155,10 @@ void main() {
     expect(tools.clear, throwsUnsupportedError);
     expect(
       entry.authentication,
-      isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
-        (value) => value.reason,
-        "reason",
-        PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
+      isA<PluginMcpAuthenticationCapabilityAvailable>().having(
+        (value) => value.effectScope,
+        "effect scope",
+        PluginMcpActionEffectScope.harness,
       ),
     );
     expect(

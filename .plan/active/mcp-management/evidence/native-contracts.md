@@ -119,6 +119,19 @@ requested-thread failure to live-session-required, without resuming or falling b
 to harness scope. The fixture's no-turn thread history read was also unavailable;
 this does not qualify persisted-history or real archived-session behavior.
 
+Step-26 adapter checks on 2026-10-15 used both fingerprint-verified Codex binaries
+with isolated native homes and the local OAuth fixture. The production generated
+DTO/API/repository/service and loopback HTTP forwarding passed expiry, provider
+denial and success at each pin; final native inventory reported authenticated.
+Both accept a login threadId; minimum completion omits it, target echoes it.
+Native expiry reports `timed out waiting for OAuth callback`. Provider denial is
+consumed with HTTP 400; its native failure notification identifies `access_denied`.
+No model turn or real provider/account was used.
+These checks exercise the plugin below the headless HTTPS/browser-policy boundary;
+real providers, packaged return, other native hosts and the final L4 matrix remain
+unqualified. The final adapter rerun includes safe diagnostic formatting and
+repository-owned completion mapping; all six native cases pass on that source.
+
 Codex fixture OAuth succeeds after its exact loopback callback receives the
 fixture state/code. The post-completion refresh reports OAuth and the fixture
 tool at both pins; target also reports connected with no discovery error.

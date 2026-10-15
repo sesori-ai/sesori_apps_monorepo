@@ -3,8 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-codex-controls`, `5d429a126f`, in the provided `copper-heron` worktree.
-- Current step: 25/30 is in review as [#1999][pr-1999]; latest merged step: 24/30 as [#1995][pr-1995].
+- Branch: `sesori/mcp-codex-auth`, in the provided `copper-heron` worktree.
+- Current step: 26/30 is in progress; latest merged step: 25/30 as [#1999][pr-1999].
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -49,8 +49,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 22/30 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
 | 23/30 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
 | 24/30 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
-| 25/30 | Codex scoped inventory (10.a) | In review | [#1999][pr-1999]; evidence below |
-| 26/30 | Codex native OAuth ownership (10.b) | Not started | — |
+| 25/30 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
+| 26/30 | Codex native OAuth ownership (10.b) | In progress | Native fixtures and focused tests pass |
 | 27/30 | Codex forms and offered connectors | Not started | — |
 | 28/30 | Secondary harness support and explicit gaps | Not started | — |
 | 29/30 | Reconcile regression/capability documents | Not started | — |
@@ -1464,3 +1464,27 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   integration and includes native server titles/descriptions in the metadata boundary.
   Architecture implementation review pass 2 approved the complete PR/worktree
   boundary with no findings; the separate OAuth draft remains excluded.
+- Step 25 merged at accepted head `f1f7d9cd8b` after 19 passing pre-merge checks,
+  fresh Cubic zero-issue approval and completed current-head Codex code/security
+  reviews. Five declined suggestions retain their prefixed explanations.
+- Step 26 uses the existing native-settlement operation and canonical bridge owner.
+  Native DTO/API, exact callback forwarding and a per-connection resource service
+  add no shared contract, client owner or credential store. Native cancellation
+  remains unavailable. Lazy preparation, exact server/thread correlation, native
+  expiry/denial and uncertain-response ownership are covered without a local timer.
+- OAuth verification: 20 authentication cases, 29 inventory cases and 13 MCP
+  plugin/existing plugin-client cases pass; normal DTO generation and package
+  analysis pass. The 13 include the new active-sign-in WebSocket disconnect case.
+  Both fingerprint-verified native pins pass the production DTO/API/repository/
+  service plus loopback callback forwarding for expiry, denial and success, then
+  report authenticated inventory. Final native reruns also include safe diagnostic
+  categories and repository-owned completion mapping; 22 auth/MCP-plugin cases and
+  package analysis pass after that correction.
+  This is isolated macOS arm64 plugin/native evidence, not real provider, shared
+  headless HTTPS/browser, relay/client, packaged or native-feel qualification.
+- OAuth architecture implementation pass 1 found API completion DTOs crossing the
+  repository boundary. Mapping now occurs in the repository, exposing sealed
+  completed/failed models; the service no longer imports API DTOs. No shared
+  contract or ownership change was needed.
+  Architecture implementation pass 2 approved the complete corrected boundary
+  without findings; the final 22-case and native-pin reruns include that mapping.

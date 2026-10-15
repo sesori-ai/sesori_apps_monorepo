@@ -25,11 +25,11 @@ class const CodexMcpMapper() {
           CodexMcpAuthStatus.notLoggedIn => PluginMcpAuthorizationState.required,
           CodexMcpAuthStatus.unknown || CodexMcpAuthStatus.unsupported => PluginMcpAuthorizationState.unknown,
         },
-        authentication: PluginMcpAuthenticationCapabilityUnavailable(
-          reason: server.authStatus == CodexMcpAuthStatus.unsupported
-              ? PluginMcpAuthenticationCapabilityUnavailableReason.notSupported
-              : PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
-        ),
+        authentication: server.authStatus == CodexMcpAuthStatus.unsupported
+            ? const PluginMcpAuthenticationCapabilityUnavailable(
+                reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+              )
+            : const PluginMcpAuthenticationCapabilityAvailable(effectScope: PluginMcpActionEffectScope.harness),
         credentialForgetting: const PluginMcpAuthenticationCapabilityUnavailable(
           reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
         ),
