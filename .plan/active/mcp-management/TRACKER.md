@@ -100,6 +100,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   behavior or analytics event changes; no causal code cleanup was found.
   This is source evidence, not native runtime/provider/platform qualification.
   Original final L4 and deferred native recording gates remain unchanged.
+- Step-35 also corrects v1 control-target validation attribution from parent
+  review thread `PRRT_kwDORscidM6s9FYu`: the service checks fresh control targets;
+  the repository resolves scopes and maps native reads/mutations. This P3
+  documentation follow-up is prepared in the immediate existing successor,
+  without restarting the parent code review or changing production behavior.
 - Step-34 second PR review rejects configured callbacks with reserved OAuth
   response keys before start. The shared scope resolver moves into the existing
   repository, so general controls and authentication share one mapping without a

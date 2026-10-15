@@ -551,8 +551,8 @@ the existing headless authoritative refresh. No server-configuration mutation,
 server addition/removal or tool execution is added. HTTP errors retain their response
 diagnostics; malformed native status/session payloads retain original errors and
 stacks through typed failures, rather than appearing as empty success.
-The repository resolves MCP scopes and fresh targets and maps native directory
-reads and mutations. The service dispatches controls through that boundary. Native
+The repository resolves MCP scopes and maps native directory reads and mutations.
+The service validates fresh control targets before dispatch. Native
 writes remain unbounded because HTTP abandonment does not cancel a native
 mutation. Project effects use the shared plugin-wide inventory invalidation.
 
