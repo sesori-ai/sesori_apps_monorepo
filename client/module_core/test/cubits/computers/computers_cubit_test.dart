@@ -16,8 +16,15 @@ void main() {
   setUp(() {
     registeredBridges = MockRegisteredBridgesService();
     selectedComputer = _MockSelectedComputerService();
-    when(selectedComputer.targetBridgeId).thenAnswer((_) async => "current");
-    when(() => selectedComputer.replacementAfterRemoving(bridgeId: "current")).thenReturn("next");
+    when(
+      () => selectedComputer.replacementAfterRemoving(
+        bridgeId: any(named: "bridgeId"),
+        wasCurrent: any(named: "wasCurrent"),
+      ),
+    ).thenAnswer((_) async => null);
+    when(
+      () => selectedComputer.replacementAfterRemoving(bridgeId: "current", wasCurrent: true),
+    ).thenAnswer((_) async => "next");
   });
 
   ComputersCubit build() {
@@ -110,7 +117,7 @@ void main() {
     response.complete(ApiResponse.success(null));
     expect(await remove, isNull);
     expect(cubit.state, isA<ComputersIdle>());
-    verifyNever(() => selectedComputer.replacementAfterRemoving(bridgeId: any(named: "bridgeId")));
+    verify(() => selectedComputer.replacementAfterRemoving(bridgeId: "a", wasCurrent: false)).called(1);
   });
 
   test("removing the computer the app works on returns its replacement", () async {
@@ -119,33 +126,6 @@ void main() {
 
     expect(await cubit.remove(bridgeId: "current", isCurrent: true), "next");
     expect(cubit.state, isA<ComputersIdle>());
-  });
-
-  test("an implicit current computer, with no stored target, gets its replacement", () async {
-    when(selectedComputer.targetBridgeId).thenAnswer((_) async => null);
-    when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) async => ApiResponse.success(null));
-    final cubit = build();
-
-    expect(await cubit.remove(bridgeId: "current", isCurrent: true), "next");
-  });
-
-  test("a switch elsewhere during the removal is not overridden", () async {
-    final response = Completer<ApiResponse<void>>();
-    when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) => response.future);
-    final cubit = build();
-
-    final remove = cubit.remove(bridgeId: "current", isCurrent: true);
-    when(selectedComputer.targetBridgeId).thenAnswer((_) async => "other");
-    response.complete(ApiResponse.success(null));
-
-    expect(await remove, isNull);
-  });
-
-  test("a switch to the computer during its removal still gets a replacement", () async {
-    when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) async => ApiResponse.success(null));
-    final cubit = build();
-
-    expect(await cubit.remove(bridgeId: "current", isCurrent: false), "next");
   });
 
   test("a page closed during the removal still gets the replacement", () async {
@@ -168,6 +148,12 @@ void main() {
 
     expect(await cubit.remove(bridgeId: "current", isCurrent: true), isNull);
     expect(cubit.state, isA<ComputersRemoveFailed>().having((state) => state.bridgeId, "bridgeId", "current"));
+    verifyNever(
+      () => selectedComputer.replacementAfterRemoving(
+        bridgeId: any(named: "bridgeId"),
+        wasCurrent: any(named: "wasCurrent"),
+      ),
+    );
   });
 
   test("a removal that throws reports the failure for that computer", () async {

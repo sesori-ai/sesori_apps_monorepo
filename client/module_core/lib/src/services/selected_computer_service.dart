@@ -70,10 +70,15 @@ class SelectedComputerService({
     await _connectionService.retarget(bridgeId: bridgeId);
   }
 
-  /// The computer to move to once [bridgeId] is removed: the most recently
-  /// seen other computer that is online, else the most recently seen other
-  /// one, else `null` when none remains.
-  String? replacementAfterRemoving({required String bridgeId}) {
+  /// The computer to move to once [bridgeId] is removed, when the app still
+  /// works on it: the most recently seen other computer that is online, else
+  /// the most recently seen other one. `null` when the app works elsewhere or
+  /// none remains. [wasCurrent] says whether it was the current computer
+  /// without being the stored target, as the list's first.
+  Future<String?> replacementAfterRemoving({required String bridgeId, required bool wasCurrent}) async {
+    // The user may have switched away from it, or to it, while the removal ran.
+    final target = await targetBridgeId();
+    if (target != bridgeId && (target != null || !wasCurrent)) return null;
     final others = _registeredBridgesService.bridges.value.where((bridge) => bridge.id != bridgeId);
     final online = others.where((bridge) => bridge.status == BridgeRegistrationStatus.active).firstOrNull;
     return (online ?? others.firstOrNull)?.id;

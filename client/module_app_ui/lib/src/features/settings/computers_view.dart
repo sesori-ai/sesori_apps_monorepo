@@ -87,6 +87,7 @@ class const ComputersView({
                         isThisComputer: state.isThisComputer(bridgeId: computer.id),
                         canRemove: state.canRemove(bridgeId: computer.id),
                         isBusy: computer.id == busyId,
+                        isActionRunning: busyId != null,
                         localBridgeTurnOffActionBuilder: localBridgeTurnOffActionBuilder,
                         onSwitch: () =>
                             onSwitchComputer(bridgeId: computer.id, source: ComputerSwitchSource.computersPage),
@@ -129,6 +130,10 @@ class const _ComputerRow({
 
   /// Whether an action on this computer is running; its "⋯" waits for it.
   required final bool isBusy,
+
+  /// Whether an action on any computer is running; Rename and Remove wait
+  /// for it, so one action runs at a time.
+  required final bool isActionRunning,
   required final WidgetBuilder? localBridgeTurnOffActionBuilder,
   required final VoidCallback onSwitch,
 
@@ -163,6 +168,7 @@ class const _ComputerRow({
           leadingIcon: TablerRegular.pencil,
           isSelected: false,
           shortcutLabel: null,
+          isEnabled: !isActionRunning,
           // The menu has closed by now; the row it hung off is still here.
           onTap: () => unawaited(_rename(context: context)),
         ),
@@ -174,7 +180,7 @@ class const _ComputerRow({
           leadingIcon: TablerRegular.trash,
           isSelected: false,
           shortcutLabel: null,
-          isEnabled: isThisComputer || canRemove,
+          isEnabled: isThisComputer || (canRemove && !isActionRunning),
           isDestructive: canRemove,
           onTap: () =>
               unawaited(isThisComputer ? _explainThisComputer(context: context) : _confirmRemove(context: context)),

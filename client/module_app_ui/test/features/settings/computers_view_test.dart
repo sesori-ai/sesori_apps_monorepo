@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -191,6 +193,25 @@ void main() {
     await tester.pumpAndSettle();
 
     verify(() => computersCubit.rename(computer: _studio, name: "studio-mac.local")).called(1);
+  });
+
+  testWidgets("while an action runs, other computers can switch but not rename", (tester) async {
+    final actions = StreamController<ComputersState>();
+    addTearDown(actions.close);
+    whenListen(computersCubit, actions.stream, initialState: const ComputersIdle());
+    await pumpView(tester);
+    // The busy row's spinner never settles, so frames are pumped by hand: one
+    // delivers the action, the next rebuilds the rows with it.
+    actions.add(const ComputersRemoving(bridgeId: "c"));
+    await tester.pump();
+    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey("computers-actions-a")));
+    await tester.pump(const Duration(seconds: 1));
+    await tester.tap(find.byKey(const ValueKey("computers-rename-a")));
+    await tester.pump(const Duration(seconds: 1));
+
+    expect(find.byKey(const Key("computers-rename-field")), findsNothing);
+    expect(find.byKey(const ValueKey("computers-switch-a")), findsOneWidget);
   });
 
   testWidgets("a computer named by its hostname offers no Use hostname", (tester) async {
