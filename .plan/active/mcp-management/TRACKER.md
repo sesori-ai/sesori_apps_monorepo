@@ -1416,3 +1416,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   separately from omission; Clear answer remains the omission action. Native
   motion qualification is explicitly pending. Keyboard-closed screenshot inputs
   are unchanged; no unchanged passing scheduler/desktop suite was repeated.
+- Step-24 follow-up pins submission status above the scrolling fields. Both
+  validation and transport-failure regressions reproduce hidden feedback on the
+  prior implementation (status top -542), then pass without moving the scroll
+  position or replacing drafts/controllers/selection. All 12 form widget cases
+  pass; native motion recording remains deferred.

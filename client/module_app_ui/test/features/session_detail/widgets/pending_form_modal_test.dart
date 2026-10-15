@@ -388,4 +388,40 @@ void main() {
     await tap(tester: tester, label: "Cancel request");
     expect(harness.settlements, 1);
   });
+
+  for (final validation in [true, false]) {
+    testWidgets("${validation ? 'validation' : 'transport failure'} stays visible above scrolled fields", (
+      tester,
+    ) async {
+      when(() => harness.repository.replyToForm(request: any(named: "request"))).thenAnswer(
+        (_) async => validation
+            ? ApiResponse.success(const FormValidationFailed(fieldErrors: {"count": FormValidationIssue.outOfRange}))
+            : ApiResponse.error(ApiError.generic()),
+      );
+      await open(tester: tester, size: const Size(390, 844));
+      final controller = tester.widget<TextField>(input(id: "text")).controller!;
+      controller.selection = const TextSelection.collapsed(offset: 3);
+      await tap(tester: tester, label: "No");
+      final submit = find.widgetWithText(PregoButtonsSolid, "Submit answers");
+      await tester.ensureVisible(submit);
+      await tester.pumpAndSettle();
+      final position = Scrollable.of(tester.element(submit)).position;
+      final offset = position.pixels;
+      expect(offset, greaterThan(0));
+      await tester.tap(submit);
+      await tester.pumpAndSettle();
+      final status = find.text(
+        validation
+            ? "Check the highlighted fields. Your other answers are kept."
+            : "Your response could not be confirmed. Your answers are kept here; you can try again.",
+      );
+      expect(tester.getRect(status).top, greaterThanOrEqualTo(0));
+      expect(tester.getRect(status).bottom, lessThanOrEqualTo(tester.getRect(submit).top));
+      expect(position.pixels, offset);
+      expect(tester.widget<TextField>(input(id: "text")).controller, same(controller));
+      expect(controller.selection.baseOffset, 3);
+      expect(controller.text, "Fixture answer");
+      expect(harness.settlements, 0);
+    });
+  }
 }

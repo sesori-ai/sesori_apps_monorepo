@@ -369,7 +369,9 @@ Text/numeric editors keep their controllers, focus and selection through busy an
 validation transitions. Boolean Yes/No choices distinguish an unanswered field
 from false; single/multiple choices submit opaque IDs. Clear answer removes the
 draft explicitly. Per-field error space stays reserved; large text scrolls and
-status transitions honor reduced motion. Closing leaves the native request pending.
+status transitions honor reduced motion. Submission feedback stays pinned above
+the scrolling fields, including failures after scrolling to the response buttons;
+status changes preserve the reading position. Closing leaves the native request pending.
 These layout/motion properties have widget coverage; native feel checks and the
 user-deferred recording remain required by the final qualification matrix.
 Accepted or authoritative settlement closes the observer through the existing
