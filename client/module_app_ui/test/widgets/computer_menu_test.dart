@@ -17,6 +17,7 @@ BridgeSummary _computer({
 }) => BridgeSummary(
   id: id,
   name: name,
+  hostname: name,
   platform: BridgePlatform.macos,
   status: status,
   addedAt: DateTime.utc(2026),

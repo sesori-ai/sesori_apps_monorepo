@@ -12,6 +12,7 @@ class _MockComputerSwitcherCubit() extends MockCubit<ComputerSwitcherState> impl
 BridgeSummary _computer({required String id, required BridgeRegistrationStatus status}) => BridgeSummary(
   id: id,
   name: "computer-$id",
+  hostname: "computer-$id",
   platform: BridgePlatform.linux,
   status: status,
   addedAt: DateTime.utc(2026),

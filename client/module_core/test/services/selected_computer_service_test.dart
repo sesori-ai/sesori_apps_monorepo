@@ -76,6 +76,53 @@ void main() {
     verify(() => connection.retarget(bridgeId: "unknown")).called(1);
   });
 
+  group("replacementAfterRemoving", () {
+    String? replacement({required List<BridgeSummary> bridges, required String removed}) {
+      registeredBridges.emitBridges(bridges: bridges);
+      return build(stored: null, local: null).replacementAfterRemoving(bridgeId: removed);
+    }
+
+    test("prefers the first other online computer", () {
+      expect(
+        replacement(
+          bridges: [
+            testBridgeSummary(id: "removed"),
+            testBridgeSummary(id: "offline", status: BridgeRegistrationStatus.inactive),
+            testBridgeSummary(id: "online"),
+            testBridgeSummary(id: "online-older"),
+          ],
+          removed: "removed",
+        ),
+        "online",
+      );
+    });
+
+    test("falls back to the first other computer when none is online", () {
+      expect(
+        replacement(
+          bridges: [
+            testBridgeSummary(id: "offline", status: BridgeRegistrationStatus.inactive),
+            testBridgeSummary(id: "removed"),
+            testBridgeSummary(id: "offline-older", status: BridgeRegistrationStatus.inactive),
+          ],
+          removed: "removed",
+        ),
+        "offline",
+      );
+    });
+
+    test("is null when no other computer remains", () {
+      expect(
+        replacement(
+          bridges: [testBridgeSummary(id: "removed")],
+          removed: "removed",
+        ),
+        isNull,
+      );
+      expect(replacement(bridges: const [], removed: "removed"), isNull);
+    });
+  });
+
   test("a stored target wins over the local computer", () async {
     await build(stored: "remote", local: null).ensureInitialTarget(localBridgeId: "local");
 

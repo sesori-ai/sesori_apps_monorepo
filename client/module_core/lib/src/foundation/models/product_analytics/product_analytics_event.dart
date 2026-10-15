@@ -146,7 +146,14 @@ enum ComputerSwitchSource({required final String wireValue}) {
   offlineScreen(wireValue: "offline_screen"),
   settings(wireValue: "settings"),
   alert(wireValue: "alert"),
-  notification(wireValue: "notification");
+  notification(wireValue: "notification"),
+  computersPage(wireValue: "computers_page");
+}
+
+/// What the user did to a computer from the Computers page.
+enum ComputerManageAction({required final String wireValue}) {
+  renamed(wireValue: "renamed"),
+  removed(wireValue: "removed");
 }
 
 @immutable
@@ -217,6 +224,7 @@ sealed class const ProductAnalyticsEvent() {
     required ComputerSwitchSource source,
     required bool targetOnline,
   }) = ComputerSwitchedEvent;
+  const factory computerManaged({required ComputerManageAction action}) = ComputerManagedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -510,6 +518,16 @@ final class const ComputerSwitchedEvent({
 
   @override
   Map<String, String> get parameters => {"source": source.wireValue, "target_online": targetOnline.toString()};
+}
+
+/// The user renamed or removed a computer. Which computer, and any name, stays
+/// off the wire.
+final class const ComputerManagedEvent({required final ComputerManageAction action}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "computer_managed";
+
+  @override
+  Map<String, String> get parameters => {"action": action.wireValue};
 }
 
 final class ProductAnalyticsEnvelope({required final ProductAnalyticsEvent event, required DateTime occurredAtUtc}) {

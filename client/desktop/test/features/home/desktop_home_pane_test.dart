@@ -154,6 +154,7 @@ void main() {
         BridgeSummary(
           id: "bridge-1",
           name: "workstation.local",
+          hostname: "workstation.local",
           platform: BridgePlatform.macos,
           status: BridgeRegistrationStatus.active,
           addedAt: DateTime.utc(2026, 1, 1),
@@ -566,6 +567,7 @@ BridgeSummary _computer({required String id, required String name, required Brid
     BridgeSummary(
       id: id,
       name: name,
+      hostname: name,
       platform: BridgePlatform.macos,
       status: status,
       addedAt: DateTime.utc(2026, 1, 1),

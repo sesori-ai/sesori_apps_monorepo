@@ -59,6 +59,30 @@ void main() {
       );
     });
 
+    test("renameBridge passes the updated summary through", () async {
+      final renamed = testBridgeSummary(id: "br_1", name: "Studio", hostname: "alex-macbook");
+      when(
+        () => mockApi.renameBridge(bridgeId: "br_1", nickname: "Studio"),
+      ).thenAnswer((_) async => ApiResponse.success(renamed));
+
+      final response = await repository.renameBridge(bridgeId: "br_1", nickname: "Studio");
+
+      expect(response, isA<SuccessResponse<BridgeSummary>>().having((r) => r.data, "summary", renamed));
+    });
+
+    test("renameBridge passes errors through, including 404", () async {
+      when(() => mockApi.renameBridge(bridgeId: "br_1", nickname: null)).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "bridge not found")),
+      );
+
+      final response = await repository.renameBridge(bridgeId: "br_1", nickname: null);
+
+      expect(
+        response,
+        isA<ErrorResponse<BridgeSummary>>().having((r) => r.error, "error", isA<NonSuccessCodeError>()),
+      );
+    });
+
     test("deleteBridge passes a successful deletion through", () async {
       when(() => mockApi.deleteBridge(bridgeId: "br_1")).thenAnswer((_) async => ApiResponse.success(null));
 

@@ -7,9 +7,12 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
+import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
 import "../repositories/bridge_repository.dart";
+import "../repositories/models/analytics_delivery_result.dart";
 import "../repositories/registered_bridges_store.dart";
+import "product_analytics_service.dart";
 
 /// Reactive owner of the "this account has at least one registered bridge"
 /// signal, shared by the connection overlay (to decide whether a bridge-offline
@@ -39,7 +42,8 @@ import "../repositories/registered_bridges_store.dart";
 /// connection marks it stale without emitting, so the next
 /// [getRegisteredBridges] refetches while consumers keep the last list. The
 /// relay's presence notices update a listed bridge's status in place, and a
-/// notice for a bridge the list does not know refetches it.
+/// notice for a bridge the list does not know refetches it. [rename] and
+/// [remove] apply a confirmed change to the published list in place.
 ///
 /// [RegisteredBridgesStore] is the Layer-2 persistence/cache repository (a
 /// data-access role); this service is the Layer-3 orchestrator that adds the network tier,
@@ -49,6 +53,7 @@ import "../repositories/registered_bridges_store.dart";
 @lazySingleton
 class RegisteredBridgesService({
   required final BridgeRepository _bridgeRepository,
+  required final ProductAnalyticsService _productAnalyticsService,
   required RegisteredBridgesStore registeredBridgesStore,
   required ConnectionService connectionService,
   required AuthSession authSession,
@@ -90,6 +95,11 @@ class RegisteredBridgesService({
   /// signing in on this device would inherit the latch and see a spurious
   /// bridge-offline flow.
   int _authGeneration = 0;
+
+  /// Bumped on every confirmed rename or removal. A fetch that started before
+  /// one carries the older list, so it leaves [bridges] to the refetch queued
+  /// behind it instead of briefly reverting the change.
+  int _mutationGeneration = 0;
 
   StreamSubscription<ConnectionStatus>? _statusSubscription;
   StreamSubscription<AuthState>? _authSubscription;
@@ -169,6 +179,7 @@ class RegisteredBridgesService({
 
   Future<List<BridgeSummary>> _fetchRegisteredBridges() async {
     final generation = _authGeneration;
+    final mutationGeneration = _mutationGeneration;
     try {
       final response = await _bridgeRepository.getRegisteredBridges();
       // A logout during the in-flight request retires this result: the account
@@ -177,6 +188,7 @@ class RegisteredBridgesService({
       if (generation != _authGeneration) return const [];
       switch (response) {
         case SuccessResponse(:final data):
+          if (mutationGeneration != _mutationGeneration) return _bridges.value;
           if (data.isEmpty) {
             _emitBridges(bridges: const []);
             return const [];
@@ -187,6 +199,7 @@ class RegisteredBridgesService({
           // write, so reporting the bridges here would still leak the old
           // account's answer to the caller. Retire the result to match.
           if (generation != _authGeneration) return const [];
+          if (mutationGeneration != _mutationGeneration) return _bridges.value;
           final sorted = _withPresence(bridges: _sortedByRecency(bridges: data));
           _bridgesCurrent = true;
           _emitBridges(bridges: sorted);
@@ -199,6 +212,63 @@ class RegisteredBridgesService({
       logw("Failed to fetch registered bridges (unexpected error)", error, stackTrace);
       return const [];
     }
+  }
+
+  /// Sets the nickname of the bridge [bridgeId], or clears it with `null`, and
+  /// replaces its entry in [bridges] with the server's updated summary. A
+  /// failure leaves the list unchanged and is returned to the caller; so does
+  /// a sign-out while the request runs.
+  Future<ApiResponse<BridgeSummary>> rename({required String bridgeId, required String? nickname}) async {
+    final generation = _authGeneration;
+    final response = await _bridgeRepository.renameBridge(bridgeId: bridgeId, nickname: nickname);
+    if (response case SuccessResponse(:final data) when generation == _authGeneration) {
+      _emitBridges(
+        bridges: _withPresence(bridges: [for (final bridge in _bridges.value) bridge.id == bridgeId ? data : bridge]),
+      );
+      _afterMutation(action: ComputerManageAction.renamed);
+    }
+    return response;
+  }
+
+  /// Revokes the bridge [bridgeId] and drops it from [bridges]. A bridge the
+  /// server no longer knows counts as removed. A failure leaves the list
+  /// unchanged and is returned to the caller; so does a sign-out while the
+  /// request runs.
+  Future<ApiResponse<void>> remove({required String bridgeId}) async {
+    final generation = _authGeneration;
+    final response = await _bridgeRepository.deleteBridge(bridgeId: bridgeId);
+    if (response is SuccessResponse && generation == _authGeneration) {
+      final remaining = List<BridgeSummary>.unmodifiable(_bridges.value.where((bridge) => bridge.id != bridgeId));
+      // An empty list is never current, as after a fetch that finds none, so
+      // the next caller asks the server and sees a computer that signs in.
+      if (remaining.isEmpty) _bridgesCurrent = false;
+      _emitBridges(bridges: remaining);
+      _afterMutation(action: ComputerManageAction.removed);
+    }
+    return response;
+  }
+
+  void _afterMutation({required ComputerManageAction action}) {
+    _mutationGeneration++;
+    // A fetch already running may have read the list before this change and
+    // would publish that older snapshot, so fetch again once it settles.
+    if (_activeFetch != null) _refetchAfterRunningFetch();
+    _reportManaged(action: action);
+  }
+
+  void _reportManaged({required ComputerManageAction action}) {
+    unawaited(
+      _productAnalyticsService
+          .logEvent(
+            event: ProductAnalyticsEvent.computerManaged(action: action),
+            occurredAtUtc: DateTime.now().toUtc(),
+          )
+          .then<void>((result) {
+            if (result == AnalyticsDeliveryResult.failed && _productAnalyticsService.state.isActive) {
+              logw("Failed to deliver computer management analytics event");
+            }
+          }),
+    );
   }
 
   /// Most recently seen bridge first; never-seen bridges sort after seen ones,
@@ -238,18 +308,24 @@ class RegisteredBridgesService({
       return;
     }
     // A computer linked since the last fetch: only the auth server can name it.
-    _refetchForUnknownBridge();
+    _refetchAfterRunningFetch();
   }
 
-  void _refetchForUnknownBridge() {
+  void _refetchAfterRunningFetch() {
     final running = _activeFetch;
     if (running == null) {
       _bridgesCurrent = false;
       unawaited(getRegisteredBridges());
       return;
     }
-    // The running fetch may predate the link, so fetch again once it settles.
-    unawaited(running.then<void>((_) {}, onError: (Object _) {}).whenComplete(_refetchForUnknownBridge));
+    // The running fetch may predate the change, so fetch again once it settles.
+    // A fetch already started by then reads the changed list, so changes queued
+    // behind the same running fetch share one refetch.
+    unawaited(
+      running.then<void>((_) {}, onError: (Object _) {}).whenComplete(() {
+        if (_activeFetch == null) _refetchAfterRunningFetch();
+      }),
+    );
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {

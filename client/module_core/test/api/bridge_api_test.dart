@@ -12,6 +12,7 @@ const _bridgesPayload = <String, dynamic>{
     {
       "id": "br_abc12345",
       "name": "alex-macbook",
+      "hostname": "alex-macbook",
       "platform": "macos",
       "status": "active",
       "addedAt": "2026-01-01T00:00:00.000Z",
@@ -85,6 +86,75 @@ void main() {
         response,
         isA<ErrorResponse<BridgesListResponse>>().having((r) => r.error, "error", isA<NonSuccessCodeError>()),
       );
+    });
+
+    test("renameBridge PATCHes the nickname to an encoded bridge path and parses the summary", () async {
+      when(
+        () => mockClient.patch<BridgeSummary>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((invocation) async {
+        final fromJson = invocation.namedArguments[#fromJson]! as BridgeSummary Function(dynamic);
+        return ApiResponse.success(
+          fromJson({
+            "id": "br weird/id",
+            "name": "Studio",
+            "hostname": "alex-macbook",
+            "platform": "macos",
+            "status": "active",
+            "addedAt": "2026-01-01T00:00:00.000Z",
+            "lastSeenAt": null,
+          }),
+        );
+      });
+
+      final response = await api.renameBridge(bridgeId: "br weird/id", nickname: "Studio");
+
+      final data = (response as SuccessResponse<BridgeSummary>).data;
+      expect(data.name, "Studio");
+      expect(data.hostname, "alex-macbook");
+      verify(
+        () => mockClient.patch<BridgeSummary>(
+          Uri.parse("$authBaseUrl/auth/bridges/br%20weird%2Fid"),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: {"nickname": "Studio"},
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).called(1);
+    });
+
+    test("renameBridge sends a null nickname to clear it", () async {
+      when(
+        () => mockClient.patch<BridgeSummary>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: any(named: "body"),
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "missing")));
+
+      final response = await api.renameBridge(bridgeId: "br_1", nickname: null);
+
+      expect(response, isA<ErrorResponse<BridgeSummary>>());
+      verify(
+        () => mockClient.patch<BridgeSummary>(
+          any(),
+          fromJson: any(named: "fromJson"),
+          headers: any(named: "headers"),
+          body: {"nickname": null},
+          contentType: any(named: "contentType"),
+          logBody: any(named: "logBody"),
+        ),
+      ).called(1);
     });
 
     test("deleteBridge DELETEs an encoded bridge path", () async {

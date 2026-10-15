@@ -70,6 +70,15 @@ class SelectedComputerService({
     await _connectionService.retarget(bridgeId: bridgeId);
   }
 
+  /// The computer to move to once [bridgeId] is removed: the most recently
+  /// seen other computer that is online, else the most recently seen other
+  /// one, else `null` when none remains.
+  String? replacementAfterRemoving({required String bridgeId}) {
+    final others = _registeredBridgesService.bridges.value.where((bridge) => bridge.id != bridgeId);
+    final online = others.where((bridge) => bridge.status == BridgeRegistrationStatus.active).firstOrNull;
+    return (online ?? others.firstOrNull)?.id;
+  }
+
   void _reportSwitch({required ProductAnalyticsEvent event}) {
     unawaited(
       _productAnalyticsService.logEvent(event: event, occurredAtUtc: DateTime.now().toUtc()).then<void>((result) {
