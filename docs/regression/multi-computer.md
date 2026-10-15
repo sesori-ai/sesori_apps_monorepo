@@ -131,4 +131,4 @@ and another while a phone works on the local bridge.
 - Shared contracts: `bridge_summary_test.dart`, `relay_notice_message_test.dart`, `notification_data_test.dart`.
 - Relay (`sesori_relay_server`): `internal/relay/account_group.go`, `handler.go`, and their tests. Auth server
   (`sesori_auth_server`): `src/services/bridge-service.ts`, `src/services/bridge-state-tracker.ts`, and their tests.
-- Plan: `.plan/active/multi-computer/PLAN.md` (decisions D1–D16 and the regression matrix).
+- Plan: `.plan/completed/multi-computer/PLAN.md` (decisions D1–D16 and the regression matrix).
