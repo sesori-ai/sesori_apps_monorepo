@@ -94,7 +94,7 @@ final class CodexFormSchema._({
         final maximum = _integerBound(schema: schema, key: "maximum", minimum: false);
         _bounds(minimum: minimum, maximum: maximum);
         return PluginFormIntegerSchema(
-          defaultValue: _integerDefault(schema: schema),
+          defaultValue: _integer(schema: schema, key: "default"),
           minimum: minimum,
           maximum: maximum,
         );
@@ -131,8 +131,12 @@ final class CodexFormSchema._({
       case "array":
         _keys(schema: schema, allowed: {...metadata, "items", "minItems", "maxItems"});
         final items = _object(value: schema["items"]);
-        _keys(schema: items, allowed: const {"type", "enum", "oneOf", "anyOf"});
-        if (items["type"] != "string") throw const FormatException("Unsupported form array");
+        if (items.containsKey("anyOf")) {
+          _keys(schema: items, allowed: const {"anyOf"});
+        } else {
+          _keys(schema: items, allowed: const {"type", "enum"});
+          if (items["type"] != "string") throw const FormatException("Unsupported form array");
+        }
         final options = _choices(schema: items, nativeOptions: nativeOptions);
         final minimum = _count(schema: schema, key: "minItems");
         final maximum = _count(schema: schema, key: "maxItems");
@@ -267,15 +271,15 @@ final class CodexFormSchema._({
     return bound;
   }
 
-  static int? _integerDefault({required Map<String, Object?> schema}) {
-    final value = _optional<num>(schema: schema, key: "default");
+  static int? _integer({required Map<String, Object?> schema, required String key}) {
+    final value = _optional<num>(schema: schema, key: key);
     if (value == null) return null;
-    if (!value.isFinite || value != value.toInt()) throw const FormatException("Invalid integer default");
+    if (!value.isFinite || value != value.toInt()) throw const FormatException("Invalid integer constraint");
     return value.toInt();
   }
 
   static int? _count({required Map<String, Object?> schema, required String key}) {
-    final value = _optional<int>(schema: schema, key: key);
+    final value = _integer(schema: schema, key: key);
     if (value != null && value < 0) throw const FormatException("Negative form constraint");
     return value;
   }

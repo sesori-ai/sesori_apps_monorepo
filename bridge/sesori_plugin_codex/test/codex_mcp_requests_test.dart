@@ -285,4 +285,75 @@ void main() {
     expect(form.validate(values: const {"field-0": PluginFormIntegerValue(value: 2)}), isEmpty);
     expect(form.encode(values: const {"field-0": PluginFormIntegerValue(value: 2)}), {"count": 2});
   });
+
+  test("integral JSON count constraints retain text and choice array validation", () {
+    final form = CodexFormSchema.parse(
+      schema: {
+        "type": "object",
+        "properties": {
+          "note": {"type": "string", "minLength": 2.0, "maxLength": 3.0},
+          "tags": {
+            "type": "array",
+            "minItems": 1.0,
+            "maxItems": 2.0,
+            "items": {
+              "anyOf": [
+                {"const": "native-a", "title": "Visible A"},
+                {"const": "native-b", "title": "Visible B"},
+              ],
+            },
+          },
+        },
+      },
+    )!;
+    final choices = form.fields.last.schema as PluginFormChoicesSchema;
+    expect(choices.options.map((option) => option.label), ["Visible A", "Visible B"]);
+    expect(
+      form.validate(
+        values: {
+          "field-0": const PluginFormTextValue(value: "a"),
+          "field-1": PluginFormChoicesValue(optionIds: []),
+        },
+      ),
+      {"field-0": PluginFormValidationIssue.invalidLength, "field-1": PluginFormValidationIssue.invalidLength},
+    );
+    final values = {
+      "field-0": const PluginFormTextValue(value: "ok"),
+      "field-1": PluginFormChoicesValue(optionIds: ["option-1"]),
+    };
+    expect(form.validate(values: values), isEmpty);
+    expect(form.encode(values: values), {
+      "note": "ok",
+      "tags": ["native-b"],
+    });
+    for (final count in [-1, 1.5, double.nan]) {
+      expect(
+        CodexFormSchema.parse(
+          schema: {
+            "type": "object",
+            "properties": {
+              "text": {"type": "string", "minLength": count},
+            },
+          },
+        ),
+        isNull,
+      );
+    }
+    expect(
+      CodexFormSchema.parse(
+        schema: {
+          "type": "object",
+          "properties": {
+            "choice": {
+              "type": "string",
+              "anyOf": [
+                {"const": "a"},
+              ],
+            },
+          },
+        },
+      ),
+      isNull,
+    );
+  });
 }

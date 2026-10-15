@@ -759,11 +759,12 @@ with an in-session warning. Invalid submissions and failed native writes retain 
 requests. Stop, archive notification, process exit and teardown cancel existing waits.
 Failed archive cancellation retains pending state without a false settlement event.
 Choice descriptions are retained in visible option labels.
-Codex typed form/external-action management integration and offered connectors
-remain **not implemented**; legacy generic elicitation forwarding remains available.
+Codex typed form/external-action management is **implemented** through the same
+shared controls, with cancel-only legacy notices. Offered connectors remain
+**not implemented** in this slice.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
-Claude implements the optional typed plugin API. Headless form snapshots and typed
+Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed
 reply/decline routes are **implemented** with canonical original-owner routing,
 active-only reads, deleted-target checks and archived-owner rejection. Unsupported plugins
 return empty snapshots and explicit unsupported mutation outcomes. Shared client typed

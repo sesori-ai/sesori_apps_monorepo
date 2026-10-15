@@ -393,8 +393,9 @@ relay/client, other native hosts and packaged browser return remain unqualified.
 
 Codex form/URL elicitation uses the existing pending registry and the shared
 form/external-action interfaces. A form snapshot carries typed fields, constraints
-and defaults only on request. Server property names and choice values remain
-plugin-local behind opaque aliases. Valid responses encode native content with
+and defaults only on request. Submitted IDs use opaque aliases for native property
+names and choice values; visible labels may fall back to those native names or
+values when the schema supplies no title. Valid responses encode native content with
 scalar types preserved and omitted optional values absent. Invalid values leave
 the same request pending for correction. Codex serializes integer bounds as JSON
 numbers; integral values and fractional bounds retain their integer semantics.
