@@ -1342,3 +1342,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   byte-for-byte. Step-22 production/tests/contracts/dependencies are unchanged
   from tested `04fb37e065`; the unrelated debug-server file is outside these
   route fixtures. No unchanged passing suite was rerun solely for confidence.
+- Step-22 review clarifies 32 pre-merge versus 33 later terminal checks for
+  Step 20. Actual-owner archive policy remains intentional: archiving only a
+  display parent must not retire an active child's independently answerable form.
+  The new direct/display-read and original-child reply regression passes with
+  all 16 form cases; targeted analysis passes. Source: `fc8a80e766`.
