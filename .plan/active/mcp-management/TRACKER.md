@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-claude-form-routing`, `feb6f77858`, in the provided `copper-heron` worktree.
-- Current step: 21/28 is in review; latest merged step: 20/28 as [#1989][pr-1989].
+- Branch/base: `sesori/mcp-headless-forms`, `0dd7b76ca1`, in the provided `copper-heron` worktree.
+- Current step: 22/28 is local; 21/28 is in review as [#1991][pr-1991].
+  Latest merged step: 20/28 as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
@@ -42,8 +43,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 18/28 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
 | 19/28 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
 | 20/28 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
-| 21/28 | Claude native forms (9.b.1) | In review | Typed native adapter and pending owner |
-| 22/28 | Canonical headless forms (9.b.2) | Not started | — |
+| 21/28 | Claude native forms (9.b.1) | In review | [#1991][pr-1991] |
+| 22/28 | Canonical headless forms (9.b.2) | Local | Active-only canonical snapshots and ordered typed replies |
 | 23/28 | Shared typed form controls (9.c) | Not started | — |
 | 24/28 | Codex inventory/actions/authentication | Not started | — |
 | 25/28 | Codex forms and offered connectors | Not started | — |
@@ -1290,3 +1291,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Step 21 merged current main; each conflicting incoming document was verified
   byte-identical to the already incorporated parent. The merge changes no files
   from approved source `ced5e6797a`, so no unchanged passing suite was rerun.
+
+[pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
+
+- Step 20's terminal monitor report records 33 passing checks. Step 21 is
+  published as #1991 at `0dd7b76ca1`: 1,340 changed lines, one generated and
+  1,339 authored. Its monitor is active. Native recording remains deferred.
+- Step 22 implements FormRepository, neutral mappings and the three form routes
+  through the existing PendingInteractionService, dispatcher and archive validator.
+  Optional-plugin reads remain active-only, snapshots filter the actual owner,
+  replies require the exact original backend session, and typed unknown values
+  cannot reach native submission. No new mutable owner, persistence or coordination.

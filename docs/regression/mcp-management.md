@@ -341,8 +341,20 @@ legacy question routes can only cancel, never submit flattened string answers.
 Verified native MCP server context enriches tool permission detail without
 changing tool names or grant rules.
 
-Headless form routes and draft-preserving client controls remain unimplemented.
-Coverage includes Claude schema, pending-owner and legacy-client fixtures, plus:
+`POST /session/forms`, `/form/reply` and `/form/decline` expose the same optional
+plugin API headlessly. Snapshots map canonical original/display IDs, hide archived
+actual owners and deleted owners/display parents, and never start inactive plugins.
+Replies require the original owner and reuse existing session ordering and archive
+validation. Unknown answer variants produce keyed invalid-type errors; unknown
+dismissals and unsupported APIs cannot mutate native requests. Missing/settled
+requests remain explicitly settled. Native write failure returns 503 and retains
+pending state. Current clients still have only the static cancel notice;
+draft-preserving controls remain unimplemented.
+
+Coverage includes `bridge/app/test/bridge/repositories/form_repository_test.dart`
+with real JSON route round trips and concurrent reply/cancel ordering, existing
+pending-interaction/permission/question regressions, Claude schema, pending-owner
+and legacy-client fixtures, plus:
 `shared/sesori_shared/test/models/pending_form_test.dart`.
 
 ## Session external actions
