@@ -60,13 +60,20 @@ Operational ownership, evidence and repair: [Linux repositories](../../../../doc
 11.i.a establishes credential-free native desktop sessions before introducing account
 credentials: Ubuntu 24.04 x64 runs GNOME/Wayland without a tray host; Ubuntu 24.04 ARM64
 runs KDE/X11 with StatusNotifier. Both use real GNOME Keyring Secret Service. The driver
-installs unchanged signed `1021` then `1022` packages, captures anonymous app windows,
+installs unchanged signed `1021` then `1022` producer packages, captures anonymous app windows,
 uses normal close/native tray Quit and checks for an orphaned packaged helper.
 Nonshipping probes compile against each corresponding product source and verify encrypted
 fixture persistence across replacement plus login-registration creation/removal. macOS
 probe output stays unchanged. State is limited to owned CI process/log handles and
 per-run evidence; no new application persistence, release authority or updater. No
 production mechanism is superseded or retained solely for compatibility.
+
+QA inputs bind to successful main packaging runs `38737038757` and `38745368680`.
+The core release rollover removed the older public release object during the first CI
+wave, as designed. Reuse the publisher's non-publishing signed-artifact preparation
+and independent package verifier; do not change retention or recreate releases. When
+artifacts expire, explicitly select a new retained increasing pair; never silently
+substitute a latest release or same-version reinstall.
 
 11.i.b completes real-account and helper On/Off qualification, actual login-session
 launch, unavailable-Secret-Service behavior and remaining nominated-distro upgrade

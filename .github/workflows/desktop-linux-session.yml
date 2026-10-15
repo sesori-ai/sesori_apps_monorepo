@@ -7,21 +7,22 @@ on:
       - '.github/workflows/desktop-linux-session.yml'
       - '.github/scripts/qualify_desktop_linux_session.py'
       - '.github/scripts/test_qualify_desktop_linux_session.py'
-      - '.github/scripts/publish_linux_repository.py'
+      - '.github/scripts/publish_desktop_linux.py'
       - 'client/desktop/test/native/packaged_platform_probe.dart'
   workflow_dispatch:
     inputs:
-      previous_tag:
-        description: Existing completed internal Linux release before replacement
+      previous_run:
+        description: Successful signed Linux producer run before replacement (artifacts must still be retained)
         type: string
-        default: v1.9.2-internal.1021
-      current_tag:
-        description: Newer completed internal Linux release after replacement
+        default: '38737038757'
+      current_run:
+        description: Successful signed Linux producer run after replacement (artifacts must still be retained)
         type: string
-        default: v1.9.2-internal.1022
+        default: '38745368680'
 
 permissions:
   contents: read
+  actions: read
 
 concurrency:
   group: native-linux-desktop-${{ github.event.pull_request.number || github.ref }}
@@ -57,7 +58,7 @@ jobs:
       - name: Verify focused tooling contracts
         run: |
           PYTHONPATH=.github/scripts python -m unittest \
-            test_qualify_desktop_linux_session test_publish_linux_repository
+            test_qualify_desktop_linux_session test_publish_desktop_linux
       - name: Install native session and build tools
         env:
           DEBIAN_FRONTEND: noninteractive
@@ -69,15 +70,30 @@ jobs:
             dbus-x11 python3-dbus gnome-keyring libsecret-tools \
             gnome-shell plasma-desktop plasma-workspace kwin-x11 \
             xvfb xauth wmctrl imagemagick mesa-utils
-      - name: Verify unchanged public package inputs
+      # Release objects roll away by design. Bind QA to original signed producer
+      # artifacts instead; do not change retention or recreate historical releases.
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.previous_run || '38737038757' }}
+          pattern: desktop-linux-*
+          path: build/linux-session-producers/previous
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.current_run || '38745368680' }}
+          pattern: desktop-linux-*
+          path: build/linux-session-producers/current
+      - name: Verify unchanged signed producer inputs
         id: inputs
         env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_TAG: ${{ inputs.previous_tag || 'v1.9.2-internal.1021' }}
-          CURRENT_TAG: ${{ inputs.current_tag || 'v1.9.2-internal.1022' }}
+          PREVIOUS_RUN: ${{ inputs.previous_run || '38737038757' }}
+          CURRENT_RUN: ${{ inputs.current_run || '38745368680' }}
         run: |
           python .github/scripts/qualify_desktop_linux_session.py prepare \
-            --previous "$PREVIOUS_TAG" --current "$CURRENT_TAG" --output build/linux-session-inputs
+            --previous "$PREVIOUS_RUN" --current "$CURRENT_RUN" --tooling-sha "$GITHUB_SHA" \
+            --inputs build/linux-session-producers --output build/linux-session-inputs
       - uses: actions/checkout@v6
         with:
           ref: ${{ steps.inputs.outputs.previous_source }}

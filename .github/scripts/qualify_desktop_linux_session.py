@@ -11,8 +11,11 @@ import subprocess
 import tempfile
 import time
 
-from prepare_desktop_release import require
-from publish_linux_repository import download, MANIFEST, version_order
+from build_linux_repository import Channel, verify_release
+from github_release_assets import github
+from prepare_desktop_release import read_json, require
+from publish_desktop_linux import MANIFEST, TRUSTED_PRIMARY_FINGERPRINT, prepare as prepare_signed
+from publish_linux_repository import REPOSITORY, version_order
 
 
 class Desktop(StrEnum):
@@ -37,13 +40,21 @@ def wait_for(*, description: str, check, timeout: int = 60):
     raise TimeoutError(f"Timed out waiting for {description}")
 
 
-def prepare(*, output: Path, previous: str, current: str) -> None:
+def prepare(*, inputs: Path, output: Path, previous: int, current: int, tooling_sha: str) -> None:
     output.mkdir(parents=True)
     releases = {}
-    for label, tag in (("previous", previous), ("current", current)):
-        root = output / label
-        download(output=root, tag=tag)
-        releases[label] = json.loads((root / MANIFEST).read_text())
+    for label, run_id in (("previous", previous), ("current", current)):
+        root = inputs / label
+        producer = github(arguments=["api", f"repos/{REPOSITORY}/actions/runs/{run_id}"])
+        (root / "run.json").write_text(producer)
+        identity = read_json(root / "desktop-linux-evidence-x64/desktop-bundle/bundle/bridge/desktop-bundle.json")
+        # Reuse the publisher's non-publishing preparation: original signed bytes,
+        # trusted main producer, compiled identity and native package evidence.
+        releases[label] = prepare_signed(
+            root=root, output=output / label, source_sha=identity["sourceSha"], tooling_sha=tooling_sha,
+            repository=REPOSITORY, run_id=run_id, current_run_id=None,
+            version=identity["version"], build_number=identity["buildNumber"])
+        verify_release(root=output / label, channel=Channel.INTERNAL, fingerprint=TRUSTED_PRIMARY_FINGERPRINT)
     versions = [version_order(version=f"{releases[label]['version']}-{releases[label]['buildNumber']}")
                 for label in ("previous", "current")]
     require(versions[0] < versions[1], "Select a genuine increasing package upgrade")
@@ -225,9 +236,11 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     preparation = commands.add_parser("prepare")
-    preparation.add_argument("--previous", required=True)
-    preparation.add_argument("--current", required=True)
+    preparation.add_argument("--previous", type=int, required=True)
+    preparation.add_argument("--current", type=int, required=True)
+    preparation.add_argument("--inputs", type=Path, required=True)
     preparation.add_argument("--output", type=Path, required=True)
+    preparation.add_argument("--tooling-sha", required=True)
     execution = commands.add_parser("exercise")
     execution.add_argument("--inputs", type=Path, required=True)
     execution.add_argument("--probes", type=Path, required=True)
@@ -236,7 +249,8 @@ def main() -> None:
     execution.add_argument("--architecture", choices=("x64", "arm64"), required=True)
     args = parser.parse_args()
     if args.command == "prepare":
-        prepare(output=args.output.resolve(), previous=args.previous, current=args.current)
+        prepare(inputs=args.inputs.resolve(), output=args.output.resolve(), previous=args.previous,
+                current=args.current, tooling_sha=args.tooling_sha)
     else:
         exercise(inputs=args.inputs.resolve(), probes=args.probes.resolve(), output=args.output.resolve(),
                  desktop=args.desktop, architecture=args.architecture)

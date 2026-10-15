@@ -19,24 +19,40 @@ class LinuxSessionQualificationTest(unittest.TestCase):
                     root = Path(directory)
                     output_file = root / "github-output"
 
-                    def download(*, output, tag):
-                        output.mkdir()
-                        previous = tag == "old"
-                        metadata = {"version": "9.8.7", "buildNumber": old_build if previous else new_build,
-                                    "sourceSha": "a" * 40 if previous or same_source else "b" * 40}
-                        (output / qualification.MANIFEST).write_text(json.dumps(metadata))
+                    for label, build in (("previous", old_build), ("current", new_build)):
+                        identity = (root / label
+                                    / "desktop-linux-evidence-x64/desktop-bundle/bundle/bridge/desktop-bundle.json")
+                        identity.parent.mkdir(parents=True)
+                        identity.write_text(json.dumps({
+                            "version": "9.8.7", "buildNumber": build,
+                            "sourceSha": "a" * 40 if label == "previous" or same_source else "b" * 40}))
 
-                    with mock.patch.object(qualification, "download", side_effect=download) as fetch, \
+                    def prepare_signed(**arguments):
+                        return {"version": arguments["version"], "buildNumber": arguments["build_number"],
+                                "sourceSha": arguments["source_sha"]}
+
+                    with mock.patch.object(qualification, "prepare_signed", autospec=True,
+                                           side_effect=prepare_signed) as prepare, \
+                            mock.patch.object(qualification, "verify_release") as verify, \
+                            mock.patch.object(qualification, "github", return_value='{"id": 1}') as github, \
                             mock.patch.dict(os.environ, {"GITHUB_OUTPUT": str(output_file)}):
+                        arguments = {"inputs": root, "output": root / "prepared", "previous": 11,
+                                     "current": 22, "tooling_sha": "c" * 40}
                         if accepted:
-                            qualification.prepare(output=root / "inputs", previous="old", current="new")
+                            qualification.prepare(**arguments)
                             self.assertIn("previous_source=" + "a" * 40, output_file.read_text())
                             self.assertIn("current_source=" + "b" * 40, output_file.read_text())
                         else:
                             with self.assertRaises(ValueError):
-                                qualification.prepare(output=root / "inputs", previous="old", current="new")
+                                qualification.prepare(**arguments)
                             self.assertFalse(output_file.exists())
-                    self.assertEqual([call.kwargs["tag"] for call in fetch.call_args_list], ["old", "new"])
+                    self.assertEqual([call.kwargs["run_id"] for call in prepare.call_args_list], [11, 22])
+                    self.assertTrue(all(call.kwargs["current_run_id"] is None for call in prepare.call_args_list))
+                    self.assertEqual([call.kwargs["arguments"][-1].split("/")[-1]
+                                      for call in github.call_args_list], ["11", "22"])
+                    self.assertEqual(verify.call_count, 2)
+                    self.assertTrue(all(call.kwargs["fingerprint"] == qualification.TRUSTED_PRIMARY_FINGERPRINT
+                                        for call in verify.call_args_list))
 
     def test_ordinary_workstation_and_root_gui_refused_before_any_native_operation(self):
         for system, actions, uid, message in (("Darwin", "true", 501, "disposable Linux"),
@@ -70,6 +86,9 @@ class LinuxSessionQualificationTest(unittest.TestCase):
         self.assertIn("desktop: gnome-wayland", workflow)
         self.assertIn("desktop: kde-x11", workflow)
         self.assertIn("max-parallel: 2", workflow)
+        self.assertIn("actions: read", workflow)
+        self.assertIn("pattern: desktop-linux-*", workflow)
+        self.assertNotIn("previous_tag", workflow)
         self.assertIn("/usr/bin/python3", workflow)
         self.assertIn("dbus-run-session", workflow)
         self.assertNotIn("secrets.", workflow)

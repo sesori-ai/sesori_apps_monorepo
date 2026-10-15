@@ -191,12 +191,15 @@ this does not claim KWallet-provider coverage. Sessions use isolated runner home
 virtual displays, not CPU emulation. No account credentials or signing/publishing
 permissions are available to this workflow.
 
-The credential-free sequence verifies existing signed public inputs, builds nonshipping
+The credential-free sequence verifies original signed producer artifacts, builds nonshipping
 storage probes against each corresponding source, installs the old real package, renders
 its anonymous window, performs normal close/native tray Quit, then installs and exercises
 the newer package. Encrypted fixture values must survive replacement; login registration
 must create/read/remove correctly. Inspect the captured anonymous windows before accepting
 native UI evidence. A window PID or passing mocked driver test is not a rendered-app pass.
+Public internal release objects roll away; QA binds to retained successful main producer
+runs instead. Expired artifacts require an explicitly selected new increasing pair, not
+changed release retention, a silently substituted version or same-version fallback.
 
 Real account restoration, helper On/Off behavior, actual session autostart, unavailable
 Secret Service and remaining distro upgrade rows stay separate gates. This workflow does
