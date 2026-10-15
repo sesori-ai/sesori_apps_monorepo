@@ -5734,7 +5734,7 @@ abstract class AppLocalizations {
   /// No description provided for @mcpSetupOpened.
   ///
   /// In en, this message translates to:
-  /// **'Finish setup in browser, then refresh.'**
+  /// **'Finish in your browser, then refresh.'**
   String get mcpSetupOpened;
 
   /// No description provided for @mcpSetupOpenFailed.

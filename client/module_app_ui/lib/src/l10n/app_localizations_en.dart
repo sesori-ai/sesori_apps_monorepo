@@ -3278,7 +3278,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpSetupOpening => 'Opening setup in your browser…';
 
   @override
-  String get mcpSetupOpened => 'Finish setup in browser, then refresh.';
+  String get mcpSetupOpened => 'Finish in your browser, then refresh.';
 
   @override
   String get mcpSetupOpenFailed => 'Could not open setup. Try again.';

@@ -87,11 +87,22 @@ class const _InventoryHeader({required final McpActionClientState action}) exten
             McpActionUnavailableReason.unsupportedScope => loc.mcpUnsupportedScope,
             McpActionUnavailableReason.liveSessionRequired => loc.mcpLiveSessionRequired,
             McpActionUnavailableReason.pluginInactive => loc.mcpPluginInactive,
-            _ => loc.mcpSetupOpenFailed,
+            McpActionUnavailableReason.unknown ||
+            McpActionUnavailableReason.busy ||
+            McpActionUnavailableReason.notSupported ||
+            McpActionUnavailableReason.notImplemented => loc.mcpSetupOpenFailed,
           },
-          _ => loc.mcpSetupOpenFailed,
+          McpActionUnknown() ||
+          McpActionCompleted() ||
+          McpExternalSetup() ||
+          McpActionFailed() => loc.mcpSetupOpenFailed,
         },
-      _ => null,
+      McpActionsReadOnly() ||
+      McpActionIdle() ||
+      McpActionOffline() ||
+      McpActionUncertain() ||
+      McpActionPending() ||
+      McpActionReceivedState() => null,
     };
     // This fixed slot changes independently of either reader's scroll area.
     return SizedBox(

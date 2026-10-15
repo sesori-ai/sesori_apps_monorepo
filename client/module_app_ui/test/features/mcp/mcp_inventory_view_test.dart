@@ -1,3 +1,5 @@
+import "package:flutter/rendering.dart" show RenderParagraph;
+import "package:flutter/services.dart" show FontLoader, rootBundle;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -50,6 +52,12 @@ McpInventoryReady _ready({required List<McpInventoryEntry> entries, required Mcp
     );
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  setUpAll(() async {
+    final font = FontLoader(PregoTextTheme.fontFamily)
+      ..addFont(rootBundle.load("packages/theme_prego/assets/fonts/SatoshiPrego/SatoshiPrego-Regular.otf"));
+    await font.load();
+  });
   late _Cubit cubit;
   late BehaviorSubject<McpInventoryState> states;
   late _Actions actions;
@@ -134,7 +142,7 @@ void main() {
     }
     actionStates.add(const McpConnectorSetupOpened(request: request));
     await tester.pumpAndSettle();
-    expect(find.text("Finish setup in browser, then refresh."), findsOneWidget);
+    expect(find.text("Finish in your browser, then refresh."), findsOneWidget);
     expect(find.text("Setup required"), findsOneWidget);
     expect(find.text("Connected"), findsNothing);
     expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNotNull);
@@ -182,7 +190,9 @@ void main() {
       await tester.pumpWidget(app(scale: scale));
       await tester.pumpAndSettle();
       expect(find.text("Open setup"), findsOneWidget);
-      expect(find.text("Finish setup in browser, then refresh."), findsOneWidget);
+      final feedback = find.text("Finish in your browser, then refresh.");
+      expect(feedback, findsOneWidget);
+      expect(tester.renderObject<RenderParagraph>(feedback).didExceedMaxLines, isFalse);
       expect(tester.takeException(), isNull);
       final animatedRow = find.ancestor(of: find.byType(PregoGroupedRow), matching: find.byType(AnimatedSize)).first;
       final initialHeight = tester.getSize(animatedRow).height;

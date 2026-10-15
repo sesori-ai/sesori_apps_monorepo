@@ -2345,7 +2345,7 @@
   "mcpOpenSetup": "Open setup",
   "mcpSetupInHarness": "Set up this connector with your coding tool.",
   "mcpSetupOpening": "Opening setup in your browser…",
-  "mcpSetupOpened": "Finish setup in browser, then refresh.",
+  "mcpSetupOpened": "Finish in your browser, then refresh.",
   "mcpSetupOpenFailed": "Could not open setup. Try again.",
   "mcpInventoryReady": "Inspect servers and connectors.",
   "mcpOfferNotFound": "This connector is no longer in the inventory.",

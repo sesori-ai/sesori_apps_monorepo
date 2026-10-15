@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-connector-setup`, in the provided `copper-heron` worktree.
-- Current step: 29/32 connector setup is verified and being published.
+- Current step: 29/32 connector setup is in PR [#2005][pr-2005].
   Latest merged: 28/32 as [#2003][pr-2003] (`74b6cb6747`).
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
@@ -54,7 +54,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
 | 27/32 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/32 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
-| 29/32 | Connector setup actions and browser handoff | Verified locally | Both architecture reviews approved; 143 cases |
+| 29/32 | Connector setup actions and browser handoff | In PR | [#2005][pr-2005]; evidence below |
 | 30/32 | Secondary harness support and explicit gaps | Not started | — |
 | 31/32 | Reconcile regression/capability documents | Not started | — |
 | 32/32 | Execute L4 plus named external/package checks; retire | Not started | — |
@@ -62,19 +62,65 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 [pr-2000]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000
 [pr-2001]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001
 [pr-2003]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2003
+[pr-2005]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2005
 
 ## Evidence and decisions
 
 - Step 29 resolves native setup destinations through the existing scoped headless
   action route and launches only an explicit, current client action. Destinations
-  remain request-local; opened feedback never claims connection. All 143 affected
-  cases and six owning analyzers pass, including phone layout/motion at normal and
+  remain request-local; opened feedback never claims connection. At tested draft
+  `d2d4a7bb00`, 143 affected cases and six owning analyzers passed, including phone layout/motion at normal and
   doubled text size. Desktop/phone fixture renders were inspected after integrating
   lazy catalog rows. Both exact Codex pins passed fresh empty-catalog reads.
   Real offers/provider completion, native recording and final L4/package/device
   qualification remain pending. Step 28 merged with 32 passing checks and clean
   completed code/security reviews. Squash-integration conflicts matched the
   already-integrated parent byte-for-byte; setup source remains unchanged.
+  CI on published `081a65797c` then found three custom exhaustive-switch lint
+  errors and an unstubbed action-state getter in an existing mobile archive
+  fixture. These are follow-up corrections, not passing CI evidence for that head.
+  Reproducible local checkpoints, from the provided `copper-heron` worktree:
+
+  Cwd `shared/sesori_shared`, 11 passed:
+
+  ```sh
+  dart test test/models/mcp_test.dart
+  ```
+
+  Cwd `bridge`, 50 passed:
+
+  ```sh
+  dart test \
+    sesori_plugin_codex/test/codex_mcp_repository_test.dart \
+    sesori_plugin_codex/test/codex_mcp_plugin_test.dart
+  ```
+
+  Cwd `bridge/app`, 24 passed:
+
+  ```sh
+  dart test test/bridge/routing/post_mcp_inventory_handler_test.dart
+  ```
+
+  Cwd `client/module_core`, 36 passed:
+
+  ```sh
+  dart test test/services/mcp_service_test.dart
+  ```
+
+  Cwd `client/module_app_ui`, 22 passed:
+
+  ```sh
+  flutter test --no-pub \
+    test/features/mcp/mcp_inventory_view_test.dart \
+    test/features/mcp/mcp_server_controls_view_test.dart
+  ```
+
+  Commands used pinned Flutter 3.47.7-stable and its bundled Dart, with
+  `FLUTTER_ROOT` set to that SDK for client commands. The owning analyzer commands
+  were `dart analyze --fatal-infos .` for shared/plugin interface/client core,
+  `dart analyze --fatal-infos app` and `dart analyze --fatal-infos sesori_plugin_codex`
+  from `bridge`, and `flutter analyze --no-pub` from shared UI. The CI-only custom
+  lint result above limits that earlier local analysis claim.
 
 - 2026-10-13: inspected current plugin contracts, Claude process/control ownership, Codex approvals, shared
   question/permission models, client browser auth ownership, bridge routing, harness capabilities, and regression proof
