@@ -57,7 +57,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 27/35 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/35 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
 | 29/35 | Connector setup actions and browser handoff | In PR | [#2005][pr-2005]; evidence below |
-| 30/35 | OpenCode v2 inventory and connection controls (11.a) | In progress | Architecture plan approved |
+| 30/35 | OpenCode v2 inventory and connection controls (11.a) | Verified locally | 69 cases; both native pins |
 | 31/35 | OpenCode v1 inventory and connection controls (11.b) | Not started | — |
 | 32/35 | OpenCode v1 native MCP authentication (11.c) | Not started | — |
 | 33/35 | Bounded Pi/ACP support and capability audit (11.d) | Not started | — |
@@ -70,6 +70,28 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 [pr-2005]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2005
 
 ## Evidence and decisions
+
+- Step 30 tested source `51bcf3f5f4`: both architecture reviews approved; all 69
+  affected v2 cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
+
+  ```sh
+  dart test test/v2/opencode_v2_mcp_test.dart \
+    test/v2/opencode_v2_api_test.dart \
+    test/v2/opencode_v2_repository_test.dart \
+    test/v2/opencode_v2_plugin_test.dart
+  ```
+
+  Cwd `bridge`: `dart analyze --fatal-infos sesori_plugin_opencode`. Both commands
+  use the pinned Flutter 3.47.7-stable Dart SDK. Exact native 2.0.11 and 2.0.24
+  archives matched npm SHA-512 integrity; target SHA-256 also matches the runtime
+  manifest. The private probe `/private/tmp/copper-heron-mcp-step30-native.py`
+  uses isolated profiles, a synthetic local password and test-only native server
+  overrides. Both pins pass production API/repository inventory, enable, resident
+  reconnect, disable and exact session lookup; reconnect replaces the fixture
+  process and configuration bytes remain unchanged. It executes no model/tool
+  call or provider login. Private log: `/private/tmp/copper-heron-mcp-step30-native.log`.
+  The successor remains local while #2005 is reviewed; provider/package/client/L4
+  qualification is unchanged and remains pending.
 
 - Step 29 resolves native setup destinations through the existing scoped headless
   action route and launches only an explicit, current client action. Destinations

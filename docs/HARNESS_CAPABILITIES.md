@@ -829,8 +829,11 @@ metadata, configuration ownership or authentication success. Effects are scoped
 to the native project/location, with authoritative refresh after controls.
 The v2 MCP API provides no offered-connector catalog or OAuth/forgetting route;
 those operations are **not supported by this seam**. Other native integration
-authentication remains a separate audit. The 2.0.11/2.0.24 schemas and local
-adapter tests pass; exact native control qualification is still in progress.
+authentication remains a separate audit. Exact integrity-verified 2.0.11 and
+2.0.24 pass inventory, enable, resident-process reconnect, disable and exact
+session-location lookup through the production adapter in isolated fixtures.
+Controls preserve the fixture configuration file. This proves native local
+control behavior, not authenticated providers or packaged client journeys.
 OpenCode v1 management/authentication and the bounded Pi/ACP audit remain later
 steps. Original provider/package/client/L4 qualification is unchanged.
 

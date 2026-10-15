@@ -441,8 +441,13 @@ performs the existing authoritative refresh after native completion.
 Coverage: `opencode_v2_mcp_test.dart` exercises exact project/session attribution,
 independent locations, all states, missing targets, typed read failures and the
 concrete plugin HTTP seam. The 69 affected v2 API/repository/plugin cases pass;
-package analysis is clean. Exact native minimum/target control qualification is
-still in progress. Provider, client, package and final L4 coverage remain pending.
+package analysis is clean. Integrity-verified native 2.0.11 and 2.0.24 pass
+inventory, enable, resident-process reconnect, disable and exact session lookup
+through the production adapter. A test-only native override seeds the isolated
+existing-server fixture; production exposes no add/remove/configuration route.
+Both native runs replace the resident fixture process on reconnect and leave the
+configuration file unchanged. No model/tool execution or provider sign-in occurs.
+Provider, client, package and final L4 coverage remain pending.
 
 ## Codex native authentication
 
