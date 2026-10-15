@@ -49,7 +49,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 22/30 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
 | 23/30 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
 | 24/30 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
-| 25/30 | Codex scoped inventory (10.a) | In review | [#1999][pr-1999]; 22 focused tests, native captures and architecture approval |
+| 25/30 | Codex scoped inventory (10.a) | In review | [#1999][pr-1999]; evidence below |
 | 26/30 | Codex native OAuth ownership (10.b) | Not started | — |
 | 27/30 | Codex forms and offered connectors | Not started | — |
 | 28/30 | Secondary harness support and explicit gaps | Not started | — |
@@ -1450,3 +1450,17 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   20 pre-merge and 21 terminal checks passing. Fresh Cubic review approved with zero issues;
   Codex code/security reviews completed. No newly actionable threads remained;
   the two declined empty-to-omission suggestions retain their explanations.
+- Step-25 inventory review fixes preserve unknown authorization on absent/null
+  metadata, stable tool ordering, original local discovery diagnostics and safe
+  remote failures. Cold native threads return live-session-required without
+  resume/fallback; disconnected project scope remains explicitly unsupported.
+  Both native schemas make nextCursor optional, so omission remains a valid
+  terminal page. No speculative cursor registry or new unadvertised action wire
+  outcome was added; local diagnostic causes remain useful as required by AGENTS.md.
+- Review verification passes: 30 MCP cases plus five existing account API cases,
+  normal DTO generation and bridge-root package analysis. Exact native restarted
+  app-servers at both pins reproduce the cold-thread error. Documentation now
+  distinguishes existing generic Codex elicitation from the upcoming typed native
+  integration and includes native server titles/descriptions in the metadata boundary.
+  Architecture implementation review pass 2 approved the complete PR/worktree
+  boundary with no findings; the separate OAuth draft remains excluded.

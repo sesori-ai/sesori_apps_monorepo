@@ -52,6 +52,14 @@ void main() {
     addTearDown(plugin.dispose);
     expect(plugin, isA<McpManagementPluginApi>());
     expect(await plugin.getMcpInventory(scope: const PluginMcpHarnessScope()), isA<PluginMcpInventoryUnavailable>());
+    expect(
+      await plugin.getMcpInventory(scope: const PluginMcpProjectScope(projectId: "project")),
+      isA<PluginMcpInventoryUnavailable>().having(
+        (value) => value.reason,
+        "reason",
+        PluginMcpInventoryUnavailableReason.unsupportedScope,
+      ),
+    );
     expect(socketReady.isCompleted, isFalse);
     await plugin.initialize();
     final inventory = await plugin.getMcpInventory(scope: const PluginMcpHarnessScope()) as PluginMcpInventorySnapshot;

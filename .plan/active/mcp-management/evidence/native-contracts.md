@@ -111,6 +111,14 @@ decoder: six pages total, with absent minimum-version runtime state unknown and
 target runtime connected. These probes do not qualify relay/client/provider or
 packaged runtime boundaries.
 
+The 2026-10-15 inventory review verified that both native response schemas require
+only `data`; omitted `nextCursor` is valid end-of-pagination. After creating an
+isolated thread and restarting its app-server, both pins return code -32600 and
+`thread not found: <requested-id>` for its status read. Sesori maps only that exact
+requested-thread failure to live-session-required, without resuming or falling back
+to harness scope. The fixture's no-turn thread history read was also unavailable;
+this does not qualify persisted-history or real archived-session behavior.
+
 Codex fixture OAuth succeeds after its exact loopback callback receives the
 fixture state/code. The post-completion refresh reports OAuth and the fixture
 tool at both pins; target also reports connected with no discovery error.

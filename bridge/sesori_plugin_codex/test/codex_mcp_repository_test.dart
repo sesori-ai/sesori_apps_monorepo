@@ -1,8 +1,11 @@
+import "dart:io";
+
 import "package:codex_plugin/src/api/codex_app_server_api.dart";
 import "package:codex_plugin/src/api/models/codex_mcp_status_dto.dart";
 import "package:codex_plugin/src/codex_app_server_client.dart";
 import "package:codex_plugin/src/repositories/codex_mcp_repository.dart";
 import "package:codex_plugin/src/repositories/mappers/codex_mcp_mapper.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -278,4 +281,109 @@ void main() {
     expect(dto.toString(), isNot(contains("private")));
     expect(dto.tools.clear, throwsUnsupportedError);
   });
+
+  test("native optional cursor omission ends pagination without rejecting a valid page", () async {
+    final transport = _Transport(
+      responses: [
+        {
+          "data": [_server],
+        },
+      ],
+    );
+    expect(
+      await _repository(transport: transport).read(scope: const PluginMcpHarnessScope()),
+      isA<PluginMcpInventorySnapshot>(),
+    );
+    expect(transport.calls, hasLength(1));
+  });
+
+  test("missing or null authorization metadata stays unknown", () {
+    for (final server in [
+      Map<String, Object?>.of(_server)..remove("authStatus"),
+      {..._server, "authStatus": null},
+    ]) {
+      expect(_mapped(server: server).authorization, PluginMcpAuthorizationState.unknown);
+    }
+  });
+
+  test("native map order cannot reorder displayed tools", () {
+    final tools = <String, Object?>{
+      "zulu": {"name": "Zulu tool"},
+      "alpha": {"name": "Alpha tool"},
+    };
+    final first = _mapped(server: {..._server, "tools": tools}).tools as PluginMcpToolsAvailable;
+    final second =
+        _mapped(server: {..._server, "tools": Map.fromEntries(tools.entries.toList().reversed)}).tools
+            as PluginMcpToolsAvailable;
+    expect(first.tools.map((tool) => tool.name), ["Alpha tool", "Zulu tool"]);
+    expect(second.tools.map((tool) => tool.name), first.tools.map((tool) => tool.name));
+  });
+
+  test("discovery failure logs original local diagnostics and exact context while returning safe text", () async {
+    final transport = _Transport(
+      responses: [
+        {
+          "data": [
+            {..._server, "toolsError": "fixture native diagnostic"},
+          ],
+        },
+      ],
+    );
+    final stderr = BufferingStdout();
+    final previous = Log.level;
+    try {
+      Log.level = LogLevel.warning;
+      await IOOverrides.runZoned(() async {
+        final result = await _repository(
+          transport: transport,
+        ).read(scope: const PluginMcpSessionScope(sessionId: "original")) as PluginMcpInventorySnapshot;
+        expect(
+          ((result.entries.single as PluginMcpServerSnapshot).tools as PluginMcpToolsFailed).message,
+          isNot(contains("fixture native diagnostic")),
+        );
+      }, stderr: () => stderr);
+    } finally {
+      Log.level = previous;
+    }
+    expect(stderr.text, contains("fixture native diagnostic"));
+    expect(stderr.text, contains("fixture in thread original"));
+  });
+
+  test("cold thread returns live-session-required with no resume or scope fallback", () async {
+    final cause = CodexRpcException(
+      method: "mcpServerStatus/list",
+      code: -32600,
+      message: "thread not found: original",
+    );
+    final api = CodexAppServerApi(client: _Transport(responses: [cause]));
+    await expectLater(
+      api.listMcpServersPage(threadId: "original", cursor: null),
+      throwsA(isA<CodexMcpThreadNotLoadedException>().having((error) => error.innerError, "cause", same(cause))),
+    );
+    final transport = _Transport(responses: [cause]);
+    expect(
+      await _repository(transport: transport).read(scope: const PluginMcpSessionScope(sessionId: "original")),
+      isA<PluginMcpInventoryUnavailable>().having(
+        (value) => value.reason,
+        "reason",
+        PluginMcpInventoryUnavailableReason.liveSessionRequired,
+      ),
+    );
+    expect(transport.calls.map((call) => call.method), ["mcpServerStatus/list"]);
+    expect((transport.calls.single.params! as Map)["threadId"], "original");
+  });
+
+  for (final (scope, code, message) in [
+    (const PluginMcpHarnessScope(), -32600, "thread not found: original"),
+    (const PluginMcpSessionScope(sessionId: "original"), -32600, "thread not found: another"),
+    (const PluginMcpSessionScope(sessionId: "original"), -32000, "thread not found: original"),
+  ]) {
+    test("unrelated native error $code $message stays a typed failure for ${scope.runtimeType}", () async {
+      final cause = CodexRpcException(method: "mcpServerStatus/list", code: code, message: message);
+      final result = await _repository(
+        transport: _Transport(responses: [cause]),
+      ).read(scope: scope) as PluginMcpInventoryReadFailed;
+      expect(result.cause, same(cause));
+    });
+  }
 }

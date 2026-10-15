@@ -714,7 +714,9 @@ no action is advertised. A 2026-10-15 isolated probe at both pins found status
 discovery can open a fresh connection while the resident tool call retains its
 original connection, including after `config/mcpServer/reload`. Reloading
 configuration therefore does not establish resident reconnect support.
-Offered-connector inventory and Codex elicitation remain **not implemented**.
+Offered-connector inventory remains **not implemented**. Codex already forwards
+legacy elicitation as generic questions/tool permissions; its typed form and
+external-action management integration remain **not implemented**.
 
 Claude's toggle changes the resident process, not persisted configuration.
 Its status omits tool descriptions. Approval frames name the tool at both pins;

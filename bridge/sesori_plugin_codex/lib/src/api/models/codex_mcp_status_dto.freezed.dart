@@ -82,7 +82,7 @@ int get hashCode {
 /// @nodoc
 mixin _$CodexMcpServerStatusDto {
 
- String get name; Map<String, CodexMcpToolDto> get tools;@JsonKey(unknownEnumValue: CodexMcpAuthStatus.unknown) CodexMcpAuthStatus get authStatus;@JsonKey(unknownEnumValue: CodexMcpRuntimeStatus.unknown) CodexMcpRuntimeStatus? get runtimeStatus; String? get toolsError; String? get httpOrigin; CodexMcpServerInfoDto? get serverInfo;
+ String get name; Map<String, CodexMcpToolDto> get tools;@JsonKey(defaultValue: CodexMcpAuthStatus.unknown, unknownEnumValue: CodexMcpAuthStatus.unknown) CodexMcpAuthStatus get authStatus;@JsonKey(unknownEnumValue: CodexMcpRuntimeStatus.unknown) CodexMcpRuntimeStatus? get runtimeStatus; String? get toolsError; String? get httpOrigin; CodexMcpServerInfoDto? get serverInfo;
 
 
 
@@ -111,7 +111,7 @@ int get hashCode {
 @JsonSerializable(createToJson: false)
 
 class _CodexMcpServerStatusDto implements CodexMcpServerStatusDto {
-  const _CodexMcpServerStatusDto({required this.name, required  Map<String, CodexMcpToolDto> tools, @JsonKey(unknownEnumValue: CodexMcpAuthStatus.unknown) required this.authStatus, @JsonKey(unknownEnumValue: CodexMcpRuntimeStatus.unknown) required this.runtimeStatus, required this.toolsError, required this.httpOrigin, required this.serverInfo}): _tools = tools;
+  const _CodexMcpServerStatusDto({required this.name, required  Map<String, CodexMcpToolDto> tools, @JsonKey(defaultValue: CodexMcpAuthStatus.unknown, unknownEnumValue: CodexMcpAuthStatus.unknown) required this.authStatus, @JsonKey(unknownEnumValue: CodexMcpRuntimeStatus.unknown) required this.runtimeStatus, required this.toolsError, required this.httpOrigin, required this.serverInfo}): _tools = tools;
   factory _CodexMcpServerStatusDto.fromJson(Map<String, dynamic> json) => _$CodexMcpServerStatusDtoFromJson(json);
 
 @override final  String name;
@@ -122,7 +122,7 @@ class _CodexMcpServerStatusDto implements CodexMcpServerStatusDto {
   return EqualUnmodifiableMapView(_tools);
 }
 
-@override@JsonKey(unknownEnumValue: CodexMcpAuthStatus.unknown) final  CodexMcpAuthStatus authStatus;
+@override@JsonKey(defaultValue: CodexMcpAuthStatus.unknown, unknownEnumValue: CodexMcpAuthStatus.unknown) final  CodexMcpAuthStatus authStatus;
 @override@JsonKey(unknownEnumValue: CodexMcpRuntimeStatus.unknown) final  CodexMcpRuntimeStatus? runtimeStatus;
 @override final  String? toolsError;
 @override final  String? httpOrigin;

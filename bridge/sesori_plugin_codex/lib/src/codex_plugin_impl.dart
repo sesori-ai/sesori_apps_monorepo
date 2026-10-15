@@ -203,10 +203,15 @@ class CodexPlugin._({
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
     final repository = _mcpRepository;
     return repository == null
-        ? const PluginMcpInventoryUnavailable(
-            reason: PluginMcpInventoryUnavailableReason.liveSessionRequired,
-            message: "Connect the Codex runtime before inspecting MCP servers.",
-          )
+        ? scope is PluginMcpProjectScope
+              ? const PluginMcpInventoryUnavailable(
+                  reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
+                  message: "Codex MCP inventory supports harness and existing thread scopes, not projects.",
+                )
+              : const PluginMcpInventoryUnavailable(
+                  reason: PluginMcpInventoryUnavailableReason.liveSessionRequired,
+                  message: "Connect the Codex runtime before inspecting MCP servers.",
+                )
         : await repository.read(scope: scope);
   }
 

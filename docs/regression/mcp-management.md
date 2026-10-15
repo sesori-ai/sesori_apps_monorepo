@@ -21,7 +21,8 @@ archived session if its native process remains live; it grants no session mutati
 
 - Codex inventory reads all native pages for the exact session or harness on
   the attached app-server connection. A project scope is explicitly unsupported;
-  no connection starts or session/tool mutation is issued by inspection. Detached
+  inspection issues no app-server connect, session start/resume, tool call or
+  configuration mutation. Native MCP discovery may establish its own connection. Detached
   plugins return live-session-required instead of reconnecting implicitly.
 - Codex minimum-version omissions and unknown enums remain unknown. A connected
   empty tool map is a successful empty catalog; otherwise missing discovery stays
@@ -29,13 +30,16 @@ archived session if its native process remains live; it grants no session mutati
   Malformed pages and later-page RPC failures return a complete read failure,
   retaining the original typed cause locally rather than partial success.
 - Codex server names remain opaque target keys. Only declared tool names and
-  descriptions, safe endpoint origins and separate native auth/runtime state
+  descriptions, native server titles/descriptions, safe endpoint origins and separate native auth/runtime state
   reach neutral consumers. No config provenance or per-server control is guessed.
   Config reload is not advertised as resident reconnect. Native OAuth and offered
   connectors remain explicitly not implemented; toggles/forgetting are unsupported.
   Coverage: `codex_mcp_repository_test.dart` and `codex_mcp_plugin_test.dart`
   in `bridge/sesori_plugin_codex/test/`, including exact scope/pagination,
   malformed payloads, typed failure causes and detached/disconnected lifecycle.
+  Cold threads return live-session-required without resuming them. Native tool
+  discovery errors retain original local diagnostics with server/thread context;
+  remote failure text stays generic. Tool rows use stable native-key ordering.
 
 - Request-scoped GET recovers the current native attempt on identity establishment,
   reconnect, explicit refresh and `mcp.authentication.changed`. SSE carries no

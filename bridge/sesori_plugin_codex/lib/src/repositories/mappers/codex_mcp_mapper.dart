@@ -54,10 +54,10 @@ class const CodexMcpMapper() {
             : server.tools.isNotEmpty || server.runtimeStatus == CodexMcpRuntimeStatus.connected
             ? PluginMcpToolsAvailable(
                 tools: List.unmodifiable(
-                  server.tools.values.map(
-                    (tool) => PluginMcpTool(
-                      name: tool.name,
-                      description: _present(value: tool.description),
+                  (server.tools.entries.toList()..sort((a, b) => a.key.compareTo(b.key))).map(
+                    (entry) => PluginMcpTool(
+                      name: entry.value.name,
+                      description: _present(value: entry.value.description),
                     ),
                   ),
                 ),

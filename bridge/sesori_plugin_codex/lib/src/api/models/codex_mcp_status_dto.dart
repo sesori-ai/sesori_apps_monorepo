@@ -33,7 +33,8 @@ sealed class CodexMcpServerStatusDto with _$CodexMcpServerStatusDto {
   const factory({
     required String name,
     required Map<String, CodexMcpToolDto> tools,
-    @JsonKey(unknownEnumValue: CodexMcpAuthStatus.unknown) required CodexMcpAuthStatus authStatus,
+    @JsonKey(defaultValue: CodexMcpAuthStatus.unknown, unknownEnumValue: CodexMcpAuthStatus.unknown)
+    required CodexMcpAuthStatus authStatus,
     @JsonKey(unknownEnumValue: CodexMcpRuntimeStatus.unknown) required CodexMcpRuntimeStatus? runtimeStatus,
     required String? toolsError,
     required String? httpOrigin,

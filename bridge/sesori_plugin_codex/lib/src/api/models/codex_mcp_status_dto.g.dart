@@ -27,11 +27,13 @@ _CodexMcpServerStatusDto _$CodexMcpServerStatusDtoFromJson(Map json) =>
           CodexMcpToolDto.fromJson(Map<String, dynamic>.from(e as Map)),
         ),
       ),
-      authStatus: $enumDecode(
-        _$CodexMcpAuthStatusEnumMap,
-        json['authStatus'],
-        unknownValue: CodexMcpAuthStatus.unknown,
-      ),
+      authStatus:
+          $enumDecodeNullable(
+            _$CodexMcpAuthStatusEnumMap,
+            json['authStatus'],
+            unknownValue: CodexMcpAuthStatus.unknown,
+          ) ??
+          CodexMcpAuthStatus.unknown,
       runtimeStatus: $enumDecodeNullable(
         _$CodexMcpRuntimeStatusEnumMap,
         json['runtimeStatus'],

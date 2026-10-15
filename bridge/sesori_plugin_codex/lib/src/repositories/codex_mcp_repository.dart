@@ -25,6 +25,7 @@ class CodexMcpRepository({required final CodexAppServerApi _appServerApi, requir
       case PluginMcpHarnessScope():
         threadId = null;
     }
+    final context = threadId == null ? "harness" : "thread $threadId";
     try {
       final servers = <CodexMcpServerStatusDto>[];
       String? cursor;
@@ -33,7 +34,22 @@ class CodexMcpRepository({required final CodexAppServerApi _appServerApi, requir
         servers.addAll(page.data);
         cursor = page.nextCursor;
       } while (cursor != null);
+      for (final server in servers) {
+        if (server.toolsError case final error?) {
+          Log.w(
+            "[codex] MCP tool discovery failed for ${server.name} in $context",
+            StateError(error),
+            StackTrace.current,
+          );
+        }
+      }
       return _mapper.map(servers: servers, scope: scope);
+    } on CodexMcpThreadNotLoadedException catch (error, stackTrace) {
+      Log.w("[codex] MCP inventory requires a live thread in $context", error.innerError, stackTrace);
+      return const PluginMcpInventoryUnavailable(
+        reason: PluginMcpInventoryUnavailableReason.liveSessionRequired,
+        message: "Open this Codex thread in a live session before inspecting its MCP servers.",
+      );
     } on Object catch (error, stackTrace) {
       return PluginMcpInventoryReadFailed(
         cause: error is Exception ? error : CodexMcpInventoryReadException(innerError: error),
