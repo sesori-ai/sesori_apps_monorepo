@@ -83,7 +83,12 @@ class CodexPlugin._({
   /// is reset before the reporter is told.
   required final void Function()? _onDisconnected,
   required final Duration _keepaliveInterval,
-}) implements CodexManagedApi, McpManagementPluginApi, McpAuthenticationPluginApi {
+}) implements
+    CodexManagedApi,
+    McpManagementPluginApi,
+    McpAuthenticationPluginApi,
+    FormInteractionPluginApi,
+    SessionExternalActionsPluginApi {
   @override
   Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
       PluginQuotaContinuationReadiness.unavailable;
@@ -1674,6 +1679,41 @@ class CodexPlugin._({
   Future<List<PluginAgent>> getAgents({required String projectId}) => _sessionService.getAgents(projectId: projectId);
 
   @override
+  Future<List<PluginPendingForm>> getPendingForms({required String sessionId}) async =>
+      _approvalRegistry?.pendingFormsForSession(sessionId: sessionId) ?? const [];
+
+  @override
+  Future<PluginFormSubmissionResult> replyToForm({
+    required String requestId,
+    required String sessionId,
+    required Map<String, PluginFormValue> values,
+  }) async =>
+      _approvalRegistry?.replyForm(requestId: requestId, sessionId: sessionId, values: values) ??
+      const PluginFormAlreadySettled();
+
+  @override
+  Future<PluginFormDismissalResult> declineForm({
+    required String requestId,
+    required String sessionId,
+    required PluginFormDismissalChoice choice,
+  }) async =>
+      _approvalRegistry?.declineForm(requestId: requestId, sessionId: sessionId, choice: choice) ??
+      PluginFormDismissalResult.alreadySettled;
+
+  @override
+  Future<List<PluginPendingExternalAction>> getPendingExternalActions({required String sessionId}) async =>
+      _approvalRegistry?.pendingExternalActionsForSession(sessionId: sessionId) ?? const [];
+
+  @override
+  Future<PluginExternalActionReply> replyToExternalAction({
+    required String requestId,
+    required String sessionId,
+    required PluginExternalActionChoice choice,
+  }) async =>
+      _approvalRegistry?.replyExternalAction(requestId: requestId, sessionId: sessionId, choice: choice) ??
+      PluginExternalActionReply.alreadySettled;
+
+  @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
   }) async => _approvalRegistry?.pendingQuestionsForSessionTree(sessionId: sessionId) ?? const [];
@@ -1706,6 +1746,12 @@ class CodexPlugin._({
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return;
+    if (registry.isTypedMcpRequest(requestId: questionId)) {
+      if (!registry.cancelLegacyMcpRequest(requestId: questionId, sessionId: sessionId)) {
+        throw const PluginOperationException.notFound("cancelMcpRequest", message: "owning session is required");
+      }
+      return;
+    }
     await registry.replyQuestion(requestId: questionId, answers: answers);
   }
 
@@ -1714,9 +1760,15 @@ class CodexPlugin._({
     required String questionId,
     required String? sessionId,
   }) async {
-    // sessionId is unused: the approval registry keys pending requests by their
-    // bridge request id alone (codex requests are globally unique per session).
-    await _approvalRegistry?.rejectQuestion(requestId: questionId);
+    final registry = _approvalRegistry;
+    if (registry == null) return;
+    if (registry.isTypedMcpRequest(requestId: questionId)) {
+      if (!registry.cancelLegacyMcpRequest(requestId: questionId, sessionId: sessionId)) {
+        throw const PluginOperationException.notFound("cancelMcpRequest", message: "owning session is required");
+      }
+      return;
+    }
+    await registry.rejectQuestion(requestId: questionId);
   }
 
   @override

@@ -725,9 +725,22 @@ no action is advertised. A 2026-10-15 isolated probe at both pins found status
 discovery can open a fresh connection while the resident tool call retains its
 original connection, including after `config/mcpServer/reload`. Reloading
 configuration therefore does not establish resident reconnect support.
-Offered-connector inventory remains **not implemented**. Codex already forwards
-legacy elicitation as generic questions/tool permissions; its typed form and
-external-action management integration remain **not implemented**.
+Offered-connector inventory remains **not implemented**. Codex typed MCP forms
+and URL requests are **implemented**, reusing the existing native pending owner
+and shared request-scoped controls. Supported scalar/choice forms retain native
+types and opaque key/value aliases; invalid replies remain pending. Unsupported
+schemas/modes explicitly decline. Integer bounds accept the native JSON-number
+representation, with fractional bounds rounded inward to integral choices.
+Forwarded legacy titled enums retain matching enumNames. Native 0.139.0 omits
+enumNames in the isolated fixture, so native values become visible labels;
+0.160.1 forwards the titles, and native oneOf titles work at both pins.
+Blank or ambiguous field/option labels and unfulfillable choice counts decline with
+a display-session warning instead of offering indistinguishable inputs.
+URLs/defaults/answers remain outside question broadcasts. Legacy clients receive
+cancel-only notices; generic replies cancel instead of coercing answers or
+accepting an external action. Tagged tool approval and declared persistent grants
+remain on the permission path. Session cancellation/disconnect retires the same
+owner; URL acceptance alone does not establish OAuth completion.
 
 Claude's toggle changes the resident process, not persisted configuration.
 Its status omits tool descriptions. Approval frames name the tool at both pins;
@@ -751,11 +764,12 @@ with an in-session warning. Invalid submissions and failed native writes retain 
 requests. Stop, archive notification, process exit and teardown cancel existing waits.
 Failed archive cancellation retains pending state without a false settlement event.
 Choice descriptions are retained in visible option labels.
-Codex typed form/external-action management integration and offered connectors
-remain **not implemented**; legacy generic elicitation forwarding remains available.
+Codex typed form/external-action management is **implemented** through the same
+shared controls, with cancel-only legacy notices. Offered connectors remain
+**not implemented** in this slice.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
-Claude implements the optional typed plugin API. Headless form snapshots and typed
+Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed
 reply/decline routes are **implemented** with canonical original-owner routing,
 active-only reads, deleted-target checks and archived-owner rejection. Unsupported plugins
 return empty snapshots and explicit unsupported mutation outcomes. Shared client typed
