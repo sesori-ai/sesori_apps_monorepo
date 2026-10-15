@@ -2433,7 +2433,7 @@ String toString() {
 @JsonSerializable()
 
 class SesoriQuestionAsked implements SesoriSseEvent, SesoriSessionEvent {
-  const SesoriQuestionAsked({required this.id, required this.sessionID, required this.displaySessionId, required  List<QuestionInfo> questions,  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
+  const SesoriQuestionAsked({required this.id, required this.sessionID, required this.displaySessionId, required  List<QuestionInfo> questions, @JsonKey(unknownEnumValue: QuestionInteractionKind.unknown) this.interactionKind = QuestionInteractionKind.question,  String? $type}): _questions = questions,$type = $type ?? 'question.asked';
   factory SesoriQuestionAsked.fromJson(Map<String, dynamic> json) => _$SesoriQuestionAskedFromJson(json);
 
  final  String id;
@@ -2449,6 +2449,7 @@ class SesoriQuestionAsked implements SesoriSseEvent, SesoriSessionEvent {
   return EqualUnmodifiableListView(_questions);
 }
 
+@JsonKey(unknownEnumValue: QuestionInteractionKind.unknown) final  QuestionInteractionKind interactionKind;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -2467,18 +2468,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionAsked&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, _questions));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriQuestionAsked&&(identical(other.id, id) || other.id == id)&&(identical(other.sessionID, sessionID) || other.sessionID == sessionID)&&(identical(other.displaySessionId, displaySessionId) || other.displaySessionId == displaySessionId)&&const DeepCollectionEquality().equals(other.questions, _questions)&&(identical(other.interactionKind, interactionKind) || other.interactionKind == interactionKind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions));
+    return Object.hash(runtimeType,id,sessionID,displaySessionId,const DeepCollectionEquality().hash(_questions),interactionKind);
 }
 
 @override
 String toString() {
-    return 'SesoriSseEvent.questionAsked(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions)';
+    return 'SesoriSseEvent.questionAsked(id: $id, sessionID: $sessionID, displaySessionId: $displaySessionId, questions: $questions, interactionKind: $interactionKind)';
 }
 
 
@@ -2489,7 +2490,7 @@ abstract mixin class $SesoriQuestionAskedCopyWith<$Res> implements $SesoriSseEve
   factory $SesoriQuestionAskedCopyWith(SesoriQuestionAsked value, $Res Function(SesoriQuestionAsked) _then) = _$SesoriQuestionAskedCopyWithImpl;
 @useResult
 $Res call({
- String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions
+ String id, String sessionID, String? displaySessionId, List<QuestionInfo> questions,@JsonKey(unknownEnumValue: QuestionInteractionKind.unknown) QuestionInteractionKind interactionKind
 });
 
 
@@ -2506,13 +2507,14 @@ class _$SesoriQuestionAskedCopyWithImpl<$Res>
 
 /// Create a copy of SesoriSseEvent
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? questions = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? id = null,Object? sessionID = null,Object? displaySessionId = freezed,Object? questions = null,Object? interactionKind = null,}) {
   return _then(SesoriQuestionAsked(
 id: null == id ? _self.id : id // ignore: cast_nullable_to_non_nullable
 as String,sessionID: null == sessionID ? _self.sessionID : sessionID // ignore: cast_nullable_to_non_nullable
 as String,displaySessionId: freezed == displaySessionId ? _self.displaySessionId : displaySessionId // ignore: cast_nullable_to_non_nullable
 as String?,questions: null == questions ? _self._questions : questions // ignore: cast_nullable_to_non_nullable
-as List<QuestionInfo>,
+as List<QuestionInfo>,interactionKind: null == interactionKind ? _self.interactionKind : interactionKind // ignore: cast_nullable_to_non_nullable
+as QuestionInteractionKind,
   ));
 }
 

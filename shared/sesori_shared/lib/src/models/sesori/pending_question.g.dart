@@ -27,6 +27,13 @@ _PendingQuestion _$PendingQuestionFromJson(Map json) => _PendingQuestion(
   questions: (json['questions'] as List<dynamic>)
       .map((e) => QuestionInfo.fromJson(Map<String, dynamic>.from(e as Map)))
       .toList(),
+  interactionKind:
+      $enumDecodeNullable(
+        _$QuestionInteractionKindEnumMap,
+        json['interactionKind'],
+        unknownValue: QuestionInteractionKind.unknown,
+      ) ??
+      QuestionInteractionKind.question,
 );
 
 Map<String, dynamic> _$PendingQuestionToJson(_PendingQuestion instance) =>
@@ -35,4 +42,13 @@ Map<String, dynamic> _$PendingQuestionToJson(_PendingQuestion instance) =>
       'sessionID': instance.sessionID,
       'displaySessionId': ?instance.displaySessionId,
       'questions': instance.questions.map((e) => e.toJson()).toList(),
+      'interactionKind':
+          _$QuestionInteractionKindEnumMap[instance.interactionKind]!,
     };
+
+const _$QuestionInteractionKindEnumMap = {
+  QuestionInteractionKind.question: 'question',
+  QuestionInteractionKind.form: 'form',
+  QuestionInteractionKind.externalAction: 'externalAction',
+  QuestionInteractionKind.unknown: 'unknown',
+};

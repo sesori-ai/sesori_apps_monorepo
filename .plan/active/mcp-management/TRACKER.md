@@ -3,8 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-visible-controls`, `c3716bfce5`, in the provided `copper-heron` worktree.
-- Current step: 16/24 is in review [#1971][pr-1971]; latest merged step: 15/24 as [#1969][pr-1969].
+- Branch/base: `sesori/mcp-session-external-actions`, `ea65f5b045`, in the provided `copper-heron` worktree.
+- Current step: 17/24 is in review [#1981][pr-1981]; latest merged step: 16/24 as [#1971][pr-1971].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -36,8 +36,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 13/24 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
 | 14/24 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
 | 15/24 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/24 | Visible auth and controls (8.c.2.b) | In review | [#1971][pr-1971]; 17 widgets and native fixture flow |
-| 17/24 | External-action transport (8.d.1) | Local draft | 61 shared cases and architecture approval |
+| 16/24 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/24 | External-action transport (8.d.1) | In review | [#1981][pr-1981]; 61 shared cases, architecture approval |
 | 18/24 | Session external-action routing (8.d.2) | Not started | — |
 | 19/24 | Claude approvals and form/URL elicitation | Not started | — |
 | 20/24 | Codex inventory/actions/authentication | Not started | — |
@@ -990,3 +990,57 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   reconnect/enable/disable controls remain available. Capability/regression docs
   now describe the implemented presentation consistently. Native motion evidence
   predates these wording and mobile-gating fixes; desktop layout is unchanged.
+
+- Step 16 initial draft publication is reproducible with `git diff --numstat`
+  from base `c3716bfce50e99039ca4381ba2f7cf11b49d9487`
+  to head `182b1e8519def007f22aeb683cc949374a34cafe`:
+  1,341 additions + 17 deletions = 1,358 changed lines across 16 files.
+  Generated localization reconciles as 264 additions in `app_localizations.dart`
+  plus 136 in `app_localizations_en.dart`, with no generated deletions: 400 lines.
+  The remaining 958 authored lines include `app_en.arb`'s 45 additions and one
+  deletion. Native CUA interactions and visual evidence were pending at publication.
+- Original 8.d splits into transport (8.d.1, ordinal 17) and native session
+  integration (8.d.2, ordinal 18). The snapshot codecs alone add 571 generated
+  lines. The series has 24 steps; final L4/native/provider/package requirements
+  are unchanged. The integration retains validation, canonical ownership,
+  modern filtering, legacy cancellation and UI qualification together.
+- Step 17 production baseline refreshed on 2026-10-14: latest non-prerelease
+  remains v1.9.1 at `8bfeda9416c96ea5de70ffc701a36b738f24eff7`, published
+  08:56:26 UTC. Exact archived public snapshot and SSE question codecs accept
+  both additive form/external-action markers while retaining original session,
+  display parent and cancel-only custom-disabled notices. This is codec proof,
+  not mixed-client or native cancellation qualification.
+- Local wire draft: 61 focused shared cases pass (five external/marker cases and
+  56 SSE cases), and the shared analyzer is clean. Destinations are excluded
+  from generated presentation. No producer, route, modern filter, UI, native
+  reply or database change is claimed by the codec foundation.
+
+- Step 17 architecture implementation pass 1 approved all 15 staged paths
+  against `182b1e8519` (B-Shared only); no findings. All sixteen published PR
+  titles are synchronized to the 24-step plan. Historical squash titles and
+  prior tracker evidence remain unchanged. The wire successor remains local
+  until the controls parent completes native/visual qualification and merges.
+- Earlier draft controls CI reported 19/19 passing. GitHub rejected that
+  auto-merge attempt because the PR was draft. Native presentation qualification
+  subsequently passed; the current controls head is in review.
+
+- Step 16 accepted head `533093e0e2` merged as `ea65f5b045` after all nine
+  findings received prefixed replies and the follow-up review approved with zero
+  issues. CI passed 20/20 before merge; the terminal report had a new post-merge
+  check running, so it is not recorded as 21 passing checks.
+- Step 17 synchronized onto that squash and the newer main toolchain. Public
+  production remains v1.9.1; compatibility comments use the current product
+  version v1.9.2 without treating that development version as released. Filtered
+  code generation completed with Dart 3.13.5 / Flutter 3.47.7, and 143 unrelated
+  tracked generated deletions were restored. The same 61 shared cases pass on
+  the synchronized source, and its shared analyzer is clean. The preceding
+  architecture approval and exact public codec proof remain applicable.
+
+- Step 17 initial publication [#1981][pr-1981] is the `git diff --numstat` range
+  `ea65f5b045ba5fc5200704f1eb55bf73408c4751` to
+  `e1016a5e7b82c34d311e2f1447a5190ea54407ed`: 895 additions + 25 deletions =
+  920 changed lines across 14 files. Files ending in `.freezed.dart` or `.g.dart`
+  account for 650 generated lines; the remaining 270 lines are authored. This
+  step changes no localization source or generated localization output.
+
+[pr-1981]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1981

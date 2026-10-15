@@ -4,6 +4,14 @@ part "question.freezed.dart";
 
 part "question.g.dart";
 
+/// Non-question native requests have a cancel-only notice for released clients.
+enum QuestionInteractionKind() {
+  question,
+  form,
+  externalAction,
+  unknown,
+}
+
 /// A single question within a [QuestionRequest], containing the prompt text,
 /// available options, and selection mode.
 @Freezed(fromJson: true, toJson: true)
