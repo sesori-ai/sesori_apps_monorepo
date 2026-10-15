@@ -734,7 +734,7 @@ representation, with fractional bounds rounded inward to integral choices.
 Forwarded legacy titled enums retain matching enumNames. Native 0.139.0 omits
 enumNames in the isolated fixture, so native values become visible labels;
 0.160.1 forwards the titles, and native oneOf titles work at both pins.
-Ambiguous field/option labels decline with
+Blank or ambiguous field/option labels and unfulfillable choice counts decline with
 a display-session warning instead of offering indistinguishable inputs.
 URLs/defaults/answers remain outside question broadcasts. Legacy clients receive
 cancel-only notices; generic replies cancel instead of coercing answers or

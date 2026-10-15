@@ -414,7 +414,9 @@ bounded schema subset supports text, integer, number, boolean, string choice and
 string-choice arrays; unsupported formats/constraints are not silently dropped.
 Legacy titled enums use matching native `enumNames` as labels. Ambiguous field
 headings or complete option labels explicitly decline instead of presenting
-indistinguishable inputs. Unsupported child requests warn on the display/root
+indistinguishable inputs. Blank headings/option labels and choice-array minima
+above the available options decline before presentation. Unsupported child
+requests warn on the display/root
 session; requests without an owner retain a global warning.
 Cancellation, disconnect and disposal retire the same native owner, with no second
 map or subscription. Two clients cannot send two native replies to one entry.
