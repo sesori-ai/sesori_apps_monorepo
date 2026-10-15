@@ -81,7 +81,7 @@ class const _InventoryHeader({required final McpActionClientState action}) exten
       McpActionReceivedState(request: McpEntryActionRequest(action: McpConnectorSetupEntryAction()), :final result) =>
         switch (result) {
           McpActionUnavailable(:final reason) => switch (reason) {
-            McpActionUnavailableReason.nativeConfigurationRequired => loc.mcpNativeConfigurationRequired,
+            McpActionUnavailableReason.nativeConfigurationRequired => loc.mcpSetupInHarness,
             McpActionUnavailableReason.targetNotFound => loc.mcpOfferNotFound,
             McpActionUnavailableReason.unsupportedHarness => loc.mcpUnsupportedHarness,
             McpActionUnavailableReason.unsupportedScope => loc.mcpUnsupportedScope,
@@ -108,7 +108,7 @@ class const _InventoryHeader({required final McpActionClientState action}) exten
                 child: Text(
                   actionMessage ?? _status(state: state, loc: loc),
                   key: ValueKey(actionMessage ?? _status(state: state, loc: loc)),
-                  maxLines: 2,
+                  maxLines: 3,
                   overflow: TextOverflow.ellipsis,
                 ),
               ),
@@ -192,18 +192,43 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
           entries: inventory.entries
               .whereType<McpConnectorOfferSnapshot>()
               .map(
-                (offer) => PregoGroupedRow(
+                (offer) => LayoutBuilder(
                   key: ValueKey(offer.offerTarget),
-                  title: Text(offer.name),
-                  subtitle: Text(switch (offer.availability) {
-                    McpConnectorOfferAvailability.unknown => loc.mcpUnknown,
-                    McpConnectorOfferAvailability.available => loc.mcpOfferAvailable,
-                    McpConnectorOfferAvailability.setupRequired => loc.mcpSetupRequired,
-                    McpConnectorOfferAvailability.unavailable => loc.mcpUnavailable,
-                  }),
-                  trailing: offer.actions.contains(McpConnectorAction.setup)
-                      ? _SetupButton(target: offer.offerTarget)
-                      : null,
+                  builder: (context, constraints) {
+                    final stacked = constraints.maxWidth < MediaQuery.textScalerOf(context).scale(440);
+                    final button = offer.actions.contains(McpConnectorAction.setup)
+                        ? _SetupButton(target: offer.offerTarget, fullWidth: stacked)
+                        : null;
+                    final status = switch (offer.availability) {
+                      McpConnectorOfferAvailability.unknown => loc.mcpUnknown,
+                      McpConnectorOfferAvailability.available => loc.mcpOfferAvailable,
+                      McpConnectorOfferAvailability.setupRequired
+                          when !offer.actions.contains(McpConnectorAction.setup) =>
+                        loc.mcpSetupInHarness,
+                      McpConnectorOfferAvailability.setupRequired => loc.mcpSetupRequired,
+                      McpConnectorOfferAvailability.unavailable => loc.mcpUnavailable,
+                    };
+                    return AnimatedSize(
+                      duration: MediaQuery.disableAnimationsOf(context)
+                          ? Duration.zero
+                          : const Duration(milliseconds: 180),
+                      alignment: Alignment.topCenter,
+                      child: PregoGroupedRow(
+                        title: Text(offer.name),
+                        subtitle: stacked && button != null
+                            ? Column(
+                                crossAxisAlignment: CrossAxisAlignment.stretch,
+                                children: [
+                                  Text(status),
+                                  const SizedBox(height: PregoSpacing.md),
+                                  button,
+                                ],
+                              )
+                            : Text(status),
+                        trailing: stacked ? null : button,
+                      ),
+                    );
+                  },
                 ),
               )
               .toList(growable: false),
@@ -218,7 +243,8 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
   }
 }
 
-class const _SetupButton({required final McpConnectorOfferTarget target}) extends StatelessWidget {
+class const _SetupButton({required final McpConnectorOfferTarget target, required final bool fullWidth})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final inventory = context.watch<McpCubit>();
@@ -236,6 +262,7 @@ class const _SetupButton({required final McpConnectorOfferTarget target}) extend
       leadingIcon: TablerRegular.external_link,
       hierarchy: PregoButtonsSolidHierarchy.secondary,
       size: PregoButtonsSolidSize.sm,
+      fullWidth: fullWidth,
       onPressed: blocked ? null : () => actions.execute(action: McpConnectorSetupEntryAction(offerTarget: target)),
     );
   }

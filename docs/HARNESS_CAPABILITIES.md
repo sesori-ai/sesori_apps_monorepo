@@ -729,9 +729,15 @@ Offered-connector inventory is **implemented** through native `app/list`, with
 complete pagination and exact thread/harness context. Offers retain distinct
 targets and native enabled/accessibility state. A catalog failure preserves the
 server inventory; server authentication never fetches the connector catalog.
-Catalog-resolved connector setup remains **not implemented**. Exact-pin fixtures
-verify the empty unauthenticated catalog; real authenticated offers and native
-entitlement policy remain unqualified. Codex typed MCP forms
+Catalog-resolved connector setup is **implemented** through a distinct offer
+action. Enabled inaccessible offers with a verified native HTTPS installUrl expose
+Open setup; offers without one give a native-tool handoff. Setup refreshes the
+native catalog and never installs, writes configuration or logs into an account.
+The headless service validates the destination before forwarding; the client opens
+it only for a current explicit setup request. Browser opening does not prove
+connection. Fresh inventory remains authoritative. Exact-pin fixtures verify
+force-refetched empty catalogs; real authenticated offers, setup destinations and
+native entitlement policy remain unqualified. Codex typed MCP forms
 and URL requests are **implemented**, reusing the existing native pending owner
 and shared request-scoped controls. Supported scalar/choice forms retain native
 types and opaque key/value aliases; invalid replies remain pending. Unsupported
@@ -772,7 +778,8 @@ Failed archive cancellation retains pending state without a false settlement eve
 Choice descriptions are retained in visible option labels.
 Codex typed form/external-action management is **implemented** through the same
 shared controls, with cancel-only legacy notices. Offered-connector inventory
-is **implemented**; catalog-resolved setup remains **not implemented**.
+and catalog-resolved setup are **implemented**. Other harnesses without a declared
+connector setup API remain explicitly unavailable for that action.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
 Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed

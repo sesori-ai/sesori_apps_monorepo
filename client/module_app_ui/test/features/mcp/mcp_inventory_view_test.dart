@@ -134,7 +134,7 @@ void main() {
     }
     actionStates.add(const McpConnectorSetupOpened(request: request));
     await tester.pumpAndSettle();
-    expect(find.text("Finish setup in your browser, then refresh to check availability."), findsOneWidget);
+    expect(find.text("Finish setup in browser, then refresh."), findsOneWidget);
     expect(find.text("Setup required"), findsOneWidget);
     expect(find.text("Connected"), findsNothing);
     expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNotNull);
@@ -142,6 +142,74 @@ void main() {
     await tester.pumpAndSettle();
     expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNull);
   });
+
+  testWidgets("offers without a verified setup action give a native-tool handoff", (tester) async {
+    states.add(
+      _ready(
+        entries: [
+          const McpConnectorOfferSnapshot(
+            offerTarget: _offerTarget,
+            name: "Fixture connector",
+            description: null,
+            availability: McpConnectorOfferAvailability.setupRequired,
+          ),
+        ],
+        refresh: const McpInventoryRefreshIdle(),
+      ),
+    );
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    expect(find.text("Open setup"), findsNothing);
+    expect(find.text("Set up this connector with your coding tool."), findsOneWidget);
+  });
+
+  for (final scale in [1.0, 2.0]) {
+    testWidgets("phone setup feedback remains usable at text scale $scale", (tester) async {
+      tester.view.physicalSize = const Size(360, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.resetPhysicalSize);
+      addTearDown(tester.view.resetDevicePixelRatio);
+      states.add(_ready(entries: [_offer], refresh: const McpInventoryRefreshIdle()));
+      when(() => cubit.mutationsAllowed).thenReturn(true);
+      actionStates.add(
+        const McpConnectorSetupOpened(
+          request: McpEntryActionRequest(
+            pluginId: "fixture",
+            action: McpConnectorSetupEntryAction(offerTarget: _offerTarget),
+          ),
+        ),
+      );
+      await tester.pumpWidget(app(scale: scale));
+      await tester.pumpAndSettle();
+      expect(find.text("Open setup"), findsOneWidget);
+      expect(find.text("Finish setup in browser, then refresh."), findsOneWidget);
+      expect(tester.takeException(), isNull);
+      final animatedRow = find.ancestor(of: find.byType(PregoGroupedRow), matching: find.byType(AnimatedSize)).first;
+      final initialHeight = tester.getSize(animatedRow).height;
+      states.add(
+        _ready(
+          entries: [
+            const McpConnectorOfferSnapshot(
+              offerTarget: _offerTarget,
+              name: "Fixture connector",
+              description: null,
+              availability: McpConnectorOfferAvailability.available,
+            ),
+          ],
+          refresh: const McpInventoryRefreshIdle(),
+        ),
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(tester.getSize(animatedRow).height, initialHeight);
+      await tester.pump(const Duration(milliseconds: 90));
+      expect(tester.getSize(animatedRow).height, lessThan(initialHeight));
+      await tester.pumpAndSettle();
+      expect(find.text("Open setup"), findsNothing);
+      expect(find.text("Available"), findsOneWidget);
+      expect(tester.takeException(), isNull);
+    });
+  }
 
   testWidgets("refresh failure preserves scroll offset and server rows", (tester) async {
     final entries = [
