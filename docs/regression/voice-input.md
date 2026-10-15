@@ -12,6 +12,8 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 
 - Recording starts only with microphone permission. Denial or a failing check gives a distinct permission error and
   never leaves the composer stuck.
+- Opening a composer never pauses another app's music or video. The iOS recorder warm-up is skipped while other
+  audio plays, so only an actual recording takes the audio session.
 - One interaction at a time: a concurrent start is ignored, and a release during recorder startup discards the
   incomplete recording.
 - Starting, recording, transcribing, and cancelling are mutually exclusive composer interactions; input from a stale
@@ -77,7 +79,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 | L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, current-project/active-view glossary triggers, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, and shutdown cancellation. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
-| L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording. |
+| L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, and music from another app keeps playing when a chat opens. |
 
 ### Client release coverage (L3)
 
