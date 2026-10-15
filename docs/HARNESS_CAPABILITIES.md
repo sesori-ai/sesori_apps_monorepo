@@ -682,8 +682,8 @@ availability, including native effect scopes and explicit configuration/platform
 Headless credential forgetting is **implemented** through `POST /mcp/entry/action`;
 it shares the native authentication owner, preserves server definitions, and refreshes
 inventory without claiming that an existing resident connection has disconnected.
-Shared client action UI is **implemented**; other harness adapters remain
-**not implemented**.
+Shared client action UI is **implemented**; other native action adapters remain
+**not implemented** or explicitly **not supported** as recorded below.
 Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See
@@ -700,6 +700,23 @@ boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
 | Codex, both pins | Inventory, forms/URL, fixture OAuth | No MCP attempt ID or completion/cancel RPC |
 | Codex 0.139.0 | Basic native inventory | No runtime/discovery-error/origin fields |
 | Codex 0.160.1 | Richer native inventory | Runtime status, discovery error, safe origin |
+
+Codex configured-server inventory is **implemented** through the existing
+app-server connection for exact session and harness scopes. Reads consume all
+native pages without starting/resuming a session, issuing a tool call or writing
+configuration. Project-scoped inventory is **not supported** by the pinned native
+selector. Missing minimum-version runtime/discovery metadata stays unknown;
+discovery failure remains separate from a successful empty tool catalog.
+Only safe endpoint origins and declared tool names/descriptions cross the wire.
+Native OAuth integration is **not implemented** yet. Credential forgetting,
+enable/disable and resident reconnect are **not supported** by the pinned API;
+no action is advertised. A 2026-10-15 isolated probe at both pins found status
+discovery can open a fresh connection while the resident tool call retains its
+original connection, including after `config/mcpServer/reload`. Reloading
+configuration therefore does not establish resident reconnect support.
+Offered-connector inventory remains **not implemented**. Codex already forwards
+legacy elicitation as generic questions/tool permissions; its typed form and
+external-action management integration remain **not implemented**.
 
 Claude's toggle changes the resident process, not persisted configuration.
 Its status omits tool descriptions. Approval frames name the tool at both pins;

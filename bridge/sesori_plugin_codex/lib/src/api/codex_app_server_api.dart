@@ -5,14 +5,43 @@ import "../models/codex_collaboration_mode.dart";
 import "../models/codex_service_tier.dart";
 import "models/codex_account_dto.dart";
 import "models/codex_collaboration_mode_dto.dart";
+import "models/codex_mcp_status_dto.dart";
 import "models/codex_model_dto.dart";
 import "models/codex_skill_dto.dart";
 import "models/codex_thread_dto.dart";
 import "models/codex_turn_dto.dart";
 import "models/codex_turn_input_dto.dart";
 
+final class const CodexMcpThreadNotLoadedException({required final CodexRpcException innerError}) implements Exception {
+  @override
+  String toString() => "Codex MCP inventory requires a loaded thread";
+}
+
 /// Layer-1 typed boundary for migrated Codex app-server operations.
 class CodexAppServerApi({required final CodexAppServerTransport _client}) {
+  Future<CodexMcpStatusPageDto> listMcpServersPage({required String? threadId, required String? cursor}) async {
+    final result = await _client
+        .request(
+          method: "mcpServerStatus/list",
+          params: {
+            "threadId": ?threadId,
+            "cursor": ?cursor,
+            "limit": 100,
+            "detail": "toolsAndAuthOnly",
+          },
+        )
+        .onError<CodexRpcException>((error, stackTrace) {
+          if (threadId != null && error.code == -32600 && error.message == "thread not found: $threadId") {
+            Error.throwWithStackTrace(CodexMcpThreadNotLoadedException(innerError: error), stackTrace);
+          }
+          Error.throwWithStackTrace(error, stackTrace);
+        });
+    if (result is! Map) {
+      throw StateError("expected a Codex MCP status page, got ${result.runtimeType}");
+    }
+    return CodexMcpStatusPageDto.fromJson(result.cast<String, dynamic>());
+  }
+
   Stream<CodexAccountLoginCompletedNotificationDto> get accountLoginCompletions => _client.notifications
       .where((notification) => notification.method == "account/login/completed")
       .map(
