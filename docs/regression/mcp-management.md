@@ -612,9 +612,10 @@ provider, packaged client, relay/device and original final L4 remain unqualified
 
 Pi and the ACP family retain existing command, permission and bounded-form
 flows. They do not implement the optional structured MCP inventory/authentication
-interfaces. Opening their MCP inventory returns the existing unsupported-harness
-result without creating/resuming a session, executing a command, opening a browser
-or writing configuration. Generic approvals still select only native offered
+interfaces. An inactive adapter returns `pluginInactive`; an active adapter
+without the optional interface returns `unsupportedHarness`. Neither read
+creates/resumes a session, executes a command, opens a browser or writes
+configuration. Generic approvals still select only native offered
 options; supported legacy ACP forms still preserve native reply encoding and
 unsupported forms decline. This audit changes no production behavior.
 

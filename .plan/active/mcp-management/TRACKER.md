@@ -79,6 +79,12 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-35 PR review removes stale wording that called the completed source audit
+  future work. Inactive secondary plugins return `pluginInactive` before optional
+  interface detection; only an active unsupported plugin returns
+  `unsupportedHarness`. The docs now preserve both authoritative outcomes without
+  implying inventory activates a runtime. Documentation-only correction; links
+  and whitespace validation apply, with no Dart/Flutter suite.
 - Step-34 accepted head `5f783ab402` merged with 19 passing checks, Cubic
   approval and completed code/security reviews without new findings. Two scoped
   declines retain reasoned replies. The merged main tree equals the accepted

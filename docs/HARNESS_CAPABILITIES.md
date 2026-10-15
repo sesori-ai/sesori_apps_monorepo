@@ -891,8 +891,9 @@ or external provider sign-in occurs. Both exact versions also pass the productio
 authentication service/repository/API using an exact native session, manual
 callback completion, profile credential forgetting and signing in again, with
 configuration unchanged and two fixture token exchanges verified.
-The bounded Pi/ACP audit and original provider/package/client/L4 qualification
-remain later steps.
+The bounded Pi/ACP source audit follows below. Original provider/package/client/
+L4 qualification remains partial; native fixture success does not establish those
+boundaries.
 
 ### Secondary MCP source and adapter audit
 
