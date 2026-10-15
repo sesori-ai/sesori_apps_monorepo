@@ -86,8 +86,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   Both exact 1.14.17/1.17.7 production owners pass exact session attribution,
   manual callback completion, harness-profile forgetting and sign-in again.
   Configuration bytes are unchanged and two fixture token exchanges are verified
-  per pin. All 77 authentication/controls/shared-validator cases pass; owning
-  analysis is clean. Native 1.14.17 already-authorized serialization failure
+  per pin. All 77 authentication/controls/shared-validator cases and 95 affected
+  v1 API/repository/plugin cases pass (172 total); owning analysis is clean.
+  Both v2 native owner flows pass after validator extraction. V1 callback failure
+  diagnostics reuse the existing OAuth query redactor beside that validator.
+  Native 1.14.17 already-authorized serialization failure
   remains uncertain; 1.17.7's explicit no-challenge maps to completion. Analytics
   assessment retains the existing shared lifecycle seam and adds no tap event.
   Recording and original provider/package/relay/device/L4 gates remain pending.

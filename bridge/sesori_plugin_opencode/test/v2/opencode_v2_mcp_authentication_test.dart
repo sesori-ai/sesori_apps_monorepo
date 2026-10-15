@@ -3,6 +3,7 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
+import "package:opencode_plugin/src/models/open_code_mcp_login_challenge.dart";
 import "package:opencode_plugin/src/open_code_raw_http_client.dart";
 import "package:opencode_plugin/src/v2/api/opencode_v2_api.dart";
 import "package:opencode_plugin/src/v2/models/v2_mcp_authentication.dart";

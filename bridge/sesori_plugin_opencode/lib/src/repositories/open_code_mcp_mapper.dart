@@ -1,7 +1,6 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../models/open_code_mcp_authentication_dto.dart";
-
 import "../models/openapi/mcpstatus.g.dart";
 import "../models/openapi/mcpstatus_connected.g.dart";
 import "../models/openapi/mcpstatus_disabled.g.dart";

@@ -585,7 +585,8 @@ servers can retain pending transports. Neither browser return nor request
 timeout is authentication completion. No native auth files are read or written.
 
 Coverage: 20 new v1 authentication cases plus affected controls and shared v2
-callback regressions pass (77 cases), with owning analysis clean. Both exact v1
+callback regressions pass (77 cases), plus 95 affected v1 API/repository/plugin
+cases, with owning analysis clean. Both exact v1
 pins pass the production service/repository/API fixture using an exact native
 session: manual callback, completion, harness-profile forgetting and another
 sign-in, unchanged configuration and two verified fixture token exchanges.

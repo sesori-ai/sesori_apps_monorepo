@@ -184,7 +184,10 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       case MCPStatusConnected():
         return const PluginMcpAuthenticationCompleted();
       case MCPStatusFailed(:final error) || MCPStatusNeedsClientRegistration(:final error):
-        Log.w("[opencode-v1] Native MCP authentication failed for ${target.name}", error);
+        Log.w(
+          "[opencode-v1] Native MCP authentication failed for ${target.name}",
+          redactMcpOAuthQuerySecrets(message: error),
+        );
         return PluginMcpAuthenticationFailed(
           reason: PluginMcpAuthenticationFailureReason.nativeFailure,
           cause: OpenCodeMcpAuthenticationException(innerError: StateError(error)),
