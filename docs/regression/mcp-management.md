@@ -315,6 +315,22 @@ presentation retains its issued challenge for explicit retry. The transport seam
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
 
+## Session forms
+
+Typed form transport codecs preserve original/display session ownership, typed
+defaults and constraints, and explicit optional-field omission. Text, integers,
+finite numbers, booleans and single/multiple opaque choice IDs remain distinct.
+Integer decoding rejects fractional values instead of truncating them. Number
+values/defaults/bounds reject nonfinite values, including overflowing JSON
+exponents. Unknown schemas, values, formats, dismissal choices and validation
+issues remain explicit unsupported/unknown values. Form contents are excluded
+from generated diagnostic strings.
+
+These codecs alone do not enable forms: native adapters, headless form routes and
+draft-preserving client controls remain unimplemented. Current unsupported-form
+decline behavior below remains unchanged. Coverage:
+`shared/sesori_shared/test/models/pending_form_test.dart`.
+
 ## Session external actions
 
 Neutral pending URL-action snapshot and reply codecs retain the original session

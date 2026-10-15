@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-external-action-controls`, `834374b34f`, in the provided `copper-heron` worktree.
-- Current step: 19/25 is being published; latest merged step: 18/25 as [#1984][pr-1984].
+- Branch/base: `sesori/mcp-claude-forms`, `1585422cc5`, in the provided `copper-heron` worktree.
+- Current step: 19/27 is in review as [#1986][pr-1986]; 20/27 is in progress locally.
+  Latest merged step: 18/27 as [#1984][pr-1984].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -21,31 +22,33 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/25 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/25 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/25 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/25 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/25 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/25 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/25 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/25 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/25 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/25 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/25 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/25 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/25 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/25 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/25 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
-| 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
-| 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/25 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
-| 19/25 | External-action client presentation (8.d.2.b) | In review | Shared browser/consent controls |
-| 20/25 | Claude approvals and form/URL elicitation | Not started | — |
-| 21/25 | Codex inventory/actions/authentication | Not started | — |
-| 22/25 | Codex forms and offered connectors | Not started | — |
-| 23/25 | Secondary harness support and explicit gaps | Not started | — |
-| 24/25 | Reconcile regression/capability documents | Not started | — |
-| 25/25 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/27 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/27 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/27 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/27 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/27 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/27 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/27 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/27 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/27 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/27 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/27 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/27 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/27 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/27 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/27 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/27 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
+| 17/27 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
+| 18/27 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
+| 19/27 | External-action client presentation (8.d.2.b) | In review | [#1986][pr-1986] |
+| 20/27 | Typed form transport (9.a) | In progress | Local shared contracts |
+| 21/27 | Claude native/headless forms (9.b) | Not started | — |
+| 22/27 | Shared typed form controls (9.c) | Not started | — |
+| 23/27 | Codex inventory/actions/authentication | Not started | — |
+| 24/27 | Codex forms and offered connectors | Not started | — |
+| 25/27 | Secondary harness support and explicit gaps | Not started | — |
+| 26/27 | Reconcile regression/capability documents | Not started | — |
+| 27/27 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -1179,3 +1182,24 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   (desktop: `flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart`).
   Client-root `dart analyze --fatal-infos` also passes. Subsequent edits change
   only tracker publication state and this validation record.
+
+[pr-1986]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1986
+
+- Step 19 is published as #1986 at `1585422cc5`, with 1,318 changed lines
+  (1,173 authored and 145 generated). Its monitor is active; native recording remains
+  deferred. Old form step 20 is split into contracts/native-headless/client substeps
+  9.a–9.c, ordinals 20–22. Old steps 21–25 become 23–27; the new series total is 27.
+  Feature scope and final L4/native/provider/package requirements remain unchanged.
+- Step 20 implements shared-only typed form contracts, strict integer/finite-number
+  serialization and explicit unknown variants. No native/client capability is
+  claimed yet. Architecture plan and implementation reviews both approved without
+  findings. New mutable-state budget: zero. Published PR titles 1–19 now use /27;
+  historical squash commit messages remain unchanged.
+- Step-20 checks on Flutter 3.47.7 / Dart 3.13.5, from `shared/sesori_shared`:
+  `dart test test/models/pending_form_test.dart test/models/pending_external_action_test.dart test/models/sesori_sse_event_test.dart`
+  passes 70; `dart analyze --fatal-infos` passes. Full `dart run build_runner build`
+  succeeds, preserving all pre-existing generated codecs. Filtered generation had
+  deleted 166 unrelated generated files; those were restored before the full run.
+  Codec/default/validation contents do not appear in generated diagnostic strings.
+  Verified source tree: `e65637f804e837a0dd09a5b6155d3c3f44c500a1`;
+  subsequent edits add only this immutable evidence reference.
