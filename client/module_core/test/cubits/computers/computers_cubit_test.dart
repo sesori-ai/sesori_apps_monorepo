@@ -66,6 +66,17 @@ void main() {
     expect(cubit.state, isA<ComputersIdle>());
   });
 
+  test("a rename that throws reports the failure for that computer", () async {
+    when(
+      () => registeredBridges.rename(bridgeId: "a", nickname: "Studio"),
+    ).thenThrow(const FormatException("unexpected body"));
+    final cubit = build();
+
+    await cubit.rename(computer: unnamed, name: "Studio");
+
+    expect(cubit.state, isA<ComputersRenameFailed>().having((state) => state.bridgeId, "bridgeId", "a"));
+  });
+
   test("a refused rename reports the failure for that computer", () async {
     when(
       () => registeredBridges.rename(bridgeId: "a", nickname: "Studio"),

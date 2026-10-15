@@ -48,5 +48,6 @@
   Per `AGENTS.md` the applied fixes are not re-reviewed.
 - 2026-10-15: `architecture-implementation-review` of step 5 rejected one finding: the rename sheet decided the
   nickname (blank or hostname clears it; unchanged sends nothing). Applied: `ComputersCubit.rename` takes the computer
-  and the raw name and owns those rules, with cubit tests. The private rename sheet (the shared `RenameSheet` rejects
-  empty input and owns its failure alert) was judged acceptable.
+  and the raw name and owns those rules, with cubit tests. The page's private `_RenameComputerSheet`, used instead of
+  the shared `RenameSheet` because that sheet rejects empty input and owns its failure alert, was judged acceptable;
+  `ComputersView` shows the rename failure alert.

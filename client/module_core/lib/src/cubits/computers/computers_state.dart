@@ -8,6 +8,6 @@ final class const ComputersIdle() extends ComputersState;
 /// The server is renaming [bridgeId].
 final class const ComputersRenaming({required final String bridgeId}) extends ComputersState;
 
-/// The server refused or never confirmed the rename of [bridgeId]; its name is
-/// unchanged.
+/// The server refused or never confirmed the rename of [bridgeId]; the list
+/// keeps its last known name.
 final class const ComputersRenameFailed({required final String bridgeId}) extends ComputersState;

@@ -25,14 +25,25 @@ class ComputersCubit({required final RegisteredBridgesService _registeredBridges
     if (nickname == currentNickname) return;
     final bridgeId = computer.id;
     emit(ComputersRenaming(bridgeId: bridgeId));
-    final response = await _registeredBridgesService.rename(bridgeId: bridgeId, nickname: nickname);
+    final outcome = await _renameOutcome(bridgeId: bridgeId, nickname: nickname);
+    // The page may have closed meanwhile; the failure is logged either way.
     if (isClosed) return;
-    switch (response) {
-      case SuccessResponse():
-        emit(const ComputersIdle());
-      case ErrorResponse(:final error):
-        logw("Failed to rename computer $bridgeId", error);
-        emit(ComputersRenameFailed(bridgeId: bridgeId));
+    emit(outcome);
+  }
+
+  Future<ComputersState> _renameOutcome({required String bridgeId, required String? nickname}) async {
+    try {
+      final response = await _registeredBridgesService.rename(bridgeId: bridgeId, nickname: nickname);
+      switch (response) {
+        case SuccessResponse():
+          return const ComputersIdle();
+        case ErrorResponse(:final error):
+          logw("Failed to rename computer $bridgeId", error);
+          return ComputersRenameFailed(bridgeId: bridgeId);
+      }
+    } on Object catch (error, stackTrace) {
+      logw("Failed to rename computer $bridgeId (unexpected error)", error, stackTrace);
+      return ComputersRenameFailed(bridgeId: bridgeId);
     }
   }
 }
