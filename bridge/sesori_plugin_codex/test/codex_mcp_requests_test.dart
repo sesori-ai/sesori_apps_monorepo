@@ -313,6 +313,60 @@ void main() {
     }
   });
 
+  test("blank labels and unfulfillable choice counts decline", () {
+    for (final field in [
+      {"type": "string", "title": "  "},
+      {
+        "type": "string",
+        "enum": ["a"],
+        "enumNames": [""],
+      },
+      {
+        "type": "string",
+        "oneOf": [
+          {"const": "a", "title": " "},
+        ],
+      },
+      {
+        "type": "array",
+        "items": {
+          "anyOf": [
+            {"const": "a", "title": ""},
+          ],
+        },
+      },
+      {
+        "type": "array",
+        "minItems": 3,
+        "items": {
+          "type": "string",
+          "enum": ["a", "b"],
+        },
+      },
+    ]) {
+      expect(
+        CodexFormSchema.parse(
+          schema: {
+            "type": "object",
+            "properties": {"field": field},
+          },
+        ),
+        isNull,
+      );
+    }
+    expect(
+      CodexFormSchema.parse(
+        schema: {
+          "type": "object",
+          "properties": {
+            "": {"type": "string"},
+          },
+        },
+      ),
+      isNull,
+    );
+  });
+
   test("schema bounds, unknown fields and invalid defaults fail explicitly", () {
     final schema = CodexFormSchema.parse(schema: _schema)!;
     expect(

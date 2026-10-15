@@ -30,8 +30,8 @@ final class CodexFormSchema._({
         final raw = _object(value: entry.value);
         final options = <String, String>{};
         final fieldSchema = _field(schema: raw, nativeOptions: options);
-        final label = _optional<String>(schema: raw, key: "title") ?? entry.key;
-        if (!fieldLabels.add(label)) throw const FormatException("Ambiguous form field labels");
+        final label = (_optional<String>(schema: raw, key: "title") ?? entry.key).trim();
+        if (label.isEmpty || !fieldLabels.add(label)) throw const FormatException("Invalid form field labels");
         final field = PluginFormField(
           id: id,
           label: label,
@@ -144,6 +144,7 @@ final class CodexFormSchema._({
         final minimum = _count(schema: schema, key: "minItems");
         final maximum = _count(schema: schema, key: "maxItems");
         _bounds(minimum: minimum, maximum: maximum);
+        if (minimum != null && minimum > options.length) throw const FormatException("Unfulfillable form choices");
         final defaults = schema.containsKey("default") ? _strings(value: schema["default"]) : null;
         return PluginFormChoicesSchema(
           options: options,
@@ -181,9 +182,11 @@ final class CodexFormSchema._({
       final id = "option-${choices.length}";
       nativeOptions[id] = value;
       final label =
-          names?[choices.length] ??
-          _optional<String>(schema: option, key: "title") ??
-          (value.isEmpty ? "Empty value" : value);
+          (names?[choices.length] ??
+                  _optional<String>(schema: option, key: "title") ??
+                  (value.isEmpty ? "Empty value" : value))
+              .trim();
+      if (label.isEmpty) throw const FormatException("Missing form option label");
       final description = _optional<String>(schema: option, key: "description");
       final displayLabel = description == null || description.isEmpty ? label : "$label — $description";
       if (!labels.add(displayLabel)) throw const FormatException("Ambiguous form option labels");

@@ -1570,3 +1570,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   typed-request/approval cases pass and package analysis is clean. Both pinned
   binaries pass native round trips with explicit normalized-label assertions.
   The earlier stale capability sentence was already corrected in `629d2cecfc`.
+- Step-27 final schema review rejects blank labels and choice-array minima
+  above the editor's available options. All 46 directly affected tests pass;
+  package analysis is clean. The three long plan prose lines are wrapped within
+  this production correction, without a separate bookkeeping review wave.
+- Second/final step-27 architecture implementation review approved. Base
+  `1742753442` already owns pending mutation/SSE in the shared registry;
+  settlement extraction adds no owner. Relocation would widen this feature.

@@ -425,7 +425,8 @@ total. No artificial compatibility scaffolding between steps.
 
 Every production PR updates the relevant `docs/regression/` documents and `docs/HARNESS_CAPABILITIES.md` with the
 behavior that lands in that PR. Record each harness as implemented, not implemented, or not supported for each partial
-capability; do not defer these records to final reconciliation. Create `mcp-management.md` in step 3 for the inventory codec/API
+capability; do not defer these records to final reconciliation. Create
+`mcp-management.md` in step 3 for the inventory codec/API
 contracts and their automated coverage. Add the first live inventory behavior in step 4, then extend it as actions,
 UI, and additional adapters land. The penultimate step is final reconciliation only.
 
@@ -668,7 +669,8 @@ Exact PR titles and scope:
 
 31. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 31/32]`
 
-    Reconcile the docs and capability records maintained in all production steps with the final matrix and remaining limitations;
+    Reconcile the docs and capability records maintained in all production steps
+    with the final matrix and remaining limitations;
     no production or database change. This step does not postpone documentation required in earlier PRs.
 
 32. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 32/32]`
@@ -726,7 +728,8 @@ Affected documents: new `docs/regression/mcp-management.md`; update `questions-a
 regression index, and `docs/HARNESS_CAPABILITIES.md`. Update browser-return packaging documents only where this
 implementation changes their supported behavior. Keep provider-account authentication distinct from MCP authentication.
 
-The penultimate step reconciles the full supported contract. The final step records versions, builds, platforms, plugins, boundaries,
+The penultimate step reconciles the full supported contract. The final step
+records versions, builds, platforms, plugins, boundaries,
 outcomes, limitations, cleanup, and privacy-safe evidence references in `TRACKER.md`. Retire only when this matrix
 passes. Any reduction requires explicit user acceptance recorded here; verified native limitations must be explicit
 product limitations rather than unfinished promised behavior.
