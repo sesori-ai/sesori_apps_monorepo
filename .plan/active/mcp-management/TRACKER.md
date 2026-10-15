@@ -4,7 +4,9 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-opencode-v1-oauth`, in the provided `copper-heron` worktree.
-- Current step: 34/37 OpenCode v1 native authentication ownership is local.
+- Current step: 34/37 OpenCode v1 native authentication ownership is in review
+  as [#2010][pr-2010]. Local successor 35/37 is the bounded Pi/ACP source audit
+  on `sesori/mcp-pi-acp-capability-audit`.
   Parent 33/37 merged as [#2009][pr-2009] at accepted head `760ec2e428`.
   Latest squash: `37f62d4837`, with 19 passing pre-merge and 20 terminal checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
@@ -62,11 +64,12 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | Local | 172 cases; both native pins |
-| 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; 172 cases; both pins |
+| 35/37 | Bounded Pi/ACP source and capability audit (11.e) | Local | Source audit; no production change |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
+[pr-2010]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2010
 [pr-2009]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2009
 [pr-2008]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2008
 [pr-2007]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2007
@@ -78,6 +81,25 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-35 exact source audit found no passive resident MCP management seam in
+  Pi RPC or standard ACP. Documentation-only scope and complexity replace the
+  conditional production estimate; no new production owner, wire state or native
+  action is added. No architecture review or Dart/Flutter suite is required.
+  Existing commands, generic approvals and bounded forms remain unchanged.
+  Pi source commits are `4b060d3a98618019adb9985d517516c8e99a2bbe` (0.99.0)
+  and `7c10bd4337495ee613f2224843ecdf349b80d1df` (1.0.4). Their RPC type files
+  are byte-identical with no MCP management methods. Native `/mcp` is a text/
+  command path and login opens the native host browser; separate CLI JSON list
+  creates fresh connections. Standard ACP schema 0.10.8 at
+  `59fdb36c3520fe40109e628c48eede5a2a6204df` describes input transports/server
+  definitions, not inventory/control/OAuth/catalog methods. Seven registered ACP
+  adapters share the existing base and none implements the optional MCP APIs.
+  Vendor-specific extensions remain unqualified, not assumed unsupported.
+  Current descriptor minimum/target versions are recorded in capabilities.
+  Relative Markdown links and source/schema comparisons pass. No production
+  behavior or analytics event changes; no causal code cleanup was found.
+  This is source evidence, not native runtime/provider/platform qualification.
+  Original final L4 and deferred native recording gates remain unchanged.
 - Step 33 merged at accepted head `760ec2e428`, squash `37f62d4837`, with
   all 19 pre-merge and 20 terminal checks passing. Cubic approved, current-head
   Code/Security reviews completed, and four architecture/native-shape suggestions

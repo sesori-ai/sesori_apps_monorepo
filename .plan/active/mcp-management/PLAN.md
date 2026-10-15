@@ -469,7 +469,7 @@ UI, and additional adapters land. The penultimate step is final reconciliation o
 | 32/37 | OpenCode v2 native authentication contracts (11.c.1) | 1,600–2,000, mostly generated |
 | 33/37 | OpenCode v2 native authentication ownership (11.c.2) | 750–1,350 |
 | 34/37 | OpenCode v1 native MCP authentication (11.d) | 750–1,350 |
-| 35/37 | Bounded Pi/ACP support and capability audit (11.e) | 300–1,000 |
+| 35/37 | Bounded Pi/ACP source and adapter capability audit (11.e) | 100–250 |
 | 36/37 | Regression and capability coverage | 250–500 |
 | 37/37 | Qualification and retirement | 100–300 |
 
@@ -700,10 +700,12 @@ Exact PR titles and scope:
     pending attempt. Credential deletion is not safe cancellation; preserve that native limitation honestly.
     Keep minimum-version already-authorized behavior explicit and configuration unchanged.
 
-35. `⚙️ [mcp-management] Audit bounded Pi and ACP MCP support [step 35/37]`
+35. `🌿 [mcp-management] Audit bounded Pi and ACP MCP support [step 35/37]`
 
-    Preserve existing permission/form dialogs and add only capabilities proven by the native seams Sesori drives.
-    Record unsupported/unimplemented controls with versioned evidence; no arbitrary configuration writers.
+    Preserve existing permission/form dialogs. The exact Pi RPC and standard ACP source audit found no passive
+    resident MCP management seam to add. Record protocol limits separately from unimplemented/unqualified vendor
+    extensions, with current adapter versions and immutable source evidence. Documentation only; no production,
+    database or user-visible change, arbitrary configuration writer, new event or native qualification claim.
 
 36. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 36/37]`
 

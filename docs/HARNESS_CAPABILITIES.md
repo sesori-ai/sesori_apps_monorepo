@@ -889,6 +889,56 @@ configuration unchanged and two fixture token exchanges verified.
 The bounded Pi/ACP audit and original provider/package/client/L4 qualification
 remain later steps.
 
+### Secondary MCP source and adapter audit
+
+Audited 2026-10-15. These are source/protocol findings, not new native binary,
+provider or client qualification. Existing generic approvals and bounded forms
+remain available independently of MCP management.
+
+| Adapter | Repository minimum → target | Structured MCP management in Sesori |
+|---|---|---|
+| Pi | 0.99.0 → 1.0.4 | Not supported by the resident RPC method set; native `/mcp` command remains usable. |
+| Antigravity | Exact official ACP pair 1.3.0 | Not implemented; standard ACP has no management API. |
+| Copilot | 1.0.78 → 1.0.92 | Not implemented; standard ACP has no management API. |
+| Cursor | 2026.09.23 → 2026.10.01-e373342 | Not implemented; standard ACP has no management API. |
+| DeepSeek | 0.1.5 → 0.2.0 | Not implemented; standard ACP has no management API. |
+| Grok Build | 1.0.5 → 1.0.46 | Not implemented; standard ACP has no management API. |
+| Hermes | 0.20.0 → 0.21.5 | Not implemented; standard ACP has no management API. |
+| Oh My Pi | 17.2.13 → 18.8.0 | Not implemented; standard ACP has no management API. |
+
+Pi's exact [0.99.0 RPC types][pi-mcp-rpc-min] and
+[1.0.4 RPC types][pi-mcp-rpc-target] expose no structured MCP management methods.
+Their files are identical (SHA-256
+`be06a1d53916e03e9274cce9e4833692b235494e4047f1f7139d7f0147daae1a`).
+The native extension retains text status plus login/logout/reconnect commands;
+its [login path][pi-mcp-extension] opens the browser on the native host. Generic
+extension input is not a request-scoped Sesori OAuth operation. The separate
+[CLI list command][pi-mcp-cli] supports JSON but connects enabled servers in a
+fresh process. It cannot report resident session state without starting new
+connections. Neither path is promoted into passive inventory or remote sign-in.
+
+In the [ACP protocol-1 schema snapshot][acp-mcp-schema], `mcpCapabilities.http`
+and `.sse` describe accepted server transports; `session/new` and `session/load`
+take server definitions. They are not inventory, connection controls, OAuth
+attempts or connector discovery. Sesori's `AcpAgentApi` passes an empty
+`mcpServers` list on activation, and each listed ACP adapter uses the same base
+without implementing the optional MCP interfaces. Standard MCP management is
+**not supported by that protocol seam**. Vendor extensions and separate native
+CLIs are **not implemented or qualified** here; this is not a claim that those
+harnesses lack MCP internally.
+
+Existing `session/request_permission` option selection and declared
+`elicitation/create` bounded-form handling stay on their generic owners.
+Agent-account `authenticate` is separate from MCP-server OAuth. Native text,
+command titles or transport-capability flags never imply a product action.
+The existing unsupported-harness inventory result remains authoritative.
+
+[pi-mcp-rpc-min]: https://github.com/earendil-works/pi/blob/4b060d3a98618019adb9985d517516c8e99a2bbe/packages/coding-agent/src/modes/rpc/rpc-types.ts
+[pi-mcp-rpc-target]: https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/coding-agent/src/modes/rpc/rpc-types.ts
+[pi-mcp-extension]: https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/coding-agent/src/extensions/mcp/index.ts
+[pi-mcp-cli]: https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/coding-agent/src/extensions/mcp/cli.ts
+[acp-mcp-schema]: https://github.com/agentclientprotocol/agent-client-protocol/blob/59fdb36c3520fe40109e628c48eede5a2a6204df/schema/schema.json
+
 ## Context compaction row
 
 The transcript marks a context compaction with a row. Where the harness
