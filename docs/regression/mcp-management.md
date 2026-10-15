@@ -326,9 +326,23 @@ exponents. Unknown schemas, values, formats, dismissal choices and validation
 issues remain explicit unsupported/unknown values. Form contents are excluded
 from generated diagnostic strings.
 
-These codecs alone do not enable forms: native adapters, headless form routes and
-draft-preserving client controls remain unimplemented. Current unsupported-form
-decline behavior below remains unchanged. Coverage:
+Claude normalizes native flat plain text, integer, finite number, boolean, string
+choices and choice arrays into typed plugin fields. The plugin keeps native keys
+and choice values beside the original pending request; opaque IDs and labels are
+separate. Supported defaults and inclusive bounds are validated before insertion.
+Native format constraints, nested/secret fields and unsupported keywords decline
+with a visible warning. Optional omission remains distinct from false, zero and
+empty text; choice labels never become native answer values.
+
+Validation errors and failed writes keep the native request pending. Accepted or
+negative replies settle it once. Existing stop/archive notification/process-exit
+and teardown paths cancel waits. Static form notices contain no fields/defaults;
+legacy question routes can only cancel, never submit flattened string answers.
+Verified native MCP server context enriches tool permission detail without
+changing tool names or grant rules.
+
+Headless form routes and draft-preserving client controls remain unimplemented.
+Coverage includes Claude schema, pending-owner and legacy-client fixtures, plus:
 `shared/sesori_shared/test/models/pending_form_test.dart`.
 
 ## Session external actions

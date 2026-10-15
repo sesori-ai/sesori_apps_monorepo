@@ -2,6 +2,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show str
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "api/models/claude_stream_message.dart";
+import "claude_form_schema.dart";
 
 typedef ClaudeApprovalResponder = bool Function({
   required String sessionId,
@@ -38,6 +39,27 @@ final class const _PendingExternalAction({
 }) extends _PendingApproval {
   this : super(toolUseId: null);
 }
+
+final class const _PendingForm({
+  required super.id,
+  required super.requestId,
+  required super.sessionId,
+  required final String title,
+  required final String message,
+  required final ClaudeFormSchema schema,
+}) extends _PendingApproval {
+  this : super(toolUseId: null);
+}
+
+// COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 clients need cancel-only questions.
+// Remove when all supported production clients consume typed forms.
+const _formNotice = PluginQuestionInfo(
+  header: "MCP form",
+  question: "This native request needs a form. Open it in an updated Sesori client, or cancel it.",
+  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.")],
+  multiple: false,
+  custom: false,
+);
 
 // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 clients need cancel-only questions.
 // Remove when all supported production clients consume typed external actions.
@@ -208,6 +230,30 @@ final class ClaudeApprovalRegistry({
     required String requestId,
     required Map<String, Object?> request,
   }) {
+    if (request["mode"] == null || request["mode"] == "form") {
+      final schema = ClaudeFormSchema.parse(schema: request["requested_schema"]);
+      if (schema != null) {
+        final id = "br-${++_sequence}";
+        _pending[id] = _PendingForm(
+          id: id,
+          requestId: requestId,
+          sessionId: sessionId,
+          title: _nonEmptyString(request["mcp_server_name"]) ?? "MCP form",
+          message: _nonEmptyString(request["message"]) ?? "Complete this native request.",
+          schema: schema,
+        );
+        _emitActivity(
+          event: BridgeSseQuestionAsked(
+            interactionKind: PluginQuestionInteractionKind.form,
+            id: id,
+            sessionID: sessionId,
+            displaySessionId: sessionId,
+            questions: const [_formNotice],
+          ),
+        );
+        return true;
+      }
+    }
     final url = _nonEmptyString(request["url"]);
     if (request["mode"] != "url" || url == null) {
       final responded = _respond(sessionId: sessionId, requestId: requestId, payload: {"action": "decline"});
@@ -264,6 +310,64 @@ final class ClaudeApprovalRegistry({
 
   bool hasExternalAction({required String id}) => _pending[id] is _PendingExternalAction;
 
+  bool hasForm({required String id}) => _pending[id] is _PendingForm;
+
+  List<PluginPendingForm> pendingFormsForSession({required String sessionId}) => [
+    for (final entry in _pending.values)
+      if (entry case final _PendingForm form when form.sessionId == sessionId)
+        PluginPendingForm(
+          id: form.id,
+          sessionID: sessionId,
+          displaySessionId: sessionId,
+          title: form.title,
+          message: form.message,
+          fields: form.schema.fields,
+        ),
+  ];
+
+  PluginFormSubmissionResult replyForm({
+    required String id,
+    required String sessionId,
+    required Map<String, PluginFormValue> values,
+  }) {
+    final entry = _pending[id];
+    if (entry is! _PendingForm || entry.sessionId != sessionId) return const PluginFormAlreadySettled();
+    final errors = entry.schema.validate(values: values);
+    if (errors.isNotEmpty) return PluginFormValidationFailed(fieldErrors: errors);
+    if (!_respond(
+      sessionId: sessionId,
+      requestId: entry.requestId,
+      payload: {
+        "action": "accept",
+        "content": entry.schema.encode(values: values),
+      },
+    )) {
+      return const PluginFormUnavailable();
+    }
+    _pending.remove(id);
+    _emitActivity(
+      event: BridgeSseQuestionReplied(requestID: id, sessionID: sessionId, displaySessionId: sessionId),
+    );
+    return const PluginFormAccepted();
+  }
+
+  PluginFormDismissalResult declineForm({
+    required String id,
+    required String sessionId,
+    required PluginFormDismissalChoice choice,
+  }) {
+    final entry = _pending[id];
+    if (entry is! _PendingForm || entry.sessionId != sessionId) return PluginFormDismissalResult.alreadySettled;
+    if (!_respond(sessionId: sessionId, requestId: entry.requestId, payload: {"action": choice.name})) {
+      return PluginFormDismissalResult.unavailable;
+    }
+    _pending.remove(id);
+    _emitActivity(
+      event: BridgeSseQuestionRejected(requestID: id, sessionID: sessionId, displaySessionId: sessionId),
+    );
+    return PluginFormDismissalResult.accepted;
+  }
+
   PluginExternalActionReply replyExternalAction({
     required String id,
     required String sessionId,
@@ -318,6 +422,16 @@ final class ClaudeApprovalRegistry({
             sessionID: sessionId,
             displaySessionId: sessionId,
             questions: const [_externalActionNotice],
+          )
+        // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 reads question snapshots.
+        // Remove when all supported production clients consume typed forms.
+        else if (entry is _PendingForm)
+          PluginPendingQuestion(
+            interactionKind: PluginQuestionInteractionKind.form,
+            id: entry.id,
+            sessionID: sessionId,
+            displaySessionId: sessionId,
+            questions: const [_formNotice],
           ),
   ];
 
@@ -442,7 +556,7 @@ final class ClaudeApprovalRegistry({
 
   void _cancel(_PendingApproval entry) {
     final responded = switch (entry) {
-      _PendingExternalAction() => _respond(
+      _PendingExternalAction() || _PendingForm() => _respond(
         sessionId: entry.sessionId,
         requestId: entry.requestId,
         payload: {"action": "cancel"},
@@ -463,7 +577,7 @@ final class ClaudeApprovalRegistry({
             reply: PluginPermissionReply.reject.name,
           ),
         );
-      case _PendingQuestion() || _PendingExternalAction():
+      case _PendingQuestion() || _PendingExternalAction() || _PendingForm():
         _emitActivity(
           event: BridgeSseQuestionRejected(
             requestID: entry.id,
@@ -555,8 +669,11 @@ List<PluginQuestionInfo> _questions({
 
 String _description(Map<String, Object?> request) {
   final values = [request["title"], request["description"], request["decision_reason"]];
-  return values.map(_nonEmptyString).whereType<String>().map((value) => stripAnsi(value: value)).firstOrNull ??
+  final description =
+      values.map(_nonEmptyString).whereType<String>().map((value) => stripAnsi(value: value)).firstOrNull ??
       "Claude Code requested permission.";
+  final server = _nonEmptyString(_map(request["mcp_server"])["name"]);
+  return server == null ? description : "MCP server ${stripAnsi(value: server)}: $description";
 }
 
 String? _nonEmptyString(Object? value) => value is String && value.isNotEmpty ? value : null;

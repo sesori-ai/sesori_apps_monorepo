@@ -7,6 +7,7 @@ part "plugin_pending_question.g.dart";
 enum PluginQuestionInteractionKind() {
   question,
   externalAction,
+  form,
 }
 
 @freezed

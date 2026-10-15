@@ -36,4 +36,5 @@ Map<String, dynamic> _$PluginPendingQuestionToJson(
 const _$PluginQuestionInteractionKindEnumMap = {
   PluginQuestionInteractionKind.question: 'question',
   PluginQuestionInteractionKind.externalAction: 'externalAction',
+  PluginQuestionInteractionKind.form: 'form',
 };

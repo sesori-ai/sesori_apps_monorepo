@@ -715,13 +715,18 @@ support requires Claude 2.1.291; 2.1.221 rejects it before forwarding. Current
 clients have **implemented** explicit browser opening and declared native
 accept/decline/cancel controls, with original-owner routing and connection fencing.
 Dismissal leaves the request pending; browser opening and native reply acceptance
-do not claim authorization completion. Form elicitation is **not implemented**: it is declined with an in-session
-warning. Codex elicitation and the remaining native-supported management rows are
+do not claim authorization completion. Claude native form handling is **implemented**
+for flat plain text, integer, finite number, boolean, string choice and string-choice-array
+fields, including supported defaults and inclusive length/count/numeric bounds. Native
+format constraints, nested/secret schemas and other unsupported keywords explicitly decline
+with an in-session warning. Invalid submissions and failed native writes retain pending
+requests. Stop, archive notification, process exit and teardown cancel existing waits.
+Codex elicitation and the remaining native-supported management rows are
 **not implemented**.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
-native form adapters, headless form routes and draft-preserving client controls
-remain **not implemented**.
+Claude implements the optional typed plugin API. Headless form routes and draft-preserving
+client controls remain **not implemented**; current clients see only a static cancel notice.
 
 The Claude native plugin authentication API is **implemented** for an existing
 resident's native-configured HTTP server: no-browser sign-in, matching callback,
