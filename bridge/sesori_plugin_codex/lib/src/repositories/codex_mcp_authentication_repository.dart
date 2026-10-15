@@ -46,9 +46,16 @@ class CodexMcpAuthenticationRepository({
       case PluginMcpInventorySnapshot(:final entries):
         for (final entry in entries) {
           if (entry is! PluginMcpServerSnapshot || entry.target.serverKey != target.serverKey) continue;
-          if (entry.authentication is! PluginMcpAuthenticationCapabilityAvailable) {
-            throw const PluginMcpAuthenticationUnavailableException(
-              reason: PluginMcpAuthenticationUnavailableReason.notSupported,
+          if (entry.authentication case PluginMcpAuthenticationCapabilityUnavailable(:final reason)) {
+            throw PluginMcpAuthenticationUnavailableException(
+              reason: switch (reason) {
+                PluginMcpAuthenticationCapabilityUnavailableReason.notSupported =>
+                  PluginMcpAuthenticationUnavailableReason.notSupported,
+                PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented =>
+                  PluginMcpAuthenticationUnavailableReason.notImplemented,
+                PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired =>
+                  PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+              },
             );
           }
           return;

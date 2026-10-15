@@ -103,7 +103,7 @@ void main() {
         methods.add(request["method"] as String);
         final result = switch (request["method"]) {
           "initialize" => {
-            "userAgent": "fixture",
+            "userAgent": "fixture/0.160.1 (fixture)",
             "codexHome": home.path,
             "platformOs": "macos",
             "platformFamily": "unix",

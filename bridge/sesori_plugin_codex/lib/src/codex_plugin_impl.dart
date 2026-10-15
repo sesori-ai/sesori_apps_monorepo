@@ -264,9 +264,12 @@ class CodexPlugin._({
       _client = client;
       try {
         await _sessionService.hydratePersistedChildAncestry();
-        await client.connect();
+        final initialized = await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
-        final inventory = CodexMcpRepository(appServerApi: appServerApi, mapper: const CodexMcpMapper());
+        final inventory = CodexMcpRepository(
+          appServerApi: appServerApi,
+          mapper: CodexMcpMapper(userAgent: initialized.userAgent),
+        );
         _mcpRepository = inventory;
         _mcpAuthentication = CodexMcpAuthenticationService(
           repository: CodexMcpAuthenticationRepository(

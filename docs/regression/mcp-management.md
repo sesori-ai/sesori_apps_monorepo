@@ -343,9 +343,14 @@ these intents. The headless owner and final qualification matrix are unchanged.
 
 Codex sign-in uses the attached app-server and the existing canonical headless
 authentication owner. Preparation validates the exact configured target and starts
-no login until the returned operation is observed. Session context is sent to
-native login; harness scope omits it. Minimum completion has no thread identity;
-target completion must match when present. Both match the exact native server.
+no login until the returned operation is observed. Session sign-in requires an
+initialized native version of at least 0.160.1; its exact thread context is sent
+to native login. Older or unknown versions require native configuration/handoff
+for session targets, before issuing OAuth. Codex 0.139.0 ignores the login thread
+and can select a same-name harness server instead of the session override.
+Harness sign-in remains available and omits thread context. Minimum completion
+has no thread identity; target completion must match when present. Both match
+the exact native server.
 Credential effects are harness-scoped. Project/unsupported targets and detached
 runtimes return explicit limitations without connecting or inventing native work.
 
@@ -372,7 +377,10 @@ responses and teardown through production API/repository/service objects.
 `codex_mcp_plugin_test.dart` also covers a real WebSocket disconnect during sign-in,
 detached reads/start, explicit unsupported forgetting and no implicit connection.
 Both exact Codex binaries passed production-adapter loopback fixtures for expiry,
-denial, success and authenticated inventory on macOS arm64. These fixtures exercise
+denial, success and authenticated inventory on macOS arm64: harness scope on
+0.139.0, session scope on 0.160.1. The minimum session request was refused with
+no OAuth RPC. A same-name override probe verifies minimum wrong-issuer selection
+and target correct-issuer selection. These fixtures exercise
 the plugin below the headless browser-policy boundary. The production HTTPS browser
 policy remains unchanged. Real provider,
 relay/client, other native hosts and packaged browser return remain unqualified.

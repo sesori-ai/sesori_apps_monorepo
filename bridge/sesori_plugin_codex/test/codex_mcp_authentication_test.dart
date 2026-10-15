@@ -65,13 +65,16 @@ class _Transport() implements CodexAppServerTransport {
       );
 }
 
-class _Harness({required final http.Client? callbackClient}) {
+class _Harness({required final http.Client? callbackClient, required final String userAgent}) {
   final transport = _Transport();
   final callbacks = <http.Request>[];
   late final api = CodexAppServerApi(client: transport);
   late final repository = CodexMcpAuthenticationRepository(
     appServerApi: api,
-    inventory: CodexMcpRepository(appServerApi: api, mapper: const CodexMcpMapper()),
+    inventory: CodexMcpRepository(
+      appServerApi: api,
+      mapper: CodexMcpMapper(userAgent: userAgent),
+    ),
     callbackApi: CodexMcpCallbackApi(
       client:
           callbackClient ??
@@ -95,7 +98,7 @@ class _Harness({required final http.Client? callbackClient}) {
 void main() {
   late _Harness harness;
   setUp(() {
-    harness = _Harness(callbackClient: null);
+    harness = _Harness(callbackClient: null, userAgent: "fixture/0.160.1 (fixture)");
   });
   tearDown(() => harness.close());
 
@@ -108,7 +111,7 @@ void main() {
 
   for (final threadId in [null, "thread"]) {
     test(
-      "exact native request, callback forwarding and ${threadId == null ? 'minimum' : 'target'} completion",
+      "exact native request and callback forwarding with ${threadId == null ? 'absent' : 'present'} completion context",
       () async {
         final operation = await harness.begin();
         final iterator = StreamIterator(operation.events);
@@ -146,6 +149,35 @@ void main() {
     harness.transport.complete(success: true, error: null);
     await iterator.moveNext();
   });
+
+  for (final userAgent in ["fixture/0.139.0 (fixture)", "unknown"]) {
+    test("$userAgent refuses session login but retains harness authentication", () async {
+      final legacy = _Harness(callbackClient: null, userAgent: userAgent);
+      addTearDown(legacy.close);
+      await expectLater(
+        legacy.begin(),
+        throwsA(
+          isA<PluginMcpAuthenticationUnavailableException>().having(
+            (value) => value.reason,
+            "reason",
+            PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+          ),
+        ),
+      );
+      expect(legacy.transport.calls.map((call) => call.method), ["mcpServerStatus/list"]);
+      final operation = await legacy.begin(
+        target: const PluginMcpServerTarget(scope: PluginMcpHarnessScope(), serverKey: "fixture"),
+      );
+      final events = StreamIterator(operation.events);
+      addTearDown(events.cancel);
+      expect(await events.moveNext(), isTrue);
+      expect(events.current, isA<PluginMcpAuthenticationChallenge>());
+      expect(legacy.transport.calls.last.params, {"name": "fixture", "timeoutSecs": 180});
+      legacy.transport.complete(success: true, error: null);
+      expect(await events.moveNext(), isTrue);
+      expect(events.current, isA<PluginMcpAuthenticationCompleted>());
+    });
+  }
 
   test("completion listener precedes login and suppresses a challenge after early settlement", () async {
     harness.transport.duringLogin = () => harness.transport.complete(success: true, error: null, threadId: "thread");
@@ -331,7 +363,7 @@ void main() {
       unawaited(request.response.close());
     });
     await harness.close();
-    harness = _Harness(callbackClient: http.Client());
+    harness = _Harness(callbackClient: http.Client(), userAgent: "fixture/0.160.1 (fixture)");
     final callback = "http://127.0.0.1:${server.port}/callback";
     harness.transport.loginResponse = {"authorizationUrl": _authorization(callback: callback)};
     final operation = await harness.begin();
@@ -352,7 +384,10 @@ void main() {
 
   test("provider denial HTTP 400 is consumed while native notification owns outcome", () async {
     await harness.close();
-    harness = _Harness(callbackClient: MockClient((_) async => http.Response("fixture denial", 400)));
+    harness = _Harness(
+      callbackClient: MockClient((_) async => http.Response("fixture denial", 400)),
+      userAgent: "fixture/0.160.1 (fixture)",
+    );
     final operation = await harness.begin();
     final iterator = StreamIterator(operation.events);
     addTearDown(iterator.cancel);

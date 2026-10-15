@@ -710,8 +710,12 @@ discovery failure remains separate from a successful empty tool catalog.
 Only safe endpoint origins and declared tool names/descriptions cross the wire.
 Native OAuth integration is **implemented** for native-capable configured servers,
 using the existing headless attempt owner and shared sign-in controls. The exact
-session context is sent; minimum-version completion is name-only, target also
-correlates thread context. Credential effects are harness-scoped. Native expiry,
+session context is sent only on initialized native versions at least 0.160.1.
+Older/unknown versions explicitly require native configuration for session
+sign-in, with no OAuth RPC: a same-name override probe found 0.139.0 ignores
+the login thread and selects the harness issuer; 0.160.1 selects the session
+issuer. Harness sign-in remains available on the minimum. Minimum completion
+is name-only; target also correlates thread context. Credential effects are harness-scoped. Native expiry,
 provider denial and completion remain authoritative; there is no cancellation RPC,
 so the attempt retains ownership until native settlement or runtime teardown.
 Callback forwarding validates exact native loopback origin/path/state and disables

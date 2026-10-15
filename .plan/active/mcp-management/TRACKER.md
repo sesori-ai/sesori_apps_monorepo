@@ -1472,7 +1472,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   add no shared contract, client owner or credential store. Native cancellation
   remains unavailable. Lazy preparation, exact server/thread correlation, native
   expiry/denial and uncertain-response ownership are covered without a local timer.
-- OAuth verification: 20 authentication cases, 29 inventory cases and 13 MCP
+- OAuth verification: 22 authentication cases, 35 inventory cases and 13 MCP
   plugin/existing plugin-client cases pass; normal DTO generation and package
   analysis pass. The 13 include the new active-sign-in WebSocket disconnect case.
   Both fingerprint-verified native pins pass the production DTO/API/repository/
@@ -1488,3 +1488,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   contract or ownership change was needed.
   Architecture implementation pass 2 approved the complete corrected boundary
   without findings; the final 22-case and native-pin reruns include that mapping.
+- A pre-publication same-name harness/session override probe found minimum
+  0.139.0 ignores OAuth thread context and selects the harness issuer; target
+  0.160.1 selects the session issuer. The existing initialize user agent gates
+  session sign-in to versions at least 0.160.1; older/unknown runtimes return
+  native-configuration handoff before OAuth, retaining harness sign-in.
+  The final 70 focused cases and package analysis pass after this localized
+  correctness fix. Actual native reruns verify minimum session refusal with no
+  OAuth RPC, minimum harness expiry/denial/success, and target session
+  expiry/denial/success. No new architecture boundary or contract was added.

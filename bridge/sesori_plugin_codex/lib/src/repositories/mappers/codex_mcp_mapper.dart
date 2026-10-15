@@ -1,9 +1,11 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../../api/models/codex_mcp_status_dto.dart";
 
 /// Native presentation metadata only; configuration and execution stay native.
-class const CodexMcpMapper() {
+class CodexMcpMapper({required String userAgent}) {
+  final bool _supportsThreadAuthentication = _hasThreadAuthentication(userAgent: userAgent);
   PluginMcpInventorySnapshot map({required List<CodexMcpServerStatusDto> servers, required PluginMcpScope scope}) {
     final sorted = servers.toList()..sort((a, b) => a.name.compareTo(b.name));
     return PluginMcpInventorySnapshot(
@@ -28,6 +30,10 @@ class const CodexMcpMapper() {
         authentication: server.authStatus == CodexMcpAuthStatus.unsupported
             ? const PluginMcpAuthenticationCapabilityUnavailable(
                 reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+              )
+            : scope is PluginMcpSessionScope && !_supportsThreadAuthentication
+            ? const PluginMcpAuthenticationCapabilityUnavailable(
+                reason: PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
               )
             : const PluginMcpAuthenticationCapabilityAvailable(effectScope: PluginMcpActionEffectScope.harness),
         credentialForgetting: const PluginMcpAuthenticationCapabilityUnavailable(
@@ -78,4 +84,12 @@ class const CodexMcpMapper() {
     }
     return Uri(scheme: uri.scheme, host: uri.host, port: uri.hasPort ? uri.port : null).toString();
   }
+}
+
+bool _hasThreadAuthentication({required String userAgent}) {
+  final value = RegExp(r"^[^/]+/([^\s]+)").firstMatch(userAgent)?.group(1);
+  final version = value == null ? null : SemanticVersion.tryParse(value: value);
+  // The minimum ignores login.threadId and can select a same-name harness
+  // server instead of the requested project server. The target is verified.
+  return version != null && version.compareTo(SemanticVersion.parse(value: "0.160.1")) >= 0;
 }
