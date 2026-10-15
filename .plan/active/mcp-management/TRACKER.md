@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-claude-form-routing`, `feb6f77858`, in the provided `copper-heron` worktree.
-- Current step: 21/28 is in review; latest merged step: 20/28 as [#1989][pr-1989].
+- Branch/base: `sesori/mcp-headless-forms`, `5765963a81`, in the provided `copper-heron` worktree.
+- Current step: 22/28 is in review; latest merged step: 21/28 as [#1991][pr-1991].
+  Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
@@ -42,8 +43,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 18/28 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
 | 19/28 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
 | 20/28 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
-| 21/28 | Claude native forms (9.b.1) | In review | Typed native adapter and pending owner |
-| 22/28 | Canonical headless forms (9.b.2) | Not started | — |
+| 21/28 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
+| 22/28 | Canonical headless forms (9.b.2) | In review | Active-only canonical snapshots and ordered typed replies |
 | 23/28 | Shared typed form controls (9.c) | Not started | — |
 | 24/28 | Codex inventory/actions/authentication | Not started | — |
 | 25/28 | Codex forms and offered connectors | Not started | — |
@@ -1285,11 +1286,39 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   `1d284e4629..75ac1b1a95` without findings. The later tracker evidence record
   changes no production or test sources.
 - Step 20 merged at accepted head `1d284e4629`, squash `feb6f77858`, with 32
-  passing checks and a clean final Cubic approval. The normalized native-format
+  checks in the pre-merge snapshot and a clean final Cubic approval. The normalized native-format
   spelling suggestion remains deliberately declined with a prefixed explanation.
   The Step-21 branch incorporated current main; each conflicting incoming document was verified
   byte-identical to the already incorporated parent. The merge changes no files
   from approved source `ced5e6797a`, so no unchanged passing suite was rerun.
+
+[pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
+
+- Step 20's later terminal monitor snapshot records 33 passing checks; the 32
+  above is the earlier pre-merge snapshot. Step 21 was
+  published as #1991 at `0dd7b76ca1`: 1,340 changed lines, one generated and
+  1,339 authored. Its monitor was started at publication. Native recording remains deferred.
+- Step 22 implements FormRepository, neutral mappings and the three form routes
+  through the existing PendingInteractionService, dispatcher and archive validator.
+  Optional-plugin reads remain active-only, snapshots filter the actual owner,
+  replies require the exact original backend session, and typed unknown values
+  cannot reach native submission. No new mutable owner, persistence or coordination.
+- Step-22 source `04fb37e065` passes the initial 59 focused cases from
+  `bridge/app`, using pinned Dart 3.13.5:
+  ```sh
+  dart test test/bridge/repositories/form_repository_test.dart \
+    test/bridge/repositories/external_action_repository_test.dart \
+    test/bridge/services/pending_interaction_service_test.dart \
+    test/bridge/routing/reply_to_question_handler_test.dart \
+    test/bridge/routing/reject_question_handler_test.dart \
+    test/bridge/routing/reply_to_permission_handler_test.dart
+  ```
+  After adding unsupported-plugin and both archive-route checks, the changed
+  `form_repository_test.dart` passes all 15 cases. Bridge-root
+  `dart analyze --fatal-infos app` passes. Architecture implementation review
+  pass 1 approves all 15 changed files without findings. Initial authored churn:
+  787 lines; zero generated. Native/relay/client/provider/package boundaries and
+  deferred recording remain unqualified by these headless API fixtures.
 - Step-21 review regressions failed before their fixes: a failed archive write
   lost the pending request and emitted false settlement, and equal option titles
   discarded differentiating descriptions. Source `5d9fa31baf` retains failed
@@ -1304,3 +1333,19 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Corrected final qualification to step 28 and clarified the branch/main merge.
 - Step-21 architecture implementation review pass 2 approved the complete PR
   through source `5d9fa31baf`, including archive settlement, without findings.
+- Step 21 merged at accepted head `b9f0cad1db`, squash `5765963a81`, with 19
+  pre-merge and 20 terminal checks passing. The declined released-codec concern
+  remains open with its prefixed source-backed explanation. Final native diff:
+  1,447 lines, one generated. Step 22 incorporated those review fixes and current
+  main, preserving concurrent debug-server response-lifetime fix `10b6e87325`.
+  Each conflicting incoming document matched the integrated native parent
+  byte-for-byte. At that integration checkpoint, Step-22 production, tests,
+  contracts and dependencies matched tested `04fb37e065`; the unrelated
+  debug-server file was outside those route fixtures. The later review-only
+  regression in `fc8a80e766` expanded the form suite from 15 to 16 cases, as
+  recorded below. No unchanged passing suite was rerun solely for confidence.
+- Step-22 review clarifies 32 pre-merge versus 33 later terminal checks for
+  Step 20. Actual-owner archive policy remains intentional: archiving only a
+  display parent must not retire an active child's independently answerable form.
+  The new direct/display-read and original-child reply regression passes with
+  all 16 form cases; targeted analysis passes. Source: `fc8a80e766`.

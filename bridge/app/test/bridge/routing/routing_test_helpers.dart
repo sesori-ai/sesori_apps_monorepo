@@ -6,6 +6,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/external_action_repository.dart";
+import "package:sesori_bridge/src/repositories/form_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_command_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
 import "package:sesori_bridge/src/repositories/mappers/plugin_session_status_mapper.dart";
@@ -80,6 +81,10 @@ SessionUnseenService buildTestSessionUnseenService(AppDatabase db, BridgePluginA
   return (
     dispatcher: dispatcher,
     service: PendingInteractionService(
+      formRepository: FormRepository(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),
+      ),
       externalActionRepository: ExternalActionRepository(
         runtime: createTestPluginRuntime(plugins: [plugin]),
         pendingSupport: PendingInteractionSupport(sessionDao: database.sessionDao),

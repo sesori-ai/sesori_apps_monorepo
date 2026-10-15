@@ -2,6 +2,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/external_action_repository.dart";
+import "../repositories/form_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/question_repository.dart";
@@ -12,6 +13,7 @@ class PendingInteractionService({
   required final PermissionRepository _permissionRepository,
   required final QuestionRepository _questionRepository,
   required final ExternalActionRepository _externalActionRepository,
+  required final FormRepository _formRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
 }) {
@@ -100,6 +102,35 @@ class PendingInteractionService({
           return const ExternalActionAlreadySettled();
         }
         return await _externalActionRepository.reply(request: request);
+      },
+    );
+  }
+
+  Future<List<PendingForm>> getPendingForms({required String sessionId}) async {
+    if (_disposed) return await _disposedFuture();
+    return await _formRepository.getPending(sessionId: sessionId);
+  }
+
+  Future<FormReplyResult> replyToForm({required ReplyToFormRequest request}) {
+    if (_disposed) return _disposedFuture();
+    return _dispatcher.dispatch(
+      sessionId: request.sessionId,
+      operation: SessionOperation.replyToForm,
+      body: () async {
+        await _archivedSessionValidator.requireNotArchived(sessionId: request.sessionId);
+        return await _formRepository.reply(request: request);
+      },
+    );
+  }
+
+  Future<FormReplyResult> declineForm({required DeclineFormRequest request}) {
+    if (_disposed) return _disposedFuture();
+    return _dispatcher.dispatch(
+      sessionId: request.sessionId,
+      operation: SessionOperation.declineForm,
+      body: () async {
+        await _archivedSessionValidator.requireNotArchived(sessionId: request.sessionId);
+        return await _formRepository.decline(request: request);
       },
     );
   }

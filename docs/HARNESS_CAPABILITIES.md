@@ -727,8 +727,11 @@ Codex elicitation and the remaining native-supported management rows are
 **not implemented**.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
-Claude implements the optional typed plugin API. Headless form routes and draft-preserving
-client controls remain **not implemented**; current clients see only a static cancel notice.
+Claude implements the optional typed plugin API. Headless form snapshots and typed
+reply/decline routes are **implemented** with canonical original-owner routing,
+active-only reads, deleted-target checks and archived-owner rejection. Unsupported plugins
+return empty snapshots and explicit unsupported mutation outcomes. Draft-preserving client
+controls remain **not implemented**; current clients see only a static cancel notice.
 
 The Claude native plugin authentication API is **implemented** for an existing
 resident's native-configured HTTP server: no-browser sign-in, matching callback,

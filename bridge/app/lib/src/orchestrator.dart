@@ -67,6 +67,7 @@ import "repositories/catalog_import_repository.dart";
 import "repositories/chat_history_repository.dart";
 import "repositories/external_action_repository.dart";
 import "repositories/filesystem_repository.dart";
+import "repositories/form_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
@@ -102,6 +103,7 @@ import "routing/cancel_queued_prompt_handler.dart";
 import "routing/create_directory_handler.dart";
 import "routing/create_project_handler.dart";
 import "routing/create_session_handler.dart";
+import "routing/decline_form_handler.dart";
 import "routing/delete_session_handler.dart";
 import "routing/filesystem_suggestions_handler.dart";
 import "routing/get_base_branch_handler.dart";
@@ -123,6 +125,7 @@ import "routing/get_session_attachment_handler.dart";
 import "routing/get_session_diff_summary_handler.dart";
 import "routing/get_session_diffs_handler.dart";
 import "routing/get_session_external_actions_handler.dart";
+import "routing/get_session_forms_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
 import "routing/get_session_messages_through_handler.dart";
@@ -151,6 +154,7 @@ import "routing/reject_question_handler.dart";
 import "routing/rename_project_handler.dart";
 import "routing/rename_session_handler.dart";
 import "routing/reply_to_external_action_handler.dart";
+import "routing/reply_to_form_handler.dart";
 import "routing/reply_to_permission_handler.dart";
 import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
@@ -508,6 +512,7 @@ class Orchestrator({
       pendingSupport: pendingInteractionSupport,
     );
     final pendingInteractionService = PendingInteractionService(
+      formRepository: FormRepository(runtime: _pluginRuntime, pendingSupport: pendingInteractionSupport),
       permissionRepository: permissionRepository,
       questionRepository: questionRepository,
       externalActionRepository: externalActionRepository,
@@ -762,6 +767,7 @@ class Orchestrator({
         PostAgentsHandler(agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
         GetSessionExternalActionsHandler(service: pendingInteractionService),
+        GetSessionFormsHandler(service: pendingInteractionService),
         GetProjectQuestionsHandler(questionRepository: questionRepository),
         GetSessionPermissionsHandler(
           permissionRepository: permissionRepository,
@@ -769,6 +775,8 @@ class Orchestrator({
         ),
         ReplyToQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToExternalActionHandler(service: pendingInteractionService),
+        ReplyToFormHandler(service: pendingInteractionService),
+        DeclineFormHandler(service: pendingInteractionService),
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
         RenameProjectHandler(projectRepository),
