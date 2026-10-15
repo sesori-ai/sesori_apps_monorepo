@@ -26,6 +26,7 @@ final _callback = Uri.parse("http://127.0.0.1:3456/callback?state=fixture-state&
 class _Fixture({required final Future<http.Response>? Function(http.Request)? override}) {
   final calls = <http.Request>[];
   String transport = "remote";
+  String url = "https://fixture.invalid/mcp";
   Object? oauth = {"clientSecret": "fixture-sensitive"};
   String status = "needs_auth";
   String callbackStatus = "connected";
@@ -57,7 +58,7 @@ class _Fixture({required final Future<http.Response>? Function(http.Request)? ov
               if (present)
                 _name: {
                   "type": transport,
-                  "url": "https://fixture.invalid/mcp",
+                  "url": url,
                   "oauth": oauth,
                   "headers": {"authorization": "fixture-sensitive"},
                 },
@@ -210,6 +211,36 @@ void main() {
     await fixture.begin();
     expect(fixture.calls.every((request) => request.method == "GET"), isTrue);
   });
+
+  for (final url in ["", "fixture-not-a-url"]) {
+    test("invalid remote URL blocks sign-in before native start but permits forgetting: $url", () async {
+      final fixture = _Fixture(override: null)..url = url;
+      final inventory = await fixture.service.getMcpInventory(scope: _target.scope) as PluginMcpInventorySnapshot;
+      final server = inventory.entries.single as PluginMcpServerSnapshot;
+      expect(
+        server.authentication,
+        isA<PluginMcpAuthenticationCapabilityUnavailable>().having(
+          (capability) => capability.reason,
+          "reason",
+          PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+        ),
+      );
+      expect(server.credentialForgetting, isA<PluginMcpAuthenticationCapabilityAvailable>());
+      await expectLater(
+        fixture.begin(),
+        throwsA(
+          isA<PluginMcpAuthenticationUnavailableException>().having(
+            (error) => error.reason,
+            "reason",
+            PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+          ),
+        ),
+      );
+      expect(fixture.calls.every((request) => request.method == "GET"), isTrue);
+      await fixture.authentication.forget(target: _target);
+      expect(fixture.calls.where((request) => request.method == "DELETE"), hasLength(1));
+    });
+  }
 
   test("the native no-challenge sentinel maps to explicit already-authorized completion", () async {
     final fixture = _Fixture(

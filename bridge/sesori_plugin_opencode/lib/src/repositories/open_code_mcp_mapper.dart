@@ -34,14 +34,6 @@ class const OpenCodeMcpMapper() {
     required OpenCodeMcpServerConfigurationDto? configuration,
   }) {
     final oauth = configuration?.oauth;
-    final requiresNativeConfiguration =
-        status is MCPStatusNeedsClientRegistration ||
-        switch (oauth) {
-          OpenCodeMcpOAuthEnabled(:final parameters) => !supportsOpenCodeMcpCallbackOverride(
-            value: parameters.redirectUri,
-          ),
-          _ => false,
-        };
     final PluginMcpAuthenticationCapability credentials =
         configuration != null &&
             configuration.transport == OpenCodeMcpTransport.remote &&
@@ -51,6 +43,16 @@ class const OpenCodeMcpMapper() {
         : const PluginMcpAuthenticationCapabilityUnavailable(
             reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
           );
+    final requiresNativeConfiguration =
+        credentials is PluginMcpAuthenticationCapabilityAvailable &&
+        (status is MCPStatusNeedsClientRegistration ||
+            !supportsOpenCodeMcpRemoteUrl(value: configuration?.url) ||
+            switch (oauth) {
+              OpenCodeMcpOAuthEnabled(:final parameters) => !supportsOpenCodeMcpCallbackOverride(
+                value: parameters.redirectUri,
+              ),
+              _ => false,
+            });
     final actions = switch (status) {
       MCPStatusDisabled() => const [PluginMcpServerAction.enable],
       MCPStatusConnected() || MCPStatusFailed() || MCPStatusNeedsAuth() || MCPStatusNeedsClientRegistration() => const [
