@@ -1,15 +1,23 @@
+import "dart:async";
 import "dart:convert";
 import "dart:io";
 
+import "package:fake_async/fake_async.dart";
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
 import "package:opencode_plugin/src/open_code_raw_http_client.dart";
 import "package:opencode_plugin/src/v2/api/opencode_v2_api.dart";
+import "package:opencode_plugin/src/v2/mappers/v2_form_answer_mapper.dart";
+import "package:opencode_plugin/src/v2/mappers/v2_form_answer_validator.dart";
 import "package:opencode_plugin/src/v2/models/v2_decode_exception.dart";
 import "package:opencode_plugin/src/v2/opencode_v2_plugin.dart";
+import "package:opencode_plugin/src/v2/repositories/opencode_v2_activity_tracker.dart";
+import "package:opencode_plugin/src/v2/repositories/opencode_v2_compaction_tracker.dart";
 import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_model_mapper.dart";
+import "package:opencode_plugin/src/v2/services/opencode_v2_service.dart";
+import "package:opencode_plugin/src/v2/sse/v2_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -18,15 +26,27 @@ import "support/v2_fixtures.dart";
 const _directory = "/fixture/worktree";
 const _name = "fixture/server?name";
 
-OpenCodeV2Repository _repository({required Future<http.Response> Function(http.Request) handler}) {
+OpenCodeV2Service _service({required Future<http.Response> Function(http.Request) handler}) {
   final client = MockClient(handler);
   addTearDown(client.close);
-  return OpenCodeV2Repository(
+  final repository = OpenCodeV2Repository(
     api: OpenCodeV2Api(
       client: OpenCodeRawHttpClient(serverURL: "http://localhost:4096", password: null, client: client),
     ),
     modelMapper: const V2ModelMapper(pluginId: "fixture"),
     messageMapper: const V2MessageMapper(),
+  );
+  return OpenCodeV2Service(
+    repository: repository,
+    tracker: OpenCodeV2ActivityTracker(),
+    compactions: OpenCodeV2CompactionTracker(),
+    mapper: const V2EventMapper(
+      modelMapper: V2ModelMapper(pluginId: "fixture"),
+      messageMapper: V2MessageMapper(),
+    ),
+    modelMapper: const V2ModelMapper(pluginId: "fixture"),
+    formAnswerMapper: const V2FormAnswerMapper(),
+    formAnswerValidator: const V2FormAnswerValidator(),
   );
 }
 
@@ -44,6 +64,29 @@ http.Response _inventory({required String status}) => http.Response(
 );
 
 void main() {
+  for (final disconnect in [false, true]) {
+    test("a slow native ${disconnect ? 'disconnect' : 'connect'} remains pending until native completion", () {
+      fakeAsync((clock) {
+        final response = Completer<http.Response>();
+        final client = MockClient((_) => response.future);
+        addTearDown(client.close);
+        final api = OpenCodeV2Api(
+          client: OpenCodeRawHttpClient(serverURL: "http://localhost:4096", password: null, client: client),
+        );
+        var completed = false;
+        final operation = disconnect
+            ? api.disconnectMcpServer(directory: _directory, name: _name)
+            : api.connectMcpServer(directory: _directory, name: _name);
+        unawaited(operation.then((_) => completed = true));
+        clock.elapse(const Duration(minutes: 4));
+        expect(completed, isFalse);
+        response.complete(http.Response("", 204));
+        clock.flushMicrotasks();
+        expect(completed, isTrue);
+      });
+    });
+  }
+
   for (final (native, phase) in [
     ("connected", PluginMcpConnectionPhase.connected),
     ("pending", PluginMcpConnectionPhase.pending),
@@ -54,8 +97,8 @@ void main() {
   ]) {
     test("native $native stays distinct without inventing metadata or authentication", () async {
       const scope = PluginMcpProjectScope(projectId: _directory);
-      final repository = _repository(handler: (_) async => _inventory(status: native));
-      final result = await repository.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot;
+      final service = _service(handler: (_) async => _inventory(status: native));
+      final result = await service.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot;
       final server = result.entries.single as PluginMcpServerSnapshot;
       expect(result.servers, isA<PluginMcpCatalogAvailable>());
       expect(result.connectors, isA<PluginMcpCatalogNotSupported>());
@@ -94,7 +137,7 @@ void main() {
   ]) {
     test("inspection preserves its exact project/session location and target identity in $scope", () async {
       final calls = <http.Request>[];
-      final repository = _repository(
+      final service = _service(
         handler: (request) async {
           calls.add(request);
           expect(request.method, "GET");
@@ -114,7 +157,7 @@ void main() {
           return _inventory(status: "connected");
         },
       );
-      final result = await repository.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot;
+      final result = await service.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot;
       expect((result.entries.single as PluginMcpServerSnapshot).target.scope, same(scope));
       expect(calls.length, scope is PluginMcpSessionScope ? 2 : 1);
     });
@@ -122,7 +165,7 @@ void main() {
     for (final action in PluginMcpServerAction.values) {
       test("$action uses only the named native location control in $scope", () async {
         final posts = <http.Request>[];
-        final repository = _repository(
+        final service = _service(
           handler: (request) async {
             if (request.url.path == "/api/session/session-fixture") {
               return http.Response(
@@ -150,7 +193,7 @@ void main() {
             return http.Response("", 204);
           },
         );
-        final result = await repository.executeMcpServerAction(
+        final result = await service.executeMcpServerAction(
           target: PluginMcpServerTarget(scope: scope, serverKey: _name),
           action: action,
         ) as PluginMcpActionCompleted;
@@ -161,13 +204,13 @@ void main() {
   }
 
   test("harness scope is unavailable without choosing a working directory or issuing HTTP", () async {
-    final repository = _repository(handler: (_) async => throw StateError("Unexpected native work"));
+    final service = _service(handler: (_) async => throw StateError("Unexpected native work"));
     expect(
-      (await repository.getMcpInventory(scope: const PluginMcpHarnessScope()) as PluginMcpInventoryUnavailable).reason,
+      (await service.getMcpInventory(scope: const PluginMcpHarnessScope()) as PluginMcpInventoryUnavailable).reason,
       PluginMcpInventoryUnavailableReason.unsupportedScope,
     );
     expect(
-      (await repository.executeMcpServerAction(
+      (await service.executeMcpServerAction(
         target: const PluginMcpServerTarget(scope: PluginMcpHarnessScope(), serverKey: _name),
         action: PluginMcpServerAction.enable,
       ) as PluginMcpActionUnavailable).reason,
@@ -177,13 +220,15 @@ void main() {
 
   test("same-name servers in different locations retain separate targets", () async {
     final directories = <String>[];
-    final repository = _repository(handler: (request) async {
-      directories.add(request.url.queryParameters["location[directory]"]!);
-      return _inventory(status: "connected");
-    });
+    final service = _service(
+      handler: (request) async {
+        directories.add(request.url.queryParameters["location[directory]"]!);
+        return _inventory(status: "connected");
+      },
+    );
     for (final directory in ["/fixture/first", "/fixture/second"]) {
       final scope = PluginMcpProjectScope(projectId: directory);
-      final inventory = await repository.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot;
+      final inventory = await service.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot;
       final target = (inventory.entries.single as PluginMcpServerSnapshot).target;
       expect(target.scope, same(scope));
       expect(target.serverKey, _name);
@@ -192,16 +237,16 @@ void main() {
   });
 
   test("empty inventory stays available and a removed target issues no native mutation", () async {
-    final repository = _repository(
+    final service = _service(
       handler: (request) async {
         expect(request.method, "GET");
         return http.Response('{"data":[]}', 200);
       },
     );
     const scope = PluginMcpProjectScope(projectId: _directory);
-    expect((await repository.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot).entries, isEmpty);
+    expect((await service.getMcpInventory(scope: scope) as PluginMcpInventorySnapshot).entries, isEmpty);
     expect(
-      (await repository.executeMcpServerAction(
+      (await service.executeMcpServerAction(
         target: const PluginMcpServerTarget(scope: scope, serverKey: _name),
         action: PluginMcpServerAction.reconnect,
       ) as PluginMcpActionUnavailable).reason,
@@ -211,18 +256,30 @@ void main() {
 
   test("decode and HTTP failures retain original causes without successful empty inventory", () async {
     for (final (body, status) in [('{"data":"invalid"}', 200), ("Native fixture failure", 500)]) {
-      final repository = _repository(handler: (_) async => http.Response(body, status));
-      final result = await repository.getMcpInventory(
+      final service = _service(handler: (_) async => http.Response(body, status));
+      final result = await service.getMcpInventory(
         scope: const PluginMcpProjectScope(projectId: _directory),
       ) as PluginMcpInventoryReadFailed;
       if (status == 200) {
         expect(result.cause, isA<V2DecodeException>());
         expect((result.cause as V2DecodeException).innerError, isA<TypeError>());
       } else {
-        expect((result.cause as PluginOperationException).statusCode, 500);
-        expect((result.cause as PluginOperationException).cause, isNotNull);
+        expect((result.cause as OpenCodeApiException).statusCode, 500);
+        expect((result.cause as OpenCodeApiException).responseBody, body);
       }
     }
+  });
+
+  test("failed session lookup retains the original native diagnostic before MCP access", () async {
+    final service = _service(
+      handler: (request) async {
+        expect(request.url.path, "/api/session/session-fixture");
+        return http.Response("Native session lookup failure", 500);
+      },
+    );
+    const scope = PluginMcpSessionScope(sessionId: "session-fixture");
+    final result = await service.getMcpInventory(scope: scope) as PluginMcpInventoryReadFailed;
+    expect((result.cause as OpenCodeApiException).responseBody, "Native session lookup failure");
   });
 
   test("concrete plugin exposes shared MCP controls over its existing HTTP connection", () async {

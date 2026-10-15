@@ -31,57 +31,26 @@ class OpenCodeV2Repository({
 }) {
   Future<bool> healthCheck() => _api.healthCheck();
 
-  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
-    try {
-      final directory = await _mcpDirectory(scope: scope);
-      if (directory == null) {
-        return const PluginMcpInventoryUnavailable(
-          reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
-          message: "Open MCP from a project or session.",
-        );
-      }
-      final servers = await _api.listMcpServers(directory: directory);
-      for (final server in servers) {
-        if (server.status case McpStatusFailed(:final error) || McpStatusNeedsAuth(:final error)) {
-          Log.w("[opencode-v2] MCP server ${server.name} in $directory", error);
-        }
-      }
-      return const V2McpMapper().map(servers: servers, scope: scope);
-    } on Exception catch (error, stackTrace) {
-      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
-    }
-  }
-
-  Future<PluginMcpActionResult> executeMcpServerAction({
-    required PluginMcpServerTarget target,
-    required PluginMcpServerAction action,
+  Future<PluginMcpInventorySnapshot> getMcpInventory({
+    required String directory,
+    required PluginMcpScope scope,
   }) async {
-    try {
-      final directory = await _mcpDirectory(scope: target.scope);
-      if (directory == null) {
-        return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
+    final servers = await _api.listMcpServers(directory: directory);
+    for (final server in servers) {
+      if (server.status case McpStatusFailed(:final error) || McpStatusNeedsAuth(:final error)) {
+        Log.w("[opencode-v2] MCP server ${server.name} in $directory", error);
       }
-      final servers = await _api.listMcpServers(directory: directory);
-      if (!servers.any((server) => server.name == target.serverKey)) {
-        return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.targetNotFound);
-      }
-      switch (action) {
-        case PluginMcpServerAction.reconnect || PluginMcpServerAction.enable:
-          await _api.connectMcpServer(directory: directory, name: target.serverKey);
-        case PluginMcpServerAction.disable:
-          await _api.disconnectMcpServer(directory: directory, name: target.serverKey);
-      }
-      return const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.project);
-    } on Exception catch (error, stackTrace) {
-      return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
     }
+    return const V2McpMapper().map(servers: servers, scope: scope);
   }
 
-  Future<String?> _mcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
-    PluginMcpHarnessScope() => null,
-    PluginMcpProjectScope(:final projectId) => projectId,
-    PluginMcpSessionScope(:final sessionId) => (await _api.getSession(sessionId: sessionId)).location.directory,
-  };
+  Future<String> getSessionDirectory({required String sessionId}) => _api.getMcpSessionDirectory(sessionId: sessionId);
+
+  Future<void> connectMcpServer({required String directory, required String name}) =>
+      _api.connectMcpServer(directory: directory, name: name);
+
+  Future<void> disconnectMcpServer({required String directory, required String name}) =>
+      _api.disconnectMcpServer(directory: directory, name: name);
 
   Future<List<PluginProject>> getProjects() async {
     final (projects, sessions) = await shared.wait2(

@@ -59,7 +59,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 27/35 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/35 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
 | 29/35 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
-| 30/35 | OpenCode v2 inventory and connection controls (11.a) | In PR | [#2006][pr-2006]; 69 cases; both native pins |
+| 30/35 | OpenCode v2 inventory and connection controls (11.a) | In PR | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
 | 31/35 | OpenCode v1 inventory and connection controls (11.b) | Verified locally; architecture approved | 116 cases; native 1.14.17 and 1.17.7 |
 | 32/35 | OpenCode v1 native MCP authentication (11.c) | Not started | — |
 | 33/35 | Bounded Pi/ACP support and capability audit (11.d) | Not started | — |
@@ -98,6 +98,21 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   Synthetic before/after/control widget renders pass and were inspected. Media:
   orphan `pr-media` commit `e174f0dabdfe4a37260a0380168ab88b94294b9c`, under
   `sesori/mcp-opencode-v1-controls/`. This is shared presentation evidence only.
+
+- Step-30 review corrections: existing service owns scope resolution, fresh-target
+  validation and action dispatch; the repository exposes mapped directory reads
+  and mutations. MCP API calls preserve original failures for one headless log,
+  including native session lookup. Native writes remain unbounded; response loss
+  retains the client's existing uncertain-action behavior. Project effects
+  invalidate all plugin inventories so other session/project views refresh.
+  Final implementation architecture review approved (pass 2). All 72 affected
+  v2 cases and 26 headless route cases pass; owning analysis is clean. The same
+  v2 command below runs from its package; headless command from `bridge/app` is
+  `dart test test/bridge/routing/post_mcp_inventory_handler_test.dart`.
+  Both exact native pins pass again through service/repository/API, preserving
+  configuration bytes and replacing the resident fixture process on reconnect.
+  The historical Step-17 CI denominator remains 32/32; plan renumbering does not
+  rewrite measured results. Deferred/external qualification remains unchanged.
 
 - Step 30 tested source `51bcf3f5f4`: both architecture reviews approved; all 69
   affected v2 cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
@@ -1205,7 +1220,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   findings were fixed and the follow-up review approved with zero issues. The
   codec/runtime split finding received a reasoned prefixed decline and remains
   deliberately unresolved; it did not identify a runtime defect. CI reported
-  32/35 passing before merge and 33/33 in the terminal report.
+  32/32 passing before merge and 33/33 in the terminal report.
 - Original 8.d.2 splits into headless/native routing (ordinal 18, 8.d.2.a) and
   typed client presentation (ordinal 19, 8.d.2.b). The native draft already totals
   637 changed lines across 35 files before route tests, client presentation and
