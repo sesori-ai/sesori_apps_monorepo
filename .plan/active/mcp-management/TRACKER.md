@@ -1594,3 +1594,6 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   transport/decoder failures retain original local diagnostics and expose only
   that section as unavailable. All 45 affected repository/plugin cases pass;
   package analysis is clean. Earlier 25 authentication cases are unchanged.
+- Step-28 diagnostic follow-up names harness or the actual native thread in
+  failed server reads, retaining original causes/stacks. All 42 repository tests
+  pass with both contexts asserted; package analysis is clean.

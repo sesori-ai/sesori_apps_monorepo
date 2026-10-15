@@ -53,40 +53,43 @@ PluginMcpServerSnapshot _mapped({required Map<String, Object?> server}) =>
 
 void main() {
   test("server transport and decoder failures leave healthy connector offers visible", () async {
-    for (final failure in [
-      StateError("fixture server failure"),
-      {
-        "data": [
-          {"invalid": true},
-        ],
-      },
-    ]) {
-      final transport = _Transport(
-        responses: [
-          failure,
-          {
-            "data": [
-              {"id": "offer", "name": "Fixture offer"},
-            ],
-          },
-        ],
-      );
-      final stderr = BufferingStdout();
-      final previous = Log.level;
-      try {
-        Log.level = LogLevel.warning;
-        await IOOverrides.runZoned(() async {
-          final result = await _repository(
-            transport: transport,
-          ).read(scope: const PluginMcpHarnessScope()) as PluginMcpInventorySnapshot;
-          expect(result.servers, isA<PluginMcpCatalogUnavailable>());
-          expect(result.connectors, isA<PluginMcpCatalogAvailable>());
-          expect(result.entries.single, isA<PluginMcpConnectorOfferSnapshot>());
-          expect(transport.calls.map((call) => call.method), ["mcpServerStatus/list", "app/list"]);
-        }, stderr: () => stderr);
-        expect(stderr.text, contains("MCP server inventory unavailable"));
-      } finally {
-        Log.level = previous;
+    for (final scope in [const PluginMcpHarnessScope(), const PluginMcpSessionScope(sessionId: "original")]) {
+      for (final failure in [
+        StateError("fixture server failure"),
+        {
+          "data": [
+            {"invalid": true},
+          ],
+        },
+      ]) {
+        final transport = _Transport(
+          responses: [
+            failure,
+            {
+              "data": [
+                {"id": "offer", "name": "Fixture offer"},
+              ],
+            },
+          ],
+        );
+        final stderr = BufferingStdout();
+        final previous = Log.level;
+        try {
+          Log.level = LogLevel.warning;
+          await IOOverrides.runZoned(() async {
+            final result = await _repository(
+              transport: transport,
+            ).read(scope: scope) as PluginMcpInventorySnapshot;
+            expect(result.servers, isA<PluginMcpCatalogUnavailable>());
+            expect(result.connectors, isA<PluginMcpCatalogAvailable>());
+            expect(result.entries.single, isA<PluginMcpConnectorOfferSnapshot>());
+            expect(transport.calls.map((call) => call.method), ["mcpServerStatus/list", "app/list"]);
+          }, stderr: () => stderr);
+          expect(stderr.text, contains("MCP server inventory unavailable"));
+          expect(stderr.text, contains(scope is PluginMcpSessionScope ? "thread original" : "harness"));
+        } finally {
+          Log.level = previous;
+        }
       }
     }
   });
