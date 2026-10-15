@@ -70,6 +70,11 @@ bool supportsOpenCodeMcpCallbackOverride({required String? value}) {
   return callback != null && _validCallback(callback: callback);
 }
 
+bool supportsOpenCodeMcpRemoteUrl({required String? value}) {
+  final uri = value == null ? null : Uri.tryParse(value);
+  return uri != null && const {"http", "https"}.contains(uri.scheme) && uri.host.isNotEmpty;
+}
+
 /// Retain diagnostic context without recording OAuth query or fragment secrets.
 String redactMcpOAuthParameterSecrets({required String message}) => message.replaceAllMapped(
   RegExp(r'''([?&#](?:code|state|access_token|refresh_token|client_secret)=)[^&#\s"']*''', caseSensitive: false),

@@ -80,6 +80,16 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-34 third PR review reproduced a malformed remote URL reaching native
+  authentication HTTP 500 at 1.17.7 and retaining uncertain ownership. Shared
+  HTTP(S)/host preflight now blocks sign-in before native mutation; forgetting
+  remains independent. Empty and malformed URL regressions bring the focused
+  suite to 137 passing cases (180 unique across affected runs); owning analysis
+  is clean. Both exact v1 pins verify zero authentication writes/token exchanges
+  for malformed configuration (1.14.17 already rejects native inventory), plus
+  successful disabled sign-in/forget/sign-in with unchanged configuration.
+  Corrected the control-layer documentation: the service validates fresh targets,
+  while the repository resolves scopes and maps native reads/mutations.
 - Step-34 second PR review rejects configured callbacks with reserved OAuth
   response keys before start. The shared scope resolver moves into the existing
   repository, so general controls and authentication share one mapping without a

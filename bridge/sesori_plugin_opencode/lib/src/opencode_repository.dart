@@ -119,7 +119,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     return const OpenCodeMcpMapper().map(servers: servers, scope: scope, configuration: configuration.mcp);
   }
 
-  Future<({OpenCodeMcpAuthenticationTarget target, MCPStatus status, OpenCodeMcpOAuthParametersDto oauth})>
+  Future<({OpenCodeMcpAuthenticationTarget target, MCPStatus status, OpenCodeMcpOAuthParametersDto oauth, String url})>
   _mcpAuthenticationTarget({
     required String directory,
     required String name,
@@ -145,6 +145,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
       target: OpenCodeMcpAuthenticationTarget(directory: directory, name: name),
       status: status,
       oauth: oauth.parameters,
+      url: config.url!,
     );
   }
 
@@ -154,6 +155,7 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   }) async {
     final native = await _mcpAuthenticationTarget(directory: directory, name: name);
     if (native.status is MCPStatusNeedsClientRegistration ||
+        !supportsOpenCodeMcpRemoteUrl(value: native.url) ||
         !supportsOpenCodeMcpCallbackOverride(value: native.oauth.redirectUri)) {
       throw const PluginMcpAuthenticationUnavailableException(
         reason: PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,

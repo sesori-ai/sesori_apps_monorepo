@@ -544,6 +544,11 @@ OAuth configuration keeps only redirect metadata; an unsupported configured
 callback is unavailable before mutation, without disabling credential forgetting.
 Configured callbacks cannot predefine OAuth response keys `state`, `code` or
 `error`; those are supplied by the authentication flow.
+Remote sign-in requires an absolute HTTP(S) server URL with a host. Empty or
+malformed URLs require native configuration before authentication starts;
+credential forgetting remains independently available. At 1.17.7 the malformed
+URL otherwise reaches native authentication and returns HTTP 500 without a
+settled operation; 1.14.17 rejects that configuration during inventory instead.
 
 Fresh target lookup precedes each enable/reconnect/disable request. Only the
 native named connect/disconnect route is used, with project effect scope and
@@ -551,8 +556,8 @@ the existing headless authoritative refresh. No server-configuration mutation,
 server addition/removal or tool execution is added. HTTP errors retain their response
 diagnostics; malformed native status/session payloads retain original errors and
 stacks through typed failures, rather than appearing as empty success.
-The repository resolves MCP scopes and fresh targets and maps native directory
-reads and mutations. The service dispatches controls through that boundary. Native
+The repository resolves MCP scopes and maps native directory reads and mutations.
+The service validates fresh control targets before dispatch. Native
 writes remain unbounded because HTTP abandonment does not cancel a native
 mutation. Project effects use the shared plugin-wide inventory invalidation.
 
