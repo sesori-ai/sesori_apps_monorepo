@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-headless-forms`, `0dd7b76ca1`, in the provided `copper-heron` worktree.
-- Current step: 22/28 is local; 21/28 is in review as [#1991][pr-1991].
-  Latest merged step: 20/28 as [#1989][pr-1989].
+- Branch/base: `sesori/mcp-headless-forms`, `5765963a81`, in the provided `copper-heron` worktree.
+- Current step: 22/28 is in review; latest merged step: 21/28 as [#1991][pr-1991].
+  Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
@@ -43,8 +43,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 18/28 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
 | 19/28 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
 | 20/28 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
-| 21/28 | Claude native forms (9.b.1) | In review | [#1991][pr-1991] |
-| 22/28 | Canonical headless forms (9.b.2) | Local | Active-only canonical snapshots and ordered typed replies |
+| 21/28 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
+| 22/28 | Canonical headless forms (9.b.2) | In review | Active-only canonical snapshots and ordered typed replies |
 | 23/28 | Shared typed form controls (9.c) | Not started | — |
 | 24/28 | Codex inventory/actions/authentication | Not started | — |
 | 25/28 | Codex forms and offered connectors | Not started | — |
@@ -1332,3 +1332,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Corrected final qualification to step 28 and clarified the branch/main merge.
 - Step-21 architecture implementation review pass 2 approved the complete PR
   through source `5d9fa31baf`, including archive settlement, without findings.
+- Step 21 merged at accepted head `b9f0cad1db`, squash `5765963a81`, with 19
+  pre-merge and 20 terminal checks passing. The declined released-codec concern
+  remains open with its prefixed source-backed explanation. Final native diff:
+  1,447 lines, one generated. Step 22 incorporated those review fixes and current
+  main, preserving concurrent debug-server response-lifetime fix `10b6e87325`.
+  Each conflicting incoming document matched the integrated native parent
+  byte-for-byte. Step-22 production/tests/contracts/dependencies are unchanged
+  from tested `04fb37e065`; the unrelated debug-server file is outside these
+  route fixtures. No unchanged passing suite was rerun solely for confidence.
