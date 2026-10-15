@@ -1339,9 +1339,11 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   1,447 lines, one generated. Step 22 incorporated those review fixes and current
   main, preserving concurrent debug-server response-lifetime fix `10b6e87325`.
   Each conflicting incoming document matched the integrated native parent
-  byte-for-byte. Step-22 production/tests/contracts/dependencies are unchanged
-  from tested `04fb37e065`; the unrelated debug-server file is outside these
-  route fixtures. No unchanged passing suite was rerun solely for confidence.
+  byte-for-byte. At that integration checkpoint, Step-22 production, tests,
+  contracts and dependencies matched tested `04fb37e065`; the unrelated
+  debug-server file was outside those route fixtures. The later review-only
+  regression in `fc8a80e766` expanded the form suite from 15 to 16 cases, as
+  recorded below. No unchanged passing suite was rerun solely for confidence.
 - Step-22 review clarifies 32 pre-merge versus 33 later terminal checks for
   Step 20. Actual-owner archive policy remains intentional: archiving only a
   display parent must not retire an active child's independently answerable form.
