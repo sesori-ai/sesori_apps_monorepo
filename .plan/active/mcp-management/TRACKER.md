@@ -1589,3 +1589,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step-28 review reconciles the top-level regression summary with the detailed
   implemented catalog section and capability document. Setup remains separate.
   Delivery rows use short references; the current state points to PR #2003.
+- Step-28 server failure now preserves healthy connector discovery. Unsupported
+  or live-session-required scopes still stop before catalog access. Server
+  transport/decoder failures retain original local diagnostics and expose only
+  that section as unavailable. All 45 affected repository/plugin cases pass;
+  package analysis is clean. Earlier 25 authentication cases are unchanged.

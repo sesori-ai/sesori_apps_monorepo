@@ -346,7 +346,10 @@ Codex inventory reads native `app/list` after its scoped server snapshot, using
 all pages and the exact thread or harness context. Offers remain distinct from
 configured servers, including identical native key text. Native enabled/access
 defaults determine unavailable, available or setup-required status; native owns
-catalog caching. A catalog error logs original context locally and leaves server
+catalog caching. A server transport/decoder error retains local diagnostics and
+still reads the independent connector section. Unsupported/live-session-required
+scopes retain their explicit result without requesting a fallback catalog.
+A catalog error logs original context locally and leaves server
 entries visible with a generic unavailable catalog section. Partial catalog pages
 are not presented as complete. Unsupported/cold server scope retains its existing
 result without activating native work or falling back to harness scope.

@@ -15,11 +15,23 @@ final class const CodexMcpInventoryReadException({required final Object innerErr
 class CodexMcpRepository({required final CodexAppServerApi _appServerApi, required final CodexMcpMapper _mapper}) {
   Future<PluginMcpInventoryResult> read({required PluginMcpScope scope}) async {
     final servers = await readServers(scope: scope);
-    if (servers is! PluginMcpInventorySnapshot) return servers;
+    final List<PluginMcpInventoryEntry> serverEntries;
+    final PluginMcpCatalogAvailability serverAvailability;
+    switch (servers) {
+      case PluginMcpInventoryUnavailable():
+        return servers;
+      case PluginMcpInventorySnapshot(:final entries, :final servers):
+        serverEntries = entries;
+        serverAvailability = servers;
+      case PluginMcpInventoryReadFailed(:final cause, :final causeStackTrace):
+        Log.w("[codex] MCP server inventory unavailable in $scope", cause, causeStackTrace);
+        serverEntries = const [];
+        serverAvailability = const PluginMcpCatalogUnavailable(message: "Server inventory is unavailable.");
+    }
     final offers = await _readConnectorOffers(scope: scope);
     return PluginMcpInventorySnapshot(
-      entries: List.unmodifiable([...servers.entries, ...offers.entries]),
-      servers: servers.servers,
+      entries: List.unmodifiable([...serverEntries, ...offers.entries]),
+      servers: serverAvailability,
       connectors: offers.availability,
     );
   }
