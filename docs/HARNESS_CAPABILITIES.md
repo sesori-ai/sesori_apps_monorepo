@@ -814,7 +814,7 @@ macOS arm64 native fixtures at both pins; other hosts, real providers and packag
 browser return remain unqualified.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
-authenticated connector setup. Management outside Claude, Codex and OpenCode v2
+authenticated connector setup. Management outside Claude, Codex and OpenCode
 remains **not implemented**, with native support still to be audited. Real provider policy,
 credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
 ownership were not qualified by these probes. See the

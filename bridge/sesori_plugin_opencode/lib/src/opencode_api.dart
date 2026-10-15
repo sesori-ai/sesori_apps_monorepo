@@ -57,7 +57,6 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     await _client.post(
       path: "/mcp/${Uri.encodeComponent(name)}/connect",
       headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
-      timeout: const Duration(minutes: 3),
     );
   }
 
@@ -65,7 +64,6 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
     await _client.post(
       path: "/mcp/${Uri.encodeComponent(name)}/disconnect",
       headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
-      timeout: const Duration(minutes: 3),
     );
   }
 

@@ -482,9 +482,13 @@ the existing headless authoritative refresh. No config/add/remove route,
 provider sign-in or tool execution is added. HTTP errors retain their response
 diagnostics; malformed native status/session payloads retain original errors and
 stacks through typed failures, rather than appearing as empty success.
+The plugin service owns scope resolution, fresh-target validation and action
+dispatch; the repository maps directory reads and native mutations. Native
+writes remain unbounded because HTTP abandonment does not cancel a native
+mutation. Project effects use the shared plugin-wide inventory invalidation.
 
 Coverage: `opencode_mcp_test.dart` plus the affected v1 API/repository/plugin
-suites pass 116 cases; owning package analysis is clean. Tests cover all native
+suites pass 118 cases; owning package analysis is clean. Tests cover all native
 statuses, scope resolution/isolation, encoded names/directories, missing targets,
 empty inventory, malformed payloads, HTTP failures and the concrete plugin seam.
 Exact floor 1.14.0 has no published tag/npm artifact; native qualification uses
