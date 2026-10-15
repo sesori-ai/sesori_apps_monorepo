@@ -15,7 +15,7 @@
 | 3/8 | monorepo | Flat Settings computer entry | Done | #1978 (merged 2026-10-15) |
 | 4/8 | monorepo | Hostname, rename and remove in the computer list | Done | #1979 (merged 2026-10-15) |
 | 5/8 | monorepo | Computers page with switch and rename | Done | #1982 (merged 2026-10-15) |
-| 6/8 | monorepo | Remove offline computers | In PR | — |
+| 6/8 | monorepo | Remove offline computers | In PR | #1985 |
 | 7/8 | monorepo | Reconcile regression documents | Not started | — |
 | 8/8 | monorepo | Run the L3 matrix; retire | Not started | — |
 

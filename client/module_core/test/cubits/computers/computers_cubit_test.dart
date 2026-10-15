@@ -16,7 +16,6 @@ void main() {
   setUp(() {
     registeredBridges = MockRegisteredBridgesService();
     selectedComputer = _MockSelectedComputerService();
-    when(selectedComputer.targetBridgeId).thenAnswer((_) async => "current");
     when(() => selectedComputer.replacementAfterRemoving(bridgeId: "current")).thenReturn("next");
   });
 
@@ -104,7 +103,7 @@ void main() {
     when(() => registeredBridges.remove(bridgeId: "a")).thenAnswer((_) => response.future);
     final cubit = build();
 
-    final remove = cubit.remove(bridgeId: "a");
+    final remove = cubit.remove(bridgeId: "a", isCurrent: false);
     expect(cubit.state, isA<ComputersRemoving>().having((state) => state.bridgeId, "bridgeId", "a"));
 
     response.complete(ApiResponse.success(null));
@@ -117,8 +116,20 @@ void main() {
     when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) async => ApiResponse.success(null));
     final cubit = build();
 
-    expect(await cubit.remove(bridgeId: "current"), "next");
+    expect(await cubit.remove(bridgeId: "current", isCurrent: true), "next");
     expect(cubit.state, isA<ComputersIdle>());
+  });
+
+  test("a page closed during the removal still gets the replacement", () async {
+    final response = Completer<ApiResponse<void>>();
+    when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) => response.future);
+    final cubit = build();
+
+    final remove = cubit.remove(bridgeId: "current", isCurrent: true);
+    await cubit.close();
+    response.complete(ApiResponse.success(null));
+
+    expect(await remove, "next");
   });
 
   test("a refused removal reports the failure for that computer and switches nowhere", () async {
@@ -127,7 +138,7 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     final cubit = build();
 
-    expect(await cubit.remove(bridgeId: "current"), isNull);
+    expect(await cubit.remove(bridgeId: "current", isCurrent: true), isNull);
     expect(cubit.state, isA<ComputersRemoveFailed>().having((state) => state.bridgeId, "bridgeId", "current"));
   });
 
@@ -135,7 +146,7 @@ void main() {
     when(() => registeredBridges.remove(bridgeId: "current")).thenThrow(const FormatException("unexpected body"));
     final cubit = build();
 
-    expect(await cubit.remove(bridgeId: "current"), isNull);
+    expect(await cubit.remove(bridgeId: "current", isCurrent: true), isNull);
     expect(cubit.state, isA<ComputersRemoveFailed>().having((state) => state.bridgeId, "bridgeId", "current"));
   });
 }

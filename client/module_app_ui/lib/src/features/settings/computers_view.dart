@@ -106,7 +106,13 @@ class const ComputersView({
   /// Removes [bridgeId], then moves the app to another computer when it was
   /// working on that one, as a switch from this page would.
   Future<void> _remove({required BuildContext context, required String bridgeId}) async {
-    final replacement = await context.read<ComputersCubit>().remove(bridgeId: bridgeId);
+    final computers = context.read<ComputerSwitcherCubit>().state;
+    // It may have come online while the user confirmed.
+    if (!computers.canRemove(bridgeId: bridgeId)) return;
+    final replacement = await context.read<ComputersCubit>().remove(
+      bridgeId: bridgeId,
+      isCurrent: bridgeId == computers.currentId,
+    );
     if (replacement == null) return;
     onSwitchComputer(bridgeId: replacement, source: ComputerSwitchSource.computersPage);
   }

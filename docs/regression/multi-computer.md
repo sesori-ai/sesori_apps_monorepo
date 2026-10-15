@@ -45,7 +45,9 @@ area documents linked below own the detail.
   removed), drops it from the shared list so its row closes with the list's removal animation while the rows above
   stay still, and reports `computer_managed` with `removed` ([analytics](analytics.md)). Removing the computer the
   app works on then switches to the most recently seen other computer, preferring an online one, through the same
-  dispatcher with source `computers_page`; on desktop the Settings window closes first. On desktop, Remove… on
+  dispatcher with source `computers_page`, even when the page was closed meanwhile; on desktop the Settings window
+  closes first. When no other computer remains, nothing switches and the phone stays on the offline screen. A
+  computer that came online while the confirmation was open is kept. On desktop, Remove… on
   "This computer" removes nothing: a dialog explains that the computer in use can't be removed and that turning off
   its bridge makes it unreachable from every device, this one included, with "Turn off bridge" (the bridge's own
   off control, hidden while the bridge is off or stopping) above Close.

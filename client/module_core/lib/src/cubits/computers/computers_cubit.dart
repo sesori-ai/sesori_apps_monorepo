@@ -50,21 +50,16 @@ class ComputersCubit({
     }
   }
 
-  /// Removes the computer [bridgeId] from the account. When the app works on
-  /// it, returns the computer to switch to instead, or `null` when none
-  /// remains; the switch itself is the caller's.
-  Future<String?> remove({required String bridgeId}) async {
+  /// Removes the computer [bridgeId] from the account. When it [isCurrent],
+  /// the one the app works on, returns the computer to switch to instead, or
+  /// `null` when none remains; the switch itself is the caller's.
+  Future<String?> remove({required String bridgeId, required bool isCurrent}) async {
     emit(ComputersRemoving(bridgeId: bridgeId));
     final removed = await _removeOnServer(bridgeId: bridgeId);
-    // The page may have closed meanwhile; a failure is logged either way.
-    if (isClosed) return null;
-    if (removed) {
-      emit(const ComputersIdle());
-      if (await _selectedComputerService.targetBridgeId() != bridgeId) return null;
-      return _selectedComputerService.replacementAfterRemoving(bridgeId: bridgeId);
-    }
-    emit(ComputersRemoveFailed(bridgeId: bridgeId));
-    return null;
+    // The page may have closed meanwhile; the switch away is still owed.
+    if (!isClosed) emit(removed ? const ComputersIdle() : ComputersRemoveFailed(bridgeId: bridgeId));
+    if (!removed || !isCurrent) return null;
+    return _selectedComputerService.replacementAfterRemoving(bridgeId: bridgeId);
   }
 
   /// Whether the server removed [bridgeId]; logs why when it did not.
