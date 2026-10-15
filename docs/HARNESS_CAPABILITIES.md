@@ -719,6 +719,10 @@ do not claim authorization completion. Form elicitation is **not implemented**: 
 warning. Codex elicitation and the remaining native-supported management rows are
 **not implemented**.
 
+Typed form transport codecs are available for scalar and bounded choice inputs;
+native form adapters, headless form routes and draft-preserving client controls
+remain **not implemented**.
+
 The Claude native plugin authentication API is **implemented** for an existing
 resident's native-configured HTTP server: no-browser sign-in, matching callback,
 provider denial, bounded cancellation/expiry, and native credential clearing.
