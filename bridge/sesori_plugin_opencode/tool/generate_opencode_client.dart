@@ -199,6 +199,15 @@ Future<void> main(List<String> args) async {
   final spec = jsonDecode(raw) as Map<String, dynamic>;
   final specSchemas = ((spec['components'] as Map<String, dynamic>?)?['schemas'] as Map<String, dynamic>?) ?? const {};
   _hoistInlineSchemas(specSchemas, surface.hoistSchemas);
+  for (final entry in surface.optionalProperties.entries) {
+    final schema = specSchemas[entry.key] as Map<String, dynamic>;
+    final required = schema['required'] as List;
+    for (final property in entry.value) {
+      if (!(schema['properties'] as Map).containsKey(property) || !required.remove(property)) {
+        throw StateError('Optional property override ${entry.key}.$property no longer matches upstream');
+      }
+    }
+  }
   // Collapse first: a collapsed named schema becomes a primitive whose
   // refs are then inlined.
   _collapseOpenStringUnions(spec);
@@ -1222,6 +1231,9 @@ class SurfaceSpec({
   /// New schema name -> `<SchemaName>#<json pointer>` of an inline schema
   /// (typically an inline union) to hoist into a named model.
   required final Map<String, String> hoistSchemas,
+
+  /// Target-schema fields absent in a supported native version.
+  required final Map<String, List<String>> optionalProperties,
 }) {
   factory load(String path) {
     final file = File(path);
@@ -1240,6 +1252,9 @@ class SurfaceSpec({
       eventManifest: json['eventManifest'] as String?,
       inlineResponseModels: ((json['inlineResponseModels'] as Map?) ?? const {}).cast<String, String>(),
       hoistSchemas: ((json['hoistSchemas'] as Map?) ?? const {}).cast<String, String>(),
+      optionalProperties: ((json['optionalProperties'] as Map?) ?? const {}).map(
+        (key, value) => MapEntry(key as String, (value as List).cast<String>()),
+      ),
     );
   }
 }

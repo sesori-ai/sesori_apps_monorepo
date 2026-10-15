@@ -435,8 +435,9 @@ Targets remain distinct across locations even when server names match.
 
 Native connected, pending, disabled, needs-auth, failed and unknown states remain
 distinct. Unknown tools, endpoints, configuration and authentication are not
-inferred. The MCP API exposes no offered-connector inventory or OAuth/forgetting
-flow, so those capabilities remain explicit gaps. Connect/reconnect and disable
+inferred. The MCP API exposes no offered-connector inventory. Native integration
+OAuth/forgetting remain unimplemented in Sesori for servers declaring an
+`integrationID`, and unsupported for servers without one. Connect/reconnect and disable
 use only the named existing server's location-scoped native controls; they do not
 write server configuration or create/resume sessions. Headless orchestration
 performs the existing authoritative refresh after native completion.
@@ -459,6 +460,28 @@ existing-server fixture; production exposes no add/remove/configuration route.
 Both native runs replace the resident fixture process on reconnect and leave the
 configuration file unchanged. No model/tool execution or provider sign-in occurs.
 Provider, client, package and final L4 coverage remain pending.
+
+### OpenCode v2 authentication contracts
+
+The location-scoped API can read native integration metadata, start a declared
+OAuth method, observe its attempt, cancel that exact attempt, and remove an exact
+credential ID. These internal contracts do not enable sign-in or forgetting in
+the product yet. IDs come from native metadata; no integration hash is recreated.
+Only secret-free integration connections are read; the secret credential-list
+endpoint is never needed. Every operation retains the requested native directory.
+Cancellation uses the attempt endpoint and never deletes a credential.
+
+`opencode_v2_mcp_authentication_api_test.dart` covers encoded native IDs, Unicode
+directory attribution, method-only start bodies, distinct native attempt states
+and unknown variants, malformed payload causes, original transport failures and
+unbounded native start. The inventory regression distinguishes servers with and
+without a native integration ID. Isolated native 2.0.11 and 2.0.24 OAuth fixtures
+prove cancellation, native automatic callback settlement and credential removal
+with unchanged configuration. Provider and client journeys remain pending.
+The minimum 2.0.11 credential metadata omits `method`; its generated field is
+nullable through a documented surface override, while target 2.0.24's enum
+still decodes. Both versions pass the typed production API probe, including a
+post-removal integration read that confirms no credential connection remains.
 
 ## OpenCode v1 MCP management
 
