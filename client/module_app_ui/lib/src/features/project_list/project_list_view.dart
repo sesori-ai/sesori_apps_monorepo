@@ -231,7 +231,10 @@ class _ProjectListViewState() extends State<ProjectListView> {
       BridgeIdentityNamed(:final bridge) => ComputerMenu(
         onSelect: ({required bridgeId}) =>
             widget.onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
-        onManageComputers: () => widget.onManageComputers(context: context),
+        // With one computer, management stays in Settings (plan decision D7).
+        onManageComputers: context.watch<ComputerSwitcherCubit>().state.computers.length > 1
+            ? () => widget.onManageComputers(context: context)
+            : null,
         triggerBuilder: (context, toggle) {
           _toggleComputerMenu = toggle;
           return PregoNavSubtitle(
