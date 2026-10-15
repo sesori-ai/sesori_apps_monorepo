@@ -1075,3 +1075,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   forwarded unsupported forms and received native decline plus the existing
   session-attributed warning. This checks protocol/registry integration, not
   real-provider authorization, browser completion or packaged app qualification.
+- Native synthetic handoff fixture built successfully. On 2026-10-15 the user
+  explicitly deferred recording and asked to continue code work while the Mac
+  was locked. Publish the native routing step with that presentation evidence
+  pending; record it later. This defers timing only and does not reduce the
+  final L4/native/provider/package qualification matrix.
