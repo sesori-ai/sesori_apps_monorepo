@@ -96,6 +96,11 @@ class RegisteredBridgesService({
   /// bridge-offline flow.
   int _authGeneration = 0;
 
+  /// Bumped on every confirmed rename or removal. A fetch that started before
+  /// one carries the older list, so it leaves [bridges] to the refetch queued
+  /// behind it instead of briefly reverting the change.
+  int _mutationGeneration = 0;
+
   StreamSubscription<ConnectionStatus>? _statusSubscription;
   StreamSubscription<AuthState>? _authSubscription;
   StreamSubscription<BridgePresenceMessage>? _presenceSubscription;
@@ -174,6 +179,7 @@ class RegisteredBridgesService({
 
   Future<List<BridgeSummary>> _fetchRegisteredBridges() async {
     final generation = _authGeneration;
+    final mutationGeneration = _mutationGeneration;
     try {
       final response = await _bridgeRepository.getRegisteredBridges();
       // A logout during the in-flight request retires this result: the account
@@ -182,6 +188,7 @@ class RegisteredBridgesService({
       if (generation != _authGeneration) return const [];
       switch (response) {
         case SuccessResponse(:final data):
+          if (mutationGeneration != _mutationGeneration) return _bridges.value;
           if (data.isEmpty) {
             _emitBridges(bridges: const []);
             return const [];
@@ -208,30 +215,42 @@ class RegisteredBridgesService({
 
   /// Sets the nickname of the bridge [bridgeId], or clears it with `null`, and
   /// replaces its entry in [bridges] with the server's updated summary. A
-  /// failure leaves the list unchanged and is returned to the caller.
+  /// failure leaves the list unchanged and is returned to the caller; so does
+  /// a sign-out while the request runs.
   Future<ApiResponse<BridgeSummary>> rename({required String bridgeId, required String? nickname}) async {
+    final generation = _authGeneration;
     final response = await _bridgeRepository.renameBridge(bridgeId: bridgeId, nickname: nickname);
-    if (response case SuccessResponse(:final data)) {
+    if (response case SuccessResponse(:final data) when generation == _authGeneration) {
       _emitBridges(
         bridges: _withPresence(bridges: [for (final bridge in _bridges.value) bridge.id == bridgeId ? data : bridge]),
       );
-      _reportManaged(action: ComputerManageAction.renamed);
+      _afterMutation(action: ComputerManageAction.renamed);
     }
     return response;
   }
 
   /// Revokes the bridge [bridgeId] and drops it from [bridges]. A bridge the
   /// server no longer knows counts as removed. A failure leaves the list
-  /// unchanged and is returned to the caller.
+  /// unchanged and is returned to the caller; so does a sign-out while the
+  /// request runs.
   Future<ApiResponse<void>> remove({required String bridgeId}) async {
+    final generation = _authGeneration;
     final response = await _bridgeRepository.deleteBridge(bridgeId: bridgeId);
-    if (response is SuccessResponse) {
+    if (response is SuccessResponse && generation == _authGeneration) {
       _emitBridges(
         bridges: List<BridgeSummary>.unmodifiable(_bridges.value.where((bridge) => bridge.id != bridgeId)),
       );
-      _reportManaged(action: ComputerManageAction.removed);
+      _afterMutation(action: ComputerManageAction.removed);
     }
     return response;
+  }
+
+  void _afterMutation({required ComputerManageAction action}) {
+    _mutationGeneration++;
+    // A fetch already running may have read the list before this change and
+    // would publish that older snapshot, so fetch again once it settles.
+    if (_activeFetch != null) _refetchAfterRunningFetch();
+    _reportManaged(action: action);
   }
 
   void _reportManaged({required ComputerManageAction action}) {
@@ -286,18 +305,24 @@ class RegisteredBridgesService({
       return;
     }
     // A computer linked since the last fetch: only the auth server can name it.
-    _refetchForUnknownBridge();
+    _refetchAfterRunningFetch();
   }
 
-  void _refetchForUnknownBridge() {
+  void _refetchAfterRunningFetch() {
     final running = _activeFetch;
     if (running == null) {
       _bridgesCurrent = false;
       unawaited(getRegisteredBridges());
       return;
     }
-    // The running fetch may predate the link, so fetch again once it settles.
-    unawaited(running.then<void>((_) {}, onError: (Object _) {}).whenComplete(_refetchForUnknownBridge));
+    // The running fetch may predate the change, so fetch again once it settles.
+    // A fetch already started by then reads the changed list, so changes queued
+    // behind the same running fetch share one refetch.
+    unawaited(
+      running.then<void>((_) {}, onError: (Object _) {}).whenComplete(() {
+        if (_activeFetch == null) _refetchAfterRunningFetch();
+      }),
+    );
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {

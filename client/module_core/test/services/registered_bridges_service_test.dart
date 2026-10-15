@@ -522,6 +522,56 @@ void main() {
       expect(reportedEvents(), [const ProductAnalyticsEvent.computerManaged(action: ComputerManageAction.removed)]);
     });
 
+    test("a logout during a removal discards its result", () async {
+      final gate = Completer<ApiResponse<void>>();
+      when(() => bridgeRepository.deleteBridge(bridgeId: "a")).thenAnswer((_) => gate.future);
+      final service = await buildListed();
+
+      final pending = service.remove(bridgeId: "a");
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+      gate.complete(ApiResponse.success(null));
+      await pending;
+
+      expect(service.bridges.value, isEmpty);
+      verifyNever(
+        () => analytics.logEvent(
+          event: any(named: "event"),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
+    });
+
+    test("a fetch that started before a removal cannot bring the computer back", () async {
+      final service = await buildListed();
+      clearInteractions(bridgeRepository);
+      final staleFetch = Completer<ApiResponse<List<BridgeSummary>>>();
+      final responses = [
+        staleFetch.future,
+        Future.value(ApiResponse.success([desktop])),
+      ];
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => responses.removeAt(0));
+      when(() => bridgeRepository.deleteBridge(bridgeId: "a")).thenAnswer((_) async => ApiResponse.success(null));
+      // An unknown computer's notice starts a fetch that reads the list before the removal.
+      connectionService.emitBridgePresence(bridgeId: "c", online: true);
+      await _settle();
+
+      await service.remove(bridgeId: "a");
+      final published = <List<BridgeSummary>>[];
+      final subscription = service.bridges.skip(1).listen(published.add);
+      addTearDown(subscription.cancel);
+      // A second unknown notice queues behind the same stale fetch and shares its refetch.
+      connectionService.emitBridgePresence(bridgeId: "d", online: true);
+      staleFetch.complete(ApiResponse.success([laptop, desktop]));
+      await _settle();
+
+      expect(service.bridges.value, [desktop]);
+      // The stale snapshot is never published, so the removed row does not flash back.
+      expect(published, everyElement(isNot(contains(laptop))));
+      expect(responses, isEmpty);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(2);
+    });
+
     test("a failure leaves the list unchanged, is returned, and reports nothing", () async {
       final failure = ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "offline");
       when(
