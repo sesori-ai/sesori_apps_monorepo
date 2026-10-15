@@ -66,6 +66,21 @@ void main() {
     selectedComputerService: mockSelectedComputerService,
   );
 
+  test("a rename in the published list renames the named computer", () async {
+    final bridge = testBridgeSummary(id: "a", name: "Macbook-Pro.local");
+    when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => [bridge]);
+    final cubit = buildCubit();
+    addTearDown(cubit.close);
+    await Future<void>.delayed(Duration.zero);
+    expect(cubit.state, BridgeIdentityState.named(bridge: bridge));
+
+    final renamed = testBridgeSummary(id: "a", name: "Studio");
+    mockRegisteredBridgesService.emitBridges(bridges: [renamed]);
+    await Future<void>.delayed(Duration.zero);
+
+    expect(cubit.state, BridgeIdentityState.named(bridge: renamed));
+  });
+
   test("starts pending: the lookup is a round trip, so nothing can be named yet", () {
     final cubit = buildCubit();
     addTearDown(cubit.close);
