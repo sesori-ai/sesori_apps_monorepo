@@ -550,6 +550,13 @@ void main() {
     expect(find.text("YOLO mode"), findsOneWidget);
     expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
 
+    // Picking the Bridge tab again leaves the Computers page too.
+    await manageComputers();
+    await tester.tap(find.byKey(const ValueKey("desktop-settings-tab-bridge")));
+    await tester.pumpAndSettle();
+    expect(find.text("YOLO mode"), findsOneWidget);
+    expect(find.text("studio-mac.local"), findsNothing);
+
     await manageComputers();
     await tester.tap(find.byKey(const ValueKey("computers-actions-b")));
     await tester.pumpAndSettle();
@@ -581,7 +588,10 @@ void main() {
     // Logging out asks first, in a dialog rather than a sheet on desktop.
     verifyNever(authGateCubit.signOut);
     expect(find.byType(PregoBottomSheet), findsNothing);
-    expect(find.ancestor(of: find.byKey(const Key("logout_confirm_action")), matching: find.byType(Dialog)), findsOneWidget);
+    expect(
+      find.ancestor(of: find.byKey(const Key("logout_confirm_action")), matching: find.byType(Dialog)),
+      findsOneWidget,
+    );
     await tester.tap(find.byKey(const Key("logout_confirm_action")));
     await tester.pumpAndSettle();
     verify(authGateCubit.signOut).called(1);
