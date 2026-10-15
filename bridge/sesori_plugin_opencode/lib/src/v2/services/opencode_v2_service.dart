@@ -74,12 +74,54 @@ class OpenCodeV2Service({
   void invalidateBaseline() => _tracker.invalidateBaseline();
 
   Future<bool> healthCheck() => _repository.healthCheck();
-  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
-      _repository.getMcpInventory(scope: scope);
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
+    try {
+      final directory = await _mcpDirectory(scope: scope);
+      if (directory == null) {
+        return const PluginMcpInventoryUnavailable(
+          reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
+          message: "Open MCP from a project or session.",
+        );
+      }
+      return await _repository.getMcpInventory(directory: directory, scope: scope);
+    } on Exception catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
+    }
+  }
+
   Future<PluginMcpActionResult> executeMcpServerAction({
     required PluginMcpServerTarget target,
     required PluginMcpServerAction action,
-  }) => _repository.executeMcpServerAction(target: target, action: action);
+  }) async {
+    try {
+      final directory = await _mcpDirectory(scope: target.scope);
+      if (directory == null) {
+        return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
+      }
+      final inventory = await _repository.getMcpInventory(directory: directory, scope: target.scope);
+      if (!inventory.entries.whereType<PluginMcpServerSnapshot>().any(
+        (server) => server.target.serverKey == target.serverKey,
+      )) {
+        return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.targetNotFound);
+      }
+      switch (action) {
+        case PluginMcpServerAction.reconnect || PluginMcpServerAction.enable:
+          await _repository.connectMcpServer(directory: directory, name: target.serverKey);
+        case PluginMcpServerAction.disable:
+          await _repository.disconnectMcpServer(directory: directory, name: target.serverKey);
+      }
+      return const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.project);
+    } on Exception catch (error, stackTrace) {
+      return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
+    }
+  }
+
+  Future<String?> _mcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
+    PluginMcpHarnessScope() => null,
+    PluginMcpProjectScope(:final projectId) => projectId,
+    PluginMcpSessionScope(:final sessionId) => await _repository.getSessionDirectory(sessionId: sessionId),
+  };
+
   Future<List<PluginProject>> getProjects() => _repository.getProjects();
   Future<PluginProject> getProject({required String projectId}) => _repository.getProject(directory: projectId);
   Future<PluginProject> renameProject({required String projectId, required String name}) =>

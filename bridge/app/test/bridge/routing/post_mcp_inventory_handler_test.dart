@@ -396,6 +396,26 @@ void main() {
     expect((plugin.scopes.single as PluginMcpSessionScope).sessionId, "native-session");
   });
 
+  for (final scope in [
+    const McpSessionScope(sessionId: "bridge-session"),
+    const McpProjectScope(projectId: "opaque-project"),
+  ]) {
+    test("project-wide control invalidates every plugin view when invoked from $scope", () async {
+      plugin.actionResult = const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.project);
+      final response = await act(pluginId: "fixture", scope: scope, action: McpServerAction.reconnect);
+      expect(response.status, 200);
+      expect(changes.single, const McpInventoryRequest(pluginId: "fixture", scope: McpHarnessScope()));
+      expect(
+        ((McpEntryActionResult.fromJson(
+                  jsonDecode(response.body!) as Map<String, dynamic>,
+                ) as McpActionCompleted).inventory
+                as McpInventorySnapshot)
+            .scope,
+        scope,
+      );
+    });
+  }
+
   test("native control failure retains diagnostics locally without refreshing or exporting errors", () async {
     plugin.actionResult = PluginMcpActionFailed(
       cause: Exception("fixture-secret"),

@@ -440,6 +440,14 @@ flow, so those capabilities remain explicit gaps. Connect/reconnect and disable
 use only the named existing server's location-scoped native controls; they do not
 write server configuration or create/resume sessions. Headless orchestration
 performs the existing authoritative refresh after native completion.
+The plugin service owns scope resolution, fresh-target validation and action
+dispatch; the repository maps native directory reads and mutations. Native
+connect/disconnect writes remain unbounded because abandoning HTTP does not
+cancel their native mutation. Client response loss retains its existing uncertain
+action posture. MCP HTTP failures propagate to the headless logging owner with
+their original cause rather than logging at both API and headless layers.
+Project effects invalidate every open inventory for that plugin, including other
+session/project views; the authoritative completion still reads the requested scope.
 
 Coverage: `opencode_v2_mcp_test.dart` exercises exact project/session attribution,
 independent locations, all states, missing targets, typed read failures and the
