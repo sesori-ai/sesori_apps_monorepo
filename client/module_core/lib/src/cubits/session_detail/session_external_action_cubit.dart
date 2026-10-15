@@ -68,16 +68,15 @@ class SessionExternalActionCubit({
     emit(current.withSubmission(submission: ExternalActionSubmitting(choice: choice)));
     try {
       final result = await _service.reply(action: current.action, choice: choice);
-      if (!_active || state is! ExternalActionReady) return;
+      final latest = state;
+      if (!_active || latest is! ExternalActionReady) return;
       switch (result) {
         case ExternalActionReplyAccepted():
           emit(ExternalActionReplySent(choice: choice));
         case ExternalActionAlreadySettled():
           emit(const ExternalActionNoLongerPending());
         case ExternalActionReplyUnknown() || ExternalActionUnsupportedChoice():
-          emit(
-            (state as ExternalActionReady).withSubmission(submission: ExternalActionSubmissionRefused(result: result)),
-          );
+          emit(latest.withSubmission(submission: ExternalActionSubmissionRefused(result: result)));
       }
       // ApiError models expected transport failures despite extending Error.
       // ignore: avoid_catching_errors
@@ -92,18 +91,19 @@ class SessionExternalActionCubit({
     final current = state;
     if (!_active ||
         current is! ExternalActionReady ||
-        current.destination == null ||
         current.browser is ExternalActionBrowserOpening ||
         current.submission is ExternalActionSubmitting) {
       return;
     }
-    final url = current.destination!;
+    final url = current.destination;
+    if (url == null) return;
     emit(current.withBrowser(browser: const ExternalActionBrowserOpening()));
     try {
       final opened = await _urlLauncher.launch(url, mode: UrlLaunchMode.externalApp);
-      if (!_active || state is! ExternalActionReady) return;
+      final latest = state;
+      if (!_active || latest is! ExternalActionReady) return;
       emit(
-        (state as ExternalActionReady).withBrowser(
+        latest.withBrowser(
           browser: opened
               ? const ExternalActionBrowserOpened()
               : ExternalActionBrowserFailed(

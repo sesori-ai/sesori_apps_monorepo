@@ -175,7 +175,7 @@ String _status({required SessionExternalActionState state, required AppLocalizat
 class const _Button({required final String label, required final VoidCallback? onPressed}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => Padding(
-    padding: const EdgeInsets.only(bottom: PregoSpacing.md),
+    padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
     child: PregoButtonsSolid(
       label: label,
       hierarchy: PregoButtonsSolidHierarchy.secondary,

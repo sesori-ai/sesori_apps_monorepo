@@ -1165,3 +1165,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   wildcard with all three non-loaded sealed states; behavior is unchanged. Source
   tree `988213c63ffbf663634de63615747c0c474d9193` records that correction.
   `dart analyze --fatal-infos` from `client` now passes with the CI plugin enabled.
+- Step 19 incorporates `935f4c79e4`. CI-equivalent workspace analysis identified
+  four successor-only lint issues, corrected with promoted local state snapshots,
+  an explicit nullable-destination check and directional padding. `dart analyze
+  --fatal-infos` from `client` passes. The affected Cubit and modal test files
+  pass 9 and 7 cases respectively; modal taps target the actual buttons with no
+  hit-test warnings. Verified tree: `42ca6d584acce156f500ff09db2e8688843aad4d`.

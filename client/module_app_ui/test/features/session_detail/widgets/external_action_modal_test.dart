@@ -9,6 +9,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 const _action = PendingExternalAction(
@@ -128,12 +129,12 @@ void main() {
     expect(find.textContaining("private=fixture-only"), findsNothing);
     verifyNever(() => harness.launcher.launch(any(), mode: UrlLaunchMode.externalApp));
     final before = tester.getTopLeft(find.text("Open browser"));
-    await tester.tap(find.text("Open browser"));
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Open browser"));
     await tester.pumpAndSettle();
     expect(tester.getTopLeft(find.text("Open browser")), before);
     expect(find.textContaining("does not confirm authorization"), findsOneWidget);
     verifyNever(() => harness.repository.replyToExternalAction(request: any(named: "request")));
-    await tester.tap(find.text("Decline request"));
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Decline request"));
     await tester.pumpAndSettle();
     final request =
         verify(() => harness.repository.replyToExternalAction(request: captureAny(named: "request"))).captured.single
@@ -170,7 +171,7 @@ void main() {
         .thenAnswer((_) async => ApiResponse.error(NonSuccessCodeError(errorCode: 422, rawErrorString: null)));
     await open(tester);
     expect(find.text("Open browser"), findsNothing);
-    await tester.tap(find.text("Cancel request"));
+    await tester.tap(find.widgetWithText(PregoButtonsSolid, "Cancel request"));
     await tester.pumpAndSettle();
     expect(harness.fallbackCancels, 1);
     expect(harness.settled, 0);
@@ -193,7 +194,7 @@ void main() {
       expect(find.text("Continue in coding agent"), findsNothing);
       expect(find.text("Decline request"), findsNothing);
       if (purpose == ExternalActionPurpose.unknown) expect(find.text("Open browser"), findsNothing);
-      await tester.tap(find.text("Cancel request"));
+      await tester.tap(find.widgetWithText(PregoButtonsSolid, "Cancel request"));
       await tester.pumpAndSettle();
       final request =
           verify(() => harness.repository.replyToExternalAction(request: captureAny(named: "request"))).captured.single
