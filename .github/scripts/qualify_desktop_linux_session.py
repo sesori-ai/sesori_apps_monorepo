@@ -114,7 +114,7 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                 properties = dbus.Interface(bus.get_object(service, "/" + path), "org.freedesktop.DBus.Properties")
                 menu_path = properties.Get("org.kde.StatusNotifierItem", "Menu")
                 menu = dbus.Interface(bus.get_object(service, str(menu_path)), "com.canonical.dbusmenu")
-                _, layout = menu.GetLayout(0, -1, [])
+                _, layout = menu.GetLayout(dbus.Int32(0), dbus.Int32(-1), dbus.Array([], signature="s"))
                 pending = [layout]
                 while pending:
                     node, attributes, children = pending.pop()

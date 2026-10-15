@@ -17,9 +17,10 @@ index/package reference tree. Real APT and DNF clients refreshed and downloaded 
 architectures over HTTPS; native RPM signatures also passed. Those client checks ran
 in an ARM64 Fedora container, without installing or executing the application.
 
-Evidence: `build/desktop-linux-hosting/anonymous-delivery-summary.json` and
-`https-clients-summary.json`. This accepts preview repository delivery, not native
-x64/ARM64 application/account qualification or stable publication.
+[Retained verification summaries](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2002#issuecomment-6196620863)
+include the independent verifier revision and the exact evidence boundary. This accepts
+preview repository delivery, not native x64/ARM64 application/account qualification or
+stable publication.
 
 ## Ownership and triggers
 
