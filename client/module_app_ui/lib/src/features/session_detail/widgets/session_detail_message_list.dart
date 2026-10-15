@@ -280,6 +280,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// The last build's rows by their place in order.
   Map<String, int> _rowIndexById = const {};
 
+  /// The pending prompt row that woke an idle session: the working row sits
+  /// right below it until it shows as a message, which the row follows anyway.
+  String? _wakingPromptRowId;
+
   /// The last build's rendered user messages, prompts and steers alike, in
   /// order: the messages that can pin.
   Map<String, MessageWithParts> _userMessagesById = const {};
@@ -765,15 +769,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ].any((submission) => !previousPromptIds.contains(submission.promptId));
   }
 
-  List<String> _rowIdsFor({
+  /// The rows of sent prompts not yet shown as messages, in order.
+  List<String> _pendingPromptRowIdsFor({
     required List<MessageWithParts> messages,
-    required Iterable<String> messageRows,
     required QueuedSessionSubmission? localSendSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
     required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
     required List<LaunchFollowUp> launchFollowUps,
-    required bool hasLaunchRow,
   }) {
     final deliveredPromptIds = <String>{
       for (final message in messages)
@@ -781,11 +784,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           if (message.info case MessageUser(promptId: final promptId?)) promptId,
     };
     final entries = <String>[
-      ...messageRows,
-      // Where the first message's echo lands, above the working row.
-      if (hasLaunchRow) _kLaunchRowId,
-      _kRetryErrorRowId,
-      _kWorkingRowId,
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
       for (final submission in awaitingBridgeSubmissions)
@@ -797,6 +795,46 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         "$_kPromptRowPrefix${localSendSubmission.promptId}",
       for (final submission in queuedMessages)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
+    ];
+    final seenIds = <String>{};
+    return [
+      for (final entry in entries)
+        if (seenIds.add(entry)) entry,
+    ];
+  }
+
+  /// The pending prompt that wakes the session, if any: one that appears while
+  /// the session is idle, kept until it shows as a message or leaves. A prompt
+  /// sent while the session works is a steer and waits below the working row.
+  String? _wakingPromptRowIdFor({
+    required List<String> pendingPromptRowIds,
+    required bool isIdle,
+    required bool hasLaunchRow,
+  }) {
+    final waking = _wakingPromptRowId;
+    if (waking != null && pendingPromptRowIds.contains(waking)) return waking;
+    // A launch's first message wakes its session, above the working row.
+    if (!isIdle || hasLaunchRow) return null;
+    return pendingPromptRowIds.where((rowId) => !_rowIndexById.containsKey(rowId)).firstOrNull;
+  }
+
+  List<String> _rowIdsFor({
+    required Iterable<String> messageRows,
+    required List<String> pendingPromptRowIds,
+    required String? wakingPromptRowId,
+    required bool hasLaunchRow,
+  }) {
+    // The prompt that woke the session is answered first, so its working row
+    // follows it, as it will follow its message.
+    final wakingEnd = wakingPromptRowId == null ? 0 : pendingPromptRowIds.indexOf(wakingPromptRowId) + 1;
+    final entries = <String>[
+      ...messageRows,
+      // Where the first message's echo lands, above the working row.
+      if (hasLaunchRow) _kLaunchRowId,
+      ...pendingPromptRowIds.take(wakingEnd),
+      _kRetryErrorRowId,
+      _kWorkingRowId,
+      ...pendingPromptRowIds.skip(wakingEnd),
     ];
     final seenIds = <String>{};
     return [
@@ -926,18 +964,28 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.pending),
     };
 
-    final rowIds = _rowIdsFor(
+    final pendingPromptRowIds = _pendingPromptRowIdsFor(
       messages: messages,
-      messageRows: [
-        for (final message in messages)
-          if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
-      ],
       localSendSubmission: localSendRow?.submission,
       queuedMessages: queuedMessages,
       bridgeQueuedPrompts: widget.bridgeQueuedPrompts,
       awaitingBridgeSubmissions: widget.awaitingBridgeSubmissions,
       launchFollowUps: widget.launchFollowUps,
-      hasLaunchRow: widget.launchHandoff != null,
+    );
+    final hasLaunchRow = widget.launchHandoff != null;
+    final wakingPromptRowId = _wakingPromptRowId = _wakingPromptRowIdFor(
+      pendingPromptRowIds: pendingPromptRowIds,
+      isIdle: !isBusy && !mainAgentRunning,
+      hasLaunchRow: hasLaunchRow,
+    );
+    final rowIds = _rowIdsFor(
+      messageRows: [
+        for (final message in messages)
+          if (message.hasRenderableUserContent) _entryIdForMessage(info: message.info),
+      ],
+      pendingPromptRowIds: pendingPromptRowIds,
+      wakingPromptRowId: wakingPromptRowId,
+      hasLaunchRow: hasLaunchRow,
     );
     final knownRowIds = _knownRowIds;
     if (knownRowIds != null && knownRowIds.contains(_kLaunchRowId) && !rowIds.contains(_kLaunchRowId)) {
@@ -1135,7 +1183,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _workingRow(
           activity: activity,
-          stepJoinsShownCard: _stepJoinsShownCard(messages: messages, transcript: transcript),
+          // Below the waking prompt, the next step follows its message and so
+          // opens a card of its own.
+          stepJoinsShownCard:
+              _wakingPromptRowId == null && _stepJoinsShownCard(messages: messages, transcript: transcript),
         ),
       );
     }
