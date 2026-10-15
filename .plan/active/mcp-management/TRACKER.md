@@ -1115,3 +1115,16 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   four-file bridge command above now passes 47 cases; `bridge/app` analyzer is clean.
   Verified source tree: `32764caae11fb0f193e26d2c0ce8fc1660e3feaf`; subsequent
   edits add only this evidence reference, with production and tests unchanged.
+- Step-18 second review fixes move destination policy into PendingInteractionService
+  for both snapshot reads and acceptance, retaining canonical access in the repository.
+  Public-client cancel projections now carry dated retirement conditions. Typed
+  notices retain neutral request/Review wording after dismissal and do not emit
+  ordinary-question outcome analytics. The banner and analytics regressions failed
+  behaviorally at published head `e6162c78b9` before the fixes.
+- Review-fix checks use the same pinned SDK and working-directory conventions above:
+  the four-file bridge command passes 47 cases; the core permission command passes
+  13; from `client/app`, `flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart`
+  passes 197. Full bridge, core, shared-UI and mobile analyzers plus targeted Claude
+  analysis pass. Architecture implementation review pass 2 approves without findings.
+  Verified review-fix tree: `767dcaf79a75c1d3dd8342db0d6d819827ed2c0d`;
+  subsequent edits add only this evidence reference. Final diff is 1,641 changed lines.

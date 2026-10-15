@@ -400,6 +400,8 @@ final class ClaudePlugin({
     required String sessionId,
     required List<List<String>> answers,
   }) async {
+    // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 answers through question routes.
+    // Remove when all supported production clients consume typed external actions.
     if (_approvals.hasExternalAction(id: questionId)) {
       if (answers.length != 1 || answers.single.length != 1 || answers.single.single != "Cancel") {
         throw const PluginOperationException(
@@ -443,6 +445,8 @@ final class ClaudePlugin({
 
   @override
   Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
+    // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 rejects through question routes.
+    // Remove when all supported production clients consume typed external actions.
     if (_approvals.hasExternalAction(id: questionId)) {
       _cancelLegacyExternalAction(id: questionId, sessionId: sessionId);
       return;

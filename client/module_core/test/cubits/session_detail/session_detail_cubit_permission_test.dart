@@ -677,6 +677,7 @@ void main() {
     });
 
     test("cold-loaded external request retains its marker and cancellation owner", () async {
+      final analytics = stubbedProductAnalyticsService();
       when(() => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const PendingQuestionResponse(
@@ -708,6 +709,7 @@ void main() {
         notificationCanceller: mockNotificationCanceller,
         permissionRepository: mockPermissionRepository,
         failureReporter: mockFailureReporter,
+        productAnalyticsService: analytics,
       );
       addTearDown(cubit.close);
       await _awaitLoaded(cubit);
@@ -724,6 +726,12 @@ void main() {
       expect(ok, isTrue);
       // Reject targets the owning child session, not the open root.
       verify(() => mockSessionService.rejectQuestion(requestId: "q-child", sessionId: "child-1")).called(1);
+      verifyNever(
+        () => analytics.logEvent(
+          event: const ProductAnalyticsEvent.sessionQuestionRejected(),
+          occurredAtUtc: any(named: "occurredAtUtc"),
+        ),
+      );
     });
 
     test("archived sessions refuse prompts, permission replies, and question replies", () async {

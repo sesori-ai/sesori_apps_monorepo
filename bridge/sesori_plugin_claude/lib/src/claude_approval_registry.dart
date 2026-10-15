@@ -39,6 +39,8 @@ final class const _PendingExternalAction({
   this : super(toolUseId: null);
 }
 
+// COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 clients need cancel-only questions.
+// Remove when all supported production clients consume typed external actions.
 const _externalActionNotice = PluginQuestionInfo(
   header: "MCP authorization",
   question: "This native request needs an external action. Open it in an updated Sesori client, or cancel it.",
@@ -307,6 +309,8 @@ final class ClaudeApprovalRegistry({
             displaySessionId: sessionId,
             questions: question.questions,
           )
+        // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 reads question snapshots.
+        // Remove when all supported production clients consume typed external actions.
         else if (entry is _PendingExternalAction)
           PluginPendingQuestion(
             interactionKind: PluginQuestionInteractionKind.externalAction,

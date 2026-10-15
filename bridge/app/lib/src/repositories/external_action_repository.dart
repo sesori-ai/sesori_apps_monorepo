@@ -39,9 +39,6 @@ class ExternalActionRepository({
                 ))
                   action,
             ];
-            for (final action in actions) {
-              _requireSafeDestination(action: action, operation: SessionOperation.getPendingExternalActions);
-            }
             return await _pendingSupport.mapExternalActions(pluginId: binding.pluginId, actions: actions);
           },
         ) ??
@@ -78,9 +75,6 @@ class ExternalActionRepository({
             for (final action in actions) {
               if (action.id != request.requestId) continue;
               if (!action.choices.contains(choice)) return const ExternalActionUnsupportedChoice();
-              if (choice == PluginExternalActionChoice.accept) {
-                _requireSafeDestination(action: action, operation: SessionOperation.replyToExternalAction);
-              }
               break;
             }
             return switch (await api.replyToExternalAction(
@@ -107,19 +101,6 @@ class ExternalActionRepository({
       SessionOperation.replyToExternalAction.name,
       statusCode: 503,
       message: "native external-action response is unavailable",
-    );
-  }
-
-  void _requireSafeDestination({required PluginPendingExternalAction action, required SessionOperation operation}) {
-    final uri = Uri.tryParse(action.authorizationUrl);
-    if (uri != null && uri.scheme == "https" && uri.hasAuthority && uri.host.isNotEmpty && uri.userInfo.isEmpty) return;
-    Log.w(
-      "Rejecting external-action destination for ${action.id} in ${action.sessionID}: HTTPS without user info required",
-    );
-    throw PluginOperationException(
-      operation.name,
-      statusCode: 422,
-      message: "external-action destination requires absolute HTTPS without user info",
     );
   }
 }

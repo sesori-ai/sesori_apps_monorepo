@@ -338,13 +338,15 @@ Deleted and archived owners are hidden, including a child surfaced through a
 display parent; settled requests are idempotent. Failed native writes
 retain the pending request. Teardown sends native cancellation.
 
-Destinations must be absolute HTTPS with a host and no user information before
-snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
+The pending-interaction service requires absolute HTTPS destinations with a host
+and no user information before snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
 destination. URLs never enter question broadcasts, replay or persistence. Legacy
 question replies accept only Cancel or rejection and send native `action: cancel`.
 Current clients preserve the interaction marker through cold loading and show an
 honest cancel-only handoff with no ordinary answer controls. Closing the layer
-does not cancel the request. Browser/consent presentation follows separately.
+does not cancel the request; the pending card retains neutral request wording and
+a Review action. Typed cancellation does not emit ordinary-question analytics.
+Browser/consent presentation follows separately.
 Unsupported native forms receive a decline attempt and a session-attributed
 warning through the existing desktop/mobile toast presenter. A successful native
 write settles the request. A failed write is logged with the native request and

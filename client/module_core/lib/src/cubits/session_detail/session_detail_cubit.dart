@@ -3006,22 +3006,35 @@ class SessionDetailCubit(
     return true;
   }
 
+  bool _isTypedInteraction({required String requestId}) => switch (state) {
+    SessionDetailLoaded(:final pendingQuestions) => pendingQuestions.any(
+      (question) => question.id == requestId && question.interactionKind != QuestionInteractionKind.question,
+    ),
+    _ => false,
+  };
+
   Future<bool> replyToQuestion({
     required String requestId,
     required String sessionId,
     required List<ReplyAnswer> answers,
-  }) => _submitReply(
-    requestId: requestId,
-    sessionId: sessionId,
-    archivedAction: "reply to a question",
-    failureAction: "reply to question",
-    resolve: _onQuestionResolved,
-    submit: () => _sessionRepository.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers),
-    reportSuccess: () => _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionAnswered()),
-  );
+  }) {
+    final reportQuestionOutcome = !_isTypedInteraction(requestId: requestId);
+    return _submitReply(
+      requestId: requestId,
+      sessionId: sessionId,
+      archivedAction: "reply to a question",
+      failureAction: "reply to question",
+      resolve: _onQuestionResolved,
+      submit: () => _sessionRepository.replyToQuestion(requestId: requestId, sessionId: sessionId, answers: answers),
+      reportSuccess: () {
+        if (reportQuestionOutcome) _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionAnswered());
+      },
+    );
+  }
 
   Future<bool> rejectQuestion(String requestId) async {
     if (_refuseWhenArchived(action: "reject a question")) return false;
+    final reportQuestionOutcome = !_isTypedInteraction(requestId: requestId);
 
     // Reject against the question's owning session (which may be a child/
     // sub-agent surfaced on this root), mirroring the reply path, so the bridge
@@ -3037,7 +3050,9 @@ class SessionDetailCubit(
       failureAction: "reject question",
       resolve: _onQuestionResolved,
       submit: () => _sessionRepository.rejectQuestion(requestId: requestId, sessionId: ownerSessionId),
-      reportSuccess: () => _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionRejected()),
+      reportSuccess: () {
+        if (reportQuestionOutcome) _reportProductEvent(event: const ProductAnalyticsEvent.sessionQuestionRejected());
+      },
       checkArchived: false,
     );
   }

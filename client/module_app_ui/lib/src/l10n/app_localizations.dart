@@ -5779,6 +5779,18 @@ abstract class AppLocalizations {
   /// **'Cancel request'**
   String get mcpCancelRequest;
 
+  /// No description provided for @pendingRequestBannerSingle.
+  ///
+  /// In en, this message translates to:
+  /// **'1 pending request'**
+  String get pendingRequestBannerSingle;
+
+  /// No description provided for @pendingRequestBannerMultiple.
+  ///
+  /// In en, this message translates to:
+  /// **'{count} pending requests'**
+  String pendingRequestBannerMultiple(int count);
+
   /// No description provided for @mcpReconnect.
   ///
   /// In en, this message translates to:
