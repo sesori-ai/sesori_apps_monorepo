@@ -654,8 +654,8 @@ presentation. Claude's headless authentication routes and the shared client
 API/repository/connection-fenced lifecycle are implemented. The observing Cubit
 does not cancel on view closure. Request-scoped recovery never auto-launches a
 browser; busy retains the challenge, and reconnect fences callbacks to the old
-bridge. Visible client controls use declared capabilities; other native adapters
-remain **not implemented**.
+bridge. Visible client controls use declared capabilities. Native MCP sign-in is
+implemented for Claude and Codex; other harness adapters remain **not implemented**.
 The shared entry-action API/repository, per-view request owner and observing Cubit
 are implemented for reconnect, enable/disable and credential forgetting. Shells
 provide the read-only posture; pending requests retain readable inventory, late
@@ -708,15 +708,39 @@ configuration. Project-scoped inventory is **not supported** by the pinned nativ
 selector. Missing minimum-version runtime/discovery metadata stays unknown;
 discovery failure remains separate from a successful empty tool catalog.
 Only safe endpoint origins and declared tool names/descriptions cross the wire.
-Native OAuth integration is **not implemented** yet. Credential forgetting,
+Native OAuth integration is **implemented** for native-capable configured servers,
+using the existing headless attempt owner and shared sign-in controls. The exact
+session context is sent only on initialized native versions at least 0.160.1.
+Older/unknown versions explicitly require native configuration for session
+sign-in, with no OAuth RPC: a same-name override probe found 0.139.0 ignores
+the login thread and selects the harness issuer; 0.160.1 selects the session
+issuer. Harness sign-in remains available on the minimum. Minimum completion
+is name-only; target also correlates thread context. Credential effects are harness-scoped. Native expiry,
+provider denial and completion remain authoritative; there is no cancellation RPC,
+so the attempt retains ownership until native settlement or runtime teardown.
+Callback forwarding validates exact native loopback origin/path/state and disables
+redirects. No credential store or provider-account login is added. Credential forgetting,
 enable/disable and resident reconnect are **not supported** by the pinned API;
 no action is advertised. A 2026-10-15 isolated probe at both pins found status
 discovery can open a fresh connection while the resident tool call retains its
 original connection, including after `config/mcpServer/reload`. Reloading
 configuration therefore does not establish resident reconnect support.
-Offered-connector inventory remains **not implemented**. Codex already forwards
-legacy elicitation as generic questions/tool permissions; its typed form and
-external-action management integration remain **not implemented**.
+Offered-connector inventory remains **not implemented**. Codex typed MCP forms
+and URL requests are **implemented**, reusing the existing native pending owner
+and shared request-scoped controls. Supported scalar/choice forms retain native
+types and opaque key/value aliases; invalid replies remain pending. Unsupported
+schemas/modes explicitly decline. Integer bounds accept the native JSON-number
+representation, with fractional bounds rounded inward to integral choices.
+Forwarded legacy titled enums retain matching enumNames. Native 0.139.0 omits
+enumNames in the isolated fixture, so native values become visible labels;
+0.160.1 forwards the titles, and native oneOf titles work at both pins.
+Blank or ambiguous field/option labels and unfulfillable choice counts decline with
+a display-session warning instead of offering indistinguishable inputs.
+URLs/defaults/answers remain outside question broadcasts. Legacy clients receive
+cancel-only notices; generic replies cancel instead of coercing answers or
+accepting an external action. Tagged tool approval and declared persistent grants
+remain on the permission path. Session cancellation/disconnect retires the same
+owner; URL acceptance alone does not establish OAuth completion.
 
 Claude's toggle changes the resident process, not persisted configuration.
 Its status omits tool descriptions. Approval frames name the tool at both pins;
@@ -740,11 +764,12 @@ with an in-session warning. Invalid submissions and failed native writes retain 
 requests. Stop, archive notification, process exit and teardown cancel existing waits.
 Failed archive cancellation retains pending state without a false settlement event.
 Choice descriptions are retained in visible option labels.
-Codex elicitation and the remaining native-supported management rows are
-**not implemented**.
+Codex typed form/external-action management is **implemented** through the same
+shared controls, with cancel-only legacy notices. Offered connectors remain
+**not implemented** in this slice.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
-Claude implements the optional typed plugin API. Headless form snapshots and typed
+Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed
 reply/decline routes are **implemented** with canonical original-owner routing,
 active-only reads, deleted-target checks and archived-owner rejection. Unsupported plugins
 return empty snapshots and explicit unsupported mutation outcomes. Shared client typed
@@ -769,8 +794,11 @@ path is implemented but unqualified; Windows integration and SSE authentication
 are **not implemented**.
 Dynamic/unknown session configuration cannot be safely addressed by named CLI
 credential operations and returns an explicit native-configuration handoff.
-Stdio OAuth is **not supported** by this native method. Other harness native
-integration remains **not implemented**; the recorded retirement matrix is unchanged.
+Stdio OAuth is **not supported** by this native method. Native authentication
+adapters for the remaining harnesses are **not implemented**;
+the recorded retirement matrix is unchanged. Codex OAuth passed isolated
+macOS arm64 native fixtures at both pins; other hosts, real providers and packaged
+browser return remain unqualified.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
 authenticated connector setup. Other harness management remains **not

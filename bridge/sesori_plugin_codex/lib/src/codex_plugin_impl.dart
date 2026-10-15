@@ -1,10 +1,12 @@
 import "dart:async";
 
+import "package:http/http.dart" as http;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show Harness;
 
 import "api/codex_app_server_api.dart";
+import "api/codex_mcp_callback_api.dart";
 import "api/models/codex_correlatable_item_event_dto.dart";
 import "api/models/codex_image_bearing_item_dto.dart";
 import "api/models/codex_pending_input.dart";
@@ -20,6 +22,7 @@ import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_event_mapper.dart";
 import "models/codex_collaboration_mode.dart";
+import "repositories/codex_mcp_authentication_repository.dart";
 import "repositories/codex_mcp_repository.dart";
 import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
@@ -32,6 +35,7 @@ import "repositories/mappers/codex_question_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
 import "runtime/codex_managed_api.dart";
+import "services/codex_mcp_authentication_service.dart";
 import "services/codex_rollout_tailer.dart";
 import "services/codex_session_service.dart";
 
@@ -79,7 +83,12 @@ class CodexPlugin._({
   /// is reset before the reporter is told.
   required final void Function()? _onDisconnected,
   required final Duration _keepaliveInterval,
-}) implements CodexManagedApi, McpManagementPluginApi {
+}) implements
+    CodexManagedApi,
+    McpManagementPluginApi,
+    McpAuthenticationPluginApi,
+    FormInteractionPluginApi,
+    SessionExternalActionsPluginApi {
   @override
   Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
       PluginQuotaContinuationReadiness.unavailable;
@@ -103,6 +112,7 @@ class CodexPlugin._({
   StreamSubscription<CodexRolloutAppend>? _rolloutSubscription;
   ApprovalRegistry? _approvalRegistry;
   CodexMcpRepository? _mcpRepository;
+  CodexMcpAuthenticationService? _mcpAuthentication;
 
   /// Periodic no-op RPC timer. codex `app-server` closes a connection that goes
   /// idle (no JSON-RPC traffic) after a few minutes and then exits the process;
@@ -222,6 +232,25 @@ class CodexPlugin._({
   }) async => const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
 
   @override
+  Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) async {
+    final authentication = _mcpAuthentication;
+    if (authentication == null) {
+      throw PluginMcpAuthenticationUnavailableException(
+        reason: target.scope is PluginMcpProjectScope
+            ? PluginMcpAuthenticationUnavailableReason.unsupportedScope
+            : PluginMcpAuthenticationUnavailableReason.liveSessionRequired,
+      );
+    }
+    return await authentication.begin(target: target);
+  }
+
+  @override
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target}) async =>
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.notSupported,
+      );
+
+  @override
   Stream<PluginWorkState> get workState => _workState.stream;
 
   @override
@@ -240,9 +269,21 @@ class CodexPlugin._({
       _client = client;
       try {
         await _sessionService.hydratePersistedChildAncestry();
-        await client.connect();
+        final initialized = await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
-        _mcpRepository = CodexMcpRepository(appServerApi: appServerApi, mapper: const CodexMcpMapper());
+        final inventory = CodexMcpRepository(
+          appServerApi: appServerApi,
+          mapper: CodexMcpMapper(userAgent: initialized.userAgent),
+        );
+        _mcpRepository = inventory;
+        _mcpAuthentication = CodexMcpAuthenticationService(
+          inventory: inventory,
+          repository: CodexMcpAuthenticationRepository(
+            appServerApi: appServerApi,
+            callbackApi: CodexMcpCallbackApi(client: http.Client(), budget: const Duration(seconds: 10)),
+            timeoutSecs: 180,
+          ),
+        );
         _sessionService.attachAppServerRepositories(
           threadRepository: CodexThreadRepository(appServerApi: appServerApi),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
@@ -254,6 +295,8 @@ class CodexPlugin._({
         _onConnected?.call();
         return true;
       } catch (error) {
+        await _mcpAuthentication?.dispose();
+        _mcpAuthentication = null;
         await client.dispose();
         _client = null;
         _mcpRepository = null;
@@ -299,6 +342,13 @@ class CodexPlugin._({
     _connectFuture = null;
     _client = null;
     _mcpRepository = null;
+    final authentication = _mcpAuthentication;
+    _mcpAuthentication = null;
+    unawaited(
+      authentication?.dispose().catchError((Object error, StackTrace stackTrace) {
+        Log.w("[codex] MCP authentication cleanup failed after disconnect", error, stackTrace);
+      }),
+    );
     _sessionService.detachAppServerRepositories();
     _rolloutTailer.stopAll();
     _toolLifecycleTracker.clear();
@@ -1629,6 +1679,41 @@ class CodexPlugin._({
   Future<List<PluginAgent>> getAgents({required String projectId}) => _sessionService.getAgents(projectId: projectId);
 
   @override
+  Future<List<PluginPendingForm>> getPendingForms({required String sessionId}) async =>
+      _approvalRegistry?.pendingFormsForSession(sessionId: sessionId) ?? const [];
+
+  @override
+  Future<PluginFormSubmissionResult> replyToForm({
+    required String requestId,
+    required String sessionId,
+    required Map<String, PluginFormValue> values,
+  }) async =>
+      _approvalRegistry?.replyForm(requestId: requestId, sessionId: sessionId, values: values) ??
+      const PluginFormAlreadySettled();
+
+  @override
+  Future<PluginFormDismissalResult> declineForm({
+    required String requestId,
+    required String sessionId,
+    required PluginFormDismissalChoice choice,
+  }) async =>
+      _approvalRegistry?.declineForm(requestId: requestId, sessionId: sessionId, choice: choice) ??
+      PluginFormDismissalResult.alreadySettled;
+
+  @override
+  Future<List<PluginPendingExternalAction>> getPendingExternalActions({required String sessionId}) async =>
+      _approvalRegistry?.pendingExternalActionsForSession(sessionId: sessionId) ?? const [];
+
+  @override
+  Future<PluginExternalActionReply> replyToExternalAction({
+    required String requestId,
+    required String sessionId,
+    required PluginExternalActionChoice choice,
+  }) async =>
+      _approvalRegistry?.replyExternalAction(requestId: requestId, sessionId: sessionId, choice: choice) ??
+      PluginExternalActionReply.alreadySettled;
+
+  @override
   Future<List<PluginPendingQuestion>> getPendingQuestions({
     required String sessionId,
   }) async => _approvalRegistry?.pendingQuestionsForSessionTree(sessionId: sessionId) ?? const [];
@@ -1661,6 +1746,12 @@ class CodexPlugin._({
   }) async {
     final registry = _approvalRegistry;
     if (registry == null) return;
+    if (registry.isTypedMcpRequest(requestId: questionId)) {
+      if (!registry.cancelLegacyMcpRequest(requestId: questionId, sessionId: sessionId)) {
+        throw const PluginOperationException.notFound("cancelMcpRequest", message: "owning session is required");
+      }
+      return;
+    }
     await registry.replyQuestion(requestId: questionId, answers: answers);
   }
 
@@ -1669,9 +1760,15 @@ class CodexPlugin._({
     required String questionId,
     required String? sessionId,
   }) async {
-    // sessionId is unused: the approval registry keys pending requests by their
-    // bridge request id alone (codex requests are globally unique per session).
-    await _approvalRegistry?.rejectQuestion(requestId: questionId);
+    final registry = _approvalRegistry;
+    if (registry == null) return;
+    if (registry.isTypedMcpRequest(requestId: questionId)) {
+      if (!registry.cancelLegacyMcpRequest(requestId: questionId, sessionId: sessionId)) {
+        throw const PluginOperationException.notFound("cancelMcpRequest", message: "owning session is required");
+      }
+      return;
+    }
+    await registry.rejectQuestion(requestId: questionId);
   }
 
   @override
@@ -1702,6 +1799,8 @@ class CodexPlugin._({
   @override
   Future<void> dispose() async {
     _mcpRepository = null;
+    final authentication = _mcpAuthentication;
+    _mcpAuthentication = null;
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     Object? firstError;
@@ -1715,6 +1814,7 @@ class CodexPlugin._({
       }
     }
 
+    await capture(() => authentication?.dispose() ?? Future<void>.value());
     await capture(() => _notificationSubscription?.cancel() ?? Future<void>.value());
     _notificationSubscription = null;
     await capture(() => _serverRequestSubscription?.cancel() ?? Future<void>.value());

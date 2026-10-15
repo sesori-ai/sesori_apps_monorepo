@@ -527,19 +527,21 @@ these are executable substeps, not a new plan or a Windows dependency.
   accepted packages for each published channel through this same GitHub publisher.
   APT validity is 30 days; failures stay visible in CI and manual repair must precede
   expiry. Refresh never creates releases, changes completion markers or dispatches stores.
-  Merged as #1997. Main run `38754986125` published `1.9.2-1022`; independent
-  pinned-signature/reference checks and real APT/DNF HTTPS refresh/download passed.
-- `🚧 [desktop-distribution] Exercise native Linux desktop sessions [step 11.i.a/14]`:
-  establish credential-free Ubuntu x64 GNOME/Wayland and ARM64 KDE/X11 sessions,
-  real Secret Service, unchanged signed-package replacement, anonymous native windows
-  and normal close/tray Quit. Nonshipping probes use each candidate's product source.
-  This isolates desktop-session bring-up from account credentials; no product refactor.
-- `🚧 [desktop-distribution] Qualify authenticated Linux desktop upgrades [step 11.i.b/14]`:
-  add real-account/helper On/Off coverage through the established native sessions,
-  actual login launch, unavailable-Secret-Service behavior and remaining nominated-distro
-  upgrades with shared-data preservation. Container/inert-package checks are not
-  substitutes for native application behavior. Record unavailable sessions honestly;
-  stable stays gated until the required evidence or explicit acceptance.
+  Merged as #1997. Main run `38754986125` published `1.9.2-1022`; pinned trust and
+  both architectures' real HTTPS APT/DNF refresh/download passed.
+- `🌿 [desktop-distribution] Restore Linux tray menu reachability [step 11.i.a/14]`:
+  native QA found that the unset context-menu trigger prevents Linux menu export.
+  Configure host-driven clicks on Linux only; preserve macOS/Windows behavior.
+  The user approved focused-test merge before fresh signed-build visual qualification
+  on 2026-10-15. This changes verification order, not stable admission.
+- `🚧 [desktop-distribution] Exercise native Linux desktop sessions [step 11.i.b/14]`:
+  resume paused #2002 with fresh signed producers containing the tray fix. Qualify
+  credential-free x64 GNOME/Wayland and ARM64 KDE/X11, Secret Service, normal Quit
+  and real package replacement. Do not bypass an unadvertised native menu endpoint.
+- `🚧 [desktop-distribution] Qualify authenticated Linux desktop upgrades [step 11.i.c/14]`:
+  real-account/helper On/Off, actual login-session launch, unavailable Secret Service
+  and remaining nominated-distro upgrades. Container/inert-package checks are not
+  substitutes; stable remains gated on genuine native acceptance.
 - `⚙️ [desktop-distribution] Add Linux repository and stable download guidance [step 11.j/14]`:
   update `sesori-ai/landingpage` using its existing release cache and truthful public
   availability. Stable entries stay hidden until qualified stable completion exists.

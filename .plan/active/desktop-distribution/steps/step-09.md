@@ -49,37 +49,28 @@ last. The CI inventory is not a new public release pointer.
 The approved `sesori-ai-linux-packages` bucket and dedicated federation/service account
 are provisioned. The user additionally authorized a bucket-tag-scoped exception to the
 observed domain-sharing block, preserving the previous restriction elsewhere. Anonymous
-repository delivery passed after #1997 merged: main run `38754986125` published
-`1.9.2-1022` with production signing and scoped federation. Independent pinned-signature,
-expiry/reference verification and real APT/DNF HTTPS refresh/download passed for both
-architectures. The clients ran in an ARM64 Fedora container; no application was executed.
-Operational ownership, evidence and repair: [Linux repositories](../../../../docs/desktop/linux-repositories.md).
+repository delivery passed in main run `38754986125`: production signing, scoped
+federation, pinned public signatures/references and real HTTPS APT/DNF refresh/download
+for both architectures. Clients ran in an ARM64 Fedora container; no application was
+executed. [Retained summaries](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2002#issuecomment-6196620863).
+Operational ownership and repair: [Linux repositories](../../../../docs/desktop/linux-repositories.md).
 
-## Native desktop continuation — 11.i/14
+## Native tray correction and qualification — 11.i/14
 
-11.i.a establishes credential-free native desktop sessions before introducing account
-credentials: Ubuntu 24.04 x64 runs GNOME/Wayland without a tray host; Ubuntu 24.04 ARM64
-runs KDE/X11 with StatusNotifier. Both use real GNOME Keyring Secret Service. The driver
-installs unchanged signed `1021` then `1022` producer packages, captures anonymous app windows,
-uses normal close/native tray Quit and checks for an orphaned packaged helper.
-Nonshipping probes compile against each corresponding product source and verify encrypted
-fixture persistence across replacement plus login-registration creation/removal. macOS
-probe output stays unchanged. State is limited to owned CI process/log handles and
-per-run evidence; no new application persistence, release authority or updater. No
-production mechanism is superseded or retained solely for compatibility.
+Native KDE run `38769349531` reached the real anonymous window and close-to-tray path,
+then found `/NO_DBUSMENU`. The adapter leaves the native context-menu trigger unset;
+Linux consequently exports no usable menu, and manual `OpenContextMenu` is unsupported.
+11.i.a sets the Linux trigger before publishing the menu/icon. No new state, lifecycle
+owner, persistence or macOS/Windows behavior is added.
 
-QA inputs bind to successful main packaging runs `38737038757` and `38745368680`.
-The core release rollover removed the older public release object during the first CI
-wave, as designed. Reuse the publisher's non-publishing signed-artifact preparation
-and independent package verifier; do not change retention or recreate releases. When
-artifacts expire, explicitly select a new retained increasing pair; never silently
-substitute a latest release or same-version reinstall.
-
-11.i.b completes real-account and helper On/Off qualification, actual login-session
-launch, unavailable-Secret-Service behavior and remaining nominated-distro upgrade
-coverage. The first slice does not establish those gates. Native workflow results and
-screenshots must be assessed before acceptance; mocked driver tests alone prove neither
-GUI behavior nor stable readiness.
+On 2026-10-15 the user approved landing this focused fix with tests, then obtaining
+native visual and upgrade proof from fresh signed builds. #2002 is paused as 11.i.b;
+its old `1021/1022` package bytes cannot be repaired in place or used to claim the fix.
+Resume its credential-free x64 GNOME/Wayland and ARM64 KDE/X11 gates with corrected
+signed producers, then real-account/session-login coverage in 11.i.c. Stable stays closed.
+Keep the existing release rollover: QA uses retained signed producer artifacts, not
+historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
+recreated release or silent same-version substitution.
 
 ## Signing continuation — 11.a/14 (merged)
 

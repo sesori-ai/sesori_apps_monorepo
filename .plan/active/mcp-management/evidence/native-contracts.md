@@ -119,6 +119,20 @@ requested-thread failure to live-session-required, without resuming or falling b
 to harness scope. The fixture's no-turn thread history read was also unavailable;
 this does not qualify persisted-history or real archived-session behavior.
 
+Step-26 adapter checks on 2026-10-15 used both fingerprint-verified Codex binaries
+with isolated native homes and the local OAuth fixture. The production generated
+DTO/API/repository/service and loopback HTTP forwarding passed expiry, provider
+denial and success at each pin; final native inventory reported authenticated.
+Only the target uses login threadId; the minimum ignores session context and
+omits it from completion. Production minimum sign-in is harness-scoped.
+Native expiry reports `timed out waiting for OAuth callback`. Provider denial is
+consumed with HTTP 400; its native failure notification identifies `access_denied`.
+No model turn or real provider/account was used.
+These checks exercise the plugin below the headless HTTPS/browser-policy boundary;
+real providers, packaged return, other native hosts and the final L4 matrix remain
+unqualified. The final adapter rerun includes safe diagnostic formatting and
+repository-owned completion mapping; all six native cases pass on that source.
+
 Codex fixture OAuth succeeds after its exact loopback callback receives the
 fixture state/code. The post-completion refresh reports OAuth and the fixture
 tool at both pins; target also reports connected with no discovery error.
@@ -206,6 +220,22 @@ Every captured exchange now asserts its expected success/error outcome; target
 Claude must forward URL requests, and untrusted login must fail without a URL.
 Shallow/partial checkouts must fetch the fixed public baseline before running
 the released-peer tools; the README and failure diagnostic give that command.
+
+## Session OAuth context isolation correction (2026-10-15)
+
+A same-name server in harness configuration and a session/project override exposed
+a native distinction the initial probes did not cover. Both pins list the session
+configuration. Codex 0.139.0 nevertheless ignores `mcpServer/oauth/login.threadId`
+and selects the harness issuer; 0.160.1 selects the requested session issuer.
+Native initialize `userAgent` identifies both exact versions.
+
+The production mapper now enables session sign-in only for initialized versions
+at least 0.160.1. Older/unknown versions return native-configuration handoff before
+any OAuth RPC, retaining harness sign-in. Actual production adapter reruns passed
+minimum session refusal without OAuth and minimum harness expiry/denial/success;
+target session expiry/denial/success passed. Both report authenticated inventory.
+These are isolated macOS arm64 loopback probes below the shared browser policy,
+with no provider account or model turn. They do not qualify real providers.
 
 ## Remaining qualification
 

@@ -63,6 +63,9 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   void handleRequest(TRequest request);
 
   @protected
+  void emitEvent({required BridgeSseEvent event}) => _emit(event);
+
+  @protected
   String registerPendingPermission({
     required TPayload payload,
     required String sessionId,
@@ -96,6 +99,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
 
   @protected
   String registerPendingQuestion({
+    required PluginQuestionInteractionKind interactionKind,
     required TPayload payload,
     required String sessionId,
     required String? displaySessionId,
@@ -103,7 +107,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   }) {
     final id = _generateId();
     final snapshot = PluginPendingQuestion(
-      interactionKind: PluginQuestionInteractionKind.question,
+      interactionKind: interactionKind,
       id: id,
       sessionID: sessionId,
       displaySessionId: displaySessionId,
@@ -112,7 +116,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
     _pending[id] = _PendingQuestionEntry(payload: payload, snapshot: snapshot);
     _emit(
       BridgeSseQuestionAsked(
-        interactionKind: PluginQuestionInteractionKind.question,
+        interactionKind: interactionKind,
         id: id,
         sessionID: sessionId,
         displaySessionId: displaySessionId,
@@ -120,6 +124,36 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
       ),
     );
     return id;
+  }
+
+  @protected
+  TPayload? pendingQuestionPayload({required String requestId}) => switch (_pending[requestId]) {
+    _PendingQuestionEntry<TPayload>(:final payload) => payload,
+    _PendingPermissionEntry<TPayload>() || null => null,
+  };
+
+  /// Typed native replies retire the same entry as legacy question replies.
+  @protected
+  bool settlePendingQuestion({required String requestId, required PendingQuestionReplyOutcome outcome}) {
+    final entry = _pending[requestId];
+    if (entry is! _PendingQuestionEntry<TPayload>) return false;
+    _pending.remove(requestId);
+    final snapshot = entry.snapshot;
+    _emit(
+      switch (outcome) {
+        PendingQuestionReplyOutcome.replied => BridgeSseQuestionReplied(
+          requestID: requestId,
+          sessionID: snapshot.sessionID,
+          displaySessionId: snapshot.displaySessionId,
+        ),
+        PendingQuestionReplyOutcome.rejected => BridgeSseQuestionRejected(
+          requestID: requestId,
+          sessionID: snapshot.sessionID,
+          displaySessionId: snapshot.displaySessionId,
+        ),
+      },
+    );
+    return true;
   }
 
   StreamSubscription<TRequest> attach({required Stream<TRequest> stream}) {
@@ -205,23 +239,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
       final resolution = _resolveQuestion(payload: entry.payload, answers: answers);
       final outcome = resolution is Future<PendingQuestionReplyOutcome> ? await resolution : resolution;
       if (!identical(_pending[requestId], entry)) return false;
-      _pending.remove(requestId);
-      final snapshot = entry.snapshot;
-      _emit(
-        switch (outcome) {
-          PendingQuestionReplyOutcome.replied => BridgeSseQuestionReplied(
-            requestID: requestId,
-            sessionID: snapshot.sessionID,
-            displaySessionId: snapshot.displaySessionId,
-          ),
-          PendingQuestionReplyOutcome.rejected => BridgeSseQuestionRejected(
-            requestID: requestId,
-            sessionID: snapshot.sessionID,
-            displaySessionId: snapshot.displaySessionId,
-          ),
-        },
-      );
-      return true;
+      return settlePendingQuestion(requestId: requestId, outcome: outcome);
     } finally {
       _questionSubmissions.remove(entry);
     }
@@ -235,16 +253,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
       final resolution = _rejectQuestion(payload: entry.payload);
       if (resolution is Future<void>) await resolution;
       if (!identical(_pending[requestId], entry)) return false;
-      _pending.remove(requestId);
-      final snapshot = entry.snapshot;
-      _emit(
-        BridgeSseQuestionRejected(
-          requestID: requestId,
-          sessionID: snapshot.sessionID,
-          displaySessionId: snapshot.displaySessionId,
-        ),
-      );
-      return true;
+      return settlePendingQuestion(requestId: requestId, outcome: PendingQuestionReplyOutcome.rejected);
     } finally {
       _questionSubmissions.remove(entry);
     }

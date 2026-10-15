@@ -91,8 +91,11 @@ void main() {
     expect(tray.loadedAssets, <String>["assets/tray_icon.png"]);
     verify(() => icon.isIconTemplate = false).called(1);
     verify(() => icon.icon = image).called(1);
-    verify(() => icon.setContextMenu(menu)).called(1);
-    verify(() => icon.setVisible(true)).called(1);
+    verifyInOrder(<void Function()>[
+      () => icon.setContextMenuTrigger(ContextMenuTrigger.clicked),
+      () => icon.setContextMenu(menu),
+      () => icon.setVisible(true),
+    ]);
     verify(() => items.values.first.isEnabled = false).called(1);
     verify(() => items.values.last.isEnabled = true).called(1);
     verify(menu.addSeparator).called(1);
@@ -138,6 +141,7 @@ void main() {
     await tray.dispose();
 
     expect(tray.loadedAssets, <String>["assets/tray_icon.ico"]);
+    verifyNever(() => icon.setContextMenuTrigger(ContextMenuTrigger.clicked));
     verify(() => icon.removeListener(7)).called(1);
     verify(icon.dispose).called(1);
     verify(menu.dispose).called(1);
@@ -151,6 +155,7 @@ void main() {
     await tray.initialize(menu: _menu);
 
     verify(() => icon.isIconTemplate = true).called(1);
+    verifyNever(() => icon.setContextMenuTrigger(ContextMenuTrigger.clicked));
   });
 
   test("releases native handles when the icon cannot be shown", () async {
