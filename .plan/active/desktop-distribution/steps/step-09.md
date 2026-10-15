@@ -19,7 +19,10 @@ The existing temporary signing owner signs APT `Release`/`InRelease` and each RP
 completion. Tools install before secrets; tests use disposable keys only.
 
 APT suites/pools and RPM CPU roots separate `internal` and `stable`; tooling support
-for both channels does not admit stable product publication. APT indexes include
+for both channels does not admit stable product publication. APT metadata expires
+30 days after generation. Protected repository signing and weekly metadata-only
+refresh of accepted packages must be wired in 11.h before hosting; this builder has
+no production-key workflow invocation yet. APT indexes include
 SHA-256 by-hash objects; RPM indexes use checksum filenames. The publisher continuation
 must retain old referenced content and upload payloads/indexes before signed entrypoints.
 No GCS resources, IAM, public repository or release changes are made by this builder.

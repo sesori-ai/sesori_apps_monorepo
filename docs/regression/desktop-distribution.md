@@ -143,7 +143,13 @@ internal/stable roots stay separate. The existing temporary signing owner create
 APT `Release.gpg`/`InRelease` and RPM `repomd.xml.asc`, verifies with public material,
 and removes private state before writing the completed inventory.
 
-APT advertises only SHA-256 by-hash indexes. RPM metadata filenames contain checksums.
+APT advertises only SHA-256 by-hash indexes and a UTC `Date`/`Valid-Until` window of
+30 days. A correctly signed but expired APT index is refused; regenerating metadata
+from the same accepted packages restores access without disabling client expiry checks.
+Hosting must first wire protected signing and weekly metadata-only refresh for quiet
+channels through the same publisher. This is not a second product release cycle and
+must never rebuild apps, change release completion or dispatch stores. RPM metadata
+signatures do not provide APT's expiry guarantee; its filenames contain checksums.
 Publishing must retain old referenced objects and place payloads/indexes before signed
 entrypoints; RPM's separate XML/signature update can safely refuse a concurrent refresh
 rather than install unauthenticated data. This tooling does not publish, approve a

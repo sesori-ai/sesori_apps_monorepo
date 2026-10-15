@@ -19,26 +19,42 @@ primary signer, checks DEB/RPM headers and verifies native RPM signatures. Packa
 bytes remain unchanged. `apt-ftparchive` and `createrepo_c` own index generation;
 there is no custom package parser, updater, daemon or release database.
 
-## Protected execution
+## Unwired/manual protected execution
+
+This PR does not wire a production-key repository-signing job. CI runs disposable-key
+fixtures only; the existing secret-bearing package job still invokes
+`sign_desktop_linux.py`, not this builder. Step 11.h must add the protected invocation
+before hosting is enabled. The following is its secure runbook, not a live CI claim.
 
 Build `.github/scripts/Dockerfile.linux-signing` as `sesori-linux-signing` first, then
 `.github/scripts/Dockerfile.linux-repository` as `sesori-linux-repository`. The second
 image extends the locally built pinned signer with repository tools; ordinary CLI and
 native package signers do not install those additional dependencies.
 
-Only after both builds finish may the existing protected signing job supply
-`LINUX_GPG_PRIVATE_KEY`, `LINUX_GPG_PASSPHRASE` and `LINUX_GPG_FINGERPRINT`. The CLI pins
-`E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7` independently of producer configuration.
-Use a network-disabled container. Mount the trusted workflow checkout read-only at
-`/workspace`, prepared input read-only at `/prepared`, and an owned output volume at
-`/output`. Use a fresh output directory. Inside that container:
+Only after both builds finish may an approved signing environment supply
+`LINUX_GPG_PRIVATE_KEY`, `LINUX_GPG_PASSPHRASE` and `LINUX_GPG_FINGERPRINT`. Never
+retrieve production secrets for these fixtures. The CLI independently pins
+`E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`. From the trusted workflow checkout, with
+absolute input/output paths and secrets already supplied by that environment:
 
 ```bash
-python3 .github/scripts/build_linux_repository.py \
-  --root /prepared \
-  --output /output/repository \
-  --channel internal
+set -euo pipefail
+: "${PREPARED_RELEASE:?Set the absolute prepared-input directory}"
+: "${REPOSITORY_OUTPUT:?Set the absolute owned output directory}"
+docker run --rm --network none \
+  -v "$PWD:/workspace:ro" \
+  -v "$PREPARED_RELEASE:/prepared:ro" \
+  -v "$REPOSITORY_OUTPUT:/output" \
+  -e LINUX_GPG_PRIVATE_KEY -e LINUX_GPG_PASSPHRASE -e LINUX_GPG_FINGERPRINT \
+  sesori-linux-repository \
+  python3 .github/scripts/build_linux_repository.py \
+    --root /prepared --output /output/repository --channel internal
 ```
+
+`/output/repository` must not already exist. Among host mounts, only the owned public
+output volume is writable; input and tooling remain read-only. Temporary private key
+files stay inside the disposable container. The example forwards variable names,
+not secret values in command arguments.
 
 The shared temporary key owner removes secret variables before child tools run,
 verifies repository signatures with public material, and cleans its private agent/home.
@@ -46,6 +62,23 @@ verifies repository signatures with public material, and cleans its private agen
 It is a CI file inventory, not a public release pointer. Failed/partial output must not
 be published. Retry publication from the original signed artifact rather than assuming
 fresh signatures will be byte-identical.
+
+## APT freshness and maintenance prerequisite
+
+APT metadata carries its UTC generation `Date` and `Valid-Until` 30 days later.
+A valid old signature therefore cannot keep a replayed index acceptable indefinitely;
+clients retain normal `Check-Valid-Until` enforcement. RPM metadata signatures do not
+provide this APT expiry mechanism; do not claim equivalent RPM replay protection.
+
+Before the first hosted publication, step 11.h must implement weekly metadata-only
+refresh for every published channel through the same GitHub repository publisher,
+plus manual repair/retry. Refresh uses the already-accepted package bytes; it does
+not rebuild native apps, create/promote releases, alter their completion markers, or
+dispatch stores. No second product release scheduler or cloud service is needed.
+A failed refresh must fail its CI job visibly; repair it before expiry. Do not disable
+client expiry checks. This maintenance owner is a hosting prerequisite, not implemented
+by the current offline builder. An expired artifact must be regenerated as metadata,
+not published as an unchanged retry.
 
 ## Repository layout and publishing contract
 
@@ -89,6 +122,7 @@ unchanged package bytes and refusal of mismatched or altered inputs.
 
 Real APT/DNF clients use fresh isolated roots, enforce metadata/package trust, and
 install, upgrade and remove inert text-only packages while preserving unrelated state.
-Wrong keys, altered metadata and altered package bytes must fail. These are repository
+Wrong keys, altered metadata, expired authentic APT metadata and altered package bytes
+must fail. These are repository
 mechanics, not native application upgrades, production-key access, public HTTPS
 availability or GUI/account/keyring/tray qualification on Ubuntu/Debian/Fedora.

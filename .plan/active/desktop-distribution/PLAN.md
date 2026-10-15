@@ -518,8 +518,12 @@ these are executable substeps, not a new plan or a Windows dependency.
   leave Cloud Run source storage and Firebase federation permissions unchanged.
   Separate signing from publishing, publish immutable payloads/content-addressed
   indexes before signed entrypoints, and join the existing shared internal cycle.
-  Bootstrap matching existing preview artifacts without rebuilding stores. About
-  900–1,300 authored lines; verify anonymous retrieval and independent pinned trust.
+  Bootstrap matching existing preview artifacts without rebuilding stores. Before
+  hosting, wire production-key repository signing and weekly metadata-only refresh of
+  accepted packages for each published channel through this same GitHub publisher.
+  APT validity is 30 days; failures stay visible in CI and manual repair must precede
+  expiry. Refresh never creates releases, changes completion markers or dispatches stores.
+  About 900–1,300 authored lines; verify anonymous retrieval and independent pinned trust.
 - `🚧 [desktop-distribution] Qualify native Linux desktop upgrades [step 11.i/14]`:
   native x64/ARM64 GUI, account/keyring, tray/no-tray, Wayland/X11, login launch, safe
   Quit and real version upgrades with shared-data preservation. Reuse existing native
@@ -547,8 +551,9 @@ available. RPM's separate XML/signature replacement can briefly refuse refresh a
 require retry; do not add a custom update coordinator to hide that safe failure.
 
 Complexity budget: one public package bucket, one dedicated federation identity/service
-account and existing transient CI artifacts. No new persistent pointer, scheduler,
-release service, application state or updater. Reuse the existing signing owner and one
+account and existing transient CI artifacts, plus a weekly metadata-maintenance trigger
+owned by the same repository publisher. No new persistent pointer, product release
+scheduler, cloud service, application state or updater. Reuse the existing signing owner and one
 website cache; immutable
 release assets plus per-platform completion markers own availability. Remove replaced
 Mac-only wording/retention assumptions and duplicated signing setup as each slice lands.

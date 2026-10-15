@@ -33,6 +33,9 @@ in `sesori-ai`, then completion through stable Linux publication before Windows.
 Interactive GCP reauthentication restored read-only access. Existing Cloud Run source
 storage and Firebase federation remain outside the new package publisher's authority.
 No resources have been provisioned by 11.g; it adds offline signed repository generation.
+APT metadata expires after 30 days. Before hosting, 11.h must wire protected signing
+and weekly metadata-only refresh through the same publisher, including quiet channels;
+refresh preserves accepted package bytes and never dispatches stores or creates releases.
 
 Continue original step 9/ordinal 11: metadata and real-tool fixtures (11.g), preview
 hosting/publication (11.h), native desktop and genuine app upgrades (11.i), truthful
@@ -40,7 +43,7 @@ website repository/stable discovery support (11.j), then qualified shared stable
 publication (11.k). Keep one series PR open and at most one successor local. Neither
 inert package upgrades nor earlier preview waivers establish native desktop readiness.
 
-MacOS step 6 is delivered: public `v1.9.1` release `412515090`, build `1017`, product
+macOS step 6 is delivered: public `v1.9.1` release `412515090`, build `1017`, product
 `8bfeda9416c96ea5de70ffc701a36b738f24eff7`, packaging run `38537594836`.
 Both CPU DMG URLs appeared on the live website and returned HTTP 200 on 2026-10-14.
 This is a public production compatibility baseline. Gate C remains retired; the prior

@@ -8,6 +8,8 @@ import shutil
 import subprocess
 import tempfile
 import unittest
+from datetime import UTC, datetime, timedelta
+from email.utils import parsedate_to_datetime
 from unittest import mock
 import xml.etree.ElementTree as ET
 
@@ -179,6 +181,31 @@ class LinuxRepositoryTests(unittest.TestCase):
                         name = f"Sesori-linux-{arch}-9.8.7-42.{kind}"
                         self.assertEqual((directory / name).read_bytes(), (root / name).read_bytes())
                 shutil.rmtree(keyring.parent)
+
+    def test_apt_rejects_expired_but_authentic_metadata(self):
+        output = self.work / "expired"
+        issued_at = datetime.now(UTC) - timedelta(days=31)
+        with mock.patch.object(repository, "datetime") as clock:
+            clock.now.return_value = issued_at
+            self.build(root=self.releases[42], output=output)
+        release = output / "apt/dists/internal/Release"
+        fields = dict(line.split(": ", 1) for line in release.read_text().splitlines() if ": " in line)
+        issued = parsedate_to_datetime(fields["Date"])
+        expires = parsedate_to_datetime(fields["Valid-Until"])
+        self.assertEqual(issued, issued_at.replace(microsecond=0))
+        self.assertEqual(expires - issued, timedelta(days=30))
+        keyring = self.public_keyring(output=output)
+        keys.run(command=["gpgv", "--homedir", str(keyring.parent), "--keyring", str(keyring),
+                          str(release.with_name("InRelease"))], env=self.env)
+        apt = self.apt(client=self.work / "expired-client", output=output)
+        with self.assertRaises(subprocess.CalledProcessError) as caught:
+            keys.run(command=[*apt, "update"], env=self.env)
+        self.assertIn("expired", caught.exception.stderr.lower())
+        # Refresh metadata from the same accepted packages; do not bypass expiry.
+        refreshed = self.work / "refreshed"
+        self.build(root=self.releases[42], output=refreshed)
+        shutil.copytree(refreshed, output, dirs_exist_ok=True)
+        keys.run(command=[*apt, "update"], env=self.env)
 
     def test_mixed_channel_missing_cpu_wrong_signer_and_tampering_refuse_completion(self):
         for failure in ("channel", "missing", "signer", "package", "checksums", "signature"):

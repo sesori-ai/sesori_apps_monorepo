@@ -9,6 +9,8 @@ import re
 import shutil
 import subprocess
 import tempfile
+from datetime import UTC, datetime, timedelta
+from email.utils import format_datetime
 from enum import StrEnum
 
 from linux_signing import signing_key, sha256
@@ -18,6 +20,7 @@ from sign_desktop_linux import CHECKSUMS, PUBLIC_KEY, verify_rpm
 
 ARCHITECTURES = {"x64": ("amd64", "x86_64"), "arm64": ("arm64", "aarch64")}
 REPORT = "repository.json"
+APT_METADATA_LIFETIME = timedelta(days=30)
 
 
 class Channel(StrEnum):
@@ -87,7 +90,12 @@ def build_apt(*, root: Path, output: Path, metadata: dict, channel: Channel, env
         hashes.mkdir(parents=True)
         for path in (index, compressed):
             shutil.copyfile(path, hashes / sha256(path=path))
+    issued_at = datetime.now(UTC)
     fields = {
+        # apt-ftparchive enables the Valid-Until field only when ValidTime is nonzero.
+        "ValidTime": str(int(APT_METADATA_LIFETIME.total_seconds())),
+        "Date": format_datetime(issued_at, usegmt=True),
+        "Valid-Until": format_datetime(issued_at + APT_METADATA_LIFETIME, usegmt=True),
         "Origin": "Sesori", "Label": f"Sesori {channel.value}", "Suite": channel.value,
         "Codename": channel.value, "Architectures": "amd64 arm64", "Components": "main", "Acquire-By-Hash": "yes",
         "Description": f"Sesori desktop {channel.value} packages",
