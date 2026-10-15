@@ -64,6 +64,35 @@ http.Response _inventory({required String status}) => http.Response(
 );
 
 void main() {
+  for (final integrationId in <String?>[null, "native-integration"]) {
+    test("authentication limitation follows the native integration ID: $integrationId", () async {
+      final service = _service(
+        handler: (_) async => http.Response(
+          jsonEncode({
+            "location": {"directory": _directory},
+            "data": [
+              {
+                "name": _name,
+                "status": {"status": "needs_auth", "error": "Fixture authentication required"},
+                "integrationID": ?integrationId,
+              },
+            ],
+          }),
+          200,
+        ),
+      );
+      final inventory = await service.getMcpInventory(
+        scope: const PluginMcpProjectScope(projectId: _directory),
+      ) as PluginMcpInventorySnapshot;
+      final server = inventory.entries.single as PluginMcpServerSnapshot;
+      final expected = integrationId == null
+          ? PluginMcpAuthenticationCapabilityUnavailableReason.notSupported
+          : PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented;
+      expect((server.authentication as PluginMcpAuthenticationCapabilityUnavailable).reason, expected);
+      expect((server.credentialForgetting as PluginMcpAuthenticationCapabilityUnavailable).reason, expected);
+    });
+  }
+
   for (final disconnect in [false, true]) {
     test("a slow native ${disconnect ? 'disconnect' : 'connect'} remains pending until native completion", () {
       fakeAsync((clock) {

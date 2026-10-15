@@ -829,9 +829,17 @@ metadata, configuration ownership or authentication success. Effects are scoped
 to the native project/location, with authoritative refresh after controls.
 Project effects invalidate all open inventories for that plugin, covering views
 of other sessions at the same native location.
-The v2 MCP API provides no offered-connector catalog or OAuth/forgetting route;
-those operations are **not supported by this seam**. Other native integration
-authentication remains a separate audit. Exact integrity-verified 2.0.11 and
+The v2 MCP API provides no offered-connector catalog. Native MCP OAuth and
+credential removal are supported through the Integration API when the server
+declares an `integrationID`; Sesori authentication/forgetting remain **not
+implemented** for those servers and **not supported** for servers without one.
+Typed native integration metadata, OAuth start/status/cancel and credential
+removal contracts are available internally; no product authentication action is
+enabled yet. Integration metadata exposes credential IDs without reading secret
+credential values. Isolated 2.0.11 and 2.0.24 probes verify native cancellation,
+automatic loopback completion and exact credential removal without configuration
+writes. This is native API evidence, not full client/provider qualification.
+Exact integrity-verified 2.0.11 and
 2.0.24 pass inventory, enable, resident-process reconnect, disable and exact
 session-location lookup through the production adapter in isolated fixtures.
 Controls preserve the fixture configuration file. This proves native local

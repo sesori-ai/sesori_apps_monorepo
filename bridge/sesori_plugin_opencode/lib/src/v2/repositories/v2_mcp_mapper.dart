@@ -20,6 +20,9 @@ class const V2McpMapper() {
 
   PluginMcpServerSnapshot _server({required McpServer server, required PluginMcpScope scope}) {
     final status = server.status;
+    final authenticationUnavailableReason = server.integrationID == null
+        ? PluginMcpAuthenticationCapabilityUnavailableReason.notSupported
+        : PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented;
     final actions = switch (status) {
       McpStatusDisabled() => const [PluginMcpServerAction.enable],
       McpStatusConnected() || McpStatusPending() || McpStatusFailed() || McpStatusNeedsAuth() => const [
@@ -37,11 +40,11 @@ class const V2McpMapper() {
       authorization: status is McpStatusNeedsAuth
           ? PluginMcpAuthorizationState.required
           : PluginMcpAuthorizationState.unknown,
-      authentication: const PluginMcpAuthenticationCapabilityUnavailable(
-        reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+      authentication: PluginMcpAuthenticationCapabilityUnavailable(
+        reason: authenticationUnavailableReason,
       ),
-      credentialForgetting: const PluginMcpAuthenticationCapabilityUnavailable(
-        reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+      credentialForgetting: PluginMcpAuthenticationCapabilityUnavailable(
+        reason: authenticationUnavailableReason,
       ),
       actions: List.unmodifiable([
         for (final action in actions)
