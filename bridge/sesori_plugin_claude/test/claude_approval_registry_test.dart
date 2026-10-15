@@ -99,7 +99,143 @@ void main() {
       expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
     });
 
-    test("unsupported native forms are declined with a visible capability explanation", () {
+    for (final mode in [null, "form"]) {
+      test("form mode $mode retains typed fields and only broadcasts a static notice", () {
+        handle(
+          sessionId: "session-1",
+          message: _formElicitation(mode: mode),
+        );
+        final pending = registry.pendingFormsForSession(sessionId: "session-1").single;
+        expect(pending.title, "Fixture server");
+        expect(pending.fields, hasLength(5));
+        expect(registry.pendingFormsForSession(sessionId: "other"), isEmpty);
+        final notice = registry.pendingQuestionsForSession(sessionId: "session-1").single;
+        expect(notice.interactionKind, PluginQuestionInteractionKind.form);
+        expect(notice.questions.single.custom, isFalse);
+        expect(notice.questions.single.options.single.label, "Cancel");
+        expect(events.whereType<BridgeSseQuestionAsked>().single.interactionKind, PluginQuestionInteractionKind.form);
+        expect(events.toString(), isNot(contains("private-default")));
+        expect(notice.toString(), isNot(contains("private-default")));
+        expect(responses, isEmpty);
+        expect(
+          registry.replyQuestion(
+            id: pending.id,
+            answers: [
+              ["true"],
+            ],
+          ),
+          isFalse,
+        );
+        expect(registry.rejectQuestion(id: pending.id), isFalse);
+        expect(registry.replyForm(id: pending.id, sessionId: "other", values: {}), isA<PluginFormAlreadySettled>());
+        expect(responses, isEmpty);
+        expect(
+          registry.replyForm(
+            id: pending.id,
+            sessionId: "session-1",
+            values: {
+              "field-0": const PluginFormBooleanValue(value: false),
+              "field-1": const PluginFormIntegerValue(value: 0),
+              "field-2": const PluginFormChoiceValue(optionId: "option-1"),
+              "field-3": PluginFormChoicesValue(optionIds: ["option-0", "option-1"]),
+            },
+          ),
+          isA<PluginFormAccepted>(),
+        );
+        expect(responses.single.requestId, "native-form");
+        expect(responses.single.sessionId, "session-1");
+        expect(responses.single.payload, {
+          "action": "accept",
+          "content": {
+            "approved": false,
+            "count": 0,
+            "plan": "pro",
+            "tags": ["a", "b"],
+          },
+        });
+        expect(registry.pendingFormsForSession(sessionId: "session-1"), isEmpty);
+        expect(registry.pendingQuestionsForSession(sessionId: "session-1"), isEmpty);
+        expect(registry.replyForm(id: pending.id, sessionId: "session-1", values: {}), isA<PluginFormAlreadySettled>());
+        expect(events.whereType<BridgeSseQuestionReplied>(), hasLength(1));
+      });
+    }
+
+    test("form validation and failed writes retain the pending request for correction", () {
+      var available = false;
+      registry = ClaudeApprovalRegistry(
+        emit: events.add,
+        respond: ({required sessionId, required requestId, required payload}) {
+          if (!available) return false;
+          responses.add((sessionId: sessionId, requestId: requestId, payload: payload));
+          return true;
+        },
+      );
+      handle(
+        sessionId: "session-1",
+        message: _formElicitation(mode: "form"),
+      );
+      final invalid = registry.replyForm(
+        id: "br-1",
+        sessionId: "session-1",
+        values: {
+          "field-0": const PluginFormTextValue(value: "false"),
+          "field-1": const PluginFormIntegerValue(value: 10),
+        },
+      ) as PluginFormValidationFailed;
+      expect(invalid.fieldErrors, {
+        "field-0": PluginFormValidationIssue.invalidType,
+        "field-1": PluginFormValidationIssue.outOfRange,
+        "field-2": PluginFormValidationIssue.required,
+      });
+      expect(responses, isEmpty);
+      expect(
+        registry.replyForm(
+          id: "br-1",
+          sessionId: "session-1",
+          values: {
+            "field-0": const PluginFormBooleanValue(value: true),
+            "field-1": const PluginFormIntegerValue(value: 1),
+            "field-2": const PluginFormChoiceValue(optionId: "option-0"),
+          },
+        ),
+        isA<PluginFormUnavailable>(),
+      );
+      expect(
+        registry.declineForm(id: "br-1", sessionId: "session-1", choice: PluginFormDismissalChoice.cancel),
+        PluginFormDismissalResult.unavailable,
+      );
+      expect(registry.pendingFormsForSession(sessionId: "session-1"), hasLength(1));
+      available = true;
+      registry.cancelForSession(sessionId: "session-1");
+      expect(responses.single.payload, {"action": "cancel"});
+      expect(registry.hasPendingInput(sessionId: "session-1"), isFalse);
+      expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+    });
+
+    for (final choice in PluginFormDismissalChoice.values) {
+      test("form ${choice.name} preserves the exact native negative response", () {
+        handle(
+          sessionId: "session-1",
+          message: _formElicitation(mode: "form"),
+        );
+        expect(
+          registry.declineForm(id: "br-1", sessionId: "other", choice: choice),
+          PluginFormDismissalResult.alreadySettled,
+        );
+        expect(responses, isEmpty);
+        expect(
+          registry.declineForm(id: "br-1", sessionId: "session-1", choice: choice),
+          PluginFormDismissalResult.accepted,
+        );
+        expect(responses.single.payload, {"action": choice.name});
+        expect(
+          registry.declineForm(id: "br-1", sessionId: "session-1", choice: choice),
+          PluginFormDismissalResult.alreadySettled,
+        );
+      });
+    }
+
+    test("unsupported native schemas are declined with a visible capability explanation", () {
       expect(
         handle(
           sessionId: "session-1",
@@ -110,6 +246,26 @@ void main() {
       expect(responses.single.payload, {"action": "decline"});
       expect(events.whereType<BridgeSseTuiToastShow>().single.message, contains("not supported"));
       expect(registry.hasPendingInput(sessionId: "session-1"), isFalse);
+    });
+
+    test("verified MCP server context enriches permission detail without changing native grants", () {
+      handle(
+        sessionId: "session-1",
+        message: _request(
+          requestId: "permission",
+          request: {
+            "tool_name": "mcp__fixture__echo",
+            "title": "Run echo",
+            "input": {},
+            "mcp_server": {"name": "\u001b[31mFixture server\u001b[0m", "source": "dynamic"},
+          },
+        ),
+      );
+      final permission = registry.pendingPermissionsForSession(sessionId: "session-1").single;
+      expect(permission.tool, "mcp__fixture__echo");
+      expect(permission.description, "MCP server Fixture server: Run echo");
+      expect(registry.replyPermission(id: permission.id, reply: PluginPermissionReply.once), isTrue);
+      expect(responses.single.payload, {"behavior": "allow", "updatedInput": <String, Object?>{}});
     });
 
     test("surfaces a permission with sanitized detail and capability", () {
@@ -417,6 +573,41 @@ void main() {
     });
   });
 }
+
+ClaudeControlRequestMessage _formElicitation({required String? mode}) => _request(
+  requestId: "native-form",
+  request: {
+    "subtype": "elicitation",
+    "mode": ?mode,
+    "mcp_server_name": "Fixture server",
+    "message": "Complete the fixture form",
+    "requested_schema": {
+      "type": "object",
+      "required": ["approved", "count", "plan"],
+      "properties": {
+        "approved": {"type": "boolean"},
+        "count": {"type": "integer", "minimum": 0, "maximum": 3},
+        "plan": {
+          "type": "string",
+          "oneOf": [
+            {"const": "basic", "title": "Basic plan"},
+            {"const": "pro", "title": "Pro plan"},
+          ],
+        },
+        "tags": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 2,
+          "items": {
+            "type": "string",
+            "enum": ["a", "b"],
+          },
+        },
+        "note": {"type": "string", "default": "private-default"},
+      },
+    },
+  },
+);
 
 ClaudeControlRequestMessage _urlElicitation() => _request(
   requestId: "native-url-request",

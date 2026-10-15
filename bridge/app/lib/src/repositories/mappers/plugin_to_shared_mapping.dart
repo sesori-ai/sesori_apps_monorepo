@@ -5,6 +5,7 @@ extension PluginQuestionInteractionKindMapping on PluginQuestionInteractionKind 
   QuestionInteractionKind toShared() => switch (this) {
     PluginQuestionInteractionKind.question => QuestionInteractionKind.question,
     PluginQuestionInteractionKind.externalAction => QuestionInteractionKind.externalAction,
+    PluginQuestionInteractionKind.form => QuestionInteractionKind.form,
   };
 }
 

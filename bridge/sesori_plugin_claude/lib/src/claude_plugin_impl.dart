@@ -40,6 +40,7 @@ final class ClaudePlugin({
         PersistedSessionCleanupApi,
         McpManagementPluginApi,
         McpAuthenticationPluginApi,
+        FormInteractionPluginApi,
         SessionExternalActionsPluginApi {
   this {
     _sessions.events.listen(_eventBuffer.add).addTo(_subscriptions);
@@ -217,7 +218,9 @@ final class ClaudePlugin({
   }
 
   @override
-  Future<void> archiveSession({required String sessionId}) async {}
+  Future<void> archiveSession({required String sessionId}) async {
+    _approvals.cancelForArchive(sessionId: sessionId);
+  }
 
   @override
   Future<void> deleteWorkspace({required String projectId, required String worktreePath}) async {}
@@ -376,6 +379,24 @@ final class ClaudePlugin({
       _approvals.pendingExternalActionsForSession(sessionId: sessionId);
 
   @override
+  Future<List<PluginPendingForm>> getPendingForms({required String sessionId}) async =>
+      _approvals.pendingFormsForSession(sessionId: sessionId);
+
+  @override
+  Future<PluginFormSubmissionResult> replyToForm({
+    required String requestId,
+    required String sessionId,
+    required Map<String, PluginFormValue> values,
+  }) async => _approvals.replyForm(id: requestId, sessionId: sessionId, values: values);
+
+  @override
+  Future<PluginFormDismissalResult> declineForm({
+    required String requestId,
+    required String sessionId,
+    required PluginFormDismissalChoice choice,
+  }) async => _approvals.declineForm(id: requestId, sessionId: sessionId, choice: choice);
+
+  @override
   Future<PluginExternalActionReply> replyToExternalAction({
     required String requestId,
     required String sessionId,
@@ -400,6 +421,19 @@ final class ClaudePlugin({
     required String sessionId,
     required List<List<String>> answers,
   }) async {
+    // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 answers through question routes.
+    // Remove when all supported production clients consume typed forms.
+    if (_approvals.hasForm(id: questionId)) {
+      if (answers.length != 1 || answers.single.length != 1 || answers.single.single != "Cancel") {
+        throw const PluginOperationException(
+          "replyToQuestion",
+          statusCode: 400,
+          message: "this form notice can only be cancelled",
+        );
+      }
+      _cancelLegacyForm(id: questionId, sessionId: sessionId);
+      return;
+    }
     // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 answers through question routes.
     // Remove when all supported production clients consume typed external actions.
     if (_approvals.hasExternalAction(id: questionId)) {
@@ -446,6 +480,12 @@ final class ClaudePlugin({
   @override
   Future<void> rejectQuestion({required String questionId, required String? sessionId}) async {
     // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 rejects through question routes.
+    // Remove when all supported production clients consume typed forms.
+    if (_approvals.hasForm(id: questionId)) {
+      _cancelLegacyForm(id: questionId, sessionId: sessionId);
+      return;
+    }
+    // COMPATIBILITY 2026-10-15 (v1.9.2): public v1.9.1 rejects through question routes.
     // Remove when all supported production clients consume typed external actions.
     if (_approvals.hasExternalAction(id: questionId)) {
       _cancelLegacyExternalAction(id: questionId, sessionId: sessionId);
@@ -456,6 +496,20 @@ final class ClaudePlugin({
     }
     if (!_approvals.rejectQuestion(id: questionId)) {
       throw const PluginOperationException("rejectQuestion", message: "Claude rejected the question response");
+    }
+  }
+
+  void _cancelLegacyForm({required String id, required String? sessionId}) {
+    if (sessionId == null) {
+      throw const PluginOperationException.notFound("cancelForm", message: "owning session is required");
+    }
+    switch (_approvals.declineForm(id: id, sessionId: sessionId, choice: PluginFormDismissalChoice.cancel)) {
+      case PluginFormDismissalResult.accepted:
+        return;
+      case PluginFormDismissalResult.alreadySettled:
+        throw const PluginOperationException.notFound("cancelForm", message: "native request is not pending");
+      case PluginFormDismissalResult.unavailable:
+        throw const PluginOperationException("cancelForm", statusCode: 503, message: "native reply unavailable");
     }
   }
 

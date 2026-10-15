@@ -976,8 +976,8 @@ void main() {
       await subscription.cancel();
     });
 
-    for (final reject in [false, true]) {
-      test("legacy ${reject ? 'reject' : 'Cancel'} cancels the original native URL request", () async {
+    for (final (kind, reject) in [("url", false), ("url", true), ("form", false), ("form", true)]) {
+      test("legacy ${reject ? 'reject' : 'Cancel'} cancels the original native $kind request", () async {
         await harness.createSession();
         final process = harness.processes.single;
         await waitForFrame(process, "user");
@@ -986,15 +986,23 @@ void main() {
           "request_id": "external-request",
           "request": {
             "subtype": "elicitation",
-            "mode": "url",
+            "mode": kind,
             "mcp_server_name": "Fixture server",
             "message": "Authorize fixture",
-            "url": "https://fixture.example/setup",
-            "elicitation_id": "fixture",
+            if (kind == "url") "url": "https://fixture.example/setup",
+            if (kind == "url") "elicitation_id": "fixture",
+            if (kind == "form")
+              "requested_schema": {
+                "type": "object",
+                "properties": {
+                  "approved": {"type": "boolean"},
+                },
+                "required": ["approved"],
+              },
           },
         });
         await pump();
-        final pending = (await harness.plugin.getPendingExternalActions(sessionId: testSessionId)).single;
+        final pending = (await harness.plugin.getPendingQuestions(sessionId: testSessionId)).single;
         expect(pending.sessionID, testSessionId);
         await expectLater(
           harness.plugin.replyToQuestion(
@@ -1016,7 +1024,7 @@ void main() {
           ),
           throwsA(isA<PluginOperationException>()),
         );
-        expect(await harness.plugin.getPendingExternalActions(sessionId: testSessionId), hasLength(1));
+        expect(await harness.plugin.getPendingQuestions(sessionId: testSessionId), hasLength(1));
         if (reject) {
           await harness.plugin.rejectQuestion(questionId: pending.id, sessionId: testSessionId);
         } else {
@@ -1034,9 +1042,76 @@ void main() {
           "request_id": "external-request",
           "response": {"action": "cancel"},
         });
-        expect(await harness.plugin.getPendingExternalActions(sessionId: testSessionId), isEmpty);
+        expect(await harness.plugin.getPendingQuestions(sessionId: testSessionId), isEmpty);
       });
     }
+
+    test("archive settles a pending form through the existing native owner", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "archived-form",
+        "request": {
+          "subtype": "elicitation",
+          "requested_schema": {
+            "type": "object",
+            "properties": {
+              "approved": {"type": "boolean"},
+            },
+          },
+        },
+      });
+      await pump();
+      expect(await harness.plugin.getPendingForms(sessionId: testSessionId), hasLength(1));
+      await harness.plugin.archiveSession(sessionId: testSessionId);
+      final frame = await waitForFrame(process, "control_response");
+      expect(frame["response"], {
+        "subtype": "success",
+        "request_id": "archived-form",
+        "response": {"action": "cancel"},
+      });
+      expect(await harness.plugin.getPendingForms(sessionId: testSessionId), isEmpty);
+    });
+
+    test("failed archive cancellation retains the native request until a successful write", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "archive-retry",
+        "request": {
+          "subtype": "elicitation",
+          "requested_schema": {
+            "type": "object",
+            "properties": {
+              "approved": {"type": "boolean"},
+            },
+          },
+        },
+      });
+      await pump();
+      events.clear();
+      harness.allowApprovalWrites = false;
+      await harness.plugin.archiveSession(sessionId: testSessionId);
+      expect(await harness.plugin.getPendingForms(sessionId: testSessionId), hasLength(1));
+      expect(events.whereType<BridgeSseQuestionRejected>(), isEmpty);
+      harness.allowApprovalWrites = true;
+      await harness.plugin.archiveSession(sessionId: testSessionId);
+      final frame = await waitForFrame(process, "control_response");
+      expect(frame["response"], {
+        "subtype": "success",
+        "request_id": "archive-retry",
+        "response": {"action": "cancel"},
+      });
+      expect(await harness.plugin.getPendingForms(sessionId: testSessionId), isEmpty);
+      expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+    });
 
     test("publishes Default prompt defaults after approving ExitPlanMode", () async {
       final events = <BridgeSseEvent>[];
@@ -1276,7 +1351,9 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     );
     approvals = ClaudeApprovalRegistry(
       emit: eventBuffer.add,
-      respond: processRepository.answerControlRequest,
+      respond: ({required sessionId, required requestId, required payload}) =>
+          allowApprovalWrites &&
+          processRepository.answerControlRequest(sessionId: sessionId, requestId: requestId, payload: payload),
     );
     sessionService = ClaudeSessionService(
       processes: processRepository,
@@ -1333,6 +1410,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
   var _idIndex = 0;
+  bool allowApprovalWrites = true;
 
   String _nextId() => _testIds[_idIndex++];
 
