@@ -314,3 +314,23 @@ competing flow. Matching retry/cancel protects provider and MCP callback listene
 presentation retains its issued challenge for explicit retry. The transport seam and shared MCP client lifecycle are
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
+
+## Session external-action transport foundation
+
+Neutral pending URL-action snapshot and reply codecs retain the original session
+owner, optional display parent, explanatory text, destination, purpose and declared
+choices. Accepting the native reply does not claim OAuth completion. Unknown
+purpose/choice/result values remain explicit unknowns; destination-bearing snapshots
+do not include their contents in generated presentation. Destinations remain
+request-scoped and are excluded from future invalidation broadcasts.
+
+Question snapshots and asked events carry an additive interaction marker. An
+omitted marker remains an ordinary question for public v1.9.1 bridges. Marked
+form/external notices can retain cancel-only, custom-disabled legacy projection;
+exact released v1.9.1 snapshot and SSE question codecs tolerate these added fields.
+
+This foundation only defines codecs. Canonical native ownership, URL validation,
+capability advertisement, routes, legacy cancellation, modern filtering and
+visible session actions remain the integration step. No requests are emitted yet.
+Coverage: `shared/sesori_shared/test/models/pending_external_action_test.dart` and
+`shared/sesori_shared/test/models/sesori_sse_event_test.dart`; native and mixed-peer gates remain in the active plan.
