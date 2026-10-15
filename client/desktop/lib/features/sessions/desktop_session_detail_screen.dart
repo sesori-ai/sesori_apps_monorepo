@@ -268,6 +268,7 @@ class const DesktopSessionDetailView({
                         scope: McpSessionScope(sessionId: session.id),
                       ),
                       createService: getIt.call<McpService>,
+                      authenticationService: getIt.call<McpAuthenticationService>,
                       mutationsAllowed:
                           !readOnly &&
                           session.parentID == null &&
