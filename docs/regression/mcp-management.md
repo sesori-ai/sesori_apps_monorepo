@@ -345,7 +345,12 @@ these intents. The headless owner and final qualification matrix are unchanged.
 Codex inventory reads native `app/list` after its scoped server snapshot, using
 all pages and the exact thread or harness context. Offers remain distinct from
 configured servers, including identical native key text. Native enabled/access
-defaults determine unavailable, available or setup-required status; native owns
+defaults determine unavailable, available or setup-required status. Offers sort
+by trimmed, case-insensitive display name with native ID as the tie-breaker;
+blank names fall back to the ID. The full catalog remains available, while the
+shared inventory builds only rows near the viewport, including large public
+directories. Rounded groups, independent section status and refresh scroll
+position remain intact. Native owns
 catalog caching. A server transport/decoder error retains local diagnostics and
 still reads the independent connector section. Unsupported/live-session-required
 scopes retain their explicit result without requesting a fallback catalog.
@@ -363,6 +368,8 @@ Coverage: `codex_mcp_repository_test.dart` exercises pagination, defaults, exact
 scope, stable identity/order, same-name server/offer distinction and catalog
 failure preserving servers and useful local logs. Authentication and plugin
 regressions retain server-only validation and no implicit connection/mutation.
+Shared inventory widget coverage uses 2,000 offers to check bounded row
+construction, access to the final offer and retained scroll position on refresh.
 Both exact native pins passed the production catalog API/repository read as an
 available empty catalog in isolated homes; authentication issued no `app/list`.
 Real authenticated offers, entitlement and setup remain unqualified.
