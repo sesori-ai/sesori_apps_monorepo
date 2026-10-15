@@ -23,17 +23,22 @@ BridgeSummary _computer({required String id, required String name, required Stri
   lastSeenAt: null,
 );
 
+final _studio = _computer(id: "a", name: "Studio", hostname: "studio-mac.local");
+final _workLaptop = _computer(id: "b", name: "work-laptop", hostname: "work-laptop");
+
 void main() {
   late _MockComputersCubit computersCubit;
   late List<(String, ComputerSwitchSource)> switched;
+
+  setUpAll(() => registerFallbackValue(_studio));
 
   setUp(() {
     computersCubit = _MockComputersCubit();
     whenListen(computersCubit, const Stream<ComputersState>.empty(), initialState: const ComputersIdle());
     when(
       () => computersCubit.rename(
-        bridgeId: any(named: "bridgeId"),
-        nickname: any(named: "nickname"),
+        computer: any(named: "computer"),
+        name: any(named: "name"),
       ),
     ).thenAnswer((_) async {});
     switched = [];
@@ -45,10 +50,7 @@ void main() {
       switcherCubit,
       const Stream<ComputerSwitcherState>.empty(),
       initialState: ComputerSwitcherState(
-        computers: [
-          _computer(id: "a", name: "Studio", hostname: "studio-mac.local"),
-          _computer(id: "b", name: "work-laptop", hostname: "work-laptop"),
-        ],
+        computers: [_studio, _workLaptop],
         targetId: "b",
         localId: "a",
       ),
@@ -136,7 +138,7 @@ void main() {
     expect(switched, [("a", ComputerSwitchSource.computersPage)]);
   });
 
-  testWidgets("rename prefills the name and saves a new one", (tester) async {
+  testWidgets("rename prefills the name and saves what was typed", (tester) async {
     await pumpView(tester);
     await openRename(tester, id: "a");
 
@@ -145,33 +147,17 @@ void main() {
     await tester.tap(find.byKey(const Key("computers-rename-save")));
     await tester.pumpAndSettle();
 
-    verify(() => computersCubit.rename(bridgeId: "a", nickname: "Desk")).called(1);
+    verify(() => computersCubit.rename(computer: _studio, name: "  Desk  ")).called(1);
   });
 
-  testWidgets("Use hostname clears the name", (tester) async {
+  testWidgets("Use hostname saves the hostname", (tester) async {
     await pumpView(tester);
     await openRename(tester, id: "a");
 
     await tester.tap(find.byKey(const Key("computers-rename-use-hostname")));
     await tester.pumpAndSettle();
 
-    verify(() => computersCubit.rename(bridgeId: "a", nickname: null)).called(1);
-  });
-
-  testWidgets("a blank name or exactly the hostname clears the name", (tester) async {
-    await pumpView(tester);
-
-    await openRename(tester, id: "a");
-    await tester.enterText(find.byType(TextField), "   ");
-    await tester.tap(find.byKey(const Key("computers-rename-save")));
-    await tester.pumpAndSettle();
-
-    await openRename(tester, id: "a");
-    await tester.enterText(find.byType(TextField), "studio-mac.local");
-    await tester.tap(find.byKey(const Key("computers-rename-save")));
-    await tester.pumpAndSettle();
-
-    verify(() => computersCubit.rename(bridgeId: "a", nickname: null)).called(2);
+    verify(() => computersCubit.rename(computer: _studio, name: "studio-mac.local")).called(1);
   });
 
   testWidgets("a computer named by its hostname offers no Use hostname", (tester) async {
@@ -179,14 +165,5 @@ void main() {
     await openRename(tester, id: "b");
 
     expect(find.byKey(const Key("computers-rename-use-hostname")), findsNothing);
-    await tester.tap(find.byKey(const Key("computers-rename-save")));
-    await tester.pumpAndSettle();
-
-    verifyNever(
-      () => computersCubit.rename(
-        bridgeId: any(named: "bridgeId"),
-        nickname: any(named: "nickname"),
-      ),
-    );
   });
 }

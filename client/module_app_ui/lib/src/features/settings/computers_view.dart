@@ -177,18 +177,18 @@ class const _ComputerRow({
       title: context.loc.computersRenameTitle,
       builder: (_) => _RenameComputerSheet(
         computer: computer,
-        onRename: ({required nickname}) => unawaited(cubit.rename(bridgeId: computer.id, nickname: nickname)),
+        onRename: ({required name}) => unawaited(cubit.rename(computer: computer, name: name)),
       ),
     );
   }
 }
 
-/// Edits the name of [computer], prefilled with its current one. An empty
-/// field, or the hostname itself, clears the name of its own, as does "Use
-/// hostname".
+/// Edits the name of [computer], prefilled with its current one. "Use
+/// hostname" saves the hostname, which `ComputersCubit` turns into clearing
+/// the name of its own.
 class const _RenameComputerSheet({
   required final BridgeSummary computer,
-  required final void Function({required String? nickname}) onRename,
+  required final void Function({required String name}) onRename,
 }) extends StatefulWidget {
   @override
   State<_RenameComputerSheet> createState() => _RenameComputerSheetState();
@@ -197,8 +197,8 @@ class const _RenameComputerSheet({
 class _RenameComputerSheetState() extends State<_RenameComputerSheet> {
   late final TextEditingController _controller = TextEditingController(text: widget.computer.name);
 
-  /// The computer's name of its own, or null while its hostname names it.
-  String? get _currentNickname => widget.computer.name == widget.computer.hostname ? null : widget.computer.name;
+  /// Whether the computer has a name of its own, so its hostname is an option.
+  bool get _hasNickname => widget.computer.name != widget.computer.hostname;
 
   @override
   void dispose() {
@@ -207,11 +207,8 @@ class _RenameComputerSheetState() extends State<_RenameComputerSheet> {
   }
 
   void _save({required String value}) {
-    final trimmed = value.trim();
-    final nickname = trimmed.isEmpty || trimmed == widget.computer.hostname ? null : trimmed;
     context.pop();
-    // Nothing to tell the server when the name stays as it is.
-    if (nickname != _currentNickname) widget.onRename(nickname: nickname);
+    widget.onRename(name: value);
   }
 
   @override
@@ -241,9 +238,7 @@ class _RenameComputerSheetState() extends State<_RenameComputerSheet> {
             onSubmitted: (value) => _save(value: value),
           ),
           const SizedBox(height: PregoSpacing.x2l),
-          if (_currentNickname == null)
-            save
-          else
+          if (_hasNickname)
             PregoSheetActions(
               secondary: PregoButtonsSolid(
                 key: const Key("computers-rename-use-hostname"),
@@ -254,7 +249,9 @@ class _RenameComputerSheetState() extends State<_RenameComputerSheet> {
                 onPressed: () => _save(value: widget.computer.hostname),
               ),
               primary: save,
-            ),
+            )
+          else
+            save,
         ],
       ),
     );

@@ -1,5 +1,6 @@
 import "package:bloc/bloc.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../logging/logging.dart";
 import "../../services/registered_bridges_service.dart";
@@ -15,9 +16,14 @@ class ComputersCubit({required final RegisteredBridgesService _registeredBridges
     extends Cubit<ComputersState> {
   this : super(const ComputersIdle());
 
-  /// Gives [bridgeId] the [nickname], or clears its nickname with `null` so
-  /// it is named by its hostname again.
-  Future<void> rename({required String bridgeId, required String? nickname}) async {
+  /// Names [computer] [name]. A blank name, or its hostname, clears its
+  /// nickname so the hostname names it again; an unchanged name sends nothing.
+  Future<void> rename({required BridgeSummary computer, required String name}) async {
+    final trimmed = name.trim();
+    final nickname = trimmed.isEmpty || trimmed == computer.hostname ? null : trimmed;
+    final currentNickname = computer.name == computer.hostname ? null : computer.name;
+    if (nickname == currentNickname) return;
+    final bridgeId = computer.id;
     emit(ComputersRenaming(bridgeId: bridgeId));
     final response = await _registeredBridgesService.rename(bridgeId: bridgeId, nickname: nickname);
     if (isClosed) return;

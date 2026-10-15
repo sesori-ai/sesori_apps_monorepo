@@ -18,6 +18,9 @@ void main() {
     return cubit;
   }
 
+  final named = testBridgeSummary(id: "a", name: "Studio", hostname: "studio-mac.local");
+  final unnamed = testBridgeSummary(id: "a", name: "studio-mac.local", hostname: "studio-mac.local");
+
   test("a rename runs, then settles back to idle", () async {
     final response = Completer<ApiResponse<BridgeSummary>>();
     when(
@@ -26,7 +29,7 @@ void main() {
     final cubit = build();
     expect(cubit.state, isA<ComputersIdle>());
 
-    final rename = cubit.rename(bridgeId: "a", nickname: "Studio");
+    final rename = cubit.rename(computer: unnamed, name: "  Studio  ");
     expect(cubit.state, isA<ComputersRenaming>().having((state) => state.bridgeId, "bridgeId", "a"));
 
     response.complete(ApiResponse.success(testBridgeSummary(id: "a", name: "Studio")));
@@ -34,15 +37,32 @@ void main() {
     expect(cubit.state, isA<ComputersIdle>());
   });
 
-  test("a null nickname clears it on the server", () async {
-    when(
-      () => registeredBridges.rename(bridgeId: "a", nickname: null),
-    ).thenAnswer((_) async => ApiResponse.success(testBridgeSummary(id: "a")));
+  for (final (description, name) in [("a blank name", "   "), ("the hostname", "studio-mac.local")]) {
+    test("$description clears the name of its own", () async {
+      when(
+        () => registeredBridges.rename(bridgeId: "a", nickname: null),
+      ).thenAnswer((_) async => ApiResponse.success(unnamed));
+      final cubit = build();
+
+      await cubit.rename(computer: named, name: name);
+
+      verify(() => registeredBridges.rename(bridgeId: "a", nickname: null)).called(1);
+      expect(cubit.state, isA<ComputersIdle>());
+    });
+  }
+
+  test("an unchanged name sends nothing", () async {
     final cubit = build();
 
-    await cubit.rename(bridgeId: "a", nickname: null);
+    await cubit.rename(computer: named, name: " Studio ");
+    await cubit.rename(computer: unnamed, name: "");
 
-    verify(() => registeredBridges.rename(bridgeId: "a", nickname: null)).called(1);
+    verifyNever(
+      () => registeredBridges.rename(
+        bridgeId: any(named: "bridgeId"),
+        nickname: any(named: "nickname"),
+      ),
+    );
     expect(cubit.state, isA<ComputersIdle>());
   });
 
@@ -52,7 +72,7 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     final cubit = build();
 
-    await cubit.rename(bridgeId: "a", nickname: "Studio");
+    await cubit.rename(computer: unnamed, name: "Studio");
 
     expect(cubit.state, isA<ComputersRenameFailed>().having((state) => state.bridgeId, "bridgeId", "a"));
   });
