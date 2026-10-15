@@ -1,3 +1,4 @@
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/external_action_repository.dart";
@@ -74,6 +75,15 @@ class PendingInteractionService({
     );
   }
 
+  Future<List<PendingExternalAction>> getPendingExternalActions({required String sessionId}) async {
+    if (_disposed) return await _disposedFuture();
+    final actions = await _externalActionRepository.getPending(sessionId: sessionId);
+    for (final action in actions) {
+      _requireSafeDestination(action: action, operation: SessionOperation.getPendingExternalActions);
+    }
+    return actions;
+  }
+
   Future<ExternalActionReplyResult> replyToExternalAction({required ReplyToExternalActionRequest request}) {
     if (_disposed) return _disposedFuture();
     return _dispatcher.dispatch(
@@ -81,6 +91,14 @@ class PendingInteractionService({
       operation: SessionOperation.replyToExternalAction,
       body: () async {
         await _archivedSessionValidator.requireNotArchived(sessionId: request.sessionId);
+        if (request.choice == ExternalActionChoice.accept) {
+          for (final action in await _externalActionRepository.getPending(sessionId: request.sessionId)) {
+            if (action.id != request.requestId || action.sessionID != request.sessionId) continue;
+            _requireSafeDestination(action: action, operation: SessionOperation.replyToExternalAction);
+            return await _externalActionRepository.reply(request: request);
+          }
+          return const ExternalActionAlreadySettled();
+        }
         return await _externalActionRepository.reply(request: request);
       },
     );
@@ -88,6 +106,19 @@ class PendingInteractionService({
 
   void dispose() {
     _disposed = true;
+  }
+
+  void _requireSafeDestination({required PendingExternalAction action, required SessionOperation operation}) {
+    final uri = Uri.tryParse(action.authorizationUrl);
+    if (uri != null && uri.scheme == "https" && uri.hasAuthority && uri.host.isNotEmpty && uri.userInfo.isEmpty) return;
+    Log.w(
+      "Rejecting external-action destination for ${action.id} in ${action.sessionID}: HTTPS without user info required",
+    );
+    throw PluginOperationException(
+      operation.name,
+      statusCode: 422,
+      message: "external-action destination requires absolute HTTPS without user info",
+    );
   }
 
   Future<T> _disposedFuture<T>() => Future<T>.error(

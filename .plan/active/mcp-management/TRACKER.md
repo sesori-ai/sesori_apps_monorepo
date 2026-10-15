@@ -1138,3 +1138,25 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Their commands are the corresponding test files with `--plain-name 'thrown
   browser failures retain'` and `--plain-name 'a request settled while closed'`;
   they pass in addition to the preceding 18 core and 28 shared UI cases.
+- Step-18 second review fixes move destination policy into PendingInteractionService
+  for both snapshot reads and acceptance, retaining canonical access in the repository.
+  Public-client cancel projections now carry dated retirement conditions. Typed
+  notices retain neutral request/Review wording after dismissal and do not emit
+  ordinary-question outcome analytics. The banner and analytics regressions failed
+  behaviorally at published head `e6162c78b9` before the fixes.
+- Review-fix checks use the same pinned SDK and working-directory conventions above:
+  the four-file bridge command passes 47 cases; the core permission command passes
+  13; from `client/app`, `flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart`
+  passes 197. Full bridge, core, shared-UI and mobile analyzers plus targeted Claude
+  analysis pass. Architecture implementation review pass 2 approves without findings.
+  Verified review-fix tree: `767dcaf79a75c1d3dd8342db0d6d819827ed2c0d`;
+  subsequent edits add only this evidence reference. Final diff is 1,641 changed lines.
+- Step 19's initial implementation is recorded in `10660b7f2b`, based on
+  `e6162c78b9`. Integrated parent fixes `4086e6e93c` without rewriting either history;
+  localization outputs were regenerated from the combined source. Verified merged
+  tree: `2d3c7f081125099b527bd576d36bf429eeb636e4`; only this evidence note follows.
+  With Flutter 3.47.7 / Dart 3.13.5, affected integration checks pass: from
+  `client/module_core`, `flutter test --no-pub test/cubits/session_detail/session_detail_cubit_permission_test.dart test/api/session_external_actions_api_test.dart test/services/session_external_action_service_test.dart test/cubits/session_detail/session_external_action_cubit_test.dart`
+  (32); from `client/module_app_ui`, `flutter test --no-pub test/features/session_detail/widgets/question_modal_test.dart test/features/session_detail/widgets/external_action_modal_test.dart`
+  (29); from `client/app`, `flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/widgets/adaptive_child_session_navigation_test.dart`
+  (208). Each of those three modules passes `flutter analyze --no-pub --fatal-infos`.

@@ -5,6 +5,7 @@ import "package:sesori_bridge/src/repositories/external_action_repository.dart";
 import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/routing/get_session_external_actions_handler.dart";
 import "package:sesori_bridge/src/routing/reply_to_external_action_handler.dart";
+import "package:sesori_bridge/src/services/pending_interaction_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -19,6 +20,7 @@ void main() {
   late _ExternalPlugin plugin;
   late TestPluginRuntime runtime;
   late ExternalActionRepository repository;
+  late PendingInteractionService service;
   const cancel = ReplyToExternalActionRequest(
     requestId: "request",
     sessionId: "child",
@@ -53,10 +55,16 @@ void main() {
       runtime: runtime,
       pendingSupport: PendingInteractionSupport(sessionDao: db.sessionDao),
     );
+    final pending = buildTestPendingInteractionService(database: db, plugin: plugin);
+    service = pending.service;
+    addTearDown(() async {
+      service.dispose();
+      await pending.dispatcher.dispose();
+    });
   });
 
   test("snapshot maps original owner and display parent; reply cannot use the display session", () async {
-    final handler = GetSessionExternalActionsHandler(repository: repository);
+    final handler = GetSessionExternalActionsHandler(service: service);
     final snapshot = await handler.handle(
       makeRequest("POST", "/session/external-actions"),
       body: const SessionIdRequest(sessionId: "root"),
@@ -65,7 +73,7 @@ void main() {
     expect(snapshot.data.single.displaySessionId, "root");
     expect(snapshot.toString(), isNot(contains("https://fixture.example")));
     expect(
-      await repository.reply(
+      await service.replyToExternalAction(
         request: const ReplyToExternalActionRequest(
           requestId: "request",
           sessionId: "root",
@@ -75,10 +83,10 @@ void main() {
       isA<ExternalActionAlreadySettled>(),
     );
     expect(plugin.replies, isEmpty);
-    expect(await repository.reply(request: accept), isA<ExternalActionReplyAccepted>());
+    expect(await service.replyToExternalAction(request: accept), isA<ExternalActionReplyAccepted>());
     expect(plugin.replies.single.sessionId, "child-native");
     expect(plugin.replies.single.choice, PluginExternalActionChoice.accept);
-    expect(await repository.reply(request: accept), isA<ExternalActionAlreadySettled>());
+    expect(await service.replyToExternalAction(request: accept), isA<ExternalActionAlreadySettled>());
     expect(plugin.replies, hasLength(1));
   });
 
@@ -95,8 +103,8 @@ void main() {
     test("invalid destination $url cannot be read or accepted; cancellation remains possible", () async {
       plugin.actions = [_action(url: url, choices: PluginExternalActionChoice.values)];
       final failure = throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 422));
-      await expectLater(repository.getPending(sessionId: "child"), failure);
-      await expectLater(repository.reply(request: accept), failure);
+      await expectLater(service.getPendingExternalActions(sessionId: "child"), failure);
+      await expectLater(service.replyToExternalAction(request: accept), failure);
       expect(plugin.replies, isEmpty);
       expect(await repository.reply(request: cancel), isA<ExternalActionReplyAccepted>());
       expect(plugin.replies.single.choice, PluginExternalActionChoice.cancel);

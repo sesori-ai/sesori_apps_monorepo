@@ -761,7 +761,7 @@ class Orchestrator({
         GetProvidersHandler(providerRepository),
         PostAgentsHandler(agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
-        GetSessionExternalActionsHandler(repository: externalActionRepository),
+        GetSessionExternalActionsHandler(service: pendingInteractionService),
         GetProjectQuestionsHandler(questionRepository: questionRepository),
         GetSessionPermissionsHandler(
           permissionRepository: permissionRepository,

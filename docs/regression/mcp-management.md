@@ -338,8 +338,8 @@ Deleted and archived owners are hidden, including a child surfaced through a
 display parent; settled requests are idempotent. Failed native writes
 retain the pending request. Teardown sends native cancellation.
 
-Destinations must be absolute HTTPS with a host and no user information before
-snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
+The pending-interaction service requires absolute HTTPS destinations with a host
+and no user information before snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
 destination. URLs never enter question broadcasts, replay or persistence. Legacy
 question replies accept only Cancel or rejection and send native `action: cancel`.
 Current clients preserve the interaction marker through cold loading and open a
@@ -349,6 +349,8 @@ are separate outcomes; neither confirms OAuth completion. Only declared known
 choices are offered, with distinct accept, decline and cancel semantics. Unknown
 purpose or unsafe destination cannot be opened or accepted. Form/unknown markers
 retain an explicit cancel-only handoff rather than ordinary scalar controls.
+After dismissal, the pending card retains neutral request wording and a Review
+action. Typed cancellation does not emit ordinary-question analytics.
 
 Closing the layer only disposes its observer. Reopening reads the current native
 request. A disconnect or bridge replacement retires that modal's controls and
