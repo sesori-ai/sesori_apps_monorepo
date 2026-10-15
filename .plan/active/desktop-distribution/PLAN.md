@@ -13,8 +13,8 @@
   Stable build 981's authenticated/Off acceptance and the 82-test shutdown audit
   retain their recorded scope; public links do not establish fresh authenticated
   replacement or shared-store qualification.
-  Linux CLI signatures, signed desktop internal previews and website discovery are
-  delivered through 11.f. The user approved GCS hosting/scoped publishing IAM and
+  Linux CLI signatures, signed desktop previews, website discovery and signed preview
+  repositories are delivered through 11.h. The user approved GCS hosting/scoped publishing IAM and
   directed finishing Linux through stable publication on 2026-10-14 (D13).
   Repository trust, native desktop/account checks and genuine package upgrades still
   precede stable admission. Windows signing/winget, six-target onboarding and final
@@ -527,13 +527,21 @@ these are executable substeps, not a new plan or a Windows dependency.
   accepted packages for each published channel through this same GitHub publisher.
   APT validity is 30 days; failures stay visible in CI and manual repair must precede
   expiry. Refresh never creates releases, changes completion markers or dispatches stores.
-  About 900–1,300 authored lines; verify anonymous retrieval and independent pinned trust.
-- `🚧 [desktop-distribution] Qualify native Linux desktop upgrades [step 11.i/14]`:
-  native x64/ARM64 GUI, account/keyring, tray/no-tray, Wayland/X11, login launch, safe
-  Quit and real version upgrades with shared-data preservation. Reuse existing native
-  producers/probes; split if the actual implementation exceeds one reviewable PR.
-  Container/inert-package checks are not substitutes. Record unavailable sessions
-  honestly; stable stays gated until the required evidence or explicit acceptance.
+  Merged as #1997. Main run `38754986125` published `1.9.2-1022`; pinned trust and
+  both architectures' real HTTPS APT/DNF refresh/download passed.
+- `🌿 [desktop-distribution] Restore Linux tray menu reachability [step 11.i.a/14]`:
+  native QA found that the unset context-menu trigger prevents Linux menu export.
+  Configure host-driven clicks on Linux only; preserve macOS/Windows behavior.
+  The user approved focused-test merge before fresh signed-build visual qualification
+  on 2026-10-15. This changes verification order, not stable admission.
+- `🚧 [desktop-distribution] Exercise native Linux desktop sessions [step 11.i.b/14]`:
+  resume paused #2002 with fresh signed producers containing the tray fix. Qualify
+  credential-free x64 GNOME/Wayland and ARM64 KDE/X11, Secret Service, normal Quit
+  and real package replacement. Do not bypass an unadvertised native menu endpoint.
+- `🚧 [desktop-distribution] Qualify authenticated Linux desktop upgrades [step 11.i.c/14]`:
+  real-account/helper On/Off, actual login-session launch, unavailable Secret Service
+  and remaining nominated-distro upgrades. Container/inert-package checks are not
+  substitutes; stable remains gated on genuine native acceptance.
 - `⚙️ [desktop-distribution] Add Linux repository and stable download guidance [step 11.j/14]`:
   update `sesori-ai/landingpage` using its existing release cache and truthful public
   availability. Stable entries stay hidden until qualified stable completion exists.

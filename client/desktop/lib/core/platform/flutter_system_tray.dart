@@ -95,6 +95,10 @@ class FlutterSystemTray.forTesting({
       icon
         ..isIconTemplate = _isMacOS
         ..icon = image;
+      if (_isLinux) {
+        // Linux's host renders the exported menu; openContextMenu is unsupported there.
+        icon.setContextMenuTrigger(ContextMenuTrigger.clicked);
+      }
       _render(tray: tray, menu: menu);
       if (!icon.setVisible(true)) {
         throw StateError("Unable to show the system tray icon");

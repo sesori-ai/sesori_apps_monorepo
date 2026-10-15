@@ -77,6 +77,16 @@ They do not start the product and prove silent fixture behavior only. Output rem
 it does not establish publisher trust, SmartScreen reputation, interactive behavior,
 account restoration, upgrades, or release readiness.
 
+## Linux tray reachability
+
+On a functioning StatusNotifier host, Linux configures the native click trigger before
+publishing the menu and showing the icon. The host must receive a usable menu containing
+normal Show/Quit actions; an icon alone is not reachability. Manual `openContextMenu`
+is unsupported by the Linux backend and cannot substitute for exporting the menu.
+GNOME without a host retains its no-tray behavior. macOS/Windows keep their existing
+manual click callbacks. Adapter tests cover Linux configuration order and non-Linux
+isolation; real menu/normal-Quit proof still requires fresh native signed builds.
+
 ## Private Linux package qualification and signing
 
 Manual main-only `linux-packaging` qualification first builds unsigned DEB and RPM packages from
