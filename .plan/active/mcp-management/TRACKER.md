@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-codex-controls`, `5d429a126f`, in the provided `copper-heron` worktree.
-- Current step: 25/30 is implemented locally; latest merged step: 24/30 as [#1995][pr-1995].
+- Current step: 25/30 is in review as [#1999][pr-1999]; latest merged step: 24/30 as [#1995][pr-1995].
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -49,7 +49,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 22/30 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
 | 23/30 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
 | 24/30 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
-| 25/30 | Codex scoped inventory (10.a) | In progress | Local; 22 focused tests, native captures and architecture approval |
+| 25/30 | Codex scoped inventory (10.a) | In review | [#1999][pr-1999]; 22 focused tests, native captures and architecture approval |
 | 26/30 | Codex native OAuth ownership (10.b) | Not started | — |
 | 27/30 | Codex forms and offered connectors | Not started | — |
 | 28/30 | Secondary harness support and explicit gaps | Not started | — |
@@ -1300,6 +1300,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 [pr-1992]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1992
 [pr-1993]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1993
 [pr-1995]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1995
+[pr-1999]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1999
 
 - Step 20's later terminal monitor snapshot records 33 passing checks; the 32
   above is the earlier pre-merge snapshot. Step 21 was
@@ -1446,6 +1447,6 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   status pages pass through the new production decoder/repository, three per pin.
   These are native JSON and adapter checks, not provider/relay/packaged qualification.
 - Step 24 merged at accepted head `bb5bd92929`, squash `5d429a126f`, with
-  20 pre-merge checks passing. Fresh Cubic review approved with zero issues;
+  20 pre-merge and 21 terminal checks passing. Fresh Cubic review approved with zero issues;
   Codex code/security reviews completed. No newly actionable threads remained;
   the two declined empty-to-omission suggestions retain their explanations.
