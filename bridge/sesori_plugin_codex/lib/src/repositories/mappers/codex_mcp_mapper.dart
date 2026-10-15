@@ -31,6 +31,10 @@ class CodexMcpMapper({required String userAgent}) {
             ? const PluginMcpAuthenticationCapabilityUnavailable(
                 reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
               )
+            : server.authStatus == CodexMcpAuthStatus.unknown
+            ? const PluginMcpAuthenticationCapabilityUnavailable(
+                reason: PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
+              )
             : scope is PluginMcpSessionScope && !_supportsThreadAuthentication
             ? const PluginMcpAuthenticationCapabilityUnavailable(
                 reason: PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,

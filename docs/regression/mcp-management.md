@@ -354,6 +354,8 @@ rejecting absent context. Harness completion must omit thread context. Both matc
 the exact native server.
 Credential effects are harness-scoped. Project/unsupported targets and detached
 runtimes return explicit limitations without connecting or inventing native work.
+Unknown or omitted native authentication status never enables sign-in or issues
+an OAuth request; its authorization state remains unknown.
 
 The operation declares native settlement, with no cancellation RPC or synthetic
 attempt identity. The shared owner keeps its lease through native expiry,

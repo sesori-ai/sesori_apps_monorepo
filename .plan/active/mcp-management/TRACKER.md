@@ -1525,3 +1525,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   native form. Synthetic before/after renders pass; recording remains deferred.
   Architecture implementation review approved the complete production boundary
   without findings. No second pending owner or shared/wire contract was added.
+- A later code review found unknown native auth status could enable sign-in.
+  Unknown/omitted status now declares unavailability and stops both harness and
+  session starts at inventory, with no OAuth RPC. Focused mapper/service coverage
+  retains known-version and native-unsupported behavior without a new contract.

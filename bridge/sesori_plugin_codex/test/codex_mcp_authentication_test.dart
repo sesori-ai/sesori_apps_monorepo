@@ -141,6 +141,23 @@ void main() {
     expect(harness.transport.calls.map((call) => call.method), ["mcpServerStatus/list"]);
   });
 
+  test("unknown native authentication never enables a harness or session OAuth request", () async {
+    harness.transport.authStatus = "future-auth";
+    for (final target in [_target, const PluginMcpServerTarget(scope: PluginMcpHarnessScope(), serverKey: "fixture")]) {
+      await expectLater(
+        harness.begin(target: target),
+        throwsA(
+          isA<PluginMcpAuthenticationUnavailableException>().having(
+            (error) => error.reason,
+            "reason",
+            PluginMcpAuthenticationUnavailableReason.notImplemented,
+          ),
+        ),
+      );
+    }
+    expect(harness.transport.calls.map((call) => call.method), ["mcpServerStatus/list", "mcpServerStatus/list"]);
+  });
+
   for (final threadId in [null, "thread"]) {
     test(
       "exact native request and callback forwarding with ${threadId == null ? 'harness' : 'session'} context",
