@@ -1302,3 +1302,19 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Optional-plugin reads remain active-only, snapshots filter the actual owner,
   replies require the exact original backend session, and typed unknown values
   cannot reach native submission. No new mutable owner, persistence or coordination.
+- Step-22 source `04fb37e065` passes the initial 59 focused cases from
+  `bridge/app`, using pinned Dart 3.13.5:
+  ```sh
+  dart test test/bridge/repositories/form_repository_test.dart \
+    test/bridge/repositories/external_action_repository_test.dart \
+    test/bridge/services/pending_interaction_service_test.dart \
+    test/bridge/routing/reply_to_question_handler_test.dart \
+    test/bridge/routing/reject_question_handler_test.dart \
+    test/bridge/routing/reply_to_permission_handler_test.dart
+  ```
+  After adding unsupported-plugin and both archive-route checks, the changed
+  `form_repository_test.dart` passes all 15 cases. Bridge-root
+  `dart analyze --fatal-infos app` passes. Architecture implementation review
+  pass 1 approves all 15 changed files without findings. Initial authored churn:
+  787 lines; zero generated. Native/relay/client/provider/package boundaries and
+  deferred recording remain unqualified by these headless API fixtures.
