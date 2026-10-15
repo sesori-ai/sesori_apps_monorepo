@@ -1,128 +1,105 @@
-# Linux repository preparation
+# Linux preview repository operations
 
-Signed repository generation is implemented; hosted repositories and stable Linux
-publication are not yet enabled. Direct internal DEB/RPM downloads remain available.
-See [signing trust and key custody](linux-signing.md) and the active
-[distribution continuation](../../.plan/active/desktop-distribution/steps/step-09.md).
+`linux-repository.yml` publishes signed APT/RPM metadata for **internal previews
+only**, using already-completed public Linux releases. It never builds applications,
+creates/promotes releases or dispatches stores. Stable admission and native desktop,
+account/keyring/tray and genuine application-upgrade qualification remain separate.
+Infrastructure or a passing fixture alone is not live publication: bootstrap requires
+a successful main-branch run and anonymous verification of its actual output.
 
-## Ownership and input
+## Ownership and triggers
 
-`.github/scripts/build_linux_repository.py` consumes the directory emitted by the
-existing Linux release preparer: `desktop-linux-release.json`, four signed/qualified
-DEB/RPM packages, two original checksum/signature pairs and `desktop-linux-public.asc`.
-The preparer remains responsible for source/native qualification and compiled channel
-identity. The repository builder does not grant release approval or turn an internal
-binary into a stable one.
+- `desktop-linux-release.yml` calls the repository workflow after the existing
+  immutable GitHub preview publication completes. Core/macOS assets stay untouched.
+- Monday's metadata-only refresh also covers quiet release periods. Manual dispatch
+  repairs failures or bootstraps existing qualified previews without store builds.
+- All three paths share one non-cancelling concurrency group. Selection chooses the
+  newest completed internal package version, not the most recently republished old tag.
+- The `linux-signing` job downloads the original packages/checksums, builds tools
+  before exposing secrets and signs in a network-disabled container. It checks both
+  CPU headers, signed checksum inventories and native RPM signatures against primary
+  `E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`. Package bytes never change.
+- A separate job receives only public artifacts and bucket-scoped Google federation.
+  It has no signing secrets. The verifier authenticates signatures and their complete
+  index/package references, not merely the producer's `repository.json` inventory.
 
-The builder checks both package sets against signed checksums, independently pins the
-primary signer, checks DEB/RPM headers and verifies native RPM signatures. Package
-bytes remain unchanged. `apt-ftparchive` and `createrepo_c` own index generation;
-there is no custom package parser, updater, daemon or release database.
+## Hosting and scoped authority
 
-## Unwired/manual protected execution
+Public base: `https://storage.googleapis.com/sesori-ai-linux-packages`.
+The bucket uses uniform bucket-level access in `europe-west1`, project `sesori-ai`.
+`provision_linux_repository.sh` records one-time creation; it is not a repeatable
+reset script. Inspect partial results before retrying a failed setup command.
 
-This PR does not wire a production-key repository-signing job. CI runs disposable-key
-fixtures only; the existing secret-bearing package job still invokes
-`sign_desktop_linux.py`, not this builder. Step 11.h must add the protected invocation
-before hosting is enabled. The following is its secure runbook, not a live CI claim.
+The dedicated `linux-packages` identity pool and its GitHub provider allow only the
+numeric Sesori repository/owner identities, `refs/heads/main`, and the repository
+workflow's direct or reusable workflow identity. Service account
+`linux-package-publisher@sesori-ai.iam.gserviceaccount.com` has
+`roles/storage.objectUser` on this bucket only. `allUsers` gets only
+`roles/storage.objectViewer`. Existing Firebase federation, Cloud Run source storage
+and project-wide IAM grants are not modified. No service-account key is created.
 
-Build `.github/scripts/Dockerfile.linux-signing` as `sesori-linux-signing` first, then
-`.github/scripts/Dockerfile.linux-repository` as `sesori-linux-repository`. The second
-image extends the locally built pinned signer with repository tools; ordinary CLI and
-native package signers do not install those additional dependencies.
+Domain-restricted sharing initially rejected public read. The operator authorized a
+scoped exception: tag `sesori-ai/linux-packages-public/enabled` is attached only to
+this bucket, never the project or another resource. The project policy allows that
+tagged resource and retains the previous domain allowlist as its default rule.
+This is not a temporary project-wide disablement. Keep that default aligned if the
+organization's domain allowlist changes. The publisher has no policy/tag-management
+permission and cannot expand the exception. Public Access Prevention remains unchanged.
 
-Only after both builds finish may an approved signing environment supply
-`LINUX_GPG_PRIVATE_KEY`, `LINUX_GPG_PASSPHRASE` and `LINUX_GPG_FINGERPRINT`. Never
-retrieve production secrets for these fixtures. The CLI independently pins
-`E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7`. From the trusted workflow checkout, with
-absolute input/output paths and secrets already supplied by that environment:
+## Publication and retry
+
+The publisher independently verifies the public key pin, both APT signatures, both
+RPM metadata signatures, referenced hashes, package identities and the exact public
+inventory. It rejects expired APT metadata and any extra unauthenticated file.
+
+Upload order:
+
+1. Unchanged packages, public key, APT by-hash objects and checksum-named RPM indexes.
+   Existing identical bytes are accepted; conflicting bytes are refused. New objects
+   use a generation-zero precondition. Old objects are never pruned.
+2. Canonical APT package indexes.
+3. `Release` and RPM `repomd.xml`, followed by detached signatures.
+4. APT `InRelease` last, after anonymous byte verification of preceding objects.
+
+Immutable objects use long-lived caching; replaceable metadata uses `no-store`.
+Every uploaded object's anonymous SHA-256 must match. `repository.json` stays in CI;
+there is no new public release pointer. RPM XML/signature replacement can briefly
+refuse refresh; retrying is safe. This is not atomic multi-object publication.
+
+Retry a failed publisher job using its original signed artifact. A newer published
+RPM revision prevents an older failed run from rolling the channel back. Re-running
+signing intentionally generates fresh metadata and signatures; do not assume their
+bytes remain identical. Immutable packages and content hashes remain unchanged.
+Key changes that conflict with the existing public key require explicit key-maintenance
+handling; do not bypass the immutable-object check or generate a new release key.
+
+## Freshness and repair
+
+APT includes UTC `Date` and `Valid-Until` 30 days later. Weekly refresh signs fresh
+metadata for the same accepted packages when no new release exists. A failed refresh
+fails CI visibly; repair before expiry. Never disable client `Check-Valid-Until`.
+Expired artifacts must be regenerated as metadata rather than replayed unchanged.
+RPM signatures do not provide APT's expiry guarantee.
+
+Manual repair/bootstrap, from a merged trusted workflow:
 
 ```bash
-set -euo pipefail
-: "${PREPARED_RELEASE:?Set the absolute prepared-input directory}"
-: "${REPOSITORY_OUTPUT:?Set the absolute owned output directory}"
-docker run --rm --network none \
-  -v "$PWD:/workspace:ro" \
-  -v "$PREPARED_RELEASE:/prepared:ro" \
-  -v "$REPOSITORY_OUTPUT:/output" \
-  -e LINUX_GPG_PRIVATE_KEY -e LINUX_GPG_PASSPHRASE -e LINUX_GPG_FINGERPRINT \
-  sesori-linux-repository \
-  python3 .github/scripts/build_linux_repository.py \
-    --root /prepared --output /output/repository --channel internal
+gh workflow run linux-repository.yml --repo sesori-ai/sesori_apps_monorepo --ref main
 ```
 
-`/output/repository` must not already exist. Among host mounts, only the owned public
-output volume is writable; input and tooling remain read-only. Temporary private key
-files stay inside the disposable container. The example forwards variable names,
-not secret values in command arguments.
+This command must never be replaced by dispatching the store-uploading shared cycle
+merely to prove repository delivery. Website availability and installation guidance
+follow live verification; the app still has no new updater or persistent state.
 
-The shared temporary key owner removes secret variables before child tools run,
-verifies repository signatures with public material, and cleans its private agent/home.
-`repository.json` is written only after successful signing, verification and cleanup.
-It is a CI file inventory, not a public release pointer. Failed/partial output must not
-be published. Retry publication from the original signed artifact rather than assuming
-fresh signatures will be byte-identical.
+## Verification boundaries
 
-## APT freshness and maintenance prerequisite
+Disposable-key, inert-package fixtures exercise real APT/DNF install/upgrade/remove,
+wrong-key/content refusal, authentic expired APT rejection and metadata refresh.
+The publication verifier also rejects modified references even when the producer
+inventory is updated to match. Publication tests cover ordering, immutable conflicts,
+retention, downgrade refusal, retries and failed anonymous delivery.
 
-APT metadata carries its UTC generation `Date` and `Valid-Until` 30 days later.
-A valid old signature therefore cannot keep a replayed index acceptable indefinitely;
-clients retain normal `Check-Valid-Until` enforcement. RPM metadata signatures do not
-provide this APT expiry mechanism; do not claim equivalent RPM replay protection.
-
-Before the first hosted publication, step 11.h must implement weekly metadata-only
-refresh for every published channel through the same GitHub repository publisher,
-plus manual repair/retry. Refresh uses the already-accepted package bytes; it does
-not rebuild native apps, create/promote releases, alter their completion markers, or
-dispatch stores. No second product release scheduler or cloud service is needed.
-A failed refresh must fail its CI job visibly; repair it before expiry. Do not disable
-client expiry checks. This maintenance owner is a hosting prerequisite, not implemented
-by the current offline builder. An expired artifact must be regenerated as metadata,
-not published as an unchanged retry.
-
-## Repository layout and publishing contract
-
-```text
-sesori-linux-public.asc
-apt/
-  pool/<channel>/<amd64|arm64>/Sesori-linux-<cpu>-<version>-<build>.deb
-  dists/<channel>/Release
-  dists/<channel>/Release.gpg
-  dists/<channel>/InRelease
-  dists/<channel>/main/binary-<amd64|arm64>/Packages[.gz]
-  dists/<channel>/main/binary-<amd64|arm64>/by-hash/SHA256/<digest>
-rpm/<channel>/<x86_64|aarch64>/
-  Packages/Sesori-linux-<cpu>-<version>-<build>.rpm
-  repodata/<checksum-named metadata>
-  repodata/repomd.xml
-  repodata/repomd.xml.asc
-```
-
-`internal` and `stable` are separate suites/pools and RPM roots. This does not install
-both channels or introduce an in-app switch. The later publisher must:
-
-1. Preserve immutable package bytes; refuse conflicting existing package paths.
-2. Publish public key, packages and content-addressed indexes before entrypoints.
-3. Retain old package/index objects referenced by previously downloaded metadata.
-4. Publish APT `InRelease` last for its suite. APT advertises only SHA-256 by-hash URLs.
-5. Publish RPM signatures before their `repomd.xml`; require both `repo_gpgcheck=1`
-   and `gpgcheck=1` in client configuration. Separate XML/signature replacement can
-   briefly refuse a refresh; retry is safer than adding a custom transaction service.
-6. Verify anonymous retrieval independently before advertising repository availability.
-
-No GCS/IAM or public object changes occur in the builder. Hosting/publishing is the
-next continuation; never interpret this document as a live installation command.
-
-## Verification boundary
-
-PR CI runs disposable-key fixtures in the pinned Fedora-derived tool image with
-network disabled. It checks both architecture headers, both channel layouts, APT
-cleartext/detached signatures, RPM metadata signatures, by-hash/content inventories,
-unchanged package bytes and refusal of mismatched or altered inputs.
-
-Real APT/DNF clients use fresh isolated roots, enforce metadata/package trust, and
-install, upgrade and remove inert text-only packages while preserving unrelated state.
-Wrong keys, altered metadata, expired authentic APT metadata and altered package bytes
-must fail. These are repository
-mechanics, not native application upgrades, production-key access, public HTTPS
-availability or GUI/account/keyring/tray qualification on Ubuntu/Debian/Fedora.
+These tests do not establish native GUI/account behavior or genuine application
+N-to-N+1 upgrades. Production-key signing, GitHub federation and public HTTPS delivery
+require the actual main workflow and anonymous clients. See
+[Linux signing](linux-signing.md) and [desktop distribution regression](../regression/desktop-distribution.md).

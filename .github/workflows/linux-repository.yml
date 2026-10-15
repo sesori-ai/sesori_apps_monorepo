@@ -1,0 +1,89 @@
+name: Publish Linux preview repositories
+
+# Metadata maintenance only: reuse completed public previews, never build apps or stores.
+on:
+  workflow_call:
+  workflow_dispatch:
+  schedule:
+    - cron: '17 5 * * 1'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: linux-internal-repository-publication
+  cancel-in-progress: false
+
+jobs:
+  sign:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: linux-signing
+    steps:
+      - name: Require trusted main
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Repository signing requires main'; exit 1; }
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Build repository tools before exposing signing credentials
+        run: |
+          docker build -f .github/scripts/Dockerfile.linux-signing -t sesori-linux-signing .
+          docker build -f .github/scripts/Dockerfile.linux-repository -t sesori-linux-repository .
+      - name: Download newest completed public internal preview
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/publish_linux_repository.py download --output build/linux-repository-input
+      - name: Sign repository metadata without network access
+        env:
+          LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
+          LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
+          LINUX_GPG_FINGERPRINT: ${{ vars.LINUX_GPG_FINGERPRINT }}
+        run: |
+          mkdir -p build/linux-repository-output
+          docker run --rm --network none \
+            -v "$GITHUB_WORKSPACE:/workspace:ro" \
+            -v "$GITHUB_WORKSPACE/build/linux-repository-input:/prepared:ro" \
+            -v "$GITHUB_WORKSPACE/build/linux-repository-output:/output" \
+            -e LINUX_GPG_PRIVATE_KEY -e LINUX_GPG_PASSPHRASE -e LINUX_GPG_FINGERPRINT \
+            sesori-linux-repository python3 .github/scripts/build_linux_repository.py \
+              --root /prepared --output /output/repository --channel internal
+      - name: Verify public signatures and complete reference tree independently
+        run: python .github/scripts/publish_linux_repository.py verify --root build/linux-repository-output/repository
+      - uses: actions/upload-artifact@v4
+        with:
+          name: linux-internal-repository
+          path: build/linux-repository-output/repository/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: sign
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          name: linux-internal-repository
+          path: build/linux-repository-publication
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: >-
+            projects/1068630921159/locations/global/workloadIdentityPools/linux-packages/providers/github
+          service_account: linux-package-publisher@sesori-ai.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Publish immutable content before signed entrypoints and verify anonymous bytes
+        run: python .github/scripts/publish_linux_repository.py publish --root build/linux-repository-publication

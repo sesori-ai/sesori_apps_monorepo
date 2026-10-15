@@ -1,7 +1,7 @@
 name: Publish Linux desktop internal previews
 
-# Attach to an existing shared internal release only. No release creation, stores,
-# stable admission, repository hosting or signing credentials in this workflow.
+# Attach to an existing shared internal release, then refresh its hosted repositories.
+# Package publication has no signing/cloud credentials; the reusable workflow separates those jobs.
 on:
   workflow_call:
     inputs:
@@ -82,3 +82,12 @@ jobs:
             --source-sha "$SOURCE_SHA" --tooling-sha "$GITHUB_SHA" \
             --version "$VERSION" --build-number "$BUILD_NUMBER" \
             --repository "$GITHUB_REPOSITORY" --run-id "$PACKAGING_RUN"
+
+  repositories:
+    needs: publish
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    uses: ./.github/workflows/linux-repository.yml
+    secrets: inherit
