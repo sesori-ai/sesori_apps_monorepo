@@ -343,6 +343,48 @@
   "@computerMenuSwitchHint": {
     "description": "Accessibility hint on the computer name under 'Projects', which opens the menu for switching to another computer."
   },
+  "computerMenuManage": "Manage computers…",
+  "@computerMenuManage": {
+    "description": "Last item of the computer menu, below a divider. Opens the Computers page, where the user can switch to and rename the account's computers."
+  },
+  "computersTitle": "Computers",
+  "@computersTitle": {
+    "description": "Title of the page that lists every computer on the account, opened from 'Manage computers…'."
+  },
+  "computersActions": "Actions for {name}",
+  "@computersActions": {
+    "description": "Accessibility label of the '⋯' button on a row of the Computers page, which opens that computer's actions. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "workstation"
+      }
+    }
+  },
+  "computersSwitch": "Switch",
+  "@computersSwitch": {
+    "description": "Item of a computer's '⋯' menu on the Computers page that switches the app to that computer."
+  },
+  "computersRename": "Rename…",
+  "@computersRename": {
+    "description": "Item of a computer's '⋯' menu on the Computers page that opens the rename dialog."
+  },
+  "computersRenameTitle": "Rename computer",
+  "@computersRenameTitle": {
+    "description": "Title of the dialog that gives a computer a name of its own on every device."
+  },
+  "computersRenameLabel": "Computer name",
+  "@computersRenameLabel": {
+    "description": "Label of the name field in the rename-computer dialog. Leaving it empty names the computer by its hostname again."
+  },
+  "computersRenameUseHostname": "Use hostname",
+  "@computersRenameUseHostname": {
+    "description": "Button in the rename-computer dialog, shown only for a computer with a name of its own, that drops that name so the computer is named by its hostname again."
+  },
+  "computersRenameFailed": "Failed to rename computer",
+  "@computersRenameFailed": {
+    "description": "Error alert shown when renaming a computer fails; the computer keeps its previous name."
+  },
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
     "description": "Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands."

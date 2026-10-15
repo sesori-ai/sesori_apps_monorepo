@@ -66,6 +66,11 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
         child: ProjectListView(
           onAddProject: _showAddProject,
           onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
+          // Settings goes under the page so Back from Computers lands there.
+          onManageComputers: ({required context}) {
+            context.pushRoute(const AppRoute.settings());
+            context.pushRoute(const AppRoute.settingsComputers());
+          },
           onOpenSession: ({required context, required project, required displayName, required session}) {
             context.pushRoute(
               AppRoute.sessionDetail(

@@ -139,6 +139,16 @@ void main() {
     expect(cubit.state.targetId, "b");
   });
 
+  test("this computer is the local one only, and none on a surface without one", () {
+    final computers = [testBridgeSummary(id: "local"), testBridgeSummary(id: "other")];
+    final desktop = ComputerSwitcherState(computers: computers, targetId: "other", localId: "local");
+    final phone = ComputerSwitcherState(computers: computers, targetId: "local", localId: null);
+
+    expect(desktop.isThisComputer(bridgeId: "local"), isTrue);
+    expect(desktop.isThisComputer(bridgeId: "other"), isFalse);
+    expect(phone.isThisComputer(bridgeId: "local"), isFalse);
+  });
+
   test("a connection without a target keeps the picked computer", () async {
     status.add(_reconnectingTo(bridgeId: "a"));
     final cubit = build();

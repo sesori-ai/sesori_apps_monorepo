@@ -209,7 +209,8 @@ void main() {
       expect((children[0] as GoRoute).path, "default-input");
       expect((children[1] as GoRoute).path, "notifications");
       expect((children[2] as GoRoute).path, "profile");
-      expect(children, hasLength(3));
+      expect((children[3] as GoRoute).path, "computers");
+      expect(children, hasLength(4));
       final harnessShell = buildAppRoutes().whereType<ShellRoute>().singleWhere(
         (shell) => shell.routes.whereType<GoRoute>().any((route) => route.path == AppRouteDef.settingsHarnesses.path),
       );
@@ -292,6 +293,7 @@ void main() {
           AppRouteDef.settingsDefaultInput.path,
           AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsProfile.path,
+          AppRouteDef.settingsComputers.path,
         ]),
       );
     });

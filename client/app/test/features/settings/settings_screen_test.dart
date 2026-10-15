@@ -11,6 +11,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/settings/computers_screen.dart";
 import "package:sesori_mobile/features/settings/profile_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -68,6 +69,13 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
         builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
           value: StubConnectionOverlayCubit(),
           child: const ProfileScreen(),
+        ),
+      ),
+      GoRoute(
+        path: "/settings/computers",
+        builder: (context, state) => BlocProvider<ConnectionOverlayCubit>.value(
+          value: StubConnectionOverlayCubit(),
+          child: const ComputersScreen(),
         ),
       ),
       GoRoute(
@@ -375,6 +383,49 @@ void main() {
         source: any(named: "source"),
       ),
     );
+  });
+
+  testWidgets("Manage computers opens the Computers page, which switches from there", (tester) async {
+    _useTallSurface(tester);
+    registeredBridges.emitBridges(
+      bridges: [
+        BridgeSummary(
+          id: "a",
+          name: "Studio",
+          hostname: "studio-mac.local",
+          platform: BridgePlatform.macos,
+          status: BridgeRegistrationStatus.active,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: DateTime.utc(2026, 7),
+        ),
+        BridgeSummary(
+          id: "b",
+          name: "build-box",
+          hostname: "build-box",
+          platform: BridgePlatform.linux,
+          status: BridgeRegistrationStatus.inactive,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: null,
+        ),
+      ],
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("computer_settings_entry")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Manage computers…"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("Computers"), findsOneWidget);
+    expect(find.text("studio-mac.local"), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey("computers-actions-b")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const ValueKey("computers-switch-b")));
+    await tester.pumpAndSettle();
+    verify(
+      () => computerSwitchDispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.computersPage),
+    ).called(1);
   });
 
   testWidgets("no computer entry until the list names the current computer", (tester) async {

@@ -1,0 +1,259 @@
+import "dart:async";
+
+import "package:flutter_bloc/flutter_bloc.dart";
+import "package:go_router/go_router.dart";
+import "package:material_ui/material_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/module_prego.dart";
+
+import "../../extensions/build_context_x.dart";
+import "../../widgets/computer_menu.dart";
+import "widgets/settings_window_page.dart";
+
+/// Vertical inset between the nav bar and the list.
+const double _contentTopPadding = 10.0;
+
+/// Wide enough for the longest action without the menu covering its row.
+const double _menuWidth = 200;
+
+/// Every computer on the account, in the computer menu's order, each with its
+/// actions behind a "⋯" button or a secondary click on its row.
+///
+/// Reads the rows from [ComputerSwitcherCubit] and runs renames through
+/// [ComputersCubit], both provided by the product shell. A rename reaches the
+/// rows through the account's shared list, so a row changes in place.
+class const ComputersView({
+  super.key,
+  required final SettingsPageChrome chrome,
+
+  /// Switches to a computer picked from its row's menu.
+  required final ComputerSwitchCallback onSwitchComputer,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<ComputerSwitcherCubit>().state;
+    final action = context.watch<ComputersCubit>().state;
+    return BlocListener<ComputersCubit, ComputersState>(
+      listenWhen: (_, state) => state is ComputersRenameFailed,
+      listener: (context, _) => PregoPopupAlertPresenter.of(context).show(
+        title: context.loc.computersRenameFailed,
+        variant: PregoPopupAlertsNotificationsVariant.error,
+      ),
+      child: SettingsChromePage(
+        chrome: chrome,
+        slivers: [
+          SliverPadding(
+            padding: EdgeInsetsDirectional.fromSTEB(
+              PregoSpacing.xl,
+              _contentTopPadding,
+              PregoSpacing.xl,
+              PregoSpacing.xl + MediaQuery.paddingOf(context).bottom,
+            ),
+            sliver: SliverToBoxAdapter(
+              child: PregoGroupedRows(
+                children: [
+                  for (final computer in state.computers)
+                    _ComputerRow(
+                      key: ValueKey("computers-row-${computer.id}"),
+                      computer: computer,
+                      isCurrent: computer.id == state.currentId,
+                      isThisComputer: state.isThisComputer(bridgeId: computer.id),
+                      isRenaming: action is ComputersRenaming && action.bridgeId == computer.id,
+                      onSwitch: () =>
+                          onSwitchComputer(bridgeId: computer.id, source: ComputerSwitchSource.computersPage),
+                    ),
+                ],
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+/// One computer: platform, name, the hostname under a name of its own, and
+/// presence; a check when the app works on it.
+class const _ComputerRow({
+  super.key,
+  required final BridgeSummary computer,
+  required final bool isCurrent,
+  required final bool isThisComputer,
+  required final bool isRenaming,
+  required final VoidCallback onSwitch,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    return PregoAnchorMenu(
+      // A flat panel beside the row; a glass popup would morph out of the
+      // whole row.
+      flat: true,
+      acquireOpenLease: null,
+      menuWidth: _menuWidth,
+      entriesBuilder: () => [
+        if (!isCurrent)
+          PregoMenuItem(
+            key: ValueKey("computers-switch-${computer.id}"),
+            title: loc.computersSwitch,
+            subtitle: null,
+            leadingIcon: TablerRegular.switch_horizontal,
+            isSelected: false,
+            shortcutLabel: null,
+            onTap: onSwitch,
+          ),
+        PregoMenuItem(
+          key: ValueKey("computers-rename-${computer.id}"),
+          title: loc.computersRename,
+          subtitle: null,
+          leadingIcon: TablerRegular.pencil,
+          isSelected: false,
+          shortcutLabel: null,
+          // The menu has closed by now; the row it hung off is still here.
+          onTap: () => unawaited(_rename(context: context)),
+        ),
+      ],
+      triggerBuilder: (context, openMenu) => GestureDetector(
+        onSecondaryTap: isRenaming ? null : openMenu,
+        child: PregoGroupedRow(
+          icon: ComputerMenu.platformIcon(platform: computer.platform),
+          title: Row(
+            spacing: PregoSpacing.sm,
+            children: [
+              Flexible(child: Text(computer.name, maxLines: 1, overflow: TextOverflow.ellipsis)),
+              if (isThisComputer) PregoTag(label: loc.desktopSettingsThisComputer),
+            ],
+          ),
+          subtitle: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Only a name of the user's own hides the machine's.
+              if (computer.hostname != computer.name)
+                Text(
+                  computer.hostname,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                ),
+              Text(ComputerMenu.presenceLabel(context: context, computer: computer)),
+            ],
+          ),
+          trailing: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: PregoSpacing.xs,
+            children: [
+              if (isCurrent) Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid),
+              Semantics(
+                label: loc.computersActions(computer.name),
+                child: Tooltip(
+                  message: loc.computersActions(computer.name),
+                  excludeFromSemantics: true,
+                  child: PregoButtonsSolid.iconOnly(
+                    key: ValueKey("computers-actions-${computer.id}"),
+                    leadingIcon: TablerRegular.dots,
+                    hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                    size: PregoButtonsSolidSize.sm,
+                    // The spinner takes the button's place, so the row keeps its size.
+                    isLoading: isRenaming,
+                    onPressed: isRenaming ? null : openMenu,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _rename({required BuildContext context}) {
+    final cubit = context.read<ComputersCubit>();
+    return showPregoModal<void>(
+      context: context,
+      title: context.loc.computersRenameTitle,
+      builder: (_) => _RenameComputerSheet(
+        computer: computer,
+        onRename: ({required name}) => unawaited(cubit.rename(computer: computer, name: name)),
+      ),
+    );
+  }
+}
+
+/// Edits the name of [computer], prefilled with its current one. "Use
+/// hostname" saves the hostname, which `ComputersCubit` turns into clearing
+/// the name of its own.
+class const _RenameComputerSheet({
+  required final BridgeSummary computer,
+  required final void Function({required String name}) onRename,
+}) extends StatefulWidget {
+  @override
+  State<_RenameComputerSheet> createState() => _RenameComputerSheetState();
+}
+
+class _RenameComputerSheetState() extends State<_RenameComputerSheet> {
+  late final TextEditingController _controller = TextEditingController(text: widget.computer.name);
+
+  /// Whether the computer has a name of its own, so its hostname is an option.
+  bool get _hasNickname => widget.computer.name != widget.computer.hostname;
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _save({required String value}) {
+    context.pop();
+    widget.onRename(name: value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final save = PregoButtonsSolid(
+      key: const Key("computers-rename-save"),
+      label: loc.renameSave,
+      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+      size: PregoButtonsSolidSize.lg,
+      fullWidth: true,
+      onPressed: () => _save(value: _controller.text),
+    );
+    return Padding(
+      padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.xl),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          PregoInputField(
+            key: const Key("computers-rename-field"),
+            controller: _controller,
+            label: loc.computersRenameLabel,
+            autofocus: true,
+            autocorrect: false,
+            textInputAction: TextInputAction.done,
+            onSubmitted: (value) => _save(value: value),
+          ),
+          const SizedBox(height: PregoSpacing.x2l),
+          if (_hasNickname)
+            PregoSheetActions(
+              secondary: PregoButtonsSolid(
+                key: const Key("computers-rename-use-hostname"),
+                label: loc.computersRenameUseHostname,
+                hierarchy: PregoButtonsSolidHierarchy.secondary,
+                size: PregoButtonsSolidSize.lg,
+                fullWidth: true,
+                onPressed: () => _save(value: widget.computer.hostname),
+              ),
+              primary: save,
+            )
+          else
+            save,
+        ],
+      ),
+    );
+  }
+}

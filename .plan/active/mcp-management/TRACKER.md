@@ -3,9 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-external-action-controls`, `e6162c78b9`, in the provided `copper-heron` worktree.
-- Current step: 18/25 is in review as [#1984][pr-1984]; 19/25 is in progress locally.
-  Latest merged step: 17/25 as [#1981][pr-1981].
+- Branch/base: `sesori/mcp-external-action-controls`, `834374b34f`, in the provided `copper-heron` worktree.
+- Current step: 19/25 is being published; latest merged step: 18/25 as [#1984][pr-1984].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -39,8 +38,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 15/25 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
 | 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
 | 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/25 | Native external-action routing (8.d.2.a) | In review | [#1984][pr-1984] |
-| 19/25 | External-action client presentation (8.d.2.b) | In progress | Local typed client controls |
+| 18/25 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
+| 19/25 | External-action client presentation (8.d.2.b) | In review | Shared browser/consent controls |
 | 20/25 | Claude approvals and form/URL elicitation | Not started | — |
 | 21/25 | Codex inventory/actions/authentication | Not started | — |
 | 22/25 | Codex forms and offered connectors | Not started | — |
@@ -1171,3 +1170,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   --fatal-infos` from `client` passes. The affected Cubit and modal test files
   pass 9 and 7 cases respectively; modal taps target the actual buttons with no
   hit-test warnings. Verified tree: `42ca6d584acce156f500ff09db2e8688843aad4d`.
+- Step 18 merged at accepted head `935f4c79e4`, squash `834374b34f`; 31 checks
+  passed before merge and 32 in the terminal monitor report. Three deliberately
+  declined threads retain their prefixed explanations. Step 19 merged current
+  main without rewriting history and preserves its Computers-page changes.
+  Synchronized tree `c590f12d873a5b30596c995bed23673d246d3f9c` passes the same
+  32 core, 29 shared modal, 208 mobile and 13 desktop cases using commands above
+  (desktop: `flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart`).
+  Client-root `dart analyze --fatal-infos` also passes. Subsequent edits change
+  only tracker publication state and this validation record.
