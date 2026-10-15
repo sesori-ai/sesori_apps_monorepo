@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-session-external-actions`, `ea65f5b045`, in the provided `copper-heron` worktree.
-- Current step: 17/24 is ready for PR; latest merged step: 16/24 as [#1971][pr-1971].
+- Current step: 17/24 is in review [#1981][pr-1981]; latest merged step: 16/24 as [#1971][pr-1971].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -37,7 +37,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 14/24 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
 | 15/24 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
 | 16/24 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
-| 17/24 | External-action transport (8.d.1) | Ready for PR | 61 shared cases and architecture approval |
+| 17/24 | External-action transport (8.d.1) | In review | [#1981][pr-1981]; 61 shared cases, architecture approval |
 | 18/24 | Session external-action routing (8.d.2) | Not started | — |
 | 19/24 | Claude approvals and form/URL elicitation | Not started | — |
 | 20/24 | Codex inventory/actions/authentication | Not started | — |
@@ -991,9 +991,14 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   now describe the implemented presentation consistently. Native motion evidence
   predates these wording and mobile-gating fixes; desktop layout is unchanged.
 
-- Step 16 published as draft [#1971][pr-1971], source `182b1e8519`, against
-  merged parent `c3716bfce5`: 1,358 changed lines, 958 authored and 400 generated
-  localization lines. Native CUA interactions and visual evidence were pending at publication.
+- Step 16 initial draft publication is reproducible with `git diff --numstat`
+  from base `c3716bfce50e99039ca4381ba2f7cf11b49d9487`
+  to head `182b1e8519def007f22aeb683cc949374a34cafe`:
+  1,341 additions + 17 deletions = 1,358 changed lines across 16 files.
+  Generated localization reconciles as 264 additions in `app_localizations.dart`
+  plus 136 in `app_localizations_en.dart`, with no generated deletions: 400 lines.
+  The remaining 958 authored lines include `app_en.arb`'s 45 additions and one
+  deletion. Native CUA interactions and visual evidence were pending at publication.
 - Original 8.d splits into transport (8.d.1, ordinal 17) and native session
   integration (8.d.2, ordinal 18). The snapshot codecs alone add 571 generated
   lines. The series has 24 steps; final L4/native/provider/package requirements
@@ -1030,3 +1035,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   tracked generated deletions were restored. The same 61 shared cases pass on
   the synchronized source, and its shared analyzer is clean. The preceding
   architecture approval and exact public codec proof remain applicable.
+
+- Step 17 initial publication [#1981][pr-1981] is the `git diff --numstat` range
+  `ea65f5b045ba5fc5200704f1eb55bf73408c4751` to
+  `e1016a5e7b82c34d311e2f1447a5190ea54407ed`: 895 additions + 25 deletions =
+  920 changed lines across 14 files. Files ending in `.freezed.dart` or `.g.dart`
+  account for 650 generated lines; the remaining 270 lines are authored. This
+  step changes no localization source or generated localization output.
+
+[pr-1981]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1981

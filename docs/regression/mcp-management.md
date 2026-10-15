@@ -333,4 +333,4 @@ This foundation only defines codecs. Canonical native ownership, URL validation,
 capability advertisement, routes, legacy cancellation, modern filtering and
 visible session actions remain the integration step. No requests are emitted yet.
 Coverage: `shared/sesori_shared/test/models/pending_external_action_test.dart` and
-`sesori_sse_event_test.dart`; native and mixed-peer gates remain in the active plan.
+`shared/sesori_shared/test/models/sesori_sse_event_test.dart`; native and mixed-peer gates remain in the active plan.
