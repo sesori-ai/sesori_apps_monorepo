@@ -6,7 +6,7 @@
 - Branch: `sesori/mcp-opencode-v1-controls`, in the provided `copper-heron` worktree.
 - Current step: 30/35 OpenCode v2 management is in PR [#2006][pr-2006].
   Step 31 v1 management is the one local successor; 118 cases and both native
-  versions pass. Its final ownership review is pending.
+  versions pass. Its final architecture review approved the aligned ownership.
   Latest merged: 29/35 as [#2005][pr-2005] (`6d0d7bcce0`).
   Secondary-harness work is
   split into four native-contract steps; final qualification is unchanged.
@@ -60,7 +60,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 28/35 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
 | 29/35 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
 | 30/35 | OpenCode v2 inventory and connection controls (11.a) | In PR | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
-| 31/35 | OpenCode v1 inventory and connection controls (11.b) | Verified locally; final architecture review pending | 118 cases; native 1.14.17 and 1.17.7 |
+| 31/35 | OpenCode v1 inventory and connection controls (11.b) | Verified locally; final architecture approved | 118 cases; native 1.14.17 and 1.17.7 |
 | 32/35 | OpenCode v1 native MCP authentication (11.c) | Not started | — |
 | 33/35 | Bounded Pi/ACP support and capability audit (11.d) | Not started | — |
 | 34/35 | Reconcile regression/capability documents | Not started | — |
@@ -74,14 +74,14 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
-- Step-31 ownership alignment follows the accepted step-30 corrections: existing
+- Step-31 tested source `790caa38cc` follows the accepted step-30 corrections: existing
   service coordinates scope/target/action; repository maps directory reads and
   mutations. Native writes remain unbounded, with two new slow-write regressions.
   All 118 affected v1 cases and owning analysis pass; both exact native versions
   pass again through service/repository/API, replacing resident fixture processes
   and retaining configuration bytes. Logs use the `step31-final-*` private paths.
-  The original presentation fixture is unchanged. Final architecture review is
-  pending; the source remains local while parent #2006 is reviewed.
+  The original presentation fixture is unchanged. Final architecture review
+  approved the aligned ownership (pass 2); source remains local while #2006 is reviewed.
 
 - Step 31 tested source `a00726445c`: architecture plan and implementation reviews
   approved. All 116 affected MCP/API/repository/plugin
