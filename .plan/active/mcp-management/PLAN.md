@@ -210,7 +210,8 @@ schema keys, connector IDs, persistence metadata, and answer encoding in the own
   Typed submissions map field IDs to values; omission means an optional field was unanswered, not an empty string.
 - A supporting plugin implements optional `FormInteractionPluginApi` for pending snapshots and submit/decline. Bridge
   `FormRepository` maps these models; `PendingInteractionService` and `SessionOperationDispatcher` own reply ordering.
-  Add `POST /session/forms`, `POST /form/reply`, and `POST /form/decline` routes. Reuse the additive form interaction marker in static question notices and the existing settled events.
+  Add `POST /session/forms`, `POST /form/reply`, and `POST /form/decline` routes.
+  Reuse the additive form interaction marker in static question notices and the existing settled events.
   A reply result distinguishes accepted, field-validation errors keyed by field ID, and already settled. The adapter
   validates before sending the native reply and retains the native pending request on validation failure.
 - Extend client `SessionApi` and `SessionRepository` for those operations. `PendingFormService` coordinates submissions

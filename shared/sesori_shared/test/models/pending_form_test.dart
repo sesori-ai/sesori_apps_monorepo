@@ -137,14 +137,21 @@ void main() {
 
   test("validation errors retain field attribution and tolerate future issue codes", () {
     const result = FormValidationFailed(fieldErrors: {"field-integer": FormValidationIssue.outOfRange});
-    expect(FormReplyResult.fromJson(result.toJson()), result);
+    expect(FormReplyResult.fromJson(jsonDecode(jsonEncode(result.toJson())) as Map<String, dynamic>), result);
     expect(
-      FormReplyResult.fromJson({
-        "type": "validationFailed",
-        "fieldErrors": {"field-text": "future"},
-      }),
+      FormReplyResult.fromJson(
+        jsonDecode('{"type":"validationFailed","fieldErrors":{"field-text":"future"}}') as Map<String, dynamic>,
+      ),
       const FormValidationFailed(fieldErrors: {"field-text": FormValidationIssue.unknown}),
     );
+  });
+
+  test("text formats round trip through the normalized Sesori wire names", () {
+    for (final format in FormTextFormat.values) {
+      final schema = FormTextSchema(defaultValue: null, minLength: null, maxLength: null, format: format);
+      expect(schema.toJson()["format"], format.name);
+      expect(FormFieldSchema.fromJson(jsonDecode(jsonEncode(schema.toJson())) as Map<String, dynamic>), schema);
+    }
   });
 
   test("acceptance, replay, unsupported choice and both dismissal choices remain distinct", () {

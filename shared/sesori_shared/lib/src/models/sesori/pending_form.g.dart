@@ -104,7 +104,7 @@ Map<String, dynamic> _$FormAlreadySettledToJson(FormAlreadySettled instance) =>
 FormValidationFailed _$FormValidationFailedFromJson(Map json) =>
     FormValidationFailed(
       fieldErrors: _decodeFieldErrors(
-        json['fieldErrors'] as Map<String, String>,
+        json['fieldErrors'] as Map<String, dynamic>,
       ),
       $type: json['type'] as String?,
     );

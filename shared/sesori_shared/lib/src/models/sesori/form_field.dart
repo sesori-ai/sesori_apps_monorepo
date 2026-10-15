@@ -5,6 +5,7 @@ import "form_value.dart";
 part "form_field.freezed.dart";
 part "form_field.g.dart";
 
+/// Sesori wire names; native schema spellings are translated by the owning plugin.
 enum FormTextFormat() {
   unknown,
   plain,

@@ -22,7 +22,8 @@ enum FormValidationIssue() {
   invalidFormat,
 }
 
-Map<String, FormValidationIssue> _decodeFieldErrors(Map<String, String> json) => json.map(
+// ignore: no_slop_linter/prefer_specific_type, decoded JSON map boundary
+Map<String, FormValidationIssue> _decodeFieldErrors(Map<String, dynamic> json) => json.cast<String, String>().map(
   (fieldId, value) => MapEntry(
     fieldId,
     FormValidationIssue.values.firstWhere((issue) => issue.name == value, orElse: () => FormValidationIssue.unknown),

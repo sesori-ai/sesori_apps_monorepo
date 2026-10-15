@@ -1195,7 +1195,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   findings. New mutable-state budget: zero. Published PR titles 1–19 now use /27;
   historical squash commit messages remain unchanged.
 - Step-20 checks on Flutter 3.47.7 / Dart 3.13.5, from `shared/sesori_shared`:
-  `dart test test/models/pending_form_test.dart test/models/pending_external_action_test.dart test/models/sesori_sse_event_test.dart`
+  `dart test test/models/pending_form_test.dart test/models/pending_external_action_test.dart`
+  `test/models/sesori_sse_event_test.dart`
   passes 70; `dart analyze --fatal-infos` passes. Full `dart run build_runner build`
   succeeds, preserving all pre-existing generated codecs. Filtered generation had
   deleted 166 unrelated generated files; those were restored before the full run.
@@ -1224,7 +1225,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   ancestor of the pushed head and differs from its tested snapshot only in TRACKER.md.
 - Step 19 merged at accepted head `3efd585b99`, squash `db22ff3b68` after all 20
   pre-merge checks passed (21 in the terminal report). The two declared-negative-response
-  policy threads remain deliberately open with prefixed explanations. Step 20 merged
-  current main, preserving concurrent computer-management and Linux-distribution work.
+  policy threads remain deliberately open with prefixed explanations. The Step-20 branch incorporated
+  current main while #1989 remains in review, preserving concurrent computer-management and Linux-distribution work.
   Its shared source, tests, dependencies and SDK pin are unchanged from tested commit
   `d62d2d501b`; no unchanged passing suite was rerun solely for confidence.
