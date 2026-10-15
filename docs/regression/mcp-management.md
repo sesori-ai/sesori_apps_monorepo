@@ -260,7 +260,9 @@ Permission to use a tool never grants sign-in or installation consent. Form
 variations include required booleans/numbers, labels distinct from choice values,
 omitted optional fields and invalid submission followed by correction without
 draft loss. Run old-client-only and mixed released/current clients on the same
-native request; one completion clears both views and old clients can decline.
+native request; one completion clears both views. A released client using legacy
+question reply/reject APIs cancels the typed request; it cannot submit typed
+acceptance or semantic decline through that view.
 Catalog setup from harness/project settings works without a live session, never
 fabricates a pending question or connection success, and refreshes on reopening.
 

@@ -65,7 +65,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
 | 34/37 | OpenCode v1 native MCP authentication (11.d) | Merged | [#2010][pr-2010]; 180 unique cases; both pins |
 | 35/37 | Bounded Pi/ACP source and capability audit (11.e) | Merged | [#2011][pr-2011]; exact source/schema audit |
-| 36/37 | Reconcile regression/capability documents | Prepared | Supported adapter matrix and cumulative original qualification |
+| 36/37 | Reconcile regression/capability documents | Prepared | Adapter matrix; original qualification |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 [pr-2011]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2011
@@ -81,6 +81,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-36 review clarifies released-client behavior: legacy question reply and
+  reject paths cancel typed form/external-action requests, rather than submitting
+  a typed decline or acceptance. The matching regression entries now agree with
+  the authoritative owner. The delivery table row is shortened for Markdown
+  readability. Documentation-only corrections; links/whitespace validation apply.
 - Step-35 accepted head `de18f7d46a` merged with seven passing checks, Cubic
   approval and completed code/security reviews without new findings. Both
   addressed documentation threads are resolved. Main's squash tree equals the

@@ -12,8 +12,9 @@ reaches the backend so the turn continues.
   permission to execute it. Typed forms preserve native keys, values, optional
   omission and original-owner settlement. External-action consent uses its own
   request and opens no browser until explicitly requested. It is not an ordinary
-  tool approval or a fabricated question. Preserve the legacy decline path when
-  an older released client cannot display the typed interaction. The supported
+  tool approval or a fabricated question. An older released client's legacy
+  question reply and reject paths both cancel the typed request; they do not
+  submit typed acceptance or semantic decline. The supported
   adapters and cumulative client/relay matrix are in
   [MCP management](mcp-management.md#regression-levels).
 - A pending permission carries its tool, description, owning session, display
