@@ -227,9 +227,9 @@ find . -name "pubspec.lock" \
 ```bash
 set -e
 (cd client && flutter pub get)
+(cd client/module_persistence && dart pub outdated) # pure Dart (drift/sqlite3)
 (cd client/module_auth && dart pub outdated)       # pure Dart
 (cd client/module_core && dart pub outdated)       # pure Dart
-(cd client/module_persistence && dart pub outdated) # pure Dart (drift/sqlite3)
 (cd client/module_prego && flutter pub outdated)   # Flutter (flutter: sdk: flutter)
 (cd client/module_app_ui && flutter pub outdated)  # shared Flutter UI
 (cd client/module_desktop_core && dart pub outdated) # pure Dart
@@ -286,7 +286,9 @@ set -e
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
 2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/sesori_plugin_omp`, `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_pi`, `bridge/sesori_plugin_hermes`, `bridge/sesori_plugin_copilot`, `bridge/sesori_plugin_grok`, `bridge/sesori_plugin_deepseek`, `bridge/sesori_plugin_antigravity`, `bridge/app`
-3. Client workspace members (dependency order): `client/module_auth`, `client/module_core`, `client/module_persistence`, `client/module_prego`, `client/module_app_ui`, `client/module_desktop_core`, `client/design_catalog`, `client/app`, `client/desktop`
+3. Client workspace members (dependency order): `client/module_persistence`, `client/module_auth`,
+   `client/module_core`, `client/module_prego`, `client/module_app_ui`, `client/module_desktop_core`,
+   `client/design_catalog`, `client/app`, `client/desktop`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
 
