@@ -24,6 +24,13 @@ sealed class McpEntryTarget with _$McpEntryTarget {
     final McpServerTarget target => target,
     McpConnectorOfferTarget() => throw const FormatException("Expected an MCP server target."),
   };
+
+  // ignore: no_slop_linter/prefer_specific_type, decoded JSON target boundary
+  static McpConnectorOfferTarget connectorOfferFromJson(Map<String, dynamic> json) =>
+      switch (McpEntryTarget.fromJson(json)) {
+        final McpConnectorOfferTarget target => target,
+        McpServerTarget() => throw const FormatException("Expected an MCP connector offer target."),
+      };
 }
 
 enum McpConnectionPhase() {
@@ -100,6 +107,11 @@ enum McpConnectorOfferAvailability() {
   unavailable,
 }
 
+enum McpConnectorAction() {
+  unknown,
+  setup,
+}
+
 enum McpServerAction() {
   unknown,
   reconnect,
@@ -173,6 +185,9 @@ sealed class McpInventoryEntry with _$McpInventoryEntry {
     required String? description,
     @JsonKey(unknownEnumValue: McpConnectorOfferAvailability.unknown)
     required McpConnectorOfferAvailability availability,
+    // COMPATIBILITY 2026-10-15 (v1.9.2): Public v1.9.1 offers omit setup actions.
+    // Retire this default when bridges without connector setup declarations are no longer supported.
+    @JsonKey(unknownEnumValue: McpConnectorAction.unknown) @Default([]) List<McpConnectorAction> actions,
   }) = McpConnectorOfferSnapshot;
 
   factory fromJson(Map<String, dynamic> json) => _$McpInventoryEntryFromJson(json);

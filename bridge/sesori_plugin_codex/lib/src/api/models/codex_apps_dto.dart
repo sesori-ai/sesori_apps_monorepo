@@ -15,6 +15,7 @@ sealed class CodexAppInfoDto with _$CodexAppInfoDto {
     required String id,
     required String name,
     required String? description,
+    required String? installUrl,
     @Default(false) bool isAccessible,
     @Default(true) bool isEnabled,
   }) = _CodexAppInfoDto;

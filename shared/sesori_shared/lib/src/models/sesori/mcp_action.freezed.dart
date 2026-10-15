@@ -24,6 +24,10 @@ McpEntryAction _$McpEntryActionFromJson(
           return McpForgetAuthenticationEntryAction.fromJson(
             json
           );
+                case 'connectorSetup':
+          return McpConnectorSetupEntryAction.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -39,7 +43,7 @@ McpEntryAction _$McpEntryActionFromJson(
 /// @nodoc
 mixin _$McpEntryAction {
 
-@JsonKey(fromJson: McpEntryTarget.serverFromJson) McpServerTarget get target;
+
 
   /// Serializes this McpEntryAction to a JSON map.
   Map<String, dynamic> toJson();
@@ -47,21 +51,16 @@ mixin _$McpEntryAction {
 
 @override
 bool operator ==(Object other) {
-  final _this = this as McpEntryAction;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is McpEntryAction&&const DeepCollectionEquality().equals(other.target, _this.target));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpEntryAction);
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode {
-  final _this = this as McpEntryAction;
-  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.target));
-}
+int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-  final _this = this as McpEntryAction;
-  return 'McpEntryAction(target: ${_this.target})';
+    return 'McpEntryAction()';
 }
 
 
@@ -78,7 +77,7 @@ class McpServerEntryAction extends McpEntryAction {
   const McpServerEntryAction({@JsonKey(fromJson: McpEntryTarget.serverFromJson) required this.target, required this.action,  String? $type}): $type = $type ?? 'server',super._();
   factory McpServerEntryAction.fromJson(Map<String, dynamic> json) => _$McpServerEntryActionFromJson(json);
 
-@override@JsonKey(fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget target;
+@JsonKey(fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget target;
  final  McpServerAction action;
 
 @JsonKey(name: 'type')
@@ -120,7 +119,7 @@ class McpForgetAuthenticationEntryAction extends McpEntryAction {
   const McpForgetAuthenticationEntryAction({@JsonKey(fromJson: McpEntryTarget.serverFromJson) required this.target,  String? $type}): $type = $type ?? 'forgetAuthentication',super._();
   factory McpForgetAuthenticationEntryAction.fromJson(Map<String, dynamic> json) => _$McpForgetAuthenticationEntryActionFromJson(json);
 
-@override@JsonKey(fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget target;
+@JsonKey(fromJson: McpEntryTarget.serverFromJson) final  McpServerTarget target;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -146,6 +145,47 @@ int get hashCode {
 @override
 String toString() {
     return 'McpEntryAction.forgetAuthentication(target: $target)';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class McpConnectorSetupEntryAction extends McpEntryAction {
+  const McpConnectorSetupEntryAction({@JsonKey(name: "target", fromJson: McpEntryTarget.connectorOfferFromJson) required this.offerTarget,  String? $type}): $type = $type ?? 'connectorSetup',super._();
+  factory McpConnectorSetupEntryAction.fromJson(Map<String, dynamic> json) => _$McpConnectorSetupEntryActionFromJson(json);
+
+@JsonKey(name: "target", fromJson: McpEntryTarget.connectorOfferFromJson) final  McpConnectorOfferTarget offerTarget;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpConnectorSetupEntryActionToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpConnectorSetupEntryAction&&const DeepCollectionEquality().equals(other.offerTarget, offerTarget));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(offerTarget));
+}
+
+@override
+String toString() {
+    return 'McpEntryAction.connectorSetup(offerTarget: $offerTarget)';
 }
 
 
@@ -236,6 +276,10 @@ McpEntryActionResult _$McpEntryActionResultFromJson(
           return McpActionCompleted.fromJson(
             json
           );
+                case 'externalSetup':
+          return McpExternalSetup.fromJson(
+            json
+          );
                 case 'unavailable':
           return McpActionUnavailable.fromJson(
             json
@@ -271,10 +315,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'McpEntryActionResult()';
-}
 
 
 }
@@ -311,10 +351,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'McpEntryActionResult.unknown()';
-}
 
 
 }
@@ -352,10 +388,43 @@ int get hashCode {
     return Object.hash(runtimeType,inventory);
 }
 
-@override
-String toString() {
-    return 'McpEntryActionResult.completed(inventory: $inventory)';
+
+
 }
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class McpExternalSetup implements McpEntryActionResult {
+  const McpExternalSetup({required this.setupUrl,  String? $type}): $type = $type ?? 'externalSetup';
+  factory McpExternalSetup.fromJson(Map<String, dynamic> json) => _$McpExternalSetupFromJson(json);
+
+ final  String setupUrl;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$McpExternalSetupToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is McpExternalSetup&&(identical(other.setupUrl, setupUrl) || other.setupUrl == setupUrl));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,setupUrl);
+}
+
 
 
 }
@@ -393,10 +462,6 @@ int get hashCode {
     return Object.hash(runtimeType,reason);
 }
 
-@override
-String toString() {
-    return 'McpEntryActionResult.unavailable(reason: $reason)';
-}
 
 
 }
@@ -432,10 +497,6 @@ bool operator ==(Object other) {
 @override
 int get hashCode => runtimeType.hashCode;
 
-@override
-String toString() {
-    return 'McpEntryActionResult.failed()';
-}
 
 
 }

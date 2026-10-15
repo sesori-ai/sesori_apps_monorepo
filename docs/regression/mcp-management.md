@@ -34,7 +34,7 @@ archived session if its native process remains live; it grants no session mutati
   reach neutral consumers. No config provenance or per-server control is guessed.
   Config reload is not advertised as resident reconnect. Native OAuth uses the
   existing attempt owner. Offered-connector inventory is implemented through
-  app/list; catalog-resolved setup remains not implemented. Toggles/forgetting
+  app/list; catalog-resolved setup uses a distinct offer/browser handoff. Toggles/forgetting
   are unsupported.
   Coverage: `codex_mcp_repository_test.dart` and `codex_mcp_plugin_test.dart`
   in `bridge/sesori_plugin_codex/test/`, including exact scope/pagination,
@@ -88,8 +88,9 @@ archived session if its native process remains live; it grants no session mutati
 - Each server declares supported controls and their effect scope separately from
   configuration source/access. Claude controls affect only the resident session;
   they do not rewrite configuration or grant authentication/tool permission.
-- Action requests carry a server target; connector targets are rejected even with
-  equal key text. The bridge validates stored session ownership and rejects archived
+- Server-control/forgetting requests carry a server target; connector setup carries
+  an offer target. Mismatched variants reject even with equal key text. The bridge
+  validates stored session ownership and rejects archived
   mutations. Unsupported/inactive scopes do not activate a plugin or agent session.
 - Completed controls return an authoritative inventory read. A failed read after
   completion remains read-failed; an acknowledgement never implies connection.
@@ -350,8 +351,8 @@ by trimmed, case-insensitive display name with native ID as the tie-breaker;
 blank names fall back to the ID. The full catalog remains available, while the
 shared inventory builds only rows near the viewport, including large public
 directories. Rounded groups, independent section status and refresh scroll
-position remain intact. Native owns
-catalog caching. A server transport/decoder error retains local diagnostics and
+position remain intact. Reads request fresh native catalog data, including after
+browser setup. A server transport/decoder error retains local diagnostics and
 still reads the independent connector section. Unsupported/live-session-required
 scopes retain their explicit result without requesting a fallback catalog.
 A catalog error logs original context locally and leaves server
@@ -361,8 +362,9 @@ result without activating native work or falling back to harness scope.
 
 Server authentication uses a server-only read, never a connector catalog fetch.
 No setup destination, provider credential, native installation API, configuration
-writer or connector-to-server conversion is introduced by discovery. Setup actions
-remain pending. Existing clients consume the already released connector variants.
+writer or connector-to-server conversion is introduced by discovery. Setup uses
+the separate explicit action below. Existing clients consume the already released
+connector variants; peers without setup declarations expose no setup action.
 
 Coverage: `codex_mcp_repository_test.dart` exercises pagination, defaults, exact
 scope, stable identity/order, same-name server/offer distinction and catalog
@@ -373,6 +375,55 @@ construction, access to the final offer and retained scroll position on refresh.
 Both exact native pins passed the production catalog API/repository read as an
 available empty catalog in isolated homes; authentication issued no `app/list`.
 Real authenticated offers, entitlement and setup remain unqualified.
+
+## Connector setup handoff
+
+The optional connector setup API resolves an existing offer in its native scope;
+it does not install, authenticate, start/resume a session or write configuration.
+Codex refreshes all app/list pages and rechecks the exact offer's enabled/access
+policy and native installUrl. It never constructs a URL from a connector ID.
+Only enabled inaccessible offers with an eligible HTTPS destination declare the
+setup action. Missing destinations give a native-tool handoff; changed entitlement,
+missing offers and unsupported/inactive scopes return explicit unavailable state.
+
+The existing entry/action route accepts a distinct connector target, verifies
+stored session/plugin ownership and rejects archived mutations. The bridge service
+requires an absolute HTTPS destination with a nonempty host and no user info.
+Relative, HTTP, file, data, javascript, custom-scheme and user-info destinations
+are rejected before browser forwarding. Server control/authentication targets
+remain distinct. No native authentication attempt or browser callback is created.
+
+The client view's existing action owner launches only after an explicit setup
+action resolves on the same live connection/binding. Setup URLs remain local
+response data, absent from observed action states, inventory, SSE, replay,
+persistence and analytics. Connector setup responses use the existing sensitive
+decoder, omitting raw setup destinations from parse and HTTP-error diagnostics.
+Server controls and credential forgetting retain ordinary response diagnostics
+and compressed-response support.
+False/throwing launchers show failure and permit retry.
+Disconnect, rebind or disposal fences late resolution/launch results. Lost setup
+resolution is a retryable read failure, not an uncertain native mutation; its
+original cause and target context remain in local diagnostics. Server controls
+filter pending feedback by target while retaining the shared action-blocking gate.
+
+Opened feedback says to finish in the browser and refresh. It does not set any
+connected/available state. Automatic invalidation reads preserve setup feedback;
+explicit refresh clears it and reads fresh native catalog truth.
+Offer controls honor read-only/offline/pending gates; fixed
+header feedback crossfades without changing the catalog scroll position. Reduced
+motion uses no animation. Narrow/large-text layouts place the setup control below
+its offer metadata; capability changes animate the row height. Shared phone/desktop
+widgets use the same owner.
+
+Coverage: shared MCP codecs verify strict target types, released missing-action
+defaults, unknown actions and request-scoped setup results. Codex repository/plugin
+tests cover first-page-only refetch, policy/missing/unsafe URLs, typed failures and cold
+runtime refusal. Headless route tests exercise native target binding, archive/owner
+guards and the full destination policy. Client/widget tests cover explicit launch,
+retry, URL-free state, stale-result fencing, native-tool handoff and stable feedback.
+Exact pinned binaries pass fresh empty catalog reads; real offered connector
+entitlements/setup, native motion, packaged return and the final L4 matrix remain
+unqualified. Fixture success does not establish provider completion.
 
 ## Codex native authentication
 

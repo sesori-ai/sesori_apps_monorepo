@@ -6,13 +6,22 @@ import "client/relay_http_client.dart";
 
 @lazySingleton
 class McpApi({required final RelayHttpApiClient _client}) {
-  Future<ApiResponse<McpEntryActionResult>> executeAction({required McpEntryActionRequest request}) => _client.post(
-    "/mcp/entry/action",
-    body: request.toJson(),
-    fromJson: McpEntryActionResult.fromJson,
-    // Native management and its subsequent discovery need a longer bounded budget.
-    timeout: const Duration(minutes: 3, seconds: 30),
-  );
+  Future<ApiResponse<McpEntryActionResult>> executeAction({required McpEntryActionRequest request}) =>
+      request.action is McpConnectorSetupEntryAction
+      ? _client.postWithTimeout(
+          "/mcp/entry/action",
+          body: request.toJson(),
+          fromJson: McpEntryActionResult.fromJson,
+          // Setup destinations must stay out of response diagnostics.
+          timeout: const Duration(minutes: 3, seconds: 30),
+        )
+      : _client.post(
+          "/mcp/entry/action",
+          body: request.toJson(),
+          fromJson: McpEntryActionResult.fromJson,
+          // Native management and its subsequent discovery need a longer bounded budget.
+          timeout: const Duration(minutes: 3, seconds: 30),
+        );
 
   Future<ApiResponse<McpAuthenticationResult>> getAuthentication() => _client.get(
     "/mcp/authentication",

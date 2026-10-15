@@ -44,6 +44,21 @@ Map<String, dynamic> _$McpForgetAuthenticationEntryActionToJson(
   'type': instance.$type,
 };
 
+McpConnectorSetupEntryAction _$McpConnectorSetupEntryActionFromJson(Map json) =>
+    McpConnectorSetupEntryAction(
+      offerTarget: McpEntryTarget.connectorOfferFromJson(
+        json['target'] as Map<String, dynamic>,
+      ),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$McpConnectorSetupEntryActionToJson(
+  McpConnectorSetupEntryAction instance,
+) => <String, dynamic>{
+  'target': instance.offerTarget.toJson(),
+  'type': instance.$type,
+};
+
 _McpEntryActionRequest _$McpEntryActionRequestFromJson(Map json) =>
     _McpEntryActionRequest(
       pluginId: json['pluginId'] as String,
@@ -77,6 +92,14 @@ Map<String, dynamic> _$McpActionCompletedToJson(McpActionCompleted instance) =>
       'inventory': instance.inventory.toJson(),
       'type': instance.$type,
     };
+
+McpExternalSetup _$McpExternalSetupFromJson(Map json) => McpExternalSetup(
+  setupUrl: json['setupUrl'] as String,
+  $type: json['type'] as String?,
+);
+
+Map<String, dynamic> _$McpExternalSetupToJson(McpExternalSetup instance) =>
+    <String, dynamic>{'setupUrl': instance.setupUrl, 'type': instance.$type};
 
 McpActionUnavailable _$McpActionUnavailableFromJson(Map json) =>
     McpActionUnavailable(

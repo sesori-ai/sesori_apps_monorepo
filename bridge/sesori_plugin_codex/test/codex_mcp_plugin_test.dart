@@ -54,6 +54,20 @@ void main() {
       isA<PluginFormAlreadySettled>(),
     );
     expect(socketReady.isCompleted, isFalse);
+    expect(
+      await plugin.resolveMcpConnectorSetup(
+        target: const PluginMcpConnectorOfferTarget(
+          scope: PluginMcpSessionScope(sessionId: "thread"),
+          offerKey: "fixture",
+        ),
+      ),
+      isA<PluginMcpConnectorSetupUnavailable>().having(
+        (r) => r.reason,
+        "reason",
+        PluginMcpConnectorSetupUnavailableReason.liveSessionRequired,
+      ),
+    );
+    expect(socketReady.isCompleted, isFalse);
     await plugin.initialize();
     final asked = plugin.events.firstWhere((event) => event is BridgeSseQuestionAsked);
     (await socketReady.future).add(

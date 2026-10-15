@@ -651,10 +651,11 @@ Exact PR titles and scope:
    Map native forms to the shared typed interaction and URL elicitation through the existing pending owner.
    Preserve native grant scopes. Remove superseded generic MCP mapping. No Sesori database change.
 
-28. `⚙️ [mcp-management] Expose Codex offered connector catalog [step 28/32]`
+28. `🌿 [mcp-management] Display Codex offered connector catalog [step 28/32]`
 
    Add native catalog inventory through the existing connector-offer variants. Preserve configured servers when
-   catalog reads fail. Server authentication reads only servers. No shared/wire/client or database change.
+   catalog reads fail. Server authentication reads only servers. Shared inventory rows are lazy for the native public
+   directory; offers sort by normalized display name. No shared wire or database change.
 
 29. `🚧 [mcp-management] Connect offered MCP integrations [step 29/32]`
 

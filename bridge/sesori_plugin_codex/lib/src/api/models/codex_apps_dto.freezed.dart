@@ -82,21 +82,21 @@ int get hashCode {
 /// @nodoc
 mixin _$CodexAppInfoDto {
 
- String get id; String get name; String? get description; bool get isAccessible; bool get isEnabled;
+ String get id; String get name; String? get description; String? get installUrl; bool get isAccessible; bool get isEnabled;
 
 
 
 @override
 bool operator ==(Object other) {
   final _this = this as CodexAppInfoDto;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAppInfoDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.isAccessible, _this.isAccessible) || other.isAccessible == _this.isAccessible)&&(identical(other.isEnabled, _this.isEnabled) || other.isEnabled == _this.isEnabled));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is CodexAppInfoDto&&(identical(other.id, _this.id) || other.id == _this.id)&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.description, _this.description) || other.description == _this.description)&&(identical(other.installUrl, _this.installUrl) || other.installUrl == _this.installUrl)&&(identical(other.isAccessible, _this.isAccessible) || other.isAccessible == _this.isAccessible)&&(identical(other.isEnabled, _this.isEnabled) || other.isEnabled == _this.isEnabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as CodexAppInfoDto;
-  return Object.hash(runtimeType,_this.id,_this.name,_this.description,_this.isAccessible,_this.isEnabled);
+  return Object.hash(runtimeType,_this.id,_this.name,_this.description,_this.installUrl,_this.isAccessible,_this.isEnabled);
 }
 
 
@@ -111,12 +111,13 @@ int get hashCode {
 @JsonSerializable(createToJson: false)
 
 class _CodexAppInfoDto implements CodexAppInfoDto {
-  const _CodexAppInfoDto({required this.id, required this.name, required this.description, this.isAccessible = false, this.isEnabled = true});
+  const _CodexAppInfoDto({required this.id, required this.name, required this.description, required this.installUrl, this.isAccessible = false, this.isEnabled = true});
   factory _CodexAppInfoDto.fromJson(Map<String, dynamic> json) => _$CodexAppInfoDtoFromJson(json);
 
 @override final  String id;
 @override final  String name;
 @override final  String? description;
+@override final  String? installUrl;
 @override@JsonKey() final  bool isAccessible;
 @override@JsonKey() final  bool isEnabled;
 
@@ -125,13 +126,13 @@ class _CodexAppInfoDto implements CodexAppInfoDto {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAppInfoDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.isAccessible, isAccessible) || other.isAccessible == isAccessible)&&(identical(other.isEnabled, isEnabled) || other.isEnabled == isEnabled));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _CodexAppInfoDto&&(identical(other.id, id) || other.id == id)&&(identical(other.name, name) || other.name == name)&&(identical(other.description, description) || other.description == description)&&(identical(other.installUrl, installUrl) || other.installUrl == installUrl)&&(identical(other.isAccessible, isAccessible) || other.isAccessible == isAccessible)&&(identical(other.isEnabled, isEnabled) || other.isEnabled == isEnabled));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,id,name,description,isAccessible,isEnabled);
+    return Object.hash(runtimeType,id,name,description,installUrl,isAccessible,isEnabled);
 }
 
 

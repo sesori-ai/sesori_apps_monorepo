@@ -106,6 +106,7 @@ import 'package:sesori_dart_core/src/platform/push_messaging_source.dart'
     as _i330;
 import 'package:sesori_dart_core/src/platform/route_dispatcher.dart' as _i951;
 import 'package:sesori_dart_core/src/platform/route_source.dart' as _i366;
+import 'package:sesori_dart_core/src/platform/url_launcher.dart' as _i305;
 import 'package:sesori_dart_core/src/platform/voice_capture.dart' as _i359;
 import 'package:sesori_dart_core/src/repositories/analytics_release_cutoff_repository.dart'
     as _i672;
@@ -729,12 +730,6 @@ extension GetItInjectableX on _i174.GetIt {
         sessionApi: gh<_i603.SessionApi>(),
       ),
     );
-    gh.factory<_i948.McpService>(
-      () => _i948.McpService(
-        repository: gh<_i349.McpRepository>(),
-        connectionService: gh<_i369.ConnectionService>(),
-      ),
-    );
     gh.lazySingleton<_i177.NewSessionPluginService>(
       () => _i177.NewSessionPluginService(
         pluginRepository: gh<_i337.PluginRepository>(),
@@ -761,6 +756,13 @@ extension GetItInjectableX on _i174.GetIt {
         managementService: gh<_i110.PluginManagementService>(),
         browserService: gh<_i674.PluginAuthenticationBrowserService>(),
         locality: gh<_i1023.ActiveBridgeLocality>(),
+      ),
+    );
+    gh.factory<_i948.McpService>(
+      () => _i948.McpService(
+        repository: gh<_i349.McpRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        urlLauncher: gh<_i305.UrlLauncher>(),
       ),
     );
     gh.lazySingleton<_i370.SelectedComputerService>(

@@ -344,6 +344,17 @@ McpConnectorOfferSnapshot _$McpConnectorOfferSnapshotFromJson(Map json) =>
         json['availability'],
         unknownValue: McpConnectorOfferAvailability.unknown,
       ),
+      actions:
+          (json['actions'] as List<dynamic>?)
+              ?.map(
+                (e) => $enumDecode(
+                  _$McpConnectorActionEnumMap,
+                  e,
+                  unknownValue: McpConnectorAction.unknown,
+                ),
+              )
+              .toList() ??
+          const [],
       $type: json['type'] as String?,
     );
 
@@ -355,6 +366,9 @@ Map<String, dynamic> _$McpConnectorOfferSnapshotToJson(
   'description': ?instance.description,
   'availability':
       _$McpConnectorOfferAvailabilityEnumMap[instance.availability]!,
+  'actions': instance.actions
+      .map((e) => _$McpConnectorActionEnumMap[e]!)
+      .toList(),
   'type': instance.$type,
 };
 
@@ -363,6 +377,11 @@ const _$McpConnectorOfferAvailabilityEnumMap = {
   McpConnectorOfferAvailability.available: 'available',
   McpConnectorOfferAvailability.setupRequired: 'setupRequired',
   McpConnectorOfferAvailability.unavailable: 'unavailable',
+};
+
+const _$McpConnectorActionEnumMap = {
+  McpConnectorAction.unknown: 'unknown',
+  McpConnectorAction.setup: 'setup',
 };
 
 McpCatalogUnknown _$McpCatalogUnknownFromJson(Map json) =>

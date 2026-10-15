@@ -41,13 +41,7 @@ class CodexMcpRepository({required final CodexAppServerApi _appServerApi, requir
   _readConnectorOffers({required PluginMcpScope scope}) async {
     final threadId = scope is PluginMcpSessionScope ? scope.sessionId : null;
     try {
-      final apps = <CodexAppInfoDto>[];
-      String? cursor;
-      do {
-        final page = await _appServerApi.listAppsPage(threadId: threadId, cursor: cursor);
-        apps.addAll(page.data);
-        cursor = page.nextCursor;
-      } while (cursor != null);
+      final apps = await _readApps(scope: scope);
       return (
         entries: _mapper.mapConnectorOffers(apps: apps, scope: scope),
         availability: const PluginMcpCatalogAvailable(),
@@ -61,6 +55,49 @@ class CodexMcpRepository({required final CodexAppServerApi _appServerApi, requir
       return (
         entries: const <PluginMcpConnectorOfferSnapshot>[],
         availability: const PluginMcpCatalogUnavailable(message: "Connector catalog is unavailable."),
+      );
+    }
+  }
+
+  Future<List<CodexAppInfoDto>> _readApps({required PluginMcpScope scope}) async {
+    final threadId = scope is PluginMcpSessionScope ? scope.sessionId : null;
+    final apps = <CodexAppInfoDto>[];
+    String? cursor;
+    do {
+      final page = await _appServerApi.listAppsPage(threadId: threadId, cursor: cursor);
+      apps.addAll(page.data);
+      cursor = page.nextCursor;
+    } while (cursor != null);
+    return apps;
+  }
+
+  Future<PluginMcpConnectorSetupResult> resolveSetup({required PluginMcpConnectorOfferTarget target}) async {
+    if (target.scope is PluginMcpProjectScope) {
+      return const PluginMcpConnectorSetupUnavailable(
+        reason: PluginMcpConnectorSetupUnavailableReason.unsupportedScope,
+      );
+    }
+    try {
+      final apps = await _readApps(scope: target.scope);
+      final app = apps.where((app) => app.id == target.offerKey).firstOrNull;
+      if (app == null) {
+        return const PluginMcpConnectorSetupUnavailable(
+          reason: PluginMcpConnectorSetupUnavailableReason.targetNotFound,
+        );
+      }
+      if (!app.isEnabled || app.isAccessible) {
+        return const PluginMcpConnectorSetupUnavailable(reason: PluginMcpConnectorSetupUnavailableReason.notSupported);
+      }
+      final destination = _mapper.setupDestination(app: app);
+      return destination == null
+          ? const PluginMcpConnectorSetupUnavailable(
+              reason: PluginMcpConnectorSetupUnavailableReason.nativeConfigurationRequired,
+            )
+          : PluginMcpConnectorExternalSetup(destination: destination);
+    } on Object catch (error, stackTrace) {
+      return PluginMcpConnectorSetupFailed(
+        cause: error is Exception ? error : CodexMcpInventoryReadException(innerError: error),
+        causeStackTrace: stackTrace,
       );
     }
   }
