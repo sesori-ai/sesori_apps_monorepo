@@ -152,8 +152,9 @@ sub-agent parts, plus the signal that a tool changed files.
   shows them, so the row never leaves before the step that replaces it.
   A prompt sent while the session is idle wakes it, so the row sits right below
   that prompt's bubble while it is sent, held and delivered, and stays put as
-  the bubble becomes its message; prompts sent after it, and steers sent while
-  the session works, wait below the row until delivered.
+  the bubble becomes its message; this holds for a prompt from another surface
+  whose busy status arrives before its bubble. Prompts sent after it, and
+  steers sent once the turn shows output, wait below the row until delivered.
   When the running turn's latest shown user
   message (one sent mid-turn, else the prompt that opened the turn) carries a
   sent time, the row reads “Working… · 1m 43s”, ticking each second from that

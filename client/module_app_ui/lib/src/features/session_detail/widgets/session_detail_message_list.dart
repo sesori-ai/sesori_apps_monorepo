@@ -284,6 +284,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// right below it until it shows as a message, which the row follows anyway.
   String? _wakingPromptRowId;
 
+  /// Whether no message has arrived since the session was last idle. A prompt
+  /// that appears meanwhile still woke it, even when the session's busy status
+  /// got here first, as it can for a prompt sent from another surface.
+  bool _quietSinceIdle = false;
+
+  /// The last build's newest message, to tell when one arrives.
+  String? _newestMessageId;
+
   /// The last build's rendered user messages, prompts and steers alike, in
   /// order: the messages that can pin.
   Map<String, MessageWithParts> _userMessagesById = const {};
@@ -804,17 +812,18 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   }
 
   /// The pending prompt that wakes the session, if any: one that appears while
-  /// the session is idle, kept until it shows as a message or leaves. A prompt
-  /// sent while the session works is a steer and waits below the working row.
+  /// the session is idle or has shown nothing since, kept until it shows as a
+  /// message or leaves. A prompt sent once the turn is under way is a steer and
+  /// waits below the working row.
   String? _wakingPromptRowIdFor({
     required List<String> pendingPromptRowIds,
-    required bool isIdle,
+    required bool quietSinceIdle,
     required bool hasLaunchRow,
   }) {
     final waking = _wakingPromptRowId;
     if (waking != null && pendingPromptRowIds.contains(waking)) return waking;
     // A launch's first message wakes its session, above the working row.
-    if (!isIdle || hasLaunchRow) return null;
+    if (!quietSinceIdle || hasLaunchRow) return null;
     return pendingPromptRowIds.where((rowId) => !_rowIndexById.containsKey(rowId)).firstOrNull;
   }
 
@@ -973,9 +982,14 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       launchFollowUps: widget.launchFollowUps,
     );
     final hasLaunchRow = widget.launchHandoff != null;
+    // Live, like the prompt rows, even while the reader is detached.
+    final newestMessageId = widget.messages.lastOrNull?.info.id;
+    final quietSinceIdle = _quietSinceIdle =
+        (!widget.isBusy && !widget.mainAgentRunning) || (_quietSinceIdle && newestMessageId == _newestMessageId);
+    _newestMessageId = newestMessageId;
     final wakingPromptRowId = _wakingPromptRowId = _wakingPromptRowIdFor(
       pendingPromptRowIds: pendingPromptRowIds,
-      isIdle: !isBusy && !mainAgentRunning,
+      quietSinceIdle: quietSinceIdle,
       hasLaunchRow: hasLaunchRow,
     );
     final rowIds = _rowIdsFor(

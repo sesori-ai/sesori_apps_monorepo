@@ -1114,6 +1114,49 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a prompt from another surface that wakes the session sits above Working… when busy lands first", (
+    tester,
+  ) async {
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [_message(messageId: "user-0", role: "user", text: "Earlier")],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    final harness = harnessKey.currentState!..setBusy(true);
+    await tester.pump();
+    harness.updateBridgeQueue(
+      prompts: const [
+        QueuedSessionPrompt(
+          id: "prm_remote",
+          text: "from the desktop",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 100,
+          dispatchState: QueuedPromptDispatchState.dispatched,
+        ),
+      ],
+      attachments: const {},
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    final working = find.byType(TranscriptWorkingRow);
+    expect(tester.getBottomLeft(find.text("from the desktop")).dy, lessThan(tester.getTopLeft(working).dy));
+
+    harness.deliverBridgePrompt(
+      promptId: "prm_remote",
+      message: _message(messageId: "user-1", role: "user", text: "from the desktop", promptId: "prm_remote"),
+      insertionIndex: 1,
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(tester.getBottomLeft(find.text("from the desktop")).dy, lessThan(tester.getTopLeft(working).dy));
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("a steer sent while the session works waits below Working…", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -1129,6 +1172,8 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
     }
 
+    // The turn is under way: its reply has started.
+    harness.appendNewestMessage(_message(messageId: "assistant-0", role: "assistant", text: "On it"));
     await settle();
     double top(Finder finder) => tester.getTopLeft(finder).dy;
     final working = find.byType(TranscriptWorkingRow);
