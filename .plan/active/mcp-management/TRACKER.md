@@ -55,7 +55,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
 | 27/32 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/32 | Codex offered connector catalog | In PR | [#2003][pr-2003]; 69 tests and exact pins |
-| 29/32 | Connector setup actions and browser handoff | In progress | Architecture plan approved |
+| 29/32 | Connector setup actions and browser handoff | Verified locally | Both architecture reviews approved; 143 cases |
 | 30/32 | Secondary harness support and explicit gaps | Not started | — |
 | 31/32 | Reconcile regression/capability documents | Not started | — |
 | 32/32 | Execute L4 plus named external/package checks; retire | Not started | — |
@@ -65,6 +65,15 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 [pr-2003]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2003
 
 ## Evidence and decisions
+
+- Step 29 resolves native setup destinations through the existing scoped headless
+  action route and launches only an explicit, current client action. Destinations
+  remain request-local; opened feedback never claims connection. All 143 affected
+  cases and six owning analyzers pass, including phone layout/motion at normal and
+  doubled text size. Desktop/phone fixture renders were inspected after integrating
+  lazy catalog rows. Both exact Codex pins passed fresh empty-catalog reads.
+  Real offers/provider completion, native recording and final L4/package/device
+  qualification remain pending. The successor stays local until #2003 merges.
 
 - 2026-10-13: inspected current plugin contracts, Claude process/control ownership, Codex approvals, shared
   question/permission models, client browser auth ownership, bridge routing, harness capabilities, and regression proof
