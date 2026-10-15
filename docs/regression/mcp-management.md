@@ -336,7 +336,10 @@ empty text; choice labels never become native answer values.
 
 Validation errors and failed writes keep the native request pending. Accepted or
 negative replies settle it once. Existing stop/archive notification/process-exit
-and teardown paths cancel waits. Static form notices contain no fields/defaults;
+and teardown paths cancel waits. A failed archive cancellation retains the request
+and emits no settled event; a later cancellation or teardown can retry the write.
+Choice descriptions remain visible in their normalized labels, with native values
+kept separately. Static form notices contain no fields/defaults;
 legacy question routes can only cancel, never submit flattened string answers.
 Verified native MCP server context enriches tool permission detail without
 changing tool names or grant rules.

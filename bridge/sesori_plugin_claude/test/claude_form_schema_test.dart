@@ -75,6 +75,28 @@ void main() {
     expect(schema.toString(), isNot(contains("native-text")));
   });
 
+  test("option descriptions distinguish identical titles without changing native values", () {
+    final schema = ClaudeFormSchema.parse(
+      schema: {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "oneOf": [
+              {"const": "basic", "title": "Plan", "description": "Basic tier"},
+              {"const": "pro", "title": "Plan", "description": "Professional tier"},
+            ],
+          },
+        },
+      },
+    )!;
+    final choice = schema.fields.single.schema as PluginFormChoiceSchema;
+    expect(choice.options.map((option) => option.label), ["Plan — Basic tier", "Plan — Professional tier"]);
+    expect(schema.encode(values: {schema.fields.single.id: PluginFormChoiceValue(optionId: choice.options.last.id)}), {
+      "plan": "pro",
+    });
+  });
+
   test("validation attributes required, type, bounds and choice failures without coercion", () {
     final schema = ClaudeFormSchema.parse(
       schema: {

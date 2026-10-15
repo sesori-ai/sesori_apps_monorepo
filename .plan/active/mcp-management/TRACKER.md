@@ -1287,6 +1287,6 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step 20 merged at accepted head `1d284e4629`, squash `feb6f77858`, with 32
   passing checks and a clean final Cubic approval. The normalized native-format
   spelling suggestion remains deliberately declined with a prefixed explanation.
-  Step 21 merged current main; each conflicting incoming document was verified
+  The Step-21 branch incorporated current main; each conflicting incoming document was verified
   byte-identical to the already incorporated parent. The merge changes no files
   from approved source `ced5e6797a`, so no unchanged passing suite was rerun.

@@ -721,6 +721,8 @@ fields, including supported defaults and inclusive length/count/numeric bounds. 
 format constraints, nested/secret schemas and other unsupported keywords explicitly decline
 with an in-session warning. Invalid submissions and failed native writes retain pending
 requests. Stop, archive notification, process exit and teardown cancel existing waits.
+Failed archive cancellation retains pending state without a false settlement event.
+Choice descriptions are retained in visible option labels.
 Codex elicitation and the remaining native-supported management rows are
 **not implemented**.
 

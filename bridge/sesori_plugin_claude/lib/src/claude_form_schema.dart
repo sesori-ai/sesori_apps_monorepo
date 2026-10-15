@@ -167,10 +167,12 @@ final class ClaudeFormSchema._({
       if (value is! String || nativeOptions.containsValue(value)) throw const FormatException("Invalid form option");
       final id = "option-${choices.length}";
       nativeOptions[id] = value;
+      final label = _optional<String>(schema: option, key: "title") ?? (value.isEmpty ? "Empty value" : value);
+      final description = _optional<String>(schema: option, key: "description");
       choices.add(
         PluginFormChoice(
           id: id,
-          label: _optional<String>(schema: option, key: "title") ?? (value.isEmpty ? "Empty value" : value),
+          label: description == null || description.isEmpty ? label : "$label — $description",
         ),
       );
     }

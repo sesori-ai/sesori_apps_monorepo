@@ -540,6 +540,16 @@ final class ClaudeApprovalRegistry({
     }
   }
 
+  /// Archive leaves the process alive; only a successful native write settles.
+  void cancelForArchive({required String sessionId}) {
+    final entries = _pending.values.where((entry) => entry.sessionId == sessionId).toList(growable: false);
+    for (final entry in entries) {
+      if (!_sendCancellation(entry: entry)) continue;
+      _pending.remove(entry.id);
+      _emitCancellation(entry: entry);
+    }
+  }
+
   void dispose() {
     final entries = _pending.values.toList(growable: false);
     _pending.clear();
@@ -555,6 +565,11 @@ final class ClaudeApprovalRegistry({
   }
 
   void _cancel(_PendingApproval entry) {
+    _sendCancellation(entry: entry);
+    _emitCancellation(entry: entry);
+  }
+
+  bool _sendCancellation({required _PendingApproval entry}) {
     final responded = switch (entry) {
       _PendingExternalAction() || _PendingForm() => _respond(
         sessionId: entry.sessionId,
@@ -562,11 +577,15 @@ final class ClaudeApprovalRegistry({
         payload: {"action": "cancel"},
       ),
       _PendingPermission() ||
-      _PendingQuestion() => _deny(entry: entry, message: "Request cancelled because the Claude session stopped."),
+      _PendingQuestion() => _deny(entry: entry, message: "Request cancelled because this session is no longer active."),
     };
     if (!responded) {
       Log.w("[claude] failed to send cancellation for pending approval ${entry.id}");
     }
+    return responded;
+  }
+
+  void _emitCancellation({required _PendingApproval entry}) {
     switch (entry) {
       case _PendingPermission():
         _emitActivity(
