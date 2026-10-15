@@ -1,16 +1,41 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../../api/models/codex_apps_dto.dart";
 import "../../api/models/codex_mcp_status_dto.dart";
 
 /// Native presentation metadata only; configuration and execution stay native.
 class CodexMcpMapper({required String userAgent}) {
   final bool _supportsThreadAuthentication = _hasThreadAuthentication(userAgent: userAgent);
+
+  List<PluginMcpConnectorOfferSnapshot> mapConnectorOffers({
+    required List<CodexAppInfoDto> apps,
+    required PluginMcpScope scope,
+  }) => List.unmodifiable(
+    (apps.toList()..sort((a, b) {
+          final byName = _appName(app: a).toLowerCase().compareTo(_appName(app: b).toLowerCase());
+          return byName == 0 ? a.id.compareTo(b.id) : byName;
+        }))
+        .map(
+          (app) => PluginMcpConnectorOfferSnapshot(
+            target: PluginMcpConnectorOfferTarget(scope: scope, offerKey: app.id),
+            name: _appName(app: app),
+            description: _present(value: app.description),
+            availability: !app.isEnabled
+                ? PluginMcpConnectorOfferAvailability.unavailable
+                : app.isAccessible
+                ? PluginMcpConnectorOfferAvailability.available
+                : PluginMcpConnectorOfferAvailability.setupRequired,
+          ),
+        ),
+  );
+  String _appName({required CodexAppInfoDto app}) => _present(value: app.name) ?? app.id;
+
   PluginMcpInventorySnapshot map({required List<CodexMcpServerStatusDto> servers, required PluginMcpScope scope}) {
     final sorted = servers.toList()..sort((a, b) => a.name.compareTo(b.name));
     return PluginMcpInventorySnapshot(
       servers: const PluginMcpCatalogAvailable(),
-      connectors: const PluginMcpCatalogUnavailable(message: "Codex connector inventory is not implemented yet."),
+      connectors: const PluginMcpCatalogUnavailable(message: "Connector catalog was not requested."),
       entries: List.unmodifiable(sorted.map((server) => _server(server: server, scope: scope))),
     );
   }

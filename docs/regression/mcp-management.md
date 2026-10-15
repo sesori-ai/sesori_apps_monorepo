@@ -33,8 +33,9 @@ archived session if its native process remains live; it grants no session mutati
   descriptions, native server titles/descriptions, safe endpoint origins and separate native auth/runtime state
   reach neutral consumers. No config provenance or per-server control is guessed.
   Config reload is not advertised as resident reconnect. Native OAuth uses the
-  existing attempt owner; offered connectors remain explicitly not implemented,
-  and toggles/forgetting are unsupported.
+  existing attempt owner. Offered-connector inventory is implemented through
+  app/list; catalog-resolved setup remains not implemented. Toggles/forgetting
+  are unsupported.
   Coverage: `codex_mcp_repository_test.dart` and `codex_mcp_plugin_test.dart`
   in `bridge/sesori_plugin_codex/test/`, including exact scope/pagination,
   malformed payloads, typed failure causes and detached/disconnected lifecycle.
@@ -338,6 +339,40 @@ competing flow. Matching retry/cancel protects provider and MCP callback listene
 presentation retains its issued challenge for explicit retry. The transport seam and shared MCP client lifecycle are
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
+
+## Codex offered connector catalog
+
+Codex inventory reads native `app/list` after its scoped server snapshot, using
+all pages and the exact thread or harness context. Offers remain distinct from
+configured servers, including identical native key text. Native enabled/access
+defaults determine unavailable, available or setup-required status. Offers sort
+by trimmed, case-insensitive display name with native ID as the tie-breaker;
+blank names fall back to the ID. The full catalog remains available, while the
+shared inventory builds only rows near the viewport, including large public
+directories. Rounded groups, independent section status and refresh scroll
+position remain intact. Native owns
+catalog caching. A server transport/decoder error retains local diagnostics and
+still reads the independent connector section. Unsupported/live-session-required
+scopes retain their explicit result without requesting a fallback catalog.
+A catalog error logs original context locally and leaves server
+entries visible with a generic unavailable catalog section. Partial catalog pages
+are not presented as complete. Unsupported/cold server scope retains its existing
+result without activating native work or falling back to harness scope.
+
+Server authentication uses a server-only read, never a connector catalog fetch.
+No setup destination, provider credential, native installation API, configuration
+writer or connector-to-server conversion is introduced by discovery. Setup actions
+remain pending. Existing clients consume the already released connector variants.
+
+Coverage: `codex_mcp_repository_test.dart` exercises pagination, defaults, exact
+scope, stable identity/order, same-name server/offer distinction and catalog
+failure preserving servers and useful local logs. Authentication and plugin
+regressions retain server-only validation and no implicit connection/mutation.
+Shared inventory widget coverage uses 2,000 offers to check bounded row
+construction, access to the final offer and retained scroll position on refresh.
+Both exact native pins passed the production catalog API/repository read as an
+available empty catalog in isolated homes; authentication issued no `app/list`.
+Real authenticated offers, entitlement and setup remain unqualified.
 
 ## Codex native authentication
 

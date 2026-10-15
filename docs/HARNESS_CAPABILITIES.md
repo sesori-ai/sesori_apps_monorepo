@@ -725,7 +725,13 @@ no action is advertised. A 2026-10-15 isolated probe at both pins found status
 discovery can open a fresh connection while the resident tool call retains its
 original connection, including after `config/mcpServer/reload`. Reloading
 configuration therefore does not establish resident reconnect support.
-Offered-connector inventory remains **not implemented**. Codex typed MCP forms
+Offered-connector inventory is **implemented** through native `app/list`, with
+complete pagination and exact thread/harness context. Offers retain distinct
+targets and native enabled/accessibility state. A catalog failure preserves the
+server inventory; server authentication never fetches the connector catalog.
+Catalog-resolved connector setup remains **not implemented**. Exact-pin fixtures
+verify the empty unauthenticated catalog; real authenticated offers and native
+entitlement policy remain unqualified. Codex typed MCP forms
 and URL requests are **implemented**, reusing the existing native pending owner
 and shared request-scoped controls. Supported scalar/choice forms retain native
 types and opaque key/value aliases; invalid replies remain pending. Unsupported
@@ -765,8 +771,8 @@ requests. Stop, archive notification, process exit and teardown cancel existing 
 Failed archive cancellation retains pending state without a false settlement event.
 Choice descriptions are retained in visible option labels.
 Codex typed form/external-action management is **implemented** through the same
-shared controls, with cancel-only legacy notices. Offered connectors remain
-**not implemented** in this slice.
+shared controls, with cancel-only legacy notices. Offered-connector inventory
+is **implemented**; catalog-resolved setup remains **not implemented**.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
 Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed

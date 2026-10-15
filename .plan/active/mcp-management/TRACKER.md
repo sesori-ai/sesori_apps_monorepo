@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-codex-auth`, in the provided `copper-heron` worktree.
-- Current step: 27/32 is in PR [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001). Latest merged: 26/32 as
-  [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000).
+- Branch: `sesori/mcp-codex-connectors`, in the provided `copper-heron` worktree.
+- Current step: 28/32 is in PR [#2003][pr-2003]. Latest merged: 27/32 as
+  [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001).
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -51,13 +51,17 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 23/32 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
 | 24/32 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
 | 25/32 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
-| 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000); native pins and review fixes pass |
-| 27/32 | Codex typed forms and URL requests | In PR | [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001); implementation/native fixtures approved |
-| 28/32 | Codex offered connector catalog | In progress | Verified local draft; setup separate |
+| 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
+| 27/32 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
+| 28/32 | Codex offered connector catalog | In PR | [#2003][pr-2003]; 69 tests and exact pins |
 | 29/32 | Connector setup actions and browser handoff | Not started | — |
 | 30/32 | Secondary harness support and explicit gaps | Not started | — |
 | 31/32 | Reconcile regression/capability documents | Not started | — |
 | 32/32 | Execute L4 plus named external/package checks; retire | Not started | — |
+
+[pr-2000]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000
+[pr-2001]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001
+[pr-2003]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2003
 
 ## Evidence and decisions
 
@@ -1546,6 +1550,19 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   fall back to native names/values; opaque aliases protect submitted IDs.
   Connector catalog/setup split into 28/29 keeps future boundaries reviewable;
   remaining series total is 32 and final qualification is unchanged.
+- Step 28 separates read-only native catalog discovery from setup across the
+  plugin/wire/headless/client browser boundaries (now 29). Existing connector
+  variants serve inventory without a contract change; setup requires its own
+  reviewed action/result boundary. Total 32; final L4 scope is unchanged.
+  Architecture plan review approved catalog mapping and server-only auth reads.
+- Step-28 verification: all 69 focused inventory/authentication/plugin cases
+  pass, package analysis is clean and normal DTO generation passes. Both exact
+  native binaries return an available empty catalog through production API and
+  repository mapping. Their authentication journeys issue no app/list calls;
+  minimum session handoff and native expiry/denial/success remain verified.
+  This does not qualify real authenticated offers, entitlement or setup.
+  Architecture implementation review approved the catalog boundary; synthetic
+  before/after inventory captures are prepared. Native recording stays deferred.
 - Step-27 follow-up review: forwarded legacy titled enums retain matching
   enumNames. Native 0.139.0 omits enumNames, so its production snapshot falls
   back to native values; 0.160.1 forwards and displays the provided titles.
@@ -1563,3 +1580,20 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Second/final step-27 architecture implementation review approved. Base
   `1742753442` already owns pending mutation/SSE in the shared registry;
   settlement extraction adds no owner. Relocation would widen this feature.
+- Step 27 merged as `0beb720550` with 20/20 checks passing; current-head code
+  and security reviews completed, Cubic approved. The pre-existing registry
+  relocation request is declined with architecture evidence. Catalog integration
+  changes no bytes: incoming conflicted files exactly match reviewed `10f44c1153`.
+  Catalog before/after fixture images are published on orphan pr-media commit
+  `579348b385d58962281b163e57f128251ea37965`.
+- Step-28 review reconciles the top-level regression summary with the detailed
+  implemented catalog section and capability document. Setup remains separate.
+  Delivery rows use short references; the current state points to PR #2003.
+- Step-28 server failure now preserves healthy connector discovery. Unsupported
+  or live-session-required scopes still stop before catalog access. Server
+  transport/decoder failures retain original local diagnostics and expose only
+  that section as unavailable. All 45 affected repository/plugin cases pass;
+  package analysis is clean. Earlier 25 authentication cases are unchanged.
+- Step-28 diagnostic follow-up names harness or the actual native thread in
+  failed server reads, retaining original causes/stacks. All 42 repository tests
+  pass with both contexts asserted; package analysis is clean.
