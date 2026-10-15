@@ -60,6 +60,7 @@ class const _Fixture() extends StatelessWidget {
                       context: context,
                       request: const McpInventoryRequest(pluginId: "fixture", scope: _scope),
                       createService: _FixtureService.new,
+                      authenticationService: _ReadOnlyAuthentication.new,
                       mutationsAllowed: false,
                     ),
                   ),
@@ -142,4 +143,9 @@ class _FixtureService() implements McpService {
 
   @override
   Future<void> dispose() => _states.close();
+}
+
+class _ReadOnlyAuthentication() implements McpAuthenticationService {
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
 }

@@ -9,6 +9,7 @@ export "src/features/feedback/feedback_prompt_listener.dart";
 export "src/features/feedback/feedback_sheet.dart";
 export "src/features/login/email_login_form.dart";
 export "src/features/mcp/mcp_inventory_view.dart";
+export "src/features/mcp/mcp_server_controls_view.dart";
 export "src/features/new_session/new_session_header.dart";
 export "src/features/new_session/new_session_plugin_chooser.dart";
 export "src/features/new_session/new_session_view.dart";

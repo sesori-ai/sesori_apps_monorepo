@@ -28,6 +28,10 @@ class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
 
+class MockSessionListCubit() extends Mock implements SessionListCubit;
+
+class MockMcpService() extends Mock implements McpService;
+
 Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorState>? navigatorKey}) {
   return MultiBlocProvider(
     providers: [
@@ -52,29 +56,29 @@ Widget _buildApp({required String? sessionTitle, required GlobalKey<NavigatorSta
   );
 }
 
-SessionDetailLoadResult _loadedResult() {
-  return const SessionDetailLoadResult.loaded(
+SessionDetailLoadResult _loadedResult({required bool isArchived}) {
+  return SessionDetailLoadResult.loaded(
     snapshot: SessionDetailSnapshot(
       areOptionsStale: false,
-      bridgeQueuedPrompts: [],
+      bridgeQueuedPrompts: const [],
       projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
-      messages: [],
+      messages: const [],
       olderMessagesCursor: null,
       userMessagesBefore: null,
       awaitingHarnessSync: false,
-      pendingQuestions: [],
-      pendingPermissions: [],
-      childSessions: [],
-      statuses: {},
-      agents: [],
+      pendingQuestions: const [],
+      pendingPermissions: const [],
+      childSessions: const [],
+      statuses: const {},
+      agents: const [],
       providerData: null,
-      commands: [],
+      commands: const [],
       canonicalSessionTitle: null,
       promptDefaults: null,
       isRootSession: true,
-      isArchived: false,
+      isArchived: isArchived,
       cannotContinueMessage: null,
     ),
   );
@@ -252,13 +256,13 @@ void main() {
         session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
-    ).thenAnswer((_) async => _loadedResult());
+    ).thenAnswer((_) async => _loadedResult(isArchived: false));
     when(
       () => loadService.reload(
         session: any(named: "session"),
         projectId: any(named: "projectId"),
       ),
-    ).thenAnswer((_) async => _loadedResult());
+    ).thenAnswer((_) async => _loadedResult(isArchived: false));
 
     _registerDependencies(
       loadService: loadService,
@@ -280,6 +284,63 @@ void main() {
     await GetIt.instance.reset();
   });
 
+  testWidgets("native archive state keeps mobile MCP inspection read-only with stale session metadata", (tester) async {
+    when(
+      () => loadService.load(
+        session: any(named: "session"),
+        projectId: any(named: "projectId"),
+      ),
+    ).thenAnswer((_) async => _loadedResult(isArchived: true));
+    const request = McpInventoryRequest(
+      pluginId: "plugin-1",
+      scope: McpSessionScope(sessionId: "session-1"),
+    );
+    final service = MockMcpService();
+    final states = BehaviorSubject<McpInventoryState>.seeded(
+      const McpInventoryReady(
+        inventory: McpInventoryUnavailable(
+          scope: McpSessionScope(sessionId: "session-1"),
+          reason: McpInventoryUnavailableReason.unsupportedHarness,
+          message: "Synthetic inventory unavailable",
+        ),
+        refresh: McpInventoryRefreshIdle(),
+      ),
+    );
+    when(() => service.currentState).thenAnswer((_) => states.value);
+    when(() => service.states).thenAnswer((_) => states.stream);
+    when(
+      () => service.bind(
+        request: request,
+        mutationsAllowed: any(named: "mutationsAllowed"),
+      ),
+    ).thenReturn(null);
+    when(service.dispose).thenAnswer((_) async {});
+    GetIt.instance.registerFactory<McpService>(() => service);
+    addTearDown(states.close);
+    final sessions = MockSessionListCubit();
+    when(() => sessions.stream).thenAnswer((_) => const Stream<SessionListState>.empty());
+
+    await tester.pumpWidget(
+      BlocProvider<SessionListCubit>.value(
+        value: sessions,
+        child: _buildApp(sessionTitle: null, navigatorKey: null),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final context = tester.element(find.byType(SessionDetailBody));
+    final loaded = context.read<SessionDetailCubit>().state as SessionDetailLoaded;
+    expect(loaded.isArchived, isTrue);
+    expect(loaded.session.time?.archived, isNull);
+    await tester.tap(find.byKey(const Key("session-detail-more")));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text(AppLocalizations.of(context)!.mcpMenuLabel));
+    await tester.pumpAndSettle();
+
+    expect(tester.element(find.byType(McpInventoryView)).read<McpCubit>().mutationsAllowed, isFalse);
+    verify(() => service.bind(request: request, mutationsAllowed: false)).called(1);
+    await tester.pumpWidget(const SizedBox.shrink());
+  });
+
   testWidgets("shows carried title during loading and before canonical data arrives", (tester) async {
     final loadCompleter = Completer<SessionDetailLoadResult>();
     when(
@@ -297,7 +358,7 @@ void main() {
     expect(find.byType(PregoLaunchStatus), findsOneWidget);
     expect(find.bySemanticsLabel(loc.sessionDetailLoadingSemantics), findsOneWidget);
 
-    loadCompleter.complete(_loadedResult());
+    loadCompleter.complete(_loadedResult(isArchived: false));
     await tester.pumpAndSettle();
 
     expect(find.text("Carried title"), findsOneWidget);

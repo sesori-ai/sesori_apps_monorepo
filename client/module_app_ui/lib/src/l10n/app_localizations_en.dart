@@ -3309,4 +3309,140 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get mcpReadOnlyConfiguration => 'Read only';
+
+  @override
+  String get mcpManageConnection => 'Manage connection';
+
+  @override
+  String get mcpReconnect => 'Reconnect';
+
+  @override
+  String get mcpEnable => 'Enable';
+
+  @override
+  String get mcpDisable => 'Disable';
+
+  @override
+  String get mcpSignIn => 'Sign in';
+
+  @override
+  String get mcpForgetCredentials => 'Forget credentials';
+
+  @override
+  String get mcpOpenBrowser => 'Open browser';
+
+  @override
+  String get mcpCancelSignIn => 'Cancel sign-in';
+
+  @override
+  String get mcpCheckSignIn => 'Check sign-in';
+
+  @override
+  String get mcpActionReady => 'Choose a supported action.';
+
+  @override
+  String get mcpActionPending => 'Applying native action…';
+
+  @override
+  String get mcpActionCompleted => 'Native action completed. Check the inventory for connection state.';
+
+  @override
+  String get mcpActionFailed => 'The native action failed. Refresh the inventory before trying again.';
+
+  @override
+  String get mcpActionUncertain => 'The action could not be confirmed. Refreshing inventory before you try again.';
+
+  @override
+  String get mcpActionNotSupported => 'This server does not support this action.';
+
+  @override
+  String get mcpActionNotImplemented => 'This integration does not yet support this action.';
+
+  @override
+  String get mcpNativeConfigurationRequired => 'Finish native configuration or project trust on the bridge host.';
+
+  @override
+  String get mcpCapabilityUnknown =>
+      'This bridge does not report action availability. Update the bridge to manage authentication.';
+
+  @override
+  String get mcpEffectHarness => 'Affects sessions using this harness profile.';
+
+  @override
+  String get mcpEffectProject => 'Affects sessions in this project.';
+
+  @override
+  String get mcpEffectSession => 'Affects this live session.';
+
+  @override
+  String get mcpForgetMessage =>
+      'Clear the native saved credentials. Server configuration stays in place; a current connection may remain active.';
+
+  @override
+  String get mcpAuthStarting => 'Preparing native sign-in…';
+
+  @override
+  String get mcpAuthIdle => 'No sign-in is in progress for this server.';
+
+  @override
+  String get mcpAuthChallengeReady => 'Sign-in is ready. Open the browser to continue.';
+
+  @override
+  String get mcpAuthSettling => 'Waiting for native sign-in to settle…';
+
+  @override
+  String get mcpAuthCompleted => 'Native sign-in completed. Refresh or reconnect to inspect available tools.';
+
+  @override
+  String get mcpAuthCancelled => 'Sign-in cancelled.';
+
+  @override
+  String get mcpAuthFailed => 'Native sign-in failed. Check the bridge logs and try again.';
+
+  @override
+  String get mcpAuthDeclined => 'Sign-in was declined.';
+
+  @override
+  String get mcpAuthExpired => 'Sign-in expired. Start again when ready.';
+
+  @override
+  String get mcpAuthUncertain => 'The request response was lost. Native state is reported above.';
+
+  @override
+  String get mcpAuthOtherServer => 'Another server has an active sign-in.';
+
+  @override
+  String get mcpAuthIdentityUnavailable => 'Bridge identity is unavailable. Refresh the bridge connection.';
+
+  @override
+  String get mcpAuthReadFailed => 'Sign-in could not be refreshed. Check again to recover native state.';
+
+  @override
+  String get mcpAuthBrowserBusy =>
+      'Another sign-in is using the browser. Your challenge is retained; open the browser when it is free.';
+
+  @override
+  String get mcpAuthBrowserFailed =>
+      'The browser could not continue. Your challenge is retained; open the browser to try again.';
+
+  @override
+  String get mcpAuthUpgradeBridge => 'Update the bridge to manage MCP sign-in.';
+
+  @override
+  String get mcpAuthBusy => 'The bridge is already signing in or clearing credentials.';
+
+  @override
+  String get mcpAuthNativeSettlement => 'This native sign-in cannot be cancelled remotely. Wait for native settlement.';
+
+  @override
+  String get mcpAuthUnavailable => 'This sign-in action is unavailable. Check native state before trying again.';
+
+  @override
+  String get mcpAuthBrowserOpening => 'Opening the sign-in browser…';
+
+  @override
+  String get mcpAuthBrowserWaiting => 'Waiting for the browser return and native confirmation…';
+
+  @override
+  String get mcpCancel => 'Cancel';
 }
