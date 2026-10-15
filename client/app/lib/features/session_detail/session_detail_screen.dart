@@ -96,6 +96,12 @@ class const _MobileSessionDetailBody({
       imageClipboard: getIt.get<ImageClipboard>,
       imageSharer: getIt.get<ImageSharer>,
       sessionRepository: getIt.get<SessionRepository>,
+      createPendingFormCubit: ({required requestId, required sessionId}) => PendingFormCubit(
+        service: getIt<PendingFormService>(),
+        connectionService: getIt<ConnectionService>(),
+        requestId: requestId,
+        sessionId: sessionId,
+      ),
       createExternalActionCubit: ({required requestId, required sessionId}) => SessionExternalActionCubit(
         service: getIt<SessionExternalActionService>(),
         connectionService: getIt<ConnectionService>(),

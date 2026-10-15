@@ -245,6 +245,8 @@ void main() {
                 return _MockImageSharer();
               },
               sessionRepository: _MockSessionRepository.new,
+              createPendingFormCubit: ({required requestId, required sessionId}) =>
+                  throw StateError("Unused fixture form"),
               createExternalActionCubit: ({required requestId, required sessionId}) =>
                   throw UnimplementedError("External actions are not under test"),
               canShareImages: true,
@@ -360,6 +362,8 @@ void main() {
                 imageClipboard: _MockImageClipboard.new,
                 imageSharer: _MockImageSharer.new,
                 sessionRepository: _MockSessionRepository.new,
+                createPendingFormCubit: ({required requestId, required sessionId}) =>
+                    throw StateError("Unused fixture form"),
                 createExternalActionCubit: ({required requestId, required sessionId}) =>
                     throw UnimplementedError("External actions are not under test"),
                 canShareImages: true,
@@ -470,6 +474,8 @@ void main() {
                   imageClipboard: _MockImageClipboard.new,
                   imageSharer: _MockImageSharer.new,
                   sessionRepository: _MockSessionRepository.new,
+                  createPendingFormCubit: ({required requestId, required sessionId}) =>
+                      throw StateError("Unused fixture form"),
                   createExternalActionCubit: ({required requestId, required sessionId}) =>
                       throw UnimplementedError("External actions are not under test"),
                   canShareImages: true,

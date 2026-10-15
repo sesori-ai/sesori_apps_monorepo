@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-client-forms`, `0483482b2e`, in the provided `copper-heron` worktree.
-- Current step: 23/29 is in review as [#1993][pr-1993]; latest merged step: 22/29 as [#1992][pr-1992].
+- Branch/base: `sesori/mcp-form-controls`, `9c4b5341d6`, in the provided `copper-heron` worktree.
+- Current step: 24/29 is in review as [#1995][pr-1995]; latest merged step: 23/29 as [#1993][pr-1993].
+  Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
   External-action client presentation merged as [#1986][pr-1986].
@@ -46,8 +47,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 20/29 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
 | 21/29 | Claude native forms (9.b.1) | Merged | [#1991][pr-1991] |
 | 22/29 | Canonical headless forms (9.b.2) | Merged | [#1992][pr-1992] |
-| 23/29 | Client typed draft lifecycle (9.c.1) | In review | [#1993][pr-1993] |
-| 24/29 | Shared typed form controls (9.c.2) | Not started | — |
+| 23/29 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
+| 24/29 | Shared typed form controls (9.c.2) | In review | [#1995][pr-1995] |
 | 25/29 | Codex inventory/actions/authentication | Not started | — |
 | 26/29 | Codex forms and offered connectors | Not started | — |
 | 27/29 | Secondary harness support and explicit gaps | Not started | — |
@@ -1297,6 +1298,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 [pr-1991]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1991
 [pr-1992]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1992
 [pr-1993]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1993
+[pr-1995]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1995
 
 - Step 20's later terminal monitor snapshot records 33 passing checks; the 32
   above is the earlier pre-merge snapshot. Step 21 was
@@ -1375,3 +1377,48 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   `8201540472` integrated the parent; all three conflicting incoming documents
   matched the already integrated parent byte-for-byte. Production/test inputs and
   dependencies did not change, so no unchanged passing suite was repeated.
+- Step-23 review corrected four publication/Markdown notes in `84aea1db7a`.
+  Connection retirement intentionally retains the independent submission snapshot:
+  the consumer prioritizes the connection-changed explanation and disables all
+  response controls. Existing source checks remain unchanged. The narrow ApiError
+  catch suppressions preserve the repository's expected typed transport causes.
+- Step-24 shared form controls preserve keyed text/focus ownership, raw numeric
+  drafts, optional omission, explicit Yes/No and opaque choice values. Declared
+  bounds and requiredness are visible. Error/status space stays reserved; busy
+  inputs are read-only, and settlement preserves content during the closing
+  transition. Both shells provide the factory through the presentation scope.
+  Native recording remains deferred in timing only; final qualification is unchanged.
+- Step-24 verification passes: eight shared form widget cases, two form/URL
+  settlement scheduler cases and 13 desktop session composition cases. Form
+  controls retain focus/selection and field height through busy/validation states;
+  raw drafts, optional clearing, boolean/choice typing, narrow 2x text, reduced
+  motion, unknown-schema refusal and retired-connection presentation are covered.
+  The final widget run has no missed-tap warnings. Client-root analysis with the
+  repository plugin passes. Architecture implementation review pass 1 approved
+  the shared modal/editor, scope and shell composition without findings.
+- Step 23 merged at accepted head `84aea1db7a`, squash `9c4b5341d6`, with 20
+  pre-merge and 21 terminal checks passing. Its declined snapshot-reset concern
+  remains explained; the UI regression verifies connection-changed presentation
+  takes priority over retained submission state and that late acceptance is fenced.
+  Merge `eebc0578c3` integrated the foundation into Step 24. All three conflicting
+  incoming documents matched the already integrated parent byte-for-byte.
+- Step-24 source `83971467a5` includes fixture-driven compact constraint captions.
+  Eight widget cases and a separate synthetic before/after render pass together,
+  with zero missed-tap warnings; final client-root analysis passes. The two
+  scheduler and 13 desktop composition cases passed before the caption-only change.
+  Inspected fixture images contain synthetic data only; native motion recording
+  and the real provider/relay/package matrix remain deferred qualification work.
+- Step-24 review source `3654f20c9b` reserves the keyboard inset, using bottom
+  safe-area padding only when no software keyboard is present. The phone case
+  failed before the fix: viewport bottom 704 exceeded keyboard boundary 524.
+  All ten form widget cases and client-root analysis now pass, with no missed-tap
+  warnings. New UI-to-repository coverage preserves explicit empty text/arrays
+  separately from omission; Clear answer remains the omission action. Native
+  motion qualification is explicitly pending. Keyboard-closed screenshot inputs
+  are unchanged; no unchanged passing scheduler/desktop suite was repeated.
+- Step-24 follow-up pins submission status above the scrolling fields. Both
+  validation and transport-failure regressions reproduce hidden feedback on the
+  prior implementation (status top -542), then pass without moving the scroll
+  position or replacing drafts/controllers/selection. All 12 form widget cases
+  and client-root analysis pass. The initial-position fixture image is byte-identical
+  to the published screenshot; native motion recording remains deferred.

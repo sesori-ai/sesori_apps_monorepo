@@ -14,6 +14,7 @@ import "../session_auto_continuation_menu.dart";
 import "../session_detail_presentation_scope.dart";
 import "agent_model_buttons.dart";
 import "external_action_modal.dart";
+import "pending_form_modal.dart";
 import "permission_modal.dart";
 import "question_modal.dart";
 import "session_auto_continuation_notice.dart";
@@ -1096,6 +1097,30 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 
     if (!isPending()) return;
     cubit.clearNotifications();
+    if (question.interactionKind == QuestionInteractionKind.form) {
+      showPendingFormModal(
+        context: context,
+        requestId: question.id,
+        sessionId: question.sessionID,
+        createCubit: SessionDetailPresentationScope.read(context).createPendingFormCubit,
+        isPendingStream: cubit.stream.map((_) => isPending()).distinct(),
+        isPending: isPending,
+        onPendingDismissed: () {
+          if (mounted) _scheduleNextQuestionModal();
+        },
+        onCancelUnavailable: () async {
+          final success = await cubit.rejectQuestion(question.id);
+          if (!mounted) return;
+          if (!success) return _showFailureAlert(context.loc.questionRejectFailed);
+          _scheduleNextQuestionModal();
+        },
+        onSettled: () {
+          if (!mounted) return;
+          cubit.acknowledgeQuestionSettlement(requestId: question.id);
+        },
+      );
+      return;
+    }
     if (question.interactionKind == QuestionInteractionKind.externalAction) {
       showExternalActionModal(
         context: context,

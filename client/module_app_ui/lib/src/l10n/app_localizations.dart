@@ -5887,6 +5887,150 @@ abstract class AppLocalizations {
   /// **'MCP request'**
   String get mcpNativeRequestTitle;
 
+  /// No description provided for @mcpFormReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Review the fields, then send your answers. Closing leaves this request pending.'**
+  String get mcpFormReady;
+
+  /// No description provided for @mcpFormReplySent.
+  ///
+  /// In en, this message translates to:
+  /// **'The coding agent accepted your response.'**
+  String get mcpFormReplySent;
+
+  /// No description provided for @mcpFormReplyFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Your response could not be confirmed. Your answers are kept here; you can try again.'**
+  String get mcpFormReplyFailed;
+
+  /// No description provided for @mcpFormInvalid.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the highlighted fields. Your other answers are kept.'**
+  String get mcpFormInvalid;
+
+  /// No description provided for @mcpFormRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Required'**
+  String get mcpFormRequired;
+
+  /// No description provided for @mcpFormOptional.
+  ///
+  /// In en, this message translates to:
+  /// **'Optional'**
+  String get mcpFormOptional;
+
+  /// No description provided for @mcpFormClearAnswer.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear answer'**
+  String get mcpFormClearAnswer;
+
+  /// No description provided for @mcpFormAnswerHint.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter an answer'**
+  String get mcpFormAnswerHint;
+
+  /// No description provided for @mcpFormYes.
+  ///
+  /// In en, this message translates to:
+  /// **'Yes'**
+  String get mcpFormYes;
+
+  /// No description provided for @mcpFormNo.
+  ///
+  /// In en, this message translates to:
+  /// **'No'**
+  String get mcpFormNo;
+
+  /// No description provided for @mcpFormWholeNumber.
+  ///
+  /// In en, this message translates to:
+  /// **'Whole number'**
+  String get mcpFormWholeNumber;
+
+  /// No description provided for @mcpFormMinimum.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum: {value}'**
+  String mcpFormMinimum(num value);
+
+  /// No description provided for @mcpFormMaximum.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum: {value}'**
+  String mcpFormMaximum(num value);
+
+  /// No description provided for @mcpFormMinCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Minimum characters: {count}'**
+  String mcpFormMinCharacters(int count);
+
+  /// No description provided for @mcpFormMaxCharacters.
+  ///
+  /// In en, this message translates to:
+  /// **'Maximum characters: {count}'**
+  String mcpFormMaxCharacters(int count);
+
+  /// No description provided for @mcpFormMinChoices.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at least {count}'**
+  String mcpFormMinChoices(int count);
+
+  /// No description provided for @mcpFormMaxChoices.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose at most {count}'**
+  String mcpFormMaxChoices(int count);
+
+  /// No description provided for @mcpFormIssueRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'An answer is required.'**
+  String get mcpFormIssueRequired;
+
+  /// No description provided for @mcpFormIssueType.
+  ///
+  /// In en, this message translates to:
+  /// **'Enter a value of the requested type.'**
+  String get mcpFormIssueType;
+
+  /// No description provided for @mcpFormIssueChoice.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose one of the offered options.'**
+  String get mcpFormIssueChoice;
+
+  /// No description provided for @mcpFormIssueRange.
+  ///
+  /// In en, this message translates to:
+  /// **'This value is outside the allowed range.'**
+  String get mcpFormIssueRange;
+
+  /// No description provided for @mcpFormIssueLength.
+  ///
+  /// In en, this message translates to:
+  /// **'Check the answer length or number of choices.'**
+  String get mcpFormIssueLength;
+
+  /// No description provided for @mcpFormIssueFormat.
+  ///
+  /// In en, this message translates to:
+  /// **'Use the requested format.'**
+  String get mcpFormIssueFormat;
+
+  /// No description provided for @mcpFormIssueUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'The coding agent could not validate this answer.'**
+  String get mcpFormIssueUnknown;
+
   /// No description provided for @mcpNativeRequestClientUnsupported.
   ///
   /// In en, this message translates to:

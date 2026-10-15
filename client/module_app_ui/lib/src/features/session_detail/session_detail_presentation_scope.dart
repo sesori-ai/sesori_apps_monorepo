@@ -3,8 +3,10 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../platform/external_link_opener.dart";
 import "widgets/external_action_modal.dart";
+import "widgets/pending_form_modal.dart";
 
 export "widgets/external_action_modal.dart" show SessionExternalActionCubitFactory;
+export "widgets/pending_form_modal.dart" show PendingFormCubitFactory;
 
 /// Product-owned capabilities used by the shared session-detail presentation.
 ///
@@ -21,6 +23,7 @@ class const SessionDetailPresentationScope({
   /// Searches the session's whole history from the Prompts screen.
   required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final SessionExternalActionCubitFactory createExternalActionCubit,
+  required final PendingFormCubitFactory createPendingFormCubit,
   required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
@@ -53,6 +56,7 @@ class const SessionDetailPresentationScope({
     imageSharer: imageSharer,
     sessionRepository: sessionRepository,
     createExternalActionCubit: createExternalActionCubit,
+    createPendingFormCubit: createPendingFormCubit,
     canShareImages: canShareImages,
     openExternalLink: openExternalLink,
     openSession: openSession,
@@ -69,6 +73,7 @@ class const SessionDetailPresentationScope({
       imageSharer != oldWidget.imageSharer ||
       sessionRepository != oldWidget.sessionRepository ||
       createExternalActionCubit != oldWidget.createExternalActionCubit ||
+      createPendingFormCubit != oldWidget.createPendingFormCubit ||
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||

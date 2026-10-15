@@ -47,6 +47,11 @@ reaches the backend so the turn continues.
   Keyboard and safe-area insets keep the floating surface clear of system UI.
   Scrim, swipe, or Escape dismissal leaves the request pending; external settlement closes
   it without a reply.
+- MCP typed form requests use one shared overlay on both shells. Numeric typing
+  remains raw until submission; optional omission stays distinct from false, zero
+  and empty text. Validation retains drafts and focus, while closing sends no reply.
+  Original-owner settlement advances the existing pending-list scheduler, including
+  when SSE arrives before HTTP. See [MCP forms](mcp-management.md#session-forms).
 - OpenCode v2 forms keep visible supported fields in native order. Replies use
   each field's native key and typed value: string/choice, string list, boolean,
   number or integer. String and multiselect answers matching an option label

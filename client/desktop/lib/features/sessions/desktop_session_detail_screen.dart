@@ -95,6 +95,12 @@ class const DesktopSessionDetailScreen({
             imageClipboard: getIt.get<ImageClipboard>,
             imageSharer: getIt.get<ImageSharer>,
             sessionRepository: getIt.get<SessionRepository>,
+            createPendingFormCubit: ({required requestId, required sessionId}) => PendingFormCubit(
+              service: getIt<PendingFormService>(),
+              connectionService: getIt<ConnectionService>(),
+              requestId: requestId,
+              sessionId: sessionId,
+            ),
             createExternalActionCubit: ({required requestId, required sessionId}) => SessionExternalActionCubit(
               service: getIt<SessionExternalActionService>(),
               connectionService: getIt<ConnectionService>(),
@@ -138,6 +144,7 @@ class const DesktopSessionDetailView({
   required final SessionDetailCapabilityProvider<ImageSharer> imageSharer,
   required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final SessionExternalActionCubitFactory createExternalActionCubit,
+  required final PendingFormCubitFactory createPendingFormCubit,
   required final bool canShareImages,
 }) extends StatelessWidget {
   @override
@@ -149,6 +156,7 @@ class const DesktopSessionDetailView({
       imageSharer: imageSharer,
       sessionRepository: sessionRepository,
       createExternalActionCubit: createExternalActionCubit,
+      createPendingFormCubit: createPendingFormCubit,
       canShareImages: canShareImages,
       openExternalLink: openDesktopExternalLink,
       openSession: onOpenSession,
