@@ -122,6 +122,21 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   from `bridge`, and `flutter analyze --no-pub` from shared UI. The CI-only custom
   lint result above limits that earlier local analysis claim.
 
+  Follow-up `55ed930a05` fixes those CI findings. The same 22 UI cases pass,
+  including unclipped feedback with the product font. Cwd `client/app`, all seven
+  cases pass with:
+
+  ```sh
+  flutter test --no-pub test/features/session_detail/session_detail_title_hydration_test.dart
+  ```
+
+  Cwd `client`, the CI-style custom analyzer passes for both corrected owners:
+
+  ```sh
+  dart analyze --fatal-infos module_app_ui
+  dart analyze --fatal-infos app/test/features/session_detail/session_detail_title_hydration_test.dart
+  ```
+
 - 2026-10-13: inspected current plugin contracts, Claude process/control ownership, Codex approvals, shared
   question/permission models, client browser auth ownership, bridge routing, harness capabilities, and regression proof
   rules.
