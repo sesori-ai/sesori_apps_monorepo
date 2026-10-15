@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 6/8 in PR.
+- Current step: 7/8 in PR.
 - User decisions: D1–D9 in `PLAN.md`, agreed 2026-10-15 over two review rounds.
 
 ## Delivery
@@ -15,8 +15,8 @@
 | 3/8 | monorepo | Flat Settings computer entry | Done | #1978 (merged 2026-10-15) |
 | 4/8 | monorepo | Hostname, rename and remove in the computer list | Done | #1979 (merged 2026-10-15) |
 | 5/8 | monorepo | Computers page with switch and rename | Done | #1982 (merged 2026-10-15) |
-| 6/8 | monorepo | Remove offline computers | In PR | #1985 |
-| 7/8 | monorepo | Reconcile regression documents | Not started | — |
+| 6/8 | monorepo | Remove offline computers | Done | #1985 (merged 2026-10-15) |
+| 7/8 | monorepo | Reconcile regression documents | In PR | — |
 | 8/8 | monorepo | Run the L3 matrix; retire | Not started | — |
 
 ## Evidence and decisions
