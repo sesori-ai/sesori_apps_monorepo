@@ -26,7 +26,9 @@ class DebugServer({
   // ignore: cancel_subscriptions - cancelled by the failure-isolated drain.
   StreamSubscription<void>? _localWireEventsSub;
   final PendingOperations _inFlightRequests = PendingOperations();
-  final Completer<void> _shutdownSignal = Completer<void>();
+  // One waiter per accepted request, removed when its route settles. A single
+  // long-lived shutdown future would retain every response until shutdown.
+  final Set<Completer<RoutedRequestOutcome?>> _shutdownWaiters = {};
   Future<void>? _serverClose;
   Future<void>? _drainFuture;
 
@@ -59,7 +61,10 @@ class DebugServer({
 
   void beginShutdown() {
     _routedRequestDispatcher.beginShutdown();
-    if (!_shutdownSignal.isCompleted) _shutdownSignal.complete();
+    for (final waiter in _shutdownWaiters) {
+      waiter.complete(null);
+    }
+    _shutdownWaiters.clear();
     final server = _server;
     _server = null;
     _serverClose ??= server?.close() ?? Future<void>.value();
@@ -138,10 +143,15 @@ class DebugServer({
           rejectedResponse = rejected.response;
         case final RoutedRequestAccepted accepted:
           final route = accepted.pendingRequest.completion;
-          final outcome = await Future.any<RoutedRequestOutcome?>([
-            route,
-            _shutdownSignal.future.then<RoutedRequestOutcome?>((_) => null),
-          ]);
+          // Accepted implies shutdown has not begun: both run synchronously.
+          final shutdown = Completer<RoutedRequestOutcome?>();
+          _shutdownWaiters.add(shutdown);
+          final RoutedRequestOutcome? outcome;
+          try {
+            outcome = await Future.any<RoutedRequestOutcome?>([route, shutdown.future]);
+          } finally {
+            _shutdownWaiters.remove(shutdown);
+          }
           if (outcome == null) {
             routeToDrain = route;
           } else {
