@@ -66,6 +66,7 @@ class _Harness() {
                 ),
                 isPendingStream: pendingChanges.stream,
                 isPending: () => pending,
+                onPendingDismissed: () {},
                 onSettled: () {
                   settled++;
                   pending = false;

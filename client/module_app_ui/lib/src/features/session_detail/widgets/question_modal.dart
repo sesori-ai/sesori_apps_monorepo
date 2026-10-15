@@ -53,6 +53,7 @@ class const QuestionModal({
       builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
         isPending: isPending,
+        onResolved: null,
         child: QuestionModal(
           question: question,
           onReply: onReply,

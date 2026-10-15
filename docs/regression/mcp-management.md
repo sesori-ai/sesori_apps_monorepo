@@ -356,14 +356,16 @@ retain the pending request. Teardown sends native cancellation.
 
 The pending-interaction service requires absolute HTTPS destinations with a host
 and no user information before snapshot exposure or acceptance. Decline and cancel remain usable for an unsafe
-destination. URLs never enter question broadcasts, replay or persistence. Legacy
-question replies accept only Cancel or rejection and send native `action: cancel`.
+destination. URLs never enter question broadcasts, replay or persistence.
+Snapshot response-error bodies are redacted while retaining typed parse causes.
+Legacy question replies accept only Cancel or rejection and send native `action: cancel`.
 Current clients preserve the interaction marker through cold loading and open a
 typed modal above the transcript. Browser launch requires an explicit tap and
 displays only the HTTPS destination origin. Browser launch and native acceptance
 are separate outcomes; neither confirms OAuth completion. Only declared known
 choices are offered, with distinct accept, decline and cancel semantics. Unknown
-purpose or unsafe destination cannot be opened or accepted. Form/unknown markers
+purpose or unsafe destination cannot be opened or accepted; declared decline and
+cancel responses remain available. Form/unknown interaction markers
 retain an explicit cancel-only handoff rather than ordinary scalar controls.
 After dismissal, the pending card retains neutral request wording and a Review
 action. Typed cancellation does not emit ordinary-question analytics.
@@ -371,10 +373,12 @@ action. Typed cancellation does not emit ordinary-question analytics.
 Closing the layer only disposes its observer. Reopening reads the current native
 request. A disconnect or bridge replacement retires that modal's controls and
 fences late reads, launches and reply results, even after reconnection. Native
-settlement dismisses the layer through the existing pending-request owner; late
+settlement dismisses the layer through the existing pending-request owner and
+advances to the next request even when SSE precedes the reply response. Late
 results cannot repopulate the list. A failed read retains an explicit legacy
-cancel path. A failed browser launch retains its request for retry and original
-cause/stack. Submission failure does not imply cancellation or trigger automatic
+cancel path. A failed browser launch retains its request for retry; thrown launch
+failures retain their original cause/stack, while false returns have a synthetic
+failure. Submission failure does not imply cancellation or trigger automatic
 resubmission. Status space stays fixed during changes; large text scrolls and
 transitions respect reduced motion. Native presentation recording is deferred
 at the user's request and remains part of final qualification.

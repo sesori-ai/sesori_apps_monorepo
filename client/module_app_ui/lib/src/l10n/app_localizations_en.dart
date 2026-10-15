@@ -3339,7 +3339,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpExternalBrowserOpened => 'Browser opened. This does not confirm authorization. Return here to respond.';
 
   @override
-  String get mcpExternalBrowserFailed => 'The browser could not open. You can try again or cancel the request.';
+  String get mcpExternalBrowserFailed => 'The browser could not open. You can try again.';
 
   @override
   String get mcpExternalSubmitting => 'Sending your response to the coding agent…';
@@ -3355,8 +3355,7 @@ class AppLocalizationsEn extends AppLocalizations {
       'The response could not be confirmed. The request may have settled in the coding agent.';
 
   @override
-  String get mcpExternalDestinationUnavailable =>
-      'This request has an unsupported destination or purpose. You can decline or cancel it.';
+  String get mcpExternalDestinationUnavailable => 'This request cannot be opened or accepted.';
 
   @override
   String get mcpExternalReplyExplanation =>

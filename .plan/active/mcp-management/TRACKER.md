@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-claude-forms`, `1585422cc5`, in the provided `copper-heron` worktree.
+- Branch/base: `sesori/mcp-claude-forms`, `f46ee6b4c9`, in the provided `copper-heron` worktree.
 - Current step: 19/27 is in review as [#1986][pr-1986]; 20/27 is in progress locally.
   Latest merged step: 18/27 as [#1984][pr-1984].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
@@ -1202,4 +1202,19 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   deleted 166 unrelated generated files; those were restored before the full run.
   Codec/default/validation contents do not appear in generated diagnostic strings.
   Verified source tree: `e65637f804e837a0dd09a5b6155d3c3f44c500a1`;
+  subsequent edits add only this immutable evidence reference.
+
+- Step-19 review fixes redact URL-bearing snapshot error bodies, remove copy that
+  promises undeclared actions, reconcile tracker publication state and distinguish
+  thrown browser errors from false-return failures. Declared decline/cancel for
+  unsupported destinations remain intentional; browser access and acceptance stay blocked.
+- The SSE-before-reply regression was behaviorally red at `1585422cc5`: the modal
+  closed without opening the next request. The existing pending-dismissal guard now
+  notifies its presentation owner once; no new mutable state or late-reply owner.
+  That full session-screen case passes, as do both new error-body redaction cases.
+  Checks: 3 API tests, 40 shared request-modal widgets, 209 mobile session/navigation
+  tests; client-root `dart analyze --fatal-infos` passes. Commands use the same
+  pinned SDK and package paths above; new API/sequence regressions extend those files.
+  Architecture implementation review pass 2 approved without findings.
+  Verified review-fix tree: `ed4cd02f5a4db3f6bced6e64cc6a2b0446d2ea5c`;
   subsequent edits add only this immutable evidence reference.
