@@ -139,6 +139,13 @@ void main() {
     expect(plugin.replies, isEmpty);
   });
 
+  test("archived owning actions are hidden through direct and display-parent reads", () async {
+    await db.sessionDao.setArchived(sessionId: "child", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
+    expect(await repository.getPending(sessionId: "child"), isEmpty);
+    expect(await repository.getPending(sessionId: "root"), isEmpty);
+    expect(plugin.replies, isEmpty);
+  });
+
   test("archived reply returns canonical 409 before native access", () async {
     await db.sessionDao.setArchived(sessionId: "child", archivedAt: 2, updatedAt: 2, projectionUpdatedAt: 2);
     final pending = buildTestPendingInteractionService(database: db, plugin: plugin);

@@ -303,17 +303,19 @@ terminal UI output.
   replace existing question/permission routes. Check the released clients' unknown-event behavior before adding
   broadcasts; do not assume they ignore a new event.
 - New form/external-action requests also expose a legacy notice through existing question snapshots and asked/settled
-  events. `PendingInteractionService` derives that view from the same canonical pending request through a pure mapper;
-  question read handlers use that service for the projection. There is no second native wait, pending registry, timer,
-  or per-client capability registry. Use the same request/session attribution on both views.
+  events. The owning plugin derives the URL-free notice from its existing canonical native pending request and
+  recognizes cancellation through its question API. Bridge question mappers retain the interaction marker and
+  canonical session/display attribution; `PendingInteractionService` retains archive/dispatcher ordering. This is the
+  implemented ownership boundary approved during step 18 architecture review, replacing the earlier proposed
+  bridge-service projection. There is no second native wait, pending registry, timer, or per-client capability registry.
 - An additive `QuestionInteractionKind` field on question snapshots/events defaults to ordinary question when omitted;
   form and external-action values mark these notices. Modern clients filter marked notices from question presentation,
   counts, and notifications, and consume the corresponding typed interaction instead. The marker works even if the
   legacy event arrives first. Released clients ignore it and display “Use an updated Sesori client to answer this
   request, or cancel it here,” with custom answers disabled and only a cancel choice. No form values or consent are
   requested through this fallback.
-- Legacy reply/reject routes recognize that the named canonical request is a form/external action and can only decline
-  or cancel it through `PendingInteractionService` and the existing session dispatcher. A typed reply, legacy cancel,
+- Legacy reply/reject routes retain `PendingInteractionService` and the existing session dispatcher; the plugin
+  recognizes the named canonical request and can only cancel it through the legacy API. A typed reply, legacy cancel,
   native settlement, or teardown settles the same request once and emits both typed and legacy settlement events.
   Successful typed completion emits `question.replied` with only request/session attribution, never submitted form data;
   cancellation emits `question.rejected`. Late competing replies cannot send another native reply.
@@ -589,7 +591,7 @@ Exact PR titles and scope:
 
 24. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 24/25]`
 
-    Reconcile the docs and capability records maintained in steps 3–20 with the final matrix and remaining limitations;
+    Reconcile the docs and capability records maintained in steps 3–23 with the final matrix and remaining limitations;
     no production or database change. This step does not postpone documentation required in earlier PRs.
 
 25. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 25/25]`

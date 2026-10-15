@@ -100,7 +100,7 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
     );
     return [
       for (final action in actions)
-        if (bindings[action.sessionID] case final session?)
+        if (bindings[action.sessionID] case final session? when session.archivedAt == null)
           if (action.displaySessionId == null || bindings.containsKey(action.displaySessionId))
             action.toShared(
               sessionId: session.sessionId,

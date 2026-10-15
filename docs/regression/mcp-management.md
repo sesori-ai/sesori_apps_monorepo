@@ -334,7 +334,8 @@ Claude's existing pending-input owner retains native URL requests. Headless
 an inactive integration. `POST /external-action/reply` preserves native accept,
 decline and cancel, validates the original owning session and runs through the
 existing archive/operation boundary. A display parent cannot answer for a child.
-Deleted owners are hidden; settled requests are idempotent. Failed native writes
+Deleted and archived owners are hidden, including a child surfaced through a
+display parent; settled requests are idempotent. Failed native writes
 retain the pending request. Teardown sends native cancellation.
 
 Destinations must be absolute HTTPS with a host and no user information before
@@ -344,8 +345,11 @@ question replies accept only Cancel or rejection and send native `action: cancel
 Current clients preserve the interaction marker through cold loading and show an
 honest cancel-only handoff with no ordinary answer controls. Closing the layer
 does not cancel the request. Browser/consent presentation follows separately.
-Unsupported native forms are declined with a session-attributed warning through
-the existing desktop/mobile toast presenter; they are not left pending.
+Unsupported native forms receive a decline attempt and a session-attributed
+warning through the existing desktop/mobile toast presenter. A successful native
+write settles the request. A failed write is logged with the native request and
+session IDs; the unsupported request is not retained or retried and may remain
+unresolved until native teardown.
 
 Coverage: `shared/sesori_shared/test/models/pending_external_action_test.dart`,
 `shared/sesori_shared/test/models/sesori_sse_event_test.dart`,

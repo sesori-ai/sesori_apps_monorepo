@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-native-session-actions`, `cfecaf9494`, in the provided `copper-heron` worktree.
-- Current step: 18/25 is in progress locally; latest merged step: 17/25 as [#1981][pr-1981].
+- Current step: 18/25 is in review as [#1984][pr-1984]; latest merged step: 17/25 as [#1981][pr-1981].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -38,7 +38,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 15/25 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
 | 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
 | 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/25 | Native external-action routing (8.d.2.a) | In progress | Local native/bridge draft |
+| 18/25 | Native external-action routing (8.d.2.a) | In review | [#1984][pr-1984] |
 | 19/25 | External-action client presentation (8.d.2.b) | Not started | — |
 | 20/25 | Claude approvals and form/URL elicitation | Not started | — |
 | 21/25 | Codex inventory/actions/authentication | Not started | — |
@@ -1080,3 +1080,38 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   was locked. Publish the native routing step with that presentation evidence
   pending; record it later. This defers timing only and does not reduce the
   final L4/native/provider/package qualification matrix.
+
+[pr-1984]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1984
+
+- Step 18's initial checks above ran from the uncommitted implementation later
+  recorded in `fa2c98fd97f10e3b4c49b005b64344fa92ef3fb8`; publication head
+  `84b723c661e82f7748e48f24008014ceeb19d494` changes only the recording-deferral note.
+  SDK: Dart 3.13.5 from Flutter 3.47.7. Working directories below are relative to
+  this repository's dedicated `copper-heron` checkout. Focused commands:
+  - `bridge/sesori_plugin_claude`: `dart test test/claude_stream_client_test.dart test/claude_approval_registry_test.dart test/claude_plugin_impl_test.dart` (89).
+  - `bridge/app`: `dart test test/bridge/repositories/external_action_repository_test.dart test/bridge/services/pending_interaction_service_test.dart test/bridge/repositories/question_repository_test.dart test/bridge/repositories/mappers/session_event_mapper_test.dart` (46).
+  - `bridge/app`: `dart test test/bridge/repositories/external_action_repository_test.dart test/bridge/services/pending_interaction_service_test.dart test/bridge/routing/get_project_questions_handler_test.dart test/bridge/routing/get_session_questions_handler_test.dart` (33).
+  - `client/module_app_ui`: `flutter test --no-pub test/features/session_detail/widgets/question_modal_test.dart` (22).
+  - `client/module_core`: `flutter test --no-pub test/cubits/session_detail/session_detail_cubit_permission_test.dart` (13).
+  - `bridge`: `dart analyze --fatal-infos <package>` for `app`, `sesori_plugin_interface`,
+    `sesori_plugin_claude`, `sesori_plugin_opencode`, `sesori_plugin_pi`; both client
+    modules: `flutter analyze --no-pub --fatal-infos`.
+- Native protocol and UI-fixture checks are explicitly uncommitted fixture runs,
+  not packaged-product checks. From checkout root, native command:
+  `node /private/tmp/copper-heron-mcp-step18-native-probe.mjs`; source package
+  configuration: `bridge/.dart_tool/package_config.json`. At production head
+  `84b723c661`, the stronger review probe captured MCP initialize capabilities:
+  2.1.221 sends `elicitation: {}`; 2.1.291 sends `elicitation: {form: {}, url: {}}`.
+  All six native cases pass with URL-mode negotiation asserted. The host's empty
+  elicitation opt-in is not the native MCP capability advertisement.
+  Fixture SHA-256 values: probe `164b0ac2273708faf17a371c5beb437344955f5bad5e452d5d384a2880bd26e1`,
+  production-registry worker `0b31b67b02105e8020bbabf24f89c0d2a5ddb2c29c7494a257b381f931250737`,
+  capability capture `c22e033f1eb2e9fa067f06e6eea315876fe16fdfdf990e5ffa3f2457c02f4002`.
+  UI command from `client/desktop`: `flutter build macos --debug --no-pub --target /private/tmp/copper-heron-mcp-step18-handoff-fixture.dart`;
+  fixture SHA-256 `9ff466ca3cb25a178e3f5c81df7e35e171d577c1e3ee947108a395e62ea4c3ee`.
+  Build succeeds; native presentation remains unrecorded per the user's deferral.
+- Review archive-read regression failed before the one-owner binding filter and
+  passes afterward, through both direct and display-parent reads. The same
+  four-file bridge command above now passes 47 cases; `bridge/app` analyzer is clean.
+  Verified source tree: `32764caae11fb0f193e26d2c0ce8fc1660e3feaf`; subsequent
+  edits add only this evidence reference, with production and tests unchanged.
