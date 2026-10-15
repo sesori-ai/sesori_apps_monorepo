@@ -33,6 +33,9 @@ class const BridgeSettingsSection({
 
   /// Switches to a computer picked from the computer entry's menu.
   required final ComputerSwitchCallback onSwitchComputer,
+
+  /// Opens the Computers page from the computer entry's menu.
+  required final VoidCallback onManageComputers,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -77,7 +80,7 @@ class const BridgeSettingsSection({
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
-          ComputerSettingsEntry(onSwitchComputer: onSwitchComputer),
+          ComputerSettingsEntry(onSwitchComputer: onSwitchComputer, onManageComputers: onManageComputers),
           if (description != null) ...[
             Text(
               description,

@@ -85,6 +85,9 @@ class const ProjectListView({
 
   /// Switches to a computer picked in the menu under the title.
   required final ComputerSwitchCallback onSwitchComputer,
+
+  /// Opens the Computers page from the menu under the title.
+  required final ProjectListContextAction onManageComputers,
 }) extends StatefulWidget {
   @override
   State<ProjectListView> createState() => _ProjectListViewState();
@@ -228,6 +231,10 @@ class _ProjectListViewState() extends State<ProjectListView> {
       BridgeIdentityNamed(:final bridge) => ComputerMenu(
         onSelect: ({required bridgeId}) =>
             widget.onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+        // With one computer, management stays in Settings (plan decision D7).
+        onManageComputers: context.watch<ComputerSwitcherCubit>().state.computers.length > 1
+            ? () => widget.onManageComputers(context: context)
+            : null,
         triggerBuilder: (context, toggle) {
           _toggleComputerMenu = toggle;
           return PregoNavSubtitle(

@@ -94,6 +94,7 @@ void main() {
               onOpenSession: ({required context, required project, required displayName, required session}) {},
               onOpenProject: ({required context, required project, required displayName}) {},
               onOpenHarnessSettings: () {},
+              onManageComputers: () {},
             ),
           ),
         ),

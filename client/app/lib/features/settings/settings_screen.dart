@@ -73,6 +73,7 @@ class const _MobileSettingsView() extends StatelessWidget {
       // replaces this page.
       onSwitchComputer: ({required bridgeId, required source}) =>
           unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
+      onManageComputers: () => context.pushRoute(const AppRoute.settingsComputers()),
       additionalSettings: null,
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);

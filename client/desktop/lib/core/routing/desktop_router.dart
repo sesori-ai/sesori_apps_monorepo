@@ -120,6 +120,9 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             route: AppRoute.sessions(projectId: project.id, projectName: displayName),
           ),
           onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+          onManageComputers: () => unawaited(
+            showDesktopComputersSettings(context: context, onLogoutCompleted: _goDesktopHome),
+          ),
         ),
       ),
       GoRoute(

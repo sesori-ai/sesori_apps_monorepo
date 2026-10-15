@@ -394,6 +394,35 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computerMenuSwitchHint => 'Switch computer';
 
   @override
+  String get computerMenuManage => 'Manage computers…';
+
+  @override
+  String get computersTitle => 'Computers';
+
+  @override
+  String computersActions(String name) {
+    return 'Actions for $name';
+  }
+
+  @override
+  String get computersSwitch => 'Switch';
+
+  @override
+  String get computersRename => 'Rename…';
+
+  @override
+  String get computersRenameTitle => 'Rename computer';
+
+  @override
+  String get computersRenameLabel => 'Computer name';
+
+  @override
+  String get computersRenameUseHostname => 'Use hostname';
+
+  @override
+  String get computersRenameFailed => 'Failed to rename computer';
+
+  @override
   String get projectsBridgeOfflineInstallCommands => 'Install commands';
 
   @override

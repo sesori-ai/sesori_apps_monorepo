@@ -25,6 +25,9 @@ class const DesktopHomePane({
   /// Opens the project the empty home just added.
   required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
+
+  /// Opens the Computers page from the "Viewing:" menu.
+  required final VoidCallback onManageComputers,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -54,7 +57,7 @@ class const DesktopHomePane({
       // never enters again with each load.
       child: Column(
         children: [
-          const _DesktopComputerHeader(onSwitchComputer: _switchComputer),
+          _DesktopComputerHeader(onSwitchComputer: _switchComputer, onManageComputers: onManageComputers),
           Expanded(child: Builder(builder: _buildBody)),
         ],
       ),
@@ -141,7 +144,10 @@ class const DesktopHomePane({
 /// and the menu to switch. Hidden while the account's only computer is this
 /// one, where there is nothing to tell apart or switch to; it grows into
 /// place when the list says otherwise.
-class const _DesktopComputerHeader({required final ComputerSwitchCallback onSwitchComputer}) extends StatelessWidget {
+class const _DesktopComputerHeader({
+  required final ComputerSwitchCallback onSwitchComputer,
+  required final VoidCallback onManageComputers,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ComputerSwitcherCubit>().state;
@@ -160,6 +166,7 @@ class const _DesktopComputerHeader({required final ComputerSwitchCallback onSwit
                 child: ComputerMenu(
                   onSelect: ({required bridgeId}) =>
                       onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+                  onManageComputers: onManageComputers,
                   triggerBuilder: (context, toggle) => _ViewingButton(
                     label: remote
                         ? context.loc.desktopViewingComputer(current.name)

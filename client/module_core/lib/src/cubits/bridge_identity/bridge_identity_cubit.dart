@@ -28,11 +28,20 @@ class BridgeIdentityCubit({
   required final SelectedComputerService _selectedComputerService,
 }) extends Cubit<BridgeIdentityState> {
   StreamSubscription<ConnectionStatus>? _statusSubscription;
+  StreamSubscription<List<BridgeSummary>>? _bridgesSubscription;
   final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
     initialStatus: _connectionService.currentStatus,
   );
 
   this : super(const BridgeIdentityState.pending()) {
+    // A rename on the Computers page reaches the named computer at once,
+    // instead of waiting for the next connection to resolve it again.
+    _bridgesSubscription = _registeredBridgesService.bridges.listen((bridges) {
+      if (state case BridgeIdentityNamed(:final bridge)) {
+        final updated = bridges.firstWhereOrNull((entry) => entry.id == bridge.id);
+        if (updated != null && updated != bridge) emit(BridgeIdentityState.named(bridge: updated));
+      }
+    });
     // Resolve immediately rather than waiting for a connection: the offline
     // surfaces name the machine they are trying to reach, and they are exactly
     // the ones no connect event ever arrives for.
@@ -128,6 +137,7 @@ class BridgeIdentityCubit({
   @override
   Future<void> close() async {
     await _statusSubscription?.cancel();
+    await _bridgesSubscription?.cancel();
     await super.close();
   }
 }

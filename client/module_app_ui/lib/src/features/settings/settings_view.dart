@@ -44,6 +44,9 @@ class const SettingsView({
 
   /// Switches to a computer picked from the Bridge section's computer entry.
   required final ComputerSwitchCallback onSwitchComputer,
+
+  /// Opens the Computers page from the computer entry's menu.
+  required final VoidCallback onManageComputers,
   required final Widget? additionalSettings,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
@@ -120,6 +123,7 @@ class const SettingsView({
                   description: null,
                   onOpenHarnesses: onOpenHarnesses,
                   onSwitchComputer: onSwitchComputer,
+                  onManageComputers: onManageComputers,
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsSection(

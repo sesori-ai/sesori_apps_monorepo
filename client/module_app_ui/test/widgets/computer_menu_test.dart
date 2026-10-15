@@ -29,7 +29,7 @@ void main() {
 
   setUp(() => selected = []);
 
-  Future<void> pumpMenu(WidgetTester tester) async {
+  Future<void> pumpMenu(WidgetTester tester, {required VoidCallback? onManageComputers}) async {
     final cubit = _MockComputerSwitcherCubit();
     whenListen(
       cubit,
@@ -59,6 +59,7 @@ void main() {
             value: cubit,
             child: ComputerMenu(
               onSelect: ({required bridgeId}) => selected.add(bridgeId),
+              onManageComputers: onManageComputers,
               triggerBuilder: (context, toggle) => TextButton(onPressed: toggle, child: const Text("trigger")),
             ),
           ),
@@ -70,7 +71,7 @@ void main() {
   }
 
   testWidgets("lists each computer with its presence and checks the current one", (tester) async {
-    await pumpMenu(tester);
+    await pumpMenu(tester, onManageComputers: null);
 
     expect(find.text("studio-mac"), findsOneWidget);
     expect(find.text("Online"), findsOneWidget);
@@ -84,7 +85,7 @@ void main() {
   });
 
   testWidgets("picking another computer switches to it and closes the menu", (tester) async {
-    await pumpMenu(tester);
+    await pumpMenu(tester, onManageComputers: null);
 
     await tester.tap(find.text("work-laptop"));
     await tester.pumpAndSettle();
@@ -94,12 +95,31 @@ void main() {
   });
 
   testWidgets("picking the current computer only closes the menu", (tester) async {
-    await pumpMenu(tester);
+    await pumpMenu(tester, onManageComputers: null);
 
     await tester.tap(find.text("studio-mac"));
     await tester.pumpAndSettle();
 
     expect(selected, isEmpty);
     expect(find.text("studio-mac"), findsNothing);
+  });
+
+  testWidgets("offers no management footer without a callback", (tester) async {
+    await pumpMenu(tester, onManageComputers: null);
+
+    expect(find.byKey(const ValueKey("computer-menu-manage")), findsNothing);
+  });
+
+  testWidgets("the management footer closes the menu and calls back", (tester) async {
+    var managed = 0;
+    await pumpMenu(tester, onManageComputers: () => managed++);
+
+    expect(find.text("Manage computers…"), findsOneWidget);
+    await tester.tap(find.byKey(const ValueKey("computer-menu-manage")));
+    await tester.pumpAndSettle();
+
+    expect(managed, 1);
+    expect(selected, isEmpty);
+    expect(find.text("Manage computers…"), findsNothing);
   });
 }
