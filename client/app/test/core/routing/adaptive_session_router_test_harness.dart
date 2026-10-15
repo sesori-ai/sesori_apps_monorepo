@@ -139,6 +139,7 @@ class AdaptiveSessionRouterTestHarness() {
 
     when(() => registeredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => false);
     when(() => registeredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
+    when(() => registeredBridgesService.bridges).thenAnswer((_) => BehaviorSubject.seeded(const <BridgeSummary>[]));
 
     when(
       () => projectRepository.listSessions(
