@@ -26,6 +26,7 @@ Future<void> showExternalActionModal({
   required Stream<bool> isPendingStream,
   required bool Function() isPending,
   required VoidCallback onSettled,
+  required VoidCallback onPendingDismissed,
   required VoidCallback onCancelUnavailable,
 }) {
   final topInset = MediaQuery.paddingOf(context).top;
@@ -34,6 +35,7 @@ Future<void> showExternalActionModal({
     builder: (_) => PendingRequestAutoDismiss(
       isPendingStream: isPendingStream,
       isPending: isPending,
+      onResolved: onPendingDismissed,
       child: BlocProvider(
         create: (_) => createCubit(requestId: requestId, sessionId: sessionId),
         child: ExternalActionModal(topInset: topInset, onSettled: onSettled, onCancelUnavailable: onCancelUnavailable),

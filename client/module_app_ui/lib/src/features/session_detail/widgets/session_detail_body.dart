@@ -1104,6 +1104,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         createCubit: SessionDetailPresentationScope.read(context).createExternalActionCubit,
         isPendingStream: cubit.stream.map((_) => isPending()).distinct(),
         isPending: isPending,
+        onPendingDismissed: _scheduleNextQuestionModal,
         onCancelUnavailable: () async {
           final success = await cubit.rejectQuestion(question.id);
           if (!mounted) return;
@@ -1113,7 +1114,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         onSettled: () {
           if (!mounted) return;
           cubit.acknowledgeQuestionSettlement(requestId: question.id);
-          _scheduleNextQuestionModal();
         },
       );
       return;

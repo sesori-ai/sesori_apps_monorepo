@@ -5866,7 +5866,7 @@ abstract class AppLocalizations {
   /// No description provided for @mcpExternalBrowserFailed.
   ///
   /// In en, this message translates to:
-  /// **'The browser could not open. You can try again or cancel the request.'**
+  /// **'The browser could not open. You can try again.'**
   String get mcpExternalBrowserFailed;
 
   /// No description provided for @mcpExternalSubmitting.
@@ -5896,7 +5896,7 @@ abstract class AppLocalizations {
   /// No description provided for @mcpExternalDestinationUnavailable.
   ///
   /// In en, this message translates to:
-  /// **'This request has an unsupported destination or purpose. You can decline or cancel it.'**
+  /// **'This request cannot be opened or accepted.'**
   String get mcpExternalDestinationUnavailable;
 
   /// No description provided for @mcpExternalReplyExplanation.

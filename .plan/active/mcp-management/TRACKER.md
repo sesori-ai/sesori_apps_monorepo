@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/mcp-external-action-controls`, `834374b34f`, in the provided `copper-heron` worktree.
-- Current step: 19/25 is being published; latest merged step: 18/25 as [#1984][pr-1984].
+- Current step: 19/25 is in review as [#1986][pr-1986]; latest merged step: 18/25 as [#1984][pr-1984].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -39,7 +39,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
 | 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
 | 18/25 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
-| 19/25 | External-action client presentation (8.d.2.b) | In review | Shared browser/consent controls |
+| 19/25 | External-action client presentation (8.d.2.b) | In review | [#1986][pr-1986] |
 | 20/25 | Claude approvals and form/URL elicitation | Not started | — |
 | 21/25 | Codex inventory/actions/authentication | Not started | — |
 | 22/25 | Codex forms and offered connectors | Not started | — |
@@ -1179,3 +1179,20 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   (desktop: `flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart`).
   Client-root `dart analyze --fatal-infos` also passes. Subsequent edits change
   only tracker publication state and this validation record.
+
+[pr-1986]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1986
+
+- Step-19 review fixes redact URL-bearing snapshot error bodies, remove copy that
+  promises undeclared actions, reconcile tracker publication state and distinguish
+  thrown browser errors from false-return failures. Declared decline/cancel for
+  unsupported destinations remain intentional; browser access and acceptance stay blocked.
+- The SSE-before-reply regression was behaviorally red at `1585422cc5`: the modal
+  closed without opening the next request. The existing pending-dismissal guard now
+  notifies its presentation owner once; no new mutable state or late-reply owner.
+  That full session-screen case passes, as do both new error-body redaction cases.
+  Checks: 3 API tests, 40 shared request-modal widgets, 209 mobile session/navigation
+  tests; client-root `dart analyze --fatal-infos` passes. Commands use the same
+  pinned SDK and package paths above; new API/sequence regressions extend those files.
+  Architecture implementation review pass 2 approved without findings.
+  Verified review-fix tree: `ed4cd02f5a4db3f6bced6e64cc6a2b0446d2ea5c`;
+  subsequent edits add only this immutable evidence reference.

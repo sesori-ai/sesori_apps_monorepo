@@ -49,6 +49,7 @@ class const PermissionModal({
       builder: (_) => PendingRequestAutoDismiss(
         isPendingStream: isPendingStream,
         isPending: isPending,
+        onResolved: null,
         child: PermissionModal(
           permission: permission,
           onReply: onReply,

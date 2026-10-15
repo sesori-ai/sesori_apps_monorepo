@@ -1,6 +1,7 @@
 import "dart:convert";
 
 import "package:mocktail/mocktail.dart";
+import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/client/relay_http_client.dart";
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -55,4 +56,34 @@ void main() {
     expect(jsonDecode(requests.first.body!), {"sessionId": "owner"});
     expect(jsonDecode(requests.last.body!), {"requestId": "request", "sessionId": "owner", "choice": "decline"});
   });
+
+  for (final status in [200, 503]) {
+    test("authorization responses redact retained error bodies for status $status", () async {
+      final connection = MockConnectionService();
+      final relay = MockRelayClient();
+      when(() => connection.relayClient).thenReturn(relay);
+      when(() => relay.isConnected).thenReturn(true);
+      when(
+        () => relay.sendRequest(
+          request: any(named: "request"),
+          timeout: any(named: "timeout"),
+        ),
+      ).thenAnswer(
+        (_) async => RelayResponse(
+          id: "request",
+          status: status,
+          headers: const {},
+          body: '{"data":[{"id":7,"authorizationUrl":"https://fixture.example/private?token=fixture-only"}]}',
+        ),
+      );
+      final api = SessionApi(client: RelayHttpApiClient(connection));
+      final response = await api.getPendingExternalActions(sessionId: "owner");
+      final Matcher error = status == 200
+          ? isA<JsonParsingError>()
+                .having((e) => e.jsonString, "body", "Sensitive response omitted")
+                .having((e) => e.innerError, "original cause", isA<TypeError>())
+          : isA<NonSuccessCodeError>().having((e) => e.rawErrorString, "body", isNull);
+      expect(response, isA<ErrorResponse<PendingExternalActionsResponse>>().having((e) => e.error, "error", error));
+    });
+  }
 }
