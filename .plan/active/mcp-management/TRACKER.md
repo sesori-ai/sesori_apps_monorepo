@@ -4,7 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-codex-auth`, in the provided `copper-heron` worktree.
-- Current step: 26/31 is in PR [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000); 27/31 is local. Latest merged: 25/31 as [#1999][pr-1999].
+- Current step: 27/31 is ready for PR. Latest merged: 26/31 as
+  [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000).
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -50,7 +51,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 23/31 | Client typed draft lifecycle (9.c.1) | Merged | [#1993][pr-1993] |
 | 24/31 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
 | 25/31 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
-| 26/31 | Codex native OAuth ownership (10.b) | In PR | [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000); 70 focused tests and native pins pass |
+| 26/31 | Codex native OAuth ownership (10.b) | Merged | [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000); native pins and review fixes pass |
 | 27/31 | Codex typed forms and URL requests | In progress | Architecture plan approved |
 | 28/31 | Codex offered connectors | Not started | — |
 | 29/31 | Secondary harness support and explicit gaps | Not started | — |
@@ -1529,3 +1530,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Unknown/omitted status now declares unavailability and stops both harness and
   session starts at inventory, with no OAuth RPC. Focused mapper/service coverage
   retains known-version and native-unsupported behavior without a new contract.
+- OAuth #2000 merged at accepted head `20f2498313`, squash `1742753442`,
+  with 20 terminal checks passing, Cubic zero-issue approval and completed
+  current-head code/security reviews. The remaining tracker thread ends with
+  Cubic's approval acknowledgement. Step-27 parent integration `690e33e95f`
+  changes no bytes; all three conflicted incoming files exactly matched the
+  already-integrated reviewed OAuth parent.
