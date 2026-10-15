@@ -814,7 +814,7 @@ macOS arm64 native fixtures at both pins; other hosts, real providers and packag
 browser return remain unqualified.
 
 Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
-authenticated connector setup. Management outside Claude, Codex and OpenCode v2
+authenticated connector setup. Management outside Claude, Codex and OpenCode
 remains **not implemented**, with native support still to be audited. Real provider policy,
 credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
 ownership were not qualified by these probes. See the
@@ -836,8 +836,23 @@ authentication remains a separate audit. Exact integrity-verified 2.0.11 and
 session-location lookup through the production adapter in isolated fixtures.
 Controls preserve the fixture configuration file. This proves native local
 control behavior, not authenticated providers or packaged client journeys.
-OpenCode v1 management/authentication and the bounded Pi/ACP audit remain later
-steps. Original provider/package/client/L4 qualification is unchanged.
+OpenCode v1 configured-server inventory and enable/reconnect/disable are also
+**implemented** through its separate name-keyed status map and directory-scoped
+native routes. Exact native session lookup determines its directory; harness
+scope is unavailable without native work. Connection effects are project-scoped.
+Needs-auth and needs-client-registration remain authentication-required, with
+client registration explicitly requiring native configuration. Unknown metadata,
+tools and credential state are not inferred. Offered connectors are **not
+supported by this seam**; v1 authentication/forgetting are **not implemented**
+until the separate native authentication step. The existing PATH floor remains
+1.14.0, but no exact Git tag/npm artifact exists for it; qualification uses the
+earliest published 1.14.x artifact, 1.14.17, plus target 1.17.7.
+Both integrity-verified binaries pass the production adapter's isolated inventory,
+enable, resident reconnect, disable and exact session lookup; configuration bytes
+remain unchanged and reconnect replaces the fixture process. No model/tool call
+or external provider sign-in occurs.
+The bounded Pi/ACP audit and original provider/package/client/L4 qualification
+remain later steps.
 
 ## Context compaction row
 

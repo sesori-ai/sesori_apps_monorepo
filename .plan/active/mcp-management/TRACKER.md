@@ -3,9 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-secondary-harnesses`, in the provided `copper-heron` worktree.
-- Current step: 30/35 OpenCode v2 management is in PR [#2006][pr-2006].
-  Latest merged: 29/35 as [#2005][pr-2005] (`6d0d7bcce0`).
+- Branch: `sesori/mcp-opencode-v1-controls`, in the provided `copper-heron` worktree.
+- Current step: 31/35 OpenCode v1 management is verified and ready for PR.
+  All 118 cases and both native versions pass; final architecture review approved.
+  Latest merged: 30/35 as [#2006][pr-2006] (`ac75750eae`).
   Secondary-harness work is
   split into four native-contract steps; final qualification is unchanged.
   Native recording remains deferred by the user.
@@ -57,8 +58,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 27/35 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/35 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
 | 29/35 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
-| 30/35 | OpenCode v2 inventory and connection controls (11.a) | In PR | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
-| 31/35 | OpenCode v1 inventory and connection controls (11.b) | Not started | — |
+| 30/35 | OpenCode v2 inventory and connection controls (11.a) | Merged | [#2006][pr-2006]; 72 v2 + 26 headless cases; both native pins |
+| 31/35 | OpenCode v1 inventory and connection controls (11.b) | Verified locally; final architecture approved | 118 cases; native 1.14.17 and 1.17.7 |
 | 32/35 | OpenCode v1 native MCP authentication (11.c) | Not started | — |
 | 33/35 | Bounded Pi/ACP support and capability audit (11.d) | Not started | — |
 | 34/35 | Reconcile regression/capability documents | Not started | — |
@@ -71,6 +72,44 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 [pr-2006]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2006
 
 ## Evidence and decisions
+
+- Step-31 tested source `790caa38cc` follows the accepted step-30 corrections: existing
+  service coordinates scope/target/action; repository maps directory reads and
+  mutations. Native writes remain unbounded, with two new slow-write regressions.
+  All 118 affected v1 cases and owning analysis pass; both exact native versions
+  pass again through service/repository/API, replacing resident fixture processes
+  and retaining configuration bytes. Logs use the `step31-final-*` private paths.
+  The original presentation fixture is unchanged. Final architecture review
+  approved the aligned ownership (pass 2). Parent #2006 merged after passing CI
+  and completed code/security reviews; its additional presentation-capability
+  guard was declined because native controls remain valid across status changes.
+  All incoming squash-conflict files matched reviewed parent `c8aa783df3`;
+  the entire v1 diff is unchanged after integration.
+
+- Step 31 tested source `a00726445c`: architecture plan and implementation reviews
+  approved. All 116 affected MCP/API/repository/plugin
+  cases and package analysis pass. Cwd `bridge/sesori_plugin_opencode`:
+
+  ```sh
+  dart test test/opencode_mcp_test.dart test/opencode_api_http_test.dart \
+    test/opencode_repository_test.dart test/opencode_plugin_impl_test.dart
+  ```
+
+  Cwd `bridge`: `dart analyze --fatal-infos sesori_plugin_opencode`. Both use
+  pinned Flutter 3.47.7-stable's bundled Dart. The existing PATH floor 1.14.0
+  has no upstream Git tag/npm artifact; npm's first published 1.14.x version is
+  1.14.17. Its schema confirms the same status/connect/disconnect seam as target
+  1.17.7. Native qualification uses those two exact integrity-verified binaries,
+  without changing runtime policy. Both pass production API/repository inventory,
+  enable, resident reconnect, disable and exact session lookup; resident fixture
+  processes are replaced and config bytes remain unchanged. Fixture preparation
+  includes its schema declaration to avoid OpenCode's first-read metadata rewrite.
+  No model/tool call or provider sign-in occurs. Private probe/log:
+  `/private/tmp/copper-heron-mcp-step31-native.py` and corresponding `.log`.
+  Original provider/package/client/L4 and deferred native recording remain pending.
+  Synthetic before/after/control widget renders pass and were inspected. Media:
+  orphan `pr-media` commit `e174f0dabdfe4a37260a0380168ab88b94294b9c`, under
+  `sesori/mcp-opencode-v1-controls/`. This is shared presentation evidence only.
 
 - Step-30 review corrections: existing service owns scope resolution, fresh-target
   validation and action dispatch; the repository exposes mapped directory reads

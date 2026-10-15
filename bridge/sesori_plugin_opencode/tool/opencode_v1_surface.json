@@ -11,6 +11,9 @@
   },
   "operations": [
     "global.health",
+    "mcp.status",
+    "mcp.connect",
+    "mcp.disconnect",
     "project.list",
     "project.update",
     "project.current",
@@ -41,5 +44,5 @@
     "question.reject",
     "provider.list"
   ],
-  "extraSchemas": ["Session", "Message", "Part", "SnapshotFileDiff", "SessionStatus", "QuestionInfo"]
+  "extraSchemas": ["Session", "Message", "Part", "SnapshotFileDiff", "SessionStatus", "QuestionInfo", "MCPStatus"]
 }

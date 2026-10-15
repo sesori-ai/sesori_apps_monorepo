@@ -1,9 +1,12 @@
 import "package:meta/meta.dart" show visibleForTesting;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
+        Log,
         PluginAgent,
         PluginCommand,
         PluginCommandSource,
+        PluginMcpInventorySnapshot,
+        PluginMcpScope,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -19,6 +22,8 @@ import "models/openapi/assistant_message.g.dart";
 import "models/openapi/command.g.dart";
 import "models/openapi/compaction_part.g.dart";
 import "models/openapi/global_session.g.dart";
+import "models/openapi/mcpstatus_failed.g.dart";
+import "models/openapi/mcpstatus_needs_client_registration.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
 import "models/openapi/question_request.g.dart";
@@ -33,6 +38,7 @@ import "models/update_project_body.dart";
 import "opencode_api.dart";
 import "plugin_model_mapper.dart";
 import "provider_mapper.dart";
+import "repositories/open_code_mcp_mapper.dart";
 
 const String _globalProjectId = "global";
 
@@ -75,6 +81,25 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   );
 
   OpenCodeApi get api => _api;
+
+  Future<PluginMcpInventorySnapshot> getMcpInventory({required String directory, required PluginMcpScope scope}) async {
+    final servers = await _api.getMcpStatus(directory: directory);
+    for (final server in servers.entries) {
+      if (server.value case MCPStatusFailed(:final error) || MCPStatusNeedsClientRegistration(:final error)) {
+        Log.w("[opencode-v1] MCP server ${server.key} in $directory", error);
+      }
+    }
+    return const OpenCodeMcpMapper().map(servers: servers, scope: scope);
+  }
+
+  Future<String> getSessionDirectory({required String sessionId}) async =>
+      (await _api.getSession(sessionId: sessionId, directory: null)).directory;
+
+  Future<void> connectMcpServer({required String directory, required String name}) =>
+      _api.connectMcpServer(directory: directory, name: name);
+
+  Future<void> disconnectMcpServer({required String directory, required String name}) =>
+      _api.disconnectMcpServer(directory: directory, name: name);
 
   Future<List<PluginCommand>> getCommands({required String? projectId}) async {
     final commands = await _api.listCommands(directory: projectId?.normalize());
