@@ -49,9 +49,28 @@ last. The CI inventory is not a new public release pointer.
 The approved `sesori-ai-linux-packages` bucket and dedicated federation/service account
 are provisioned. The user additionally authorized a bucket-tag-scoped exception to the
 observed domain-sharing block, preserving the previous restriction elsewhere. Anonymous
-empty-bucket access passes; first production-key/federated publication and anonymous
-package-manager verification still follow merge. No public package has been uploaded
-by provisioning. Operational ownership and repair: [Linux repositories](../../../../docs/desktop/linux-repositories.md).
+repository delivery passed in main run `38754986125`: production signing, scoped
+federation, pinned public signatures/references and real HTTPS APT/DNF refresh/download
+for both architectures. Clients ran in an ARM64 Fedora container; no application was
+executed. [Retained summaries](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2002#issuecomment-6196620863).
+Operational ownership and repair: [Linux repositories](../../../../docs/desktop/linux-repositories.md).
+
+## Native tray correction and qualification — 11.i/14
+
+Native KDE run `38769349531` reached the real anonymous window and close-to-tray path,
+then found `/NO_DBUSMENU`. The adapter leaves the native context-menu trigger unset;
+Linux consequently exports no usable menu, and manual `OpenContextMenu` is unsupported.
+11.i.a sets the Linux trigger before publishing the menu/icon. No new state, lifecycle
+owner, persistence or macOS/Windows behavior is added.
+
+On 2026-10-15 the user approved landing this focused fix with tests, then obtaining
+native visual and upgrade proof from fresh signed builds. #2002 is paused as 11.i.b;
+its old `1021/1022` package bytes cannot be repaired in place or used to claim the fix.
+Resume its credential-free x64 GNOME/Wayland and ARM64 KDE/X11 gates with corrected
+signed producers, then real-account/session-login coverage in 11.i.c. Stable stays closed.
+Keep the existing release rollover: QA uses retained signed producer artifacts, not
+historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
+recreated release or silent same-version substitution.
 
 ## Signing continuation — 11.a/14 (merged)
 
