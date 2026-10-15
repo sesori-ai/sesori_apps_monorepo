@@ -23,6 +23,11 @@ class Desktop(StrEnum):
     KDE = "kde-x11"
 
 
+class MouseButton(StrEnum):
+    PRIMARY = "1"
+    SECONDARY = "3"
+
+
 def run(*, arguments: list[str], env: dict[str, str] | None = None, timeout: int = 120) -> str:
     result = subprocess.run(arguments, env=env, capture_output=True, text=True, timeout=timeout)
     if result.returncode:
@@ -134,11 +139,11 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                             and node.getState().contains(pyatspi.STATE_SHOWING))
                 return None
 
-            def click(*, node):
+            def click(*, node, button: MouseButton):
                 bounds = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
                 require(bounds.width > 0 and bounds.height > 0, "Native tray target has no visible bounds")
                 run(arguments=["xdotool", "mousemove", "--sync", str(bounds.x + bounds.width // 2),
-                               str(bounds.y + bounds.height // 2), "click", "1"], env=env)
+                               str(bounds.y + bounds.height // 2), "click", button], env=env)
 
             for item in items:
                 service, _, path = str(item).partition("/")
@@ -149,12 +154,16 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                 require(menu_path not in ("/", "/NO_DBUSMENU"), "Native tray does not advertise a usable menu")
                 title = str(properties.Get("org.kde.StatusNotifierItem", "Title"))
                 icon = wait_for(description=f"visible native tray icon {title!r}", check=lambda: accessible(name=title))
-                click(node=icon)
-                quit_item = wait_for(description="visible native Quit item",
-                                     check=lambda: accessible(name="Quit Sesori"))
-                time.sleep(0.3)  # Let the native popup transition render before capture and click.
-                run(arguments=["import", "-window", "root", str(output / f"{label}-anonymous-menu.png")], env=env)
-                click(node=quit_item)
+                # Plasma 5.27 forwards primary clicks as Activate; its context-menu gesture is right-click.
+                click(node=icon, button=MouseButton.SECONDARY)
+                try:
+                    quit_item = wait_for(description="visible native Quit item",
+                                         check=lambda: accessible(name="Quit Sesori"))
+                finally:
+                    # Retain the host's visible state even when accessibility lookup fails.
+                    time.sleep(0.3)
+                    run(arguments=["import", "-window", "root", str(output / f"{label}-anonymous-menu.png")], env=env)
+                click(node=quit_item, button=MouseButton.PRIMARY)
                 return
             raise ValueError("No StatusNotifier item belongs to the application")
 

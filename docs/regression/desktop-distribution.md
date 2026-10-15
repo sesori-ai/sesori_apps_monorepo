@@ -205,8 +205,10 @@ The credential-free sequence verifies original signed producer artifacts, builds
 storage probes against each corresponding source, installs the old real package, renders
 its anonymous window, performs normal close/native tray Quit, then installs and exercises
 the newer package. KDE identifies the app-owned StatusNotifier title, locates visible
-Plasma targets through accessibility and uses real pointer clicks for the icon and Quit.
-A captured visible menu is required, not just direct DBusMenu event delivery.
+Plasma targets through accessibility, right-clicks the icon and primary-clicks Quit.
+Plasma 5.27 forwards primary icon clicks as Activate; primary-click menu opening is not
+qualified by this scenario. A captured visible menu is required, not just direct DBusMenu
+event delivery. Preserve the post-click capture on lookup failure for diagnosis.
 Encrypted fixture values must survive replacement; login registration
 must create/read/remove correctly. Inspect the captured anonymous windows before accepting
 native UI evidence. A window PID or passing mocked driver test is not a rendered-app pass.
