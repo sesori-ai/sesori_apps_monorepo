@@ -339,6 +339,30 @@ presentation retains its issued challenge for explicit retry. The transport seam
 implemented, including request-scoped recovery and explicit browser intent. Visible MCP authentication controls expose
 these intents. The headless owner and final qualification matrix are unchanged.
 
+## Codex offered connector catalog
+
+Codex inventory reads native `app/list` after its scoped server snapshot, using
+all pages and the exact thread or harness context. Offers remain distinct from
+configured servers, including identical native key text. Native enabled/access
+defaults determine unavailable, available or setup-required status; native owns
+catalog caching. A catalog error logs original context locally and leaves server
+entries visible with a generic unavailable catalog section. Partial catalog pages
+are not presented as complete. Unsupported/cold server scope retains its existing
+result without activating native work or falling back to harness scope.
+
+Server authentication uses a server-only read, never a connector catalog fetch.
+No setup destination, provider credential, native installation API, configuration
+writer or connector-to-server conversion is introduced by discovery. Setup actions
+remain pending. Existing clients consume the already released connector variants.
+
+Coverage: `codex_mcp_repository_test.dart` exercises pagination, defaults, exact
+scope, stable identity/order, same-name server/offer distinction and catalog
+failure preserving servers and useful local logs. Authentication and plugin
+regressions retain server-only validation and no implicit connection/mutation.
+Both exact native pins passed the production catalog API/repository read as an
+available empty catalog in isolated homes; authentication issued no `app/list`.
+Real authenticated offers, entitlement and setup remain unqualified.
+
 ## Codex native authentication
 
 Codex sign-in uses the attached app-server and the existing canonical headless

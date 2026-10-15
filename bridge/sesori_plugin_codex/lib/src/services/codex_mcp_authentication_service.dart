@@ -43,7 +43,7 @@ class CodexMcpAuthenticationService({
   }
 
   Future<void> _validateTarget({required PluginMcpServerTarget target}) async {
-    final result = await _inventory.read(scope: target.scope);
+    final result = await _inventory.readServers(scope: target.scope);
     switch (result) {
       case PluginMcpInventoryUnavailable(:final reason):
         throw PluginMcpAuthenticationUnavailableException(

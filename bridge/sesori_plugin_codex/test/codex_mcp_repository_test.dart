@@ -52,6 +52,119 @@ PluginMcpServerSnapshot _mapped({required Map<String, Object?> server}) =>
         as PluginMcpServerSnapshot;
 
 void main() {
+  for (final scope in [const PluginMcpHarnessScope(), const PluginMcpSessionScope(sessionId: "thread")]) {
+    test("connector catalog keeps all pages and typed server/offer identities in $scope", () async {
+      final transport = _Transport(
+        responses: [
+          {
+            "data": [_server],
+          },
+          {
+            "data": [
+              {"id": "zulu", "name": "Zulu", "isAccessible": true},
+            ],
+            "nextCursor": "catalog-cursor",
+          },
+          {
+            "data": [
+              {
+                "id": "fixture",
+                "name": "Fixture connector",
+                "description": " Description ",
+                "installUrl": "https://fixture.example/private?secret=value",
+              },
+              {"id": "disabled", "name": "Disabled", "isEnabled": false, "isAccessible": true},
+            ],
+          },
+        ],
+      );
+      final result = await _repository(transport: transport).read(scope: scope) as PluginMcpInventorySnapshot;
+      expect(result.servers, isA<PluginMcpCatalogAvailable>());
+      expect(result.connectors, isA<PluginMcpCatalogAvailable>());
+      expect(result.entries.whereType<PluginMcpServerSnapshot>().single.target.serverKey, "fixture");
+      final offers = result.entries.whereType<PluginMcpConnectorOfferSnapshot>().toList();
+      expect(offers.map((offer) => offer.target.offerKey), ["disabled", "fixture", "zulu"]);
+      expect(offers.map((offer) => offer.availability), [
+        PluginMcpConnectorOfferAvailability.unavailable,
+        PluginMcpConnectorOfferAvailability.setupRequired,
+        PluginMcpConnectorOfferAvailability.available,
+      ]);
+      expect(offers[1].description, "Description");
+      expect(offers.every((offer) => identical(offer.target.scope, scope)), isTrue);
+      expect(result.entries.clear, throwsUnsupportedError);
+      final threadId = scope is PluginMcpSessionScope ? scope.sessionId : null;
+      expect(transport.calls.map((call) => call.method), ["mcpServerStatus/list", "app/list", "app/list"]);
+      expect(transport.calls.skip(1).map((call) => call.params), [
+          {"threadId": ?threadId, "limit": 100, "forceRefetch": false},
+          {"threadId": ?threadId, "cursor": "catalog-cursor", "limit": 100, "forceRefetch": false},
+      ]);
+    });
+  }
+
+  for (final failure in [
+    StateError("fixture catalog transport failure"),
+    {
+      "data": [
+        {"name": "Missing id"},
+      ],
+    },
+    {"data": "malformed"},
+  ]) {
+    test("later-page catalog failure preserves configured servers: ${failure.runtimeType}", () async {
+      final transport = _Transport(
+        responses: [
+          {
+            "data": [_server],
+          },
+          {
+            "data": [
+              {"id": "partial", "name": "Discard partial page"},
+            ],
+            "nextCursor": "cursor",
+          },
+          failure,
+        ],
+      );
+      final stderr = BufferingStdout();
+      final previous = Log.level;
+      try {
+        Log.level = LogLevel.warning;
+        await IOOverrides.runZoned(() async {
+          final result = await _repository(
+            transport: transport,
+          ).read(scope: const PluginMcpSessionScope(sessionId: "thread")) as PluginMcpInventorySnapshot;
+          expect(result.entries.single, isA<PluginMcpServerSnapshot>());
+          expect(result.servers, isA<PluginMcpCatalogAvailable>());
+          expect(result.connectors, isA<PluginMcpCatalogUnavailable>());
+        }, stderr: () => stderr);
+      } finally {
+        Log.level = previous;
+      }
+      expect(stderr.text, contains("Connector catalog unavailable in thread thread"));
+      if (failure is StateError) expect(stderr.text, contains("fixture catalog transport failure"));
+    });
+  }
+
+  test("empty connector catalog is available and unsupported scope issues no native work", () async {
+    final transport = _Transport(
+      responses: [
+        {
+          "data": [_server],
+        },
+        {"data": <Object?>[]},
+      ],
+    );
+    final repository = _repository(transport: transport);
+    final result = await repository.read(scope: const PluginMcpHarnessScope()) as PluginMcpInventorySnapshot;
+    expect(result.connectors, isA<PluginMcpCatalogAvailable>());
+    expect(result.entries.whereType<PluginMcpConnectorOfferSnapshot>(), isEmpty);
+    expect(
+      await repository.read(scope: const PluginMcpProjectScope(projectId: "project")),
+      isA<PluginMcpInventoryUnavailable>(),
+    );
+    expect(transport.calls, hasLength(2));
+  });
+
   for (final (userAgent, supported) in [
     ("fixture/0.139.0 (fixture)", false),
     ("unknown", false),
@@ -112,7 +225,7 @@ void main() {
       ],
     );
     const scope = PluginMcpSessionScope(sessionId: "native-thread");
-    final result = await _repository(transport: transport).read(scope: scope) as PluginMcpInventorySnapshot;
+    final result = await _repository(transport: transport).readServers(scope: scope) as PluginMcpInventorySnapshot;
     final entries = result.entries.cast<PluginMcpServerSnapshot>();
     expect(entries.map((entry) => entry.target.serverKey), ["fixture", "zulu"]);
     expect(entries.every((entry) => identical(entry.target.scope, scope)), isTrue);
@@ -134,7 +247,7 @@ void main() {
     );
     final repository = _repository(transport: transport);
     expect(
-      await repository.read(scope: const PluginMcpProjectScope(projectId: "project")),
+      await repository.readServers(scope: const PluginMcpProjectScope(projectId: "project")),
       isA<PluginMcpInventoryUnavailable>().having(
         (value) => value.reason,
         "reason",
@@ -142,7 +255,7 @@ void main() {
       ),
     );
     expect(transport.calls, isEmpty);
-    expect(await repository.read(scope: const PluginMcpHarnessScope()), isA<PluginMcpInventorySnapshot>());
+    expect(await repository.readServers(scope: const PluginMcpHarnessScope()), isA<PluginMcpInventorySnapshot>());
     expect(transport.calls.single.params, {"limit": 100, "detail": "toolsAndAuthOnly"});
   });
 
@@ -291,7 +404,7 @@ void main() {
       final transport = _Transport(responses: [value]);
       final result = await _repository(
         transport: transport,
-      ).read(scope: const PluginMcpHarnessScope()) as PluginMcpInventoryReadFailed;
+      ).readServers(scope: const PluginMcpHarnessScope()) as PluginMcpInventoryReadFailed;
       expect(result.cause, isA<CodexMcpInventoryReadException>());
       expect(result.causeStackTrace.toString(), isNotEmpty);
     });
@@ -310,7 +423,7 @@ void main() {
     );
     final result = await _repository(
       transport: transport,
-    ).read(scope: const PluginMcpSessionScope(sessionId: "original")) as PluginMcpInventoryReadFailed;
+    ).readServers(scope: const PluginMcpSessionScope(sessionId: "original")) as PluginMcpInventoryReadFailed;
     expect(result.cause, same(cause));
     expect(transport.calls, hasLength(2));
     expect(transport.calls.every((call) => (call.params! as Map)["threadId"] == "original"), isTrue);
@@ -335,7 +448,7 @@ void main() {
       ],
     );
     expect(
-      await _repository(transport: transport).read(scope: const PluginMcpHarnessScope()),
+      await _repository(transport: transport).readServers(scope: const PluginMcpHarnessScope()),
       isA<PluginMcpInventorySnapshot>(),
     );
     expect(transport.calls, hasLength(1));
@@ -380,7 +493,7 @@ void main() {
       await IOOverrides.runZoned(() async {
         final result = await _repository(
           transport: transport,
-        ).read(scope: const PluginMcpSessionScope(sessionId: "original")) as PluginMcpInventorySnapshot;
+        ).readServers(scope: const PluginMcpSessionScope(sessionId: "original")) as PluginMcpInventorySnapshot;
         expect(
           ((result.entries.single as PluginMcpServerSnapshot).tools as PluginMcpToolsFailed).message,
           isNot(contains("fixture native diagnostic")),
@@ -406,7 +519,7 @@ void main() {
     );
     final transport = _Transport(responses: [cause]);
     expect(
-      await _repository(transport: transport).read(scope: const PluginMcpSessionScope(sessionId: "original")),
+      await _repository(transport: transport).readServers(scope: const PluginMcpSessionScope(sessionId: "original")),
       isA<PluginMcpInventoryUnavailable>().having(
         (value) => value.reason,
         "reason",
@@ -426,7 +539,7 @@ void main() {
       final cause = CodexRpcException(method: "mcpServerStatus/list", code: code, message: message);
       final result = await _repository(
         transport: _Transport(responses: [cause]),
-      ).read(scope: scope) as PluginMcpInventoryReadFailed;
+      ).readServers(scope: scope) as PluginMcpInventoryReadFailed;
       expect(result.cause, same(cause));
     });
   }

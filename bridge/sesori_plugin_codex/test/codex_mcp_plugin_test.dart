@@ -140,6 +140,7 @@ void main() {
             ],
             "nextCursor": null,
           },
+          "app/list" => {"data": <Object?>[]},
           _ => throw StateError("Unexpected native operation ${request['method']}"),
         };
         socket.add(jsonEncode({"id": request["id"], "result": result}));
@@ -181,7 +182,7 @@ void main() {
       isA<PluginMcpInventoryUnavailable>(),
     );
     expect(methods, hasLength(readCount));
-    expect(methods, ["initialize", "mcpServerStatus/list"]);
+    expect(methods, ["initialize", "mcpServerStatus/list", "app/list"]);
     final disconnected = plugin.workState.firstWhere((state) => state == PluginWorkState.unknown);
     await (await socketReady.future).close();
     await disconnected.timeout(const Duration(seconds: 2));

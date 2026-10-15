@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-codex-auth`, in the provided `copper-heron` worktree.
-- Current step: 27/32 is in PR [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001). Latest merged: 26/32 as
+- Branch: `sesori/mcp-codex-connectors`, in the provided `copper-heron` worktree.
+- Current step: 27/32 is in PR [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001);
+  28/32 is local. Latest merged: 26/32 as
   [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000).
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
@@ -1546,3 +1547,16 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   fall back to native names/values; opaque aliases protect submitted IDs.
   Connector catalog/setup split into 28/29 keeps future boundaries reviewable;
   remaining series total is 32 and final qualification is unchanged.
+- Step 28 separates read-only native catalog discovery from setup across the
+  plugin/wire/headless/client browser boundaries (now 29). Existing connector
+  variants serve inventory without a contract change; setup requires its own
+  reviewed action/result boundary. Total 32; final L4 scope is unchanged.
+  Architecture plan review approved catalog mapping and server-only auth reads.
+- Step-28 verification: all 69 focused inventory/authentication/plugin cases
+  pass, package analysis is clean and normal DTO generation passes. Both exact
+  native binaries return an available empty catalog through production API and
+  repository mapping. Their authentication journeys issue no app/list calls;
+  minimum session handoff and native expiry/denial/success remain verified.
+  This does not qualify real authenticated offers, entitlement or setup.
+  Architecture implementation review approved the catalog boundary; synthetic
+  before/after inventory captures are prepared. Native recording stays deferred.

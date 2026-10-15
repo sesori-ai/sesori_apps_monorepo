@@ -1,16 +1,35 @@
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../../api/models/codex_apps_dto.dart";
 import "../../api/models/codex_mcp_status_dto.dart";
 
 /// Native presentation metadata only; configuration and execution stay native.
 class CodexMcpMapper({required String userAgent}) {
   final bool _supportsThreadAuthentication = _hasThreadAuthentication(userAgent: userAgent);
+
+  List<PluginMcpConnectorOfferSnapshot> mapConnectorOffers({
+    required List<CodexAppInfoDto> apps,
+    required PluginMcpScope scope,
+  }) => List.unmodifiable(
+    (apps.toList()..sort((a, b) => a.id.compareTo(b.id))).map(
+      (app) => PluginMcpConnectorOfferSnapshot(
+        target: PluginMcpConnectorOfferTarget(scope: scope, offerKey: app.id),
+        name: app.name,
+        description: _present(value: app.description),
+        availability: !app.isEnabled
+            ? PluginMcpConnectorOfferAvailability.unavailable
+            : app.isAccessible
+            ? PluginMcpConnectorOfferAvailability.available
+            : PluginMcpConnectorOfferAvailability.setupRequired,
+      ),
+    ),
+  );
   PluginMcpInventorySnapshot map({required List<CodexMcpServerStatusDto> servers, required PluginMcpScope scope}) {
     final sorted = servers.toList()..sort((a, b) => a.name.compareTo(b.name));
     return PluginMcpInventorySnapshot(
       servers: const PluginMcpCatalogAvailable(),
-      connectors: const PluginMcpCatalogUnavailable(message: "Codex connector inventory is not implemented yet."),
+      connectors: const PluginMcpCatalogUnavailable(message: "Connector catalog was not requested."),
       entries: List.unmodifiable(sorted.map((server) => _server(server: server, scope: scope))),
     );
   }
