@@ -1560,3 +1560,13 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   This does not qualify real authenticated offers, entitlement or setup.
   Architecture implementation review approved the catalog boundary; synthetic
   before/after inventory captures are prepared. Native recording stays deferred.
+- Step-27 follow-up review: forwarded legacy titled enums retain matching
+  enumNames. Native 0.139.0 omits enumNames, so its production snapshot falls
+  back to native values; 0.160.1 forwards and displays the provided titles.
+  The direct parser test verifies forwarded display names and native encoding.
+  Ambiguous field headings/complete option labels
+  explicitly decline; unsupported child warnings use the root display session,
+  with global warnings retained for missing owners. All 45 directly affected
+  typed-request/approval cases pass and package analysis is clean. Both pinned
+  binaries pass native round trips with explicit normalized-label assertions.
+  The earlier stale capability sentence was already corrected in `629d2cecfc`.

@@ -354,9 +354,10 @@ class ApprovalRegistry({
     } on Object catch (error, stackTrace) {
       Log.w("[codex] unsupported MCP request ${request.id}", error, stackTrace);
       _respond(request.id, const {"action": "decline"});
+      final sessionId = _extractSessionId(request.params);
       emitEvent(
         event: BridgeSseTuiToastShow(
-          sessionID: _extractSessionId(request.params),
+          sessionID: sessionId == null ? null : _resolvePendingInputScope(sessionId: sessionId).displaySessionId,
           title: "MCP request unavailable",
           message: "This MCP form or external-action request is not supported by this bridge.",
           variant: "warning",
