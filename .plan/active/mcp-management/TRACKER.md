@@ -1160,3 +1160,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   (32); from `client/module_app_ui`, `flutter test --no-pub test/features/session_detail/widgets/question_modal_test.dart test/features/session_detail/widgets/external_action_modal_test.dart`
   (29); from `client/app`, `flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/widgets/adaptive_child_session_navigation_test.dart`
   (208). Each of those three modules passes `flutter analyze --no-pub --fatal-infos`.
+- CI at `4086e6e93c` found `prefer_exhaustive_switch` in the new analytics guard.
+  Package-level analysis had missed the workspace plugin diagnostic. Replaced its
+  wildcard with all three non-loaded sealed states; behavior is unchanged. Source
+  tree `988213c63ffbf663634de63615747c0c474d9193` records that correction.
+  `dart analyze --fatal-infos` from `client` now passes with the CI plugin enabled.
