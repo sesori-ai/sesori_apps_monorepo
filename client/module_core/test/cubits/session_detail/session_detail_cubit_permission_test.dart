@@ -676,7 +676,7 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).pendingPermissions, [relevantPermission]);
     });
 
-    test("rejecting a surfaced child question targets the child (owner) session", () async {
+    test("cold-loaded external request retains its marker and cancellation owner", () async {
       when(() => mockSessionService.getPendingQuestions(sessionId: any(named: "sessionId"))).thenAnswer(
         (_) async => ApiResponse.success(
           const PendingQuestionResponse(
@@ -685,6 +685,7 @@ void main() {
                 id: "q-child",
                 sessionID: "child-1",
                 displaySessionId: sessionId,
+                interactionKind: QuestionInteractionKind.externalAction,
                 questions: [],
               ),
             ],
@@ -713,6 +714,10 @@ void main() {
 
       // The child question surfaced on the root.
       expect((cubit.state as SessionDetailLoaded).pendingQuestions.map((q) => q.id), ["q-child"]);
+      expect(
+        (cubit.state as SessionDetailLoaded).pendingQuestions.single.interactionKind,
+        QuestionInteractionKind.externalAction,
+      );
 
       final ok = await cubit.rejectQuestion("q-child");
 

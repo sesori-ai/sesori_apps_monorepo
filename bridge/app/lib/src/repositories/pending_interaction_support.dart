@@ -1,8 +1,9 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
-import "package:sesori_shared/sesori_shared.dart" show PendingPermission, PendingQuestion;
+import "package:sesori_shared/sesori_shared.dart" show PendingExternalAction, PendingPermission, PendingQuestion;
 
 import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/session_table.dart";
+import "mappers/plugin_external_action_mapper.dart";
 import "mappers/plugin_permission_mapper.dart";
 import "mappers/plugin_question_mapper.dart";
 import "models/session_operation.dart";
@@ -83,6 +84,27 @@ class PendingInteractionSupport({required final SessionDao _sessionDao}) {
               displaySessionId: question.displaySessionId == null
                   ? null
                   : bindings[question.displaySessionId]!.sessionId,
+            ),
+    ];
+  }
+
+  Future<List<PendingExternalAction>> mapExternalActions({
+    required String pluginId,
+    required List<PluginPendingExternalAction> actions,
+  }) async {
+    final bindings = await _bindings(
+      pluginId: pluginId,
+      interactions: [
+        for (final action in actions) (sessionID: action.sessionID, displaySessionId: action.displaySessionId),
+      ],
+    );
+    return [
+      for (final action in actions)
+        if (bindings[action.sessionID] case final session?)
+          if (action.displaySessionId == null || bindings.containsKey(action.displaySessionId))
+            action.toShared(
+              sessionId: session.sessionId,
+              displaySessionId: action.displaySessionId == null ? null : bindings[action.displaySessionId]!.sessionId,
             ),
     ];
   }

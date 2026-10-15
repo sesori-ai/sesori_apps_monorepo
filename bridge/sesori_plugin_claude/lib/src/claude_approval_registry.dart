@@ -28,6 +28,25 @@ final class const _PendingPermission({
   required final bool allowAlways,
 }) extends _PendingApproval;
 
+final class const _PendingExternalAction({
+  required super.id,
+  required super.requestId,
+  required super.sessionId,
+  required final String title,
+  required final String message,
+  required final String authorizationUrl,
+}) extends _PendingApproval {
+  this : super(toolUseId: null);
+}
+
+const _externalActionNotice = PluginQuestionInfo(
+  header: "MCP authorization",
+  question: "This native request needs an external action. Open it in an updated Sesori client, or cancel it.",
+  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.")],
+  multiple: false,
+  custom: false,
+);
+
 sealed class const _PendingQuestion({
   required super.id,
   required super.requestId,
@@ -105,7 +124,11 @@ final class ClaudeApprovalRegistry({
   bool handle({required String sessionId, required ClaudeControlRequestMessage message}) {
     final attributedSessionId = _nonEmptyString(sessionId);
     final requestId = _nonEmptyString(message.requestId);
-    if (message.subtype != "can_use_tool" || attributedSessionId == null || requestId == null) return false;
+    if (attributedSessionId == null || requestId == null) return false;
+    if (message.subtype == "elicitation") {
+      return _handleElicitation(sessionId: attributedSessionId, requestId: requestId, request: message.request);
+    }
+    if (message.subtype != "can_use_tool") return false;
 
     final request = message.request;
     final tool = _nonEmptyString(request["tool_name"]) ?? "tool";
@@ -143,6 +166,7 @@ final class ClaudeApprovalRegistry({
       _pending[id] = pending;
       _emitActivity(
         event: BridgeSseQuestionAsked(
+          interactionKind: PluginQuestionInteractionKind.question,
           id: id,
           sessionID: attributedSessionId,
           displaySessionId: attributedSessionId,
@@ -177,6 +201,88 @@ final class ClaudeApprovalRegistry({
     return true;
   }
 
+  bool _handleElicitation({
+    required String sessionId,
+    required String requestId,
+    required Map<String, Object?> request,
+  }) {
+    final url = _nonEmptyString(request["url"]);
+    if (request["mode"] != "url" || url == null) {
+      final responded = _respond(sessionId: sessionId, requestId: requestId, payload: {"action": "decline"});
+      _emit(
+        BridgeSseTuiToastShow(
+          sessionID: sessionId,
+          title: "MCP request unavailable",
+          message: "This MCP form or external-action request is not supported by this bridge.",
+          variant: "warning",
+        ),
+      );
+      if (!responded) Log.w("[claude] could not decline unsupported elicitation $requestId in $sessionId");
+      return responded;
+    }
+    final id = "br-${++_sequence}";
+    _pending[id] = _PendingExternalAction(
+      id: id,
+      requestId: requestId,
+      sessionId: sessionId,
+      title: _nonEmptyString(request["mcp_server_name"]) ?? "MCP authorization",
+      message: _nonEmptyString(request["message"]) ?? "Continue in the browser, then respond to this request.",
+      authorizationUrl: url,
+    );
+    _emitActivity(
+      event: BridgeSseQuestionAsked(
+        interactionKind: PluginQuestionInteractionKind.externalAction,
+        id: id,
+        sessionID: sessionId,
+        displaySessionId: sessionId,
+        questions: const [_externalActionNotice],
+      ),
+    );
+    return true;
+  }
+
+  List<PluginPendingExternalAction> pendingExternalActionsForSession({required String sessionId}) => [
+    for (final entry in _pending.values)
+      if (entry case final _PendingExternalAction action when action.sessionId == sessionId)
+        PluginPendingExternalAction(
+          id: action.id,
+          sessionID: sessionId,
+          displaySessionId: sessionId,
+          title: action.title,
+          message: action.message,
+          authorizationUrl: action.authorizationUrl,
+          purpose: PluginExternalActionPurpose.authorization,
+          choices: const [
+            PluginExternalActionChoice.accept,
+            PluginExternalActionChoice.decline,
+            PluginExternalActionChoice.cancel,
+          ],
+        ),
+  ];
+
+  bool hasExternalAction({required String id}) => _pending[id] is _PendingExternalAction;
+
+  PluginExternalActionReply replyExternalAction({
+    required String id,
+    required String sessionId,
+    required PluginExternalActionChoice choice,
+  }) {
+    final entry = _pending[id];
+    if (entry is! _PendingExternalAction || entry.sessionId != sessionId) {
+      return PluginExternalActionReply.alreadySettled;
+    }
+    if (!_respond(sessionId: sessionId, requestId: entry.requestId, payload: {"action": choice.name})) {
+      return PluginExternalActionReply.unavailable;
+    }
+    _pending.remove(id);
+    _emitActivity(
+      event: choice == PluginExternalActionChoice.accept
+          ? BridgeSseQuestionReplied(requestID: id, sessionID: sessionId, displaySessionId: sessionId)
+          : BridgeSseQuestionRejected(requestID: id, sessionID: sessionId, displaySessionId: sessionId),
+    );
+    return PluginExternalActionReply.accepted;
+  }
+
   List<PluginPendingPermission> pendingPermissionsForSession({required String sessionId}) => [
     for (final entry in _pending.values)
       if (entry case final _PendingPermission permission when permission.sessionId == sessionId)
@@ -192,13 +298,23 @@ final class ClaudeApprovalRegistry({
 
   List<PluginPendingQuestion> pendingQuestionsForSession({required String sessionId}) => [
     for (final entry in _pending.values)
-      if (entry case final _PendingQuestion question when question.sessionId == sessionId)
-        PluginPendingQuestion(
-          id: question.id,
-          sessionID: sessionId,
-          displaySessionId: sessionId,
-          questions: question.questions,
-        ),
+      if (entry.sessionId == sessionId)
+        if (entry case final _PendingQuestion question)
+          PluginPendingQuestion(
+            interactionKind: PluginQuestionInteractionKind.question,
+            id: question.id,
+            sessionID: sessionId,
+            displaySessionId: sessionId,
+            questions: question.questions,
+          )
+        else if (entry is _PendingExternalAction)
+          PluginPendingQuestion(
+            interactionKind: PluginQuestionInteractionKind.externalAction,
+            id: entry.id,
+            sessionID: sessionId,
+            displaySessionId: sessionId,
+            questions: const [_externalActionNotice],
+          ),
   ];
 
   List<String> allowedToolsForSession({required String sessionId}) =>
@@ -321,7 +437,16 @@ final class ClaudeApprovalRegistry({
   }
 
   void _cancel(_PendingApproval entry) {
-    if (!_deny(entry: entry, message: "Request cancelled because the Claude session stopped.")) {
+    final responded = switch (entry) {
+      _PendingExternalAction() => _respond(
+        sessionId: entry.sessionId,
+        requestId: entry.requestId,
+        payload: {"action": "cancel"},
+      ),
+      _PendingPermission() ||
+      _PendingQuestion() => _deny(entry: entry, message: "Request cancelled because the Claude session stopped."),
+    };
+    if (!responded) {
       Log.w("[claude] failed to send cancellation for pending approval ${entry.id}");
     }
     switch (entry) {
@@ -334,7 +459,7 @@ final class ClaudeApprovalRegistry({
             reply: PluginPermissionReply.reject.name,
           ),
         );
-      case _PendingQuestion():
+      case _PendingQuestion() || _PendingExternalAction():
         _emitActivity(
           event: BridgeSseQuestionRejected(
             requestID: entry.id,

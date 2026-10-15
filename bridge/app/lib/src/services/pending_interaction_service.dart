@@ -1,5 +1,6 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../repositories/external_action_repository.dart";
 import "../repositories/models/session_operation.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/question_repository.dart";
@@ -9,6 +10,7 @@ import "session_operation_dispatcher.dart";
 class PendingInteractionService({
   required final PermissionRepository _permissionRepository,
   required final QuestionRepository _questionRepository,
+  required final ExternalActionRepository _externalActionRepository,
   required final SessionOperationDispatcher _dispatcher,
   required final ArchivedSessionValidator _archivedSessionValidator,
 }) {
@@ -72,11 +74,23 @@ class PendingInteractionService({
     );
   }
 
+  Future<ExternalActionReplyResult> replyToExternalAction({required ReplyToExternalActionRequest request}) {
+    if (_disposed) return _disposedFuture();
+    return _dispatcher.dispatch(
+      sessionId: request.sessionId,
+      operation: SessionOperation.replyToExternalAction,
+      body: () async {
+        await _archivedSessionValidator.requireNotArchived(sessionId: request.sessionId);
+        return await _externalActionRepository.reply(request: request);
+      },
+    );
+  }
+
   void dispose() {
     _disposed = true;
   }
 
-  Future<void> _disposedFuture() => Future<void>.error(
+  Future<T> _disposedFuture<T>() => Future<T>.error(
     StateError("PendingInteractionService is disposed"),
     StackTrace.current,
   );

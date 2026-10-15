@@ -152,7 +152,10 @@ class ClaudeStreamClient({
     );
 
     try {
-      _handshake = await sendControlRequest(subtype: "initialize");
+      _handshake = await sendControlRequest(
+        subtype: "initialize",
+        params: const {"elicitation": <String, Object?>{}},
+      );
     } on Object catch (error, stack) {
       if (!_disposed) Log.e("[$_logTag] initialize handshake failed", error, stack);
       await _teardownConnection(
@@ -203,8 +206,8 @@ class ClaudeStreamClient({
       return ClaudeMcpStatusDto.fromJson(response);
     } on FormatException catch (error, stackTrace) {
       Error.throwWithStackTrace(ClaudeMcpStatusFormatException(innerError: error), stackTrace);
-    // Generated DTO casts can fail when the native JSON shape changes.
-    // ignore: avoid_catching_errors
+      // Generated DTO casts can fail when the native JSON shape changes.
+      // ignore: avoid_catching_errors
     } on TypeError catch (error, stackTrace) {
       Error.throwWithStackTrace(ClaudeMcpStatusTypeException(innerError: error), stackTrace);
     }

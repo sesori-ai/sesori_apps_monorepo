@@ -103,6 +103,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
   }) {
     final id = _generateId();
     final snapshot = PluginPendingQuestion(
+      interactionKind: PluginQuestionInteractionKind.question,
       id: id,
       sessionID: sessionId,
       displaySessionId: displaySessionId,
@@ -111,6 +112,7 @@ abstract class PendingPermissionRegistry<TRequest, TPayload extends Object>({
     _pending[id] = _PendingQuestionEntry(payload: payload, snapshot: snapshot);
     _emit(
       BridgeSseQuestionAsked(
+        interactionKind: PluginQuestionInteractionKind.question,
         id: id,
         sessionID: sessionId,
         displaySessionId: displaySessionId,

@@ -5761,6 +5761,24 @@ abstract class AppLocalizations {
   /// **'Manage connection'**
   String get mcpManageConnection;
 
+  /// No description provided for @mcpNativeRequestTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP request'**
+  String get mcpNativeRequestTitle;
+
+  /// No description provided for @mcpNativeRequestClientUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This client cannot complete this MCP request. You can cancel it here.'**
+  String get mcpNativeRequestClientUnsupported;
+
+  /// No description provided for @mcpCancelRequest.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel request'**
+  String get mcpCancelRequest;
+
   /// No description provided for @mcpReconnect.
   ///
   /// In en, this message translates to:

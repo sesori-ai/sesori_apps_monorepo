@@ -3366,6 +3366,7 @@ class SessionDetailCubit(
     return pendingQuestions
         .map(
           (q) => SesoriQuestionAsked(
+            interactionKind: q.interactionKind,
             id: q.id,
             sessionID: q.sessionID,
             displaySessionId: q.displaySessionId,

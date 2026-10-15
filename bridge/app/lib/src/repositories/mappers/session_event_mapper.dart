@@ -280,19 +280,27 @@ class const SessionEventMapper() {
           ),
         _ => null,
       },
-      BridgeSseQuestionAsked(:final id, :final sessionID, :final displaySessionId, :final questions) => switch ((
-        mapped(sessionID),
-        mappedOptional(displaySessionId),
-      )) {
-        (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
-          BridgeSseQuestionAsked(
-            id: id,
-            sessionID: sessionId,
-            displaySessionId: displayId,
-            questions: questions,
-          ),
-        _ => null,
-      },
+      BridgeSseQuestionAsked(
+        :final id,
+        :final sessionID,
+        :final displaySessionId,
+        :final questions,
+        :final interactionKind,
+      ) =>
+        switch ((
+          mapped(sessionID),
+          mappedOptional(displaySessionId),
+        )) {
+          (final sessionId?, final displayId) when displaySessionId == null || displayId != null =>
+            BridgeSseQuestionAsked(
+              interactionKind: interactionKind,
+              id: id,
+              sessionID: sessionId,
+              displaySessionId: displayId,
+              questions: questions,
+            ),
+          _ => null,
+        },
       BridgeSseQuestionReplied(:final requestID, :final sessionID, :final displaySessionId) => switch ((
         mapped(sessionID),
         mappedOptional(displaySessionId),

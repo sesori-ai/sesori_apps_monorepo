@@ -181,6 +181,7 @@ class SseEventMapper({final AssistantMessageMapper _assistantMessageMapper = con
       ),
       SsePermissionUpdated() => const BridgeSsePermissionUpdated(),
       SseQuestionAsked(:final id, :final sessionID, :final questions) => BridgeSseQuestionAsked(
+        interactionKind: PluginQuestionInteractionKind.question,
         id: id,
         sessionID: sessionID,
         displaySessionId: displaySessionId,

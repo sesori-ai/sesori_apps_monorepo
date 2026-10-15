@@ -101,6 +101,7 @@ class const PluginModelMapper({
 
   PluginPendingQuestion mapQuestion(QuestionRequest question, {required String? displaySessionId}) {
     return PluginPendingQuestion(
+      interactionKind: PluginQuestionInteractionKind.question,
       id: question.id,
       sessionID: question.sessionID,
       displaySessionId: displaySessionId,

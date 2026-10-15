@@ -709,7 +709,12 @@ no-browser URL/paste journey. Codex completion must be correlated by the
 adapter; a browser open does not confirm success. Claude live-session reconnect
 and enable/disable are **implemented** as Sesori management actions. Claude plugin
 HTTP authentication, its headless attempt routes and shared client controls are
-implemented. Elicitation and the remaining native-supported management rows are
+implemented. Claude session URL elicitation has **implemented** headless snapshot
+and accept/decline/cancel routes, using the original native request owner. URL
+support requires Claude 2.1.291; 2.1.221 rejects it before forwarding. Current
+clients show an explicit cancel-only handoff until the planned browser/consent UI
+lands. Form elicitation is **not implemented**: it is declined with an in-session
+warning. Codex elicitation and the remaining native-supported management rows are
 **not implemented**.
 
 The Claude native plugin authentication API is **implemented** for an existing

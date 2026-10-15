@@ -23,6 +23,95 @@ void main() {
     bool handle({required String sessionId, required ClaudeControlRequestMessage message}) =>
         registry.handle(sessionId: sessionId, message: message);
 
+    test("native URL elicitation exposes only a typed cancel notice in broadcasts", () {
+      expect(
+        handle(
+          sessionId: "session-1",
+          message: _urlElicitation(),
+        ),
+        isTrue,
+      );
+      final notice = registry.pendingQuestionsForSession(sessionId: "session-1").single;
+      expect(notice.interactionKind, PluginQuestionInteractionKind.externalAction);
+      expect(notice.questions.single.custom, isFalse);
+      expect(notice.questions.single.options.map((option) => option.label), ["Cancel"]);
+      expect(notice.toString(), isNot(contains("https://fixture.example")));
+      final event = events.whereType<BridgeSseQuestionAsked>().single;
+      expect(event.interactionKind, PluginQuestionInteractionKind.externalAction);
+      expect(event.questions.toString(), isNot(contains("https://fixture.example")));
+      expect(responses, isEmpty);
+    });
+
+    for (final choice in PluginExternalActionChoice.values) {
+      test("URL ${choice.name} preserves the native request and exact reply", () {
+        handle(sessionId: "session-1", message: _urlElicitation());
+        final pending = registry.pendingExternalActionsForSession(sessionId: "session-1").single;
+        expect(pending.authorizationUrl, "https://fixture.example/setup?private=fixture-only");
+        expect(pending.purpose, PluginExternalActionPurpose.authorization);
+        expect(pending.choices, PluginExternalActionChoice.values);
+        expect(pending.toString(), isNot(contains("https://fixture.example")));
+        expect(
+          registry.replyExternalAction(id: pending.id, sessionId: "other-session", choice: choice),
+          PluginExternalActionReply.alreadySettled,
+        );
+        expect(responses, isEmpty);
+        expect(registry.pendingExternalActionsForSession(sessionId: "session-1"), hasLength(1));
+        expect(
+          registry.replyExternalAction(id: pending.id, sessionId: "session-1", choice: choice),
+          PluginExternalActionReply.accepted,
+        );
+        expect(responses.single.requestId, "native-url-request");
+        expect(responses.single.sessionId, "session-1");
+        expect(responses.single.payload, {"action": choice.name});
+        expect(registry.pendingExternalActionsForSession(sessionId: "session-1"), isEmpty);
+        expect(registry.pendingQuestionsForSession(sessionId: "session-1"), isEmpty);
+        expect(
+          registry.replyExternalAction(id: pending.id, sessionId: "session-1", choice: choice),
+          PluginExternalActionReply.alreadySettled,
+        );
+        expect(responses, hasLength(1));
+      });
+    }
+
+    test("failed URL reply remains pending and teardown uses native cancellation", () {
+      var available = false;
+      registry = ClaudeApprovalRegistry(
+        emit: events.add,
+        respond: ({required sessionId, required requestId, required payload}) {
+          if (!available) return false;
+          responses.add((sessionId: sessionId, requestId: requestId, payload: payload));
+          return true;
+        },
+      );
+      handle(sessionId: "session-1", message: _urlElicitation());
+      events.clear();
+      expect(
+        registry.replyExternalAction(id: "br-1", sessionId: "session-1", choice: PluginExternalActionChoice.accept),
+        PluginExternalActionReply.unavailable,
+      );
+      expect(registry.pendingExternalActionsForSession(sessionId: "session-1"), hasLength(1));
+      expect(events, isEmpty);
+      available = true;
+      registry.cancelForSession(sessionId: "session-1");
+      expect(responses.single.payload, {"action": "cancel"});
+      expect(responses.single.requestId, "native-url-request");
+      expect(registry.hasPendingInput(sessionId: "session-1"), isFalse);
+      expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+    });
+
+    test("unsupported native forms are declined with a visible capability explanation", () {
+      expect(
+        handle(
+          sessionId: "session-1",
+          message: _request(requestId: "native-form", request: {"subtype": "elicitation", "mode": "form"}),
+        ),
+        isTrue,
+      );
+      expect(responses.single.payload, {"action": "decline"});
+      expect(events.whereType<BridgeSseTuiToastShow>().single.message, contains("not supported"));
+      expect(registry.hasPendingInput(sessionId: "session-1"), isFalse);
+    });
+
     test("surfaces a permission with sanitized detail and capability", () {
       expect(
         handle(
@@ -328,6 +417,18 @@ void main() {
     });
   });
 }
+
+ClaudeControlRequestMessage _urlElicitation() => _request(
+  requestId: "native-url-request",
+  request: {
+    "subtype": "elicitation",
+    "mode": "url",
+    "mcp_server_name": "Fixture server",
+    "message": "Authorize the fixture connection",
+    "url": "https://fixture.example/setup?private=fixture-only",
+    "elicitation_id": "native-elicitation",
+  },
+);
 
 ClaudeControlRequestMessage _permission({
   List<Map<String, Object?>> suggestions = const [],

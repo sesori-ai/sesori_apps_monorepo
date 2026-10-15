@@ -106,8 +106,15 @@ class BridgeEventMapper({
             reply: reply,
           ),
         BridgeSsePermissionUpdated() => const SesoriSseEvent.permissionUpdated(),
-        BridgeSseQuestionAsked(:final id, :final sessionID, :final displaySessionId, :final questions) =>
+        BridgeSseQuestionAsked(
+          :final id,
+          :final sessionID,
+          :final displaySessionId,
+          :final questions,
+          :final interactionKind,
+        ) =>
           SesoriSseEvent.questionAsked(
+            interactionKind: interactionKind.toShared(),
             id: id,
             sessionID: sessionID,
             displaySessionId: displaySessionId,

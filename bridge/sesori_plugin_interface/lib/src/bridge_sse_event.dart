@@ -135,6 +135,7 @@ class const BridgeSsePermissionReplied({
 class const BridgeSsePermissionUpdated() extends BridgeSseEvent;
 
 class const BridgeSseQuestionAsked({
+  required final PluginQuestionInteractionKind interactionKind,
   required final String id,
   required final String sessionID,
 

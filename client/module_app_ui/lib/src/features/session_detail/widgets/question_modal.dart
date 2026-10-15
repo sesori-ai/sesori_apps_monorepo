@@ -4,6 +4,7 @@ import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
@@ -258,8 +259,6 @@ class _QuestionModalState() extends State<QuestionModal> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final info = _currentInfo;
-    final draft = _currentDraft;
     final screenHeight = MediaQuery.heightOf(context);
     final keyboard = MediaQuery.viewInsetsOf(context).bottom;
     // Mirror the inset PregoBottomSheet adds below the body so the cap below
@@ -270,6 +269,40 @@ class _QuestionModalState() extends State<QuestionModal> {
     // the sheet's own cap and scrolls inside the Flexible list while the
     // actions stay pinned.
     final maxBody = screenHeight - widget.topInset - PregoBottomSheet.contentTopInset - bottomInset;
+    if (widget.question.interactionKind != QuestionInteractionKind.question) {
+      return PregoModalSurface(
+        title: loc.mcpNativeRequestTitle,
+        subtitle: null,
+        topInset: widget.topInset,
+        onBack: null,
+        onClose: _dismissModal,
+        width: PregoModalWidth.request,
+        handleBottomSafeArea: true,
+        child: ConstrainedBox(
+          constraints: BoxConstraints(maxHeight: math.max(maxBody, screenHeight * 0.3)),
+          child: SingleChildScrollView(
+            padding: const EdgeInsets.all(PregoSpacing.lg),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Text(loc.mcpNativeRequestClientUnsupported),
+                const SizedBox(height: PregoSpacing.lg),
+                PregoButtonsSolid(
+                  label: loc.mcpCancelRequest,
+                  hierarchy: PregoButtonsSolidHierarchy.secondary,
+                  size: PregoButtonsSolidSize.md,
+                  fullWidth: true,
+                  onPressed: _onReject,
+                ),
+              ],
+            ),
+          ),
+        ),
+      );
+    }
+    final info = _currentInfo;
+    final draft = _currentDraft;
     // In a compact landscape/keyboard viewport, the header still provides Back
     // navigation. Let the question content keep the limited vertical space
     // instead of overflowing fixed navigator and helper rows.

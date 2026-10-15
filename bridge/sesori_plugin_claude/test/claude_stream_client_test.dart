@@ -15,6 +15,7 @@ void main() {
 
       final request = await waitForFrame(connected.fake, "control_request");
       expect((request["request"]! as Map)["subtype"], "initialize");
+      expect((request["request"]! as Map)["elicitation"], isEmpty);
 
       // One handshake yields commands, agents and models together, which is
       // why the catalog service needs no separate startup probes.

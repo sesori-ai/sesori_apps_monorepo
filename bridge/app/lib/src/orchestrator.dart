@@ -65,6 +65,7 @@ import "repositories/attachment_thumbnail_builder.dart";
 import "repositories/bridge_settings_repository.dart";
 import "repositories/catalog_import_repository.dart";
 import "repositories/chat_history_repository.dart";
+import "repositories/external_action_repository.dart";
 import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
@@ -121,6 +122,7 @@ import "routing/get_queued_prompts_handler.dart";
 import "routing/get_session_attachment_handler.dart";
 import "routing/get_session_diff_summary_handler.dart";
 import "routing/get_session_diffs_handler.dart";
+import "routing/get_session_external_actions_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
 import "routing/get_session_messages_through_handler.dart";
@@ -148,6 +150,7 @@ import "routing/post_session_options_handler.dart";
 import "routing/reject_question_handler.dart";
 import "routing/rename_project_handler.dart";
 import "routing/rename_session_handler.dart";
+import "routing/reply_to_external_action_handler.dart";
 import "routing/reply_to_permission_handler.dart";
 import "routing/reply_to_question_handler.dart";
 import "routing/request_router.dart";
@@ -500,9 +503,14 @@ class Orchestrator({
       projectsDao: _database.projectsDao,
       aggregateSourceDeadline: aggregateSourceDeadline,
     );
+    final externalActionRepository = ExternalActionRepository(
+      runtime: _pluginRuntime,
+      pendingSupport: pendingInteractionSupport,
+    );
     final pendingInteractionService = PendingInteractionService(
       permissionRepository: permissionRepository,
       questionRepository: questionRepository,
+      externalActionRepository: externalActionRepository,
       dispatcher: sessionOperationDispatcher,
       archivedSessionValidator: archivedSessionValidator,
     );
@@ -753,12 +761,14 @@ class Orchestrator({
         GetProvidersHandler(providerRepository),
         PostAgentsHandler(agentRepository),
         GetSessionQuestionsHandler(questionRepository: questionRepository),
+        GetSessionExternalActionsHandler(repository: externalActionRepository),
         GetProjectQuestionsHandler(questionRepository: questionRepository),
         GetSessionPermissionsHandler(
           permissionRepository: permissionRepository,
           permissionAutoApprovalService: permissionAutoApprovalService,
         ),
         ReplyToQuestionHandler(pendingInteractionService: pendingInteractionService),
+        ReplyToExternalActionHandler(service: pendingInteractionService),
         RejectQuestionHandler(pendingInteractionService: pendingInteractionService),
         ReplyToPermissionHandler(pendingInteractionService: pendingInteractionService),
         RenameProjectHandler(projectRepository),
