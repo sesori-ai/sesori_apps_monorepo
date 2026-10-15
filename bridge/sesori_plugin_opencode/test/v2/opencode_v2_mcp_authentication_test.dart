@@ -3,6 +3,7 @@ import "dart:convert";
 
 import "package:http/http.dart" as http;
 import "package:http/testing.dart";
+import "package:opencode_plugin/src/models/open_code_mcp_login_challenge.dart";
 import "package:opencode_plugin/src/open_code_raw_http_client.dart";
 import "package:opencode_plugin/src/v2/api/opencode_v2_api.dart";
 import "package:opencode_plugin/src/v2/models/v2_mcp_authentication.dart";
@@ -142,15 +143,17 @@ class _Observation({required final PluginMcpCancelableAuthentication operation})
 }
 
 void main() {
-  test("OAuth diagnostic redaction preserves endpoint and non-secret context", () {
+  test("OAuth query and fragment redaction preserves endpoint and non-secret context", () {
     expect(
-      redactMcpOAuthQuerySecrets(
+      redactMcpOAuthParameterSecrets(
         message:
             "Rejected https://fixture.invalid/callback?code=secret-code&state=secret-state&reason=denied "
-            "http://localhost/token?access_token=secret-access&refresh_token=secret-refresh&client_secret=secret-client",
+            "http://localhost/token?access_token=secret-access&refresh_token=secret-refresh&client_secret=secret-client "
+            "https://fixture.invalid/callback#access_token=fragment-access&state=fragment-state",
       ),
       "Rejected https://fixture.invalid/callback?code=[redacted]&state=[redacted]&reason=denied "
-      "http://localhost/token?access_token=[redacted]&refresh_token=[redacted]&client_secret=[redacted]",
+      "http://localhost/token?access_token=[redacted]&refresh_token=[redacted]&client_secret=[redacted] "
+      "https://fixture.invalid/callback#access_token=[redacted]&state=[redacted]",
     );
   });
 

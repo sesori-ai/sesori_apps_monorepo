@@ -5,8 +5,18 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAgent,
         PluginCommand,
         PluginCommandSource,
+        PluginMcpAuthenticationCallbackRejectedException,
+        PluginMcpAuthenticationCompleted,
+        PluginMcpAuthenticationEvent,
+        PluginMcpAuthenticationFailed,
+        PluginMcpAuthenticationFailureReason,
+        PluginMcpAuthenticationUnavailableException,
+        PluginMcpAuthenticationUnavailableReason,
+        PluginMcpHarnessScope,
         PluginMcpInventorySnapshot,
+        PluginMcpProjectScope,
         PluginMcpScope,
+        PluginMcpSessionScope,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -18,11 +28,19 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions, maxTranscriptImageCollectionBytes, wait2;
 
 import "message_part_mapper.dart";
+import "models/open_code_mcp_api_exception.dart";
+import "models/open_code_mcp_authentication.dart";
+import "models/open_code_mcp_authentication_dto.dart";
+import "models/open_code_mcp_login_challenge.dart";
 import "models/openapi/assistant_message.g.dart";
 import "models/openapi/command.g.dart";
 import "models/openapi/compaction_part.g.dart";
 import "models/openapi/global_session.g.dart";
+import "models/openapi/mcpstatus.g.dart";
+import "models/openapi/mcpstatus_connected.g.dart";
+import "models/openapi/mcpstatus_disabled.g.dart";
 import "models/openapi/mcpstatus_failed.g.dart";
+import "models/openapi/mcpstatus_needs_auth.g.dart";
 import "models/openapi/mcpstatus_needs_client_registration.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
@@ -82,14 +100,133 @@ class OpenCodeRepository(final OpenCodeApi _api) {
 
   OpenCodeApi get api => _api;
 
+  Future<String?> getMcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
+    PluginMcpHarnessScope() => null,
+    PluginMcpProjectScope(:final projectId) => projectId,
+    PluginMcpSessionScope(:final sessionId) => await getSessionDirectory(sessionId: sessionId),
+  };
+
   Future<PluginMcpInventorySnapshot> getMcpInventory({required String directory, required PluginMcpScope scope}) async {
-    final servers = await _api.getMcpStatus(directory: directory);
+    final (servers, configuration) = await wait2(
+      _api.getMcpStatus(directory: directory),
+      _api.getMcpConfiguration(directory: directory),
+    );
     for (final server in servers.entries) {
       if (server.value case MCPStatusFailed(:final error) || MCPStatusNeedsClientRegistration(:final error)) {
         Log.w("[opencode-v1] MCP server ${server.key} in $directory", error);
       }
     }
-    return const OpenCodeMcpMapper().map(servers: servers, scope: scope);
+    return const OpenCodeMcpMapper().map(servers: servers, scope: scope, configuration: configuration.mcp);
+  }
+
+  Future<({OpenCodeMcpAuthenticationTarget target, MCPStatus status, OpenCodeMcpOAuthParametersDto oauth, String url})>
+  _mcpAuthenticationTarget({
+    required String directory,
+    required String name,
+  }) async {
+    final (servers, configuration) = await wait2(
+      _api.getMcpStatus(directory: directory),
+      _api.getMcpConfiguration(directory: directory),
+    );
+    final status = servers[name];
+    final config = configuration.mcp[name];
+    if (status == null || config == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.targetNotFound,
+      );
+    }
+    final oauth = config.oauth;
+    if (config.transport != OpenCodeMcpTransport.remote || oauth is! OpenCodeMcpOAuthEnabled || config.url == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.notSupported,
+      );
+    }
+    return (
+      target: OpenCodeMcpAuthenticationTarget(directory: directory, name: name),
+      status: status,
+      oauth: oauth.parameters,
+      url: config.url!,
+    );
+  }
+
+  Future<OpenCodeMcpAuthenticationTarget> prepareMcpAuthentication({
+    required String directory,
+    required String name,
+  }) async {
+    final native = await _mcpAuthenticationTarget(directory: directory, name: name);
+    if (native.status is MCPStatusNeedsClientRegistration ||
+        !supportsOpenCodeMcpRemoteUrl(value: native.url) ||
+        !supportsOpenCodeMcpCallbackOverride(value: native.oauth.redirectUri)) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+      );
+    }
+    return native.target;
+  }
+
+  Future<OpenCodeMcpAuthenticationStart> startMcpAuthentication({
+    required OpenCodeMcpAuthenticationTarget target,
+  }) async {
+    final OpenCodeMcpAuthenticationResponseDto response;
+    try {
+      response = await _api.startMcpAuthentication(directory: target.directory, name: target.name);
+    } on OpenCodeMcpStartRejectedException catch (error, stackTrace) {
+      Log.w("[opencode-v1] Native MCP start rejected for ${target.name}", error.innerError, stackTrace);
+      Error.throwWithStackTrace(OpenCodeMcpAuthenticationStartRejected(innerError: error.innerError), stackTrace);
+    }
+    if (response.authorizationUrl.isEmpty) return const OpenCodeMcpAlreadyAuthorized();
+    final challenge = OpenCodeMcpLoginChallenge.parse(value: response.authorizationUrl);
+    if (challenge.state != response.oauthState) throw const FormatException("Native MCP OAuth state mismatch");
+    return OpenCodeMcpAuthenticationChallenge(challenge: challenge);
+  }
+
+  Future<PluginMcpAuthenticationEvent> completeMcpAuthentication({
+    required OpenCodeMcpAuthenticationTarget target,
+    required OpenCodeMcpLoginChallenge challenge,
+    required Uri callbackUri,
+  }) async {
+    try {
+      challenge.validateCallback(callback: callbackUri);
+      if (callbackUri.queryParameters.containsKey("error")) {
+        throw const FormatException("Native OpenCode v1 cannot safely settle a provider-denial callback");
+      }
+    } on FormatException catch (error, stackTrace) {
+      Error.throwWithStackTrace(PluginMcpAuthenticationCallbackRejectedException(innerError: error), stackTrace);
+    }
+    final status = await _api.completeMcpAuthentication(
+      directory: target.directory,
+      name: target.name,
+      code: callbackUri.queryParameters["code"]!,
+    );
+    switch (status) {
+      case MCPStatusConnected() || MCPStatusDisabled():
+        return const PluginMcpAuthenticationCompleted();
+      case MCPStatusFailed(:final error) || MCPStatusNeedsClientRegistration(:final error):
+        Log.w(
+          "[opencode-v1] Native MCP authentication failed for ${target.name}",
+          redactMcpOAuthParameterSecrets(message: error),
+        );
+        return PluginMcpAuthenticationFailed(
+          reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+          cause: OpenCodeMcpAuthenticationException(innerError: StateError(error)),
+          causeStackTrace: StackTrace.current,
+        );
+      case MCPStatusNeedsAuth():
+        return PluginMcpAuthenticationFailed(
+          reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+          cause: OpenCodeMcpAuthenticationException(
+            innerError: StateError("Native MCP authentication did not connect"),
+          ),
+          causeStackTrace: StackTrace.current,
+        );
+      default:
+        throw OpenCodeMcpAuthenticationException(innerError: StateError("Unknown native MCP callback outcome"));
+    }
+  }
+
+  Future<void> forgetMcpAuthentication({required String directory, required String name}) async {
+    final native = await _mcpAuthenticationTarget(directory: directory, name: name);
+    await _api.forgetMcpAuthentication(directory: native.target.directory, name: native.target.name);
   }
 
   Future<String> getSessionDirectory({required String sessionId}) async =>

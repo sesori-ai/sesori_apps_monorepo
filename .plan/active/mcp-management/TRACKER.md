@@ -3,10 +3,11 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-opencode-v2-oauth`, in the provided `copper-heron` worktree.
-- Current step: 33/37 OpenCode v2 native authentication ownership is in review.
-  Parent 32/37 merged as [#2008][pr-2008] at accepted head `c4e41691cb`.
-  Latest squash: `a0e1d6c3e4`, with 19 passing pre-merge and 20 terminal checks.
+- Branch: `sesori/mcp-opencode-v1-oauth`, in the provided `copper-heron` worktree.
+- Current step: 34/37 OpenCode v1 native authentication ownership is in review
+  as [#2010][pr-2010].
+  Parent 33/37 merged as [#2009][pr-2009] at accepted head `760ec2e428`.
+  Latest squash: `37f62d4837`, with 19 passing pre-merge and 20 terminal checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
   Split contracts, v2 ownership and v1 ownership for review; final qualification is unchanged.
   Native recording remains deferred by the user.
@@ -61,12 +62,13 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 30/37 | OpenCode v2 inventory/controls (11.a) | Merged | [#2006][pr-2006]; evidence below |
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
-| 33/37 | OpenCode v2 authentication owner (11.c.2) | In review | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | Not started | — |
+| 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; both native pins |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
+[pr-2010]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2010
 [pr-2009]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2009
 [pr-2008]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2008
 [pr-2007]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2007
@@ -78,6 +80,66 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-34 third PR review reproduced a malformed remote URL reaching native
+  authentication HTTP 500 at 1.17.7 and retaining uncertain ownership. Shared
+  HTTP(S)/host preflight now blocks sign-in before native mutation; forgetting
+  remains independent. Empty and malformed URL regressions bring the focused
+  suite to 137 passing cases (180 unique across affected runs); owning analysis
+  is clean. Both exact v1 pins verify zero authentication writes/token exchanges
+  for malformed configuration (1.14.17 already rejects native inventory), plus
+  successful disabled sign-in/forget/sign-in with unchanged configuration.
+  Corrected the control-layer documentation: the service validates fresh targets,
+  while the repository resolves scopes and maps native reads/mutations.
+- Step-34 second PR review rejects configured callbacks with reserved OAuth
+  response keys before start. The shared scope resolver moves into the existing
+  repository, so general controls and authentication share one mapping without a
+  service-to-service dependency or duplicated policy. All 135 directly affected
+  authentication/controls/concrete-plugin cases and owning analysis pass (178
+  unique across affected runs). Both exact v1 pins verify reserved-key preflight
+  without mutation and successful exact-session authentication after the move,
+  preserving disabled state and configuration. Earlier architecture approvals
+  retain their recorded scopes; no third review is invoked for these corrections.
+- Step-34 PR review preserves only non-secret OAuth redirect metadata in a
+  disabled/enabled configuration sum. Unsupported callback overrides now declare
+  native configuration requirements before start; forgetting stays independent.
+  Both exact v1 pins reject the override through the production owner with no
+  native mutation. Disabled callback results complete authentication after native
+  token persistence; both pins verify two token exchanges without enabling the
+  server or changing configuration. Known OAuth query and fragment secrets are
+  redacted while useful paths and diagnostic context remain under local-log rules.
+  All 80 directly affected cases and owning analysis pass; 95 earlier affected
+  API/repository/plugin cases remain unchanged (175 unique cases across runs).
+  Source generation passes. The pure challenge value retains its invariant
+  methods; no separate parser/lifecycle collaborator is justified by that review
+  suggestion. Native recording and original final qualification remain pending.
+  Final architecture implementation review approved (pass 2) on `ff8c9447d1`;
+  the full reviewed step is 1,460 lines, including 231 generated lines.
+- Step 33 merged at accepted head `760ec2e428`, squash `37f62d4837`, with
+  all 19 pre-merge and 20 terminal checks passing. Cubic approved, current-head
+  Code/Security reviews completed, and four architecture/native-shape suggestions
+  remain intentionally open with reasoned replies. The challenge invariant stays
+  with its immutable value; no extra parser/cadence owner is introduced.
+  Step-34 integration preserves the entire tested successor tree and diff exactly:
+  SHA-256 `a175adba77e28a62a5a5dcce72f6a969a765517469e9c2c60b36e6911e1a0254`.
+- Step-34 architecture plan review approved the minimal v1 configuration
+  projection, existing scope resolver, manual callback owner and shared plugin
+  callback validator. Native DELETE auth destroys credentials, so this operation
+  exposes native settlement without cancellation. Provider denial cannot safely
+  settle native work; retirement logs unavailable cleanup for attached runtimes.
+  Both exact 1.14.17/1.17.7 production owners pass exact session attribution,
+  manual callback completion, harness-profile forgetting and sign-in again.
+  Configuration bytes are unchanged and two fixture token exchanges are verified
+  per pin. All 77 authentication/controls/shared-validator cases and 95 affected
+  v1 API/repository/plugin cases pass (172 total); owning analysis is clean.
+  Both v2 native owner flows pass after validator extraction. V1 callback failure
+  diagnostics reuse the existing OAuth query redactor beside that validator.
+  Native 1.14.17 already-authorized serialization failure
+  remains uncertain; 1.17.7's explicit no-challenge maps to completion. Analytics
+  assessment retains the existing shared lifecycle seam and adds no tap event.
+  Architecture implementation review approved the final 1,266-line diff (1,079
+  authored, 187 generated, 21 files). Synthetic before/after controls are hosted
+  on orphan pr-media commit `652da40b9907b4bdbf6b35a90146235c228df8e1`.
+  Recording and original provider/package/relay/device/L4 gates remain pending.
 - Step-33 PR review fixes cancellation before subscription, waits for a pending
   start handle within runtime teardown's existing budget, and settles confirmed
   attempt disappearance as unresolved failure outside acknowledged cancellation.
