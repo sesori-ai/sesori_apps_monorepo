@@ -237,9 +237,11 @@ class RegisteredBridgesService({
     final generation = _authGeneration;
     final response = await _bridgeRepository.deleteBridge(bridgeId: bridgeId);
     if (response is SuccessResponse && generation == _authGeneration) {
-      _emitBridges(
-        bridges: List<BridgeSummary>.unmodifiable(_bridges.value.where((bridge) => bridge.id != bridgeId)),
-      );
+      final remaining = List<BridgeSummary>.unmodifiable(_bridges.value.where((bridge) => bridge.id != bridgeId));
+      // An empty list is never current, as after a fetch that finds none, so
+      // the next caller asks the server and sees a computer that signs in.
+      if (remaining.isEmpty) _bridgesCurrent = false;
+      _emitBridges(bridges: remaining);
       _afterMutation(action: ComputerManageAction.removed);
     }
     return response;

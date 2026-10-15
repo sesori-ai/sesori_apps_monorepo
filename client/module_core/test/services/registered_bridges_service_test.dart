@@ -572,6 +572,19 @@ void main() {
       verify(() => bridgeRepository.getRegisteredBridges()).called(2);
     });
 
+    test("removing the last computer makes the next read ask the server", () async {
+      final service = await buildListed();
+      when(() => bridgeRepository.deleteBridge(bridgeId: any(named: "bridgeId")))
+          .thenAnswer((_) async => ApiResponse.success(null));
+      await service.remove(bridgeId: "a");
+      await service.remove(bridgeId: "b");
+      clearInteractions(bridgeRepository);
+
+      await service.getRegisteredBridges();
+
+      verify(() => bridgeRepository.getRegisteredBridges()).called(1);
+    });
+
     test("a failure leaves the list unchanged, is returned, and reports nothing", () async {
       final failure = ApiError.nonSuccessCode(errorCode: 503, rawErrorString: "offline");
       when(
