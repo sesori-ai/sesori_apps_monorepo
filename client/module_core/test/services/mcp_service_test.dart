@@ -95,12 +95,19 @@ void main() {
 
   test("failed setup resolution does not launch or claim an uncertain native mutation", () async {
     await load();
-    final operation = service.executeAction(action: setupAction);
-    repository.actions.single.complete(McpActionRequestFailed(cause: ApiError.generic()));
-    await operation;
+    final logs = <String>[];
+    final cause = ApiError.generic();
+    await runZoned(() async {
+      final operation = service.executeAction(action: setupAction);
+      repository.actions.single.complete(McpActionRequestFailed(cause: cause));
+      await operation;
+    }, zoneSpecification: ZoneSpecification(print: (_, _, _, line) => logs.add(line)));
     expect(service.currentAction, isA<McpConnectorSetupFailed>());
     expect(launcher.urls, isEmpty);
     expect(repository.requests, hasLength(1));
+    expect(logs.join("\n"), contains("MCP connector setup resolution failed for fixture"));
+    expect(logs.join("\n"), contains(setupAction.offerTarget.toString()));
+    expect(logs.join("\n"), contains(cause.toString()));
   });
 
   for (final throws in [false, true]) {

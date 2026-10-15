@@ -50,6 +50,7 @@ class const McpServerControlsView({required final McpServerTarget target, super.
     final server = snapshot?.entries.whereType<McpServerSnapshot>().where((s) => s.serverTarget == target).firstOrNull;
     final actionState = context.watch<McpActionCubit>().state;
     final status = switch (actionState) {
+      McpActionPending(:final request) ||
       McpActionReceivedState(:final request) ||
       McpConnectorSetupOpened(:final request) ||
       McpConnectorSetupFailed(:final request) ||

@@ -90,6 +90,10 @@ class McpService({
     switch (response) {
       case McpActionRequestFailed(:final cause):
         if (action is McpConnectorSetupEntryAction) {
+          loge(
+            "MCP connector setup resolution failed for ${operation.pluginId} / ${action.offerTarget.toString()}",
+            cause,
+          );
           _actions.add(McpConnectorSetupFailed(request: operation));
           return;
         }
