@@ -308,7 +308,13 @@ class RegisteredBridgesService({
       return;
     }
     // The running fetch may predate the change, so fetch again once it settles.
-    unawaited(running.then<void>((_) {}, onError: (Object _) {}).whenComplete(_refetchAfterRunningFetch));
+    // A fetch already started by then reads the changed list, so changes queued
+    // behind the same running fetch share one refetch.
+    unawaited(
+      running.then<void>((_) {}, onError: (Object _) {}).whenComplete(() {
+        if (_activeFetch == null) _refetchAfterRunningFetch();
+      }),
+    );
   }
 
   void _onConnectionStatusChanged(ConnectionStatus status) {

@@ -544,8 +544,12 @@ void main() {
 
     test("a fetch that started before a removal cannot bring the computer back", () async {
       final service = await buildListed();
+      clearInteractions(bridgeRepository);
       final staleFetch = Completer<ApiResponse<List<BridgeSummary>>>();
-      final responses = [staleFetch.future, Future.value(ApiResponse.success([desktop]))];
+      final responses = [
+        staleFetch.future,
+        Future.value(ApiResponse.success([desktop])),
+      ];
       when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => responses.removeAt(0));
       when(() => bridgeRepository.deleteBridge(bridgeId: "a")).thenAnswer((_) async => ApiResponse.success(null));
       // An unknown computer's notice starts a fetch that reads the list before the removal.
@@ -553,10 +557,14 @@ void main() {
       await _settle();
 
       await service.remove(bridgeId: "a");
+      // A second unknown notice queues behind the same stale fetch and shares its refetch.
+      connectionService.emitBridgePresence(bridgeId: "d", online: true);
       staleFetch.complete(ApiResponse.success([laptop, desktop]));
       await _settle();
 
       expect(service.bridges.value, [desktop]);
+      expect(responses, isEmpty);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(2);
     });
 
     test("a failure leaves the list unchanged, is returned, and reports nothing", () async {
