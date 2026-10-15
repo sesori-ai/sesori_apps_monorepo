@@ -1075,6 +1075,44 @@ void main() {
       expect(await harness.plugin.getPendingForms(sessionId: testSessionId), isEmpty);
     });
 
+    test("failed archive cancellation retains the native request until a successful write", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      addTearDown(subscription.cancel);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      process.emit({
+        "type": "control_request",
+        "request_id": "archive-retry",
+        "request": {
+          "subtype": "elicitation",
+          "requested_schema": {
+            "type": "object",
+            "properties": {
+              "approved": {"type": "boolean"},
+            },
+          },
+        },
+      });
+      await pump();
+      events.clear();
+      harness.allowApprovalWrites = false;
+      await harness.plugin.archiveSession(sessionId: testSessionId);
+      expect(await harness.plugin.getPendingForms(sessionId: testSessionId), hasLength(1));
+      expect(events.whereType<BridgeSseQuestionRejected>(), isEmpty);
+      harness.allowApprovalWrites = true;
+      await harness.plugin.archiveSession(sessionId: testSessionId);
+      final frame = await waitForFrame(process, "control_response");
+      expect(frame["response"], {
+        "subtype": "success",
+        "request_id": "archive-retry",
+        "response": {"action": "cancel"},
+      });
+      expect(await harness.plugin.getPendingForms(sessionId: testSessionId), isEmpty);
+      expect(events.whereType<BridgeSseQuestionRejected>(), hasLength(1));
+    });
+
     test("publishes Default prompt defaults after approving ExitPlanMode", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
@@ -1313,7 +1351,9 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     );
     approvals = ClaudeApprovalRegistry(
       emit: eventBuffer.add,
-      respond: processRepository.answerControlRequest,
+      respond: ({required sessionId, required requestId, required payload}) =>
+          allowApprovalWrites &&
+          processRepository.answerControlRequest(sessionId: sessionId, requestId: requestId, payload: payload),
     );
     sessionService = ClaudeSessionService(
       processes: processRepository,
@@ -1370,6 +1410,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
   final List<ClaudeLaunchSpec> specs = [];
   final List<FakeClaudeProcess> processes = [];
   var _idIndex = 0;
+  bool allowApprovalWrites = true;
 
   String _nextId() => _testIds[_idIndex++];
 

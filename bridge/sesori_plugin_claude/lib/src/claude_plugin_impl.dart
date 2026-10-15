@@ -219,7 +219,7 @@ final class ClaudePlugin({
 
   @override
   Future<void> archiveSession({required String sessionId}) async {
-    _approvals.cancelForSession(sessionId: sessionId);
+    _approvals.cancelForArchive(sessionId: sessionId);
   }
 
   @override

@@ -1288,7 +1288,7 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step 20 merged at accepted head `1d284e4629`, squash `feb6f77858`, with 32
   passing checks and a clean final Cubic approval. The normalized native-format
   spelling suggestion remains deliberately declined with a prefixed explanation.
-  Step 21 merged current main; each conflicting incoming document was verified
+  The Step-21 branch incorporated current main; each conflicting incoming document was verified
   byte-identical to the already incorporated parent. The merge changes no files
   from approved source `ced5e6797a`, so no unchanged passing suite was rerun.
 
@@ -1318,3 +1318,17 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   pass 1 approves all 15 changed files without findings. Initial authored churn:
   787 lines; zero generated. Native/relay/client/provider/package boundaries and
   deferred recording remain unqualified by these headless API fixtures.
+- Step-21 review regressions failed before their fixes: a failed archive write
+  lost the pending request and emitted false settlement, and equal option titles
+  discarded differentiating descriptions. Source `5d9fa31baf` retains failed
+  archive cancellations in the same owner and includes descriptions in labels,
+  preserving opaque IDs/native values. Existing teardown still retires stopped
+  requests. All 95 focused schema/registry/plugin cases and Claude analysis pass.
+- Rechecked public v1.9.1 source `8bfeda9416c96ea5de70ffc701a36b738f24eff7`:
+  its snapshot/SSE question models have no interaction-kind enum, and generated
+  decoders ignore the additive marker. All nine source/generated fixture files
+  match that release byte-for-byte; Step 17's executable proof already covers
+  both form and external-action markers. No new legacy wire fallback is needed.
+  Corrected final qualification to step 28 and clarified the branch/main merge.
+- Step-21 architecture implementation review pass 2 approved the complete PR
+  through source `5d9fa31baf`, including archive settlement, without findings.
