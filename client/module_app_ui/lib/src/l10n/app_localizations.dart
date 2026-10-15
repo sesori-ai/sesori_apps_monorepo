@@ -5754,6 +5754,270 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Read only'**
   String get mcpReadOnlyConfiguration;
+
+  /// No description provided for @mcpManageConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Manage connection'**
+  String get mcpManageConnection;
+
+  /// No description provided for @mcpReconnect.
+  ///
+  /// In en, this message translates to:
+  /// **'Reconnect'**
+  String get mcpReconnect;
+
+  /// No description provided for @mcpEnable.
+  ///
+  /// In en, this message translates to:
+  /// **'Enable'**
+  String get mcpEnable;
+
+  /// No description provided for @mcpDisable.
+  ///
+  /// In en, this message translates to:
+  /// **'Disable'**
+  String get mcpDisable;
+
+  /// No description provided for @mcpSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign in'**
+  String get mcpSignIn;
+
+  /// No description provided for @mcpForgetCredentials.
+  ///
+  /// In en, this message translates to:
+  /// **'Forget credentials'**
+  String get mcpForgetCredentials;
+
+  /// No description provided for @mcpOpenBrowser.
+  ///
+  /// In en, this message translates to:
+  /// **'Open browser'**
+  String get mcpOpenBrowser;
+
+  /// No description provided for @mcpCancelSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel sign-in'**
+  String get mcpCancelSignIn;
+
+  /// No description provided for @mcpCheckSignIn.
+  ///
+  /// In en, this message translates to:
+  /// **'Check sign-in'**
+  String get mcpCheckSignIn;
+
+  /// No description provided for @mcpActionReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a supported action.'**
+  String get mcpActionReady;
+
+  /// No description provided for @mcpActionPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Applying native action…'**
+  String get mcpActionPending;
+
+  /// No description provided for @mcpActionCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Native action completed. Check the inventory for connection state.'**
+  String get mcpActionCompleted;
+
+  /// No description provided for @mcpActionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The native action failed. Refresh the inventory before trying again.'**
+  String get mcpActionFailed;
+
+  /// No description provided for @mcpActionUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The action could not be confirmed. Refreshing inventory before you try again.'**
+  String get mcpActionUncertain;
+
+  /// No description provided for @mcpActionNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This server does not support this action.'**
+  String get mcpActionNotSupported;
+
+  /// No description provided for @mcpActionNotImplemented.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration does not yet support this action.'**
+  String get mcpActionNotImplemented;
+
+  /// No description provided for @mcpNativeConfigurationRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish native configuration or project trust on the bridge host.'**
+  String get mcpNativeConfigurationRequired;
+
+  /// No description provided for @mcpCapabilityUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'This bridge does not report action availability. Update the bridge to manage authentication.'**
+  String get mcpCapabilityUnknown;
+
+  /// No description provided for @mcpEffectHarness.
+  ///
+  /// In en, this message translates to:
+  /// **'Affects sessions using this harness profile.'**
+  String get mcpEffectHarness;
+
+  /// No description provided for @mcpEffectProject.
+  ///
+  /// In en, this message translates to:
+  /// **'Affects sessions in this project.'**
+  String get mcpEffectProject;
+
+  /// No description provided for @mcpEffectSession.
+  ///
+  /// In en, this message translates to:
+  /// **'Affects this live session.'**
+  String get mcpEffectSession;
+
+  /// No description provided for @mcpForgetMessage.
+  ///
+  /// In en, this message translates to:
+  /// **'Clear the native saved credentials. Server configuration stays in place; a current connection may remain active.'**
+  String get mcpForgetMessage;
+
+  /// No description provided for @mcpAuthStarting.
+  ///
+  /// In en, this message translates to:
+  /// **'Preparing native sign-in…'**
+  String get mcpAuthStarting;
+
+  /// No description provided for @mcpAuthIdle.
+  ///
+  /// In en, this message translates to:
+  /// **'No sign-in is in progress for this server.'**
+  String get mcpAuthIdle;
+
+  /// No description provided for @mcpAuthChallengeReady.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in is ready. Open the browser to continue.'**
+  String get mcpAuthChallengeReady;
+
+  /// No description provided for @mcpAuthSettling.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for native sign-in to settle…'**
+  String get mcpAuthSettling;
+
+  /// No description provided for @mcpAuthCompleted.
+  ///
+  /// In en, this message translates to:
+  /// **'Native sign-in completed. Refresh or reconnect to inspect available tools.'**
+  String get mcpAuthCompleted;
+
+  /// No description provided for @mcpAuthCancelled.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in cancelled.'**
+  String get mcpAuthCancelled;
+
+  /// No description provided for @mcpAuthFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Native sign-in failed. Check the bridge logs and try again.'**
+  String get mcpAuthFailed;
+
+  /// No description provided for @mcpAuthDeclined.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in was declined.'**
+  String get mcpAuthDeclined;
+
+  /// No description provided for @mcpAuthExpired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in expired. Start again when ready.'**
+  String get mcpAuthExpired;
+
+  /// No description provided for @mcpAuthUncertain.
+  ///
+  /// In en, this message translates to:
+  /// **'The request response was lost. Native state is reported above.'**
+  String get mcpAuthUncertain;
+
+  /// No description provided for @mcpAuthOtherServer.
+  ///
+  /// In en, this message translates to:
+  /// **'Another server has an active sign-in.'**
+  String get mcpAuthOtherServer;
+
+  /// No description provided for @mcpAuthIdentityUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Bridge identity is unavailable. Refresh the bridge connection.'**
+  String get mcpAuthIdentityUnavailable;
+
+  /// No description provided for @mcpAuthReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in could not be refreshed. Check again to recover native state.'**
+  String get mcpAuthReadFailed;
+
+  /// No description provided for @mcpAuthBrowserBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Another sign-in is using the browser. Your challenge is retained; open the browser when it is free.'**
+  String get mcpAuthBrowserBusy;
+
+  /// No description provided for @mcpAuthBrowserFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'The browser could not continue. Your challenge is retained; open the browser to try again.'**
+  String get mcpAuthBrowserFailed;
+
+  /// No description provided for @mcpAuthUpgradeBridge.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the bridge to manage MCP sign-in.'**
+  String get mcpAuthUpgradeBridge;
+
+  /// No description provided for @mcpAuthBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge is already signing in or clearing credentials.'**
+  String get mcpAuthBusy;
+
+  /// No description provided for @mcpAuthNativeSettlement.
+  ///
+  /// In en, this message translates to:
+  /// **'This native sign-in cannot be cancelled remotely. Wait for native settlement.'**
+  String get mcpAuthNativeSettlement;
+
+  /// No description provided for @mcpAuthUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This sign-in action is unavailable. Check native state before trying again.'**
+  String get mcpAuthUnavailable;
+
+  /// No description provided for @mcpAuthBrowserOpening.
+  ///
+  /// In en, this message translates to:
+  /// **'Opening the sign-in browser…'**
+  String get mcpAuthBrowserOpening;
+
+  /// No description provided for @mcpAuthBrowserWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the browser return and native confirmation…'**
+  String get mcpAuthBrowserWaiting;
+
+  /// No description provided for @mcpCancel.
+  ///
+  /// In en, this message translates to:
+  /// **'Cancel'**
+  String get mcpCancel;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

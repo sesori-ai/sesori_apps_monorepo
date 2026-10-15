@@ -45,6 +45,7 @@ void main() {
   late BehaviorSubject<McpInventoryState> states;
   setUp(() {
     cubit = _Cubit();
+    when(() => cubit.mutationsAllowed).thenReturn(false);
     states = BehaviorSubject.seeded(_ready(entries: [_server], refresh: const McpInventoryRefreshIdle()));
     when(() => cubit.state).thenAnswer((_) => states.value);
     when(() => cubit.stream).thenAnswer((_) => states.stream);

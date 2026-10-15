@@ -3,10 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-client-actions`, `235ff86970`, in the provided `copper-heron` worktree.
-- Current step: 11/23 merged as [#1957][pr-1957];
-  steps 12/23 and 13/23 merged as [#1962][pr-1962] and [#1964][pr-1964];
-  step 14/23 merged as [#1966][pr-1966]; step 15/23 is in review as [#1969][pr-1969];
+- Branch/base: `sesori/mcp-visible-controls`, `c3716bfce5`, in the provided `copper-heron` worktree.
+- Current step: 16/24 is in review [#1971][pr-1971]; latest merged step: 15/24 as [#1969][pr-1969].
+  Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
   archive rejection merged as [#1953][pr-1953]; controls merged as [#1952][pr-1952].
@@ -22,29 +21,30 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/23 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
-| 2/23 | Native contracts | Merged | [#1945][pr-1945] |
-| 3/23 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
-| 4/23 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
-| 5/23 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
-| 6/23 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
-| 7/23 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
-| 8/23 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
-| 9/23 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
-| 10/23 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
-| 11/23 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
-| 12/23 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
-| 13/23 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
-| 14/23 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
-| 15/23 | Shared action lifecycle (8.c.2.a) | In review | [#1969][pr-1969]; focused tests, architecture approval |
-| 16/23 | Visible authentication and controls (8.c.2.b) | Deferred draft | Resume after Step 15 publication |
-| 17/23 | Session external actions (8.d) | Not started | — |
-| 18/23 | Claude approvals and form/URL elicitation | Not started | — |
-| 19/23 | Codex inventory/actions/authentication | Not started | — |
-| 20/23 | Codex forms and offered connectors | Not started | — |
-| 21/23 | Secondary harness support and explicit gaps | Not started | — |
-| 22/23 | Reconcile regression/capability documents | Not started | — |
-| 23/23 | Execute L4 plus named external/package checks; retire | Not started | — |
+| 1/24 | Publish reviewed plan | Merged | [#1940](https://github.com/sesori-ai/sesori_apps_monorepo/pull/1940) |
+| 2/24 | Native contracts | Merged | [#1945][pr-1945] |
+| 3/24 | Inventory foundation (original 3.a) | Merged | [#1947][pr-1947]; six codec tests |
+| 4/24 | Claude scoped inventory and bridge read (original 3.b) | Merged | [#1948][pr-1948] |
+| 5/24 | Client inventory lifecycle (original 5.a) | Merged | [#1949][pr-1949] |
+| 6/24 | Shared phone/desktop inventory and details (original 5.b) | Merged | [#1950][pr-1950] |
+| 7/24 | Claude live-server controls (original 7.a) | Merged | [#1952][pr-1952] |
+| 8/24 | Canonical archived-control rejection | Merged | [#1953][pr-1953] |
+| 9/24 | Claude native authentication (7.b.1) | Merged | [#1954][pr-1954]; 87 tests and native fixture |
+| 10/24 | Authentication wire (original 7.b.2.a) | Merged | [#1956][pr-1956]; 12 codec tests and architecture approval |
+| 11/24 | Headless auth owner/routes | Merged | [#1957][pr-1957]; 179 tests, fixture, architecture approval |
+| 12/24 | Browser ownership (8.a) | Merged | [#1962][pr-1962]; scoped handles, focused tests and native presentation |
+| 13/24 | Shared client authentication lifecycle (8.b) | Merged | [#1964][pr-1964]; 38 tests and architecture approval |
+| 14/24 | Auth availability and forgetting (8.c.1) | Merged | [#1966][pr-1966]; 149 tests, native fixture |
+| 15/24 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
+| 16/24 | Visible auth and controls (8.c.2.b) | In review | [#1971][pr-1971]; 17 widgets and native fixture flow |
+| 17/24 | External-action transport (8.d.1) | Local draft | 61 shared cases and architecture approval |
+| 18/24 | Session external-action routing (8.d.2) | Not started | — |
+| 19/24 | Claude approvals and form/URL elicitation | Not started | — |
+| 20/24 | Codex inventory/actions/authentication | Not started | — |
+| 21/24 | Codex forms and offered connectors | Not started | — |
+| 22/24 | Secondary harness support and explicit gaps | Not started | — |
+| 23/24 | Reconcile regression/capability documents | Not started | — |
+| 24/24 | Execute L4 plus named external/package checks; retire | Not started | — |
 
 ## Evidence and decisions
 
@@ -915,3 +915,78 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   Four failure probes failed before these fixes and pass afterward; 33 focused
   cases pass (27 service, five repository, one slow-action API case). Core/mobile
   analyzers pass. Earlier shared UI/desktop analyzer evidence is unchanged.
+
+- Step 15 merged: accepted head `3a0a7de296`, squash `c3716bfce5`. All ten
+  round-one review findings were addressed with prefixed replies; no unresolved
+  threads remain. Cubic approved the accepted head with zero issues across its
+  eight follow-up files. Codex review quota prevented a new review. The monitor
+  reported 20/20 checks passing before merge; its terminal report had a newly
+  running post-merge check, so it is not recorded as 21 passing checks.
+- Step 16 local qualification: eight controls and nine inventory widget cases
+  pass; shared UI/mobile/desktop analyzers pass before parent synchronization.
+  Architecture implementation pass 1 approved the staged presentation against
+  `3a0a7de296` (B-Client; no shared/bridge production change). A private synthetic
+  macOS fixture builds, but CUA returns `cgWindowNotFound` for fixture and Finder,
+  including after session reset. Read-only Peekaboo reports granted permissions
+  and a Stage Manager thumbnail. Native interactions and public motion/screenshot
+  evidence remain pending; no provider/relay/packaged qualification is claimed.
+
+- Step 16 parent synchronization: the unpublished branch moved onto Step 15's
+  squash `c3716bfce5` without rewriting published history. Localization was
+  regenerated from source after the settings-parent merge. All 17 MCP widget
+  cases and shared UI/desktop analyzers pass on this parent. Native qualification
+  still awaits a usable CUA window; the fixture artifact has an isolated bundle
+  ID and app name and uses no account, bridge, browser or native credentials.
+
+- Step 16 native capture update: the user confirmed the laptop had been locked.
+  After unlock and an owned-fixture restart, full native screenshots and CUA
+  accessibility navigation work. Inspection-only details hide management;
+  mutable details open the separate controls layer. Explicit sign-in retains
+  its challenge through busy-browser retry without automatic browser launch.
+  The server-title pixel band is identical between idle and browser-busy captures.
+- Inspected, cropped synthetic comparison PNGs (54/59 KB) are published on
+  `pr-media` at `06c61fd6beb390d0ff20cdf23255aeb6636d51b0` under
+  `sesori/mcp-visible-controls/`. They compare two fixture modes of the same
+  native build, not separate production binaries. Production PID 7903 is untouched.
+  A locked-session recording failed before the user unlocked the Mac again;
+  the successful follow-up below completes the presentation checks.
+
+[pr-1971]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1971
+
+- Series bookkeeping: original 8.d splits into wire transport (ordinal 17) and
+  native integration (ordinal 18), keeping one current total of 24. The wire
+  successor is preserved locally in `6d625712f5`; it remains unpublished until
+  this controls parent merges. Published titles and forward planning are
+  synchronized. Historical evidence/squash titles and the final matrix are unchanged.
+  The lock flag was verified before pausing input; no system settings changed.
+
+- Step 16 native presentation qualified on 2026-10-14 using implementation
+  `182b1e8519` with parent/localization synchronization at `c3716bfce5`. The
+  private fixture source SHA-256 is
+  `ffb6f0b24d9e8164816c713e55731b41419d18e54ed1b6413df7b6582d47fe6b`.
+  CUA inputs exercised explicit sign-in, busy-browser retry, controls
+  close/reopen retaining waiting state, explicit cancellation and settlement,
+  forgetting confirmation/cancel/confirm, and full inventory dismissal retaining
+  an active challenge. A synthetic native completion while the inventory was
+  closed appeared after reopening; Check sign-in retained authoritative state.
+  Cancelled confirmation sent no action; confirmed action progressed from pending
+  to completed without claiming disconnection or cleared native credentials.
+- Silent window-only capture retained genuine transition frames and observed
+  frame intervals. The inspected 560×589 GIF is 655,480 bytes and 36.96 seconds,
+  showing controls opening, explicit browser retry, close/reopen and cancellation.
+  Media commit `665794822475d3dbeeb2e57bf4225144036f2d80` publishes it under
+  `sesori/mcp-visible-controls/flow.gif`; all frames contain only fixture data.
+  Owned fixture PID 78941 was stopped; production PID 7903 was preserved. No
+  account, bridge, real browser, persistence or credential operation ran. These
+  checks qualify native presentation only; final L4/provider/package checks remain required.
+
+- Step 16 review fixes: mobile menu activation now reads the current loaded
+  archive flag as well as hydrated session metadata. A shell regression failed
+  with mutations allowed before the fix and passes with read-only inventory
+  when the native archive flag precedes the session timestamp. All seven mobile
+  shell cases and 17 shared MCP widget cases pass. Mobile/shared UI analyzers
+  pass; localization was regenerated from its action-neutral English source.
+  Authentication busy state blocks sign-in and forgetting; independent resident
+  reconnect/enable/disable controls remain available. Capability/regression docs
+  now describe the implemented presentation consistently. Native motion evidence
+  predates these wording and mobile-gating fixes; desktop layout is unchanged.

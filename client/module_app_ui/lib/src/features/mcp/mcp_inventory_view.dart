@@ -8,12 +8,14 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "../settings/widgets/settings_section.dart";
+import "mcp_server_controls_view.dart";
 
 /// Shells supply composition; the shared presentation never resolves DI.
 Future<void> showMcpInventory({
   required BuildContext context,
   required McpInventoryRequest request,
   required McpService Function() createService,
+  required McpAuthenticationService Function() authenticationService,
   required bool mutationsAllowed,
 }) async {
   await showPregoModal<void>(
@@ -21,10 +23,19 @@ Future<void> showMcpInventory({
     title: context.loc.mcpTitle,
     width: PregoModalWidth.browser,
     bodySize: PregoBottomSheetBodySize.seventyPercent,
-    builder: (_) => BlocProvider(
-      create: (_) => McpCubit(service: createService(), request: request, mutationsAllowed: mutationsAllowed),
-      child: const McpInventoryView(),
-    ),
+    builder: (_) {
+      final service = createService();
+      return MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (_) => McpCubit(service: service, request: request, mutationsAllowed: mutationsAllowed),
+          ),
+          BlocProvider(create: (_) => McpActionCubit(service: service)),
+          BlocProvider(create: (_) => McpAuthenticationCubit(service: authenticationService())),
+        ],
+        child: const McpInventoryView(),
+      );
+    },
   );
 }
 
@@ -219,12 +230,16 @@ Future<void> _showServer({required BuildContext context, required McpServerTarge
     bodySize: PregoBottomSheetBodySize.seventyPercent,
     builder: (_) => BlocProvider.value(
       value: cubit,
-      child: _ServerDetails(target: target),
+      child: _ServerDetails(
+        target: target,
+        onManage: cubit.mutationsAllowed ? () => showMcpServerControls(context: context, target: target) : null,
+      ),
     ),
   );
 }
 
-class const _ServerDetails({required final McpServerTarget target}) extends StatelessWidget {
+class const _ServerDetails({required final McpServerTarget target, required final VoidCallback? onManage})
+    extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final state = context.watch<McpCubit>().state;
@@ -235,6 +250,17 @@ class const _ServerDetails({required final McpServerTarget target}) extends Stat
         Expanded(
           child: _details(context: context, state: state),
         ),
+        if (onManage case final manage?)
+          Padding(
+            padding: const EdgeInsetsDirectional.only(top: PregoSpacing.md),
+            child: PregoButtonsSolid(
+              label: context.loc.mcpManageConnection,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.md,
+              fullWidth: true,
+              onPressed: manage,
+            ),
+          ),
       ],
     );
   }
