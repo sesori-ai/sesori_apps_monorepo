@@ -1290,3 +1290,15 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   The Step-21 branch incorporated current main; each conflicting incoming document was verified
   byte-identical to the already incorporated parent. The merge changes no files
   from approved source `ced5e6797a`, so no unchanged passing suite was rerun.
+- Step-21 review regressions failed before their fixes: a failed archive write
+  lost the pending request and emitted false settlement, and equal option titles
+  discarded differentiating descriptions. Source `5d9fa31baf` retains failed
+  archive cancellations in the same owner and includes descriptions in labels,
+  preserving opaque IDs/native values. Existing teardown still retires stopped
+  requests. All 95 focused schema/registry/plugin cases and Claude analysis pass.
+- Rechecked public v1.9.1 source `8bfeda9416c96ea5de70ffc701a36b738f24eff7`:
+  its snapshot/SSE question models have no interaction-kind enum, and generated
+  decoders ignore the additive marker. All nine source/generated fixture files
+  match that release byte-for-byte; Step 17's executable proof already covers
+  both form and external-action markers. No new legacy wire fallback is needed.
+  Corrected final qualification to step 28 and clarified the branch/main merge.
