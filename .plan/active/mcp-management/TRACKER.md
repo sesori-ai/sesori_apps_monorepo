@@ -1195,9 +1195,11 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   findings. New mutable-state budget: zero. Published PR titles 1–19 now use /27;
   historical squash commit messages remain unchanged.
 - Step-20 checks on Flutter 3.47.7 / Dart 3.13.5, from `shared/sesori_shared`:
-  `dart test test/models/pending_form_test.dart test/models/pending_external_action_test.dart`
-  `test/models/sesori_sse_event_test.dart`
-  passes 70; `dart analyze --fatal-infos` passes. Full `dart run build_runner build`
+  ```sh
+  dart test test/models/pending_form_test.dart \
+    test/models/pending_external_action_test.dart test/models/sesori_sse_event_test.dart
+  ```
+  The command passes 70; `dart analyze --fatal-infos` passes. Full `dart run build_runner build`
   succeeds, preserving all pre-existing generated codecs. Filtered generation had
   deleted 166 unrelated generated files; those were restored before the full run.
   Codec/default/validation contents do not appear in generated diagnostic strings.
