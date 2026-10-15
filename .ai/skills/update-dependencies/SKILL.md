@@ -16,6 +16,7 @@ The repo has two Dart workspaces and two standalone packages. Workspace members 
 - `client/pubspec.yaml` — workspace root, env only
 - `client/module_auth/pubspec.yaml`
 - `client/module_core/pubspec.yaml`
+- `client/module_persistence/pubspec.yaml` (pure Dart — drift/sqlite3 persistence)
 - `client/module_prego/pubspec.yaml` (Flutter package — theme/assets)
 - `client/module_app_ui/pubspec.yaml` (shared Flutter UI)
 - `client/module_desktop_core/pubspec.yaml` (pure Dart desktop business logic)
@@ -148,6 +149,7 @@ For each pubspec.yaml below, read its `environment` section and update only the 
 | `client/app/pubspec.yaml` | ✅ | — | caret |
 | `client/module_auth/pubspec.yaml` | ✅ | — | caret |
 | `client/module_core/pubspec.yaml` | ✅ | — | caret |
+| `client/module_persistence/pubspec.yaml` | ✅ | — | caret |
 | `client/module_prego/pubspec.yaml` | ✅ | ✅ | caret + range |
 | `client/module_app_ui/pubspec.yaml` | ✅ | ✅ | caret + range |
 | `client/module_desktop_core/pubspec.yaml` | ✅ | — | caret |
@@ -225,6 +227,7 @@ find . -name "pubspec.lock" \
 ```bash
 set -e
 (cd client && flutter pub get)
+(cd client/module_persistence && dart pub outdated) # pure Dart (drift/sqlite3)
 (cd client/module_auth && dart pub outdated)       # pure Dart
 (cd client/module_core && dart pub outdated)       # pure Dart
 (cd client/module_prego && flutter pub outdated)   # Flutter (flutter: sdk: flutter)
@@ -283,7 +286,9 @@ set -e
 
 1. `shared/sesori_shared/pubspec.yaml` (consumed by both workspaces)
 2. Bridge workspace members (dependency order): `bridge/sesori_plugin_interface`, `bridge/sesori_bridge_foundation`, `bridge/sesori_plugin_runtime`, `bridge/sesori_plugin_opencode`, `bridge/sesori_plugin_codex`, `bridge/sesori_plugin_acp`, `bridge/sesori_plugin_cursor`, `bridge/sesori_plugin_omp`, `bridge/sesori_plugin_claude`, `bridge/sesori_plugin_pi`, `bridge/sesori_plugin_hermes`, `bridge/sesori_plugin_copilot`, `bridge/sesori_plugin_grok`, `bridge/sesori_plugin_deepseek`, `bridge/sesori_plugin_antigravity`, `bridge/app`
-3. Client workspace members (dependency order): `client/module_auth`, `client/module_core`, `client/module_prego`, `client/module_app_ui`, `client/module_desktop_core`, `client/design_catalog`, `client/app`, `client/desktop`
+3. Client workspace members (dependency order): `client/module_persistence`, `client/module_auth`,
+   `client/module_core`, `client/module_prego`, `client/module_app_ui`, `client/module_desktop_core`,
+   `client/design_catalog`, `client/app`, `client/desktop`
 
 **SKIP** `shared/no_slop_linter/pubspec.yaml` — analyzer-plugin constraints are bumped manually (see the project structure note). Do not edit it here even if `pub outdated` reports newer versions.
 
@@ -577,7 +582,7 @@ Report this list at the end of the update process for visibility.
 <success_criteria>
 
 - Preflight discovery (Phase 0) ran; every discovered source pubspec and workspace member is accounted for, with none silently skipped
-- Environment constraints (sdk, flutter) checked in every discovered pubspec and updated when a newer stable SDK exists (currently 27 in-scope files: 17 bridge, 9 client, and `shared/sesori_shared`; `shared/no_slop_linter/pubspec.yaml` is excluded entirely)
+- Environment constraints (sdk, flutter) checked in every discovered pubspec and updated when a newer stable SDK exists (currently 28 in-scope files: 17 bridge, 10 client, and `shared/sesori_shared`; `shared/no_slop_linter/pubspec.yaml` is excluded entirely)
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All in-scope pubspec.lock files regenerated (bridge workspace, client workspace, and `shared/sesori_shared` = 3 lockfiles); `shared/no_slop_linter/pubspec.lock` remains untouched

@@ -3,10 +3,10 @@
 #
 
 list(APPEND FLUTTER_PLUGIN_LIST
+  app_links_linux
   desktop_webview_window
   file_selector_linux
   flutter_secure_storage_linux
-  gtk
   pasteboard
   record_linux
   url_launcher_linux
