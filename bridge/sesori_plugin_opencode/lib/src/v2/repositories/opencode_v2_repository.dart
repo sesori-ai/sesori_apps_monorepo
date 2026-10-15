@@ -1,6 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "../../models/open_code_mcp_login_challenge.dart";
 import "../../opencode_message_id.dart";
 import "../api/opencode_v2_api.dart";
 import "../models/openapi/connection_info.g.dart";
@@ -99,7 +100,7 @@ class OpenCodeV2Repository({
       }
       return V2McpAuthenticationReady(
         attemptId: response.attemptID,
-        challenge: V2McpLoginChallenge.parse(value: response.url),
+        challenge: OpenCodeMcpLoginChallenge.parse(value: response.url),
       );
     } on Object catch (error, stackTrace) {
       return V2McpAuthenticationInvalid(attemptId: response.attemptID, cause: error, stackTrace: stackTrace);
@@ -151,7 +152,7 @@ class OpenCodeV2Repository({
   Future<void> cancelMcpAuthentication({required V2McpAuthenticationTarget target, required String attemptId}) => _api
       .cancelMcpAuthentication(directory: target.directory, integrationId: target.integrationId, attemptId: attemptId);
 
-  Future<void> submitMcpCallback({required V2McpLoginChallenge challenge, required Uri callbackUri}) async {
+  Future<void> submitMcpCallback({required OpenCodeMcpLoginChallenge challenge, required Uri callbackUri}) async {
     try {
       challenge.validateCallback(callback: callbackUri);
     } on FormatException catch (error, stackTrace) {

@@ -26,7 +26,7 @@ const _session = {
 };
 
 OpenCodeService _service({required Future<http.Response> Function(http.Request) handler}) {
-  final client = MockClient(handler);
+  final client = MockClient((request) => request.url.path == "/config" ? Future.value(_configuration()) : handler(request));
   addTearDown(client.close);
   final repository = OpenCodeRepository(
     OpenCodeApi(
@@ -44,6 +44,8 @@ http.Response _inventory({required String status}) => http.Response(
   }),
   200,
 );
+
+http.Response _configuration() => http.Response(jsonEncode({"mcp": {_name: {"type": "remote", "url": "https://fixture.invalid/mcp"}}}), 200);
 
 void main() {
   for (final disconnect in [false, true]) {
@@ -89,16 +91,15 @@ void main() {
       expect(server.configuration, isNull);
       expect(server.endpointOrigin, isNull);
       expect(server.tools, isA<PluginMcpToolsUnavailable>());
-      expect(
-        (server.authentication as PluginMcpAuthenticationCapabilityUnavailable).reason,
-        native == "needs_client_registration"
-            ? PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired
-            : PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
-      );
-      expect(
-        (server.credentialForgetting as PluginMcpAuthenticationCapabilityUnavailable).reason,
-        PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
-      );
+      if (native == "needs_client_registration") {
+        expect((server.authentication as PluginMcpAuthenticationCapabilityUnavailable).reason,
+          PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired);
+      } else {
+        expect((server.authentication as PluginMcpAuthenticationCapabilityAvailable).effectScope,
+          PluginMcpActionEffectScope.harness);
+      }
+      expect((server.credentialForgetting as PluginMcpAuthenticationCapabilityAvailable).effectScope,
+        PluginMcpActionEffectScope.harness);
       expect(
         server.authorization,
         native == "needs_auth" || native == "needs_client_registration"
@@ -292,6 +293,8 @@ void main() {
       request.response.headers.contentType = ContentType.json;
       if (request.uri.path == "/mcp") {
         request.response.write(_inventory(status: connected ? "connected" : "disabled").body);
+      } else if (request.uri.path == "/config") {
+        request.response.write(_configuration().body);
       } else {
         expect(request.uri.pathSegments, ["mcp", _name, "disconnect"]);
         connected = false;
@@ -317,6 +320,6 @@ void main() {
       ((after.entries.single as PluginMcpServerSnapshot).connection as PluginMcpConnectionStatus).phase,
       PluginMcpConnectionPhase.disabled,
     );
-    expect(calls, hasLength(4));
+    expect(calls, hasLength(7));
   });
 }

@@ -82,7 +82,7 @@ class OpenCodeService(
 
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
     try {
-      final directory = await _mcpDirectory(scope: scope);
+      final directory = await getMcpDirectory(scope: scope);
       if (directory == null) {
         return const PluginMcpInventoryUnavailable(
           reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
@@ -103,7 +103,7 @@ class OpenCodeService(
     required PluginMcpServerAction action,
   }) async {
     try {
-      final directory = await _mcpDirectory(scope: target.scope);
+      final directory = await getMcpDirectory(scope: target.scope);
       if (directory == null) {
         return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
       }
@@ -130,7 +130,7 @@ class OpenCodeService(
     }
   }
 
-  Future<String?> _mcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
+  Future<String?> getMcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
     PluginMcpHarnessScope() => null,
     PluginMcpProjectScope(:final projectId) => projectId,
     PluginMcpSessionScope(:final sessionId) => await repository.getSessionDirectory(sessionId: sessionId),

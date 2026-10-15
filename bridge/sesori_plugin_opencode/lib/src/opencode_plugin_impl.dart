@@ -10,6 +10,7 @@ import "assistant_message_mapper.dart";
 import "models/openapi/user_message.g.dart";
 import "opencode_message_id.dart";
 import "prompt_message_tracker.dart";
+import "services/open_code_mcp_authentication_service.dart";
 import "sse/sse_connection.dart";
 import "sse_event_mapper.dart";
 import "summary_message_tracker.dart";
@@ -40,12 +41,20 @@ String formatDroppedSseFrameLog({
 
 class OpenCodePlugin._({
   required final OpenCodeService _service,
+  required final OpenCodeMcpAuthenticationService _mcpAuthentication,
   required final io.HttpClient _httpClient,
   required String serverUrl,
   required String? password,
   void Function()? onConnected,
   void Function()? onDisconnected,
-}) implements OpenCodeManagedApi, McpManagementPluginApi {
+}) implements OpenCodeManagedApi, McpManagementPluginApi, McpAuthenticationPluginApi {
+  @override
+  Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) =>
+      _mcpAuthentication.begin(target: target);
+
+  @override
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target}) =>
+      _mcpAuthentication.forget(target: target);
   @override
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
       _service.getMcpInventory(scope: scope);
@@ -104,8 +113,10 @@ class OpenCodePlugin._({
     );
     final repository = OpenCodeRepository(api);
     final tracker = ActiveSessionTracker(repository);
+    final service = OpenCodeService(repository, tracker);
     return OpenCodePlugin._(
-      service: OpenCodeService(repository, tracker),
+      service: service,
+      mcpAuthentication: OpenCodeMcpAuthenticationService(service: service, repository: repository),
       httpClient: httpClient,
       serverUrl: serverUrl,
       password: password,
@@ -353,6 +364,11 @@ class OpenCodePlugin._({
       await _summarySubscription.cancel();
     } on Object catch (e, st) {
       Log.w("[shutdown] OpenCodePlugin.dispose: failed to cancel summary subscription", e, st);
+    }
+    try {
+      await _mcpAuthentication.dispose();
+    } on Object catch (e, st) {
+      Log.w("[shutdown] OpenCodePlugin.dispose: failed to retire MCP authentication", e, st);
     }
     try {
       await _service.dispose();
