@@ -15,6 +15,7 @@ import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart"
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_model_mapper.dart";
 import "package:opencode_plugin/src/v2/services/opencode_v2_service.dart";
+import "package:opencode_plugin/src/v2/services/v2_mcp_authentication_service.dart";
 import "package:opencode_plugin/src/v2/sse/v2_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
@@ -89,6 +90,10 @@ void main() {
     repository = FakeRepository();
     service = OpenCodeV2Service(
       repository: repository,
+      mcpAuthentication: V2McpAuthenticationService(
+        repository: repository,
+        pollInterval: const Duration(milliseconds: 1),
+      ),
       tracker: tracker,
       compactions: OpenCodeV2CompactionTracker(),
       mapper: const V2EventMapper(modelMapper: models, messageMapper: messages),

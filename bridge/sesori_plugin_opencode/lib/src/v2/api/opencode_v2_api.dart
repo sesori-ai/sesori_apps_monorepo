@@ -174,6 +174,8 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
     );
   }
 
+  Future<void> deliverMcpCallback({required Uri callbackUri}) => _client.deliverMcpCallback(callbackUri: callbackUri);
+
   String _mcpAttemptPath({required String integrationId, required String attemptId}) =>
       "/api/integration/${Uri.encodeComponent(integrationId)}/connect/oauth/${Uri.encodeComponent(attemptId)}";
 

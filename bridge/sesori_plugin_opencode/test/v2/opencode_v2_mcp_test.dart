@@ -17,6 +17,7 @@ import "package:opencode_plugin/src/v2/repositories/opencode_v2_repository.dart"
 import "package:opencode_plugin/src/v2/repositories/v2_message_mapper.dart";
 import "package:opencode_plugin/src/v2/repositories/v2_model_mapper.dart";
 import "package:opencode_plugin/src/v2/services/opencode_v2_service.dart";
+import "package:opencode_plugin/src/v2/services/v2_mcp_authentication_service.dart";
 import "package:opencode_plugin/src/v2/sse/v2_event_mapper.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
@@ -38,6 +39,10 @@ OpenCodeV2Service _service({required Future<http.Response> Function(http.Request
   );
   return OpenCodeV2Service(
     repository: repository,
+    mcpAuthentication: V2McpAuthenticationService(
+      repository: repository,
+      pollInterval: const Duration(milliseconds: 1),
+    ),
     tracker: OpenCodeV2ActivityTracker(),
     compactions: OpenCodeV2CompactionTracker(),
     mapper: const V2EventMapper(
@@ -85,11 +90,18 @@ void main() {
         scope: const PluginMcpProjectScope(projectId: _directory),
       ) as PluginMcpInventorySnapshot;
       final server = inventory.entries.single as PluginMcpServerSnapshot;
-      final expected = integrationId == null
-          ? PluginMcpAuthenticationCapabilityUnavailableReason.notSupported
-          : PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented;
-      expect((server.authentication as PluginMcpAuthenticationCapabilityUnavailable).reason, expected);
-      expect((server.credentialForgetting as PluginMcpAuthenticationCapabilityUnavailable).reason, expected);
+      if (integrationId == null) {
+        expect(
+          (server.authentication as PluginMcpAuthenticationCapabilityUnavailable).reason,
+          PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+        );
+      } else {
+        expect(
+          (server.authentication as PluginMcpAuthenticationCapabilityAvailable).effectScope,
+          PluginMcpActionEffectScope.harness,
+        );
+      }
+      expect(server.credentialForgetting, server.authentication);
     });
   }
 
