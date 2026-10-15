@@ -771,8 +771,8 @@ requests. Stop, archive notification, process exit and teardown cancel existing 
 Failed archive cancellation retains pending state without a false settlement event.
 Choice descriptions are retained in visible option labels.
 Codex typed form/external-action management is **implemented** through the same
-shared controls, with cancel-only legacy notices. Offered connectors remain
-**not implemented** in this slice.
+shared controls, with cancel-only legacy notices. Offered-connector inventory
+is **implemented**; catalog-resolved setup remains **not implemented**.
 
 Typed form transport codecs are available for scalar and bounded choice inputs;
 Claude and Codex implement the optional typed plugin API. Headless form snapshots and typed

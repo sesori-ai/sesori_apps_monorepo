@@ -4,9 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-codex-connectors`, in the provided `copper-heron` worktree.
-- Current step: 27/32 is in PR [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001);
-  28/32 is local. Latest merged: 26/32 as
-  [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000).
+- Current step: 28/32 is ready for PR. Latest merged: 27/32 as
+  [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001).
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -53,8 +52,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 24/32 | Shared typed form controls (9.c.2) | Merged | [#1995][pr-1995] |
 | 25/32 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
 | 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000); native pins and review fixes pass |
-| 27/32 | Codex typed forms and URL requests | In PR | [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001); implementation/native fixtures approved |
-| 28/32 | Codex offered connector catalog | In progress | Verified local draft; setup separate |
+| 27/32 | Codex typed forms and URL requests | Merged | [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001); 46 affected tests and both exact pins |
+| 28/32 | Codex offered connector catalog | Ready for PR | 69 focused tests, clean analysis, native empty catalogs; setup separate |
 | 29/32 | Connector setup actions and browser handoff | Not started | — |
 | 30/32 | Secondary harness support and explicit gaps | Not started | — |
 | 31/32 | Reconcile regression/capability documents | Not started | — |
@@ -1577,3 +1576,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Second/final step-27 architecture implementation review approved. Base
   `1742753442` already owns pending mutation/SSE in the shared registry;
   settlement extraction adds no owner. Relocation would widen this feature.
+- Step 27 merged as `0beb720550` with 20/20 checks passing; current-head code
+  and security reviews completed, Cubic approved. The pre-existing registry
+  relocation request is declined with architecture evidence. Catalog integration
+  changes no bytes: incoming conflicted files exactly match reviewed `10f44c1153`.
+  Catalog before/after fixture images are published on orphan pr-media commit
+  `579348b385d58962281b163e57f128251ea37965`.
