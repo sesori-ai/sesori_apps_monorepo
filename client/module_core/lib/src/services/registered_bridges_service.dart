@@ -199,6 +199,7 @@ class RegisteredBridgesService({
           // write, so reporting the bridges here would still leak the old
           // account's answer to the caller. Retire the result to match.
           if (generation != _authGeneration) return const [];
+          if (mutationGeneration != _mutationGeneration) return _bridges.value;
           final sorted = _withPresence(bridges: _sortedByRecency(bridges: data));
           _bridgesCurrent = true;
           _emitBridges(bridges: sorted);
