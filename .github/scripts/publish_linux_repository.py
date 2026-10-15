@@ -40,7 +40,7 @@ def fetch(*, url: str, output: Path) -> None:
             shutil.copyfileobj(response, target)
 
 
-def download(*, output: Path) -> None:
+def download(*, output: Path, tag: str | None = None) -> None:
     # Completed public assets survive Actions artifact retention and retain the
     # original signed package bytes. Never bootstrap from an unpublished build.
     pages = json.loads(github(arguments=["api", "--paginate", "--slurp",
@@ -49,6 +49,7 @@ def download(*, output: Path) -> None:
     for release in (release for page in pages for release in page):
         match = re.fullmatch(r"v(\d+\.\d+\.\d+)-internal\.([1-9]\d*)", release["tag_name"])
         if (match and not release["draft"] and release["prerelease"]
+                and (tag is None or release["tag_name"] == tag)
                 and any(asset["name"] == MANIFEST for asset in release["assets"])):
             version, number = match.groups()
             candidates.append((version_order(version=f"{version}-{number}"), release))

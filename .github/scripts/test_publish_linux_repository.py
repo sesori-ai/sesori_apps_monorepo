@@ -133,6 +133,23 @@ class RepositoryDownloadTest(unittest.TestCase):
                                            fingerprint=publisher.TRUSTED_PRIMARY_FINGERPRINT)
             self.assertEqual({path.name for path in root.iterdir()}, files.keys())
 
+    def test_explicit_qualification_tag_selects_older_completed_release_not_latest(self):
+        tag = "v9.8.7-internal.42"
+        names = {publisher.MANIFEST, publisher.PUBLIC_DESKTOP_KEY}
+        names.update(f"Sesori-linux-{arch}-9.8.7-42.{kind}"
+                     for arch in publisher.ARCHITECTURES for kind in ("deb", "rpm"))
+        names.update(f"desktop-linux-{arch}-checksums.txt{suffix}"
+                     for arch in publisher.ARCHITECTURES for suffix in ("", ".asc"))
+        releases = [{"tag_name": name, "draft": False, "prerelease": True,
+                     "assets": [{"name": name} for name in names]}
+                    for name in (tag, "v9.8.7-internal.43")]
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(publisher, "github", return_value=json.dumps([releases])), \
+                mock.patch.object(publisher, "fetch", side_effect=RuntimeError("selected release")) as fetch:
+            with self.assertRaisesRegex(RuntimeError, "selected release"):
+                publisher.download(output=Path(directory) / "input", tag=tag)
+            self.assertIn(f"/download/{tag}/", fetch.call_args.kwargs["url"])
+
     def test_missing_completed_release_refuses_instead_of_bootstrapping_unqualified_assets(self):
         with mock.patch.object(publisher, "github", return_value="[[]]"), tempfile.TemporaryDirectory() as directory:
             with self.assertRaisesRegex(ValueError, "No completed public"):

@@ -1,0 +1,125 @@
+name: Native Linux desktop sessions
+
+# Credential-free native sessions first. Real-account and login-session admission remain separate.
+on:
+  pull_request:
+    paths:
+      - '.github/workflows/desktop-linux-session.yml'
+      - '.github/scripts/qualify_desktop_linux_session.py'
+      - '.github/scripts/test_qualify_desktop_linux_session.py'
+      - '.github/scripts/publish_linux_repository.py'
+      - 'client/desktop/test/native/packaged_platform_probe.dart'
+  workflow_dispatch:
+    inputs:
+      previous_tag:
+        description: Existing completed internal Linux release before replacement
+        type: string
+        default: v1.9.2-internal.1021
+      current_tag:
+        description: Newer completed internal Linux release after replacement
+        type: string
+        default: v1.9.2-internal.1022
+
+permissions:
+  contents: read
+
+concurrency:
+  group: native-linux-desktop-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  desktop:
+    strategy:
+      fail-fast: false
+      # These isolated jobs have no QA account or shared relay slot.
+      max-parallel: 2
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: x64
+            desktop: gnome-wayland
+          - runner: ubuntu-24.04-arm
+            architecture: arm64
+            desktop: kde-x11
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.architecture }}
+      - name: Verify focused tooling contracts
+        run: |
+          PYTHONPATH=.github/scripts python -m unittest \
+            test_qualify_desktop_linux_session test_publish_linux_repository
+      - name: Install native session and build tools
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libsecret-1-dev libx11-dev libxi-dev dpkg-dev rpm gnupg \
+            dbus-x11 python3-dbus gnome-keyring libsecret-tools \
+            gnome-shell plasma-desktop plasma-workspace kwin-x11 \
+            xvfb xauth wmctrl imagemagick mesa-utils
+      - name: Verify unchanged public package inputs
+        id: inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_TAG: ${{ inputs.previous_tag || 'v1.9.2-internal.1021' }}
+          CURRENT_TAG: ${{ inputs.current_tag || 'v1.9.2-internal.1022' }}
+        run: |
+          python .github/scripts/qualify_desktop_linux_session.py prepare \
+            --previous "$PREVIOUS_TAG" --current "$CURRENT_TAG" --output build/linux-session-inputs
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.inputs.outputs.previous_source }}
+          path: .qa-previous
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.inputs.outputs.current_source }}
+          path: .qa-current
+          persist-credentials: false
+      - name: Bootstrap the pinned native SDK
+        run: |
+          for source in .qa-previous .qa-current; do
+            diff <(grep '^flutter ' .tool-versions) <(grep '^flutter ' "$source/.tool-versions")
+          done
+          python .github/scripts/qualify_desktop.py bootstrap \
+            --arch '${{ matrix.architecture }}' --sdk-dir "$RUNNER_TEMP/linux-session-flutter"
+      - name: Build nonshipping probes against each corresponding product source
+        run: |
+          for candidate in previous current; do
+            (
+              cd ".qa-$candidate/client"
+              flutter pub get --enforce-lockfile
+              cd desktop
+              flutter build linux --release --no-pub \
+                --target "$GITHUB_WORKSPACE/client/desktop/test/native/packaged_platform_probe.dart"
+            )
+            mkdir -p "build/linux-session-probes/$candidate"
+            cp -a ".qa-$candidate/client/desktop/build/linux/${{ matrix.architecture }}/release/bundle/." \
+              "build/linux-session-probes/$candidate/"
+          done
+      - name: Exercise native desktops, Secret Service and a genuine package replacement
+        run: |
+          dbus-run-session -- /usr/bin/python3 .github/scripts/qualify_desktop_linux_session.py exercise \
+            --inputs build/linux-session-inputs --probes build/linux-session-probes \
+            --desktop '${{ matrix.desktop }}' --architecture '${{ matrix.architecture }}' \
+            --output build/linux-session-evidence
+      - name: Retain credential-free native evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-session-${{ matrix.architecture }}-${{ matrix.desktop }}
+          path: build/linux-session-evidence/
+          if-no-files-found: warn
+          retention-days: 14

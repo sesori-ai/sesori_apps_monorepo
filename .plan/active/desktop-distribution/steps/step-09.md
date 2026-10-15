@@ -49,9 +49,30 @@ last. The CI inventory is not a new public release pointer.
 The approved `sesori-ai-linux-packages` bucket and dedicated federation/service account
 are provisioned. The user additionally authorized a bucket-tag-scoped exception to the
 observed domain-sharing block, preserving the previous restriction elsewhere. Anonymous
-empty-bucket access passes; first production-key/federated publication and anonymous
-package-manager verification still follow merge. No public package has been uploaded
-by provisioning. Operational ownership and repair: [Linux repositories](../../../../docs/desktop/linux-repositories.md).
+repository delivery passed after #1997 merged: main run `38754986125` published
+`1.9.2-1022` with production signing and scoped federation. Independent pinned-signature,
+expiry/reference verification and real APT/DNF HTTPS refresh/download passed for both
+architectures. The clients ran in an ARM64 Fedora container; no application was executed.
+Operational ownership, evidence and repair: [Linux repositories](../../../../docs/desktop/linux-repositories.md).
+
+## Native desktop continuation — 11.i/14
+
+11.i.a establishes credential-free native desktop sessions before introducing account
+credentials: Ubuntu 24.04 x64 runs GNOME/Wayland without a tray host; Ubuntu 24.04 ARM64
+runs KDE/X11 with StatusNotifier. Both use real GNOME Keyring Secret Service. The driver
+installs unchanged signed `1021` then `1022` packages, captures anonymous app windows,
+uses normal close/native tray Quit and checks for an orphaned packaged helper.
+Nonshipping probes compile against each corresponding product source and verify encrypted
+fixture persistence across replacement plus login-registration creation/removal. macOS
+probe output stays unchanged. State is limited to owned CI process/log handles and
+per-run evidence; no new application persistence, release authority or updater. No
+production mechanism is superseded or retained solely for compatibility.
+
+11.i.b completes real-account and helper On/Off qualification, actual login-session
+launch, unavailable-Secret-Service behavior and remaining nominated-distro upgrade
+coverage. The first slice does not establish those gates. Native workflow results and
+screenshots must be assessed before acceptance; mocked driver tests alone prove neither
+GUI behavior nor stable readiness.
 
 ## Signing continuation — 11.a/14 (merged)
 

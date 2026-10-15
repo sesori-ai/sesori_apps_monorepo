@@ -13,8 +13,8 @@
   Stable build 981's authenticated/Off acceptance and the 82-test shutdown audit
   retain their recorded scope; public links do not establish fresh authenticated
   replacement or shared-store qualification.
-  Linux CLI signatures, signed desktop internal previews and website discovery are
-  delivered through 11.f. The user approved GCS hosting/scoped publishing IAM and
+  Linux CLI signatures, signed desktop previews, website discovery and signed preview
+  repositories are delivered through 11.h. The user approved GCS hosting/scoped publishing IAM and
   directed finishing Linux through stable publication on 2026-10-14 (D13).
   Repository trust, native desktop/account checks and genuine package upgrades still
   precede stable admission. Windows signing/winget, six-target onboarding and final
@@ -527,13 +527,19 @@ these are executable substeps, not a new plan or a Windows dependency.
   accepted packages for each published channel through this same GitHub publisher.
   APT validity is 30 days; failures stay visible in CI and manual repair must precede
   expiry. Refresh never creates releases, changes completion markers or dispatches stores.
-  About 900–1,300 authored lines; verify anonymous retrieval and independent pinned trust.
-- `🚧 [desktop-distribution] Qualify native Linux desktop upgrades [step 11.i/14]`:
-  native x64/ARM64 GUI, account/keyring, tray/no-tray, Wayland/X11, login launch, safe
-  Quit and real version upgrades with shared-data preservation. Reuse existing native
-  producers/probes; split if the actual implementation exceeds one reviewable PR.
-  Container/inert-package checks are not substitutes. Record unavailable sessions
-  honestly; stable stays gated until the required evidence or explicit acceptance.
+  Merged as #1997. Main run `38754986125` published `1.9.2-1022`; independent
+  pinned-signature/reference checks and real APT/DNF HTTPS refresh/download passed.
+- `🚧 [desktop-distribution] Exercise native Linux desktop sessions [step 11.i.a/14]`:
+  establish credential-free Ubuntu x64 GNOME/Wayland and ARM64 KDE/X11 sessions,
+  real Secret Service, unchanged signed-package replacement, anonymous native windows
+  and normal close/tray Quit. Nonshipping probes use each candidate's product source.
+  This isolates desktop-session bring-up from account credentials; no product refactor.
+- `🚧 [desktop-distribution] Qualify authenticated Linux desktop upgrades [step 11.i.b/14]`:
+  add real-account/helper On/Off coverage through the established native sessions,
+  actual login launch, unavailable-Secret-Service behavior and remaining nominated-distro
+  upgrades with shared-data preservation. Container/inert-package checks are not
+  substitutes for native application behavior. Record unavailable sessions honestly;
+  stable stays gated until the required evidence or explicit acceptance.
 - `⚙️ [desktop-distribution] Add Linux repository and stable download guidance [step 11.j/14]`:
   update `sesori-ai/landingpage` using its existing release cache and truthful public
   availability. Stable entries stay hidden until qualified stable completion exists.
