@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-opencode-v2-oauth`, in the provided `copper-heron` worktree.
-- Current step: 33/37 OpenCode v2 native authentication ownership is local.
+- Current step: 33/37 OpenCode v2 native authentication ownership is in review.
   Parent 32/37 merged as [#2008][pr-2008] at accepted head `c4e41691cb`.
   Latest squash: `a0e1d6c3e4`, with 19 passing pre-merge and 20 terminal checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
@@ -61,12 +61,13 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 30/37 | OpenCode v2 inventory/controls (11.a) | Merged | [#2006][pr-2006]; evidence below |
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
-| 33/37 | OpenCode v2 authentication owner (11.c.2) | Local | 76 focused cases; both native pins |
+| 33/37 | OpenCode v2 authentication owner (11.c.2) | In review | [#2009][pr-2009]; both native pins |
 | 34/37 | OpenCode v1 native MCP authentication (11.d) | Not started | — |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
+[pr-2009]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2009
 [pr-2008]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2008
 [pr-2007]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2007
 [pr-2000]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000
@@ -77,6 +78,17 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-33 PR review fixes cancellation before subscription, waits for a pending
+  start handle within runtime teardown's existing budget, and settles confirmed
+  attempt disappearance as unresolved failure outside acknowledged cancellation.
+  Polling waits through DELETE acknowledgement and native persistence still wins.
+  Callback validation rejects both result keys even with an empty value; local
+  failure logs redact OAuth query secrets while retaining useful endpoint context.
+  All 34 authentication cases and owning analysis pass; both exact native
+  production-owner probes pass. The pinned MCP core registers one form-free
+  OAuth method, so provider-only shapes do not add inventory metadata requests.
+  Lifecycle polling stays with the reviewed operation owner; native v2 exposes
+  no pushed attempt-status seam. Original final qualification remains pending.
 - Step-33 architecture implementation pass 1 found transport status branching in
   repository/service. Native rejection and exact attempt-not-found translation
   now live in the API; repository maps them to typed domain outcomes retaining

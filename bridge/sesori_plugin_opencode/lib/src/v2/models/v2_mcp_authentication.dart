@@ -15,6 +15,12 @@ final class const V2McpAuthenticationTarget({
   required final String methodId,
 });
 
+/// Retain native diagnostic context without recording OAuth query secrets.
+String redactMcpOAuthQuerySecrets({required String message}) => message.replaceAllMapped(
+  RegExp(r'''([?&](?:code|state|access_token|refresh_token|client_secret)=)[^&#\s"']*''', caseSensitive: false),
+  (match) => "${match[1]}[redacted]",
+);
+
 sealed class const V2McpAuthenticationAttempt({required final String attemptId});
 final class const V2McpAuthenticationReady({
   required super.attemptId,

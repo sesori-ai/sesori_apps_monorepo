@@ -124,7 +124,10 @@ class OpenCodeV2Repository({
     if (status case IntegrationAttemptStatusFailed(:final message)) {
       // The event wrapper stays privacy-safe; retain the original native
       // diagnostic locally for an opted-in support log.
-      Log.w("[opencode-v2] Native MCP authentication failed for ${target.integrationId}/$attemptId", message);
+      Log.w(
+        "[opencode-v2] Native MCP authentication failed for ${target.integrationId}/$attemptId",
+        redactMcpOAuthQuerySecrets(message: message),
+      );
     }
     return switch (status) {
       IntegrationAttemptStatusPending() => const V2McpAuthenticationPending(),

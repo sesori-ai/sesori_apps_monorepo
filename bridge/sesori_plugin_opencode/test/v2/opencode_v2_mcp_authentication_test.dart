@@ -142,6 +142,121 @@ class _Observation({required final PluginMcpCancelableAuthentication operation})
 }
 
 void main() {
+  test("OAuth diagnostic redaction preserves endpoint and non-secret context", () {
+    expect(
+      redactMcpOAuthQuerySecrets(
+        message:
+            "Rejected https://fixture.invalid/callback?code=secret-code&state=secret-state&reason=denied "
+            "http://localhost/token?access_token=secret-access&refresh_token=secret-refresh&client_secret=secret-client",
+      ),
+      "Rejected https://fixture.invalid/callback?code=[redacted]&state=[redacted]&reason=denied "
+      "http://localhost/token?access_token=[redacted]&refresh_token=[redacted]&client_secret=[redacted]",
+    );
+  });
+
+  test("cancel before subscription discards preparation without native mutation", () async {
+    final fixture = _Fixture(override: null);
+    final operation = await fixture.begin();
+    await operation.cancel();
+    final observation = _Observation(operation: operation);
+    await observation.done.future;
+    expect(observation.events, isEmpty);
+    expect(fixture.calls.map((request) => request.method), ["GET", "GET"]);
+  });
+
+  test("runtime retirement waits for an in-flight start and cleans its returned handle", () async {
+    final response = Completer<http.Response>();
+    final starting = Completer<void>();
+    final fixture = _Fixture(
+      override: (request) {
+        if (request.method != "POST") return null;
+        starting.complete();
+        return response.future;
+      },
+    );
+    final observation = _Observation(operation: await fixture.begin());
+    await starting.future;
+    var retired = false;
+    final retirement = fixture.service.dispose().then((_) => retired = true);
+    await observation.done.future;
+    expect(retired, isFalse);
+    response.complete(_attempt(mode: "auto"));
+    await retirement;
+    expect(fixture.removed, isTrue);
+    expect(observation.events, [isA<PluginMcpAuthenticationFailed>()]);
+  });
+
+  test("confirmed native removal outside cancellation settles as unresolved failure", () async {
+    final fixture = _Fixture(override: null);
+    final observation = _Observation(operation: await fixture.begin());
+    await observation.challenge.future;
+    fixture.removed = true;
+    expect(await observation.terminal.future, isA<PluginMcpAuthenticationFailed>());
+    await observation.done.future;
+  });
+
+  test("polling removal during DELETE waits for cancellation acknowledgement", () async {
+    final response = Completer<http.Response>();
+    final deleting = Completer<void>();
+    final removalRead = Completer<void>();
+    final fixture = _Fixture(
+      override: (request) {
+        if (request.method == "DELETE") {
+          deleting.complete();
+          return response.future;
+        }
+        if (deleting.isCompleted && request.method == "GET" && !removalRead.isCompleted) removalRead.complete();
+        return null;
+      },
+    );
+    final operation = await fixture.begin();
+    final observation = _Observation(operation: operation);
+    await observation.challenge.future;
+    final cancellation = operation.cancel();
+    await deleting.future;
+    fixture.removed = true;
+    await removalRead.future;
+    expect(observation.terminal.isCompleted, isFalse);
+    response.complete(http.Response("", 204));
+    await cancellation;
+    await observation.done.future;
+    expect(observation.terminal.isCompleted, isFalse);
+  });
+
+  test("removal after a persisting cancellation settles as unresolved failure", () async {
+    final cancelled = Completer<void>();
+    final persisting = Completer<void>();
+    final fixture = _Fixture(
+      override: (request) {
+        if (request.method == "DELETE") {
+          cancelled.complete();
+          return Future.value(http.Response("", 204));
+        }
+        if (cancelled.isCompleted && request.method == "GET" && !persisting.isCompleted) {
+          persisting.complete();
+          return Future.value(
+            _data(
+              data: {
+                "status": "pending",
+                "time": {"created": 1, "expires": 2},
+              },
+            ),
+          );
+        }
+        return null;
+      },
+    );
+    final operation = await fixture.begin();
+    final observation = _Observation(operation: operation);
+    await observation.challenge.future;
+    final cancellation = operation.cancel();
+    await persisting.future;
+    fixture.removed = true;
+    await cancellation;
+    expect(await observation.terminal.future, isA<PluginMcpAuthenticationFailed>());
+    await observation.done.future;
+  });
+
   for (final cleanupFails in [false, true]) {
     test("runtime retirement stops callback access and records cleanup outcome: $cleanupFails", () async {
       final fixture = _Fixture(
@@ -408,6 +523,8 @@ void main() {
     "http://127.0.0.1:3456/callback?state=other&code=fixture",
     "http://127.0.0.1:3456/callback?state=fixture-state&state=other&code=fixture",
     "http://127.0.0.1:3456/callback?state=fixture-state&code=fixture&error=denied",
+    "http://127.0.0.1:3456/callback?state=fixture-state&code=fixture&error=",
+    "http://127.0.0.1:3456/callback?state=fixture-state&code=&error=denied",
     "http://127.0.0.1:3456/callback?state=fixture-state&code=fixture#fragment",
   ]) {
     test("rejects callback mismatch without HTTP: $callback", () async {

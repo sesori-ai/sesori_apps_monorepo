@@ -831,10 +831,14 @@ Project effects invalidate all open inventories for that plugin, covering views
 of other sessions at the same native location.
 The v2 MCP API provides no offered-connector catalog. Native MCP OAuth and
 credential removal are **implemented** through the Integration API when the
-server declares an `integrationID`, and **not supported** for servers without
-one. Project and exact session locations use native integration/method IDs;
-authentication and forgetting affect the native harness profile. Native work
-starts only after subscription. A plugin-local operation observes native status,
+server declares an `integrationID`; authentication additionally requires exactly
+one form-free OAuth method. It is **not supported** for servers without an
+integration. The pinned MCP core registers that method shape; preparation
+validates fresh integration metadata before starting. Forgetting independently
+uses the integration's native credential IDs. Project and exact session locations
+use native integration/method IDs; authentication and forgetting affect the native
+harness profile. Read-only preparation precedes subscription; native OAuth attempt
+creation starts only after subscription. A plugin-local operation observes native status,
 validates/forwards the exact loopback callback without server credentials, and
 confirms attempt removal after cancellation. DELETE can be a no-op during native
 credential persistence; native completion wins that race. Lost start responses

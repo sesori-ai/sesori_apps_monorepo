@@ -44,6 +44,7 @@ final class const OpenCodeMcpLoginChallenge({
         callback.queryParameters["state"] != state ||
         (callback.queryParametersAll["code"]?.length ?? 0) > 1 ||
         (callback.queryParametersAll["error"]?.length ?? 0) > 1 ||
+        (callback.queryParameters.containsKey("code") && callback.queryParameters.containsKey("error")) ||
         hasCode == hasError ||
         callbackUri.queryParametersAll.entries.any(
           (entry) => !const ListEquality<String>().equals(callback.queryParametersAll[entry.key], entry.value),
