@@ -3,8 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-pi-acp-capability-audit`, in the provided `copper-heron` worktree.
-- Current step: 35/37 bounded Pi/ACP source and adapter audit is prepared for review.
+- Branch: `sesori/mcp-regression-reconciliation`, in the provided `copper-heron` worktree.
+- Current step: 35/37 bounded Pi/ACP source and adapter audit is in review as
+  [#2011][pr-2011]. Local successor 36/37 reconciles supported behavior and the
+  cumulative regression matrix; qualification and retirement remain pending.
   Parent 34/37 merged as [#2010][pr-2010] at accepted head `5f783ab402`.
   Latest squash: `bcfa8e369b`, with 19 passing pre-merge checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
@@ -63,10 +65,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
 | 34/37 | OpenCode v1 native MCP authentication (11.d) | Merged | [#2010][pr-2010]; 180 unique cases; both pins |
-| 35/37 | Bounded Pi/ACP source and capability audit (11.e) | Prepared | Exact source/schema audit; documentation only |
-| 36/37 | Reconcile regression/capability documents | Not started | — |
+| 35/37 | Bounded Pi/ACP source and capability audit (11.e) | In review | [#2011][pr-2011]; exact source/schema audit |
+| 36/37 | Reconcile regression/capability documents | Local | Supported adapter matrix and cumulative original qualification |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
+[pr-2011]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2011
 [pr-2010]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2010
 [pr-2009]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2009
 [pr-2008]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2008
@@ -79,6 +82,16 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-36 documentation reconciliation replaces the stale read-only/Claude-only
+  summary and empty L3/L4 coverage with the final supported adapter matrix and
+  original cumulative client, relay, host, feel and selected packaged/external
+  requirements. MCP is indexed and linked from permission, auto-approval,
+  connectivity, lifecycle and session-turn coverage. Capability claims now include
+  OpenCode authentication and the completed secondary source audit. No production,
+  analytics or database change. No code made obsolete; no new architecture.
+  Native fixture evidence remains partial qualification, recording stays deferred
+  and the original final matrix is unchanged. Relative links/anchors and whitespace
+  are validated; no Dart/Flutter suite is needed for documentation-only changes.
 - Step-34 accepted head `5f783ab402` merged with 19 passing checks, Cubic
   approval and completed code/security reviews without new findings. Two scoped
   declines retain reasoned replies. The merged main tree equals the accepted

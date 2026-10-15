@@ -2,20 +2,25 @@
 
 ## Capability
 
-Backend-neutral inventory contracts describe configured servers and offered
-connectors. The optional plugin read interface and shared wire models are
-implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
-resident session and Codex inventory from the attached app-server connection.
-Phone and desktop expose a shared read-only inventory and
-server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
-exposes explicit live-session Claude reconnect, enable and disable controls to
-headless consumers. Claude native plugin authentication is implemented for
-existing configured HTTP servers. Headless read/start/continue/cancel routes are
-implemented, with shared phone/desktop controls for declared native actions.
-The shared client authentication API, repository, connection-fenced owner and
-observing Cubit are implemented and exposed by the shared connection controls.
-Existing permission flows remain separate. Read-only inventory may inspect an
-archived session if its native process remains live; it grants no session mutation.
+Phone and desktop share configured-server inventory, details, declared controls,
+native sign-in, credential forgetting, typed forms and external-action overlays.
+Headless and relay requests use the same bridge owners. Server connection,
+authorization, tool permission and connector setup are independent facts.
+
+| Adapter | Inventory scope | Existing-server controls | Native sign-in / forgetting | Offered connectors |
+|---|---|---|---|---|
+| Claude Code | Live resident session | Reconnect, enable, disable; session effect | Configured HTTP OAuth / native credentials | Not implemented |
+| Codex | Exact live session or attached harness | Native per-server controls unavailable | Native OAuth / forgetting unsupported | Native paginated catalog and explicit setup handoff |
+| OpenCode v2 | Project or exact native session location | Reconnect, enable, disable; project effect | Eligible native integration / credential IDs | Not supported by the native seam |
+| OpenCode v1 | Project or exact native session directory | Reconnect, enable, disable; project effect | Remote OAuth with eligible URL/callback / native credentials | Not supported by the native seam |
+| Pi and ACP adapters | Structured inventory unavailable | Structured controls unavailable | Structured management unavailable | Structured catalog unavailable |
+
+Eligibility, cancellation, host and native-version limitations are detailed
+below and in [harness capabilities](../HARNESS_CAPABILITIES.md#mcp-management-native-evidence).
+Existing servers and offered connectors are managed; arbitrary server creation,
+removal or configuration editing is outside this feature. Reads do not start a
+session, run a tool or consent to setup. Read-only archived/sub-agent surfaces
+retain inspection when native data is available and grant no session mutation.
 
 ## Required Behavior
 
@@ -239,15 +244,25 @@ native plugin boundary used by the headless attempt owner and shared client cont
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Inspect live Claude MCP inventory and exercise controls without changing persisted configuration. |
-| L2 Routine | Automated codec, adapter/route, and client lifecycle coverage described below. |
-| L3 Release | No additional coverage. |
-| L4 Extended | No additional coverage. |
-| L5 Full | No additional coverage. |
+| L1 Smoke | Live plugin/headless bridge, every inventory-supporting adapter: inspect configured servers, compare native status and execute a declared control where available without changing persisted configuration. Unsupported scopes/catalogs remain explicit. |
+| L2 Routine | Automated codecs, adapters, canonical routes and client/widget owners: distinct target types, full pagination, unknown/missing metadata, typed form validation, fresh target checks, privacy, supported/unsupported methods, native settlement and failures. Exact minimum/target native fixtures or an honest unavailable result for each declared capability. |
+| L3 Release | Client end to end, Claude and Codex separately on macOS desktop with a local bridge and iOS/Android with a remote bridge: inspect tools, declared controls, approve/reject, correct and submit forms, URL/connector setup, sign-in completion/denial/cancellation where supported, and recovery of pending state. OpenCode v1/v2 run their shared supported journey on desktop plus one mobile platform. Existing non-MCP permissions/questions remain usable. |
+| L4 Extended | Relay integration in local E2E and managed trusted modes: two clients, reconnect, bridge switching with colliding server names, foreign/stale callbacks, session archive/stop, process exit, provider/MCP browser overlap in both orders, unsupported forms/trust/entitlement, released/current client interaction and external settlement. Native inventory/control/auth on every supported macOS arm64, Linux x64 and Windows x64 host at minimum/target versions. Record overlay opening/closing mid-scroll, status transitions, browser return/cancellation and another client settling a request; no content jump, draft loss or unexpected sound. |
+| L5 Full | Packaged/external: one packaged build per client platform verifies browser return/link registration; each priority harness uses a real OAuth MCP provider and a real offered connector where exposed, followed by a harmless native tool use. Verify native credential persistence across restart with dev accounts. |
 
-For L1, read a live Claude session through the headless route, compare its
-servers/tools with native status, and inspect them from a client session menu.
-Exercise explicit live-session controls and confirm persisted configuration is unchanged.
+The implementation plan requires cumulative L4 **plus the named L5 packaged/
+external checks above**. Fixture success does not qualify providers, packaging,
+relay modes or unexecuted platforms. Record each boundary/version/build as Pass,
+Partial, Fail, Blocked or Not run; an unavailable account, device or native artifact
+does not lower the matrix. Native recordings remain deferred, not waived.
+
+Permission to use a tool never grants sign-in or installation consent. Form
+variations include required booleans/numbers, labels distinct from choice values,
+omitted optional fields and invalid submission followed by correction without
+draft loss. Run old-client-only and mixed released/current clients on the same
+native request; one completion clears both views and old clients can decline.
+Catalog setup from harness/project settings works without a live session, never
+fabricates a pending question or connection success, and refreshes on reopening.
 
 Automated codec checks preserve distinct targets, empty/unavailable/failed tool
 states, authorization without grants, independent section availability, and

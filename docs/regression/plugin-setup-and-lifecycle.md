@@ -6,6 +6,17 @@ How the bridge discovers, gates, starts, suspends, and reports each registered c
 harness: setup inspection, eligibility, runtime resolution, demand-driven activation and
 idle suspension, the management snapshot, and lifecycle commands.
 
+MCP server OAuth is distinct from coding-harness account authentication. Server
+management uses an already available runtime and declared native capability;
+inventory does not implicitly activate a session or write configuration. Native
+authentication leases its exact runtime generation through settlement. Shutdown
+settles bridge waiters and releases local ownership without claiming cancellation
+or deleting credentials when the native API cannot cancel. Forgetting has its
+own declared effect scope and does not remove server definitions or prove that a
+resident connection has disconnected. Provider/MCP browser ownership is shared
+without cross-owner cancellation; exercise both start orders in the
+[MCP regression matrix](mcp-management.md#regression-levels).
+
 ## Runtime Target Coverage
 
 Targets audited on **2026-09-24**, covering all eleven registered harnesses.

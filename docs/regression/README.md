@@ -168,6 +168,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Diffs and source control](diffs-and-source-control.md)
 - [Feedback flow](feedback-flow.md)
 - [Glass presentation](glass-presentation.md)
+- [MCP management](mcp-management.md)
 - [Multi-computer](multi-computer.md)
 - [Native activity indicators](native-activity-indicators.md)
 - [Navigation transitions](navigation-transitions.md)
