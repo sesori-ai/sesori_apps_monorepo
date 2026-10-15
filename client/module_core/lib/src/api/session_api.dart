@@ -515,6 +515,26 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<PendingExternalActionsResponse>> getPendingExternalActions({required String sessionId}) {
+    // Authorization URLs must not be retained in response-error bodies.
+    return _client.postWithTimeout(
+      "/session/external-actions",
+      fromJson: PendingExternalActionsResponse.fromJson,
+      body: SessionIdRequest(sessionId: sessionId),
+      timeout: const Duration(seconds: 30),
+    );
+  }
+
+  Future<ApiResponse<ExternalActionReplyResult>> replyToExternalAction({
+    required ReplyToExternalActionRequest request,
+  }) {
+    return _client.post(
+      "/external-action/reply",
+      fromJson: ExternalActionReplyResult.fromJson,
+      body: request,
+    );
+  }
+
   Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
     return _client.post(
       "/session/permissions",

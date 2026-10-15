@@ -2,6 +2,9 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../platform/external_link_opener.dart";
+import "widgets/external_action_modal.dart";
+
+export "widgets/external_action_modal.dart" show SessionExternalActionCubitFactory;
 
 /// Product-owned capabilities used by the shared session-detail presentation.
 ///
@@ -17,6 +20,7 @@ class const SessionDetailPresentationScope({
 
   /// Searches the session's whole history from the Prompts screen.
   required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
+  required final SessionExternalActionCubitFactory createExternalActionCubit,
   required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
@@ -48,6 +52,7 @@ class const SessionDetailPresentationScope({
     imageClipboard: imageClipboard,
     imageSharer: imageSharer,
     sessionRepository: sessionRepository,
+    createExternalActionCubit: createExternalActionCubit,
     canShareImages: canShareImages,
     openExternalLink: openExternalLink,
     openSession: openSession,
@@ -63,6 +68,7 @@ class const SessionDetailPresentationScope({
       imageClipboard != oldWidget.imageClipboard ||
       imageSharer != oldWidget.imageSharer ||
       sessionRepository != oldWidget.sessionRepository ||
+      createExternalActionCubit != oldWidget.createExternalActionCubit ||
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||

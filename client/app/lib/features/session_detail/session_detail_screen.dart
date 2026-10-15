@@ -96,6 +96,13 @@ class const _MobileSessionDetailBody({
       imageClipboard: getIt.get<ImageClipboard>,
       imageSharer: getIt.get<ImageSharer>,
       sessionRepository: getIt.get<SessionRepository>,
+      createExternalActionCubit: ({required requestId, required sessionId}) => SessionExternalActionCubit(
+        service: getIt<SessionExternalActionService>(),
+        connectionService: getIt<ConnectionService>(),
+        urlLauncher: getIt<UrlLauncher>(),
+        requestId: requestId,
+        sessionId: sessionId,
+      ),
       canShareImages: kIsWeb || defaultTargetPlatform != TargetPlatform.linux,
       openExternalLink: openExternalLink,
       openBridgeSettings: () => context.pushRoute(const AppRoute.settings()),

@@ -3,8 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-native-session-actions`, `cfecaf9494`, in the provided `copper-heron` worktree.
-- Current step: 18/25 is in review as [#1984][pr-1984]; latest merged step: 17/25 as [#1981][pr-1981].
+- Branch/base: `sesori/mcp-external-action-controls`, `834374b34f`, in the provided `copper-heron` worktree.
+- Current step: 19/25 is in review as [#1986][pr-1986]; latest merged step: 18/25 as [#1984][pr-1984].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -38,8 +38,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 15/25 | Shared action lifecycle (8.c.2.a) | Merged | [#1969][pr-1969]; 33 tests, architecture approval |
 | 16/25 | Visible auth and controls (8.c.2.b) | Merged | [#1971][pr-1971]; 24 widgets and native fixture flow |
 | 17/25 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
-| 18/25 | Native external-action routing (8.d.2.a) | In review | [#1984][pr-1984] |
-| 19/25 | External-action client presentation (8.d.2.b) | Not started | — |
+| 18/25 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
+| 19/25 | External-action client presentation (8.d.2.b) | In review | [#1986][pr-1986] |
 | 20/25 | Claude approvals and form/URL elicitation | Not started | — |
 | 21/25 | Codex inventory/actions/authentication | Not started | — |
 | 22/25 | Codex forms and offered connectors | Not started | — |
@@ -1115,6 +1115,28 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   four-file bridge command above now passes 47 cases; `bridge/app` analyzer is clean.
   Verified source tree: `32764caae11fb0f193e26d2c0ce8fc1660e3feaf`; subsequent
   edits add only this evidence reference, with production and tests unchanged.
+
+- Step 19 implements shared typed external-action controls through the existing
+  SessionApi/Repository layers, a stateless service and a per-modal Cubit. The
+  existing pending-request list remains authoritative. Both shells supply the
+  typed factory; shared presentation resolves no service locator. Explicit
+  browser intent, declared native choices, dismissal-only close, read-failure
+  legacy cancellation and connection fencing are covered locally.
+- Focused Step 19 checks: 19 core API/service/lifecycle cases, 29 shared modal
+  widgets, 207 mobile session-body/navigation cases and 13 desktop session-view
+  cases. Core, shared UI, mobile and desktop analyzers are clean. DI and
+  localization outputs are generated from source. Native presentation recording
+  remains deferred; local widgets do not establish packaged/native qualification.
+- The analytics checklist was applied: browser opening and native response
+  acceptance cannot prove authorization completion. No new event is added
+  without an honest product outcome/reporting contract. Architecture plan review
+  approved the concrete client-only flow after its file/layer map was clarified.
+- Step 19 architecture implementation review approved without findings. The two
+  final targeted cases retain a thrown browser error and stack without URL
+  presentation, and acknowledge/dismiss a request already settled while closed.
+  Their commands are the corresponding test files with `--plain-name 'thrown
+  browser failures retain'` and `--plain-name 'a request settled while closed'`;
+  they pass in addition to the preceding 18 core and 28 shared UI cases.
 - Step-18 second review fixes move destination policy into PendingInteractionService
   for both snapshot reads and acceptance, retaining canonical access in the repository.
   Public-client cancel projections now carry dated retirement conditions. Typed
@@ -1128,8 +1150,54 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   analysis pass. Architecture implementation review pass 2 approves without findings.
   Verified review-fix tree: `767dcaf79a75c1d3dd8342db0d6d819827ed2c0d`;
   subsequent edits add only this evidence reference. Final diff is 1,641 changed lines.
+- Step 19's initial implementation is recorded in `10660b7f2b`, based on
+  `e6162c78b9`. Integrated parent fixes `4086e6e93c` without rewriting either history;
+  localization outputs were regenerated from the combined source. Verified merged
+  source commit: `a8a8a5695e`; its production/test sources match the verified merge.
+  With Flutter 3.47.7 / Dart 3.13.5, affected integration checks pass: from
+  `client/module_core`, `flutter test --no-pub test/cubits/session_detail/session_detail_cubit_permission_test.dart test/api/session_external_actions_api_test.dart test/services/session_external_action_service_test.dart test/cubits/session_detail/session_external_action_cubit_test.dart`
+  (32); from `client/module_app_ui`, `flutter test --no-pub test/features/session_detail/widgets/question_modal_test.dart test/features/session_detail/widgets/external_action_modal_test.dart`
+  (29); from `client/app`, `flutter test --no-pub test/features/session_detail/widgets/session_detail_body_test.dart test/features/session_detail/widgets/adaptive_child_session_navigation_test.dart`
+  (208). Each of those three modules passes `flutter analyze --no-pub --fatal-infos`.
 - CI at `4086e6e93c` found `prefer_exhaustive_switch` in the new analytics guard.
   Package-level analysis had missed the workspace plugin diagnostic. Replaced its
   wildcard with all three non-loaded sealed states; behavior is unchanged. Source
   tree `988213c63ffbf663634de63615747c0c474d9193` records that correction.
   `dart analyze --fatal-infos` from `client` now passes with the CI plugin enabled.
+- Step 19 incorporates `935f4c79e4`. CI-equivalent workspace analysis identified
+  four successor-only lint issues, corrected with promoted local state snapshots,
+  an explicit nullable-destination check and directional padding. `dart analyze
+  --fatal-infos` from `client` passes. The affected Cubit and modal test files
+  pass 9 and 7 cases respectively; modal taps target the actual buttons with no
+  hit-test warnings. Verified source commit: `22358bd5f2`.
+- Step 18 merged at accepted head `935f4c79e4`, squash `834374b34f`; 31 checks
+  passed before merge and 32 in the terminal monitor report. Three deliberately
+  declined threads retain their prefixed explanations. Step 19 merged current
+  main without rewriting history and preserves its Computers-page changes.
+  Synchronized source commit `1585422cc5` passes the same
+  32 core, 29 shared modal, 208 mobile and 13 desktop cases using commands above
+  (desktop: `flutter test --no-pub test/features/sessions/desktop_session_detail_screen_test.dart`).
+  Client-root `dart analyze --fatal-infos` also passes. The published commit differs
+  from the tested snapshot only in tracker publication state and this record.
+
+[pr-1986]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/1986
+
+- Step-19 review fixes redact URL-bearing snapshot error bodies, remove copy that
+  promises undeclared actions, reconcile tracker publication state and distinguish
+  thrown browser errors from false-return failures. Declared decline/cancel for
+  unsupported destinations remain intentional; browser access and acceptance stay blocked.
+- The SSE-before-reply regression was behaviorally red at `1585422cc5`: the modal
+  closed without opening the next request. The existing pending-dismissal guard now
+  notifies its presentation owner once; no new mutable state or late-reply owner.
+  That full session-screen case passes, as do both new error-body redaction cases.
+  Checks: 3 API tests, 40 shared request-modal widgets, 209 mobile session/navigation
+  tests; client-root `dart analyze --fatal-infos` passes. Commands use the same
+  pinned SDK and package paths above; new API/sequence regressions extend those files.
+  Architecture implementation review pass 2 approved without findings.
+  Verified review-fix source commit: `f46ee6b4c9`; its production/test sources
+  match the verified tree. References above use published commits reachable from
+  this PR, rather than intermediate local-only trees.
+- Follow-up review adds the existing mounted-page guard to the dismissal callback.
+  The full-screen SSE sequencing regression still passes; workspace-plugin analysis
+  of `session_detail_body.dart` passes. Each replacement source commit above is an
+  ancestor of the pushed head and differs from its tested snapshot only in TRACKER.md.

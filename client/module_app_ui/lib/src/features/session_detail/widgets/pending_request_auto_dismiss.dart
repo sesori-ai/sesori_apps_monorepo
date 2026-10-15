@@ -8,6 +8,7 @@ class const PendingRequestAutoDismiss({
   super.key,
   required final Stream<bool> isPendingStream,
   required final bool Function() isPending,
+  required final VoidCallback? onResolved,
   required final Widget child,
 }) extends StatefulWidget {
   @override
@@ -31,6 +32,7 @@ class _PendingRequestAutoDismissState() extends State<PendingRequestAutoDismiss>
     if (isPending || _resolved || !mounted || ModalRoute.of(context)?.isCurrent != true) return;
     setState(() => _resolved = true);
     context.pop();
+    widget.onResolved?.call();
   }
 
   @override
