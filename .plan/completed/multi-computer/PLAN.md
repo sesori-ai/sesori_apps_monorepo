@@ -5,7 +5,7 @@
 - Date: 2026-10-14. Planning base: `origin/main` at `6a4a42e7a5` in the provided `brown-dingo` worktree.
 - Source: [issue #947](https://github.com/sesori-ai/sesori_apps_monorepo/issues/947). One account, several computers
   (laptop, workstation, remote dev server, GPU box); the person chooses which computer the agent works on.
-- Status: plan raised; implementation starts after the plan PR merges. The UX was agreed with the user on 2026-10-14
+- Status: complete, retired 2026-10-15 with the live L4 cells accepted unexecuted (see `TRACKER.md`). The UX was agreed with the user on 2026-10-14
   over two review rounds (decisions D1–D16 below). The architecture plan review of 2026-10-14 rejected the first
   revision with 17 findings; all were applied in this revision (see `TRACKER.md`).
 - Repositories: `sesori_relay_server` (Go, default branch `master`), `sesori_auth_server` (Node, default branch
@@ -425,10 +425,11 @@ same step create `.plan/active/computer-management/` (remove and rename computer
 - Platforms: release-target mobile platform plus macOS desktop; Linux/Windows machine identifiers proven by unit tests
   with recorded fixtures.
 - Any reduction (for example no real-device push) requires explicit user acceptance recorded here before retirement.
+  Accepted 2026-10-15: retired on automated coverage; the user runs the live cells from the `TRACKER.md` checklist.
 
 ## Later phases (rough intent only)
 
-- **Computer management** (follow-up plan created in step 15): remove, rename (nickname that wins over the hostname),
+- **Computer management** (follow-up started in step 15 with a UX review; its plan follows the agreed designs): remove, rename (nickname that wins over the hostname),
   the menu footer, and a Settings Computers page on phone and desktop.
 - **Approve new computers** from the phone before they can connect (D15); needs pending state, relay gating, and a
   recovery path for headless hosts.

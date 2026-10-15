@@ -4,7 +4,7 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch/base: `sesori/multi-computer-plan` from `origin/main` `6a4a42e7a5`, in the provided `brown-dingo` worktree.
-- Current step: 14/15 in PR.
+- Current step: complete; retired 2026-10-15 in step 15.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-14 over two review rounds.
 - Plan PR: #1959, merged 2026-10-14.
 - Architecture plan review: rejected on 2026-10-14 (17 findings); all applied in the same revision. Per `AGENTS.md`
@@ -29,8 +29,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 11/15 | monorepo | Desktop views a remote computer | Done | #1972 (merged 2026-10-14) |
 | 12/15 | monorepo | Presence handling and linked-computer alert | Done | #1973 (merged 2026-10-14) |
 | 13/15 | monorepo | Computer id in session pushes; tap opens the right computer | Done | #1974 (merged 2026-10-14) |
-| 14/15 | monorepo | Reconcile regression documents | In PR | — |
-| 15/15 | monorepo | Run L4 matrix; retire; open computer-management plan | Not started | — |
+| 14/15 | monorepo | Reconcile regression documents | Done | #1975 (merged 2026-10-14) |
+| 15/15 | monorepo | Record the L4 outcome; retire; start the computer-management UX review | Done | this PR |
 
 ## Evidence and decisions
 
@@ -95,7 +95,45 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   the stack with the session, so the session screen starts on the new computer's connection and waits for it. The id
   travels through the phone's local-notification payload for foreground pushes. Desktop attention alerts carry no id
   and open on the viewed computer (accepted: low damage, the desktop open path is separate).
-- No reduction of the retirement matrix has been requested or accepted.
+- 2026-10-15, step 15: the user answered the retirement questions on a review page. Relay #12/#13 and auth #95
+  are live (both servers deploy on merge). The follow-up starts with a UX review page; the
+  `.plan/active/computer-management/` plan is written only after the user agrees its designs, so this step does not
+  create it.
+
+## Retirement matrix
+
+Accepted reduction (user, 2026-10-15): the plan retires on automated coverage. Unit, widget and integration suites for
+every step passed in CI, and the relay and auth suites passed in their repositories. The live L4 cells below were not
+executed; the user runs them on the next build, and any failure becomes an ordinary bug PR.
+
+| Boundary | Cell | State |
+|---|---|---|
+| Relay integration | Two bridges and two phones on one account; each phone stays on its pick | Accepted, not executed |
+| Relay integration | An old app lands on the latest connected computer; a new app re-targets | Accepted, not executed |
+| Client, iOS simulator | Menu lists both computers with status; Switch lands on Projects of the other one | Accepted, not executed |
+| Client, iOS simulator | Stopping a computer shows the offline screen listing the other online one | Accepted, not executed |
+| Client, iOS simulator | Settings names the current computer; linking a third shows “is now linked” | Accepted, not executed |
+| Client, macOS desktop | Desktop views a remote computer while its own bridge keeps serving a phone | Accepted, not executed |
+| Headless bridge | Wiping the data directory and restarting reuses the same computer entry | Accepted, not executed |
+| Packaged | A real-device push names the computer; tapping it switches and opens the session | Accepted, not executed |
+
+### Checklist for the next build
+
+1. Sign in on two computers (for example laptop and workstation) with one account; both appear in the Projects
+   computer menu with their status.
+2. On phone A pick the laptop, on phone B pick the workstation; each keeps its pick across app restarts.
+3. Switch on one phone: the screen returns to Projects of the new computer without a flash of the old one's projects.
+4. Stop the bridge on the picked computer: the offline screen names it and lists the other online computer; Switch
+   works from there.
+5. Restart it: the menu and Settings flip back to online without a refresh.
+6. Settings shows the current computer at the top and its per-computer settings beneath.
+7. Link a third computer while the app is open: “<name> is now linked” appears with Switch; it does not appear on
+   the next launch.
+8. On the macOS desktop, view the workstation: the “Viewing:” header shows it, and phone A on the laptop keeps
+   working; with the workstation off, the desktop shows the remote offline view.
+9. Stop a bridge, delete its data directory, start it again: it reappears as the same computer entry, not a new one.
+10. With the app in the background on a real phone, finish a session on the computer not being viewed: the push
+    names that computer, and tapping it switches computers and opens the session.
 
 ## Review record
 
