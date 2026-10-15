@@ -1420,4 +1420,5 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   validation and transport-failure regressions reproduce hidden feedback on the
   prior implementation (status top -542), then pass without moving the scroll
   position or replacing drafts/controllers/selection. All 12 form widget cases
-  pass; native motion recording remains deferred.
+  and client-root analysis pass. The initial-position fixture image is byte-identical
+  to the published screenshot; native motion recording remains deferred.

@@ -80,7 +80,11 @@ class const PendingFormModal({
                 height: statusHeight,
                 child: ClipRect(
                   child: Padding(
-                    padding: const EdgeInsets.only(top: PregoSpacing.lg, left: PregoSpacing.lg, right: PregoSpacing.lg),
+                    padding: const EdgeInsetsDirectional.only(
+                      top: PregoSpacing.lg,
+                      start: PregoSpacing.lg,
+                      end: PregoSpacing.lg,
+                    ),
                     child: Semantics(
                       liveRegion: true,
                       child: AnimatedSwitcher(
@@ -102,9 +106,9 @@ class const PendingFormModal({
               ),
               Expanded(
                 child: SingleChildScrollView(
-                  padding: const EdgeInsets.only(
-                    left: PregoSpacing.lg,
-                    right: PregoSpacing.lg,
+                  padding: const EdgeInsetsDirectional.only(
+                    start: PregoSpacing.lg,
+                    end: PregoSpacing.lg,
                     bottom: PregoSpacing.lg,
                   ),
                   child: Column(
