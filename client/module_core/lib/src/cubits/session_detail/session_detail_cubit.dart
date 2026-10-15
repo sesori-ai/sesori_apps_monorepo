@@ -3010,7 +3010,7 @@ class SessionDetailCubit(
     SessionDetailLoaded(:final pendingQuestions) => pendingQuestions.any(
       (question) => question.id == requestId && question.interactionKind != QuestionInteractionKind.question,
     ),
-    _ => false,
+    SessionDetailLoading() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => false,
   };
 
   Future<bool> replyToQuestion({

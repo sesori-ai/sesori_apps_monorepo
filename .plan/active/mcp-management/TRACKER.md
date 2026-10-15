@@ -1128,3 +1128,8 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   analysis pass. Architecture implementation review pass 2 approves without findings.
   Verified review-fix tree: `767dcaf79a75c1d3dd8342db0d6d819827ed2c0d`;
   subsequent edits add only this evidence reference. Final diff is 1,641 changed lines.
+- CI at `4086e6e93c` found `prefer_exhaustive_switch` in the new analytics guard.
+  Package-level analysis had missed the workspace plugin diagnostic. Replaced its
+  wildcard with all three non-loaded sealed states; behavior is unchanged. Source
+  tree `988213c63ffbf663634de63615747c0c474d9193` records that correction.
+  `dart analyze --fatal-infos` from `client` now passes with the CI plugin enabled.
