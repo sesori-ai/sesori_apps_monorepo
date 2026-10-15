@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch/base: `sesori/mcp-claude-form-routing`, `1d284e4629`, in the provided `copper-heron` worktree.
-- Current step: 21/28 is local; 20/28 is in review as [#1989][pr-1989].
-  Latest merged step: 19/28 as [#1986][pr-1986].
+- Branch/base: `sesori/mcp-claude-form-routing`, `feb6f77858`, in the provided `copper-heron` worktree.
+- Current step: 21/28 is in review; latest merged step: 20/28 as [#1989][pr-1989].
+  External-action client presentation merged as [#1986][pr-1986].
   Earlier steps 11–14 merged as [#1957][pr-1957], [#1962][pr-1962], [#1964][pr-1964] and [#1966][pr-1966];
   authentication wire contracts merged as [#1956][pr-1956];
   native authentication merged as [#1954][pr-1954];
@@ -41,8 +41,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 17/28 | External-action transport (8.d.1) | Merged | [#1981][pr-1981]; 61 shared cases, architecture approval |
 | 18/28 | Native external-action routing (8.d.2.a) | Merged | [#1984][pr-1984] |
 | 19/28 | External-action client presentation (8.d.2.b) | Merged | [#1986][pr-1986] |
-| 20/28 | Typed form transport (9.a) | In review | [#1989][pr-1989] |
-| 21/28 | Claude native forms (9.b.1) | Local | Typed native adapter and pending owner |
+| 20/28 | Typed form transport (9.a) | Merged | [#1989][pr-1989] |
+| 21/28 | Claude native forms (9.b.1) | In review | Typed native adapter and pending owner |
 | 22/28 | Canonical headless forms (9.b.2) | Not started | — |
 | 23/28 | Shared typed form controls (9.c) | Not started | — |
 | 24/28 | Codex inventory/actions/authentication | Not started | — |
@@ -1284,3 +1284,9 @@ Native evidence: [contract captures](evidence/native-contracts.md).
 - Step-21 architecture implementation review pass 1 approved source range
   `1d284e4629..75ac1b1a95` without findings. The later tracker evidence record
   changes no production or test sources.
+- Step 20 merged at accepted head `1d284e4629`, squash `feb6f77858`, with 32
+  passing checks and a clean final Cubic approval. The normalized native-format
+  spelling suggestion remains deliberately declined with a prefixed explanation.
+  Step 21 merged current main; each conflicting incoming document was verified
+  byte-identical to the already incorporated parent. The merge changes no files
+  from approved source `ced5e6797a`, so no unchanged passing suite was rerun.
