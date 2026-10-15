@@ -20,12 +20,14 @@ import "approval_registry.dart";
 import "codex_app_server_client.dart";
 import "codex_event_mapper.dart";
 import "models/codex_collaboration_mode.dart";
+import "repositories/codex_mcp_repository.dart";
 import "repositories/codex_message_repository.dart";
 import "repositories/codex_model_repository.dart";
 import "repositories/codex_skill_repository.dart";
 import "repositories/codex_thread_repository.dart";
 import "repositories/codex_tool_lifecycle_tracker.dart";
 import "repositories/codex_tool_outcome_repository.dart";
+import "repositories/mappers/codex_mcp_mapper.dart";
 import "repositories/mappers/codex_question_mapper.dart";
 import "repositories/models/codex_projected_tool.dart";
 import "repositories/models/codex_thread_record.dart";
@@ -77,7 +79,7 @@ class CodexPlugin._({
   /// is reset before the reporter is told.
   required final void Function()? _onDisconnected,
   required final Duration _keepaliveInterval,
-}) implements CodexManagedApi {
+}) implements CodexManagedApi, McpManagementPluginApi {
   @override
   Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
       PluginQuotaContinuationReadiness.unavailable;
@@ -100,6 +102,7 @@ class CodexPlugin._({
   Future<void> _notificationWork = Future<void>.value();
   StreamSubscription<CodexRolloutAppend>? _rolloutSubscription;
   ApprovalRegistry? _approvalRegistry;
+  CodexMcpRepository? _mcpRepository;
 
   /// Periodic no-op RPC timer. codex `app-server` closes a connection that goes
   /// idle (no JSON-RPC traffic) after a few minutes and then exits the process;
@@ -197,6 +200,23 @@ class CodexPlugin._({
   Stream<BridgeSseEvent> get events => _eventBuffer.stream;
 
   @override
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
+    final repository = _mcpRepository;
+    return repository == null
+        ? const PluginMcpInventoryUnavailable(
+            reason: PluginMcpInventoryUnavailableReason.liveSessionRequired,
+            message: "Connect the Codex runtime before inspecting MCP servers.",
+          )
+        : await repository.read(scope: scope);
+  }
+
+  @override
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) async => const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
+
+  @override
   Stream<PluginWorkState> get workState => _workState.stream;
 
   @override
@@ -217,6 +237,7 @@ class CodexPlugin._({
         await _sessionService.hydratePersistedChildAncestry();
         await client.connect();
         final appServerApi = CodexAppServerApi(client: client);
+        _mcpRepository = CodexMcpRepository(appServerApi: appServerApi, mapper: const CodexMcpMapper());
         _sessionService.attachAppServerRepositories(
           threadRepository: CodexThreadRepository(appServerApi: appServerApi),
           modelRepository: CodexModelRepository(appServerApi: appServerApi),
@@ -230,6 +251,7 @@ class CodexPlugin._({
       } catch (error) {
         await client.dispose();
         _client = null;
+        _mcpRepository = null;
         _sessionService.detachAppServerRepositories();
         _connectFuture = null;
         return await Future<bool>.error(error);
@@ -271,6 +293,7 @@ class CodexPlugin._({
     _sessionService.cancelOpenSubAgents().forEach(_eventBuffer.add);
     _connectFuture = null;
     _client = null;
+    _mcpRepository = null;
     _sessionService.detachAppServerRepositories();
     _rolloutTailer.stopAll();
     _toolLifecycleTracker.clear();
@@ -1673,6 +1696,7 @@ class CodexPlugin._({
 
   @override
   Future<void> dispose() async {
+    _mcpRepository = null;
     _keepaliveTimer?.cancel();
     _keepaliveTimer = null;
     Object? firstError;

@@ -5,7 +5,8 @@
 Backend-neutral inventory contracts describe configured servers and offered
 connectors. The optional plugin read interface and shared wire models are
 implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
-resident session. Phone and desktop expose a shared read-only inventory and
+resident session and Codex inventory from the attached app-server connection.
+Phone and desktop expose a shared read-only inventory and
 server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
 exposes explicit live-session Claude reconnect, enable and disable controls to
 headless consumers. Claude native plugin authentication is implemented for
@@ -17,6 +18,24 @@ Existing permission flows remain separate. Read-only inventory may inspect an
 archived session if its native process remains live; it grants no session mutation.
 
 ## Required Behavior
+
+- Codex inventory reads all native pages for the exact session or harness on
+  the attached app-server connection. A project scope is explicitly unsupported;
+  no connection starts or session/tool mutation is issued by inspection. Detached
+  plugins return live-session-required instead of reconnecting implicitly.
+- Codex minimum-version omissions and unknown enums remain unknown. A connected
+  empty tool map is a successful empty catalog; otherwise missing discovery stays
+  unavailable, and a native discovery error remains a distinct safe failure.
+  Malformed pages and later-page RPC failures return a complete read failure,
+  retaining the original typed cause locally rather than partial success.
+- Codex server names remain opaque target keys. Only declared tool names and
+  descriptions, safe endpoint origins and separate native auth/runtime state
+  reach neutral consumers. No config provenance or per-server control is guessed.
+  Config reload is not advertised as resident reconnect. Native OAuth and offered
+  connectors remain explicitly not implemented; toggles/forgetting are unsupported.
+  Coverage: `codex_mcp_repository_test.dart` and `codex_mcp_plugin_test.dart`
+  in `bridge/sesori_plugin_codex/test/`, including exact scope/pagination,
+  malformed payloads, typed failure causes and detached/disconnected lifecycle.
 
 - Request-scoped GET recovers the current native attempt on identity establishment,
   reconnect, explicit refresh and `mcp.authentication.changed`. SSE carries no

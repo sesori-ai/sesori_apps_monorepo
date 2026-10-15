@@ -38,7 +38,7 @@ and distinct HTTP origins with no path; minimum fields remain absent.
 | Connection state | Native status | Native status | Not in status DTO | Asserted `runtimeStatus`, `toolsError`, and `serverCapabilities` |
 | Safe HTTP origin | Must derive from native config | Must derive from native config | Not in status DTO | `httpOrigin` |
 | Enable/disable | Live-process `mcp_toggle` | Same | No dedicated RPC | No dedicated RPC |
-| Reconnect | `mcp_reconnect` | Same | Whole-config reload RPC | Same |
+| Reconnect | `mcp_reconnect` | Same | No resident reconnect established | Same |
 | Form elicitation | Forwarded | Forwarded | Forwarded | Forwarded |
 | URL elicitation | Native rejects before forwarding | Forwarded | Forwarded | Forwarded |
 | OAuth completion | CLI with terminal | Same | URL plus completion notification | Same, optional thread context |
@@ -98,6 +98,18 @@ these pins. The bridge owns its operation identity and native callback lease.
 Codex reload re-reads a changed fixture configuration: an added isolated server
 appears in both app and existing live-thread inventory. This is a tooling fixture
 change, not a Sesori server-creation feature.
+
+A 2026-10-15 follow-up at the same exact Codex pins separately measured resident
+tool calls and status discovery against a local HTTP fixture with session-bound
+generations. Before/after changing fixture generation and then calling reload,
+status descriptions were generation 1/2/2 and initialization counts 2/3/4, but
+resident tool calls remained generation 1/1/1. Fresh discovery connections alone
+do not prove resident reconnection. No per-server reconnect action is exposed.
+This used isolated native homes and no model/provider/account. Three captured
+status pages per pin also passed through the new production DTO/API/repository
+decoder: six pages total, with absent minimum-version runtime state unknown and
+target runtime connected. These probes do not qualify relay/client/provider or
+packaged runtime boundaries.
 
 Codex fixture OAuth succeeds after its exact loopback callback receives the
 fixture state/code. The post-completion refresh reports OAuth and the fixture
