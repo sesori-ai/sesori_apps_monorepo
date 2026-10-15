@@ -3,10 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-opencode-v2-oauth`, in the provided `copper-heron` worktree.
-- Current step: 33/37 OpenCode v2 native authentication ownership is in review.
-  Parent 32/37 merged as [#2008][pr-2008] at accepted head `c4e41691cb`.
-  Latest squash: `a0e1d6c3e4`, with 19 passing pre-merge and 20 terminal checks.
+- Branch: `sesori/mcp-opencode-v1-oauth`, in the provided `copper-heron` worktree.
+- Current step: 34/37 OpenCode v1 native authentication ownership is local.
+  Parent 33/37 merged as [#2009][pr-2009] at accepted head `760ec2e428`.
+  Latest squash: `37f62d4837`, with 19 passing pre-merge and 20 terminal checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
   Split contracts, v2 ownership and v1 ownership for review; final qualification is unchanged.
   Native recording remains deferred by the user.
@@ -61,8 +61,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 30/37 | OpenCode v2 inventory/controls (11.a) | Merged | [#2006][pr-2006]; evidence below |
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
-| 33/37 | OpenCode v2 authentication owner (11.c.2) | In review | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | Local | 77 cases; both native pins |
+| 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | Local | 172 cases; both native pins |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
@@ -78,6 +78,13 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step 33 merged at accepted head `760ec2e428`, squash `37f62d4837`, with
+  all 19 pre-merge and 20 terminal checks passing. Cubic approved, current-head
+  Code/Security reviews completed, and four architecture/native-shape suggestions
+  remain intentionally open with reasoned replies. The challenge invariant stays
+  with its immutable value; no extra parser/cadence owner is introduced.
+  Step-34 integration preserves the entire tested successor tree and diff exactly:
+  SHA-256 `a175adba77e28a62a5a5dcce72f6a969a765517469e9c2c60b36e6911e1a0254`.
 - Step-34 architecture plan review approved the minimal v1 configuration
   projection, existing scope resolver, manual callback owner and shared plugin
   callback validator. Native DELETE auth destroys credentials, so this operation
