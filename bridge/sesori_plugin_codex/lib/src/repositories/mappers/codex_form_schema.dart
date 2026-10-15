@@ -22,6 +22,7 @@ final class CodexFormSchema._({
       final requiredFields = root.containsKey("required") ? _strings(value: root["required"]) : const <String>[];
       if (!requiredFields.every(properties.containsKey)) throw const FormatException("Unknown required field");
       final fields = <PluginFormField>[];
+      final fieldLabels = <String>{};
       final nativeKeys = <String, String>{};
       final nativeOptions = <String, Map<String, String>>{};
       for (final entry in properties.entries) {
@@ -29,9 +30,11 @@ final class CodexFormSchema._({
         final raw = _object(value: entry.value);
         final options = <String, String>{};
         final fieldSchema = _field(schema: raw, nativeOptions: options);
+        final label = _optional<String>(schema: raw, key: "title") ?? entry.key;
+        if (!fieldLabels.add(label)) throw const FormatException("Ambiguous form field labels");
         final field = PluginFormField(
           id: id,
-          label: _optional<String>(schema: raw, key: "title") ?? entry.key,
+          label: label,
           description: _optional<String>(schema: raw, key: "description"),
           isRequired: requiredFields.contains(entry.key),
           schema: fieldSchema,
@@ -110,7 +113,7 @@ final class CodexFormSchema._({
         );
       case "string":
         if (schema.containsKey("enum") || schema.containsKey("oneOf")) {
-          _keys(schema: schema, allowed: {...metadata, "enum", "oneOf"});
+          _keys(schema: schema, allowed: {...metadata, "enum", "enumNames", "oneOf"});
           final options = _choices(schema: schema, nativeOptions: nativeOptions);
           final defaultValue = _optional<String>(schema: schema, key: "default");
           return PluginFormChoiceSchema(
@@ -162,8 +165,14 @@ final class CodexFormSchema._({
       throw const FormatException("Unsupported form options");
     }
     final choices = <PluginFormChoice>[];
+    final labels = <String>{};
     final raw = representations.single == "enum" ? _strings(value: schema["enum"]) : schema[representations.single];
     if (raw is! List || raw.isEmpty) throw const FormatException("Missing form options");
+    final names = schema["enumNames"] == null ? null : _strings(value: schema["enumNames"]);
+    if (schema.containsKey("enumNames") &&
+        (!schema.containsKey("enum") || names != null && names.length != raw.length)) {
+      throw const FormatException("Invalid titled form options");
+    }
     for (final item in raw) {
       final option = schema.containsKey("enum") ? <String, Object?>{"const": item} : _object(value: item);
       _keys(schema: option, allowed: const {"const", "title", "description"});
@@ -171,12 +180,17 @@ final class CodexFormSchema._({
       if (value is! String || nativeOptions.containsValue(value)) throw const FormatException("Invalid form option");
       final id = "option-${choices.length}";
       nativeOptions[id] = value;
-      final label = _optional<String>(schema: option, key: "title") ?? (value.isEmpty ? "Empty value" : value);
+      final label =
+          names?[choices.length] ??
+          _optional<String>(schema: option, key: "title") ??
+          (value.isEmpty ? "Empty value" : value);
       final description = _optional<String>(schema: option, key: "description");
+      final displayLabel = description == null || description.isEmpty ? label : "$label — $description";
+      if (!labels.add(displayLabel)) throw const FormatException("Ambiguous form option labels");
       choices.add(
         PluginFormChoice(
           id: id,
-          label: description == null || description.isEmpty ? label : "$label — $description",
+          label: displayLabel,
         ),
       );
     }

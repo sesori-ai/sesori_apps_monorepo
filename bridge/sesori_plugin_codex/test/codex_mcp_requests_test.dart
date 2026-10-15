@@ -233,10 +233,84 @@ void main() {
       request(schema: schema);
       expect(replies.last.result, {"action": "decline"});
       expect(events.last, isA<BridgeSseTuiToastShow>());
+      expect((events.last as BridgeSseTuiToastShow).sessionID, "parent");
       expect(registry.hasAnyPendingInput, isFalse);
     }
     request(mode: "future");
     expect(replies.last.result, {"action": "decline"});
+  });
+
+  test("malformed requests without a session retain a global warning", () {
+    registry.handleRequest(
+      const CodexPendingRequest(
+        request: CodexServerRequest(id: 8, method: "mcpServer/elicitation/request", params: {}),
+      ),
+    );
+    expect(replies.single.result, {"action": "decline"});
+    expect((events.single as BridgeSseTuiToastShow).sessionID, isNull);
+  });
+
+  test("ambiguous field and option labels decline without creating a pending owner", () {
+    for (final properties in [
+      {
+        "a": {"type": "string", "title": "Same"},
+        "b": {"type": "boolean", "title": "Same"},
+      },
+      for (final representation in ["oneOf", "anyOf"])
+        {
+          "choice": {
+            "type": representation == "oneOf" ? "string" : "array",
+            if (representation == "oneOf")
+              "oneOf": [
+                {"const": "a", "title": "Same", "description": "Same description"},
+                {"const": "b", "title": "Same", "description": "Same description"},
+              ]
+            else
+              "items": {
+                "anyOf": [
+                  {"const": "a", "title": "Same"},
+                  {"const": "b", "title": "Same"},
+                ],
+              },
+          },
+        },
+    ]) {
+      request(schema: {"type": "object", "properties": properties});
+      expect(replies.last.result, {"action": "decline"});
+      expect((events.last as BridgeSseTuiToastShow).sessionID, "parent");
+      expect(registry.hasAnyPendingInput, isFalse);
+    }
+  });
+
+  test("legacy titled enums preserve display names and encode native values", () {
+    CodexFormSchema? parse({required Object? names}) => CodexFormSchema.parse(
+      schema: {
+        "type": "object",
+        "properties": {
+          "plan": {
+            "type": "string",
+            "enum": ["basic", "pro"],
+            "enumNames": names,
+            "default": "pro",
+          },
+        },
+      },
+    );
+    final form = parse(names: ["Basic plan", "Pro plan"])!;
+    final choice = form.fields.single.schema as PluginFormChoiceSchema;
+    expect(choice.options.map((option) => option.label), ["Basic plan", "Pro plan"]);
+    expect(choice.defaultOptionId, "option-1");
+    expect(form.encode(values: const {"field-0": PluginFormChoiceValue(optionId: "option-1")}), {"plan": "pro"});
+    expect((parse(names: null)!.fields.single.schema as PluginFormChoiceSchema).options.first.label, "basic");
+    for (final names in [
+      <String>[],
+      ["Only one"],
+      ["Same", "Same"],
+      [1, 2],
+      "wrong",
+    ]) {
+      expect(parse(names: names), isNull);
+    }
   });
 
   test("schema bounds, unknown fields and invalid defaults fail explicitly", () {

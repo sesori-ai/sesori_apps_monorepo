@@ -1546,3 +1546,13 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   fall back to native names/values; opaque aliases protect submitted IDs.
   Connector catalog/setup split into 28/29 keeps future boundaries reviewable;
   remaining series total is 32 and final qualification is unchanged.
+- Step-27 follow-up review: forwarded legacy titled enums retain matching
+  enumNames. Native 0.139.0 omits enumNames, so its production snapshot falls
+  back to native values; 0.160.1 forwards and displays the provided titles.
+  The direct parser test verifies forwarded display names and native encoding.
+  Ambiguous field headings/complete option labels
+  explicitly decline; unsupported child warnings use the root display session,
+  with global warnings retained for missing owners. All 45 directly affected
+  typed-request/approval cases pass and package analysis is clean. Both pinned
+  binaries pass native round trips with explicit normalized-label assertions.
+  The earlier stale capability sentence was already corrected in `629d2cecfc`.

@@ -731,6 +731,11 @@ and shared request-scoped controls. Supported scalar/choice forms retain native
 types and opaque key/value aliases; invalid replies remain pending. Unsupported
 schemas/modes explicitly decline. Integer bounds accept the native JSON-number
 representation, with fractional bounds rounded inward to integral choices.
+Forwarded legacy titled enums retain matching enumNames. Native 0.139.0 omits
+enumNames in the isolated fixture, so native values become visible labels;
+0.160.1 forwards the titles, and native oneOf titles work at both pins.
+Ambiguous field/option labels decline with
+a display-session warning instead of offering indistinguishable inputs.
 URLs/defaults/answers remain outside question broadcasts. Legacy clients receive
 cancel-only notices; generic replies cancel instead of coercing answers or
 accepting an external action. Tagged tool approval and declared persistent grants

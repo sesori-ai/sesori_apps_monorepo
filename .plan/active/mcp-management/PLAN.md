@@ -411,9 +411,10 @@ review focused on ownership and exact consent/cancellation behavior. A measured 
 before route tests, client presentation and docs justifies separating native routing from its client modal.
 The client foundation already measures about 1,000 lines before visible controls/tests.
 Separating draft ownership from presentation keeps both review boundaries below the soft cap.
-Codex inventory measures about 932 lines before documentation, including 349 generated lines.
-Separate its read-only mapping (10.a) from native OAuth ownership (10.b) rather than
-combining that lifecycle into an oversized review. Both use the existing shared contracts.
+Codex inventory measures about 932 lines before documentation, including 349
+generated lines. Separate its read-only mapping (10.a) from native OAuth
+ownership (10.b) rather than combining that lifecycle into an oversized review.
+Both use the existing shared contracts.
 The current delivery order and total are recorded below; the final qualification
 matrix is unchanged. Historical squash commits remain unchanged.
 
