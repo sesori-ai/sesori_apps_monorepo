@@ -452,6 +452,40 @@ Both native runs replace the resident fixture process on reconnect and leave the
 configuration file unchanged. No model/tool execution or provider sign-in occurs.
 Provider, client, package and final L4 coverage remain pending.
 
+## OpenCode v1 MCP management
+
+The v1 adapter uses its separate native name-keyed status map. Project scope
+uses the project directory; session scope resolves that exact native session's
+directory without creating or resuming it. Harness scope is explicitly unavailable
+before HTTP. Native status and controls use the established directory header,
+including non-ASCII encoding. Same-name servers in different directories retain
+independent targets.
+
+Connected, disabled, failed and unknown connection states remain distinct.
+Needs-auth and needs-client-registration require authentication; registration
+also declares a native-configuration requirement. Endpoints, configuration
+ownership, tools and authenticated state are not inferred from status alone.
+The status map has no offered-connector catalog. OAuth/forgetting remain explicit
+not-implemented capabilities until their separate native owner lands.
+
+Fresh target lookup precedes each enable/reconnect/disable request. Only the
+native named connect/disconnect route is used, with project effect scope and
+the existing headless authoritative refresh. No config/add/remove route,
+provider sign-in or tool execution is added. HTTP errors retain their response
+diagnostics; malformed native status/session payloads retain original errors and
+stacks through typed failures, rather than appearing as empty success.
+
+Coverage: `opencode_mcp_test.dart` plus the affected v1 API/repository/plugin
+suites pass 116 cases; owning package analysis is clean. Tests cover all native
+statuses, scope resolution/isolation, encoded names/directories, missing targets,
+empty inventory, malformed payloads, HTTP failures and the concrete plugin seam.
+Exact floor 1.14.0 has no published tag/npm artifact; native qualification uses
+the earliest published 1.14.x version, 1.14.17, and target 1.17.7 without changing
+the existing runtime floor. Both pass isolated production-adapter inventory,
+enable, resident reconnect, disable and exact session lookup; configuration bytes
+remain unchanged and reconnect replaces the fixture process. Fixture success
+does not qualify provider/package/client/L4 or deferred native recording.
+
 ## Codex native authentication
 
 Codex sign-in uses the attached app-server and the existing canonical headless

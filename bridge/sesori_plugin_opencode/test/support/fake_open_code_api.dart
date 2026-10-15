@@ -1,6 +1,7 @@
 // ignore_for_file: annotate_overrides
 
 import "package:opencode_plugin/opencode_plugin.dart";
+import "package:opencode_plugin/src/models/openapi/mcpstatus.g.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 class FakeOpenCodeApi({
@@ -32,6 +33,11 @@ class FakeOpenCodeApi({
   String? lastRequestedSessionId;
   String? lastRequestedDirectory;
   int updateProjectCalls = 0;
+
+  Future<Map<String, MCPStatus>> getMcpStatus({required String directory}) async => throw UnimplementedError();
+  Future<void> connectMcpServer({required String directory, required String name}) async => throw UnimplementedError();
+  Future<void> disconnectMcpServer({required String directory, required String name}) async =>
+      throw UnimplementedError();
 
   Future<bool> healthCheck() async => true;
   Future<List<Project>> listProjects() async => projects;

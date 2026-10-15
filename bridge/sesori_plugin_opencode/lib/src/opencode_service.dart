@@ -12,6 +12,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAgent,
         PluginApiException,
         PluginCommand,
+        PluginMcpActionResult,
+        PluginMcpInventoryResult,
+        PluginMcpScope,
+        PluginMcpServerAction,
+        PluginMcpServerTarget,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -61,6 +66,14 @@ class OpenCodeService(
   /// localhost within milliseconds, so 1s is enough to catch them while keeping
   /// the phone's "accepted" feedback snappy.
   this;
+
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
+      repository.getMcpInventory(scope: scope);
+
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) => repository.executeMcpServerAction(target: target, action: action);
 
   Future<List<PluginProject>> getProjects() async {
     final projects = await repository.getProjects();

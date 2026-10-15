@@ -3,10 +3,12 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
+import "models/open_code_mcp_decode_exception.dart";
 import "models/openapi/agent.g.dart";
 import "models/openapi/command.g.dart";
 import "models/openapi/config_providers_response.g.dart";
 import "models/openapi/global_session.g.dart";
+import "models/openapi/mcpstatus.g.dart";
 import "models/openapi/part.g.dart";
 import "models/openapi/permission_request.g.dart";
 import "models/openapi/project.g.dart";
@@ -39,6 +41,34 @@ String? _directoryHeaderValue(String? directory) {
 /// [OpenCodeRawHttpClient], so they apply uniformly and can't be forgotten on a
 /// new endpoint.
 class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
+  Future<Map<String, MCPStatus>> getMcpStatus({required String directory}) async {
+    final response = await _client.get(
+      path: "/mcp",
+      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+    );
+    try {
+      return jsonDecodeMap(response.body).map((name, value) => MapEntry(name, MCPStatus.fromJson(value as Object)));
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(OpenCodeMcpDecodeException(operation: "MCP status", innerError: error), stackTrace);
+    }
+  }
+
+  Future<void> connectMcpServer({required String directory, required String name}) async {
+    await _client.post(
+      path: "/mcp/${Uri.encodeComponent(name)}/connect",
+      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+      timeout: const Duration(minutes: 3),
+    );
+  }
+
+  Future<void> disconnectMcpServer({required String directory, required String name}) async {
+    await _client.post(
+      path: "/mcp/${Uri.encodeComponent(name)}/disconnect",
+      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+      timeout: const Duration(minutes: 3),
+    );
+  }
+
   Future<bool> healthCheck() async {
     try {
       await _client.get(

@@ -45,7 +45,17 @@ class OpenCodePlugin._({
   required String? password,
   void Function()? onConnected,
   void Function()? onDisconnected,
-}) implements OpenCodeManagedApi {
+}) implements OpenCodeManagedApi, McpManagementPluginApi {
+  @override
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) =>
+      _service.getMcpInventory(scope: scope);
+
+  @override
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) => _service.executeMcpServerAction(target: target, action: action);
+
   @override
   Future<PluginQuotaContinuationReadiness> getQuotaContinuationReadiness({required String sessionId}) async =>
       PluginQuotaContinuationReadiness.unavailable;
