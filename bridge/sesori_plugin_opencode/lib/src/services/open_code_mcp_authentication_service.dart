@@ -5,7 +5,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "../models/open_code_mcp_authentication.dart";
 import "../models/open_code_mcp_login_challenge.dart";
 import "../opencode_repository.dart";
-import "../opencode_service.dart";
 
 sealed class const _Ownership();
 final class const _Idle() extends _Ownership;
@@ -14,13 +13,12 @@ final class const _Disposed() extends _Ownership;
 
 /// V1 has manual callback settlement and no credential-preserving cancellation.
 class OpenCodeMcpAuthenticationService({
-  required final OpenCodeService _service,
   required final OpenCodeRepository _repository,
 }) {
   _Ownership _ownership = const _Idle();
 
   Future<String> _directory({required PluginMcpScope scope}) async {
-    final directory = await _service.getMcpDirectory(scope: scope);
+    final directory = await _repository.getMcpDirectory(scope: scope);
     if (directory == null) {
       throw const PluginMcpAuthenticationUnavailableException(
         reason: PluginMcpAuthenticationUnavailableReason.unsupportedScope,

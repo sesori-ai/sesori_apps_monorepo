@@ -542,6 +542,8 @@ requires native configuration before sign-in. Forgetting remains independent of
 that registration requirement and affects the native harness profile. The minimal
 OAuth configuration keeps only redirect metadata; an unsupported configured
 callback is unavailable before mutation, without disabling credential forgetting.
+Configured callbacks cannot predefine OAuth response keys `state`, `code` or
+`error`; those are supplied by the authentication flow.
 
 Fresh target lookup precedes each enable/reconnect/disable request. Only the
 native named connect/disconnect route is used, with project effect scope and
@@ -549,8 +551,8 @@ the existing headless authoritative refresh. No server-configuration mutation,
 server addition/removal or tool execution is added. HTTP errors retain their response
 diagnostics; malformed native status/session payloads retain original errors and
 stacks through typed failures, rather than appearing as empty success.
-The plugin service owns scope resolution, fresh-target validation and action
-dispatch; the repository maps directory reads and native mutations. Native
+The repository resolves MCP scopes and fresh targets and maps native directory
+reads and mutations. The service dispatches controls through that boundary. Native
 writes remain unbounded because HTTP abandonment does not cancel a native
 mutation. Project effects use the shared plugin-wide inventory invalidation.
 
@@ -587,9 +589,9 @@ retirement closes local observation and logs unavailable native cleanup; attache
 servers can retain pending transports. Neither browser return nor request
 timeout is authentication completion. No native auth files are read or written.
 
-Coverage: 23 new v1 authentication cases plus affected controls and shared v2
-callback regressions pass (80 cases), plus 95 affected v1 API/repository/plugin
-cases, with owning analysis clean. Both exact v1
+Coverage: 26 new v1 authentication cases plus affected controls and shared v2
+callback regressions pass (83 cases), plus affected v1 API/repository/plugin
+cases (178 unique across affected runs), with owning analysis clean. Both exact v1
 pins pass the production service/repository/API fixture using an exact native
 session: manual callback, completion, harness-profile forgetting and another
 sign-in, unchanged configuration and two verified fixture token exchanges.
