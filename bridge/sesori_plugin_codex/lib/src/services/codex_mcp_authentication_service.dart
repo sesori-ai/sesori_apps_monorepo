@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
 import "../repositories/codex_mcp_authentication_repository.dart";
+import "../repositories/codex_mcp_repository.dart";
 import "../repositories/models/codex_mcp_authentication_exception.dart";
 import "../repositories/models/codex_mcp_login_challenge.dart";
 import "../repositories/models/codex_mcp_login_completion.dart";
@@ -13,7 +14,10 @@ final class const _Running({required final _CodexMcpLogin login}) extends _Owner
 final class const _Disposed() extends _Ownership;
 
 /// Native resources only; the bridge owns cross-client attempts and serialization.
-class CodexMcpAuthenticationService({required final CodexMcpAuthenticationRepository _repository}) {
+class CodexMcpAuthenticationService({
+  required final CodexMcpAuthenticationRepository _repository,
+  required final CodexMcpRepository _inventory,
+}) {
   _Ownership _ownership = const _Idle();
 
   Future<PluginMcpAuthenticationOperation> begin({required PluginMcpServerTarget target}) async {
@@ -22,7 +26,7 @@ class CodexMcpAuthenticationService({required final CodexMcpAuthenticationReposi
         reason: PluginMcpAuthenticationUnavailableReason.liveSessionRequired,
       );
     }
-    await _repository.validateTarget(target: target);
+    await _validateTarget(target: target);
     late final _CodexMcpLogin login;
     login = _CodexMcpLogin(
       repository: _repository,
@@ -36,6 +40,44 @@ class CodexMcpAuthenticationService({required final CodexMcpAuthenticationReposi
       },
     );
     return login.operation();
+  }
+
+  Future<void> _validateTarget({required PluginMcpServerTarget target}) async {
+    final result = await _inventory.read(scope: target.scope);
+    switch (result) {
+      case PluginMcpInventoryUnavailable(:final reason):
+        throw PluginMcpAuthenticationUnavailableException(
+          reason: switch (reason) {
+            PluginMcpInventoryUnavailableReason.unsupportedScope =>
+              PluginMcpAuthenticationUnavailableReason.unsupportedScope,
+            PluginMcpInventoryUnavailableReason.liveSessionRequired =>
+              PluginMcpAuthenticationUnavailableReason.liveSessionRequired,
+          },
+        );
+      case PluginMcpInventoryReadFailed(:final cause, :final causeStackTrace):
+        Log.w("[codex] MCP target inventory could not be read for ${target.serverKey}", cause, causeStackTrace);
+        Error.throwWithStackTrace(CodexMcpAuthenticationException(innerError: cause), causeStackTrace);
+      case PluginMcpInventorySnapshot(:final entries):
+        for (final entry in entries) {
+          if (entry is! PluginMcpServerSnapshot || entry.target.serverKey != target.serverKey) continue;
+          if (entry.authentication case PluginMcpAuthenticationCapabilityUnavailable(:final reason)) {
+            throw PluginMcpAuthenticationUnavailableException(
+              reason: switch (reason) {
+                PluginMcpAuthenticationCapabilityUnavailableReason.notSupported =>
+                  PluginMcpAuthenticationUnavailableReason.notSupported,
+                PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented =>
+                  PluginMcpAuthenticationUnavailableReason.notImplemented,
+                PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired =>
+                  PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+              },
+            );
+          }
+          return;
+        }
+        throw const PluginMcpAuthenticationUnavailableException(
+          reason: PluginMcpAuthenticationUnavailableReason.targetNotFound,
+        );
+    }
   }
 
   Future<void> dispose() async {
@@ -77,7 +119,7 @@ final class _CodexMcpLogin({
             PluginMcpSessionScope(:final sessionId) => sessionId,
             _ => null,
           };
-          if (completion.threadId != null && completion.threadId != threadId) return;
+          if (completion.threadId != threadId) return;
           _complete(
             event: switch (completion) {
               CodexMcpLoginCompleted() => const PluginMcpAuthenticationCompleted(),

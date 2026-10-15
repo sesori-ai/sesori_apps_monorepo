@@ -654,8 +654,8 @@ presentation. Claude's headless authentication routes and the shared client
 API/repository/connection-fenced lifecycle are implemented. The observing Cubit
 does not cancel on view closure. Request-scoped recovery never auto-launches a
 browser; busy retains the challenge, and reconnect fences callbacks to the old
-bridge. Visible client controls use declared capabilities; other native adapters
-remain **not implemented**.
+bridge. Visible client controls use declared capabilities. Native MCP sign-in is
+implemented for Claude and Codex; other harness adapters remain **not implemented**.
 The shared entry-action API/repository, per-view request owner and observing Cubit
 are implemented for reconnect, enable/disable and credential forgetting. Shells
 provide the read-only posture; pending requests retain readable inventory, late

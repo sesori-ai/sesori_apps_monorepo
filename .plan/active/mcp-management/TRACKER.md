@@ -1497,3 +1497,13 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   correctness fix. Actual native reruns verify minimum session refusal with no
   OAuth RPC, minimum harness expiry/denial/success, and target session
   expiry/denial/success. No new architecture boundary or contract was added.
+- OAuth PR #2000 review tightened session completion to an exact thread match;
+  harness completion alone may omit it. Callback timeouts now abort HTTP work,
+  verified with stalled-header and stalled-body sockets. Inventory coordination
+  moved to the existing service; the repository maps API data only. Original
+  inventory failures remain in useful local logs while presentation stays safe.
+  All 26 affected auth/MCP-plugin cases and package analysis pass; both exact
+  native pins pass the corrected production adapter journeys. Six findings were
+  addressed. Fixed-query callback machinery was declined: both pinned native
+  listeners advertise query-free callback URIs, so no supported flow alters a
+  fixed callback query. No third architecture review was invoked.

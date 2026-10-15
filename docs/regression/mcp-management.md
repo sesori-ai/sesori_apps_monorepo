@@ -349,7 +349,8 @@ to native login. Older or unknown versions require native configuration/handoff
 for session targets, before issuing OAuth. Codex 0.139.0 ignores the login thread
 and can select a same-name harness server instead of the session override.
 Harness sign-in remains available and omits thread context. Minimum completion
-has no thread identity; target completion must match when present. Both match
+has no thread identity; session completion must match the exact thread, including
+rejecting absent context. Harness completion must omit thread context. Both match
 the exact native server.
 Credential effects are harness-scoped. Project/unsupported targets and detached
 runtimes return explicit limitations without connecting or inventing native work.
@@ -364,7 +365,8 @@ replacement. A completion already received suppresses a stale challenge.
 
 Callbacks match the exact native HTTP loopback origin, path and unique state,
 with one code or provider error and no user info/fragment. HTTP delivery disables
-redirects and discards response bodies. HTTP success is not authentication success;
+redirects and discards response bodies. Its delivery deadline aborts underlying
+HTTP work before headers or during the body. HTTP success is not authentication success;
 the native notification supplies the outcome. Both pinned versions consume provider
 denial with HTTP 400, then emit failure; this is completed callback delivery.
 The native owns credentials and callback state. Browser URLs remain request-only;

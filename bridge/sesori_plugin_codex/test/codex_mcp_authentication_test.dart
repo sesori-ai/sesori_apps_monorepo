@@ -56,25 +56,29 @@ class _Transport() implements CodexAppServerTransport {
     return response;
   }
 
-  void complete({required bool success, required String? error, String name = "fixture", String? threadId}) =>
-      notices.add(
-        CodexServerNotification(
-          method: "mcpServer/oauthLogin/completed",
-          params: {"name": name, "success": success, "error": error, "threadId": ?threadId},
-        ),
-      );
+  void complete({
+    required bool success,
+    required String? error,
+    String name = "fixture",
+    String? threadId = "thread",
+  }) => notices.add(
+    CodexServerNotification(
+      method: "mcpServer/oauthLogin/completed",
+      params: {"name": name, "success": success, "error": error, "threadId": ?threadId},
+    ),
+  );
 }
 
 class _Harness({required final http.Client? callbackClient, required final String userAgent}) {
   final transport = _Transport();
   final callbacks = <http.Request>[];
   late final api = CodexAppServerApi(client: transport);
+  late final inventory = CodexMcpRepository(
+    appServerApi: api,
+    mapper: CodexMcpMapper(userAgent: userAgent),
+  );
   late final repository = CodexMcpAuthenticationRepository(
     appServerApi: api,
-    inventory: CodexMcpRepository(
-      appServerApi: api,
-      mapper: CodexMcpMapper(userAgent: userAgent),
-    ),
     callbackApi: CodexMcpCallbackApi(
       client:
           callbackClient ??
@@ -86,7 +90,7 @@ class _Harness({required final http.Client? callbackClient, required final Strin
     ),
     timeoutSecs: 180,
   );
-  late final service = CodexMcpAuthenticationService(repository: repository);
+  late final service = CodexMcpAuthenticationService(repository: repository, inventory: inventory);
   Future<PluginMcpAuthenticationOperation> begin({PluginMcpServerTarget target = _target}) =>
       service.begin(target: target);
   Future<void> close() async {
@@ -102,6 +106,34 @@ void main() {
   });
   tearDown(() => harness.close());
 
+  for (final sendHeaders in [false, true]) {
+    test("callback timeout aborts native HTTP work ${sendHeaders ? 'during body' : 'before headers'}", () async {
+      final server = await ServerSocket.bind(InternetAddress.loopbackIPv4, 0);
+      final peerClosed = Completer<void>();
+      Socket? peer;
+      final accepted = server.listen((socket) {
+        peer = socket;
+        socket.listen((_) {
+          if (sendHeaders) {
+            socket.write("HTTP/1.1 200 OK\r\nContent-Length: 100\r\n\r\nfixture");
+          }
+        }, onDone: peerClosed.complete);
+      });
+      final api = CodexMcpCallbackApi(client: http.Client(), budget: const Duration(milliseconds: 100));
+      addTearDown(() async {
+        api.close();
+        peer?.destroy();
+        await accepted.cancel();
+        await server.close();
+      });
+      await expectLater(
+        api.submit(callbackUri: Uri.parse("http://127.0.0.1:${server.port}/callback")),
+        throwsA(isA<TimeoutException>()),
+      );
+      await peerClosed.future.timeout(const Duration(seconds: 2));
+    });
+  }
+
   test("preparation is read-only and discarded operations never start native authentication", () async {
     final operation = await harness.begin();
     expect(operation, isA<PluginMcpNativeSettlementAuthentication>());
@@ -111,15 +143,23 @@ void main() {
 
   for (final threadId in [null, "thread"]) {
     test(
-      "exact native request and callback forwarding with ${threadId == null ? 'absent' : 'present'} completion context",
+      "exact native request and callback forwarding with ${threadId == null ? 'harness' : 'session'} context",
       () async {
-        final operation = await harness.begin();
+        final operation = await harness.begin(
+          target: threadId == null
+              ? const PluginMcpServerTarget(scope: PluginMcpHarnessScope(), serverKey: "fixture")
+              : _target,
+        );
         final iterator = StreamIterator(operation.events);
         addTearDown(iterator.cancel);
         expect(await iterator.moveNext(), isTrue);
         final challenge = iterator.current as PluginMcpAuthenticationChallenge;
         expect(challenge.expectedCallbackUri.toString(), _callback);
-        expect(harness.transport.calls.last.params, {"name": "fixture", "threadId": "thread", "timeoutSecs": 180});
+        expect(harness.transport.calls.last.params, {
+          "name": "fixture",
+          if (threadId != null) "threadId": "thread",
+          "timeoutSecs": 180,
+        });
         final callback = challenge.expectedCallbackUri.replace(
           queryParameters: {"state": "fixture-state", "code": "fixture-code"},
         );
@@ -146,7 +186,7 @@ void main() {
     addTearDown(iterator.cancel);
     await iterator.moveNext();
     expect(harness.transport.calls.last.params, {"name": "fixture", "timeoutSecs": 180});
-    harness.transport.complete(success: true, error: null);
+    harness.transport.complete(success: true, error: null, threadId: null);
     await iterator.moveNext();
   });
 
@@ -173,7 +213,7 @@ void main() {
       expect(await events.moveNext(), isTrue);
       expect(events.current, isA<PluginMcpAuthenticationChallenge>());
       expect(legacy.transport.calls.last.params, {"name": "fixture", "timeoutSecs": 180});
-      legacy.transport.complete(success: true, error: null);
+      legacy.transport.complete(success: true, error: null, threadId: null);
       expect(await events.moveNext(), isTrue);
       expect(events.current, isA<PluginMcpAuthenticationCompleted>());
     });
@@ -195,6 +235,7 @@ void main() {
     await pumpEventQueue();
     harness.transport.complete(success: true, error: null, name: "foreign");
     harness.transport.complete(success: true, error: null, threadId: "foreign");
+    harness.transport.complete(success: true, error: null, threadId: null);
     harness.transport.notices.add(const CodexServerNotification(method: "unrelated", params: {}));
     await pumpEventQueue();
     expect(events, isEmpty);

@@ -272,9 +272,9 @@ class CodexPlugin._({
         );
         _mcpRepository = inventory;
         _mcpAuthentication = CodexMcpAuthenticationService(
+          inventory: inventory,
           repository: CodexMcpAuthenticationRepository(
             appServerApi: appServerApi,
-            inventory: inventory,
             callbackApi: CodexMcpCallbackApi(client: http.Client(), budget: const Duration(seconds: 10)),
             timeoutSecs: 180,
           ),

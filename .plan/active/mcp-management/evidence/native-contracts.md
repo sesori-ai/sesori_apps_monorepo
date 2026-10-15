@@ -123,7 +123,8 @@ Step-26 adapter checks on 2026-10-15 used both fingerprint-verified Codex binari
 with isolated native homes and the local OAuth fixture. The production generated
 DTO/API/repository/service and loopback HTTP forwarding passed expiry, provider
 denial and success at each pin; final native inventory reported authenticated.
-Both accept a login threadId; minimum completion omits it, target echoes it.
+Only the target uses login threadId; the minimum ignores session context and
+omits it from completion. Production minimum sign-in is harness-scoped.
 Native expiry reports `timed out waiting for OAuth callback`. Provider denial is
 consumed with HTTP 400; its native failure notification identifies `access_denied`.
 No model turn or real provider/account was used.
