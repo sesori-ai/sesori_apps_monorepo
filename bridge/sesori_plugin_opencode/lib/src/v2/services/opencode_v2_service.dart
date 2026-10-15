@@ -14,6 +14,7 @@ import "../repositories/opencode_v2_compaction_tracker.dart";
 import "../repositories/opencode_v2_repository.dart";
 import "../repositories/v2_model_mapper.dart";
 import "../sse/v2_event_mapper.dart";
+import "v2_mcp_authentication_service.dart";
 
 /// The transport consumer serializes refresh and event handling. This service
 /// owns their orchestration, not a stream, queue, transcript cache or lifecycle.
@@ -25,6 +26,7 @@ class OpenCodeV2Service({
   required final V2ModelMapper _modelMapper,
   required final V2FormAnswerMapper _formAnswerMapper,
   required final V2FormAnswerValidator _formAnswerValidator,
+  required final V2McpAuthenticationService _mcpAuthentication,
 }) {
   static const compactionCommandName = "compact";
 
@@ -74,6 +76,28 @@ class OpenCodeV2Service({
   void invalidateBaseline() => _tracker.invalidateBaseline();
 
   Future<bool> healthCheck() => _repository.healthCheck();
+
+  Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) async {
+    final directory = await _mcpDirectory(scope: target.scope);
+    if (directory == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.unsupportedScope,
+      );
+    }
+    return await _mcpAuthentication.begin(directory: directory, target: target);
+  }
+
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target}) async {
+    final directory = await _mcpDirectory(scope: target.scope);
+    if (directory == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.unsupportedScope,
+      );
+    }
+    return await _mcpAuthentication.forget(directory: directory, target: target);
+  }
+
+  Future<void> disposeMcpAuthentication() => _mcpAuthentication.dispose();
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
     try {
       final directory = await _mcpDirectory(scope: scope);

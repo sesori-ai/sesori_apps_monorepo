@@ -3,9 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-opencode-authentication`, in the provided `copper-heron` worktree.
-- Current step: 32/37 OpenCode v2 native authentication contracts are verified locally.
-  Latest merged: 31/37 as [#2007][pr-2007] (`35a0e40be4`).
+- Branch: `sesori/mcp-opencode-v2-oauth`, in the provided `copper-heron` worktree.
+- Current step: 33/37 OpenCode v2 native authentication ownership is in review.
+  Parent 32/37 merged as [#2008][pr-2008] at accepted head `c4e41691cb`.
+  Latest squash: `a0e1d6c3e4`, with 19 passing pre-merge and 20 terminal checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
   Split contracts, v2 ownership and v1 ownership for review; final qualification is unchanged.
   Native recording remains deferred by the user.
@@ -59,13 +60,15 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 29/37 | Connector setup actions and browser handoff | Merged | [#2005][pr-2005]; evidence below |
 | 30/37 | OpenCode v2 inventory/controls (11.a) | Merged | [#2006][pr-2006]; evidence below |
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
-| 32/37 | OpenCode v2 auth contracts (11.c.1) | Verified locally | 61 cases; both pins; architecture approved |
-| 33/37 | OpenCode v2 native authentication ownership (11.c.2) | Not started | — |
+| 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
+| 33/37 | OpenCode v2 authentication owner (11.c.2) | In review | [#2009][pr-2009]; both native pins |
 | 34/37 | OpenCode v1 native MCP authentication (11.d) | Not started | — |
 | 35/37 | Bounded Pi/ACP support and capability audit (11.e) | Not started | — |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
+[pr-2009]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2009
+[pr-2008]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2008
 [pr-2007]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2007
 [pr-2000]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2000
 [pr-2001]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001
@@ -74,6 +77,53 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 [pr-2006]: https://github.com/sesori-ai/sesori_apps_monorepo/pull/2006
 
 ## Evidence and decisions
+
+- Step-33 PR review fixes cancellation before subscription, waits for a pending
+  start handle within runtime teardown's existing budget, and settles confirmed
+  attempt disappearance as unresolved failure outside acknowledged cancellation.
+  Polling waits through DELETE acknowledgement and native persistence still wins.
+  Callback validation rejects both result keys even with an empty value; local
+  failure logs redact OAuth query secrets while retaining useful endpoint context.
+  All 34 authentication cases and owning analysis pass; both exact native
+  production-owner probes pass. The pinned MCP core registers one form-free
+  OAuth method, so provider-only shapes do not add inventory metadata requests.
+  Lifecycle polling stays with the reviewed operation owner; native v2 exposes
+  no pushed attempt-status seam. Original final qualification remains pending.
+- Step-33 architecture implementation pass 1 found transport status branching in
+  repository/service. Native rejection and exact attempt-not-found translation
+  now live in the API; repository maps them to typed domain outcomes retaining
+  original causes and stack traces. The native generated error contract checks
+  the tag and exact integration/attempt IDs, so a different 404 cannot confirm
+  cancellation. Lifecycle code imports no raw transport type. The new tests
+  preserve original causes and distinguish integration absence from attempt
+  removal. Both native production-owner probes pass after this correction.
+  Evidence uses `step33-review1-{tests,analyze,native}` private logs.
+  Final architecture implementation review approved (pass 2). There are 105
+  unique affected passing cases across the 76 lifecycle/inventory/activity/write,
+  36 authentication/raw-HTTP, 39 authentication/API and two targeted runtime
+  retirement runs. The added retirement cases cover both cleanup success and
+  failure, retaining interrupted status and rejecting further callbacks.
+  Parent squash integration preserves the entire tested successor diff exactly
+  (SHA-256 `78b3d83043a87a538b9091a92c6e684ed82772ea8fa563cb0666493137c96546`).
+
+- Step-33 architecture plan review approved the precise repository/domain/service
+  ownership. Existing general service resolves scope; existing repository maps
+  native I/O; the new focused service owns attempts. Only subscription starts
+  native work. Native cancellation is a no-op while persisting, so the owner
+  preserves an observed terminal result and confirms removal after DELETE;
+  callback HTTP acknowledgement never settles authentication. Unknown status,
+  failed reads and uncertain starts retain ownership. Runtime retirement logs
+  unresolved cleanup after a bounded teardown attempt, without claiming cancel.
+  All 76 focused lifecycle/inventory/activity/write cases pass and package analysis
+  is clean. Both native 2.0.11 and 2.0.24 pass through production
+  service/repository/API with an exact native session: confirmed cancellation,
+  callback and native completion, harness-scoped forgetting and sign-in again.
+  Configuration is unchanged. Private evidence uses `step33-{tests,analyze,native}`
+  logs under `/private/tmp/copper-heron-mcp-`. The synthetic product controls
+  fixture passes; images are on `pr-media` at
+  `bafa9486273793f499440c63b3257a6258c17be5` under
+  `sesori/mcp-opencode-v2-oauth/`. Native recording and all final qualification
+  gates remain pending. Parent #2008 review fixes are integrated locally.
 
 - Step-32 review corrections wrap the new tracker rows/command and generate
   `ConnectionInfo`, `IntegrationMethod` and `IntegrationAttemptStatus` as sealed
