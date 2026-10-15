@@ -141,6 +141,13 @@ void main() {
     expect(await remove, isNull);
   });
 
+  test("a switch to the computer during its removal still gets a replacement", () async {
+    when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) async => ApiResponse.success(null));
+    final cubit = build();
+
+    expect(await cubit.remove(bridgeId: "current", isCurrent: false), "next");
+  });
+
   test("a page closed during the removal still gets the replacement", () async {
     final response = Completer<ApiResponse<void>>();
     when(() => registeredBridges.remove(bridgeId: "current")).thenAnswer((_) => response.future);
