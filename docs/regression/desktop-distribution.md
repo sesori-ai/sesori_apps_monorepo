@@ -146,8 +146,8 @@ and removes private state before writing the completed inventory.
 APT advertises only SHA-256 by-hash indexes and a UTC `Date`/`Valid-Until` window of
 30 days. A correctly signed but expired APT index is refused; regenerating metadata
 from the same accepted packages restores access without disabling client expiry checks.
-Hosting must first wire protected signing and weekly metadata-only refresh for quiet
-channels through the same publisher. This is not a second product release cycle and
+The repository workflow supplies protected signing and weekly metadata-only refresh
+for quiet channels through the same publisher. This is not a second product release cycle and
 must never rebuild apps, change release completion or dispatch stores. RPM metadata
 signatures do not provide APT's expiry guarantee; its filenames contain checksums.
 Publishing must retain old referenced objects and place payloads/indexes before signed
@@ -160,6 +160,28 @@ version upgrade and removal inside fresh roots, with unrelated state preserved.
 Channel mismatch, absent CPUs, wrong signer, altered packages/checksums/signatures and
 unverifiable metadata refuse completion. These fixtures do not establish native GUI,
 account/keyring, tray, login-launch, real application upgrades or public HTTPS delivery.
+
+## Hosted Linux preview repositories
+
+`linux-repository.yml` follows completed public internal previews and supports weekly
+metadata-only refresh/manual repair. Signing runs in the existing protected environment,
+with tools installed first and no container network. A separate publisher uses GitHub
+federation restricted to this repository, main and the named workflow; its service
+account owns object access only on the dedicated package bucket, not project IAM,
+Firebase, source storage or signing keys. Only that bucket receives the authorized
+public-sharing exception tag; untagged resources retain their previous domain restriction.
+
+Before any write, verify independent key trust, signed index/package references and
+exact public inventory. Altering a producer inventory must not conceal modified package
+or index bytes. Reject expired APT metadata, immutable conflicts and rollback from a
+retried older run. Retain previous content, publish dependencies first and InRelease
+last; verify anonymous SHA-256 delivery and do not publish the private CI inventory.
+
+L2 covers real signed references, ordered writes, retry/failure behavior and existing
+inert client fixtures. L3 requires the merged workflow's production-key/federation run,
+anonymous public files and real APT/DNF refresh against HTTPS. Bucket access alone is
+not repository delivery. Neither level substitutes for native desktop/account upgrades
+or grants stable admission. See [operations](../desktop/linux-repositories.md).
 
 ## Linux internal-preview publication
 
@@ -426,6 +448,8 @@ historical evidence as shared-store qualification.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
   build. Verify the browser lands on the website section matching the build's channel,
   OS and CPU. No published installer is needed to check browser dispatch.
+  Linux repository delivery additionally requires production-key/federated publication,
+  anonymous public files and real APT/DNF refresh against HTTPS.
 - **L4:** Actual publisher verification and signed N→N+1 manual replacement with
   helper On/Off, failed-stop refusal, normal Quit/no relaunch, and data preservation.
 - **L5:** All recorded native platform/package/host gates in the active distribution

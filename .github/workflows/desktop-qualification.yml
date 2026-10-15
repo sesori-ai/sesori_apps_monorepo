@@ -72,6 +72,7 @@ on:
       - '.github/scripts/test_sign_desktop_linux.py'
       - '.github/scripts/build_linux_repository.py'
       - '.github/scripts/test_build_linux_repository.py'
+      - '.github/scripts/publish_linux_repository.py'
       - '.github/scripts/publish_desktop_linux.py'
       - '.github/scripts/prepare_desktop_release.py'
       - '.github/scripts/Dockerfile.linux-repository'

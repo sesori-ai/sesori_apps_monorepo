@@ -30,12 +30,15 @@ remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
 D13 authorizes public GCS package hosting and narrowly scoped GitHub publishing IAM
 in `sesori-ai`, then completion through stable Linux publication before Windows.
-Interactive GCP reauthentication restored read-only access. Existing Cloud Run source
-storage and Firebase federation remain outside the new package publisher's authority.
-No resources have been provisioned by 11.g; it adds offline signed repository generation.
-APT metadata expires after 30 days. Before hosting, 11.h must wire protected signing
-and weekly metadata-only refresh through the same publisher, including quiet channels;
-refresh preserves accepted package bytes and never dispatches stores or creates releases.
+11.g merged as #1983. 11.h implements protected signing, public-reference verification,
+ordered GCS publishing and weekly metadata-only refresh. The dedicated bucket and
+main/workflow-restricted publishing identity are provisioned; anonymous bucket access
+passes, but package publication still requires the merged workflow's first run.
+The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
+public access. Untagged resources retain the previous domain restriction; existing
+Cloud Run source storage and Firebase federation remain outside the publisher's authority.
+APT metadata expires after 30 days; refresh preserves accepted package bytes and never
+dispatches stores or creates releases.
 
 Continue original step 9/ordinal 11: metadata and real-tool fixtures (11.g), preview
 hosting/publication (11.h), native desktop and genuine app upgrades (11.i), truthful

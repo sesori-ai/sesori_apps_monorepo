@@ -21,8 +21,7 @@ completion. Tools install before secrets; tests use disposable keys only.
 APT suites/pools and RPM CPU roots separate `internal` and `stable`; tooling support
 for both channels does not admit stable product publication. APT metadata expires
 30 days after generation. Protected repository signing and weekly metadata-only
-refresh of accepted packages must be wired in 11.h before hosting; this builder has
-no production-key workflow invocation yet. APT indexes include
+refresh of accepted packages belong to the 11.h workflow below. APT indexes include
 SHA-256 by-hash objects; RPM indexes use checksum filenames. The publisher continuation
 must retain old referenced content and upload payloads/indexes before signed entrypoints.
 No GCS resources, IAM, public repository or release changes are made by this builder.
@@ -37,6 +36,22 @@ Existing manual preview downloads remain supported; no application mechanism bec
 obsolete. Repository-only dependencies extend the signer in a separate image rather
 than burdening ordinary package/CLI signing. Stale hosting/stable-scope wording is
 replaced by D13, not retained as a contradictory gate.
+
+## Preview repository hosting — 11.h/14
+
+`linux-repository.yml` follows completed public preview publication and provides weekly
+metadata refresh/manual repair without app or store builds. Signing and bucket-scoped
+Google publication run in separate jobs. Independent verification authenticates the
+complete signed reference tree; immutable conflicts, expired metadata and downgrades
+refuse publication. Content-addressed files precede signed entrypoints, with InRelease
+last. The CI inventory is not a new public release pointer.
+
+The approved `sesori-ai-linux-packages` bucket and dedicated federation/service account
+are provisioned. The user additionally authorized a bucket-tag-scoped exception to the
+observed domain-sharing block, preserving the previous restriction elsewhere. Anonymous
+empty-bucket access passes; first production-key/federated publication and anonymous
+package-manager verification still follow merge. No public package has been uploaded
+by provisioning. Operational ownership and repair: [Linux repositories](../../../../docs/desktop/linux-repositories.md).
 
 ## Signing continuation — 11.a/14 (merged)
 
