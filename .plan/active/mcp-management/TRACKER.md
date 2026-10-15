@@ -3,12 +3,10 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-opencode-v1-oauth`, in the provided `copper-heron` worktree.
-- Current step: 34/37 OpenCode v1 native authentication ownership is in review
-  as [#2010][pr-2010]. Local successor 35/37 is the bounded Pi/ACP source audit
-  on `sesori/mcp-pi-acp-capability-audit`.
-  Parent 33/37 merged as [#2009][pr-2009] at accepted head `760ec2e428`.
-  Latest squash: `37f62d4837`, with 19 passing pre-merge and 20 terminal checks.
+- Branch: `sesori/mcp-pi-acp-capability-audit`, in the provided `copper-heron` worktree.
+- Current step: 35/37 bounded Pi/ACP source and adapter audit is prepared for review.
+  Parent 34/37 merged as [#2010][pr-2010] at accepted head `5f783ab402`.
+  Latest squash: `bcfa8e369b`, with 19 passing pre-merge checks.
   Native v2 OAuth support was verified through its Integration API on both pins.
   Split contracts, v2 ownership and v1 ownership for review; final qualification is unchanged.
   Native recording remains deferred by the user.
@@ -64,8 +62,8 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; 178 cases; both pins |
-| 35/37 | Bounded Pi/ACP source and capability audit (11.e) | Local | Source audit; no production change |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | Merged | [#2010][pr-2010]; 180 unique cases; both pins |
+| 35/37 | Bounded Pi/ACP source and capability audit (11.e) | Prepared | Exact source/schema audit; documentation only |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
 
@@ -81,6 +79,11 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 
 ## Evidence and decisions
 
+- Step-34 accepted head `5f783ab402` merged with 19 passing checks, Cubic
+  approval and completed code/security reviews without new findings. Two scoped
+  declines retain reasoned replies. The merged main tree equals the accepted
+  parent tree; the entire local step-35 diff is preserved byte-for-byte across
+  integration before updating this delivery state.
 - Step-35 exact source audit found no passive resident MCP management seam in
   Pi RPC or standard ACP. Documentation-only scope and complexity replace the
   conditional production estimate; no new production owner, wire state or native
