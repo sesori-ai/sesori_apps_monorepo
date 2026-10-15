@@ -535,6 +535,27 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  Future<ApiResponse<PendingFormsResponse>> getPendingForms({required String sessionId}) => _client.postWithTimeout(
+    "/session/forms",
+    fromJson: PendingFormsResponse.fromJson,
+    body: SessionIdRequest(sessionId: sessionId),
+    timeout: const Duration(seconds: 30),
+  );
+
+  Future<ApiResponse<FormReplyResult>> replyToForm({required ReplyToFormRequest request}) => _client.postWithTimeout(
+    "/form/reply",
+    fromJson: FormReplyResult.fromJson,
+    body: request,
+    timeout: const Duration(seconds: 30),
+  );
+
+  Future<ApiResponse<FormReplyResult>> declineForm({required DeclineFormRequest request}) => _client.postWithTimeout(
+    "/form/decline",
+    fromJson: FormReplyResult.fromJson,
+    body: request,
+    timeout: const Duration(seconds: 30),
+  );
+
   Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
     return _client.post(
       "/session/permissions",

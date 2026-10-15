@@ -203,6 +203,15 @@ class SessionRepository({
     return _api.replyToExternalAction(request: request);
   }
 
+  Future<ApiResponse<PendingFormsResponse>> getPendingForms({required String sessionId}) =>
+      _api.getPendingForms(sessionId: sessionId);
+
+  Future<ApiResponse<FormReplyResult>> replyToForm({required ReplyToFormRequest request}) =>
+      _api.replyToForm(request: request);
+
+  Future<ApiResponse<FormReplyResult>> declineForm({required DeclineFormRequest request}) =>
+      _api.declineForm(request: request);
+
   Future<ApiResponse<PendingPermissionResponse>> getPendingPermissions({required String sessionId}) {
     return _api.getPendingPermissions(sessionId: sessionId);
   }
