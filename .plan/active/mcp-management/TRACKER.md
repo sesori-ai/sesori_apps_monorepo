@@ -1229,3 +1229,10 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   current main while #1989 remains in review, preserving concurrent computer-management and Linux-distribution work.
   Its shared source, tests, dependencies and SDK pin are unchanged from tested commit
   `d62d2d501b`; no unchanged passing suite was rerun solely for confidence.
+- Step-20 review reproduced a real JSON-decoding failure: generated code cast
+  `fieldErrors` to `Map<String, String>` before conversion. The decoder now accepts
+  the JSON map boundary and validates string entries inside the converter.
+  The JSON-round-trip regression failed before the fix and passes afterward;
+  all 71 focused shared tests and `dart analyze --fatal-infos` pass at source
+  commit `9eaf60b35a`. Full code generation succeeds. Native date-time spellings
+  remain plugin-owned; all normalized Sesori text-format names round trip.
