@@ -116,7 +116,7 @@ class OpenCodePlugin._({
     final service = OpenCodeService(repository, tracker);
     return OpenCodePlugin._(
       service: service,
-      mcpAuthentication: OpenCodeMcpAuthenticationService(service: service, repository: repository),
+      mcpAuthentication: OpenCodeMcpAuthenticationService(repository: repository),
       httpClient: httpClient,
       serverUrl: serverUrl,
       password: password,

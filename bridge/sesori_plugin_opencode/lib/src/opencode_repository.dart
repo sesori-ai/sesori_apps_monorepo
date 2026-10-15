@@ -12,8 +12,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginMcpAuthenticationFailureReason,
         PluginMcpAuthenticationUnavailableException,
         PluginMcpAuthenticationUnavailableReason,
+        PluginMcpHarnessScope,
         PluginMcpInventorySnapshot,
+        PluginMcpProjectScope,
         PluginMcpScope,
+        PluginMcpSessionScope,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -96,6 +99,12 @@ class OpenCodeRepository(final OpenCodeApi _api) {
   );
 
   OpenCodeApi get api => _api;
+
+  Future<String?> getMcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
+    PluginMcpHarnessScope() => null,
+    PluginMcpProjectScope(:final projectId) => projectId,
+    PluginMcpSessionScope(:final sessionId) => await getSessionDirectory(sessionId: sessionId),
+  };
 
   Future<PluginMcpInventorySnapshot> getMcpInventory({required String directory, required PluginMcpScope scope}) async {
     final (servers, configuration) = await wait2(

@@ -64,7 +64,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 31/37 | OpenCode v1 inventory/controls (11.b) | Merged | [#2007][pr-2007]; 118 cases; both pins |
 | 32/37 | OpenCode v2 auth contracts (11.c.1) | Merged | [#2008][pr-2008]; 61 cases; both pins |
 | 33/37 | OpenCode v2 authentication owner (11.c.2) | Merged | [#2009][pr-2009]; both native pins |
-| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; 175 cases; both pins |
+| 34/37 | OpenCode v1 native MCP authentication (11.d) | In review | [#2010][pr-2010]; 178 cases; both pins |
 | 35/37 | Bounded Pi/ACP source and capability audit (11.e) | Local | Source audit; no production change |
 | 36/37 | Reconcile regression/capability documents | Not started | — |
 | 37/37 | Execute L4 plus named external/package checks; retire | Not started | — |
@@ -100,6 +100,15 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   behavior or analytics event changes; no causal code cleanup was found.
   This is source evidence, not native runtime/provider/platform qualification.
   Original final L4 and deferred native recording gates remain unchanged.
+- Step-34 second PR review rejects configured callbacks with reserved OAuth
+  response keys before start. The shared scope resolver moves into the existing
+  repository, so general controls and authentication share one mapping without a
+  service-to-service dependency or duplicated policy. All 135 directly affected
+  authentication/controls/concrete-plugin cases and owning analysis pass (178
+  unique across affected runs). Both exact v1 pins verify reserved-key preflight
+  without mutation and successful exact-session authentication after the move,
+  preserving disabled state and configuration. Earlier architecture approvals
+  retain their recorded scopes; no third review is invoked for these corrections.
 - Step-34 PR review preserves only non-secret OAuth redirect metadata in a
   disabled/enabled configuration sum. Unsupported callback overrides now declare
   native configuration requirements before start; forgetting stays independent.

@@ -18,17 +18,14 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginMcpActionResult,
         PluginMcpActionUnavailable,
         PluginMcpActionUnavailableReason,
-        PluginMcpHarnessScope,
         PluginMcpInventoryReadFailed,
         PluginMcpInventoryResult,
         PluginMcpInventoryUnavailable,
         PluginMcpInventoryUnavailableReason,
-        PluginMcpProjectScope,
         PluginMcpScope,
         PluginMcpServerAction,
         PluginMcpServerSnapshot,
         PluginMcpServerTarget,
-        PluginMcpSessionScope,
         PluginMessageWithParts,
         PluginPermissionReply,
         PluginProject,
@@ -82,7 +79,7 @@ class OpenCodeService(
 
   Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
     try {
-      final directory = await getMcpDirectory(scope: scope);
+      final directory = await repository.getMcpDirectory(scope: scope);
       if (directory == null) {
         return const PluginMcpInventoryUnavailable(
           reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
@@ -103,7 +100,7 @@ class OpenCodeService(
     required PluginMcpServerAction action,
   }) async {
     try {
-      final directory = await getMcpDirectory(scope: target.scope);
+      final directory = await repository.getMcpDirectory(scope: target.scope);
       if (directory == null) {
         return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
       }
@@ -129,12 +126,6 @@ class OpenCodeService(
       );
     }
   }
-
-  Future<String?> getMcpDirectory({required PluginMcpScope scope}) async => switch (scope) {
-    PluginMcpHarnessScope() => null,
-    PluginMcpProjectScope(:final projectId) => projectId,
-    PluginMcpSessionScope(:final sessionId) => await repository.getSessionDirectory(sessionId: sessionId),
-  };
 
   Future<List<PluginProject>> getProjects() async {
     final projects = await repository.getProjects();

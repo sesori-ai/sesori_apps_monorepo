@@ -57,7 +57,11 @@ final class const OpenCodeMcpLoginChallenge({
 bool _loopback({required Uri uri}) => const {"localhost", "127.0.0.1", "::1"}.contains(uri.host);
 
 bool _validCallback({required Uri callback}) =>
-    callback.scheme == "http" && _loopback(uri: callback) && callback.userInfo.isEmpty && !callback.hasFragment;
+    callback.scheme == "http" &&
+    _loopback(uri: callback) &&
+    callback.userInfo.isEmpty &&
+    !callback.hasFragment &&
+    !callback.queryParameters.keys.any(const {"state", "code", "error"}.contains);
 
 /// Reject configured overrides before a native attempt would become unusable.
 bool supportsOpenCodeMcpCallbackOverride({required String? value}) {
