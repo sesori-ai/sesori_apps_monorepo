@@ -10,8 +10,13 @@ class PostMcpEntryActionHandler({required final McpService _mcpService})
   @override
   Future<McpEntryActionResult> handle(RelayRequest request, {required McpEntryActionRequest body}) async {
     requireNonEmpty(request: request, value: body.pluginId, label: "plugin id");
-    final target = body.action.target;
-    requireNonEmpty(request: request, value: target.serverKey, label: "server key");
+    final target = body.action.entryTarget;
+    switch (target) {
+      case McpServerTarget(:final serverKey):
+        requireNonEmpty(request: request, value: serverKey, label: "server key");
+      case McpConnectorOfferTarget(:final offerKey):
+        requireNonEmpty(request: request, value: offerKey, label: "connector offer key");
+    }
     switch (target.scope) {
       case McpHarnessScope():
         break;

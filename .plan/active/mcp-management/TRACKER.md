@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Branch: `sesori/mcp-codex-connectors`, in the provided `copper-heron` worktree.
-- Current step: 28/32 is in PR [#2003][pr-2003]. Latest merged: 27/32 as
+- Branch: `sesori/mcp-connector-setup`, in the provided `copper-heron` worktree.
+- Current step: 28/32 is in PR [#2003][pr-2003];
+  connector setup is the local successor. Latest merged: 27/32 as
   [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001).
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
@@ -54,7 +55,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
 | 27/32 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
 | 28/32 | Codex offered connector catalog | In PR | [#2003][pr-2003]; 69 tests and exact pins |
-| 29/32 | Connector setup actions and browser handoff | Not started | — |
+| 29/32 | Connector setup actions and browser handoff | In progress | Architecture plan approved |
 | 30/32 | Secondary harness support and explicit gaps | Not started | — |
 | 31/32 | Reconcile regression/capability documents | Not started | — |
 | 32/32 | Execute L4 plus named external/package checks; retire | Not started | — |
@@ -1594,3 +1595,12 @@ Native evidence: [contract captures](evidence/native-contracts.md).
   transport/decoder failures retain original local diagnostics and expose only
   that section as unavailable. All 45 affected repository/plugin cases pass;
   package analysis is clean. Earlier 25 authentication cases are unchanged.
+- Step-29 plan and implementation architecture reviews approved. The local
+  setup draft resolves native catalog destinations through distinct offer
+  actions, validates HTTPS at the bridge boundary, and uses the existing client
+  view action owner/UrlLauncher with no URL observables or new callback state.
+  All 138 directly relevant wire/plugin/route/client/widget cases pass. Owning
+  analyzers are clean. Both exact Codex binaries pass force-refetched empty
+  native catalogs; original OAuth scope/completion behavior remains intact.
+  Synthetic controls/opened-feedback renders pass and were inspected. Native
+  recording and real connector/provider/package/L4 qualification remain pending.

@@ -16,6 +16,14 @@ class McpRepository({required final McpApi _api}) {
         ErrorResponse(:final error) => McpActionRequestFailed(cause: error),
       };
 
+  /// Setup destinations are short-lived response data, never saved in inventory.
+  Uri? connectorSetupDestination({required McpExternalSetup result}) {
+    final uri = Uri.tryParse(result.setupUrl);
+    return uri != null && uri.scheme == "https" && uri.hasAuthority && uri.host.isNotEmpty && uri.userInfo.isEmpty
+        ? uri
+        : null;
+  }
+
   Future<McpAuthenticationResponse> getAuthentication() => _authenticationResponse(response: _api.getAuthentication());
 
   Future<McpAuthenticationResponse> startAuthentication({required McpAuthenticationStartRequest request}) =>

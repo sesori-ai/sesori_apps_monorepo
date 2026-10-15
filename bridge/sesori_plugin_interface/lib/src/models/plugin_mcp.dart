@@ -127,6 +127,10 @@ enum PluginMcpConnectorOfferAvailability() {
   unavailable,
 }
 
+enum PluginMcpConnectorAction() {
+  setup,
+}
+
 sealed class const PluginMcpInventoryEntry();
 
 final class const PluginMcpServerSnapshot({
@@ -148,6 +152,7 @@ final class const PluginMcpConnectorOfferSnapshot({
   required final String name,
   required final String? description,
   required final PluginMcpConnectorOfferAvailability availability,
+  required final List<PluginMcpConnectorAction> actions,
 }) extends PluginMcpInventoryEntry;
 
 sealed class const PluginMcpCatalogAvailability();

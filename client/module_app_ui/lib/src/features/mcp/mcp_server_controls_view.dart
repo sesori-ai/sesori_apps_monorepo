@@ -51,12 +51,16 @@ class const McpServerControlsView({required final McpServerTarget target, super.
     final actionState = context.watch<McpActionCubit>().state;
     final status = switch (actionState) {
       McpActionReceivedState(:final request) ||
-      McpActionUncertain(:final request) when request.action.target != target => const McpActionIdle(),
+      McpConnectorSetupOpened(:final request) ||
+      McpConnectorSetupFailed(:final request) ||
+      McpActionUncertain(:final request) when request.action.entryTarget != target => const McpActionIdle(),
       McpActionsReadOnly() ||
       McpActionIdle() ||
       McpActionOffline() ||
       McpActionPending() ||
       McpActionReceivedState() ||
+      McpConnectorSetupOpened() ||
+      McpConnectorSetupFailed() ||
       McpActionUncertain() => actionState,
     };
     final auth = context.watch<McpAuthenticationCubit>().state;
@@ -408,10 +412,13 @@ String _actionStatus({required McpActionClientState state, required AppLocalizat
   McpActionOffline() => loc.mcpOffline,
   McpActionPending() => loc.mcpActionPending,
   McpActionUncertain() => loc.mcpActionUncertain,
+  McpConnectorSetupOpened() => loc.mcpSetupOpened,
+  McpConnectorSetupFailed() => loc.mcpSetupOpenFailed,
   McpActionReceivedState(:final result) => switch (result) {
     McpActionCompleted() => loc.mcpActionCompleted,
     McpActionFailed() => loc.mcpActionFailed,
     McpActionUnknown() => loc.mcpUnknownResponse,
+    McpExternalSetup() => loc.mcpUnknownResponse,
     McpActionUnavailable(:final reason) => switch (reason) {
       McpActionUnavailableReason.busy => loc.mcpAuthBusy,
       McpActionUnavailableReason.notSupported => loc.mcpActionNotSupported,

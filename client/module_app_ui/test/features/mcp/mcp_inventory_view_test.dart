@@ -10,8 +10,17 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _Cubit() extends Mock implements McpCubit;
+class _Actions() extends Mock implements McpActionCubit;
 
 const _scope = McpSessionScope(sessionId: "fixture-session");
+const _offerTarget = McpConnectorOfferTarget(scope: _scope, offerKey: "fixture-offer");
+const _offer = McpConnectorOfferSnapshot(
+  offerTarget: _offerTarget,
+  name: "Fixture connector",
+  description: null,
+  availability: McpConnectorOfferAvailability.setupRequired,
+  actions: [McpConnectorAction.setup],
+);
 const _server = McpServerSnapshot(
   authentication: McpAuthenticationCapabilityUnknown(),
   credentialForgetting: McpAuthenticationCapabilityUnknown(),
@@ -43,15 +52,24 @@ McpInventoryReady _ready({required List<McpInventoryEntry> entries, required Mcp
 void main() {
   late _Cubit cubit;
   late BehaviorSubject<McpInventoryState> states;
+  late _Actions actions;
+  late BehaviorSubject<McpActionClientState> actionStates;
   setUp(() {
     cubit = _Cubit();
+    actions = _Actions();
+    actionStates = BehaviorSubject.seeded(const McpActionIdle());
+    when(() => actions.state).thenAnswer((_) => actionStates.value);
+    when(() => actions.stream).thenAnswer((_) => actionStates.stream);
     when(() => cubit.mutationsAllowed).thenReturn(false);
     states = BehaviorSubject.seeded(_ready(entries: [_server], refresh: const McpInventoryRefreshIdle()));
     when(() => cubit.state).thenAnswer((_) => states.value);
     when(() => cubit.stream).thenAnswer((_) => states.stream);
     when(() => cubit.refresh()).thenAnswer((_) async {});
   });
-  tearDown(() => states.close());
+  tearDown(() async {
+    await states.close();
+    await actionStates.close();
+  });
 
   Widget app({required double scale}) => MaterialApp(
     theme: buildPregoThemeData(brightness: Brightness.light),
@@ -62,7 +80,13 @@ void main() {
       child: child ?? const SizedBox.shrink(),
     ),
     home: Scaffold(
-      body: BlocProvider<McpCubit>.value(value: cubit, child: const McpInventoryView()),
+      body: MultiBlocProvider(
+        providers: [
+          BlocProvider<McpCubit>.value(value: cubit),
+          BlocProvider<McpActionCubit>.value(value: actions),
+        ],
+        child: const McpInventoryView(),
+      ),
     ),
   );
 
@@ -83,6 +107,40 @@ void main() {
     );
     expect(find.text("Discovery succeeded with no tools."), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("setup uses the exact offered target and honors pending/read-only/offline gates", (tester) async {
+    states.add(_ready(entries: [_offer], refresh: const McpInventoryRefreshIdle()));
+    const action = McpConnectorSetupEntryAction(offerTarget: _offerTarget);
+    when(() => actions.execute(action: action)).thenAnswer((_) async {});
+    await tester.pumpWidget(app(scale: 1));
+    await tester.pumpAndSettle();
+    final button = find.widgetWithText(PregoButtonsSolid, "Open setup");
+    expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNull);
+    when(() => cubit.mutationsAllowed).thenReturn(true);
+    actionStates.add(const McpActionIdle());
+    await tester.pumpAndSettle();
+    await tester.tap(button);
+    verify(() => actions.execute(action: action)).called(1);
+    const request = McpEntryActionRequest(pluginId: "fixture", action: action);
+    for (final blocked in [
+      const McpActionPending(request: request),
+      const McpActionOffline(),
+      const McpActionsReadOnly(),
+    ]) {
+      actionStates.add(blocked);
+      await tester.pumpAndSettle();
+      expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNull);
+    }
+    actionStates.add(const McpConnectorSetupOpened(request: request));
+    await tester.pumpAndSettle();
+    expect(find.text("Finish setup in your browser, then refresh to check availability."), findsOneWidget);
+    expect(find.text("Setup required"), findsOneWidget);
+    expect(find.text("Connected"), findsNothing);
+    expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNotNull);
+    states.add(_ready(entries: [_offer], refresh: const McpInventoryRefreshOffline()));
+    await tester.pumpAndSettle();
+    expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNull);
   });
 
   testWidgets("refresh failure preserves scroll offset and server rows", (tester) async {
@@ -118,6 +176,16 @@ void main() {
     await tester.pumpAndSettle();
     expect(scroll.position.pixels, offset);
     expect(find.text("Could not refresh. Showing the last inventory."), findsOneWidget);
+    actionStates.add(
+      const McpConnectorSetupOpened(
+        request: McpEntryActionRequest(
+          pluginId: "fixture",
+          action: McpConnectorSetupEntryAction(offerTarget: _offerTarget),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    expect(scroll.position.pixels, offset);
     expect(tester.takeException(), isNull);
   });
 

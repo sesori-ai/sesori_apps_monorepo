@@ -2,10 +2,12 @@ import "dart:async";
 
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/src/api/mcp_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
+import "package:sesori_dart_core/src/platform/url_launcher.dart";
 import "package:sesori_dart_core/src/repositories/mcp_repository.dart";
 import "package:sesori_dart_core/src/repositories/models/mcp_action_response.dart";
 import "package:sesori_dart_core/src/repositories/models/mcp_read_result.dart";
@@ -26,10 +28,12 @@ void main() {
   late _Connection connection;
   late _Repository repository;
   late McpService service;
+  late _Launcher launcher;
   setUp(() {
     connection = _Connection();
     repository = _Repository();
-    service = McpService(repository: repository, connectionService: connection);
+    launcher = _Launcher();
+    service = McpService(repository: repository, connectionService: connection, urlLauncher: launcher);
   });
   tearDown(() async {
     await service.dispose();
@@ -53,6 +57,124 @@ void main() {
     ),
     action: McpServerAction.reconnect,
   );
+
+  const setupAction = McpConnectorSetupEntryAction(
+    offerTarget: McpConnectorOfferTarget(
+      scope: McpSessionScope(sessionId: "session-a"),
+      offerKey: "fixture",
+    ),
+  );
+  const setupResult = McpActionReceived(
+    result: McpExternalSetup(setupUrl: "https://fixture.example/setup?private=secret"),
+  );
+
+  test("one explicit setup launch keeps URLs out of state and does not claim connection", () async {
+    final original = await load();
+    final observed = <McpActionClientState>[];
+    final subscription = service.actions.listen(observed.add);
+    final operation = service.executeAction(action: setupAction);
+    repository.actions.single.complete(setupResult);
+    await Future<void>.value();
+    expect(launcher.urls.single.toString(), "https://fixture.example/setup?private=secret");
+    expect(service.currentAction, isA<McpActionPending>());
+    await service.executeAction(action: setupAction);
+    expect(repository.actionRequests, hasLength(1));
+    launcher.pending.single.complete(true);
+    await operation;
+    expect(service.currentAction, isA<McpConnectorSetupOpened>());
+    expect((service.currentState as McpInventoryReady).inventory, same(original.inventory));
+    expect(repository.requests, hasLength(1));
+    expect(observed.whereType<McpActionReceivedState>().any((s) => s.result is McpExternalSetup), isFalse);
+    final refresh = service.refresh();
+    repository.pending.last.complete(McpReadSuccess(inventory: original.inventory));
+    await refresh;
+    expect(launcher.urls, hasLength(1));
+    expect(service.currentAction, isA<McpActionIdle>());
+    await subscription.cancel();
+  });
+
+  test("failed setup resolution does not launch or claim an uncertain native mutation", () async {
+    await load();
+    final operation = service.executeAction(action: setupAction);
+    repository.actions.single.complete(McpActionRequestFailed(cause: ApiError.generic()));
+    await operation;
+    expect(service.currentAction, isA<McpConnectorSetupFailed>());
+    expect(launcher.urls, isEmpty);
+    expect(repository.requests, hasLength(1));
+  });
+
+  for (final throws in [false, true]) {
+    test("failed setup launch reports failure and an explicit retry can open: $throws", () async {
+      await load();
+      final operation = service.executeAction(action: setupAction);
+      repository.actions.single.complete(setupResult);
+      await Future<void>.value();
+      if (throws) {
+        launcher.pending.single.completeError(StateError("fixture launcher failure"));
+      } else {
+        launcher.pending.single.complete(false);
+      }
+      await operation;
+      expect(service.currentAction, isA<McpConnectorSetupFailed>());
+      final retry = service.executeAction(action: setupAction);
+      repository.actions.last.complete(setupResult);
+      await Future<void>.value();
+      launcher.pending.last.complete(true);
+      await retry;
+      expect(service.currentAction, isA<McpConnectorSetupOpened>());
+      expect(launcher.urls, hasLength(2));
+    });
+  }
+
+  for (final change in ["disconnect", "rebind", "dispose"]) {
+    test("setup response after $change cannot open a browser", () async {
+      await load();
+      final operation = service.executeAction(action: setupAction);
+      switch (change) {
+        case "disconnect":
+          connection.statuses.add(const ConnectionDisconnected());
+        case "rebind":
+          service.bind(
+            request: const McpInventoryRequest(pluginId: "fixture", scope: McpHarnessScope()),
+            mutationsAllowed: true,
+          );
+        case "dispose":
+          await service.dispose();
+      }
+      await Future<void>.value();
+      repository.actions.single.complete(setupResult);
+      await operation;
+      expect(launcher.urls, isEmpty);
+    });
+  }
+
+  test("late browser completion cannot populate another view binding", () async {
+    await load();
+    final operation = service.executeAction(action: setupAction);
+    repository.actions.single.complete(setupResult);
+    await Future<void>.value();
+    service.bind(
+      request: const McpInventoryRequest(pluginId: "fixture", scope: McpHarnessScope()),
+      mutationsAllowed: true,
+    );
+    launcher.pending.single.complete(true);
+    await operation;
+    expect(service.currentAction, isA<McpActionIdle>());
+  });
+
+  test("unsafe setup destinations and handoffs for a server action never launch", () async {
+    await load();
+    for (final (requestedAction, url) in [
+      (action, "https://fixture.example/setup"),
+      for (final url in ["/setup", "http://fixture.example", "https://user:secret@fixture.example"]) (setupAction, url),
+    ]) {
+      final operation = service.executeAction(action: requestedAction);
+      repository.actions.last.complete(McpActionReceived(result: McpExternalSetup(setupUrl: url)));
+      await operation;
+      expect((service.currentAction as McpActionReceivedState).result, isA<McpActionFailed>());
+    }
+    expect(launcher.urls, isEmpty);
+  });
 
   test("pending action retains inventory, rejects a duplicate and supersedes an older read", () async {
     final original = await load();
@@ -599,7 +721,7 @@ void main() {
   }
 
   test("closing the view fences a pending read", () async {
-    final other = McpService(repository: repository, connectionService: connection);
+    final other = McpService(repository: repository, connectionService: connection, urlLauncher: launcher);
     other.bind(request: _request, mutationsAllowed: true);
     await other.dispose();
     repository.pending.first.complete(
@@ -639,7 +761,8 @@ McpInventorySnapshot _snapshot({required McpScope scope, required String name}) 
   ],
 );
 
-class _Repository() implements McpRepository {
+class _Repository() extends McpRepository {
+  this : super(api: _Api());
   @override
   Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
   final List<McpInventoryRequest> requests = [];
@@ -658,6 +781,23 @@ class _Repository() implements McpRepository {
   Future<McpReadResult> getInventory({required McpInventoryRequest request}) {
     requests.add(request);
     final result = Completer<McpReadResult>();
+    pending.add(result);
+    return result.future;
+  }
+}
+
+class _Api() implements McpApi {
+  @override
+  Object? noSuchMethod(Invocation invocation) => throw UnimplementedError();
+}
+
+class _Launcher() implements UrlLauncher {
+  final urls = <Uri>[];
+  final pending = <Completer<bool>>[];
+  @override
+  Future<bool> launch(Uri url, {UrlLaunchMode mode = UrlLaunchMode.externalApp}) {
+    urls.add(url);
+    final result = Completer<bool>();
     pending.add(result);
     return result.future;
   }

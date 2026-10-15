@@ -86,6 +86,7 @@ class CodexPlugin._({
 }) implements
     CodexManagedApi,
     McpManagementPluginApi,
+    McpConnectorSetupPluginApi,
     McpAuthenticationPluginApi,
     FormInteractionPluginApi,
     SessionExternalActionsPluginApi {
@@ -230,6 +231,20 @@ class CodexPlugin._({
     required PluginMcpServerTarget target,
     required PluginMcpServerAction action,
   }) async => const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
+
+  @override
+  Future<PluginMcpConnectorSetupResult> resolveMcpConnectorSetup({
+    required PluginMcpConnectorOfferTarget target,
+  }) async {
+    final repository = _mcpRepository;
+    return repository == null
+        ? PluginMcpConnectorSetupUnavailable(
+            reason: target.scope is PluginMcpProjectScope
+                ? PluginMcpConnectorSetupUnavailableReason.unsupportedScope
+                : PluginMcpConnectorSetupUnavailableReason.liveSessionRequired,
+          )
+        : await repository.resolveSetup(target: target);
+  }
 
   @override
   Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) async {

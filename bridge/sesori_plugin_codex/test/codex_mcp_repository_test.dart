@@ -128,16 +128,123 @@ void main() {
         PluginMcpConnectorOfferAvailability.available,
       ]);
       expect(offers[1].description, "Description");
+      expect(offers[1].actions, [PluginMcpConnectorAction.setup]);
+      expect(offers.first.actions, isEmpty);
+      expect(offers.last.actions, isEmpty);
+      expect(offers[1].actions.clear, throwsUnsupportedError);
       expect(offers.every((offer) => identical(offer.target.scope, scope)), isTrue);
       expect(result.entries.clear, throwsUnsupportedError);
       final threadId = scope is PluginMcpSessionScope ? scope.sessionId : null;
       expect(transport.calls.map((call) => call.method), ["mcpServerStatus/list", "app/list", "app/list"]);
       expect(transport.calls.skip(1).map((call) => call.params), [
-        {"threadId": ?threadId, "limit": 100, "forceRefetch": false},
-        {"threadId": ?threadId, "cursor": "catalog-cursor", "limit": 100, "forceRefetch": false},
+        {"threadId": ?threadId, "limit": 100, "forceRefetch": true},
+        {"threadId": ?threadId, "cursor": "catalog-cursor", "limit": 100, "forceRefetch": true},
       ]);
     });
   }
+
+  for (final scope in [const PluginMcpHarnessScope(), const PluginMcpSessionScope(sessionId: "thread")]) {
+    test("setup resolves the exact native offer across fresh pages in $scope", () async {
+      final transport = _Transport(
+        responses: [
+          {
+            "data": [
+              {"id": "other", "name": "Other"},
+            ],
+            "nextCursor": "next",
+          },
+          {
+            "data": [
+              {"id": "fixture", "name": "Fixture", "installUrl": "https://fixture.example/setup?private=secret"},
+            ],
+          },
+        ],
+      );
+      final result = await _repository(transport: transport).resolveSetup(
+        target: PluginMcpConnectorOfferTarget(scope: scope, offerKey: "fixture"),
+      ) as PluginMcpConnectorExternalSetup;
+      expect(result.destination.toString(), "https://fixture.example/setup?private=secret");
+      expect(transport.calls.map((call) => call.method), ["app/list", "app/list"]);
+      expect(transport.calls.last.params, {
+        "threadId": ?(scope is PluginMcpSessionScope ? scope.sessionId : null),
+        "cursor": "next",
+        "limit": 100,
+        "forceRefetch": true,
+      });
+    });
+  }
+
+  test("setup rechecks entitlement and never invents a destination", () async {
+    for (final (app, reason) in [
+      (<String, Object?>{"id": "other", "name": "Other"}, PluginMcpConnectorSetupUnavailableReason.targetNotFound),
+      ({"id": "fixture", "name": "Fixture"}, PluginMcpConnectorSetupUnavailableReason.nativeConfigurationRequired),
+      (
+        {"id": "fixture", "name": "Fixture", "isEnabled": false, "installUrl": "https://fixture.example"},
+        PluginMcpConnectorSetupUnavailableReason.notSupported,
+      ),
+      (
+        {"id": "fixture", "name": "Fixture", "isAccessible": true, "installUrl": "https://fixture.example"},
+        PluginMcpConnectorSetupUnavailableReason.notSupported,
+      ),
+      for (final url in [
+        "/setup",
+        "http://fixture.example",
+        "file:///setup",
+        "data:text/plain,setup",
+        "javascript:void(0)",
+        "custom://setup",
+        "https://user:secret@fixture.example",
+      ])
+        (
+          {"id": "fixture", "name": "Fixture", "installUrl": url},
+          PluginMcpConnectorSetupUnavailableReason.nativeConfigurationRequired,
+        ),
+    ]) {
+      final transport = _Transport(
+        responses: [
+          {
+            "data": [app],
+          },
+        ],
+      );
+      final result = await _repository(transport: transport).resolveSetup(
+        target: const PluginMcpConnectorOfferTarget(scope: PluginMcpHarnessScope(), offerKey: "fixture"),
+      ) as PluginMcpConnectorSetupUnavailable;
+      expect(result.reason, reason);
+      final inventoryTransport = _Transport(
+        responses: [
+          {
+            "data": [_server],
+          },
+          {
+            "data": [app],
+          },
+        ],
+      );
+      final inventory = await _repository(
+        transport: inventoryTransport,
+      ).read(scope: const PluginMcpHarnessScope()) as PluginMcpInventorySnapshot;
+      expect(inventory.entries.whereType<PluginMcpConnectorOfferSnapshot>().single.actions, isEmpty);
+    }
+  });
+
+  test("setup keeps catalog failures typed and project scopes issue no RPC", () async {
+    final failure = StateError("fixture catalog failure");
+    final transport = _Transport(responses: [failure]);
+    final repository = _repository(transport: transport);
+    final result = await repository.resolveSetup(
+      target: const PluginMcpConnectorOfferTarget(scope: PluginMcpHarnessScope(), offerKey: "fixture"),
+    ) as PluginMcpConnectorSetupFailed;
+    expect((result.cause as CodexMcpInventoryReadException).innerError, same(failure));
+    final unsupported = await repository.resolveSetup(
+      target: const PluginMcpConnectorOfferTarget(
+        scope: PluginMcpProjectScope(projectId: "project"),
+        offerKey: "fixture",
+      ),
+    ) as PluginMcpConnectorSetupUnavailable;
+    expect(unsupported.reason, PluginMcpConnectorSetupUnavailableReason.unsupportedScope);
+    expect(transport.calls, hasLength(1));
+  });
 
   for (final failure in [
     StateError("fixture catalog transport failure"),

@@ -6,6 +6,8 @@ final class const McpActionsReadOnly() extends McpActionClientState;
 final class const McpActionIdle() extends McpActionClientState;
 final class const McpActionOffline() extends McpActionClientState;
 final class const McpActionPending({required final McpEntryActionRequest request}) extends McpActionClientState;
+final class const McpConnectorSetupOpened({required final McpEntryActionRequest request}) extends McpActionClientState;
+final class const McpConnectorSetupFailed({required final McpEntryActionRequest request}) extends McpActionClientState;
 final class const McpActionReceivedState({
   required final McpEntryActionRequest request,
   required final McpEntryActionResult result,

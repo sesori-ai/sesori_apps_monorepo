@@ -17,6 +17,7 @@ _CodexAppInfoDto _$CodexAppInfoDtoFromJson(Map json) => _CodexAppInfoDto(
   id: json['id'] as String,
   name: json['name'] as String,
   description: json['description'] as String?,
+  installUrl: json['installUrl'] as String?,
   isAccessible: json['isAccessible'] as bool? ?? false,
   isEnabled: json['isEnabled'] as bool? ?? true,
 );

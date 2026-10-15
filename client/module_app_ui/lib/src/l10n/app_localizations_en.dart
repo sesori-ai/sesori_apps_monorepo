@@ -3269,6 +3269,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get mcpSetupRequired => 'Setup required';
 
   @override
+  String get mcpOpenSetup => 'Open setup';
+
+  @override
+  String get mcpSetupOpening => 'Opening connector setup in your browser…';
+
+  @override
+  String get mcpSetupOpened => 'Finish setup in your browser, then refresh to check availability.';
+
+  @override
+  String get mcpSetupOpenFailed => 'Could not open connector setup. Try again.';
+
+  @override
+  String get mcpInventoryReady => 'Inspect servers and connectors.';
+
+  @override
+  String get mcpOfferNotFound => 'This connector is no longer in the inventory.';
+
+  @override
   String get mcpEmptyCatalog => 'No entries were returned.';
 
   @override

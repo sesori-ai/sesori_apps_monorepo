@@ -48,7 +48,7 @@ class const McpInventoryView({super.key}) extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _InventoryHeader(),
+        _InventoryHeader(action: context.watch<McpActionCubit>().state),
         Expanded(
           child: switch (state) {
             McpInventoryReady(:final McpInventorySnapshot inventory) => _Catalog(inventory: inventory),
@@ -68,12 +68,31 @@ class const McpInventoryView({super.key}) extends StatelessWidget {
   }
 }
 
-class const _InventoryHeader() extends StatelessWidget {
+class const _InventoryHeader({required final McpActionClientState action}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final cubit = context.watch<McpCubit>();
     final state = cubit.state;
     final loc = context.loc;
+    final actionMessage = switch (action) {
+      McpActionPending(request: McpEntryActionRequest(action: McpConnectorSetupEntryAction())) => loc.mcpSetupOpening,
+      McpConnectorSetupOpened() => loc.mcpSetupOpened,
+      McpConnectorSetupFailed() => loc.mcpSetupOpenFailed,
+      McpActionReceivedState(request: McpEntryActionRequest(action: McpConnectorSetupEntryAction()), :final result) =>
+        switch (result) {
+          McpActionUnavailable(:final reason) => switch (reason) {
+            McpActionUnavailableReason.nativeConfigurationRequired => loc.mcpNativeConfigurationRequired,
+            McpActionUnavailableReason.targetNotFound => loc.mcpOfferNotFound,
+            McpActionUnavailableReason.unsupportedHarness => loc.mcpUnsupportedHarness,
+            McpActionUnavailableReason.unsupportedScope => loc.mcpUnsupportedScope,
+            McpActionUnavailableReason.liveSessionRequired => loc.mcpLiveSessionRequired,
+            McpActionUnavailableReason.pluginInactive => loc.mcpPluginInactive,
+            _ => loc.mcpSetupOpenFailed,
+          },
+          _ => loc.mcpSetupOpenFailed,
+        },
+      _ => null,
+    };
     // This fixed slot changes independently of either reader's scroll area.
     return SizedBox(
       height: MediaQuery.textScalerOf(context).scale(64),
@@ -82,10 +101,16 @@ class const _InventoryHeader() extends StatelessWidget {
           Expanded(
             child: Semantics(
               liveRegion: true,
-              child: Text(
-                _status(state: state, loc: loc),
-                maxLines: 2,
-                overflow: TextOverflow.ellipsis,
+              child: AnimatedSwitcher(
+                duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
+                layoutBuilder: (current, previous) =>
+                    Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
+                child: Text(
+                  actionMessage ?? _status(state: state, loc: loc),
+                  key: ValueKey(actionMessage ?? _status(state: state, loc: loc)),
+                  maxLines: 2,
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
             ),
           ),
@@ -111,7 +136,7 @@ class const _InventoryHeader() extends StatelessWidget {
 
 String _status({required McpInventoryState state, required AppLocalizations loc}) => switch (state) {
   McpInventoryReady(:final refresh) => switch (refresh) {
-    McpInventoryRefreshIdle() => loc.mcpReadOnly,
+    McpInventoryRefreshIdle() => loc.mcpInventoryReady,
     McpInventoryRefreshing() => loc.mcpRefreshing,
     McpInventoryRefreshOffline() => loc.mcpOffline,
     McpInventoryRefreshUnrecognized() => loc.mcpRefreshUnrecognized,
@@ -176,6 +201,9 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
                     McpConnectorOfferAvailability.setupRequired => loc.mcpSetupRequired,
                     McpConnectorOfferAvailability.unavailable => loc.mcpUnavailable,
                   }),
+                  trailing: offer.actions.contains(McpConnectorAction.setup)
+                      ? _SetupButton(target: offer.offerTarget)
+                      : null,
                 ),
               )
               .toList(growable: false),
@@ -186,6 +214,29 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
             child: Text(loc.mcpUnknownResponse),
           ),
       ],
+    );
+  }
+}
+
+class const _SetupButton({required final McpConnectorOfferTarget target}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final inventory = context.watch<McpCubit>();
+    final actions = context.watch<McpActionCubit>();
+    final state = inventory.state;
+    final blocked =
+        !inventory.mutationsAllowed ||
+        state is! McpInventoryReady ||
+        state.refresh is McpInventoryRefreshOffline ||
+        actions.state is McpActionPending ||
+        actions.state is McpActionsReadOnly ||
+        actions.state is McpActionOffline;
+    return PregoButtonsSolid(
+      label: context.loc.mcpOpenSetup,
+      leadingIcon: TablerRegular.external_link,
+      hierarchy: PregoButtonsSolidHierarchy.secondary,
+      size: PregoButtonsSolidSize.sm,
+      onPressed: blocked ? null : () => actions.execute(action: McpConnectorSetupEntryAction(offerTarget: target)),
     );
   }
 }
@@ -246,7 +297,7 @@ class const _ServerDetails({required final McpServerTarget target, required fina
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        const _InventoryHeader(),
+        const _InventoryHeader(action: McpActionIdle()),
         Expanded(
           child: _details(context: context, state: state),
         ),

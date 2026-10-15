@@ -22,9 +22,21 @@ class CodexMcpMapper({required String userAgent}) {
             : app.isAccessible
             ? PluginMcpConnectorOfferAvailability.available
             : PluginMcpConnectorOfferAvailability.setupRequired,
+        actions: setupDestination(app: app) == null ? const [] : const [PluginMcpConnectorAction.setup],
       ),
     ),
   );
+
+  Uri? setupDestination({required CodexAppInfoDto app}) {
+    if (!app.isEnabled || app.isAccessible) return null;
+    final url = app.installUrl;
+    if (url == null) return null;
+    final uri = Uri.tryParse(url);
+    return uri != null && uri.scheme == "https" && uri.hasAuthority && uri.host.isNotEmpty && uri.userInfo.isEmpty
+        ? uri
+        : null;
+  }
+
   PluginMcpInventorySnapshot map({required List<CodexMcpServerStatusDto> servers, required PluginMcpScope scope}) {
     final sorted = servers.toList()..sort((a, b) => a.name.compareTo(b.name));
     return PluginMcpInventorySnapshot(
