@@ -726,7 +726,7 @@ void main() {
     });
 
     test(
-      "mcpServer/elicitation/request surfaces as QuestionAsked and is pending",
+      "mcpServer/elicitation/request surfaces as a typed notice and is pending",
       () async {
         requests.add(
           const CodexServerRequest(
@@ -737,7 +737,12 @@ void main() {
               "serverName": "filesystem-mcp",
               "mode": "form",
               "message": "Where should I write the result?",
-              "requestedSchema": {"type": "string"},
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "path": {"type": "string"},
+                },
+              },
             },
           ),
         );
@@ -792,7 +797,7 @@ void main() {
     );
 
     test(
-      "replyQuestion(mcpServer/elicitation/request) sends an accept action",
+      "legacy replyQuestion cancels a typed MCP form without coercing answers",
       () async {
         requests.add(
           const CodexServerRequest(
@@ -803,7 +808,12 @@ void main() {
               "serverName": "fs",
               "mode": "form",
               "message": "Path?",
-              "requestedSchema": {"type": "string"},
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "path": {"type": "string"},
+                },
+              },
             },
           ),
         );
@@ -817,13 +827,12 @@ void main() {
           ],
         );
         final result = respondCalls.single.result as Map;
-        expect(result["action"], equals("accept"));
-        expect((result["content"] as Map)["answers"], equals(["/tmp/out"]));
+        expect(result, {"action": "cancel"});
       },
     );
 
     test(
-      "rejectQuestion declines an MCP elicitation with an action result",
+      "legacy rejectQuestion cancels a typed MCP form",
       () async {
         requests.add(
           const CodexServerRequest(
@@ -834,7 +843,12 @@ void main() {
               "serverName": "fs",
               "mode": "form",
               "message": "Path?",
-              "requestedSchema": {"type": "string"},
+              "requestedSchema": {
+                "type": "object",
+                "properties": {
+                  "path": {"type": "string"},
+                },
+              },
             },
           ),
         );
@@ -843,7 +857,7 @@ void main() {
 
         final ok = await registry.rejectQuestion(requestId: askedId);
         expect(ok, isTrue);
-        expect((respondCalls.single.result as Map)["action"], equals("decline"));
+        expect((respondCalls.single.result as Map)["action"], equals("cancel"));
         expect(errorCalls, isEmpty);
       },
     );

@@ -725,9 +725,17 @@ no action is advertised. A 2026-10-15 isolated probe at both pins found status
 discovery can open a fresh connection while the resident tool call retains its
 original connection, including after `config/mcpServer/reload`. Reloading
 configuration therefore does not establish resident reconnect support.
-Offered-connector inventory remains **not implemented**. Codex already forwards
-legacy elicitation as generic questions/tool permissions; its typed form and
-external-action management integration remain **not implemented**.
+Offered-connector inventory remains **not implemented**. Codex typed MCP forms
+and URL requests are **implemented**, reusing the existing native pending owner
+and shared request-scoped controls. Supported scalar/choice forms retain native
+types and opaque key/value aliases; invalid replies remain pending. Unsupported
+schemas/modes explicitly decline. Integer bounds accept the native JSON-number
+representation, with fractional bounds rounded inward to integral choices.
+URLs/defaults/answers remain outside question broadcasts. Legacy clients receive
+cancel-only notices; generic replies cancel instead of coercing answers or
+accepting an external action. Tagged tool approval and declared persistent grants
+remain on the permission path. Session cancellation/disconnect retires the same
+owner; URL acceptance alone does not establish OAuth completion.
 
 Claude's toggle changes the resident process, not persisted configuration.
 Its status omits tool descriptions. Approval frames name the tool at both pins;

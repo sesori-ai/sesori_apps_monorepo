@@ -387,6 +387,39 @@ the plugin below the headless browser-policy boundary. The production HTTPS brow
 policy remains unchanged. Real provider,
 relay/client, other native hosts and packaged browser return remain unqualified.
 
+## Codex typed native requests
+
+Codex form/URL elicitation uses the existing pending registry and the shared
+form/external-action interfaces. A form snapshot carries typed fields, constraints
+and defaults only on request. Server property names and choice values remain
+plugin-local behind opaque aliases. Valid responses encode native content with
+scalar types preserved and omitted optional values absent. Invalid values leave
+the same request pending for correction. Codex serializes integer bounds as JSON
+numbers; integral values and fractional bounds retain their integer semantics.
+
+URL snapshots retain the native destination and available accept/decline/cancel
+choices. Opening the browser does not accept the native request; accepting its
+reply does not confirm OAuth completion. Shared destination policy is unchanged.
+Both variants broadcast only a typed interaction notice with a cancel-only legacy
+question, never URL/schema/default/answer data. Legacy answers and rejection cancel
+the native request. Typed and legacy plugin replies require its exact owning
+session. Session-tree reads retain source attribution. Native tool approvals and
+declared persistent grants remain permissions rather than forms.
+
+Unsupported schemas/modes explicitly decline with a capability warning. The
+bounded schema subset supports text, integer, number, boolean, string choice and
+string-choice arrays; unsupported formats/constraints are not silently dropped.
+Cancellation, disconnect and disposal retire the same native owner, with no second
+map or subscription. Two clients cannot send two native replies to one entry.
+
+Coverage: `codex_mcp_requests_test.dart`, the updated `approval_registry_test.dart`
+and real-WebSocket `codex_mcp_plugin_test.dart` cover encoding, correction, scope,
+legacy cancellation and teardown. Exact 0.139.0/0.160.1 native fixtures passed
+form/URL accept/decline/cancel, legacy cancellation and session teardown through
+the production parser/schema/registry, including typed native content and optional
+omission. These isolated macOS arm64 fixtures do not qualify providers, native
+motion, packaged clients, other hosts or the final L4 matrix.
+
 ## Session forms
 
 Typed form transport codecs preserve original/display session ownership, typed

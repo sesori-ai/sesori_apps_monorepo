@@ -1,9 +1,13 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../../codex_app_server_client.dart";
+import "../models/codex_mcp_elicitation_dto.dart";
 import "../models/codex_user_input_dto.dart";
 
 class const CodexQuestionParser() {
+  CodexMcpElicitationDto parseMcpElicitation({required Map<String, dynamic> params}) =>
+      CodexMcpElicitationDto.fromJson(params);
+
   CodexUserInputParamsDto parseUserInput({required Map<String, dynamic> params}) =>
       CodexUserInputParamsDto.fromJson(params);
 

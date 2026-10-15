@@ -1,4 +1,5 @@
 import "package:acp_plugin/acp_plugin.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show PluginQuestionInteractionKind;
 
 import "models/antigravity_interaction.dart";
 import "services/antigravity_interaction_service.dart";
@@ -36,6 +37,7 @@ class AntigravityApprovalRegistry({
         );
       case final AntigravityQuestion question:
         registerPendingQuestion(
+          interactionKind: PluginQuestionInteractionKind.question,
           payload: question,
           sessionId: question.sessionId,
           displaySessionId: question.sessionId,

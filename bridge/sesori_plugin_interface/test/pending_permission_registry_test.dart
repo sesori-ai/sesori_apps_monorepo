@@ -31,6 +31,7 @@ class _Registry({
   );
 
   String addQuestion({required String payload, required String sessionId}) => registerPendingQuestion(
+    interactionKind: PluginQuestionInteractionKind.question,
     payload: _Payload(value: payload),
     sessionId: sessionId,
     displaySessionId: sessionId,

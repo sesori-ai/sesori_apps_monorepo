@@ -415,7 +415,7 @@ Codex inventory measures about 932 lines before documentation, including 349 gen
 Separate its read-only mapping (10.a) from native OAuth ownership (10.b) rather than
 combining that lifecycle into an oversized review. Both use the existing shared contracts.
 The series now has 30 PRs; the final qualification matrix is unchanged.
-Published PR titles use the current total; PR #1940 is titled `[step 1/30]`,
+Published PR titles use the current total; PR #1940 is titled `[step 1/31]`,
 while historical squash commits remain unchanged.
 
 All implementation PRs are independently valid and update this tracker. Estimates include tests/docs/generated output;
@@ -431,36 +431,37 @@ UI, and additional adapters land. Step 29 is final reconciliation only.
 
 | Step | Outcome | Planned diff |
 |---|---|---:|
-| 1/30 | Reviewed plan | 350–650 |
-| 2/30 | Native contract evidence | 500–1,000 |
-| 3/30 | Inventory foundation (3.a) | 1,900–2,300, mostly generated |
-| 4/30 | Claude inventory and bridge read (3.b) | 850–1,400 |
-| 5/30 | Client inventory lifecycle (5.a) | 500–900 |
-| 6/30 | Phone and desktop details (5.b) | 500–1,100 |
-| 7/30 | Claude live-server controls (7.a) | 1,350–1,800, generated-heavy exception |
-| 8/30 | Canonical archived MCP rejection (7.a follow-up) | 100–300 |
-| 9/30 | Claude native authentication boundary (7.b.1) | 900–1,750, focused review-fix overage |
-| 10/30 | Authentication wire (7.b.2.a) | 1,100–1,400, mostly generated |
-| 11/30 | Headless authentication owner and routes (7.b.2.b) | 800–1,400 |
-| 12/30 | Owner-scoped browser transport (8.a) | 650–1,200 |
-| 13/30 | Shared client authentication lifecycle (8.b) | 750–1,300 |
-| 14/30 | Authentication availability and credential forgetting (8.c.1) | 700–1,300 |
-| 15/30 | Shared client connection-action lifecycle (8.c.2.a) | 400–750 |
-| 16/30 | Visible MCP authentication and controls (8.c.2.b) | 850–1,400 |
-| 17/30 | External-action transport (8.d.1) | 750–1,100, generated-heavy |
-| 18/30 | Native external-action routing (8.d.2.a) | 850–1,400 |
-| 19/30 | External-action client presentation (8.d.2.b) | 750–1,200 |
-| 20/30 | Typed form transport (9.a) | 450–700 authored plus generated models |
-| 21/30 | Claude native forms (9.b.1) | 1,100–1,450 |
-| 22/30 | Canonical headless forms (9.b.2) | 650–1,100 |
-| 23/30 | Client form draft lifecycle (9.c.1) | 1,000–1,250 |
-| 24/30 | Shared typed form controls (9.c.2) | 750–1,300 |
-| 25/30 | Codex scoped inventory (10.a) | 1,050–1,450 |
-| 26/30 | Codex native OAuth ownership (10.b) | 900–1,400 |
-| 27/30 | Codex forms and connector offers | 650–1,200 |
-| 28/30 | Secondary harness support | 800–1,400 |
-| 29/30 | Regression and capability coverage | 250–500 |
-| 30/30 | Qualification and retirement | 100–300 |
+| 1/31 | Reviewed plan | 350–650 |
+| 2/31 | Native contract evidence | 500–1,000 |
+| 3/31 | Inventory foundation (3.a) | 1,900–2,300, mostly generated |
+| 4/31 | Claude inventory and bridge read (3.b) | 850–1,400 |
+| 5/31 | Client inventory lifecycle (5.a) | 500–900 |
+| 6/31 | Phone and desktop details (5.b) | 500–1,100 |
+| 7/31 | Claude live-server controls (7.a) | 1,350–1,800, generated-heavy exception |
+| 8/31 | Canonical archived MCP rejection (7.a follow-up) | 100–300 |
+| 9/31 | Claude native authentication boundary (7.b.1) | 900–1,750, focused review-fix overage |
+| 10/31 | Authentication wire (7.b.2.a) | 1,100–1,400, mostly generated |
+| 11/31 | Headless authentication owner and routes (7.b.2.b) | 800–1,400 |
+| 12/31 | Owner-scoped browser transport (8.a) | 650–1,200 |
+| 13/31 | Shared client authentication lifecycle (8.b) | 750–1,300 |
+| 14/31 | Authentication availability and credential forgetting (8.c.1) | 700–1,300 |
+| 15/31 | Shared client connection-action lifecycle (8.c.2.a) | 400–750 |
+| 16/31 | Visible MCP authentication and controls (8.c.2.b) | 850–1,400 |
+| 17/31 | External-action transport (8.d.1) | 750–1,100, generated-heavy |
+| 18/31 | Native external-action routing (8.d.2.a) | 850–1,400 |
+| 19/31 | External-action client presentation (8.d.2.b) | 750–1,200 |
+| 20/31 | Typed form transport (9.a) | 450–700 authored plus generated models |
+| 21/31 | Claude native forms (9.b.1) | 1,100–1,450 |
+| 22/31 | Canonical headless forms (9.b.2) | 650–1,100 |
+| 23/31 | Client form draft lifecycle (9.c.1) | 1,000–1,250 |
+| 24/31 | Shared typed form controls (9.c.2) | 750–1,300 |
+| 25/31 | Codex scoped inventory (10.a) | 1,050–1,450 |
+| 26/31 | Codex native OAuth ownership (10.b) | 900–1,400 |
+| 27/31 | Codex typed forms and URL requests | 1,000–1,450 |
+| 28/31 | Codex offered connectors | 500–1,000 |
+| 29/31 | Secondary harness support | 800–1,400 |
+| 30/31 | Regression and capability coverage | 250–500 |
+| 31/31 | Qualification and retirement | 100–300 |
 
 Step 7 may exceed the soft cap because its shared action/event codecs require
 about 700 generated lines. Keep authored controls and their verification together;
@@ -468,52 +469,52 @@ measure the final diff before each push.
 
 Exact PR titles and scope:
 
-1. `🌿 [mcp-management] Plan MCP information and connection support [step 1/30]`
+1. `🌿 [mcp-management] Plan MCP information and connection support [step 1/31]`
 
    Publish this reviewed plan and tracker. No user-visible or database change.
 
-2. `⚙️ [mcp-management] Verify Claude and Codex native MCP contracts [step 2/30]`
+2. `⚙️ [mcp-management] Verify Claude and Codex native MCP contracts [step 2/31]`
 
    Add bounded fixture probes/captures and the exact capability/version table. No production behavior or database
    change.
 
-3. `⚙️ [mcp-management] Define scoped MCP inventory contracts [step 3/30]`
+3. `⚙️ [mcp-management] Define scoped MCP inventory contracts [step 3/31]`
 
    Original step 3.a: optional plugin read interface and shared wire inventory models, keeping server and connector
    offer targets distinct. No adapter, route, UI, database, credentials, or configuration mutation yet. Generated codecs
    stay with their source; the generated-heavy diff is the documented soft-cap exception.
 
-4. `🚧 [mcp-management] Expose scoped MCP inventory for Claude Code [step 4/30]`
+4. `🚧 [mcp-management] Expose scoped MCP inventory for Claude Code [step 4/31]`
 
    Original step 3.b: supported-capability detection, bridge read route, and Claude typed server mapping using
    the foundation contracts. Add native invalidation events only with an actual native producer or mutation owner. Headless consumers can inspect a live session; no database change.
 
-5. `🚧 [mcp-management] Load scoped MCP inventory in the shared client [step 5/30]`
+5. `🚧 [mcp-management] Load scoped MCP inventory in the shared client [step 5/31]`
 
    Original step 5.a: typed relay API/repository, per-view reactive service, cubit, and core DI.
    Preserve readable details during refresh, fence old bridge/scope responses, and coalesce real
    staleness signals. No UI or database change. Depends on ordinal 4.
 
-6. `⚙️ [mcp-management] Show MCP server details on phone and desktop [step 6/30]`
+6. `⚙️ [mcp-management] Show MCP server details on phone and desktop [step 6/31]`
 
    Original step 5.b: shared view and settings/session entry points consume the verified loading flow.
    Stable status/tool details with loading/error/unsupported states and adaptive presentation;
    no database change. Depends on ordinal 5.
 
-7. `🚧 [mcp-management] Control live Claude MCP servers headlessly [step 7/30]`
+7. `🚧 [mcp-management] Control live Claude MCP servers headlessly [step 7/31]`
 
    Original step 7.a: declared server controls, typed action route, resident-only Claude
    reconnect/toggle, bridge mutation plus authoritative refresh, scoped invalidation and
    reactive client reads. Controls affect only the live session; no configuration,
    credential, database or new UI action. Depends on ordinal 6.
 
-8. `🌿 [mcp-management] Normalize archived MCP control rejection [step 8/30]`
+8. `🌿 [mcp-management] Normalize archived MCP control rejection [step 8/31]`
 
    Complete the controls step with the canonical structured archive rejection.
    Move its existing exception to foundation so repositories and services share
    the same handler path; no database or UI change. Depends on ordinal 7.
 
-9. `🚧 [mcp-management] Add Claude native MCP authentication [step 9/30]`
+9. `🚧 [mcp-management] Add Claude native MCP authentication [step 9/31]`
 
    Original step 7.b.1: optional native authentication API, existing-target binding,
    terminal-backed login, scoped callback/denial, bounded cancellation and native
@@ -522,33 +523,33 @@ Exact PR titles and scope:
    Depends on ordinal 8. Qualify HTTP on both Claude pins; keep SSE and Windows
    gaps explicit until their native boundaries are implemented and qualified.
 
-10. `⚙️ [mcp-management] Define MCP authentication transport contracts [step 10/30]`
+10. `⚙️ [mcp-management] Define MCP authentication transport contracts [step 10/31]`
 
     Original step 7.b.2.a: typed current-attempt states, request/response models,
     native cancellation availability and private callback decoding/presentation.
     Codec foundation only; no routes, UI, native credential or database change.
 
-11. `🚧 [mcp-management] Own MCP authentication attempts headlessly [step 11/30]`
+11. `🚧 [mcp-management] Own MCP authentication attempts headlessly [step 11/31]`
 
     Original step 7.b.2.b: bridge attempt owner using the preceding wire contracts,
     runtime lease, read/start/continue/cancel routes and normalized state events.
     Headless consumers use the native API from ordinal 9; no UI or database
     change.
 
-12. `🚧 [mcp-management] Scope authentication browser operations to their owners [step 12/30]`
+12. `🚧 [mcp-management] Scope authentication browser operations to their owners [step 12/31]`
 
     Original step 8.a: opaque browser handles bound to bridge connection and provider/MCP purpose;
     owner-scoped retry/cancel/cleanup, typed busy, and every provider caller updated together.
     A conflicting flow preserves the first listener and shows “Finish the current sign-in first”.
     No MCP-native credential or database change in this transport foundation.
 
-13. `🚧 [mcp-management] Own MCP authentication in the shared client [step 13/30]`
+13. `🚧 [mcp-management] Own MCP authentication in the shared client [step 13/31]`
 
     Original step 8.b: typed client API/repository, one connection-fenced native attempt service,
     cubit state and browser integration. Recover current attempts through request-scoped reads;
     retain a challenge while the browser is busy. No new controls or database change yet.
 
-14. `🚧 [mcp-management] Declare MCP authentication and expose native credential forgetting [step 14/30]`
+14. `🚧 [mcp-management] Declare MCP authentication and expose native credential forgetting [step 14/31]`
 
     Substep 8.c.1, derived from original 8.c: independent per-server authentication and credential-forgetting
     availability/effect scopes, normalized Claude declarations, and a headless credential-forgetting
@@ -556,27 +557,27 @@ Exact PR titles and scope:
     overlap; forgetting preserves native server definitions and returns authoritative inventory.
     No visible controls or Sesori database change yet.
 
-15. `🚧 [mcp-management] Own MCP connection actions in the shared client [step 15/30]`
+15. `🚧 [mcp-management] Own MCP connection actions in the shared client [step 15/31]`
 
     Substep 8.c.2.a, derived from original 8.c.2: typed entry-action API/repository, per-view native-action
     request state, response/connection fencing, authoritative inventory application and observational Cubit.
     Shell composition supplies the read-only posture; closing a view does not send a native cancellation.
     No new visible controls or Sesori database change. No extra operation queue or registry.
 
-16. `🚧 [mcp-management] Present MCP connection and authentication controls [step 16/30]`
+16. `🚧 [mcp-management] Present MCP connection and authentication controls [step 16/31]`
 
     Substep 8.c.2.b, derived from original 8.c.2: shared visible controls/authentication presentation,
     fixture-proven browser return and native credential forgetting where declared.
     Preserve readable inventory and fixed refresh/status layers through transitions. No Sesori database change.
 
-17. `⚙️ [mcp-management] Define native session external-action transport contracts [step 17/30]`
+17. `⚙️ [mcp-management] Define native session external-action transport contracts [step 17/31]`
 
     Substep 8.d.1: neutral pending URL-action snapshots and reply contracts plus the additive question
     interaction marker. Destinations remain request-scoped; the next step uses URL-free invalidation.
     Keep generated codecs with source and prove the exact public v1.9.1 cancel-only notice decoders.
     This foundation emits no requests, advertises no capability and changes no UI or database.
 
-18. `🚧 [mcp-management] Route native MCP session external actions [step 18/30]`
+18. `🚧 [mcp-management] Route native MCP session external actions [step 18/31]`
 
     Substep 8.d.2.a: native/plugin boundary, session-scoped headless snapshot/reply routes,
     validated destinations, exact native reply ownership and cancel-only legacy notices.
@@ -585,20 +586,20 @@ Exact PR titles and scope:
     phone/desktop clients expose an honest cancel-only handoff until the next step.
     No Sesori database change.
 
-19. `🚧 [mcp-management] Present session MCP browser and consent controls [step 19/30]`
+19. `🚧 [mcp-management] Present session MCP browser and consent controls [step 19/31]`
 
     Substep 8.d.2.b: typed client reads/replies and shared request presentation over the
     preceding headless boundary. Browser opening is explicit; native reply acceptance does not
     claim OAuth completion. Reuse connection fencing and preserve transcript position, pending
     ownership, declared choices, dismissal semantics and native motion. No Sesori database change.
 
-20. `⚙️ [mcp-management] Define typed session form transport contracts [step 20/30]`
+20. `⚙️ [mcp-management] Define typed session form transport contracts [step 20/31]`
 
    Substep 9.a: shared typed fields, defaults/constraints, opaque choice IDs, typed values, pending snapshots and
    submission/dismissal results. Preserve optional omission and scalar types; unknown variants remain unsupported.
    Keep generated codecs with their sources and report generated/authored churn. No user-visible or database change.
 
-21. `🚧 [mcp-management] Handle native Claude MCP forms and approval context [step 21/30]`
+21. `🚧 [mcp-management] Handle native Claude MCP forms and approval context [step 21/31]`
 
    Substep 9.b.1: extend the existing Claude native pending owner and add neutral plugin form APIs. Validate the
    supported flat schema subset before insertion and validate typed submissions before native replies. Preserve exact
@@ -608,58 +609,62 @@ Exact PR titles and scope:
    the pending owner's cancellation because archive is permanent; stop/exit/teardown reuse that same owner.
    Native formats, nested/secret schemas and unsupported constraints explicitly decline. No database change.
 
-22. `🚧 [mcp-management] Route canonical headless MCP forms [step 22/30]`
+22. `🚧 [mcp-management] Route canonical headless MCP forms [step 22/31]`
 
    Substep 9.b.2: FormRepository and its neutral mapper expose active-only snapshots through PendingInteractionSupport
    with canonical original/display-owner mapping, tombstones and actual-owner archive filtering. Add the three form
    routes through PendingInteractionService, existing dispatcher and archive validator. Update Orchestrator and all
    internal constructors in lockstep. Typed validation failures remain editable at the caller. No database change.
 
-23. `🚧 [mcp-management] Preserve typed MCP form drafts and client ownership [step 23/30]`
+23. `🚧 [mcp-management] Preserve typed MCP form drafts and client ownership [step 23/31]`
 
    Substep 9.c.1: client API/repository/stateless service and per-modal typed draft, submission/error and connection
    ownership state. Preserve optional omission, explicit defaults, raw numeric drafts, original owner and privacy-safe
    diagnostics. Retain drafts on validation/transport failure and retire old-connection controls. No user-visible or
    database change until the shared presentation lands; existing cancel-only notices remain usable.
 
-24. `🚧 [mcp-management] Present draft-preserving MCP forms on both surfaces [step 24/30]`
+24. `🚧 [mcp-management] Present draft-preserving MCP forms on both surfaces [step 24/31]`
 
    Substep 9.c.2: shared typed field controls and modal over the preceding client foundation. Preserve focus through
    validation failure; close only on accepted or authoritative settlement. Compose both shells over the existing
    pending-list owner. Completes the Claude milestone subject to native gates. No database change. Native recording
    remains deferred in timing only; final qualification is unchanged.
 
-25. `⚙️ [mcp-management] Expose scoped Codex MCP inventory [step 25/30]`
+25. `⚙️ [mcp-management] Expose scoped Codex MCP inventory [step 25/31]`
 
    Substep 10.a: typed DTO/API/repository mapping on the existing app-server connection. Read all native pages for
    the exact session or harness; project scope is explicitly unsupported. Keep absent minimum-version runtime/tool
    information unknown. No native mutation, implicit connection, duplicate owner or database change. Native reload
    does not establish resident reconnection at either pin, so advertise no reconnect/toggle/forget action.
 
-26. `🚧 [mcp-management] Own native Codex MCP authentication [step 26/30]`
+26. `🚧 [mcp-management] Own native Codex MCP authentication [step 26/31]`
 
    Substep 10.b: native OAuth request and completion events through the existing shared authentication owner and UI.
    Correlate native server/thread context without inventing a native attempt ID or cancel RPC. Preserve native
    operation ownership until settlement/expiry; browser opening alone is not success. No duplicate credential store
    or arbitrary server configuration. No Sesori database change.
 
-27. `⚙️ [mcp-management] Complete Codex MCP forms and connector offers [step 27/30]`
+27. `⚙️ [mcp-management] Complete Codex typed MCP requests [step 27/31]`
 
-   Map native forms to the shared typed interaction, URL elicitation, native grant scopes, and connector-offer inventory
-   and setup actions. Verify catalog offers never enter server-control/auth routes. Remove superseded generic MCP
-   mapping. No Sesori database change.
+   Map native forms to the shared typed interaction and URL elicitation through the existing pending owner.
+   Preserve native grant scopes. Remove superseded generic MCP mapping. No Sesori database change.
 
-28. `⚙️ [mcp-management] Extend supported MCP controls across harnesses [step 28/30]`
+28. `⚙️ [mcp-management] Expose Codex offered connectors [step 28/31]`
+
+   Add native catalog inventory and verified setup destinations. Offers never enter server-control/auth routes;
+   no plugin installation API, arbitrary configuration or Sesori database change.
+
+29. `⚙️ [mcp-management] Extend supported MCP controls across harnesses [step 29/31]`
 
     OpenCode v1/v2 structured support and bounded Pi/ACP capability integration/audit. Preserve existing dialogs. Split
     additional proven adapter work if needed; no Sesori database change.
 
-29. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 29/30]`
+30. `🌿 [mcp-management] Reconcile MCP regression and capability coverage [step 30/31]`
 
     Reconcile the docs and capability records maintained in steps 3–28 with the final matrix and remaining limitations;
     no production or database change. This step does not postpone documentation required in earlier PRs.
 
-30. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 30/30]`
+31. `⚙️ [mcp-management] Qualify MCP journeys and retire the plan [step 31/31]`
 
     Execute the recorded matrix, record privacy-safe evidence, and move to completed only after passing. No intended
     production/database change.

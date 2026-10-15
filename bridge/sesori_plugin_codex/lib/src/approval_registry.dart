@@ -2,10 +2,12 @@ import "dart:async";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "api/models/codex_mcp_elicitation_dto.dart";
 import "api/models/codex_pending_input.dart";
 import "api/models/codex_user_input_dto.dart";
 import "api/parsers/codex_question_parser.dart";
 import "codex_app_server_client.dart";
+import "repositories/mappers/codex_form_schema.dart";
 import "repositories/mappers/codex_question_mapper.dart";
 
 /// Codex methods that always surface as permission asks.
@@ -57,6 +59,42 @@ enum _ElicitationApprovalKind() {
 
 sealed class _PendingCodexInput();
 
+sealed class _PendingMcpRequest({
+  required final Object codexId,
+  required final String sessionId,
+  required final String title,
+  required final String message,
+  required final ApprovalResponder respond,
+}) extends _PendingCodexInput;
+
+final class _PendingMcpForm({
+  required super.codexId,
+  required super.sessionId,
+  required super.title,
+  required super.message,
+  required super.respond,
+  required final CodexFormSchema schema,
+}) extends _PendingMcpRequest;
+
+final class _PendingMcpExternalAction({
+  required super.codexId,
+  required super.sessionId,
+  required super.title,
+  required super.message,
+  required super.respond,
+  required final String authorizationUrl,
+}) extends _PendingMcpRequest;
+
+// COMPATIBILITY 2026-10-15 (v1.9.2): v1.9.1 clients need cancel-only notices.
+// Remove when supported production clients all consume typed forms/external actions.
+const _mcpNotice = PluginQuestionInfo(
+  header: "MCP request",
+  question: "Open this native request in an updated Sesori client, or cancel it.",
+  options: [PluginQuestionOption(label: "Cancel", description: "Cancel this native request.")],
+  multiple: false,
+  custom: false,
+);
+
 final class _PendingApproval({
   required final Object codexId,
   required final String method,
@@ -103,9 +141,11 @@ FutureOr<PendingQuestionReplyOutcome> _resolveCodexQuestion({
   required List<List<String>> answers,
 }) {
   switch (payload) {
+    case _PendingMcpRequest():
+      payload.respond(payload.codexId, const {"action": "cancel"});
+      return PendingQuestionReplyOutcome.rejected;
     case _PendingApproval():
-      payload.respond(payload.codexId, ApprovalRegistry._questionResponse(payload, answers));
-      return PendingQuestionReplyOutcome.replied;
+      throw StateError("Permission payload cannot be a question");
     case _PendingAsyncQuestion():
       return payload.answer(answers: answers).then((_) => PendingQuestionReplyOutcome.replied);
     case _PendingUserInput():
@@ -124,6 +164,8 @@ FutureOr<void> _rejectCodexQuestion({
   required _PendingCodexInput payload,
 }) {
   switch (payload) {
+    case _PendingMcpRequest():
+      payload.respond(payload.codexId, const {"action": "cancel"});
     case _PendingAsyncQuestion():
       return payload.answer(answers: const []);
     case _PendingUserInput():
@@ -141,6 +183,10 @@ void _cancelCodexPending({required _PendingCodexInput payload, required PendingC
   // Async questions have no suspended server request. Teardown only retires
   // their local card; it must not start a new turn to send a cancellation.
   if (payload is _PendingAsyncQuestion) return;
+  if (payload is _PendingMcpRequest) {
+    payload.respond(payload.codexId, const {"action": "cancel"});
+    return;
+  }
   if (payload is _PendingUserInput) {
     payload.respondError(payload.codexId, -32000, _cancellationMessage(reason: reason));
     return;
@@ -203,6 +249,10 @@ class ApprovalRegistry({
   void _handleServerRequest({required CodexServerRequest request}) {
     final method = request.method;
     final isMcpToolApproval = method == _elicitationMethod && _isMcpToolApproval(request.params);
+    if (method == _elicitationMethod && !isMcpToolApproval) {
+      _handleMcpRequest(request: request);
+      return;
+    }
     final isPermission = _permissionMethods.contains(method) || isMcpToolApproval;
     final isQuestion = _questionMethods.contains(method) && !isMcpToolApproval;
     if (!isPermission && !isQuestion) {
@@ -241,22 +291,169 @@ class ApprovalRegistry({
         return;
       }
       pendingId = registerPendingQuestion(
+        interactionKind: PluginQuestionInteractionKind.question,
         payload: _PendingUserInput(codexId: request.id, input: input, respond: _respond, respondError: _respondError),
         sessionId: resolvedSessionId,
         displaySessionId: displaySessionId,
         questions: _questionMapper.mapUserInput(request: input),
       );
     } else {
-      pendingId = registerPendingQuestion(
-        payload: entry,
-        sessionId: resolvedSessionId,
-        displaySessionId: displaySessionId,
-        questions: _questionInfoFor(entry),
-      );
+      throw StateError("Unclassified native input method: $method");
     }
     if (nativeTurnId != null) {
       _nativeTurnIdByPendingId[pendingId] = nativeTurnId;
     }
+  }
+
+  void _handleMcpRequest({required CodexServerRequest request}) {
+    try {
+      final input = _questionParser.parseMcpElicitation(params: request.params);
+      if (input.threadId.isEmpty || input.serverName.isEmpty || input.message == null) {
+        throw const FormatException("Missing MCP request identity or message");
+      }
+      final _PendingMcpRequest payload;
+      final PluginQuestionInteractionKind kind;
+      switch (input.mode) {
+        case CodexMcpElicitationMode.form:
+          final schema = CodexFormSchema.parse(schema: input.requestedSchema);
+          if (schema == null) throw const FormatException("Unsupported MCP form schema");
+          payload = _PendingMcpForm(
+            codexId: request.id,
+            sessionId: input.threadId,
+            title: input.serverName,
+            message: input.message!,
+            respond: _respond,
+            schema: schema,
+          );
+          kind = PluginQuestionInteractionKind.form;
+        case CodexMcpElicitationMode.url:
+          if (input.url == null || input.url!.isEmpty || input.elicitationId == null || input.elicitationId!.isEmpty) {
+            throw const FormatException("Missing MCP external action");
+          }
+          payload = _PendingMcpExternalAction(
+            codexId: request.id,
+            sessionId: input.threadId,
+            title: input.serverName,
+            message: input.message!,
+            respond: _respond,
+            authorizationUrl: input.url!,
+          );
+          kind = PluginQuestionInteractionKind.externalAction;
+        case CodexMcpElicitationMode.unknown:
+          throw const FormatException("Unsupported MCP request mode");
+      }
+      final id = registerPendingQuestion(
+        interactionKind: kind,
+        payload: payload,
+        sessionId: input.threadId,
+        displaySessionId: _resolvePendingInputScope(sessionId: input.threadId).displaySessionId,
+        questions: const [_mcpNotice],
+      );
+      final turnId = _extractNativeTurnId(request.params);
+      if (turnId != null) _nativeTurnIdByPendingId[id] = turnId;
+    } on Object catch (error, stackTrace) {
+      Log.w("[codex] unsupported MCP request ${request.id}", error, stackTrace);
+      _respond(request.id, const {"action": "decline"});
+      emitEvent(
+        event: BridgeSseTuiToastShow(
+          sessionID: _extractSessionId(request.params),
+          title: "MCP request unavailable",
+          message: "This MCP form or external-action request is not supported by this bridge.",
+          variant: "warning",
+        ),
+      );
+    }
+  }
+
+  List<PluginPendingForm> pendingFormsForSession({required String sessionId}) => [
+    for (final source in _resolvePendingInputScope(sessionId: sessionId).sourceSessionIds)
+      for (final snapshot in pendingForSession(sessionId: source))
+        if (pendingQuestionPayload(requestId: snapshot.id) case final _PendingMcpForm form)
+          PluginPendingForm(
+            id: snapshot.id,
+            sessionID: source,
+            displaySessionId: _resolvePendingInputScope(sessionId: sessionId).displaySessionId,
+            title: form.title,
+            message: form.message,
+            fields: form.schema.fields,
+          ),
+  ];
+
+  List<PluginPendingExternalAction> pendingExternalActionsForSession({required String sessionId}) => [
+    for (final source in _resolvePendingInputScope(sessionId: sessionId).sourceSessionIds)
+      for (final snapshot in pendingForSession(sessionId: source))
+        if (pendingQuestionPayload(requestId: snapshot.id) case final _PendingMcpExternalAction action)
+          PluginPendingExternalAction(
+            id: snapshot.id,
+            sessionID: source,
+            displaySessionId: _resolvePendingInputScope(sessionId: sessionId).displaySessionId,
+            title: action.title,
+            message: action.message,
+            authorizationUrl: action.authorizationUrl,
+            purpose: PluginExternalActionPurpose.authorization,
+            choices: PluginExternalActionChoice.values,
+          ),
+  ];
+
+  PluginFormSubmissionResult replyForm({
+    required String requestId,
+    required String sessionId,
+    required Map<String, PluginFormValue> values,
+  }) {
+    final payload = pendingQuestionPayload(requestId: requestId);
+    if (payload is! _PendingMcpForm || payload.sessionId != sessionId) return const PluginFormAlreadySettled();
+    final errors = payload.schema.validate(values: values);
+    if (errors.isNotEmpty) return PluginFormValidationFailed(fieldErrors: errors);
+    payload.respond(payload.codexId, {"action": "accept", "content": payload.schema.encode(values: values)});
+    _settleMcp(requestId: requestId, outcome: PendingQuestionReplyOutcome.replied);
+    return const PluginFormAccepted();
+  }
+
+  PluginFormDismissalResult declineForm({
+    required String requestId,
+    required String sessionId,
+    required PluginFormDismissalChoice choice,
+  }) {
+    final payload = pendingQuestionPayload(requestId: requestId);
+    if (payload is! _PendingMcpForm || payload.sessionId != sessionId) return PluginFormDismissalResult.alreadySettled;
+    payload.respond(payload.codexId, {"action": choice.name});
+    _settleMcp(requestId: requestId, outcome: PendingQuestionReplyOutcome.rejected);
+    return PluginFormDismissalResult.accepted;
+  }
+
+  PluginExternalActionReply replyExternalAction({
+    required String requestId,
+    required String sessionId,
+    required PluginExternalActionChoice choice,
+  }) {
+    final payload = pendingQuestionPayload(requestId: requestId);
+    if (payload is! _PendingMcpExternalAction || payload.sessionId != sessionId) {
+      return PluginExternalActionReply.alreadySettled;
+    }
+    payload.respond(payload.codexId, {"action": choice.name});
+    _settleMcp(
+      requestId: requestId,
+      outcome: choice == PluginExternalActionChoice.accept
+          ? PendingQuestionReplyOutcome.replied
+          : PendingQuestionReplyOutcome.rejected,
+    );
+    return PluginExternalActionReply.accepted;
+  }
+
+  void _settleMcp({required String requestId, required PendingQuestionReplyOutcome outcome}) {
+    settlePendingQuestion(requestId: requestId, outcome: outcome);
+    _nativeTurnIdByPendingId.remove(requestId);
+  }
+
+  bool isTypedMcpRequest({required String requestId}) =>
+      pendingQuestionPayload(requestId: requestId) is _PendingMcpRequest;
+
+  bool cancelLegacyMcpRequest({required String requestId, required String? sessionId}) {
+    final payload = pendingQuestionPayload(requestId: requestId);
+    if (payload is! _PendingMcpRequest || payload.sessionId != sessionId) return false;
+    payload.respond(payload.codexId, const {"action": "cancel"});
+    _settleMcp(requestId: requestId, outcome: PendingQuestionReplyOutcome.rejected);
+    return true;
   }
 
   /// Exact native turn carried by current server-request input for [sessionId].
@@ -314,6 +511,7 @@ class ApprovalRegistry({
     if (request != null) {
       final questions = _questionMapper.mapAsyncQuestions(questions: request.questions);
       registerPendingQuestion(
+        interactionKind: PluginQuestionInteractionKind.question,
         payload: _PendingAsyncQuestion(
           sessionId: request.threadId,
           questions: questions,
@@ -349,22 +547,6 @@ class ApprovalRegistry({
     if (entry.method != _elicitationMethod) return true;
     final persist = _asMap(entry.params["_meta"])?["persist"];
     return persist is List && persist.contains("always");
-  }
-
-  List<PluginQuestionInfo> _questionInfoFor(_PendingApproval entry) {
-    final reason =
-        (entry.params["message"] as String?) ??
-        (entry.params["reason"] as String?) ??
-        _descriptionFallback(entry.method, entry.params);
-    return [
-      PluginQuestionInfo(
-        question: reason,
-        header: entry.method,
-        options: const [],
-        multiple: false,
-        custom: true,
-      ),
-    ];
   }
 
   /// Human-readable description for a permission ask, shared by the
@@ -435,26 +617,6 @@ class ApprovalRegistry({
       PluginPermissionReply.reject => "decline",
     };
     return {"decision": decision};
-  }
-
-  /// Builds the JSON-RPC result for a question reply, keyed by wire method:
-  ///   - `mcpServer/elicitation/request` → `{action: accept, content}`
-  static Map<String, dynamic> _questionResponse(
-    _PendingApproval entry,
-    List<List<String>> answers,
-  ) {
-    if (entry.method == _elicitationMethod) {
-      // Accept the elicitation. `content` mirrors the server-defined form
-      // schema, which the bridge cannot model generically; pass the flattened
-      // answers best-effort (decline/cancel carry no content).
-      return {
-        "action": "accept",
-        "content": {"answers": answers.expand((row) => row).toList()},
-      };
-    }
-
-    // Unknown question method: fall back to the legacy answers array.
-    return {"answers": answers.map((row) => row.toList()).toList()};
   }
 
   String _toolHintFor(String method) {

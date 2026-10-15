@@ -193,6 +193,7 @@ class AcpApprovalRegistry({
     required AcpQuestionResolutionBuilder? resolutionBuilder,
   }) {
     return registerPendingQuestion(
+      interactionKind: PluginQuestionInteractionKind.question,
       payload: _AcpPendingQuestion(
         acpId: acpId,
         replyBuilder: replyBuilder,
