@@ -255,6 +255,26 @@ class const DesktopSessionDetailView({
           entriesBuilder: () => session == null
               ? const []
               : [
+                  PregoMenuItem(
+                    leadingIcon: TablerRegular.plug,
+                    title: loc.mcpMenuLabel,
+                    subtitle: null,
+                    isSelected: false,
+                    shortcutLabel: null,
+                    onTap: () => showMcpInventory(
+                      context: context,
+                      request: McpInventoryRequest(
+                        pluginId: session.pluginId,
+                        scope: McpSessionScope(sessionId: session.id),
+                      ),
+                      createService: getIt.call<McpService>,
+                      mutationsAllowed:
+                          !readOnly &&
+                          session.parentID == null &&
+                          session.time?.archived == null &&
+                          !(state is SessionDetailLoaded && state.isArchived),
+                    ),
+                  ),
                   if (!readOnly &&
                       session.time?.archived == null &&
                       !(state is SessionDetailLoaded && state.isArchived))

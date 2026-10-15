@@ -51,6 +51,15 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
             create: (_) => BridgeIdentityCubit(
               registeredBridgesService: getIt<RegisteredBridgesService>(),
               connectionService: getIt<ConnectionService>(),
+              selectedComputerService: getIt<SelectedComputerService>(),
+            ),
+          ),
+          BlocProvider(
+            create: (_) => ComputerSwitcherCubit(
+              registeredBridgesService: getIt<RegisteredBridgesService>(),
+              connectionService: getIt<ConnectionService>(),
+              selectedComputerService: getIt<SelectedComputerService>(),
+              activeBridgeLocality: getIt<ActiveBridgeLocality>(),
             ),
           ),
         ],
@@ -70,8 +79,9 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
             );
           },
           onOpenProject: _openProject,
-          disconnectedViewBuilder: ({required context, required state, required bridge}) =>
-              state.hasRegisteredBridges ? _BridgeOfflineView(bridge: bridge) : const _ConnectBridgeChecklist(),
+          disconnectedViewBuilder: ({required context, required state, required bridge}) => state.hasRegisteredBridges
+              ? _BridgeOfflineView(bridge: bridge, onSwitchComputer: _switchComputer)
+              : const _ConnectBridgeChecklist(),
           disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
             surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
             // The offline fix is the command above, so help stays a quiet link.
@@ -83,10 +93,14 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
           connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
           onRefreshDisconnected: ({required context, required state}) =>
               context.read<ProjectListCubit>().reconnectBridge(),
+          onSwitchComputer: _switchComputer,
         ),
       ),
     );
   }
+
+  static void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
+      unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
 
   static void _showAddProject({required BuildContext context}) {
     unawaited(

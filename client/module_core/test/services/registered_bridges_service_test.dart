@@ -13,7 +13,7 @@ import "../helpers/test_helpers.dart";
 
 class _MockAuthSession() extends Mock implements AuthSession;
 
-const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token");
+const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: null);
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 const _bridgeOffline = ConnectionStatus.bridgeOffline(config: _config, health: _health);
@@ -274,6 +274,188 @@ void main() {
       expect(await pending, isEmpty);
       expect(service.isRegistered.value, isFalse);
       verifyNever(() => store.markRegistered());
+    });
+  });
+
+  group("bridges stream", () {
+    test("starts empty and emits each fetched list in display order", () async {
+      final older = testBridgeSummary(id: "a", lastSeenAt: DateTime.utc(2026, 6, 1));
+      final newer = testBridgeSummary(id: "b", lastSeenAt: DateTime.utc(2026, 7, 1));
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([older, newer]),
+      );
+      final service = build();
+      expect(service.bridges.value, isEmpty);
+
+      await service.getRegisteredBridges();
+
+      expect(service.bridges.value.map((b) => b.id), ["b", "a"]);
+    });
+
+    test("a live connection keeps the list until the next fetch replaces it", () async {
+      final oldBridge = testBridgeSummary(id: "old");
+      final newBridge = testBridgeSummary(id: "new", status: BridgeRegistrationStatus.inactive);
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([oldBridge]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      final emissions = <List<BridgeSummary>>[];
+      final sub = service.bridges.skip(1).listen(emissions.add);
+
+      statusSubject.add(_connected);
+      await _settle();
+      expect(service.bridges.value, [oldBridge], reason: "marked stale without emitting");
+
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([newBridge]),
+      );
+      await service.getRegisteredBridges();
+      await _settle();
+
+      expect(emissions, [
+        [newBridge],
+      ]);
+      await sub.cancel();
+    });
+
+    test("a fetch that finds no bridges emits an empty list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      statusSubject.add(_connected);
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success(const <BridgeSummary>[]),
+      );
+
+      await service.getRegisteredBridges();
+
+      expect(service.bridges.value, isEmpty);
+    });
+
+    test("a failed fetch keeps the last list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "kept")]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      statusSubject.add(_connected);
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.error(ApiError.generic()),
+      );
+
+      await service.getRegisteredBridges();
+
+      expect(service.bridges.value.map((b) => b.id), ["kept"]);
+    });
+
+    test("logout empties the list", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary()]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+
+      authSubject.add(const AuthState.unauthenticated());
+      await _settle();
+
+      expect(service.bridges.value, isEmpty);
+    });
+  });
+
+  group("presence notices", () {
+    BridgeRegistrationStatus statusOf({required RegisteredBridgesService service, required String id}) =>
+        service.bridges.value.singleWhere((bridge) => bridge.id == id).status;
+
+    test("update a listed computer's status in place without fetching", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a"), testBridgeSummary(id: "b")]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+
+      connectionService.emitBridgePresence(bridgeId: "b", online: false);
+      await _settle();
+
+      expect(statusOf(service: service, id: "b"), BridgeRegistrationStatus.inactive);
+      expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.active);
+      verify(() => bridgeRepository.getRegisteredBridges()).called(1);
+    });
+
+    test("refetch the list for a computer it does not know", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a")]),
+      );
+      final service = build();
+      await service.getRegisteredBridges();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([
+          testBridgeSummary(id: "a"),
+          testBridgeSummary(id: "new", status: BridgeRegistrationStatus.inactive),
+        ]),
+      );
+
+      connectionService.emitBridgePresence(bridgeId: "new", online: true);
+      await _settle();
+
+      expect(service.bridges.value.map((bridge) => bridge.id), containsAll(["a", "new"]));
+      // The auth server has not recorded the relay's report yet; the notice wins.
+      expect(statusOf(service: service, id: "new"), BridgeRegistrationStatus.active);
+    });
+
+    test("refetch after a running fetch that may predate the link", () async {
+      final fetch = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => fetch.future);
+      final service = build();
+      final pending = service.getRegisteredBridges();
+
+      connectionService.emitBridgePresence(bridgeId: "new", online: true);
+      await _settle();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a"), testBridgeSummary(id: "new")]),
+      );
+      fetch.complete(ApiResponse.success([testBridgeSummary(id: "a")]));
+      await pending;
+      await _settle();
+
+      expect(service.bridges.value.map((bridge) => bridge.id), containsAll(["a", "new"]));
+    });
+
+    test("win over a fetch that started before them", () async {
+      final fetch = Completer<ApiResponse<List<BridgeSummary>>>();
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer((_) => fetch.future);
+      final service = build();
+      final pending = service.getRegisteredBridges();
+
+      connectionService.emitBridgePresence(bridgeId: "a", online: false);
+      await _settle();
+      fetch.complete(ApiResponse.success([testBridgeSummary(id: "a")]));
+      final bridges = await pending;
+
+      expect(bridges.single.status, BridgeRegistrationStatus.inactive);
+      expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.inactive);
+    });
+
+    test("are forgotten when the connection drops, so the next fetch decides", () async {
+      when(() => bridgeRepository.getRegisteredBridges()).thenAnswer(
+        (_) async => ApiResponse.success([testBridgeSummary(id: "a")]),
+      );
+      final service = build();
+      statusSubject.add(_connected);
+      await service.getRegisteredBridges();
+      connectionService.emitBridgePresence(bridgeId: "a", online: false);
+      await _settle();
+
+      statusSubject.add(const ConnectionStatus.reconnecting(config: _config));
+      statusSubject.add(_connected);
+      await _settle();
+      await service.getRegisteredBridges();
+
+      expect(statusOf(service: service, id: "a"), BridgeRegistrationStatus.active);
     });
   });
 

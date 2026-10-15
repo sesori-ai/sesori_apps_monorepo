@@ -1140,4 +1140,328 @@ as BridgeConnectionNotificationPolicy?,
 
 }
 
+RelayNoticeMessage _$RelayNoticeMessageFromJson(
+  Map<String, dynamic> json
+) {
+        switch (json['type']) {
+                  case 'bridge_connected':
+          return BridgeConnectedMessage.fromJson(
+            json
+          );
+                case 'bridge_disconnected':
+          return BridgeDisconnectedMessage.fromJson(
+            json
+          );
+                case 'bridge_presence':
+          return BridgePresenceMessage.fromJson(
+            json
+          );
+        
+          default:
+            return UnknownRelayNoticeMessage.fromJson(
+  json
+);
+        }
+      
+}
+
+/// @nodoc
+mixin _$RelayNoticeMessage {
+
+
+
+  /// Serializes this RelayNoticeMessage to a JSON map.
+  Map<String, dynamic> toJson();
+
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is RelayNoticeMessage);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'RelayNoticeMessage()';
+}
+
+
+}
+
+/// @nodoc
+class $RelayNoticeMessageCopyWith<$Res>  {
+$RelayNoticeMessageCopyWith(RelayNoticeMessage _, $Res Function(RelayNoticeMessage) __);
+}
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class BridgeConnectedMessage implements RelayNoticeMessage {
+  const BridgeConnectedMessage({required this.bridgeId,  String? $type}): $type = $type ?? 'bridge_connected';
+  factory BridgeConnectedMessage.fromJson(Map<String, dynamic> json) => _$BridgeConnectedMessageFromJson(json);
+
+ final  String? bridgeId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayNoticeMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$BridgeConnectedMessageCopyWith<BridgeConnectedMessage> get copyWith => _$BridgeConnectedMessageCopyWithImpl<BridgeConnectedMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$BridgeConnectedMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeConnectedMessage&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId);
+}
+
+@override
+String toString() {
+    return 'RelayNoticeMessage.bridgeConnected(bridgeId: $bridgeId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $BridgeConnectedMessageCopyWith<$Res> implements $RelayNoticeMessageCopyWith<$Res> {
+  factory $BridgeConnectedMessageCopyWith(BridgeConnectedMessage value, $Res Function(BridgeConnectedMessage) _then) = _$BridgeConnectedMessageCopyWithImpl;
+@useResult
+$Res call({
+ String? bridgeId
+});
+
+
+
+
+}
+/// @nodoc
+class _$BridgeConnectedMessageCopyWithImpl<$Res>
+    implements $BridgeConnectedMessageCopyWith<$Res> {
+  _$BridgeConnectedMessageCopyWithImpl(this._self, this._then);
+
+  final BridgeConnectedMessage _self;
+  final $Res Function(BridgeConnectedMessage) _then;
+
+/// Create a copy of RelayNoticeMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? bridgeId = freezed,}) {
+  return _then(BridgeConnectedMessage(
+bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class BridgeDisconnectedMessage implements RelayNoticeMessage {
+  const BridgeDisconnectedMessage({required this.bridgeId,  String? $type}): $type = $type ?? 'bridge_disconnected';
+  factory BridgeDisconnectedMessage.fromJson(Map<String, dynamic> json) => _$BridgeDisconnectedMessageFromJson(json);
+
+ final  String? bridgeId;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayNoticeMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$BridgeDisconnectedMessageCopyWith<BridgeDisconnectedMessage> get copyWith => _$BridgeDisconnectedMessageCopyWithImpl<BridgeDisconnectedMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$BridgeDisconnectedMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgeDisconnectedMessage&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId);
+}
+
+@override
+String toString() {
+    return 'RelayNoticeMessage.bridgeDisconnected(bridgeId: $bridgeId)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $BridgeDisconnectedMessageCopyWith<$Res> implements $RelayNoticeMessageCopyWith<$Res> {
+  factory $BridgeDisconnectedMessageCopyWith(BridgeDisconnectedMessage value, $Res Function(BridgeDisconnectedMessage) _then) = _$BridgeDisconnectedMessageCopyWithImpl;
+@useResult
+$Res call({
+ String? bridgeId
+});
+
+
+
+
+}
+/// @nodoc
+class _$BridgeDisconnectedMessageCopyWithImpl<$Res>
+    implements $BridgeDisconnectedMessageCopyWith<$Res> {
+  _$BridgeDisconnectedMessageCopyWithImpl(this._self, this._then);
+
+  final BridgeDisconnectedMessage _self;
+  final $Res Function(BridgeDisconnectedMessage) _then;
+
+/// Create a copy of RelayNoticeMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? bridgeId = freezed,}) {
+  return _then(BridgeDisconnectedMessage(
+bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class BridgePresenceMessage implements RelayNoticeMessage {
+  const BridgePresenceMessage({required this.bridgeId, required this.online,  String? $type}): $type = $type ?? 'bridge_presence';
+  factory BridgePresenceMessage.fromJson(Map<String, dynamic> json) => _$BridgePresenceMessageFromJson(json);
+
+ final  String bridgeId;
+ final  bool online;
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+/// Create a copy of RelayNoticeMessage
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$BridgePresenceMessageCopyWith<BridgePresenceMessage> get copyWith => _$BridgePresenceMessageCopyWithImpl<BridgePresenceMessage>(this, _$identity);
+
+@override
+Map<String, dynamic> toJson() {
+  return _$BridgePresenceMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is BridgePresenceMessage&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.online, online) || other.online == online));
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode {
+    return Object.hash(runtimeType,bridgeId,online);
+}
+
+@override
+String toString() {
+    return 'RelayNoticeMessage.bridgePresence(bridgeId: $bridgeId, online: $online)';
+}
+
+
+}
+
+/// @nodoc
+abstract mixin class $BridgePresenceMessageCopyWith<$Res> implements $RelayNoticeMessageCopyWith<$Res> {
+  factory $BridgePresenceMessageCopyWith(BridgePresenceMessage value, $Res Function(BridgePresenceMessage) _then) = _$BridgePresenceMessageCopyWithImpl;
+@useResult
+$Res call({
+ String bridgeId, bool online
+});
+
+
+
+
+}
+/// @nodoc
+class _$BridgePresenceMessageCopyWithImpl<$Res>
+    implements $BridgePresenceMessageCopyWith<$Res> {
+  _$BridgePresenceMessageCopyWithImpl(this._self, this._then);
+
+  final BridgePresenceMessage _self;
+  final $Res Function(BridgePresenceMessage) _then;
+
+/// Create a copy of RelayNoticeMessage
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? bridgeId = null,Object? online = null,}) {
+  return _then(BridgePresenceMessage(
+bridgeId: null == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String,online: null == online ? _self.online : online // ignore: cast_nullable_to_non_nullable
+as bool,
+  ));
+}
+
+
+}
+
+/// @nodoc
+@JsonSerializable()
+
+class UnknownRelayNoticeMessage implements RelayNoticeMessage {
+  const UnknownRelayNoticeMessage({ String? $type}): $type = $type ?? 'unknown';
+  factory UnknownRelayNoticeMessage.fromJson(Map<String, dynamic> json) => _$UnknownRelayNoticeMessageFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$UnknownRelayNoticeMessageToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is UnknownRelayNoticeMessage);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'RelayNoticeMessage.unknown()';
+}
+
+
+}
+
+
+
+
 // dart format on

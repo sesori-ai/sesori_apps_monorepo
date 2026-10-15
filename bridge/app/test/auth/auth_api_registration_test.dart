@@ -4,11 +4,12 @@ import "dart:io";
 import "package:http/http.dart" as http;
 import "package:sesori_bridge/src/auth/auth_api.dart";
 import "package:sesori_bridge/src/foundation/abortable_request.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
   group("AuthApi.registerBridge", () {
-    test("posts name, platform and bridgeId with bearer token and parses a 200 response", () async {
+    test("posts name, platform, bridgeId and hostKey with bearer token and parses a 200 response", () async {
       final server = await _BridgesTestServer.start(statusCode: 200);
       addTearDown(server.close);
 
@@ -17,23 +18,25 @@ void main() {
         name: "dev-laptop",
         platform: "macos",
         bridgeId: "br_existing01",
+        hostKey: _hostKey,
         accessToken: "access-token",
       );
 
       expect(summary.id, equals("br_server001"));
       expect(summary.name, equals("dev-laptop"));
-      expect(summary.platform, equals("macos"));
+      expect(summary.platform, equals(BridgePlatform.macos));
+      expect(summary.status, equals(BridgeRegistrationStatus.inactive));
       final request = server.requests.single;
       expect(request.method, equals("POST"));
       expect(request.path, equals("/auth/bridges"));
       expect(request.authorization, equals("Bearer access-token"));
       expect(
         jsonDecode(request.body),
-        equals({"name": "dev-laptop", "platform": "macos", "bridgeId": "br_existing01"}),
+        equals({"name": "dev-laptop", "platform": "macos", "bridgeId": "br_existing01", "hostKey": _hostKey}),
       );
     });
 
-    test("omits bridgeId from the body when null and accepts a 201 response", () async {
+    test("omits bridgeId and hostKey from the body when null and accepts a 201 response", () async {
       final server = await _BridgesTestServer.start(statusCode: 201);
       addTearDown(server.close);
 
@@ -42,6 +45,7 @@ void main() {
         name: "dev-laptop",
         platform: "linux",
         bridgeId: null,
+        hostKey: null,
         accessToken: "access-token",
       );
 
@@ -56,7 +60,13 @@ void main() {
       final api = _createApi(server);
 
       await expectLater(
-        api.registerBridge(name: "dev-laptop", platform: "macos", bridgeId: null, accessToken: "access-token"),
+        api.registerBridge(
+          name: "dev-laptop",
+          platform: "macos",
+          bridgeId: null,
+          hostKey: null,
+          accessToken: "access-token",
+        ),
         throwsA(isA<BridgeRegistrationException>().having((e) => e.statusCode, "statusCode", 500)),
       );
     });
@@ -101,6 +111,8 @@ void main() {
     });
   });
 }
+
+const _hostKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";
 
 AuthApi _createApi(_BridgesTestServer server) {
   final client = http.Client();
@@ -160,6 +172,7 @@ class _BridgesTestServer._(final HttpServer _server, final int _statusCode) {
           "id": "br_server001",
           "name": requested["name"],
           "platform": requested["platform"],
+          "status": "inactive",
           "addedAt": "2026-06-01T00:00:00.000Z",
           "lastSeenAt": null,
         }),

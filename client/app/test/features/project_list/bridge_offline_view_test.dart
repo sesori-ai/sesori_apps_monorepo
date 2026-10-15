@@ -13,19 +13,22 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 
 // ---------------------------------------------------------------------------
-// Behaviour guards for the bridge-offline recovery view: the computer named
-// once, in the bar's bridge line; the "Bridge offline" heading with how long
-// the bridge has been gone; a single info control; and the install-commands
-// disclosure that closes the body.
+// Behaviour guards for the bridge-offline recovery view: the heading naming
+// the computer with how long it has been gone; the account's other online
+// computers as one-tap switches; a single info control; and the
+// install-commands disclosure that closes the body.
 //
 // Pumps the real [ProjectListScreen] (its cubit is built from getIt, so every
 // dependency is registered as a mock below) driven into the bridge-offline
 // state through the connection status stream.
 // ---------------------------------------------------------------------------
 
+class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
+
 const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
+  bridgeId: null,
 );
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
@@ -36,13 +39,15 @@ const _bridgeOfflineStatus = ConnectionStatus.bridgeOffline(
 BridgeSummary _bridge({
   required String id,
   required String name,
-  String platform = "macos",
+  BridgePlatform platform = BridgePlatform.macos,
+  BridgeRegistrationStatus status = BridgeRegistrationStatus.active,
   DateTime? lastSeenAt,
 }) {
   return BridgeSummary(
     id: id,
     name: name,
     platform: platform,
+    status: status,
     addedAt: DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
   );
@@ -121,32 +126,86 @@ void main() {
   }
 
   group("the computer's name", () {
-    testWidgets("appears once, in the bridge line, above the Bridge offline heading", (tester) async {
+    testWidgets("is in the bridge line and in the heading below it", (tester) async {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
         (_) async => [_bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1))],
       );
 
       await pumpScreen(tester);
 
-      expect(find.text("Macbook-Pro.local"), findsOneWidget);
+      expect(find.text("Bridge offline"), findsNothing);
       expect(
         tester.getTopLeft(find.text("Macbook-Pro.local")).dy,
-        lessThan(tester.getTopLeft(find.text("Bridge offline")).dy),
+        lessThan(tester.getTopLeft(find.text("Macbook-Pro.local is offline")).dy),
       );
     });
+  });
 
-    testWidgets("only the most recent machine is named", (tester) async {
-      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
-        (_) async => [
-          _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1)),
-          _bridge(id: "b", name: "work-desktop", platform: "linux"),
-        ],
-      );
+  group("other computers", () {
+    final bridges = [
+      _bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1)),
+      _bridge(id: "b", name: "work-desktop", platform: BridgePlatform.linux),
+      _bridge(id: "c", name: "old-tower", status: BridgeRegistrationStatus.inactive),
+    ];
+
+    testWidgets("lists the online ones above the start command, and a tap switches", (tester) async {
+      final dispatcher = _MockComputerSwitchDispatcher();
+      when(
+        () => dispatcher.switchTo(
+          bridgeId: any(named: "bridgeId"),
+          source: ComputerSwitchSource.offlineScreen,
+        ),
+      ).thenAnswer((_) async {});
+      getIt.registerLazySingleton<ComputerSwitchDispatcher>(() => dispatcher);
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => bridges);
+      mockRegisteredBridgesService.emitBridges(bridges: bridges);
 
       await pumpScreen(tester);
 
-      // One bridge at a time: stale extra registrations are never listed.
-      expect(find.text("work-desktop"), findsNothing);
+      expect(find.text("old-tower"), findsNothing);
+      expect(
+        tester.getTopLeft(find.text("work-desktop")).dy,
+        lessThan(tester.getTopLeft(find.text("Make sure the Bridge is running")).dy),
+      );
+
+      await tester.tap(find.text("work-desktop"));
+      await tester.pumpAndSettle();
+
+      verify(() => dispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.offlineScreen)).called(1);
+    });
+
+    testWidgets("says when none is online", (tester) async {
+      final offline = [bridges.first, bridges.last];
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => offline);
+      mockRegisteredBridgesService.emitBridges(bridges: offline);
+
+      await pumpScreen(tester);
+
+      expect(find.text("No other computers online"), findsOneWidget);
+      expect(find.text("old-tower"), findsNothing);
+    });
+
+    testWidgets("push Need help? below the last control instead of under it", (tester) async {
+      final crowded = [
+        ...bridges,
+        _bridge(id: "d", name: "studio-mac"),
+        _bridge(id: "e", name: "build-box", platform: BridgePlatform.linux),
+      ];
+      when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => crowded);
+      mockRegisteredBridgesService.emitBridges(bridges: crowded);
+
+      await pumpScreen(tester);
+      // A phone-sized viewport, short enough for the card to make the body
+      // reach the bottom.
+      tester.view.physicalSize = const Size(402, 874);
+      await tester.pumpAndSettle();
+
+      // At rest, before any scroll: the link follows the body, so it can be
+      // pushed past the fold but never drawn over a control.
+      expect(
+        tester.getTopLeft(find.text("Need help?", skipOffstage: false)).dy,
+        greaterThan(tester.getBottomLeft(find.text("Install commands")).dy),
+      );
     });
   });
 

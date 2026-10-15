@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:ui" show ImageFilter;
 
 import "package:flutter/foundation.dart";
@@ -8,6 +9,7 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -204,12 +206,24 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
   Widget _page() => switch (_tab) {
     DesktopSettingsTab.general => const DesktopGeneralSettingsScreen(),
     DesktopSettingsTab.harnesses => _DesktopHarnessSettingsPage(onClose: widget.onClose),
-    DesktopSettingsTab.bridge => BlocProvider(
-      create: (_) => BridgeSettingsCubit(
-        service: getIt<BridgeSettingsService>(),
-        connectionService: getIt<ConnectionService>(),
-      ),
-      child: const _DesktopBridgeSettingsPage(),
+    DesktopSettingsTab.bridge => MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => BridgeSettingsCubit(
+            service: getIt<BridgeSettingsService>(),
+            connectionService: getIt<ConnectionService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => ComputerSwitcherCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+          ),
+        ),
+      ],
+      child: _DesktopBridgeSettingsPage(onClose: widget.onClose),
     ),
     DesktopSettingsTab.notifications => BlocProvider(
       create: (_) => DesktopAttentionPreferenceCubit(service: getIt<DesktopAttentionService>()),
@@ -276,7 +290,7 @@ class const _SettingsTabRow({
   }
 }
 
-class const _DesktopBridgeSettingsPage() extends StatelessWidget {
+class const _DesktopBridgeSettingsPage({required final VoidCallback onClose}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -295,6 +309,14 @@ class const _DesktopBridgeSettingsPage() extends StatelessWidget {
                 BridgeSettingsSection(
                   title: loc.desktopSettingsConnectedBridge,
                   description: loc.desktopSettingsConnectedBridgeDescription,
+                  // Harnesses has a tab of its own.
+                  onOpenHarnesses: null,
+                  // A switch lands on the new computer's Projects root, so the
+                  // window steps aside for it.
+                  onSwitchComputer: ({required bridgeId, required source}) {
+                    onClose();
+                    unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
+                  },
                 ),
                 SettingsSection(
                   title: loc.desktopSettingsThisComputer,
@@ -396,6 +418,12 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
               key: ValueKey(pluginId),
               child: HarnessSettingsDetailView(
                 pluginId: pluginId,
+                onShowMcp: () => showMcpInventory(
+                  context: context,
+                  request: McpInventoryRequest(pluginId: pluginId, scope: const McpHarnessScope()),
+                  createService: getIt.call<McpService>,
+                  mutationsAllowed: true,
+                ),
                 chrome: HarnessSettingsChrome.window,
                 onBack: () => setState(() => _pluginId = null),
                 onClose: widget.onClose,

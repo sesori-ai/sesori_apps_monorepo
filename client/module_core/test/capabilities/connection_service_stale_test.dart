@@ -30,6 +30,7 @@ class _TestRelayClientFactory({required final RelayClient _client}) extends Rela
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
   }) => _client;
 }
 
@@ -61,6 +62,7 @@ void main() {
     const config = ServerConnectionConfig(
       relayHost: "relay.example.com",
       authToken: "token",
+      bridgeId: null,
     );
 
     const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
@@ -91,6 +93,7 @@ void main() {
       service = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,
@@ -285,6 +288,7 @@ void main() {
       );
       when(() => relayClient.subscribeSse(any())).thenAnswer((_) => sseController.stream);
       when(() => relayClient.bridgeStatus).thenAnswer((_) => const Stream<BridgeStatus>.empty());
+      when(() => relayClient.bridgePresence).thenAnswer((_) => const Stream<BridgePresenceMessage>.empty());
       when(relayClient.disconnect).thenAnswer((_) async {});
       // The group-level pending token holds the now-immediate post-resume reconnect
       // at the refresh step, right after the eager teardown — letting us assert the
@@ -293,6 +297,7 @@ void main() {
       final staleService = ConnectionService(
         cryptoService,
         roomKeyStorage,
+        FakeTargetBridgeStorage(),
         authTokenProvider,
         authSession,
         lifecycleSource,

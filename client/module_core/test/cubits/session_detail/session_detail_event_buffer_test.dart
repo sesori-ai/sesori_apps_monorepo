@@ -31,7 +31,7 @@ const _sessionId = "session-1";
 
 void main() {
   const connectedStatus = ConnectionStatus.connected(
-    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+    config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null),
     health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
 
@@ -660,7 +660,7 @@ void main() {
       await _awaitCondition(() => refreshes.length == 1);
       connectionStatus.add(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null),
         ),
       );
       await Future<void>.delayed(Duration.zero);
@@ -843,7 +843,7 @@ void main() {
 
       connectionStatus.add(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null),
         ),
       );
       await Future<void>.delayed(Duration.zero);
@@ -964,7 +964,7 @@ void main() {
       await _awaitCondition(() => refreshes.length == 1);
       connectionStatus.add(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null),
         ),
       );
       await Future<void>.delayed(Duration.zero);
@@ -1064,7 +1064,7 @@ void main() {
       await _awaitCondition(() => refreshes.length == 1);
       connectionStatus.add(
         const ConnectionStatus.connectionLost(
-          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token"),
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null),
         ),
       );
       await Future<void>.delayed(Duration.zero);

@@ -1201,6 +1201,7 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     temporary = Directory.systemTemp.createTempSync("claude-plugin-test-");
     final eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
     processRepository = ClaudeSessionProcessRepository(
+      supportsMcpAuthentication: true,
       processFactory: (spec) async {
         final process = FakeClaudeProcess();
         specs.add(spec);
@@ -1231,6 +1232,15 @@ final class _PluginHarness({final bool failInitialize = false, bool failTranscri
     );
     plugin = ClaudePlugin(
       processes: processRepository,
+      mcpAuthentication: ClaudeMcpAuthenticationService(
+        repository: _UnavailableMcpAuthenticationRepository(),
+        resolveContext: processRepository.resolveMcpAuthenticationContext,
+        createLogin: ({required context}) => throw const PluginMcpAuthenticationUnavailableException(
+          reason: PluginMcpAuthenticationUnavailableReason.notImplemented,
+        ),
+        urlBudget: const Duration(seconds: 90),
+        overallBudget: const Duration(minutes: 10),
+      ),
       transcripts: transcripts,
       sessions: sessionService,
       catalogService: ClaudeCatalogService(
@@ -1423,3 +1433,12 @@ IMPORTANT: Do NOT create new worktrees.
 
 ---
 """;
+
+class _UnavailableMcpAuthenticationRepository() implements ClaudeMcpAuthenticationRepository {
+  @override
+  Future<void> forget({required ClaudeMcpAuthenticationContext context}) async {
+    throw const PluginMcpAuthenticationUnavailableException(
+      reason: PluginMcpAuthenticationUnavailableReason.notImplemented,
+    );
+  }
+}

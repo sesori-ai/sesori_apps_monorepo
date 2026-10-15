@@ -4,7 +4,7 @@ import "package:test/test.dart";
 void main() {
   group("RegisterBridgeRequest", () {
     test("omits bridgeId from JSON when null", () {
-      const request = RegisterBridgeRequest(name: "alex-macbook", platform: "macos", bridgeId: null);
+      const request = RegisterBridgeRequest(name: "alex-macbook", platform: "macos", bridgeId: null, hostKey: null);
 
       final json = request.toJson();
 
@@ -16,6 +16,7 @@ void main() {
         name: "alex-macbook",
         platform: "macos",
         bridgeId: "br_abc12345",
+        hostKey: null,
       );
 
       final json = request.toJson();
@@ -30,6 +31,17 @@ void main() {
       );
     });
 
+    test("includes hostKey in JSON when set", () {
+      const request = RegisterBridgeRequest(
+        name: "alex-macbook",
+        platform: "macos",
+        bridgeId: null,
+        hostKey: _hostKey,
+      );
+
+      expect(request.toJson(), equals({"name": "alex-macbook", "platform": "macos", "hostKey": _hostKey}));
+    });
+
     test("parses a body without bridgeId", () {
       final request = RegisterBridgeRequest.fromJson({
         "name": "alex-macbook",
@@ -39,6 +51,7 @@ void main() {
       expect(request.name, equals("alex-macbook"));
       expect(request.platform, equals("linux"));
       expect(request.bridgeId, isNull);
+      expect(request.hostKey, isNull);
     });
 
     test("parses a body with bridgeId", () {
@@ -56,6 +69,7 @@ void main() {
         name: "alex-macbook",
         platform: "windows",
         bridgeId: "br_abc12345",
+        hostKey: _hostKey,
       );
 
       final restored = RegisterBridgeRequest.fromJson(original.toJson());
@@ -64,3 +78,5 @@ void main() {
     });
   });
 }
+
+const _hostKey = "0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef";

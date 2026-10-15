@@ -1821,7 +1821,7 @@ void main() {
     testWidgets("without any project it offers to add one", (tester) async {
       final connection = _MockConnectionService();
       const status = ConnectionStatus.connected(
-        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null),
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
         health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
       );
       when(() => connection.status).thenAnswer((_) => BehaviorSubject<ConnectionStatus>.seeded(status));

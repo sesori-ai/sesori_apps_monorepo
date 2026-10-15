@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$LocalNotificationPayload {
 
- String? get sessionId; String? get projectId; String? get sessionTitle; String? get accountId;
+ String? get sessionId; String? get projectId; String? get sessionTitle; String? get accountId; String? get bridgeId;
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $LocalNotificationPayloadCopyWith<LocalNotificationPayload> get copyWith => _$Lo
 @override
 bool operator ==(Object other) {
   final _this = this as LocalNotificationPayload;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocalNotificationPayload&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.sessionTitle, _this.sessionTitle) || other.sessionTitle == _this.sessionTitle)&&(identical(other.accountId, _this.accountId) || other.accountId == _this.accountId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is LocalNotificationPayload&&(identical(other.sessionId, _this.sessionId) || other.sessionId == _this.sessionId)&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.sessionTitle, _this.sessionTitle) || other.sessionTitle == _this.sessionTitle)&&(identical(other.accountId, _this.accountId) || other.accountId == _this.accountId)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as LocalNotificationPayload;
-  return Object.hash(runtimeType,_this.sessionId,_this.projectId,_this.sessionTitle,_this.accountId);
+  return Object.hash(runtimeType,_this.sessionId,_this.projectId,_this.sessionTitle,_this.accountId,_this.bridgeId);
 }
 
 @override
 String toString() {
   final _this = this as LocalNotificationPayload;
-  return 'LocalNotificationPayload(sessionId: ${_this.sessionId}, projectId: ${_this.projectId}, sessionTitle: ${_this.sessionTitle}, accountId: ${_this.accountId})';
+  return 'LocalNotificationPayload(sessionId: ${_this.sessionId}, projectId: ${_this.projectId}, sessionTitle: ${_this.sessionTitle}, accountId: ${_this.accountId}, bridgeId: ${_this.bridgeId})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $LocalNotificationPayloadCopyWith<$Res>  {
   factory $LocalNotificationPayloadCopyWith(LocalNotificationPayload value, $Res Function(LocalNotificationPayload) _then) = _$LocalNotificationPayloadCopyWithImpl;
 @useResult
 $Res call({
- String? sessionId, String? projectId, String? sessionTitle, String? accountId
+ String? sessionId, String? projectId, String? sessionTitle, String? accountId, String? bridgeId
 });
 
 
@@ -71,12 +71,13 @@ class _$LocalNotificationPayloadCopyWithImpl<$Res>
 
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,Object? accountId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,Object? accountId = freezed,Object? bridgeId = freezed,}) {
   return _then(LocalNotificationPayload(
 sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
 as String?,accountId: freezed == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
+as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }
@@ -89,13 +90,14 @@ as String?,
 @JsonSerializable()
 
 class _LocalNotificationPayload implements LocalNotificationPayload {
-  const _LocalNotificationPayload({required this.sessionId, required this.projectId, required this.sessionTitle, required this.accountId});
+  const _LocalNotificationPayload({required this.sessionId, required this.projectId, required this.sessionTitle, required this.accountId, required this.bridgeId});
   factory _LocalNotificationPayload.fromJson(Map<String, dynamic> json) => _$LocalNotificationPayloadFromJson(json);
 
 @override final  String? sessionId;
 @override final  String? projectId;
 @override final  String? sessionTitle;
 @override final  String? accountId;
+@override final  String? bridgeId;
 
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
@@ -110,18 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.accountId, accountId) || other.accountId == accountId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _LocalNotificationPayload&&(identical(other.sessionId, sessionId) || other.sessionId == sessionId)&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.sessionTitle, sessionTitle) || other.sessionTitle == sessionTitle)&&(identical(other.accountId, accountId) || other.accountId == accountId)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,sessionId,projectId,sessionTitle,accountId);
+    return Object.hash(runtimeType,sessionId,projectId,sessionTitle,accountId,bridgeId);
 }
 
 @override
 String toString() {
-    return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle, accountId: $accountId)';
+    return 'LocalNotificationPayload(sessionId: $sessionId, projectId: $projectId, sessionTitle: $sessionTitle, accountId: $accountId, bridgeId: $bridgeId)';
 }
 
 
@@ -132,7 +134,7 @@ abstract mixin class _$LocalNotificationPayloadCopyWith<$Res> implements $LocalN
   factory _$LocalNotificationPayloadCopyWith(_LocalNotificationPayload value, $Res Function(_LocalNotificationPayload) _then) = __$LocalNotificationPayloadCopyWithImpl;
 @override @useResult
 $Res call({
- String? sessionId, String? projectId, String? sessionTitle, String? accountId
+ String? sessionId, String? projectId, String? sessionTitle, String? accountId, String? bridgeId
 });
 
 
@@ -149,12 +151,13 @@ class __$LocalNotificationPayloadCopyWithImpl<$Res>
 
 /// Create a copy of LocalNotificationPayload
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,Object? accountId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? sessionId = freezed,Object? projectId = freezed,Object? sessionTitle = freezed,Object? accountId = freezed,Object? bridgeId = freezed,}) {
   return _then(_LocalNotificationPayload(
 sessionId: freezed == sessionId ? _self.sessionId : sessionId // ignore: cast_nullable_to_non_nullable
 as String?,projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,sessionTitle: freezed == sessionTitle ? _self.sessionTitle : sessionTitle // ignore: cast_nullable_to_non_nullable
 as String?,accountId: freezed == accountId ? _self.accountId : accountId // ignore: cast_nullable_to_non_nullable
+as String?,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,
   ));
 }

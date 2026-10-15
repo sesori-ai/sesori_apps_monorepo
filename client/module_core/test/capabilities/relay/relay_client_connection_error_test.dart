@@ -18,6 +18,7 @@ void main() {
       cryptoService: RelayCryptoService(),
       roomKeyStorage: roomKeyStorage,
       authToken: null,
+      bridgeId: null,
     );
     final uncaughtErrors = <Object>[];
 
@@ -50,6 +51,7 @@ void main() {
       cryptoService: RelayCryptoService(),
       roomKeyStorage: roomKeyStorage,
       authToken: null,
+      bridgeId: null,
     );
     final connectFuture = client.connect();
     final socket = await acceptedSocket.future.timeout(const Duration(seconds: 2));

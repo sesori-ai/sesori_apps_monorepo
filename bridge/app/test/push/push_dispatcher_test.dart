@@ -55,6 +55,7 @@ void main() {
       final payload = harness.client.sentPayloads.single;
       expect(payload.category, equals(NotificationCategory.aiInteraction));
       expect(payload.data?.eventType, equals(NotificationEventType.questionAsked));
+      expect(payload.data?.bridgeId, equals("br_this_computer"));
     });
 
     test("rapid permissions and questions all notify their display session", () {
@@ -207,6 +208,7 @@ void main() {
       );
       expect(completion.title, equals(title));
       expect(completion.body, equals(body));
+      expect(completion.data?.bridgeId, equals("br_this_computer"));
     });
 
     test("markSessionAborted delegates abort suppression to the notifier", () {
@@ -579,6 +581,7 @@ _newHarness({
     rateLimiter: resolvedRateLimiter,
     tracker: resolvedTracker,
     contentBuilder: contentBuilder,
+    bridgeIdProvider: FakeBridgeIdProvider("br_this_computer"),
   );
   final completionListener = CompletionPushListener(
     tracker: resolvedTracker,

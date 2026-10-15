@@ -128,6 +128,36 @@ def bootstrap(*, sdk: Path, target_os: str, arch: str) -> None:
     print(f"Bootstrapped official Flutter {release['version']} at {revision}, native Dart {arch}")
 
 
+def require_macos_build_architecture(*, gui: Path, arch: str) -> None:
+    # Check compiled product outputs, not prebuilt universal frameworks or previously released packages.
+    for relative in ("Contents/MacOS/Sesori", "Contents/Frameworks/App.framework/App"):
+        binary = gui / relative
+        native = native_arch(path=binary)
+        if native != ("Mach-O", [arch]):
+            raise ValueError(f"Expected single-architecture macos/{arch} build at {binary}, found {native}")
+
+
+def inspect_gui(*, gui: Path, arch: str, source: Path) -> None:
+    """Inspect cross-compiled GUI/probe payloads without executing their target code."""
+    require_macos_build_architecture(gui=gui, arch=arch)
+    sdk = shutil.which("flutter")
+    if sdk is None:
+        raise ValueError("Pinned Flutter must be on PATH")
+    report = {
+        "sourceSha": run(command=["git", "rev-parse", "HEAD"], cwd=source).strip(),
+        "toolingSourceSha": run(command=["git", "rev-parse", "HEAD"]).strip(),
+        "targetOs": "macos", "targetCpu": arch,
+        "buildHostCpu": CPU_NAMES[platform.machine()],
+        "runnerImage": {key: os.environ.get(key) for key in ("ImageOS", "ImageVersion", "RUNNER_ARCH")},
+        "flutter": json.loads(run(command=[sdk, "--version", "--machine"])),
+        "xcode": run(command=["xcodebuild", "-version"]).strip(),
+        "binaries": inventory(root=gui, target_os="macos", arch=arch),
+        "proofBoundary": "Unsigned GUI compile and headers; not target execution, helper, signing or installed QA",
+    }
+    (gui.parent / "gui-inventory.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
+    print(f"GUI/probe macos/{arch} built on {report['buildHostCpu']}; native headers verified without execution")
+
+
 def inspect(*, target_os: str, arch: str, gui: Path) -> None:
     helper = gui / ("Contents/Helpers/bridge" if target_os == "macos" else "bridge")
     entry = {"macos": "Contents/MacOS/Sesori", "windows": "sesori_desktop.exe",
@@ -136,6 +166,8 @@ def inspect(*, target_os: str, arch: str, gui: Path) -> None:
     for required in (gui / entry, helper / "bin" / bridge_name, helper / "lib"):
         if not required.exists():
             raise ValueError(f"Required bundle entry missing: {required}")
+    if target_os == "macos":
+        require_macos_build_architecture(gui=gui, arch=arch)
     binaries = {"gui": inventory(root=gui, target_os=target_os, arch=arch),
                 "helper": inventory(root=helper, target_os=target_os, arch=arch)}
     # Relocate the complete bundle, including native assets; the space is intentional.
@@ -191,12 +223,18 @@ def inspect(*, target_os: str, arch: str, gui: Path) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("operation", choices=("bootstrap", "inspect"))
+    parser.add_argument("operation", choices=("bootstrap", "inspect", "inspect-gui"))
     parser.add_argument("--arch", choices=("x64", "arm64"), required=True)
     parser.add_argument("--sdk-dir", type=Path)
     parser.add_argument("--bundle-dir", type=Path)
+    parser.add_argument("--source-root", type=Path, default=ROOT)
     args = parser.parse_args()
     target_os = OS_NAMES[sys.platform]
+    if args.operation == "inspect-gui":
+        if target_os != "macos" or args.bundle_dir is None:
+            parser.error("inspect-gui requires a macOS compiler host and --bundle-dir")
+        inspect_gui(gui=ROOT / args.bundle_dir, arch=args.arch, source=args.source_root)
+        return
     host_cpu = CPU_NAMES.get(os.environ.get("PROCESSOR_ARCHITEW6432", platform.machine()))
     if host_cpu != args.arch:
         raise ValueError(f"Native host required: expected {args.arch}, found {host_cpu}")

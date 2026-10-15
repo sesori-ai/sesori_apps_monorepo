@@ -1170,6 +1170,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
@@ -1210,6 +1211,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
@@ -1265,6 +1267,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         const connected = ConnectionStatus.connected(config: config, health: health);
@@ -1310,6 +1313,7 @@ void main() {
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
           authToken: "test-token",
+          bridgeId: null,
         );
         const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
         statusController.add(
@@ -2154,7 +2158,7 @@ void main() {
         mockConnectionService.emitDataMayBeStale();
         statusController.add(
           const ConnectionStatus.connected(
-            config: ServerConnectionConfig(relayHost: "test.example.com", authToken: null),
+            config: ServerConnectionConfig(relayHost: "test.example.com", authToken: null, bridgeId: null),
             health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: false),
           ),
         );

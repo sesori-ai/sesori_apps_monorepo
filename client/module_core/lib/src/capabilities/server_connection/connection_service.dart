@@ -15,6 +15,7 @@ import "../relay/relay_client.dart";
 import "../relay/relay_config.dart";
 import "../relay/relay_request_id_generator.dart";
 import "../relay/room_key_storage.dart";
+import "../relay/target_bridge_storage.dart";
 import "api_paths.dart";
 import "models/connection_status.dart";
 import "models/sse_event.dart";
@@ -45,11 +46,13 @@ class const RelayClientFactory() {
     required RelayCryptoService cryptoService,
     required RoomKeyStorage roomKeyStorage,
     required String? authToken,
+    required String? bridgeId,
   }) => RelayClient(
     relayHost: relayHost,
     cryptoService: cryptoService,
     roomKeyStorage: roomKeyStorage,
     authToken: authToken,
+    bridgeId: bridgeId,
   );
 }
 
@@ -57,6 +60,7 @@ class const RelayClientFactory() {
 class ConnectionService(
   final RelayCryptoService _cryptoService,
   final RoomKeyStorage _roomKeyStorage,
+  final TargetBridgeStorage _targetBridgeStorage,
   final AuthTokenProvider _authTokenProvider,
   final AuthSession _authSession,
   final LifecycleSource _lifecycleSource,
@@ -67,6 +71,7 @@ class ConnectionService(
   final BehaviorSubject<ConnectionStatus> _status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
   final StreamController<SseEvent> _events = StreamController<SseEvent>.broadcast();
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
+  final StreamController<BridgePresenceMessage> _bridgePresence = StreamController<BridgePresenceMessage>.broadcast();
 
   final _compositeSubscription = CompositeSubscription();
 
@@ -74,6 +79,7 @@ class ConnectionService(
   RelayClient? _connectingRelayClient;
   StreamSubscription<RelaySseEvent>? _relaySseSubscription;
   StreamSubscription<BridgeStatus>? _bridgeStatusSubscription;
+  StreamSubscription<BridgePresenceMessage>? _bridgePresenceSubscription;
   StreamSubscription<void>? _socketClosedSubscription;
   Timer? _reconnectTimer;
   Completer<void>? _reconnectDelayCompleter;
@@ -137,6 +143,11 @@ class ConnectionService(
                 loge("Failed to clear room key after logout", error, stackTrace);
               }),
             );
+            unawaited(
+              _targetBridgeStorage.clear().catchError((Object error, StackTrace stackTrace) {
+                loge("Failed to clear the target bridge id after logout", error, stackTrace);
+              }),
+            );
           case AuthInitial():
           case AuthAuthenticating():
           case AuthFailed():
@@ -166,7 +177,11 @@ class ConnectionService(
         logw("Auto-connect after auth skipped: no valid token");
         return false;
       }
-      final config = ServerConnectionConfig(relayHost: relayHost, authToken: token);
+      final config = ServerConnectionConfig(
+        relayHost: relayHost,
+        authToken: token,
+        bridgeId: await _targetBridgeStorage.read(),
+      );
       final result = await connect(config);
       return result is SuccessResponse<HealthResponse>;
     } catch (error, stackTrace) {
@@ -193,6 +208,11 @@ class ConnectionService(
   Stream<SseEvent> get events => _events.stream;
 
   Stream<void> get dataMayBeStale => _dataMayBeStale.stream;
+
+  /// The relay's account-wide notices that one of the account's computers
+  /// connected or disconnected, from whichever socket is live. Notices sent
+  /// while no socket is live are missed.
+  Stream<BridgePresenceMessage> get bridgePresence => _bridgePresence.stream;
 
   /// Filtered stream of events scoped to [sessionId], already typed as
   /// [SesoriSessionEvent]. Enables exhaustive switching in session cubits
@@ -283,6 +303,7 @@ class ConnectionService(
       cryptoService: _cryptoService,
       roomKeyStorage: _roomKeyStorage,
       authToken: config.authToken,
+      bridgeId: config.bridgeId,
     );
     _connectingRelayClient = relayClient;
 
@@ -317,6 +338,7 @@ class ConnectionService(
       // return leaves it in `connecting` — only the former should park here.
       if (relayClient.connectionState == RelayClientConnectionState.connected && !relayClient.isConnected) {
         const bridgeOfflineHealth = HealthResponse(healthy: true, version: "", filesystemAccessDegraded: false);
+        final committedConfig = _adoptReportedTarget(config: config, relayClient: relayClient);
         _clearConnectingRelayClient(relayClient);
         _relayClient = relayClient;
         _authRetryCount = 0;
@@ -324,9 +346,10 @@ class ConnectionService(
         try {
           _subscribeBridgeStatus(
             relayClient: relayClient,
-            config: config,
+            config: committedConfig,
             health: bridgeOfflineHealth,
           );
+          _forwardBridgePresence(relayClient: relayClient);
           _watchSocketClosedWhileBridgeOffline(relayClient);
         } catch (error, stackTrace) {
           loge("Failed to set up watchers after bridge-absent relay connect", error, stackTrace);
@@ -336,7 +359,7 @@ class ConnectionService(
             closeCode: relayClient.lastCloseCode,
           );
         }
-        _status.add(ConnectionStatus.bridgeOffline(config: config, health: bridgeOfflineHealth));
+        _status.add(ConnectionStatus.bridgeOffline(config: committedConfig, health: bridgeOfflineHealth));
         return (response: ApiResponse.success(bridgeOfflineHealth), closeCode: null);
       }
 
@@ -401,6 +424,7 @@ class ConnectionService(
       // never updates the warning shown for the live connection.
       _lastHealth.add(health);
 
+      final committedConfig = _adoptReportedTarget(config: config, relayClient: relayClient);
       _clearConnectingRelayClient(relayClient);
       _relayClient = relayClient;
       _authRetryCount = 0;
@@ -409,9 +433,10 @@ class ConnectionService(
         _openRelaySseStream(relayClient);
         _subscribeBridgeStatus(
           relayClient: relayClient,
-          config: config,
+          config: committedConfig,
           health: health,
         );
+        _forwardBridgePresence(relayClient: relayClient);
       } catch (error, stackTrace) {
         loge("Failed to setup SSE streams after successful relay connect", error, stackTrace);
         await _disconnectRelayClient();
@@ -420,7 +445,7 @@ class ConnectionService(
           closeCode: relayClient.lastCloseCode,
         );
       }
-      _status.add(ConnectionStatus.connected(config: config, health: health));
+      _status.add(ConnectionStatus.connected(config: committedConfig, health: health));
       return (response: ApiResponse.success(health), closeCode: null);
     } catch (error, stackTrace) {
       loge("Failed to connect via relay", error, stackTrace);
@@ -433,6 +458,30 @@ class ConnectionService(
         loge("Relay disconnect cleanup failed", disconnectError, disconnectStackTrace);
       }
       return (response: ApiResponse<HealthResponse>.error(ApiError.generic()), closeCode: closeCode);
+    }
+  }
+
+  /// An unpinned connection follows whichever bridge the relay routed it to.
+  /// Adopting that bridge as the target keeps later reconnects on the same
+  /// computer, without a reconnect of its own.
+  ServerConnectionConfig _adoptReportedTarget({
+    required ServerConnectionConfig config,
+    required RelayClient relayClient,
+  }) {
+    final reportedBridgeId = relayClient.reportedBridgeId;
+    if (config.bridgeId != null || reportedBridgeId == null) return config;
+    unawaited(_storeAdoptedTarget(bridgeId: reportedBridgeId));
+    return config.copyWith(bridgeId: reportedBridgeId);
+  }
+
+  /// A `retarget` made while this connection was still joining already stored
+  /// the computer the user chose; the relay's pick must not replace it.
+  Future<void> _storeAdoptedTarget({required String bridgeId}) async {
+    try {
+      if (await _targetBridgeStorage.read() != null) return;
+      await _targetBridgeStorage.write(bridgeId: bridgeId);
+    } on Object catch (error, stackTrace) {
+      loge("Failed to store the adopted target bridge id", error, stackTrace);
     }
   }
 
@@ -472,7 +521,32 @@ class ConnectionService(
   void reconnect() {
     final config = activeConfig;
     if (config == null) return;
+    _reconnectImmediately(config: config);
+  }
 
+  /// The stored target computer, or `null` when none is stored.
+  Future<String?> readTargetBridgeId() => _targetBridgeStorage.read();
+
+  /// Stores [bridgeId] as the target computer and, when a connection is
+  /// active, reconnects to it. The reconnecting status already carries the new
+  /// target, so bridge-scoped caches reset from their status subscription.
+  /// While disconnected, the next connect picks the stored target up.
+  Future<void> retarget({required String bridgeId}) async {
+    final config = activeConfig;
+    if (config != null) {
+      // Detach the previous computer's socket before announcing the new
+      // target, so none of its events can follow the reset they trigger.
+      unawaited(_disconnectRelayClient());
+      _reconnectImmediately(config: config.copyWith(bridgeId: bridgeId));
+    }
+    try {
+      await _targetBridgeStorage.write(bridgeId: bridgeId);
+    } on Object catch (error, stackTrace) {
+      loge("Failed to store the target bridge id", error, stackTrace);
+    }
+  }
+
+  void _reconnectImmediately({required ServerConnectionConfig config}) {
     _cancelReconnectDelay();
     _relayReconnectBackoff = const Duration(seconds: 1);
     _status.add(ConnectionStatus.reconnecting(config: config));
@@ -539,6 +613,15 @@ class ConnectionService(
       },
       onError: (Object error, StackTrace stackTrace) {
         loge("Bridge status stream error", error, stackTrace);
+      },
+    );
+  }
+
+  void _forwardBridgePresence({required RelayClient relayClient}) {
+    _bridgePresenceSubscription = relayClient.bridgePresence.listen(
+      _bridgePresence.add,
+      onError: (Object error, StackTrace stackTrace) {
+        loge("Bridge presence stream error", error, stackTrace);
       },
     );
   }
@@ -662,6 +745,13 @@ class ConnectionService(
       loge("Failed to cancel bridge status subscription", error, stackTrace);
     }
     _bridgeStatusSubscription = null;
+
+    try {
+      await _bridgePresenceSubscription?.cancel();
+    } catch (error, stackTrace) {
+      loge("Failed to cancel bridge presence subscription", error, stackTrace);
+    }
+    _bridgePresenceSubscription = null;
 
     try {
       await _socketClosedSubscription?.cancel();
@@ -880,10 +970,7 @@ class ConnectionService(
         return;
       }
 
-      final freshConfig = ServerConnectionConfig(
-        relayHost: config.relayHost,
-        authToken: authToken,
-      );
+      final freshConfig = config.copyWith(authToken: authToken);
 
       final connectResult = await _connectViaRelay(
         freshConfig,
@@ -925,6 +1012,7 @@ class ConnectionService(
     unawaited(_disconnectRelayClient());
     _compositeSubscription.dispose();
     _dataMayBeStale.close();
+    _bridgePresence.close();
     _events.close();
     _status.close();
     _lastHealth.close();

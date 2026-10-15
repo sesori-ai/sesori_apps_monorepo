@@ -35,6 +35,7 @@ void main() {
     service = ConnectionService(
       cryptoService,
       roomKeyStorage,
+      FakeTargetBridgeStorage(),
       authTokenProvider,
       authSession,
       lifecycleSource,

@@ -10,6 +10,7 @@ import textwrap
 import unittest
 from unittest.mock import patch
 
+import github_release_assets as public_assets
 import publish_desktop_release as publisher
 import test_prepare_desktop_release as fixtures
 
@@ -51,7 +52,7 @@ class PublishDesktopReleaseTest(unittest.TestCase):
 
     def publish(self):
         with patch.object(publisher, "github", side_effect=self.github), \
-                patch.object(publisher, "urlopen", side_effect=self.download):
+                patch.object(public_assets, "urlopen", side_effect=self.download):
             publisher.publish(**self.args)
 
     def test_payloads_verified_before_metadata_and_no_bridge_assets_changed(self):
@@ -121,7 +122,7 @@ class PublishDesktopReleaseTest(unittest.TestCase):
     def test_http_hash_reads_without_auth_and_in_bounded_chunks(self):
         payload = b"fixture" * 200_000
         response = io.BytesIO(payload)
-        with patch.object(publisher, "urlopen", return_value=response) as opened, \
+        with patch.object(public_assets, "urlopen", return_value=response) as opened, \
                 patch.object(response, "read", wraps=response.read) as chunks:
             result = publisher.public_sha256(url="https://example.invalid/asset.zip")
         opened.assert_called_once_with("https://example.invalid/asset.zip", timeout=60)
@@ -188,14 +189,16 @@ class DesktopReleaseWorkflowTest(unittest.TestCase):
 
 class InternalReleaseRolloverTest(unittest.TestCase):
     @staticmethod
-    def release(*, tag, published, complete=False, prerelease=True, draft=False):
+    def release(*, tag, published, complete=False, linux_complete=False, prerelease=True, draft=False):
+        markers = (["desktop-release.json"] if complete else []) + (
+            ["desktop-linux-release.json"] if linux_complete else [])
         return {"tag_name": tag, "published_at": published, "prerelease": prerelease, "draft": draft,
-                "assets": [{"name": "desktop-release.json"}] if complete else []}
+                "assets": [{"name": name} for name in markers]}
 
     def roll(self, *, releases, tag):
         workflow = Path(__file__).resolve().parents[1] / "workflows/release-all-platforms.yml"
         step = workflow.read_text().split("      - name: Roll internal pre-release\n", 1)[1]
-        script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("      - name: Summary", 1)[0])
+        script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("\n      - ", 1)[0])
         return self.run_script(script=script, releases=releases, tag=tag)
 
     def run_script(self, *, script, releases, tag):
@@ -203,7 +206,8 @@ class InternalReleaseRolloverTest(unittest.TestCase):
             root = Path(temporary)
             (root / "releases.json").write_text(json.dumps(releases))
             (root / "artifacts").mkdir()
-            for name in ["fixture.tar.gz", "fixture.zip", "checksums.txt"]:
+            for name in ["fixture.tar.gz", "fixture.zip", "checksums.txt", "fixture.tar.gz.asc",
+                         "sesori-linux-public.asc", "signing.json"]:
                 (root / "artifacts" / name).write_text("fixture")
             gh = root / "gh"
             gh.write_text(textwrap.dedent('''\
@@ -253,6 +257,18 @@ class InternalReleaseRolloverTest(unittest.TestCase):
         self.assertCountEqual(deleted, [older["tag_name"], draft["tag_name"]])
         self.assertNotIn(newer["tag_name"], deleted)
 
+    def test_completed_platforms_survive_independent_failure_and_completion(self):
+        mac = self.release(tag="v1.0.0-internal.11", published="2026-09-25T11:00:00Z", complete=True)
+        old_linux = self.release(tag="v1.0.0-internal.12", published="2026-09-25T12:00:00Z", linux_complete=True)
+        linux = self.release(tag="v1.0.0-internal.13", published="2026-09-25T13:00:00Z", linux_complete=True)
+        incomplete = self.release(tag="v1.0.0-internal.14", published="2026-09-25T14:00:00Z")
+        calls = self.roll(releases=[incomplete, linux, old_linux, mac], tag="v1.0.0-internal.15")
+        self.assertCountEqual([c[2] for c in calls if c[:2] == ["release", "delete"]],
+                              [old_linux["tag_name"], incomplete["tag_name"]])
+        newer_mac = self.release(tag="v1.0.0-internal.15", published="2026-09-25T15:00:00Z", complete=True)
+        calls = self.roll(releases=[newer_mac, linux, mac], tag="v1.0.0-internal.16")
+        self.assertEqual([c[2] for c in calls if c[:2] == ["release", "delete"]], [mac["tag_name"]])
+
     def test_rollover_keeps_existing_cleanup_before_any_desktop_publication(self):
         old = self.release(tag="v1.0.0-internal.10", published="2026-09-25T10:00:00Z")
         calls = self.roll(releases=[old], tag="v1.0.0-internal.11")
@@ -264,7 +280,10 @@ class InternalReleaseRolloverTest(unittest.TestCase):
         calls = self.roll(releases=[old, current], tag=current["tag_name"])
         self.assertIn(["release", "delete", old["tag_name"], "--yes"], calls)
         self.assertNotIn(["release", "delete", current["tag_name"], "--yes"], calls)
-        self.assertTrue(any(c[:3] == ["release", "upload", current["tag_name"]] for c in calls))
+        upload = next(c for c in calls if c[:3] == ["release", "upload", current["tag_name"]])
+        self.assertIn("artifacts/fixture.tar.gz.asc", upload)
+        self.assertIn("artifacts/sesori-linux-public.asc", upload)
+        self.assertNotIn("artifacts/signing.json", upload)
 
     def test_stable_cleanup_preserves_desktop_previews_regardless_of_stable_assets(self):
         workflow = Path(__file__).resolve().parents[1] / "workflows/bridge-npm-publish.yml"
@@ -272,6 +291,7 @@ class InternalReleaseRolloverTest(unittest.TestCase):
         script = textwrap.dedent(step.split("        run: |\n", 1)[1].split("\n  publish-platform:", 1)[0])
         older = self.release(tag="v1.0.0-internal.10", published="2026-09-25T10:00:00Z", complete=True)
         newer = self.release(tag="v1.0.0-internal.11", published="2026-09-25T11:00:00Z", complete=True)
+        linux = self.release(tag="v1.0.0-internal.9", published="2026-09-25T09:00:00Z", linux_complete=True)
         incomplete = self.release(tag="v1.0.0-internal.12", published="2026-09-25T12:00:00Z")
         other_version = self.release(tag="v1.0.1-internal.13", published="2026-09-25T13:00:00Z")
         beta = self.release(tag="v1.0.0-beta.1", published="2026-09-25T13:00:00Z")
@@ -280,7 +300,7 @@ class InternalReleaseRolloverTest(unittest.TestCase):
                 stable = self.release(tag="v1.0.0", published="2026-09-25T14:00:00Z",
                                       complete=stable_complete, prerelease=False)
                 calls = self.run_script(script=script, tag=stable["tag_name"],
-                                        releases=[stable, other_version, incomplete, newer, older, beta])
+                                        releases=[stable, other_version, incomplete, newer, older, linux, beta])
                 deleted = [c[2] for c in calls if c[:2] == ["release", "delete"]]
                 self.assertEqual(deleted, [incomplete["tag_name"]])
 

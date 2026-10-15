@@ -36,7 +36,7 @@ class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSou
   String? currentLocation;
 }
 
-const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token");
+const _config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "token", bridgeId: null);
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _config, health: _health);
 

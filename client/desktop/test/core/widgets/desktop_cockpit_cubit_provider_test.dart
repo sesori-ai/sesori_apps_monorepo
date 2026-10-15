@@ -30,6 +30,10 @@ void main() {
     final closedProjects = <ProjectInventoryService>[];
     var workflowCount = 0;
     when(() => connection.events).thenAnswer((_) => events.stream);
+    final statuses = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
+    addTearDown(statuses.close);
+    when(() => connection.status).thenAnswer((_) => statuses);
+    when(() => connection.currentStatus).thenAnswer((_) => statuses.value);
     when(repository.listProjects).thenAnswer(
       (_) async => ApiResponse.success(
         const Projects(
@@ -42,6 +46,8 @@ void main() {
     );
     // Register only owned fake-backed factories, never production DI/bootstrap.
     getIt.registerFactory<SessionCleanupService>(() => SessionCleanupService(repository: MockSessionRepository()));
+    getIt.registerSingleton<RegisteredBridgesService>(MockRegisteredBridgesService());
+    getIt.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
     getIt.registerFactory<SessionLaunchService>(
       () => inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -89,6 +95,8 @@ void main() {
     addTearDown(() async {
       await getIt.unregister<DesktopSidebarRefreshService>();
       await getIt.unregister<SessionCleanupService>();
+      await getIt.unregister<RegisteredBridgesService>();
+      await getIt.unregister<ActiveBridgeLocality>();
       await getIt.unregister<SessionLaunchService>();
       await getIt.unregister<ProjectInventoryService>();
       await getIt.unregister<RecentSessionInventoryService>();

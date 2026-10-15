@@ -3,6 +3,7 @@ import "dart:convert";
 final class const PiPersistedUserTextCodec() {
   static const String marker = "SESORI_PI_USER_TEXT_V1:";
   static final RegExp _positiveLength = RegExp(r"^[1-9][0-9]*$");
+  static final RegExp _trailingImageHints = RegExp(r"\n\n\[Image[^\n]*\](?:\n\[Image[^\n]*\])*$");
 
   String encode({required String executionText, required String? userVisibleText}) {
     final visibleText = userVisibleText ?? "";
@@ -15,7 +16,15 @@ final class const PiPersistedUserTextCodec() {
     return "$marker$hiddenLength:$visibleLength:$executionText";
   }
 
+  /// Removes the notes Pi appends to a prompt after resizing, converting, or
+  /// omitting its images (`"$prompt\n\n${hints.join("\n")}"`).
+  String stripImageHints({required String text}) => text.replaceFirst(_trailingImageHints, "");
+
   String decodeVisibleText({required String persistedText}) {
+    return _decodeVisibleText(persistedText: stripImageHints(text: persistedText));
+  }
+
+  String _decodeVisibleText({required String persistedText}) {
     if (!persistedText.startsWith(marker)) {
       if (persistedText.startsWith("/")) {
         final separator = persistedText.indexOf(RegExp(r"\s"));

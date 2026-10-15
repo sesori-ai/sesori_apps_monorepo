@@ -36,6 +36,8 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriServerInstanceDisposed() ||
     SesoriGlobalDisposed() ||
     SesoriCatalogImportProgress() ||
+    SesoriMcpInventoryChanged() ||
+    SesoriMcpAuthenticationChanged() ||
     SesoriPluginManagementChanged() ||
     SesoriPluginInstallProgress() ||
     SesoriPluginAuthenticationProgress() ||

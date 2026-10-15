@@ -385,10 +385,10 @@ abstract class AppLocalizations {
   /// **'Could not refresh projects and sessions'**
   String get desktopSidebarRefreshFailed;
 
-  /// Sidebar recovery notice when bridge ownership can be reclaimed.
+  /// Sidebar recovery notice when another copy of this computer's own bridge (a second bridge process here, or a machine cloned from this one sharing its bridge id) holds its connection and can be taken over. Other computers never cause it.
   ///
   /// In en, this message translates to:
-  /// **'Another bridge currently owns this account connection.'**
+  /// **'Another copy of this computer\'s bridge is running, here or on a cloned machine.'**
   String get desktopBridgeTakenOver;
 
   /// Action to reclaim local or relay bridge ownership.
@@ -691,17 +691,77 @@ abstract class AppLocalizations {
   /// **'Disconnected'**
   String get projectsBridgeOfflineDisconnected;
 
-  /// Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer.
+  /// Heading of the bridge-offline Projects screen, under the connection graphic, while the offline computer's name is not known.
   ///
   /// In en, this message translates to:
   /// **'Bridge offline'**
   String get projectsBridgeOfflineTitle;
 
-  /// Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
+  /// Heading of the bridge-offline Projects screen, under the connection graphic, naming the computer the app is pointed at, e.g. 'dev-laptop is offline'.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is offline'**
+  String projectsBridgeOfflineComputerTitle(String name);
+
+  /// Quiet line under the bridge-offline heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.
   ///
   /// In en, this message translates to:
   /// **'Last seen {lastSeen}'**
   String projectsBridgeOfflineLastSeen(String lastSeen);
+
+  /// Header of the card on the bridge-offline Projects screen that lists the account's other online computers, each a one-tap switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Other computers'**
+  String get projectsBridgeOfflineOtherComputers;
+
+  /// Line in the 'Other computers' card on the bridge-offline Projects screen when none of the account's other computers is online.
+  ///
+  /// In en, this message translates to:
+  /// **'No other computers online'**
+  String get projectsBridgeOfflineNoOtherComputersOnline;
+
+  /// Last row of the 'Other computers' card on the bridge-offline Projects screen when more computers are online than the card lists; it opens the computer menu. The count is how many online computers the card does not list.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{+ 1 other} other{+ {count} others}}'**
+  String projectsBridgeOfflineMoreComputers(int count);
+
+  /// State line under a computer's name in the computer menu opened from the name under 'Projects', when that computer's bridge is connected.
+  ///
+  /// In en, this message translates to:
+  /// **'Online'**
+  String get computerMenuOnline;
+
+  /// State line under a computer's name in the computer menu when that computer's bridge is not connected and has never reported a last-seen time.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline'**
+  String get computerMenuOffline;
+
+  /// State line under a computer's name in the computer menu when that computer's bridge is not connected, e.g. 'Offline · last seen 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline · last seen {lastSeen}'**
+  String computerMenuOfflineLastSeen(String lastSeen);
+
+  /// Popup alert shown while the app is open when a computer is newly linked to the account, e.g. 'workstation is now linked'. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'{name} is now linked'**
+  String linkedComputerAlertTitle(String name);
+
+  /// Action on the 'is now linked' popup alert that switches the app to the newly linked computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch'**
+  String get linkedComputerAlertSwitch;
+
+  /// Accessibility hint on the computer name under 'Projects', which opens the menu for switching to another computer.
+  ///
+  /// In en, this message translates to:
+  /// **'Switch computer'**
+  String get computerMenuSwitchHint;
 
   /// Label for the disclosure on the bridge-offline Projects screen that expands to reveal the bridge install commands.
   ///
@@ -726,6 +786,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Start the local bridge to load your projects and sessions in Sesori.'**
   String get projectsDesktopStartBridgeInfo;
+
+  /// Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one.
+  ///
+  /// In en, this message translates to:
+  /// **'Start the bridge on that computer to load its projects and sessions here.'**
+  String get projectsDesktopRemoteOfflineInfo;
+
+  /// Desktop home header naming the other computer whose projects are shown; opens the computer menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewing: {name}'**
+  String desktopViewingComputer(String name);
+
+  /// Desktop home header when the projects shown are this computer's own; opens the computer menu.
+  ///
+  /// In en, this message translates to:
+  /// **'Viewing: This computer'**
+  String get desktopViewingThisComputer;
 
   /// No description provided for @connectionLostTitle.
   ///
@@ -1447,6 +1525,12 @@ abstract class AppLocalizations {
   /// **'The bridge returned an invalid login website. Check the bridge logs for details.'**
   String get harnessAuthenticationInvalidChallenge;
 
+  /// No description provided for @harnessAuthenticationBrowserBusy.
+  ///
+  /// In en, this message translates to:
+  /// **'Finish the current sign-in first, then try again.'**
+  String get harnessAuthenticationBrowserBusy;
+
   /// No description provided for @harnessAuthenticationBrowserFailed.
   ///
   /// In en, this message translates to:
@@ -1800,12 +1884,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'System'**
   String get settingsAppearanceSystem;
-
-  /// No description provided for @settingsSectionSessions.
-  ///
-  /// In en, this message translates to:
-  /// **'Sessions'**
-  String get settingsSectionSessions;
 
   /// No description provided for @settingsSectionPreferences.
   ///
@@ -5370,6 +5448,312 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Copy link'**
   String get bridgeUpdateCopyLink;
+
+  /// No description provided for @mcpTitle.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP servers and connectors'**
+  String get mcpTitle;
+
+  /// No description provided for @mcpMenuLabel.
+  ///
+  /// In en, this message translates to:
+  /// **'MCP'**
+  String get mcpMenuLabel;
+
+  /// No description provided for @mcpRefresh.
+  ///
+  /// In en, this message translates to:
+  /// **'Refresh'**
+  String get mcpRefresh;
+
+  /// No description provided for @mcpReadOnly.
+  ///
+  /// In en, this message translates to:
+  /// **'Server and tool information'**
+  String get mcpReadOnly;
+
+  /// No description provided for @mcpRefreshing.
+  ///
+  /// In en, this message translates to:
+  /// **'Refreshing…'**
+  String get mcpRefreshing;
+
+  /// No description provided for @mcpRefreshUnrecognized.
+  ///
+  /// In en, this message translates to:
+  /// **'A newer app is needed to refresh. Showing the last inventory.'**
+  String get mcpRefreshUnrecognized;
+
+  /// No description provided for @mcpRefreshNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory could not be found. Showing the last inventory.'**
+  String get mcpRefreshNotFound;
+
+  /// No description provided for @mcpOffline.
+  ///
+  /// In en, this message translates to:
+  /// **'Offline. Showing the last inventory.'**
+  String get mcpOffline;
+
+  /// No description provided for @mcpRefreshFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not refresh. Showing the last inventory.'**
+  String get mcpRefreshFailed;
+
+  /// No description provided for @mcpLoading.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading inventory…'**
+  String get mcpLoading;
+
+  /// No description provided for @mcpWaiting.
+  ///
+  /// In en, this message translates to:
+  /// **'Waiting for the bridge connection.'**
+  String get mcpWaiting;
+
+  /// No description provided for @mcpNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory could not be found. Check that the session still exists and your bridge is up to date.'**
+  String get mcpNotFound;
+
+  /// No description provided for @mcpReadFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Could not read inventory. Try refreshing.'**
+  String get mcpReadFailed;
+
+  /// No description provided for @mcpUnknownResponse.
+  ///
+  /// In en, this message translates to:
+  /// **'Some inventory information requires a newer app.'**
+  String get mcpUnknownResponse;
+
+  /// No description provided for @mcpUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Inventory is unavailable.'**
+  String get mcpUnavailable;
+
+  /// No description provided for @mcpUnsupportedHarness.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration does not expose MCP inventory yet.'**
+  String get mcpUnsupportedHarness;
+
+  /// No description provided for @mcpUnsupportedScope.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration does not expose inventory here. Open MCP from a running session to inspect its servers.'**
+  String get mcpUnsupportedScope;
+
+  /// No description provided for @mcpLiveSessionRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Open a running session to inspect its MCP servers. Reading inventory will not start a session.'**
+  String get mcpLiveSessionRequired;
+
+  /// No description provided for @mcpPluginInactive.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration is inactive. Enable it in harness settings before reading inventory.'**
+  String get mcpPluginInactive;
+
+  /// No description provided for @mcpServers.
+  ///
+  /// In en, this message translates to:
+  /// **'Configured servers'**
+  String get mcpServers;
+
+  /// No description provided for @mcpConnectors.
+  ///
+  /// In en, this message translates to:
+  /// **'Offered connectors'**
+  String get mcpConnectors;
+
+  /// No description provided for @mcpUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Unknown'**
+  String get mcpUnknown;
+
+  /// No description provided for @mcpOfferAvailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Available'**
+  String get mcpOfferAvailable;
+
+  /// No description provided for @mcpSetupRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Setup required'**
+  String get mcpSetupRequired;
+
+  /// No description provided for @mcpEmptyCatalog.
+  ///
+  /// In en, this message translates to:
+  /// **'No entries were returned.'**
+  String get mcpEmptyCatalog;
+
+  /// No description provided for @mcpCatalogNotSupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This integration does not support this catalog.'**
+  String get mcpCatalogNotSupported;
+
+  /// No description provided for @mcpCatalogUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'This catalog is currently unavailable.'**
+  String get mcpCatalogUnavailable;
+
+  /// No description provided for @mcpServerDetails.
+  ///
+  /// In en, this message translates to:
+  /// **'Server details'**
+  String get mcpServerDetails;
+
+  /// No description provided for @mcpServerNotFound.
+  ///
+  /// In en, this message translates to:
+  /// **'This server is no longer in the inventory.'**
+  String get mcpServerNotFound;
+
+  /// No description provided for @mcpConnection.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection'**
+  String get mcpConnection;
+
+  /// No description provided for @mcpAuthorization.
+  ///
+  /// In en, this message translates to:
+  /// **'Authentication'**
+  String get mcpAuthorization;
+
+  /// No description provided for @mcpAuthNotRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Not required'**
+  String get mcpAuthNotRequired;
+
+  /// No description provided for @mcpAuthRequired.
+  ///
+  /// In en, this message translates to:
+  /// **'Sign-in required'**
+  String get mcpAuthRequired;
+
+  /// No description provided for @mcpAuthenticated.
+  ///
+  /// In en, this message translates to:
+  /// **'Authenticated'**
+  String get mcpAuthenticated;
+
+  /// No description provided for @mcpOrigin.
+  ///
+  /// In en, this message translates to:
+  /// **'Endpoint origin'**
+  String get mcpOrigin;
+
+  /// No description provided for @mcpConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration source'**
+  String get mcpConfiguration;
+
+  /// No description provided for @mcpHarnessScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Harness'**
+  String get mcpHarnessScope;
+
+  /// No description provided for @mcpProjectScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Project'**
+  String get mcpProjectScope;
+
+  /// No description provided for @mcpSessionScope.
+  ///
+  /// In en, this message translates to:
+  /// **'Session'**
+  String get mcpSessionScope;
+
+  /// No description provided for @mcpTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovered tools'**
+  String get mcpTools;
+
+  /// No description provided for @mcpNoTools.
+  ///
+  /// In en, this message translates to:
+  /// **'Discovery succeeded with no tools.'**
+  String get mcpNoTools;
+
+  /// No description provided for @mcpToolsUnavailable.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool discovery information is unavailable.'**
+  String get mcpToolsUnavailable;
+
+  /// No description provided for @mcpToolsFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Tool discovery failed.'**
+  String get mcpToolsFailed;
+
+  /// No description provided for @mcpConnectionFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connection failed'**
+  String get mcpConnectionFailed;
+
+  /// No description provided for @mcpPending.
+  ///
+  /// In en, this message translates to:
+  /// **'Pending'**
+  String get mcpPending;
+
+  /// No description provided for @mcpConnecting.
+  ///
+  /// In en, this message translates to:
+  /// **'Connecting'**
+  String get mcpConnecting;
+
+  /// No description provided for @mcpConnected.
+  ///
+  /// In en, this message translates to:
+  /// **'Connected'**
+  String get mcpConnected;
+
+  /// No description provided for @mcpDisabled.
+  ///
+  /// In en, this message translates to:
+  /// **'Disabled'**
+  String get mcpDisabled;
+
+  /// No description provided for @mcpConfigurationAccess.
+  ///
+  /// In en, this message translates to:
+  /// **'Configuration access'**
+  String get mcpConfigurationAccess;
+
+  /// No description provided for @mcpUserManaged.
+  ///
+  /// In en, this message translates to:
+  /// **'User managed'**
+  String get mcpUserManaged;
+
+  /// No description provided for @mcpReadOnlyConfiguration.
+  ///
+  /// In en, this message translates to:
+  /// **'Read only'**
+  String get mcpReadOnlyConfiguration;
 }
 
 class _AppLocalizationsDelegate extends LocalizationsDelegate<AppLocalizations> {

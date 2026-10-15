@@ -191,3 +191,45 @@ Map<String, dynamic> _$AuthRelayMessageToJson(AuthRelayMessage instance) =>
               .connectionNotificationPolicy],
       'type': instance.$type,
     };
+
+BridgeConnectedMessage _$BridgeConnectedMessageFromJson(Map json) =>
+    BridgeConnectedMessage(
+      bridgeId: json['bridgeId'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$BridgeConnectedMessageToJson(
+  BridgeConnectedMessage instance,
+) => <String, dynamic>{'bridgeId': ?instance.bridgeId, 'type': instance.$type};
+
+BridgeDisconnectedMessage _$BridgeDisconnectedMessageFromJson(Map json) =>
+    BridgeDisconnectedMessage(
+      bridgeId: json['bridgeId'] as String?,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$BridgeDisconnectedMessageToJson(
+  BridgeDisconnectedMessage instance,
+) => <String, dynamic>{'bridgeId': ?instance.bridgeId, 'type': instance.$type};
+
+BridgePresenceMessage _$BridgePresenceMessageFromJson(Map json) =>
+    BridgePresenceMessage(
+      bridgeId: json['bridgeId'] as String,
+      online: json['online'] as bool,
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$BridgePresenceMessageToJson(
+  BridgePresenceMessage instance,
+) => <String, dynamic>{
+  'bridgeId': instance.bridgeId,
+  'online': instance.online,
+  'type': instance.$type,
+};
+
+UnknownRelayNoticeMessage _$UnknownRelayNoticeMessageFromJson(Map json) =>
+    UnknownRelayNoticeMessage($type: json['type'] as String?);
+
+Map<String, dynamic> _$UnknownRelayNoticeMessageToJson(
+  UnknownRelayNoticeMessage instance,
+) => <String, dynamic>{'type': instance.$type};

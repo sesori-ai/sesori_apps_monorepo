@@ -11,6 +11,7 @@ _RegisterBridgeRequest _$RegisterBridgeRequestFromJson(Map json) =>
       name: json['name'] as String,
       platform: json['platform'] as String,
       bridgeId: json['bridgeId'] as String?,
+      hostKey: json['hostKey'] as String?,
     );
 
 Map<String, dynamic> _$RegisterBridgeRequestToJson(
@@ -19,4 +20,5 @@ Map<String, dynamic> _$RegisterBridgeRequestToJson(
   'name': instance.name,
   'platform': instance.platform,
   'bridgeId': ?instance.bridgeId,
+  'hostKey': ?instance.hostKey,
 };

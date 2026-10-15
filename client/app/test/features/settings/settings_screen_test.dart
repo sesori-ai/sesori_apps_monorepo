@@ -47,7 +47,9 @@ class _MockAppReviewClient() extends Mock implements AppReviewClient;
 
 class _MockFeedbackRepository() extends Mock implements FeedbackRepository;
 
-const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null);
+class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
+
+const _connectionConfig = ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null);
 const _health = HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false);
 const _connected = ConnectionStatus.connected(config: _connectionConfig, health: _health);
 
@@ -120,8 +122,11 @@ void main() {
   late _MockBridgeSettingsService bridgeSettingsService;
   late MockConnectionService connectionService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
+  late MockRegisteredBridgesService registeredBridges;
+  late _MockComputerSwitchDispatcher computerSwitchDispatcher;
 
   setUpAll(() {
+    registerFallbackValue(ComputerSwitchSource.settings);
     registerFallbackValue(Uri());
     registerFallbackValue(UrlLaunchMode.externalApp);
     registerFallbackValue(AppearanceMode.system);
@@ -226,6 +231,19 @@ void main() {
       },
     );
     GetIt.instance.registerSingleton<BridgeSettingsService>(bridgeSettingsService);
+
+    registeredBridges = MockRegisteredBridgesService();
+    GetIt.instance.registerSingleton<RegisteredBridgesService>(registeredBridges);
+    GetIt.instance.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
+    GetIt.instance.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
+    computerSwitchDispatcher = _MockComputerSwitchDispatcher();
+    when(
+      () => computerSwitchDispatcher.switchTo(
+        bridgeId: any(named: "bridgeId"),
+        source: any(named: "source"),
+      ),
+    ).thenAnswer((_) async {});
+    GetIt.instance.registerSingleton<ComputerSwitchDispatcher>(computerSwitchDispatcher);
   });
 
   tearDown(() async {
@@ -246,15 +264,18 @@ void main() {
     expect(find.text("Basic usage analytics"), findsOneWidget);
   });
 
-  testWidgets("Harnesses precedes Notifications and navigates without changing other sections", (tester) async {
+  testWidgets("Harnesses leads the Bridge settings and navigates without changing other sections", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
+    final bridgeGroup = find.ancestor(of: find.text("YOLO mode"), matching: find.byType(PregoGroupedRows));
+    expect(find.descendant(of: bridgeGroup, matching: find.text("Harnesses")), findsOneWidget);
     expect(
       tester.getTopLeft(find.text("Harnesses")).dy,
-      lessThan(tester.getTopLeft(find.text("Notifications")).dy),
+      lessThan(tester.getTopLeft(find.text("YOLO mode")).dy),
     );
+    expect(find.text("Sessions"), findsNothing);
     // The section header and the account row, which falls back to the page's
     // name without a cached account.
     expect(find.text("Account"), findsNWidgets(2));
@@ -269,16 +290,16 @@ void main() {
     expect(find.text("harnesses-route"), findsOneWidget);
   });
 
-  testWidgets("Preferences groups Notifications between Sessions and Appearance and preserves navigation", (
-    tester,
-  ) async {
+  testWidgets("Preferences groups Notifications and Default input between Bridge and Appearance", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
     expect(find.text("Preferences"), findsOneWidget);
+    final group = find.ancestor(of: find.text("Notifications"), matching: find.byType(PregoGroupedRows));
+    expect(find.descendant(of: group, matching: find.text("Default input")), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text("Default input")).dy,
+      tester.getTopLeft(find.text("Pull request refresh")).dy,
       lessThan(tester.getTopLeft(find.text("Preferences")).dy),
     );
     expect(
@@ -286,7 +307,7 @@ void main() {
       lessThan(tester.getTopLeft(find.text("Notifications")).dy),
     );
     expect(
-      tester.getTopLeft(find.text("Notifications")).dy,
+      tester.getTopLeft(find.text("Default input")).dy,
       lessThan(tester.getTopLeft(find.text("Appearance")).dy),
     );
 
@@ -294,6 +315,72 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("notifications-route"), findsOneWidget);
+  });
+
+  testWidgets("the Bridge section opens with the computer entry, which switches through Settings", (tester) async {
+    _useTallSurface(tester);
+    registeredBridges.emitBridges(
+      bridges: [
+        BridgeSummary(
+          id: "a",
+          name: "studio-mac",
+          platform: BridgePlatform.macos,
+          status: BridgeRegistrationStatus.active,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: DateTime.utc(2026, 7),
+        ),
+        BridgeSummary(
+          id: "b",
+          name: "build-box",
+          platform: BridgePlatform.linux,
+          status: BridgeRegistrationStatus.inactive,
+          addedAt: DateTime.utc(2026),
+          lastSeenAt: null,
+        ),
+      ],
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    // Its own card, between the section header and the settings for it.
+    final entry = find.byKey(const Key("computer_settings_entry"));
+    expect(find.descendant(of: entry, matching: find.text("studio-mac")), findsOneWidget);
+    expect(find.descendant(of: entry, matching: find.text("Online")), findsOneWidget);
+    expect(find.descendant(of: entry, matching: find.byIcon(TablerRegular.brand_apple)), findsOneWidget);
+    final entryCard = find.ancestor(of: entry, matching: find.byType(PregoGroupedRows));
+    expect(find.descendant(of: entryCard, matching: find.text("Harnesses")), findsNothing);
+    expect(tester.getTopLeft(find.text("Bridge")).dy, lessThan(tester.getTopLeft(entry).dy));
+    expect(tester.getBottomLeft(entry).dy, lessThan(tester.getTopLeft(find.text("Harnesses")).dy));
+
+    // Picking the current computer only closes the menu.
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    expect(find.text("build-box"), findsOneWidget);
+    await tester.tap(find.text("studio-mac").last);
+    await tester.pumpAndSettle();
+    expect(find.text("build-box"), findsNothing);
+
+    // Picking another computer switches with the Settings source.
+    await tester.tap(entry);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("build-box"));
+    await tester.pumpAndSettle();
+    verify(() => computerSwitchDispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.settings)).called(1);
+    verifyNever(
+      () => computerSwitchDispatcher.switchTo(
+        bridgeId: "a",
+        source: any(named: "source"),
+      ),
+    );
+  });
+
+  testWidgets("no computer entry until the list names the current computer", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("computer_settings_entry")), findsNothing);
+    expect(find.text("Harnesses"), findsOneWidget);
   });
 
   testWidgets("shows the bridge-committed pull request refresh interval", (tester) async {
@@ -476,6 +563,12 @@ void main() {
       tester.widget<Opacity>(find.ancestor(of: find.text("YOLO mode"), matching: find.byType(Opacity)).first).opacity,
       lessThan(1),
     );
+    // Harnesses stays at full strength and reachable; its page says what it
+    // cannot load.
+    expect(find.ancestor(of: find.text("Harnesses"), matching: find.byType(Opacity)), findsNothing);
+    await tester.tap(find.text("Harnesses"));
+    await tester.pumpAndSettle();
+    expect(find.text("harnesses-route"), findsOneWidget);
     verifyNever(bridgeSettingsService.load);
   });
 
@@ -663,8 +756,7 @@ void main() {
       expect(find.text(initialLabel), findsOneWidget);
       expect(find.byType(ChatInputModePicker), findsNothing);
       final group = find.ancestor(of: find.text("Default input"), matching: find.byType(PregoGroupedRows));
-      expect(find.descendant(of: group, matching: find.text("Harnesses")), findsOneWidget);
-      expect(find.text("Sessions"), findsOneWidget);
+      expect(find.descendant(of: group, matching: find.text("Notifications")), findsOneWidget);
       expect(find.byIcon(TablerRegular.keyboard), findsOneWidget);
 
       final nextMode = initialMode == ChatInputMode.voiceFirst ? ChatInputMode.textFirst : ChatInputMode.voiceFirst;

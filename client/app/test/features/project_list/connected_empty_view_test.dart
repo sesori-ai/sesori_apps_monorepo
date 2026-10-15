@@ -23,6 +23,7 @@ import "../../helpers/test_helpers.dart";
 const _connectionConfig = ServerConnectionConfig(
   relayHost: "relay.example.com",
   authToken: "test-token",
+  bridgeId: null,
 );
 const _health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
 const _connectedStatus = ConnectionStatus.connected(config: _connectionConfig, health: _health);
@@ -31,7 +32,8 @@ BridgeSummary _bridge({required String name, DateTime? lastSeenAt}) {
   return BridgeSummary(
     id: "bridge-1",
     name: name,
-    platform: "macos",
+    platform: BridgePlatform.macos,
+    status: BridgeRegistrationStatus.active,
     addedAt: DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
   );

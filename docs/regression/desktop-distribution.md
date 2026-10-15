@@ -8,22 +8,29 @@ Packaged macOS/Windows builds expose
 stable/internal channel, OS and CPU section. The page is live; this does not claim an
 available update or published installer. Unshipped sections explicitly contain no public
 download; they never link private CI artifacts or infer desktop assets from Latest.
-The website page renders all eight channel/OS/CPU anchors and `linux-package-managers`,
-so every generated fragment lands on its own section.
+The website preserves all eight macOS/Windows channel/CPU anchors and `linux-package-managers`,
+plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors. Every generated app fragment
+lands on its own section; Linux preview navigation opens its channel and platform.
 The repository download document is a content/anchor specification, not an alternate
 user-facing destination. Source builds show development guidance; Linux shows
 package-manager guidance.
 
-The deployed website resolves completed public macOS releases independently for
-stable/internal. It follows all release pages on the fixed GitHub repository endpoint
-under one five-second timeout. A five-minute cache coalesces lookups and logged failures;
-no credentials, background polling or persistent release pointer is used. Completion
-requires desktop manifest/checksum assets and both native DMGs with positive sizes and
-valid SHA-256 index digests. The publisher uploads the manifest last; runtime discovery
-does not parse it or rehash installers. URLs use validated tags and expected filenames.
-Newer core-only releases cannot replace completed desktop rows. Preview navigation,
-version/size/hash and verification links never imply stable schema/offer availability.
-Actual-widget demo imagery discloses native-control differences, not native account QA.
+The deployed website resolves completed public macOS stable/internal and Linux internal
+releases independently. It follows all release pages on the fixed GitHub repository
+endpoint under one five-second timeout. A five-minute cache coalesces lookups and logged
+failures; no credentials, background polling or persistent release pointer is used.
+macOS completion requires its manifest/checksums and both native DMGs. Linux completion
+requires its own marker, all four version/build-matched DEB/RPM files, both signed checksum
+pairs and desktop public key. All need positive sizes and valid SHA-256 index digests.
+Publishers upload each marker last; runtime discovery does not parse it, rehash installers
+or verify OpenPGP. URLs use validated tags and expected filenames. A newer core-only or
+other-platform release cannot replace the last completed preview for this platform.
+Preview navigation stays visible beside stable downloads. Linux-only availability cannot
+claim macOS notarization; preview metadata never creates stable schema/offer availability.
+The preview group leaves 32px before the selector and wraps without mobile overflow.
+Linux rows link the experimental limitations note below the sticky header. They describe
+manual packages, not repository updates or qualified upgrades. Actual-widget demo imagery
+discloses native-control differences, not native account QA.
 
 Staging accepts `--channel stable|internal` (default stable) and emits
 `SESORI_DESKTOP_RELEASE_CHANNEL` beside the compiled bundle identity. Channel is
@@ -70,9 +77,9 @@ They do not start the product and prove silent fixture behavior only. Output rem
 it does not establish publisher trust, SmartScreen reputation, interactive behavior,
 account restoration, upgrades, or release readiness.
 
-## Private Linux package qualification
+## Private Linux package qualification and signing
 
-Manual `linux-packaging` qualification builds unsigned DEB and RPM packages from
+Manual main-only `linux-packaging` qualification first builds unsigned DEB and RPM packages from
 complete native x64 and ARM64 staged bundles. Both formats own the complete unchanged
 GUI/helper payload below `/opt/sesori-desktop` plus only three system-integration files:
 the `sesori-desktop` launcher, one desktop entry and the existing 512x512 application
@@ -92,12 +99,78 @@ Fixtures compare installed payload paths/hashes with staging,
 require root ownership, reject maintainer scripts/scriptlets, and preserve realistic
 configuration, credentials, database, runtime, attachment and project sentinels.
 They never launch the GUI or helper. Same-version reinstall is not N→N+1 proof.
-Unsigned private containers do not establish desktop-session behavior, account
-restoration, Secret Service/tray behavior, signing, repository trust or publication.
+Container package mechanics do not establish desktop-session behavior, account
+restoration, Secret Service/tray behavior, repository trust or publication.
+
+After construction, a signing step checks the input evidence and matching identities,
+adds a native RPM OpenPGP signature, and signs checksums covering the final RPM and
+unchanged DEB. The full configured primary fingerprint must match the imported key.
+Only this step receives the `linux-signing` secrets. Tools install before secret
+exposure; the network-disabled signing container uses a temporary private GnuPG home
+and passphrase file, removes secret variables from child environments and cleans up
+its agent/key material. Public-only verification must pass before fixture installation
+and artifact upload. RPM fixtures enable local-package signature checking; all three
+distribution fixtures verify signed checksums. Digest-only RPM verification is not
+accepted as a signature. Wrong key/passphrase, changed input, altered payload and
+signature failures refuse completion. No private key material enters artifacts/logs.
+
+The final RPM digest differs from its unsigned source report; `signing.json` records
+both. DEB checksums are detached artifact authentication, not an APT `InRelease`
+claim. PR CI's disposable-key fixtures also check GPGV and DNF's signature-required
+install/reinstall/remove flow in an isolated install root, including unsigned-RPM refusal.
+Main-only native runs establish production-key access separately. These fixtures do
+not run the real application. Historical unsigned package runs remain unsigned
+proof; new tooling alone does not relabel them. Public repositories and
+N→N+1/desktop-session checks remain separate from internal-preview publication.
+See [key setup and backup guidance](../desktop/linux-signing.md).
+
+Signed native run `38372268594` qualified x64 and arm64 at source
+`de53cafb2483d76e9350a28d014b4d3906ee0fe0`, private build `1.9.1+147`, using the
+configured production signing key. All six distribution fixtures passed. Independent
+archive/package-file hashes, source identities, empty source patches and public-key-pinned
+checksum signatures matched. This establishes real credential access and signed
+package mechanics, not public repositories, GUI/account behavior or N→N+1 updates.
+The manual workflow's build number is not the shared release sequence.
+
+## Linux internal-preview publication
+
+The shared internal cycle builds both native Linux CPUs with its source/build number
+and compiled `internal` channel. The existing native workflow also accepts those same
+inputs for bootstrap against an already-published shared tag; its own run number is not
+an aligned release number. Retained compiled defines must match the sealed identity.
+Product SDK, icon, plugin dependencies and package construction come from the selected
+main-ancestor source. Signing and container qualification use the trusted workflow
+checkout. Parallel Linux/macOS reusable calls have distinct concurrency groups.
+
+The Linux publisher requires both native package sets, matching signed/unsigned
+provenance, clean source and all six package fixtures. Both signer reports and checksum
+signatures must match the repository's approved primary fingerprint, independently of
+producer configuration or downloaded key material. It then requires an existing public
+internal release whose tag resolves to that exact source. No stable Linux path is admitted.
+Core CLI and macOS assets remain untouched. Each public asset is anonymously hash-checked;
+identical retries are allowed, conflicting bytes are never overwritten.
+`desktop-linux-release.json` is uploaded last and does not depend on macOS completion.
+Per-CPU `desktop-linux-<arch>-checksums.txt`/`.asc` pairs retain their original signed
+bytes. `desktop-linux-public.asc` is separate from the core CLI owner's replaceable key
+asset, even though both use the same signing key. Private evidence never becomes a
+release asset. The publisher cannot create/promote releases, move tags or change Latest.
+
+The user accepted GUI/login/keyring/tray and real N→N+1 gaps for opt-in internal previews.
+These packages do not establish stable Linux admission or signed APT/RPM repository trust.
+Fixture tests alone do not establish production-key access or public retrieval.
+
+Public acceptance on 2026-10-13 used native producer `38438783418` for aligned
+`1.9.1+1013` and publisher `38443588001`. Both compiled internal identities and all six
+package fixtures passed. Independent anonymous retrieval authenticated both checksum
+signatures against the separately known primary and all four package hashes. Existing
+13 core/macOS asset identities, release identity/content/channel, tag and Latest were preserved; original
+core/macOS checksum and manifest bytes also matched. No store dispatch or local app
+installation occurred. Exact sources, trees and hashes live in the distribution plan's
+[step 9](../../.plan/active/desktop-distribution/steps/step-09.md).
 
 ## Shared release cycle and private preparation
 
-Private `macos-packaging` accepts optional immutable `source_sha` and `build_number`
+Private `macos-packaging` and `linux-packaging` accept immutable `source_sha` and `build_number`
 overrides, validating main ancestry before building. This qualifies the exact selected
 production source/build without enabling publication or submitting anything to stores.
 The workflow's toolchain-selector action stays at its own revision; product SDK and
@@ -114,25 +187,27 @@ this internal flow end to end for `1.9.1+983`, with desktop publication skipped 
 read-only shared-producer preparation accepted separately. This does not establish
 stable production attachment or public desktop retrieval.
 
-Both reusable native-desktop callers
+Reusable native-desktop callers
 must grant `contents: read`, `actions: read` and `pull-requests: read`: GitHub validates
 the nested upgrade jobs' PR-provenance permission even when those jobs are skipped.
 A missing scope rejects the entire caller before its release gate can execute.
 
 Desktop attachment follows the existing shared release finalizer; production already
 passed `store-production`. Desktop failure does not change bridge/mobile success conditions.
-Internal rollover retains the newest public prerelease with `desktop-release.json`
-alongside the current core release; older completed previews retire only once a newer
-completion exists. A failed desktop build or attachment therefore preserves the last
-downloadable preview without holding back core releases. The marker reuses the publisher's
-existing last-uploaded completion signal, not a second pointer or release owner.
+Internal rollover retains the newest completed public prerelease independently for
+macOS (`desktop-release.json`) and Linux (`desktop-linux-release.json`), alongside the
+current core release. Older previews retire only after their platform has a newer completion.
+A failed build or attachment on one platform preserves its last downloadable preview,
+even when the other platform advances. Markers are the publishers' last-uploaded signals,
+not persistent pointers or another release owner.
 Stable bridge/npm cleanup skips completed desktop previews even when stable desktop
 assets exist: an internal channel must not be forced onto stable. This also preserves
 previews during bridge-only production or pending/failed stable desktop attachment.
 `DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
-and it is now `true`. Windows/Linux remain unadmitted.
+and it is now `true`. Linux internal previews were admitted on 2026-10-13;
+Windows and stable Linux remain unadmitted.
 
-Admitted publication attaches four installers, `desktop-checksums.txt` and
+Admitted macOS publication attaches four installers, `desktop-checksums.txt` and
 `desktop-release.json` to existing product tags. It never creates/promotes a release,
 changes Latest, or replaces bridge assets/checksums. Each asset is retrieved without
 authentication and hash-verified. Retries reuse identical assets and refuse conflicting
@@ -151,7 +226,7 @@ evidence are rejected rather than assigned a guessed channel.
 Preparation has read-only repository/Actions permissions and never signs, executes
 packages, creates tags/releases, edits website links, or triggers CLI/mobile release
 work. These are evidence-consistency checks, not independent signature verification
-or permission to ship. Public release and remaining native/interactive gates remain outstanding.
+or permission to ship. Publication and native/interactive acceptance require their own evidence.
 
 ## Private macOS manual-replacement qualification
 
@@ -260,8 +335,9 @@ Private package mechanics are qualified for both native CPUs on all three deskto
 platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarized/stapled
 app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
 construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
-six native package-manager fixtures on Linux. macOS internal installers are now public;
-stable macOS and Windows/Linux public availability are not implied.
+six native package-manager fixtures on Linux. Separate signed Linux qualification and
+public internal delivery are recorded above. macOS and Linux internal installers are
+public; stable macOS/Linux and Windows availability are not implied.
 Exact accepted sources, runs, hashes and proof limits stay
 in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and
@@ -302,7 +378,10 @@ historical evidence as shared-store qualification.
   desktop assets while still deleting same-version core-only internal releases.
   Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
   compiler arguments, bounded installer directives and no-overwrite diagnostics.
-  Linux fixtures cover identity/CPU refusal, payload layout and symlink preservation,
+  Linux publication fixtures cover compiled-channel/source/build refusal, real GPGV
+  checksum verification, independent platform completion, anonymous delivery failure,
+  immutable retries and separate core/macOS ownership. Package fixtures cover identity/CPU
+  refusal, payload layout and symlink preservation,
   source-derived dynamic-loading audit, generated dependency invocation, bounded
   ownership and absence of package lifecycle scripts. macOS upgrade fixtures cover
   producer/run/source/channel/identity ordering, altered DMGs, dirty-source refusal,
@@ -311,8 +390,10 @@ historical evidence as shared-store qualification.
   dotenv tests; Settings
   composition retains attention controls. Generated fragments match specification headings.
   Website resolver/SSR fixtures cover incomplete newer releases, page-two stable
-  discovery, channel isolation, malformed assets, cache reuse/failure logging and all
-  anchors. These run in `sesori-ai/landingpage`, without live GitHub fixture dependencies.
+  and older Linux discovery, independent platform completion, every missing Linux asset,
+  channel isolation, malformed metadata, cache reuse/failure logging and all anchors.
+  Crawler FAQ coverage prevents a correct platform summary from hiding a stale answer.
+  These run in `sesori-ai/landingpage`, without live GitHub fixture dependencies.
 - **L3:** Real Settings navigation and external-browser dispatch on a packaged native
   build. Verify the browser lands on the website section matching the build's channel,
   OS and CPU. No published installer is needed to check browser dispatch.
@@ -324,7 +405,7 @@ historical evidence as shared-store qualification.
   and anonymous link/metadata agreement only, not native Settings dispatch or installation.
 
 L1/L2 do not establish installation, native trust, real-account restoration, minimum
-OS or publication. Published internal macOS assets have their own recorded trust proof;
+OS or publication. Published internal macOS and Linux assets have separate recorded trust proof;
 unshipped platforms/channels remain unavailable. A merged index alone is not a release.
 See [packaging](desktop-macos-packaging.md), [supervision](desktop-bridge-supervision.md)
 and [download instructions](../desktop/downloads.md).

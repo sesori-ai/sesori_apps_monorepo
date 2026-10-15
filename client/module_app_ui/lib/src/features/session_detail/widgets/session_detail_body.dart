@@ -740,11 +740,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             onPressed: () => openPrompts(origin: buttonContext.globalCentre),
           ),
         ),
-      // Root sessions only: the session actions run on the project's session
-      // list, which holds no sub-agent sessions and must not gain one, and only
-      // a root session has changes to show.
-      if (session != null &&
-          (openDiffs != null || (menuEntriesBuilder != null && session.parentID == null) || canConfigureContinuation))
+      // Shells restrict mutating menu entries to their valid session owners;
+      // read-only entries can also inspect a child session.
+      if (session != null && (openDiffs != null || menuEntriesBuilder != null || canConfigureContinuation))
         PregoAnchorMenu(
           flat: true,
           menuWidth: 240,
@@ -764,8 +762,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
                 onTap: openDiffs,
               ),
             if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
-            if (menuEntriesBuilder != null && session.parentID == null)
-              ...menuEntriesBuilder(context: context, session: session),
+            if (menuEntriesBuilder != null) ...menuEntriesBuilder(context: context, session: session),
           ],
           triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
             key: const Key("session-detail-more"),

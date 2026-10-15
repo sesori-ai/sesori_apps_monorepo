@@ -619,7 +619,10 @@ Codex uses the existing Sesori device-code UI; Antigravity implements automatic 
 clients use a system authentication browser and nonce-only app return; remote desktop uses exact loopback capture and
 a static return page, while desktop connected to its exact supervised bridge lets the bridge receive callback directly.
 Browser kickoff survives settings dismissal, retained phases replay on reopening, and the one callback-listener lifetime
-is bounded to five minutes; only launch failure can retry an issued challenge against that same live listener.
+is bounded to five minutes. Browser operations use identity handles bound to their bridge connection and provider/MCP
+purpose. A competing flow returns busy without replacing the first listener; retry and cleanup require its owner.
+A busy provider challenge remains available for explicit retry. Launch failure can reuse its own live listener;
+local direct-browser ownership lasts until native settlement or bounded expiry.
 Synthetic iOS Simulator and Android emulator coverage proves raw loopback-to-app return; real Google OAuth remains a
 manual verification gap. It permits personal Google OAuth only, suppresses
 the bridge host's browser, and uses the same isolated profile for login and live
@@ -638,6 +641,94 @@ Local login/configuration must apply to the profile/environment used by that
 bridge's harness. Provider keys and local/free models may make a backend usable
 without an OAuth login. Setup detection above does **not** imply that Sesori
 can initiate login, and managed installation does **not** authenticate a harness.
+
+## MCP management native evidence
+
+Read-only MCP inventory and server details are **implemented** in the shared
+phone/desktop UI, opened from session menus and harness settings. Connection
+action UI and authentication UI remain **not implemented**.
+
+Backend-neutral authentication attempt/request/response codecs are implemented,
+including explicit native cancellation availability and private callback
+presentation. Claude's headless authentication routes and the shared client
+API/repository/connection-fenced lifecycle are implemented. The observing Cubit
+does not cancel on view closure. Request-scoped recovery never auto-launches a
+browser; busy retains the challenge, and reconnect fences callbacks to the old
+bridge. Visible client controls and other native adapters remain **not implemented**.
+The shared entry-action API/repository, per-view request owner and observing Cubit
+are implemented for reconnect, enable/disable and credential forgetting. Shells
+provide the read-only posture; pending requests retain readable inventory, late
+responses are connection-fenced, and native completion supplies inventory truth.
+API failures retain their causes and trigger a read rather than an automatic
+action retry. Visible management controls remain the next presentation step.
+The backend-neutral inventory wire models and optional plugin read interface
+are implemented. Claude implements session inventory through its resident
+process status control request, exposed headlessly by `POST /mcp/inventory`.
+The shared client API, repository, per-view loading service, and cubit are
+implemented, including reconnect and refresh failure state.
+Project/harness inventory and offered-connector discovery remain **not implemented**
+for Claude. Claude live-session reconnect, enable and disable are **implemented**
+headlessly through `POST /mcp/entry/action`, with authoritative refresh and scoped
+client invalidation. They change the live process only, with no persistent
+configuration write or implicit session launch. Archived mutations return the
+canonical structured 409 rejection before native access.
+Each declared control includes its effect scope. Claude native plugin HTTP
+authentication and its headless read/start/continue/cancel routes are implemented
+as described below. Each server now declares independent sign-in and credential-forgetting
+availability, including native effect scopes and explicit configuration/platform gaps.
+Headless credential forgetting is **implemented** through `POST /mcp/entry/action`;
+it shares the native authentication owner, preserves server definitions, and refreshes
+inventory without claiming that an existing resident connection has disconnected.
+Client action UI and the other harness adapters remain **not implemented**.
+Reads never start an integration or agent session.
+Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
+endpoint origin crosses the wire. See
+[MCP management regression coverage](regression/mcp-management.md).
+Existing tool permissions are separate from this management capability. Native
+protocol probes on macOS arm64 (2026-10-13) establish the following integration
+boundaries, using isolated stdio/HTTP/OAuth and deterministic model fixtures:
+
+| Harness/version | Native capability | Verified limit |
+|---|---|---|
+| Claude, both pins | Inventory, toggle, reconnect, forms, CLI OAuth | Terminal login; session toggle |
+| Claude 2.1.221 | URL elicitation not supported | Native rejects before forwarding |
+| Claude 2.1.291 | URL elicitation native support | Separate from tool permission |
+| Codex, both pins | Inventory, forms/URL, fixture OAuth | No MCP attempt ID or completion/cancel RPC |
+| Codex 0.139.0 | Basic native inventory | No runtime/discovery-error/origin fields |
+| Codex 0.160.1 | Richer native inventory | Runtime status, discovery error, safe origin |
+
+Claude's toggle changes the resident process, not persisted configuration.
+Its status omits tool descriptions. Approval frames name the tool at both pins;
+explicit `mcp_server` context is absent at 2.1.221 and present at 2.1.291.
+Plain-pipe login does not expose the
+no-browser URL/paste journey. Codex completion must be correlated by the
+adapter; a browser open does not confirm success. Claude live-session reconnect
+and enable/disable are **implemented** as Sesori management actions. Claude plugin
+HTTP authentication and its headless attempt routes are implemented. Client authentication
+actions, elicitation and the remaining native-supported management rows are **not implemented**
+at this checkpoint.
+
+The Claude native plugin authentication API is **implemented** for an existing
+resident's native-configured HTTP server: no-browser sign-in, matching callback,
+provider denial, bounded cancellation/expiry, and native credential clearing.
+Both pins passed isolated OAuth on macOS arm64, including reconnect/tools in the
+existing resident. Server definitions remain unchanged; the CLI may update its
+own credential and preference bookkeeping. Headless read/start/continue/cancel
+routes are **implemented**, with one bridge-owned leased attempt and request-only
+URLs. Client authentication actions remain **not implemented** at this checkpoint. Linux's terminal path is implemented
+but unqualified; Windows integration and SSE authentication are **not implemented**.
+Dynamic/unknown session configuration cannot be safely addressed by named CLI
+credential operations and returns an explicit native-configuration handoff.
+Stdio OAuth is **not supported** by this native method. Other harness native
+integration remains **not implemented**; the recorded retirement matrix is unchanged.
+
+Unauthenticated Codex `app/list` returned an empty catalog; this does not prove
+authenticated connector setup. Other harness management remains **not
+implemented**, with native support still to be audited. Real provider policy,
+credential persistence, packaged clients, Linux/Windows, and bridge/relay/client
+ownership were not qualified by these probes. See the
+[versioned contract evidence](../.plan/active/mcp-management/evidence/native-contracts.md)
+and [reproduction tools](../tool/mcp-contracts/README.md).
 
 ## Context compaction row
 

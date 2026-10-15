@@ -320,6 +320,15 @@ class TestPluginRuntime({
   }
 
   @override
+  Stream<T> useStreamIfActive<T>({
+    required String pluginId,
+    required Enum operation,
+    required Stream<T> Function(BridgePluginApi api, int generation) body,
+  }) => stoppedPluginIds.contains(pluginId)
+      ? const Stream.empty()
+      : useStream(pluginId: pluginId, operation: operation, body: body);
+
+  @override
   Future<T?> useIfActive<T>({
     required String pluginId,
     required Enum operation,

@@ -16,6 +16,8 @@ import "../claude_plugin_impl.dart";
 import "../foundation/claude_login_environment.dart";
 import "../repositories/claude_authentication_repository.dart";
 import "../repositories/claude_backend_catalog_repository.dart";
+import "../repositories/claude_mcp_authentication_repository.dart";
+import "../repositories/claude_mcp_login_repository.dart";
 import "../repositories/claude_session_process_repository.dart";
 import "../repositories/claude_transcript_catalog_repository.dart";
 import "../repositories/mappers/claude_content_mapper.dart";
@@ -23,6 +25,7 @@ import "../repositories/mappers/claude_quota_interruption_mapper.dart";
 import "../repositories/trackers/claude_tool_tracker.dart";
 import "../services/claude_authentication_service.dart";
 import "../services/claude_catalog_service.dart";
+import "../services/claude_mcp_authentication_service.dart";
 import "../services/claude_session_service.dart";
 import "claude_bridge_plugin.dart";
 
@@ -270,6 +273,7 @@ final class const ClaudePluginDescriptor({
       environment: host.environment,
     );
     final processes = ClaudeSessionProcessRepository(
+      supportsMcpAuthentication: processFactory.supportsTerminal,
       processFactory: (spec) => processFactory.spawn(spec.processLaunch),
       binaryPath: binaryPath,
       // The host factory already inherits this environment. Launch specs carry
@@ -298,6 +302,31 @@ final class const ClaudePluginDescriptor({
     );
     final plugin = ClaudePlugin(
       processes: processes,
+      mcpAuthentication: ClaudeMcpAuthenticationService(
+        resolveContext: processes.resolveMcpAuthenticationContext,
+        createLogin: ({required context}) {
+          if (!processFactory.supportsTerminal) {
+            throw const PluginMcpAuthenticationUnavailableException(
+              reason: PluginMcpAuthenticationUnavailableReason.notImplemented,
+            );
+          }
+          return ClaudeMcpLoginRepository(
+            processFactory: processFactory,
+            binaryPath: binaryPath,
+            serverName: context.serverName,
+            workingDirectory: context.workingDirectory,
+            environment: const {},
+            killGrace: const Duration(seconds: 5),
+          );
+        },
+        urlBudget: const Duration(seconds: 90),
+        overallBudget: const Duration(minutes: 10),
+        repository: ClaudeMcpAuthenticationRepository(
+          processFactory: processFactory,
+          binaryPath: binaryPath,
+          commandBudget: const Duration(seconds: 30),
+        ),
+      ),
       transcripts: ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: host.environment),
       ),

@@ -1,12 +1,8 @@
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/session_archived_read_only_exception.dart";
 import "../repositories/models/stored_session.dart";
 import "../repositories/session_repository.dart";
-
-class SessionArchivedReadOnlyException({required final SessionArchivedRejection rejection}) implements Exception {
-  @override
-  String toString() => "session ${rejection.sessionId} is archived and read-only";
-}
 
 /// The single archive-permanence rule in the bridge. Archiving is final, so an
 /// archived session can never be unarchived, prompted, or otherwise mutated.

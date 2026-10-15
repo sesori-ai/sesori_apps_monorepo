@@ -11,6 +11,8 @@ import "../api/models/claude_stream_message.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_permission_mode.dart";
+import "mappers/claude_mcp_mapper.dart";
+import "models/claude_mcp_authentication_context.dart";
 
 sealed class const ClaudeTurnOutcome();
 
@@ -94,6 +96,7 @@ final class _ResidentProcess({
 /// Owns resident Claude processes and all transport-facing session state.
 final class ClaudeSessionProcessRepository({
   required final ClaudeProcessFactory _processFactory,
+  required final bool _supportsMcpAuthentication,
   required final String _binaryPath,
   required Map<String, String> environment,
 }) {
@@ -110,7 +113,117 @@ final class ClaudeSessionProcessRepository({
 
   bool isResident({required String sessionId}) => _resident.containsKey(sessionId);
 
+  /// CLI authentication resolves native configuration in the same project.
+  /// Dynamic session overrides cannot be safely addressed by a named CLI login.
+  Future<ClaudeMcpAuthenticationContext> resolveMcpAuthenticationContext({
+    required PluginMcpServerTarget target,
+  }) async {
+    final scope = target.scope;
+    if (scope is! PluginMcpSessionScope) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.unsupportedScope,
+      );
+    }
+    final process = _resident[scope.sessionId];
+    if (process == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.liveSessionRequired,
+      );
+    }
+    final status = await process.client.getMcpStatus();
+    final server = status.mcpServers.where((server) => server.name == target.serverKey).firstOrNull;
+    if (server == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.targetNotFound,
+      );
+    }
+    if (const ClaudeMcpMapper().authenticationCapability(
+          server: server,
+          supportsAuthentication: _supportsMcpAuthentication,
+        )
+        case PluginMcpAuthenticationCapabilityUnavailable(:final reason)) {
+      throw PluginMcpAuthenticationUnavailableException(
+        reason: switch (reason) {
+          PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired =>
+            PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+          PluginMcpAuthenticationCapabilityUnavailableReason.notSupported =>
+            PluginMcpAuthenticationUnavailableReason.notSupported,
+          PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented =>
+            PluginMcpAuthenticationUnavailableReason.notImplemented,
+        },
+      );
+    }
+    return ClaudeMcpAuthenticationContext(serverName: server.name, workingDirectory: process.client.workingDirectory);
+  }
+
+  /// MCP inspection uses only the named existing resident. Reading an inactive
+  /// session must never restore it or manufacture an agent process.
+  Future<PluginMcpInventoryResult> getMcpInventory({required PluginMcpScope scope}) async {
+    if (scope is! PluginMcpSessionScope) {
+      return const PluginMcpInventoryUnavailable(
+        reason: PluginMcpInventoryUnavailableReason.unsupportedScope,
+        message: "Select a live session to inspect its MCP servers.",
+      );
+    }
+    final process = _resident[scope.sessionId];
+    if (process == null) {
+      return const PluginMcpInventoryUnavailable(
+        reason: PluginMcpInventoryUnavailableReason.liveSessionRequired,
+        message: "Start or resume this session to inspect its MCP servers.",
+      );
+    }
+    try {
+      final status = await process.client.getMcpStatus();
+      return const ClaudeMcpMapper().map(
+        status: status,
+        scope: scope,
+        supportsAuthentication: _supportsMcpAuthentication,
+      );
+    } on ClaudeControlException catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
+    } on ClaudeMcpStatusDecodeException catch (error, stackTrace) {
+      return PluginMcpInventoryReadFailed(cause: error, causeStackTrace: stackTrace);
+    }
+  }
+
   Map<String, Object?>? handshake({required String sessionId}) => _resident[sessionId]?.client.handshake;
+
+  Future<PluginMcpActionResult> executeMcpServerAction({
+    required PluginMcpServerTarget target,
+    required PluginMcpServerAction action,
+  }) async {
+    final scope = target.scope;
+    if (scope is! PluginMcpSessionScope) {
+      return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.unsupportedScope);
+    }
+    final process = _resident[scope.sessionId];
+    if (process == null) {
+      return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.liveSessionRequired);
+    }
+    try {
+      final inventory = await process.client.getMcpStatus();
+      if (!inventory.mcpServers.any((server) => server.name == target.serverKey)) {
+        return const PluginMcpActionUnavailable(reason: PluginMcpActionUnavailableReason.targetNotFound);
+      }
+      switch (action) {
+        case PluginMcpServerAction.reconnect:
+          await process.client.reconnectMcpServer(serverName: target.serverKey);
+        case PluginMcpServerAction.enable:
+          await process.client.setMcpServerEnabled(serverName: target.serverKey, enabled: true);
+        case PluginMcpServerAction.disable:
+          await process.client.setMcpServerEnabled(serverName: target.serverKey, enabled: false);
+      }
+      return const PluginMcpActionCompleted(effectScope: PluginMcpActionEffectScope.session);
+    } on ClaudeControlException catch (error, stackTrace) {
+      return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
+    } on TimeoutException catch (error, stackTrace) {
+      return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
+    } on ClaudeMcpStatusDecodeException catch (error, stackTrace) {
+      return PluginMcpActionFailed(cause: error, causeStackTrace: stackTrace);
+    }
+  }
 
   ClaudeAppliedSelection? appliedSelection({required String sessionId}) {
     final process = _resident[sessionId];

@@ -34,6 +34,15 @@ class _FakeLoopbackSession() implements PluginAuthenticationLoopbackSession {
   }
 }
 
+class _ClosingLoopbackSession() extends _FakeLoopbackSession {
+  final Completer<void> closeGate = Completer();
+  @override
+  Future<void> close() async {
+    await super.close();
+    await closeGate.future;
+  }
+}
+
 class _DelayedLoopbackServer() extends PluginAuthenticationLoopbackServer {
   final Completer<PluginAuthenticationLoopbackSession> binding = Completer();
 
@@ -90,7 +99,216 @@ _BrowserAction _completeCallback({required Uri callbackUri}) =>
       }
     };
 
+final _owner = PluginAuthenticationBrowserOwner(
+  bridgeId: "fixture",
+  connectionEpoch: 1,
+  purpose: PluginAuthenticationBrowserPurpose.provider,
+);
+final _mcpOwner = PluginAuthenticationBrowserOwner(
+  bridgeId: "fixture",
+  connectionEpoch: 1,
+  purpose: PluginAuthenticationBrowserPurpose.mcp,
+);
+
 void main() {
+  test("reserves the owner before notifying synchronous phase observers", () {
+    fakeAsync((async) {
+      final session = _FakeLoopbackSession();
+      final browser = _FakeBrowser(returnsToApp: false)
+        ..actions.add(
+          ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+        )
+        ..actions.add(
+          ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+        );
+      final service = PluginAuthenticationBrowserService(
+        loopbackServer: _ImmediateLoopbackServer(session: session),
+        browser: browser,
+      );
+      final challenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://fixture.example/authorize"),
+        expectedCallbackUri: session.expectedCallbackUri,
+      );
+      PluginAuthenticationBrowserFlowResult? competing;
+      unawaited(
+        service.authenticate(
+          owner: _owner,
+          challenge: challenge,
+          isLocalBridge: true,
+          reuseActiveListener: false,
+          onPhase: (_) {
+            unawaited(
+              service
+                  .authenticate(
+                    owner: _mcpOwner,
+                    challenge: challenge,
+                    isLocalBridge: true,
+                    reuseActiveListener: false,
+                    onPhase: (_) {},
+                    onDetachedFailure: (_) {},
+                  )
+                  .then((result) => competing = result),
+            );
+          },
+          onDetachedFailure: (_) {},
+        ),
+      );
+      async.flushMicrotasks();
+      try {
+        expect(competing, isA<PluginAuthenticationBrowserBusy>());
+        expect(browser.opens, 1);
+      } finally {
+        async.elapse(const Duration(minutes: 6));
+        async.flushMicrotasks();
+      }
+    });
+  });
+
+  for (final (firstOwner, secondOwner) in [(_owner, _mcpOwner), (_mcpOwner, _owner)]) {
+    test("${firstOwner.purpose.name} then ${secondOwner.purpose.name} preserves the first callback", () async {
+      final session = _FakeLoopbackSession();
+      final browser = _FakeBrowser(returnsToApp: false)
+        ..actions.add(
+          ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+        )
+        ..actions.add(
+          ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+        );
+      final service = PluginAuthenticationBrowserService(
+        loopbackServer: _ImmediateLoopbackServer(session: session),
+        browser: browser,
+      );
+      final challenge = PluginAuthenticationBrowserChallenge(
+        authorizationUri: Uri.parse("https://provider.example/authorize"),
+        expectedCallbackUri: session.expectedCallbackUri,
+      );
+      final first = service.authenticate(
+        owner: firstOwner,
+        challenge: challenge,
+        isLocalBridge: false,
+        reuseActiveListener: false,
+        onPhase: (_) {},
+        onDetachedFailure: (_) {},
+      );
+      await Future<void>.delayed(Duration.zero);
+      final second = service.authenticate(
+        owner: secondOwner,
+        challenge: challenge,
+        isLocalBridge: false,
+        reuseActiveListener: false,
+        onPhase: (_) {},
+        onDetachedFailure: (_) {},
+      );
+      await Future<void>.delayed(Duration.zero);
+      try {
+        expect(session.closes, 0);
+        expect(browser.opens, 1);
+        expect(await second, isA<PluginAuthenticationBrowserBusy>());
+        expect(await service.cancel(owner: secondOwner), isNull);
+        expect(session.closes, 0);
+        expect(
+          await service.authenticate(
+            owner: secondOwner,
+            challenge: challenge,
+            isLocalBridge: false,
+            reuseActiveListener: true,
+            onPhase: (_) => fail("Foreign retry emitted a phase"),
+            onDetachedFailure: (_) {},
+          ),
+          isA<PluginAuthenticationBrowserBusy>(),
+        );
+        final callback = session.expectedCallbackUri.replace(queryParameters: {"code": "fixture", "state": "fixture"});
+        session.callbackCompleter.complete(callback);
+        expect((await first as PluginAuthenticationBrowserCaptured).callbackUri, callback);
+      } finally {
+        await service.cancel(owner: firstOwner);
+        await first;
+        await second;
+      }
+    });
+  }
+  test("local browser remains owned until native settlement releases it", () async {
+    final browser = _FakeBrowser(returnsToApp: false)
+      ..actions.add(
+        ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+      );
+    final service = PluginAuthenticationBrowserService(loopbackServer: _DelayedLoopbackServer(), browser: browser);
+    final challenge = PluginAuthenticationBrowserChallenge(
+      authorizationUri: Uri.parse("https://fixture.example/authorize"),
+      expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+    );
+    addTearDown(() => service.cancel(owner: _owner));
+    expect(
+      await service.authenticate(
+        owner: _owner,
+        challenge: challenge,
+        isLocalBridge: true,
+        reuseActiveListener: false,
+        onPhase: (_) {},
+        onDetachedFailure: (_) {},
+      ),
+      isA<PluginAuthenticationBrowserDirect>(),
+    );
+    expect(
+      await service.authenticate(
+        owner: _mcpOwner,
+        challenge: challenge,
+        isLocalBridge: false,
+        reuseActiveListener: false,
+        onPhase: (_) => fail("Busy start emitted a phase"),
+        onDetachedFailure: (_) {},
+      ),
+      isA<PluginAuthenticationBrowserBusy>(),
+    );
+    expect(browser.opens, 1);
+    expect(await service.cancel(owner: _mcpOwner), isNull);
+    expect(await service.cancel(owner: _owner), isNull);
+  });
+
+  test("listener cleanup retains ownership until its close completes", () async {
+    final session = _ClosingLoopbackSession();
+    final browser = _FakeBrowser(returnsToApp: false)
+      ..actions.add(
+        ({required authorizationUri, required callbackScheme}) async => const PluginAuthenticationBrowserOpened(),
+      );
+    final service = PluginAuthenticationBrowserService(
+      loopbackServer: _ImmediateLoopbackServer(session: session),
+      browser: browser,
+    );
+    final challenge = PluginAuthenticationBrowserChallenge(
+      authorizationUri: Uri.parse("https://fixture.example/authorize"),
+      expectedCallbackUri: session.expectedCallbackUri,
+    );
+    final first = service.authenticate(
+      owner: _owner,
+      challenge: challenge,
+      isLocalBridge: false,
+      reuseActiveListener: false,
+      onPhase: (_) {},
+      onDetachedFailure: (_) {},
+    );
+    await Future<void>.delayed(Duration.zero);
+    final cancelling = service.cancel(owner: _owner);
+    try {
+      expect(
+        await service.authenticate(
+          owner: _mcpOwner,
+          challenge: challenge,
+          isLocalBridge: false,
+          reuseActiveListener: false,
+          onPhase: (_) {},
+          onDetachedFailure: (_) {},
+        ),
+        isA<PluginAuthenticationBrowserBusy>(),
+      );
+      expect(session.closes, 1);
+    } finally {
+      session.closeGate.complete();
+      await cancelling;
+      expect(await first, isA<PluginAuthenticationBrowserFlowCancelled>());
+    }
+  });
+
   test("binds before native open and captures callback while bounce carries nonce only", () async {
     final port = await _unusedLoopbackPort();
     final callbackUri = Uri.parse("http://127.0.0.1:$port/callback");
@@ -99,10 +317,11 @@ void main() {
       loopbackServer: PluginAuthenticationLoopbackServer(),
       browser: browser,
     );
-    addTearDown(service.cancelActive);
+    addTearDown(() => service.cancel(owner: _owner));
     final phases = <PluginAuthenticationBrowserPhase>[];
 
     final result = await service.authenticate(
+      owner: _owner,
       challenge: PluginAuthenticationBrowserChallenge(
         authorizationUri: Uri.parse("https://provider.example/authorize"),
         expectedCallbackUri: callbackUri,
@@ -136,6 +355,7 @@ void main() {
 
     expect(
       await service.authenticate(
+        owner: _owner,
         challenge: PluginAuthenticationBrowserChallenge(
           authorizationUri: Uri.parse("https://provider.example/authorize"),
           expectedCallbackUri: Uri.parse("http://127.0.0.1:${occupied.port}/callback"),
@@ -158,9 +378,10 @@ void main() {
       loopbackServer: PluginAuthenticationLoopbackServer(),
       browser: browser,
     );
-    addTearDown(service.cancelActive);
+    addTearDown(() => service.cancel(owner: _owner));
 
     final result = await service.authenticate(
+      owner: _owner,
       challenge: PluginAuthenticationBrowserChallenge(
         authorizationUri: Uri.parse("https://provider.example/authorize"),
         expectedCallbackUri: Uri.parse("http://127.0.0.1:${occupied.port}/callback"),
@@ -191,6 +412,7 @@ void main() {
 
     expect(
       await service.authenticate(
+        owner: _owner,
         challenge: PluginAuthenticationBrowserChallenge(
           authorizationUri: Uri.parse("https://provider.example/authorize"),
           expectedCallbackUri: Uri.parse("http://127.0.0.1:$port/callback"),
@@ -217,6 +439,7 @@ void main() {
     );
 
     final authentication = service.authenticate(
+      owner: _owner,
       challenge: challenge,
       isLocalBridge: false,
       reuseActiveListener: false,
@@ -224,7 +447,7 @@ void main() {
       onDetachedFailure: (_) {},
     );
     await Future<void>.delayed(Duration.zero);
-    expect(await service.cancelActive(), isNull);
+    expect(await service.cancel(owner: _owner), isNull);
     loopback.binding.complete(session);
 
     expect(await authentication, isA<PluginAuthenticationBrowserFlowCancelled>());
@@ -251,7 +474,7 @@ void main() {
       loopbackServer: PluginAuthenticationLoopbackServer(),
       browser: browser,
     );
-    addTearDown(service.cancelActive);
+    addTearDown(() => service.cancel(owner: _owner));
     final challenge = PluginAuthenticationBrowserChallenge(
       authorizationUri: Uri.parse("https://provider.example/authorize"),
       expectedCallbackUri: callbackUri,
@@ -259,6 +482,7 @@ void main() {
 
     expect(
       await service.authenticate(
+        owner: _owner,
         challenge: challenge,
         isLocalBridge: false,
         reuseActiveListener: false,
@@ -269,6 +493,7 @@ void main() {
     );
     expect(
       await service.authenticate(
+        owner: _owner,
         challenge: challenge,
         isLocalBridge: false,
         reuseActiveListener: true,
@@ -298,6 +523,7 @@ void main() {
     );
 
     final first = await service.authenticate(
+      owner: _owner,
       challenge: challenge,
       isLocalBridge: false,
       reuseActiveListener: false,
@@ -305,6 +531,7 @@ void main() {
       onDetachedFailure: (_) {},
     );
     final retry = await service.authenticate(
+      owner: _owner,
       challenge: challenge,
       isLocalBridge: false,
       reuseActiveListener: true,
@@ -337,6 +564,7 @@ void main() {
       browser: browser,
     );
     final authentication = service.authenticate(
+      owner: _owner,
       challenge: PluginAuthenticationBrowserChallenge(
         authorizationUri: Uri.parse("https://provider.example/authorize"),
         expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
@@ -349,10 +577,44 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(browser.opens, 1);
 
-    expect(await service.cancelActive(), isNull);
+    expect(await service.cancel(owner: _owner), isNull);
     expect(await authentication, isA<PluginAuthenticationBrowserFlowCancelled>());
     expect(session.closes, 1);
     browserResult.complete(const PluginAuthenticationBrowserCancelled());
+  });
+
+  test("local direct ownership expires and reports its detached failure", () {
+    fakeAsync((async) {
+      final browser = _FakeBrowser(returnsToApp: false)
+        ..actions.add(
+          ({required Uri authorizationUri, required String callbackScheme}) async =>
+              const PluginAuthenticationBrowserOpened(),
+        );
+      final service = PluginAuthenticationBrowserService(loopbackServer: _DelayedLoopbackServer(), browser: browser);
+      final failures = <PluginAuthenticationBrowserFlowFailed>[];
+      PluginAuthenticationBrowserFlowResult? result;
+      service
+          .authenticate(
+            owner: _owner,
+            challenge: PluginAuthenticationBrowserChallenge(
+              authorizationUri: Uri.parse("https://fixture.example/authorize"),
+              expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+            ),
+            isLocalBridge: true,
+            reuseActiveListener: false,
+            onPhase: (_) {},
+            onDetachedFailure: failures.add,
+          )
+          .then((value) => result = value);
+      async.flushMicrotasks();
+      expect(result, isA<PluginAuthenticationBrowserDirect>());
+      expect(failures, isEmpty);
+      async.elapse(const Duration(minutes: 5));
+      async.flushMicrotasks();
+      expect(failures.single.innerError, isA<TimeoutException>());
+      expect(failures.single.retryableWithActiveListener, isFalse);
+      expect(async.pendingTimers, isEmpty);
+    });
   });
 
   test("single lifetime deadline closes listener while native browser remains pending", () {
@@ -371,6 +633,7 @@ void main() {
 
       service
           .authenticate(
+            owner: _owner,
             challenge: PluginAuthenticationBrowserChallenge(
               authorizationUri: Uri.parse("https://provider.example/authorize"),
               expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
@@ -416,6 +679,7 @@ void main() {
 
       service
           .authenticate(
+            owner: _owner,
             challenge: challenge,
             isLocalBridge: false,
             reuseActiveListener: false,
@@ -436,6 +700,7 @@ void main() {
       PluginAuthenticationBrowserFlowResult? retry;
       service
           .authenticate(
+            owner: _owner,
             challenge: challenge,
             isLocalBridge: false,
             reuseActiveListener: true,

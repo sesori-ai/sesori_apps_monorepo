@@ -35,6 +35,20 @@ shellcheck --severity=error install.sh
 bash -n install.sh
 ```
 
+## Linux CLI signing
+
+Both native Linux archives receive detached OpenPGP signatures before shared internal
+or production publication. The existing `linux-signing` environment supplies the same
+protected signing subkey used by desktop packages; no new key or approval gate is needed.
+The signer's container has no network access and never unpacks or executes an archive.
+Published signature/key bytes and their unchanged archives are verified anonymously.
+
+See [Linux signing](../docs/desktop/linux-signing.md) for the public fingerprint,
+manual verification, and the main-only `sign-linux-release.yml` bootstrap action for
+existing public archives. That action adds signatures without rebuilding, replacing
+archive/checksum bytes or changing release metadata. The CLI installer/updater still
+checks SHA-256; it does not yet enforce OpenPGP signatures automatically.
+
 ## macOS code signing setup
 
 macOS binaries are signed in CI with a Developer ID Application certificate. The following secrets must be configured in the GitHub repository:
@@ -115,10 +129,12 @@ Before version validation, store queries, or builds, the workflow moves the ligh
 
 An eligible run uploads mobile apps to TestFlight / Play internal and builds all six bridge archives with
 `X.Y.Z-internal.<N>` baked in. Only after all core products succeed, it pushes a `v<X.Y.Z>-internal.<N>` tag
-and publishes its GitHub prerelease (bridge binaries, `checksums.txt`, regenerated notes). Internal tags remain
-immutable build-number-to-commit mappings. Cleanup retains the newest desktop-completed internal prerelease
-alongside the current core release, so a desktop failure does not erase its previous public downloads. Older
-completed desktop previews retire once a newer completion exists. The default `stable` bridge updater ignores
+and publishes its GitHub prerelease: bridge binaries, Linux signatures/public key,
+`checksums.txt` and regenerated notes. Internal tags remain immutable build-number-to-commit mappings.
+Cleanup retains the newest completed internal preview independently for macOS and Linux
+alongside the current core release. A platform's failure cannot erase its previous public downloads, even when
+the other platform advances. Older previews retire after their platform has a newer completion.
+The default `stable` bridge updater ignores
 prereleases; `sesori-bridge config track internal` selects the newest `-internal.<N>` core release.
 
 Native macOS desktop builds use the same source and aligned build number, with their own signing/qualification.
@@ -126,7 +142,15 @@ They remain Actions artifacts while `DESKTOP_MACOS_PUBLICATION_ENABLED` is absen
 macOS publication, desktop attaches its installers and separate `desktop-checksums.txt`/`desktop-release.json`
 after both its native jobs and the existing shared finalizer pass. Desktop never changes bridge assets, checksums,
 tags, prerelease status or Latest. Desktop failure remains visible without changing core finalization.
-Stable bridge/npm cleanup skips desktop-completed internal previews, including bridge-only production and
+
+Linux internal previews use the same aligned source/build with native x64/arm64 DEB/RPM packaging
+and OpenPGP signing. They attach after core finalization, independently of macOS completion. Their last-uploaded
+`desktop-linux-release.json` marks completion; per-CPU checksum/signature pairs and `desktop-linux-public.asc`
+remain separate from CLI assets. Main-only bootstrap can target an existing shared internal release without
+store uploads. Stable Linux and APT/RPM repositories remain gated;
+see [Linux signing](../docs/desktop/linux-signing.md).
+
+Stable bridge/npm cleanup skips either platform's completed internal previews, including bridge-only production and
 pending/failed stable desktop attachment. Internal rollover owns their retirement; stable desktop availability
 does not replace the internal channel.
 
@@ -155,7 +179,7 @@ When the stable `v<X.Y.Z>` release goes live, `bridge-npm-publish.yml` publishes
 
 1. builds binaries for macOS arm64/x64, Linux x64/arm64, Windows x64/arm64 (`_reusable-bridge-build.yml`)
 2. renames `bridge` to `sesori-bridge` and signs the macOS binaries
-3. creates release archives
+3. creates release archives and signs both Linux archives with OpenPGP
 4. generates basename-based `checksums.txt`
 5. creates the `v<X.Y.Z>` GitHub Release and uploads all assets (`submit-release.yml`)
 6. publishes the six platform npm bootstrap packages from those tagged release assets
@@ -171,7 +195,7 @@ Use this sequence when you want to test the real packaged distribution flow end 
 2. Merge to main and wait for the next hourly `release-all-platforms.yml` run to roll the internal pre-release, or use **Run workflow** for an immediate build.
 3. Run `Submit Release` for production (use `platforms: bridge-only` to skip the app stores).
 4. Wait for the `v<X.Y.Z>` GitHub Release to be published with its assets and `checksums.txt`.
-5. Verify the release contains all six platform archives plus `checksums.txt`.
+5. Verify the release contains all six archives, `checksums.txt`, both Linux `.tar.gz.asc` signatures and public key.
 6. Test the shell installer against that release:
 
 ```bash
@@ -240,6 +264,9 @@ Check the GitHub Release contains:
 - `sesori-bridge-windows-x64.zip`
 - `sesori-bridge-windows-arm64.zip`
 - `checksums.txt`
+- `sesori-bridge-linux-x64.tar.gz.asc`
+- `sesori-bridge-linux-arm64.tar.gz.asc`
+- `sesori-linux-public.asc`
 
 `checksums.txt` must use archive basenames as keys, for example:
 

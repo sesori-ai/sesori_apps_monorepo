@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
 import "../capabilities/server_connection/models/sse_event.dart";
+import "../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../logging/logging.dart";
 import "models/session_activity_info.dart";
 
@@ -65,7 +66,18 @@ class SseEventTracker(
   /// The latest project timestamp update map, synchronously available.
   Map<String, int> get currentProjectTimestampUpdates => _projectTimestampUpdates.value;
 
+  final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
+    initialStatus: _connectionService.currentStatus,
+  );
+
   void _handleConnectionStatus(ConnectionStatus status) {
+    if (_targetChange.changed(status: status)) {
+      // Another computer: nothing the previous one reported applies anymore.
+      _projectActivity.add(const {});
+      _sessionActivity.add(const {});
+      _projectTimestampUpdates.add(const {});
+      return;
+    }
     switch (status) {
       case ConnectionDisconnected():
         if (_projectTimestampUpdates.value.isNotEmpty) {
@@ -98,6 +110,8 @@ class SseEventTracker(
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
+            SesoriMcpInventoryChanged() ||
+            SesoriMcpAuthenticationChanged() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||

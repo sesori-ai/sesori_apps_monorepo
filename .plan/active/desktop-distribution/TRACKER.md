@@ -17,7 +17,7 @@ its completed step; this table tracks implementation, not transient PR reviews.
 | 6 | 8 | macOS internal packages and website live; stable production pending | in-progress |
 | 7 | 9 | Private Windows installers merged; signing/publication gated | blocked |
 | 8 | 10 | Manual Windows release/winget requires signed public assets | blocked |
-| 9 | 11 | Private native DEB/RPM packages merged; signing/publication gated | blocked |
+| 9 | 11 | Linux internal previews and website live; stable/repositories gated | blocked |
 | 10 | 12 | Shipped-download onboarding requires genuine public releases | blocked |
 | 11 | 13 | Reconcile private distribution coverage; public closeout remains gated | in-progress |
 | 12 | 14 | Verify six-target releases and retire distribution plan | blocked |
@@ -26,13 +26,136 @@ Exact PR titles, dependencies and the 14-PR total live in [PLAN.md](PLAN.md).
 Stable IDs 1, 2, 3.a, 3.b, 4.a, 4.b, 5…12 map to PR ordinals 1…14. Platform ship gates
 remain checkpoints within original steps 6, 8 and 9, not additional PRs.
 
-## Current continuation — live macOS downloads (2026-09-26)
+## Completed Linux internal-preview continuation (2026-10-13)
+
+The user prioritized Linux before Windows and requested key-generation guidance plus
+a PR for signed builds. #1941 delivered step 11.a/14 and merged as
+`de53cafb2483d76e9350a28d014b4d3906ee0fe0` on 2026-10-13. Its final-head CI passed,
+including 12 disposable-key/tooling tests; Cubic approved and Codex completed with no
+findings shown. All nine review threads received substantive dispositions.
+
+Main-only run [38372268594](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38372268594)
+then signed real x64/arm64 packages with the configured key. All six Ubuntu 24.04,
+Debian 13 and Fedora 44 install/reinstall/remove fixtures passed. Independent download
+verification matched all four archive digests, package-file hashes, identities and empty
+source patches, and verified checksum signatures against the separately known public
+fingerprint. Exact evidence lives in [step 9](steps/step-09.md); setup remains in
+[key guidance](../../../docs/desktop/linux-signing.md).
+
+`🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]` merged
+as #1943 (`6f7e60d933e9dcb2a3aa9a8e13afbd2b94a16af7`) on 2026-10-13.
+Build `1.9.1+147` uses the qualification workflow's number, not the
+shared release sequence. CLI archive signatures (11.c) and aligned desktop internal previews
+(11.d) are public and independently verified; website tracking/spacing (11.e) is live. The user authorized
+Linux internal desktop previews with the GUI/login/keyring/N→N+1 gaps stated, and
+OpenPGP signatures for the existing Linux Bridge CLI archives. D11–D12 in `PLAN.md`
+record that limited authorization, not permission for stable Linux or signed repositories.
+Those remaining gates still require separate admission; cloud resources are not authorized.
+Build 147 itself remains private. That earlier qualification created no public
+release/repository, cloud resource or store upload.
+
+Step 11.c merged as #1946, squash `a3457903cf50155345e7afd293e7ec564d0e3238`,
+accepted head `e727acb68d85bc0998c5f7d703d61ca78dbfc865`. It implements shared
+temporary key ownership, detached signatures for both
+unchanged CLI archives, protected signing in the existing native build flow, and
+anonymous public-byte verification in both release channels. A separate main-only
+bootstrap attaches signatures to existing matching archives without rebuilding or
+replacing release assets/metadata. Its failed publication job reuses the original
+signature artifact; re-signing is not assumed to produce identical bytes.
+### Step 11.c verification checkpoints (2026-10-13)
+
+- Local review-fix source: `a9293b206b6db1ad1fd2c01855ad8a55704a6c5a`,
+  tree `7bdf7b7f96f4a9afeea37076d6d1401ff0b0318e`. Cwd is the Git checkout root (`.`);
+  the local record retains the host-specific absolute cwd. Python 3.13.16 completed
+  **26 tests, zero skips, exit 0** in 1.753s at 12:33:29 UTC. Exact command:
+
+  ```bash
+  PYTHONPATH=.github/scripts /opt/homebrew/bin/python3.13 -m unittest \
+    test_bridge_linux_signatures test_publish_desktop_release
+  ```
+
+  These cover read-only delivery checks, append-only bootstrap, unchanged core
+  publication/retention and the environment-secret inheritance contract. Actionlint
+  (with ShellCheck) also passed for the four changed caller workflows. Local records:
+  `build/bridge-linux-signing/review-validation-a9293b2.json` and
+  `build/bridge-linux-signing/review-fixes-a9293b2.log`; these are not public artifacts.
+- Real-tool signer checkpoint: PR head `fef42563d4be12bcacb09f9708a58977d022083a`;
+  [Fedora job 115276279835](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38391541309/job/115276279835)
+  checked out merge commit `28ee521f8711f2dba54f2ef04bb7cc984291b27c`, whose tree
+  `474f10c159fc1b970e70f496fedf2a30e0aaf156` equals that PR head's tree. Host cwd:
+  `/home/runner/work/sesori_apps_monorepo/sesori_apps_monorepo`; container cwd: `/workspace`.
+  **13 tests passed, zero skips**, in 4.491s, with disposable keys only. Exact commands:
+
+  ```bash
+  docker build --file .github/scripts/Dockerfile.linux-signing --tag sesori-linux-signing .github/scripts
+  docker run --rm --network none -v "$GITHUB_WORKSPACE:/workspace:ro" \
+    -e SESORI_LINUX_SIGNING_TEST_REQUIRED=1 sesori-linux-signing \
+    python3 -m unittest discover -s .github/scripts -p 'test_sign_desktop_linux.py'
+  ```
+
+  Retrieve the expanded log with `gh run view 38391541309 --job 115276279835 --log`
+  from this repository. This checkpoint proves the shared signer and public-only
+  verification mechanics, not the later read-only delivery-command change.
+
+Production-key [run 38412243041](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38412243041)
+then added both CLI signatures and the public key to existing stable `v1.9.0` without
+rebuilding. Independent anonymous retrieval and GPGV verification used the separately
+known primary fingerprint; original archive/checksum bytes, all seven existing asset
+identities, release metadata, tag and Latest stayed unchanged. Exact hashes, source/tree,
+jobs and proof boundary are in [step 9](steps/step-09.md#public-cli-signatures--11c14).
+This is CLI artifact authentication, not Linux desktop/repository publication or updater
+OpenPGP enforcement.
+
+Step 11.d (#1951) reuses the two native Linux builders with aligned source/build/channel
+and retained compile metadata. Its internal-only publisher validates signed evidence
+against the approved primary fingerprint pinned in repository code, independently of
+producer artifacts/configuration. It checks the shared-tag source, attaches immutable
+assets, and uploads Linux completion last. Dockerfile-only signing fixes qualify for
+the shared cycle; no new per-release Linux approval condition is introduced.
+Linux/macOS completion and retention are independent; core/mobile finalization remains
+unchanged. No admission flag, scheduler, service, application state or stable Linux route
+is added. #1951 accepted `fc536a9ceca952466372cb8e03ee16f98773a1b8` and merged as
+`69b3c4a329bb52f51fe5b07da9801346928268e2` at 2026-10-13T17:22:18Z. All five review
+threads were resolved; Cubic approved. One Intel check timed out with unavailable logs;
+its single failed-job-only retry passed without changing source or the deadline.
+
+Native run `38438783418` built both CPUs for existing shared `v1.9.1-internal.1013`,
+product source `704c3cae3c0f74c7756fcbf8cb2f60f1cebbb6b2`, with retained compiled
+internal identity and all six package fixtures passing. Main-only publisher
+`38443588001` reused those exact artifacts and attached ten Linux desktop assets.
+Independent anonymous retrieval verified both signatures against the separately known
+primary fingerprint and all four signed package hashes. All 13 original asset identities,
+release identity/content/channel, tag and Latest remained unchanged; original core/macOS checksum and
+manifest bytes were also re-downloaded and matched. No stores, local installation, new
+release, stable promotion or repository/cloud setup occurred.
+
+[Step 9](steps/step-09.md#public-native-desktop-verification--11d14) records exact
+sources/trees, jobs, commands and hashes. GUI/login/keyring/tray and real N→N+1 remain
+unverified. Website continuation 11.e merged as `sesori-ai/landingpage#112`, squash
+`77772b9d2c7ce083183ff275b37d8f864cf1e237` at 19:15:34 UTC. Final head
+`3fbc80d42d069905655a33fe47616d2b649b65de` passed CI; the single Cubic finding was fixed
+with a regression assertion, then reported addressed. Codex hit its review quota, not an approval.
+
+Normal deployment was independently checked at 19:20:22.227 UTC. The live page selected
+all four Linux `1.9.1+1013` packages, with anonymous HTTP 200 links/sizes and matching
+release-index, manifest and checksum metadata. Verification-file bytes matched their
+published hashes. Desktop/mobile layouts had 32px below previews, no horizontal overflow
+or browser exceptions, and a reachable limitations note. All 13 anchors worked; stable
+schema/Windows/repository gates stayed intact. Both crawler files matched merged source.
+This is live website acceptance, not another package installation or GUI/upgrade test.
+
+The bounded documentation record is step 11.f/14. Approved CLI/internal-preview/website
+work is complete. Remaining step 9 work needs separate stable/repository admission and
+cloud authorization; Windows remains a separate gated continuation.
+
+## Completed macOS website continuation (2026-09-26)
 
 The user directed **“retire this gate and continue”** after the missing QA was
 itemized. Gate C, macOS 12 execution, remaining phone/live-harness checks and unknown
 manual-build attribution are accepted limitations, not newly passing evidence.
 Parent closeout is no longer a macOS publication prerequisite. Do not reopen those
-checks or interrupt the running app/bridge; Windows/Linux requirements remain intact.
+checks or interrupt the running app/bridge. Windows and stable Linux gates remain
+intact; D11 records the later, limited Linux internal-preview acceptance.
 
 `DESKTOP_MACOS_PUBLICATION_ENABLED=true` now admits macOS through the shared cycle.
 The unchanged publisher attached four signed installers, desktop checksums and the
@@ -474,7 +597,7 @@ notification authorization/delivery, interactive TCC, OS-login and ship gates st
 | Native build matrix | All six staging rows passed in final 3.a run 34987193233 | Signed/interactive release gates remain unverified. |
 | macOS update | On/Off to stable build 981 accepted on both CPUs; 82 shutdown tests passed | Evidence predates shared-store cutover; accepted QA gaps remain limitations, not renewed prerequisites. |
 | Windows update path | Simplified with user approval | Manual download + Inno Setup replacement; no WinSparkle/Velopack integration. Verify running-app refusal, safe Quit, signing and native application payloads. Installer-only ARM64 emulation is accepted. |
-| Signing and static hosting | macOS signing migration and internal GitHub hosting complete | Windows signing and Linux signed hosting remain pending. |
+| Signing/hosting | macOS and Linux previews public | Windows signing and signed Linux repositories pending. |
 | macOS public gate | Admitted; internal assets and deployed website verified | Ordinary stable submission retains `store-production`; no reopening of retired QA. |
 | Windows public gate | Pending; ARM64 interactive host unavailable | Both CPUs, per-user install/remove, actual signed manual N→N+1 upgrade, safe Quit, signing/SmartScreen observation and winget external path. Native CI build success alone does not close this gate. |
 | Linux public gate | Pending; private mechanics passed on both CPUs | Public and interactive checks below. |

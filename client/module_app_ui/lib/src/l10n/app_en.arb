@@ -113,8 +113,8 @@
   "@desktopSidebarRefreshSuccess": {"description": "Confirmation after both desktop sidebar inventories refresh."},
   "desktopSidebarRefreshFailed": "Could not refresh projects and sessions",
   "@desktopSidebarRefreshFailed": {"description": "Failure notice when either desktop sidebar inventory could not refresh."},
-  "desktopBridgeTakenOver": "Another bridge currently owns this account connection.",
-  "@desktopBridgeTakenOver": {"description": "Sidebar recovery notice when bridge ownership can be reclaimed."},
+  "desktopBridgeTakenOver": "Another copy of this computer's bridge is running, here or on a cloned machine.",
+  "@desktopBridgeTakenOver": {"description": "Sidebar recovery notice when another copy of this computer's own bridge (a second bridge process here, or a machine cloned from this one sharing its bridge id) holds its connection and can be taken over. Other computers never cause it."},
   "desktopBridgeTakeOver": "Take over",
   "@desktopBridgeTakeOver": {"description": "Action to reclaim local or relay bridge ownership."},
   "desktopBridgeLoginRequired": "Your Sesori account is required before the local bridge can start.",
@@ -267,17 +267,81 @@
   },
   "projectsBridgeOfflineTitle": "Bridge offline",
   "@projectsBridgeOfflineTitle": {
-    "description": "Heading of the bridge-offline Projects screen, under the connection graphic. The bar's bridge line above already names the computer."
+    "description": "Heading of the bridge-offline Projects screen, under the connection graphic, while the offline computer's name is not known."
+  },
+  "projectsBridgeOfflineComputerTitle": "{name} is offline",
+  "@projectsBridgeOfflineComputerTitle": {
+    "description": "Heading of the bridge-offline Projects screen, under the connection graphic, naming the computer the app is pointed at, e.g. 'dev-laptop is offline'.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "dev-laptop"
+      }
+    }
   },
   "projectsBridgeOfflineLastSeen": "Last seen {lastSeen}",
   "@projectsBridgeOfflineLastSeen": {
-    "description": "Quiet line under the 'Bridge offline' heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
+    "description": "Quiet line under the bridge-offline heading saying when the bridge was last seen, e.g. 'Last seen 5h ago'. Omitted when the bridge has never reported a last-seen time. The placeholder is already-formatted text from the app's shared relative-time vocabulary (the same one the project rows use), which is compact for recent instants and becomes a plain date past the relative window.",
     "placeholders": {
       "lastSeen": {
         "type": "String",
         "example": "5h ago"
       }
     }
+  },
+  "projectsBridgeOfflineOtherComputers": "Other computers",
+  "@projectsBridgeOfflineOtherComputers": {
+    "description": "Header of the card on the bridge-offline Projects screen that lists the account's other online computers, each a one-tap switch."
+  },
+  "projectsBridgeOfflineNoOtherComputersOnline": "No other computers online",
+  "@projectsBridgeOfflineNoOtherComputersOnline": {
+    "description": "Line in the 'Other computers' card on the bridge-offline Projects screen when none of the account's other computers is online."
+  },
+  "projectsBridgeOfflineMoreComputers": "{count, plural, =1{+ 1 other} other{+ {count} others}}",
+  "@projectsBridgeOfflineMoreComputers": {
+    "description": "Last row of the 'Other computers' card on the bridge-offline Projects screen when more computers are online than the card lists; it opens the computer menu. The count is how many online computers the card does not list.",
+    "placeholders": {
+      "count": {
+        "type": "int",
+        "example": "3"
+      }
+    }
+  },
+  "computerMenuOnline": "Online",
+  "@computerMenuOnline": {
+    "description": "State line under a computer's name in the computer menu opened from the name under 'Projects', when that computer's bridge is connected."
+  },
+  "computerMenuOffline": "Offline",
+  "@computerMenuOffline": {
+    "description": "State line under a computer's name in the computer menu when that computer's bridge is not connected and has never reported a last-seen time."
+  },
+  "computerMenuOfflineLastSeen": "Offline · last seen {lastSeen}",
+  "@computerMenuOfflineLastSeen": {
+    "description": "State line under a computer's name in the computer menu when that computer's bridge is not connected, e.g. 'Offline · last seen 5h ago'. The placeholder is already-formatted text from the app's shared relative-time vocabulary.",
+    "placeholders": {
+      "lastSeen": {
+        "type": "String",
+        "example": "5h ago"
+      }
+    }
+  },
+  "linkedComputerAlertTitle": "{name} is now linked",
+  "@linkedComputerAlertTitle": {
+    "description": "Popup alert shown while the app is open when a computer is newly linked to the account, e.g. 'workstation is now linked'. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "workstation"
+      }
+    }
+  },
+  "linkedComputerAlertSwitch": "Switch",
+  "@linkedComputerAlertSwitch": {
+    "description": "Action on the 'is now linked' popup alert that switches the app to the newly linked computer."
+  },
+  "computerMenuSwitchHint": "Switch computer",
+  "@computerMenuSwitchHint": {
+    "description": "Accessibility hint on the computer name under 'Projects', which opens the menu for switching to another computer."
   },
   "projectsBridgeOfflineInstallCommands": "Install commands",
   "@projectsBridgeOfflineInstallCommands": {
@@ -294,6 +358,23 @@
   "projectsDesktopStartBridgeInfo": "Start the local bridge to load your projects and sessions in Sesori.",
   "@projectsDesktopStartBridgeInfo": {
     "description": "Desktop-only explanation shown while the local supervised bridge is unavailable."
+  },
+  "projectsDesktopRemoteOfflineInfo": "Start the bridge on that computer to load its projects and sessions here.",
+  "@projectsDesktopRemoteOfflineInfo": {
+    "description": "Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one."
+  },
+  "desktopViewingComputer": "Viewing: {name}",
+  "@desktopViewingComputer": {
+    "description": "Desktop home header naming the other computer whose projects are shown; opens the computer menu.",
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "desktopViewingThisComputer": "Viewing: This computer",
+  "@desktopViewingThisComputer": {
+    "description": "Desktop home header when the projects shown are this computer's own; opens the computer menu."
   },
   "connectionLostTitle": "Connection lost",
   "connectionLostReconnect": "Reconnect",
@@ -469,6 +550,7 @@
   "harnessAuthenticationConflict": "The harness is busy with another management action. Refresh before trying again.",
   "harnessAuthenticationUncertain": "The connection changed before the result could be confirmed. Refresh before trying again.",
   "harnessAuthenticationInvalidChallenge": "The bridge returned an invalid login website. Check the bridge logs for details.",
+  "harnessAuthenticationBrowserBusy": "Finish the current sign-in first, then try again.",
   "harnessAuthenticationBrowserFailed": "The secure website could not be opened. Try again.",
   "harnessAuthenticationRequestFailed": "Check your connection and try again.",
   "harnessAuthenticationPastedCodeInstructions": "Only continue if you started this login. Sesori will sign {harnessName} on the connected computer into your account. Open the sign-in page, verify its address, approve access, then paste the code shown after approval.",
@@ -551,7 +633,6 @@
   "@settingsAppearanceSystem": {
     "description": "Theme option that follows the device appearance setting"
   },
-  "settingsSectionSessions": "Sessions",
   "settingsSectionPreferences": "Preferences",
   "settingsDefaultInputDescription": "Choose how you default talk to Sesori.",
   "settingsDefaultInputTitle": "Default input",
@@ -2138,5 +2219,56 @@
   "bridgeUpdateDesktopStepQuit": "2. Quit Sesori Desktop (closing the window may not quit it).",
   "bridgeUpdateDesktopStepInstall": "3. Install the new version, then open Sesori Desktop again.",
   "@bridgeUpdateDesktopStepInstall": {"description": "Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager."},
-  "bridgeUpdateCopyLink": "Copy link"
+  "bridgeUpdateCopyLink": "Copy link",
+  "mcpTitle": "MCP servers and connectors",
+  "mcpMenuLabel": "MCP",
+  "mcpRefresh": "Refresh",
+  "mcpReadOnly": "Server and tool information",
+  "mcpRefreshing": "Refreshing…",
+  "mcpRefreshUnrecognized": "A newer app is needed to refresh. Showing the last inventory.",
+  "mcpRefreshNotFound": "Inventory could not be found. Showing the last inventory.",
+  "mcpOffline": "Offline. Showing the last inventory.",
+  "mcpRefreshFailed": "Could not refresh. Showing the last inventory.",
+  "mcpLoading": "Loading inventory…",
+  "mcpWaiting": "Waiting for the bridge connection.",
+  "mcpNotFound": "Inventory could not be found. Check that the session still exists and your bridge is up to date.",
+  "mcpReadFailed": "Could not read inventory. Try refreshing.",
+  "mcpUnknownResponse": "Some inventory information requires a newer app.",
+  "mcpUnavailable": "Inventory is unavailable.",
+  "mcpUnsupportedHarness": "This integration does not expose MCP inventory yet.",
+  "mcpUnsupportedScope": "This integration does not expose inventory here. Open MCP from a running session to inspect its servers.",
+  "mcpLiveSessionRequired": "Open a running session to inspect its MCP servers. Reading inventory will not start a session.",
+  "mcpPluginInactive": "This integration is inactive. Enable it in harness settings before reading inventory.",
+  "mcpServers": "Configured servers",
+  "mcpConnectors": "Offered connectors",
+  "mcpUnknown": "Unknown",
+  "mcpOfferAvailable": "Available",
+  "mcpSetupRequired": "Setup required",
+  "mcpEmptyCatalog": "No entries were returned.",
+  "mcpCatalogNotSupported": "This integration does not support this catalog.",
+  "mcpCatalogUnavailable": "This catalog is currently unavailable.",
+  "mcpServerDetails": "Server details",
+  "mcpServerNotFound": "This server is no longer in the inventory.",
+  "mcpConnection": "Connection",
+  "mcpAuthorization": "Authentication",
+  "mcpAuthNotRequired": "Not required",
+  "mcpAuthRequired": "Sign-in required",
+  "mcpAuthenticated": "Authenticated",
+  "mcpOrigin": "Endpoint origin",
+  "mcpConfiguration": "Configuration source",
+  "mcpHarnessScope": "Harness",
+  "mcpProjectScope": "Project",
+  "mcpSessionScope": "Session",
+  "mcpTools": "Discovered tools",
+  "mcpNoTools": "Discovery succeeded with no tools.",
+  "mcpToolsUnavailable": "Tool discovery information is unavailable.",
+  "mcpToolsFailed": "Tool discovery failed.",
+  "mcpConnectionFailed": "Connection failed",
+  "mcpPending": "Pending",
+  "mcpConnecting": "Connecting",
+  "mcpConnected": "Connected",
+  "mcpDisabled": "Disabled",
+  "mcpConfigurationAccess": "Configuration access",
+  "mcpUserManaged": "User managed",
+  "mcpReadOnlyConfiguration": "Read only"
 }

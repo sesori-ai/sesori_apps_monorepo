@@ -139,6 +139,8 @@ class SessionListCubit({
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
             SesoriCatalogImportProgress() ||
+            SesoriMcpInventoryChanged() ||
+            SesoriMcpAuthenticationChanged() ||
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||

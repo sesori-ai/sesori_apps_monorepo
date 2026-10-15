@@ -13,8 +13,11 @@
   pending its ordinary production submission. Stable build 981's authenticated/Off
   acceptance and the 82-test shutdown audit retain their recorded scope; later public
   links do not establish fresh authenticated replacement or shared-store qualification.
-  Windows signing/winget, Linux signed repositories, six-target onboarding and final
-  reconciliation/retirement remain open. Shipping order stays macOS, Windows, Linux.
+  Private Linux signing is delivered in #1941; native run `38372268594` qualified
+  both CPUs and all six signed-package fixtures at `1.9.1+147`. Independent artifact
+  hashes and public-key-pinned checksum signatures passed. Windows signing/winget,
+  Linux signed repositories/shared-cycle publication, six-target onboarding and final
+  reconciliation/retirement remain open. Linux stays ahead of Windows.
 - **Continuation (user-approved 2026-09-15):** start step 2 automatically after the
   plan PR merges, using `sesori-plan-worker`; thereafter keep one series PR open
   and at most one successor step local. Preserve explicit decision and release gates.
@@ -25,8 +28,8 @@
 
 Deliver the existing supervisor + cockpit as signed, installable, updateable desktop
 software on macOS, Windows, and Linux, each natively on x64 and arm64. Release macOS
-first, then Windows, then Linux; both architectures must pass before their platform
-ships. A working CLI target or an emulated run does not prove native desktop support.
+first, then Linux, then Windows under the user's revised priority; both architectures
+must pass before their platform ships. A working CLI target or an emulated run does not prove native desktop support.
 
 This succeeds [desktop-app](../desktop-app/PLAN.md), whose step 22 explicitly named
 this work. The user requested distribution planning before that plan's retirement.
@@ -62,7 +65,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 
 | ID | Decision |
 |---|---|
-| D1 | macOS first, followed by Windows and Linux; independent platform ship gates. |
+| D1 | macOS first, now followed by Linux and then Windows (D10); independent platform ship gates. |
 | D2 | All six native application targets: macOS, Windows, Linux × x64, arm64. User-approved exception (2026-09-15): the Windows ARM64 installer launcher may use emulation; installed GUI/helper/native libraries remain ARM64. No other silent reduction. |
 | D3 | macOS: direct Developer ID distribution, hardened runtime, notarization, stapled DMGs, manual signed-package updates (D6 fallback). App Store sandboxing does not fit the current host-tool model. |
 | D4 | Windows: direct download first, signed per-user Inno Setup EXE, manual Download update button, and winget discovery. No embedded Windows updater or automatic updates. Store/MSIX is not a launch requirement. |
@@ -71,6 +74,9 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
 | D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
 | D9 | 2026-09-26: retire Gate C with accepted QA gaps; admit macOS publication through the shared cycle. |
+| D10 | User-directed order: Linux before Windows; private signing now, public repositories separately. |
+| D11 | Public Linux internal previews approved with stated desktop QA gaps; stable/repository gates stay closed. |
+| D12 | Sign Linux Bridge CLI archives with OpenPGP too; keep CLI and desktop artifacts distinct. |
 
 ### User-retired QA gate and macOS admission — 2026-09-26
 
@@ -82,7 +88,8 @@ L3 sweep. Keep the configured macOS 12 minimum without claiming it was executed.
 Enable the existing `DESKTOP_MACOS_PUBLICATION_ENABLED` admission and continue
 macOS public distribution. Existing `store-production`, native signing/notarization,
 immutable asset/public-hash verification and private-evidence exclusion remain intact.
-Windows/Linux publication and their distinct trust requirements are not admitted.
+Windows and stable Linux publication remain unadmitted. D11 separately admits Linux
+internal previews with the listed desktop QA gaps; APT/RPM repository hosting stays gated.
 No additional credentials, scheduler, mutable owner or application state is needed.
 
 ### Proposed implementation defaults
@@ -412,10 +419,92 @@ history and keeps lifecycle changes out of the package-signing review.
 | 6 | ⚙️ [desktop-distribution] Prepare isolated desktop release channels [step 8/14] | Private preparation. |
 | 7 | 🚧 [desktop-distribution] Qualify private per-user Windows installers [step 9/14] | After 3.b and Windows qualification. Independent private unsigned x64/arm64 installers, complete helper bundle, shortcuts, mutex refusal and isolated install/uninstall fixtures. Signing, timestamp/publisher verification and public delivery remain gated, including the prior macOS ship gate. High installer risk; no shared CLI data deletion or database change. |
 | 8 | ⚙️ [desktop-distribution] Deliver manual Windows updates and winget discovery [step 10/14] | After 6 and 7. Settings download action, signed N→N+1 manual replacement, channel-specific downloads, winget manifests and Windows ship gate. Medium integration risk; no embedded updater, forced helper shutdown or automatic restart. No database change. |
-| 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | Independent private preparation after native bundle qualification. Four unsigned native packages, generated dependency manifests, desktop integration and isolated package-manager fixtures. Signing, public APT/RPM repositories and shipping remain blocked behind prior platform gates. No updater, home cleanup or database change. |
+| 9 | ⚙️ [desktop-distribution] Qualify private native DEB and RPM packages [step 11/14] | See below. |
 | 10 | 🌿 [desktop-distribution] Offer shipped desktop downloads during onboarding [step 12/14] | After all platform gates. Shared mobile installation guidance and published links, preserve CLI alternative and truthful platform/CPU choices. Low/medium onboarding regression risk; focused UI/link tests and existing analytics assessment. New installation choice, no database change. |
 | 11 | 🌿 Private regression reconciliation (13/14) | Scope and exact PR title below. |
 | 12 | ⚙️ Release verification and retirement (14/14) | Scope and exact PR title below. |
+
+**Step 9 signing continuation:**
+`🚧 [desktop-distribution] Sign private native Linux packages [step 11.a/14]`.
+Extend the existing main-only manual Linux producer with native RPM signatures and
+signed DEB/RPM checksums. Use one protected `linux-signing` environment and an isolated
+GnuPG home; the user retains the certification primary key offline. Install tools
+before exposing the signing subkey, pin the full fingerprint and keep secrets out of
+logs/artifacts/child environments. Disposable-key CI tests cover real signatures and
+tamper/failure refusal. Native qualification follows merge, not PR-secret exposure.
+No application state/DI/wire/database change or architecture review; this is signing
+and CI tooling. Complexity budget: temporary key/passphrase files and one public
+signing report, no persistent release owner, service, updater or cloud provisioning.
+Estimate 700–1,000 authored lines. Retire unsigned-only upload/fixture assumptions;
+keep unsigned producer evidence distinct from the signed RPM's final digest.
+Original step IDs/ordinals remain stable; D10 changes execution priority, not historical
+PR titles or the 14-ordinal total. #1941 merged as
+`de53cafb2483d76e9350a28d014b4d3906ee0fe0` on 2026-10-13. The signed native evidence
+is recorded by `🌱 [desktop-distribution] Record signed Linux qualification [step 11.b/14]`;
+see [step 9](steps/step-09.md) for the exact run, package hashes and proof boundary.
+Shared internal delivery is recorded below and preserves existing core release authority.
+Signed public repository delivery remains separately gated. Qualification build 147 uses the manual
+workflow's number, not the shared bridge/mobile build sequence. Public integration
+must resolve the aligned shared source/build/channel and retain its validation metadata.
+On 2026-10-13 the user explicitly authorized public opt-in Linux internal desktop
+previews with GUI/login/keyring and real version-upgrade checks still unverified
+(D11), plus OpenPGP signatures for the public Linux Bridge CLI archives (D12).
+This accepts those gaps for internal previews only, not stable Linux or APT/RPM
+repository admission. No cloud provisioning is authorized. Build 147 remains private;
+never relabel it as an existing shared release.
+
+Bounded slices, keeping the same signing key, shared cycle and ordinal total:
+
+- `🚧 [desktop-distribution] Sign Linux Bridge CLI archives [step 11.c/14]`:
+  share the existing isolated signing/key-handling mechanism with this second real
+  consumer; publish detached signatures without replacing existing archive bytes or
+  weakening macOS signing. Document manual verification without implying existing
+  CLI updaters already enforce OpenPGP. About 1,000 authored lines including shared
+  key/network helper moves, fixture coverage and the existing-release bootstrap.
+  L3 proof: protected production-key signing of both public archive bytes, independently
+  pinned public verification and unchanged release/archives/checksums; no store dispatch
+  for proof. Real disposable-key GPG/RPM/GPGV/DNF fixtures remain the PR CI gate.
+  Merged as #1946 (`a3457903cf50155345e7afd293e7ec564d0e3238`); protected run
+  `38412243041` signed existing public `v1.9.0` archives. Independent pinned verification
+  and unchanged release/tag/Latest/archive/checksum state passed; [step 9](steps/step-09.md)
+  records exact provenance and hashes.
+- `🚧 [desktop-distribution] Publish Linux desktop internal previews [step 11.d/14]`:
+  supply aligned source/build/channel to both native builders; validate signed
+  artifacts and attach to the existing shared internal release. Use a Linux-specific
+  completion marker uploaded last, independent of macOS completion. Retain the newest
+  completed preview per platform; desktop failures must not block core finalization.
+  Stable Linux stays gated. Bootstrap only against matching source/build of an existing
+  shared release, never by forcing store submissions. Estimate 800–1,200 authored lines.
+  Reuse native qualification rather than adding builders: source-specific SDK/icon/plugins,
+  workflow-owned signing/fixtures, and separate Linux/macOS call concurrency. Keep each
+  CPU's signed checksum pair intact; namespace the desktop public key separately from
+  mutable core CLI assets. Validate the actual shared tag's source before attachment.
+  Remove Mac-only retention assumptions. No application state or new admission flag.
+  Merged as #1951 (`69b3c4a329bb52f51fe5b07da9801346928268e2`). Native producer
+  `38438783418` and publisher `38443588001` completed existing shared internal build
+  `1013`; independent public signature/hash verification and unchanged core/macOS/tag/Latest
+  state passed. Exact provenance and remaining limits are in [step 9](steps/step-09.md).
+- `⚙️ [desktop-distribution] Track Linux previews on the website [step 11.e/14]`:
+  in `sesori-ai/landingpage`, discover completed public Linux internal packages from
+  the same cached release lookup, keep stable/repository states honest, and fix spacing
+  below the preview CTA. Preserve installed-app anchors. Verify fixture SSR and actual
+  desktop/mobile browser geometry; include synthetic before/after media. Delivered as
+  `sesori-ai/landingpage#112`: 649 authored lines in 12 files, squash
+  `77772b9d2c7ce083183ff275b37d8f864cf1e237`. Normal deployment was independently
+  verified on 2026-10-13 at 19:20:22.227 UTC: four genuine Linux `1.9.1+1013` downloads,
+  matching verification metadata, all 13 anchors, 32px desktop/mobile spacing and no
+  stable/repository leakage. No private CI links or hardcoded preview version.
+- `🌱 [desktop-distribution] Record public Linux preview acceptance [step 11.f/14]`:
+  bounded monorepo documentation record of 11.d/11.e execution, exact sources/hashes,
+  native package fixtures, public signatures, unchanged core/macOS release state, and
+  deployed website acceptance. No production or database change; approximately
+  250–400 authored lines. Preserve GUI/upgrade/stable/repository limitations and keep
+  the original 14-ordinal plan active. No new qualification or deployment is needed.
+
+Complexity budget: no new persistent pointer, scheduler, release service, application
+state or updater. Reuse the existing signing owner and one website cache; immutable
+release assets plus per-platform completion markers own availability. Remove replaced
+Mac-only wording/retention assumptions and duplicated signing setup as each slice lands.
 
 Step 6 delivered read-only private metadata/checksums in PR #1511 without publication.
 Credential migration is complete, but parent and native/public ship gates still apply.

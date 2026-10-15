@@ -182,7 +182,11 @@ void main() {
     });
     expect(
       (cubit.state as PluginManagementReady).authentication,
-      PluginAuthenticationPresentationState.browserLaunchFailed(pluginId: "codex", challenge: browserChallenge),
+      PluginAuthenticationPresentationState.browserLaunchFailed(
+        reason: PluginAuthenticationBrowserRetryReason.launchFailed,
+        pluginId: "codex",
+        challenge: browserChallenge,
+      ),
     );
     await cubit.launchAuthenticationBrowser();
     verify(() => service.retryBrowserAuthentication(pluginId: "codex")).called(1);

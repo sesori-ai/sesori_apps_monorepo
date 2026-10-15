@@ -28,6 +28,40 @@ class const DesktopHomePane({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    return MultiBlocProvider(
+      providers: [
+        // Not lazy: besides naming the computer, it fetches the account's
+        // computers whenever the relay is reachable. The header relies on that
+        // eager fetch, as nothing else on the home loads the list.
+        BlocProvider(
+          lazy: false,
+          create: (_) => BridgeIdentityCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => ComputerSwitcherCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+          ),
+        ),
+      ],
+      // The header stays put while the body below it changes state, so it
+      // never enters again with each load.
+      child: Column(
+        children: [
+          const _DesktopComputerHeader(onSwitchComputer: _switchComputer),
+          Expanded(child: Builder(builder: _buildBody)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildBody(BuildContext context) {
     final state = context.watch<ProjectListCubit>().state;
     if (state case ProjectListLoaded(:final projects) when projects.isNotEmpty) {
       return DesktopHomeStart(
@@ -59,21 +93,7 @@ class const DesktopHomePane({
                   retryLabel: context.loc.projectListRetry,
                   onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
                 ),
-                ProjectListBridgeDisconnected() => BlocProvider(
-                  create: (_) => BridgeIdentityCubit(
-                    registeredBridgesService: getIt<RegisteredBridgesService>(),
-                    connectionService: getIt<ConnectionService>(),
-                  ),
-                  child: Builder(
-                    builder: (context) => DesktopBridgeRecoveryView(
-                      bridge: switch (context.watch<BridgeIdentityCubit>().state) {
-                        BridgeIdentityNamed(:final bridge) => bridge,
-                        BridgeIdentityPending() || BridgeIdentityUnnamed() => null,
-                      },
-                      onStartBridge: context.read<BridgeControlCubit>().recoverConnection,
-                    ),
-                  ),
-                ),
+                ProjectListBridgeDisconnected() => _disconnectedView(context: context),
                 ProjectListLoaded() => _DesktopHomeEmptyView(
                   onAddProject: () => _showAddProject(context: context, onOpenProject: onOpenProject),
                 ),
@@ -84,6 +104,26 @@ class const DesktopHomePane({
       ),
     );
   }
+
+  /// Another computer's bridge is out of this desktop's reach, so its
+  /// recovery is switching away; only this computer's own offers supervised
+  /// start.
+  static Widget _disconnectedView({required BuildContext context}) {
+    final bridge = switch (context.watch<BridgeIdentityCubit>().state) {
+      BridgeIdentityNamed(:final bridge) => bridge,
+      BridgeIdentityPending() || BridgeIdentityUnnamed() => null,
+    };
+    if (context.select((ComputerSwitcherCubit cubit) => cubit.state.viewsAnotherComputer)) {
+      return DesktopRemoteComputerOfflineView(bridge: bridge, onSwitchComputer: _switchComputer);
+    }
+    return DesktopBridgeRecoveryView(
+      bridge: bridge,
+      onStartBridge: context.read<BridgeControlCubit>().recoverConnection,
+    );
+  }
+
+  static void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
+      unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
 
   static void _showAddProject({required BuildContext context, required ProjectOpenedCallback onOpenProject}) {
     unawaited(
@@ -97,7 +137,127 @@ class const DesktopHomePane({
   }
 }
 
-/// Desktop-owned supervised recovery shown for both unregistered and offline bridges.
+/// "Viewing: …" above the home: which computer's projects the desktop shows,
+/// and the menu to switch. Hidden while the account's only computer is this
+/// one, where there is nothing to tell apart or switch to; it grows into
+/// place when the list says otherwise.
+class const _DesktopComputerHeader({required final ComputerSwitchCallback onSwitchComputer}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final state = context.watch<ComputerSwitcherCubit>().state;
+    final current = state.computers.where((computer) => computer.id == state.currentId).firstOrNull;
+    final remote = state.viewsAnotherComputer;
+    return AnimatedSize(
+      duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      alignment: AlignmentDirectional.topStart,
+      child: current == null || !(remote || state.computers.length > 1)
+          ? const SizedBox(width: double.infinity)
+          : Padding(
+              padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, PregoSpacing.md, PregoSpacing.lg, 0),
+              child: Align(
+                alignment: AlignmentDirectional.centerStart,
+                child: ComputerMenu(
+                  onSelect: ({required bridgeId}) =>
+                      onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+                  triggerBuilder: (context, toggle) => _ViewingButton(
+                    label: remote
+                        ? context.loc.desktopViewingComputer(current.name)
+                        : context.loc.desktopViewingThisComputer,
+                    icon: ComputerMenu.platformIcon(platform: current.platform),
+                    onPressed: toggle,
+                  ),
+                ),
+              ),
+            ),
+    );
+  }
+}
+
+class const _ViewingButton({
+  required final String label,
+  required final IconData icon,
+  required final VoidCallback onPressed,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final color = prego.colors.textSecondary;
+    return Semantics(
+      hint: context.loc.computerMenuSwitchHint,
+      child: InkWell(
+        key: const Key("desktop-computer-header"),
+        mouseCursor: WidgetStateMouseCursor.clickable,
+        borderRadius: BorderRadius.circular(PregoRadius.sm),
+        onTap: onPressed,
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm, vertical: PregoSpacing.xs),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            spacing: PregoSpacing.xs,
+            children: [
+              Icon(icon, size: PregoIconSize.md, color: color),
+              Flexible(
+                child: Text(
+                  label,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: prego.textTheme.textSm.medium.copyWith(color: color),
+                ),
+              ),
+              Icon(TablerRegular.chevron_down, size: PregoIconSize.sm, color: prego.colors.textTertiary),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// The offline body for another computer, as the phone shows it: the computer
+/// by name and when it was last seen, then the account's other online
+/// computers to switch to. Its bridge runs elsewhere, so there is nothing to
+/// start from here.
+class const DesktopRemoteComputerOfflineView({
+  super.key,
+
+  /// Null while the account's list has not named it yet.
+  required final BridgeSummary? bridge,
+  required final ComputerSwitchCallback onSwitchComputer,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 420),
+        child: Padding(
+          padding: const EdgeInsets.all(PregoSpacing.x2l),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // An illustration, not a glyph: no icon token applies.
+              Icon(TablerRegular.device_desktop_off, size: 48, color: prego.colors.textTertiary),
+              const SizedBox(height: PregoSpacing.lg),
+              ComputerOfflineHeading(bridge: bridge),
+              const SizedBox(height: PregoSpacing.xl),
+              Text(
+                context.loc.projectsDesktopRemoteOfflineInfo,
+                textAlign: TextAlign.center,
+                style: prego.textTheme.textSm.regular,
+              ),
+              OtherComputersCard(onSwitchComputer: onSwitchComputer),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+/// Desktop-owned supervised recovery for this computer's own bridge, whether
+/// it never registered or is offline.
 class const DesktopBridgeRecoveryView({
   super.key,
   required final BridgeSummary? bridge,
@@ -244,8 +404,9 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
         onOpenHarnessSettings: widget.onOpenHarnessSettings,
         onSessionCreated: ({required session}) =>
             widget.onOpenSession(context: context, project: picked, displayName: displayName, session: session),
-        composerScopeBuilder: ({required child}) =>
-            DesktopComposerPresentationScope(child: DesktopVoiceInputScope(projectId: picked.id, child: child)),
+        composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(
+          child: DesktopVoiceInputScope(projectId: picked.id, child: child),
+        ),
         // The desktop root owns its single connection banner.
         banner: null,
         pageChrome: NewSessionPageChrome(

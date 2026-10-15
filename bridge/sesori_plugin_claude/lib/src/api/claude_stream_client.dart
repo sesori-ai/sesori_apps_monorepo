@@ -6,6 +6,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "claude_launch_spec.dart";
 import "claude_process_factory.dart";
+import "models/claude_mcp_status_dto.dart";
 import "models/claude_stream_message.dart";
 
 /// A control request that the CLI answered with a failure, or that could not be
@@ -14,6 +15,18 @@ class ClaudeControlException({required final String subtype, required final Stri
   @override
   String toString() => "ClaudeControlException($subtype, $message)";
 }
+
+/// Native status decoding failed; presentation excludes the native payload.
+sealed class const ClaudeMcpStatusDecodeException() implements Exception {
+  @override
+  String toString() => "Claude MCP status could not be decoded";
+}
+
+final class const ClaudeMcpStatusFormatException({required final FormatException innerError})
+    extends ClaudeMcpStatusDecodeException;
+
+final class const ClaudeMcpStatusTypeException({required final TypeError innerError})
+    extends ClaudeMcpStatusDecodeException;
 
 /// Speaks the stream-json protocol to exactly one `claude` process.
 ///
@@ -31,6 +44,7 @@ class ClaudeStreamClient({
   final Duration _controlTimeout = const Duration(seconds: 60),
   final String _logTag = "claude",
 }) {
+  String get workingDirectory => _launchSpec.workingDirectory;
   ClaudeProcessHandle? _process;
   StreamSubscription<String>? _stdoutSubscription;
   StreamSubscription<String>? _stderrSubscription;
@@ -182,6 +196,28 @@ class ClaudeStreamClient({
     }
   }
 
+  /// Inspects this resident process without sending a turn or changing configuration.
+  Future<ClaudeMcpStatusDto> getMcpStatus() async {
+    final response = await sendControlRequest(subtype: "mcp_status", params: const {});
+    try {
+      return ClaudeMcpStatusDto.fromJson(response);
+    } on FormatException catch (error, stackTrace) {
+      Error.throwWithStackTrace(ClaudeMcpStatusFormatException(innerError: error), stackTrace);
+    // Generated DTO casts can fail when the native JSON shape changes.
+    // ignore: avoid_catching_errors
+    } on TypeError catch (error, stackTrace) {
+      Error.throwWithStackTrace(ClaudeMcpStatusTypeException(innerError: error), stackTrace);
+    }
+  }
+
+  Future<void> reconnectMcpServer({required String serverName}) async {
+    await sendControlRequest(subtype: "mcp_reconnect", params: {"serverName": serverName});
+  }
+
+  Future<void> setMcpServerEnabled({required String serverName, required bool enabled}) async {
+    await sendControlRequest(subtype: "mcp_toggle", params: {"serverName": serverName, "enabled": enabled});
+  }
+
   /// Sends a control request and awaits its response payload.
   ///
   /// Throws [ClaudeControlException] when the CLI answers with a failure, when
@@ -286,6 +322,7 @@ class ClaudeStreamClient({
               subtype: "<response>",
               message: message.error ?? "control request failed",
             ),
+            StackTrace.current,
           );
         }
       case ClaudeUnknownMessage(:final type, :final subtype):
@@ -338,7 +375,7 @@ class ClaudeStreamClient({
     _disposed = true;
     await _teardownConnection(
       gracefulTimeout: gracefulTimeout,
-      pendingError: StateError("ClaudeStreamClient disposed"),
+      pendingError: ClaudeControlException(subtype: "<process>", message: "ClaudeStreamClient disposed"),
     );
     try {
       await _messages.close();

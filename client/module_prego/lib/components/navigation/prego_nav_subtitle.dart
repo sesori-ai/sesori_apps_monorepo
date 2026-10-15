@@ -26,6 +26,10 @@ enum PregoNavStatus() {
 /// hand the finished widget to [PregoGlassScaffold.subtitle] /
 /// [PregoTopNavigation.subtitle] instead of threading row parts through the
 /// bar's API.
+///
+/// With an [action] the row is a control: a trailing chevron says it opens
+/// something (the Projects page's computer menu), and the whole row is the tap
+/// target.
 class const PregoNavSubtitle({
   super.key,
 
@@ -38,6 +42,9 @@ class const PregoNavSubtitle({
 
   /// Status dot before the row; absent when `null`.
   final PregoNavStatus? status,
+
+  /// Makes the row a button with a trailing chevron; a plain label when `null`.
+  final PregoNavSubtitleAction? action,
 }) extends StatelessWidget {
   /// Status dot diameter — the Figma online-indicator size.
   static const double _dotSize = 6;
@@ -50,9 +57,10 @@ class const PregoNavSubtitle({
     final prego = context.prego;
     final status = this.status;
     final icon = this.icon;
+    final action = this.action;
 
     // Screen readers already get the whole text from the label itself.
-    return Tooltip(
+    final row = Tooltip(
       message: text,
       excludeFromSemantics: true,
       child: Row(
@@ -83,11 +91,24 @@ class const PregoNavSubtitle({
               ellipsis: PregoEllipsis.middle,
             ),
           ),
+          if (action != null) Icon(TablerRegular.chevron_down, size: _iconSize, color: prego.colors.textTertiary),
         ],
       ),
     );
+    if (action == null) return row;
+    // Its own node, so the button never merges with the title above it.
+    return Semantics(
+      container: true,
+      button: true,
+      hint: action.semanticsHint,
+      child: GestureDetector(behavior: HitTestBehavior.opaque, onTap: action.onTap, child: row),
+    );
   }
 }
+
+/// What a tappable [PregoNavSubtitle] does, and how a screen reader describes
+/// it beyond the row's own text.
+class const PregoNavSubtitleAction({required final VoidCallback onTap, required final String semanticsHint});
 
 /// The subtitle slot's loading placeholder: a single shimmering skeleton pill
 /// standing in for a [PregoNavSubtitle] whose data is still being fetched

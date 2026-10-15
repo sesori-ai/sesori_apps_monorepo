@@ -4,6 +4,15 @@ on:
   push:
     branches: [main]
     paths:
+      - '.github/workflows/desktop-linux-release.yml'
+      - '.github/scripts/publish_desktop_linux.py'
+      - '.github/scripts/test_publish_desktop_linux.py'
+      - '.github/scripts/github_release_assets.py'
+      - '.github/scripts/linux_signing.py'
+      - '.github/scripts/sign_bridge_linux.py'
+      - '.github/scripts/publish_bridge_linux_signatures.py'
+      - '.github/scripts/test_bridge_linux_signatures.py'
+      - '.github/workflows/sign-linux-release.yml'
       - '.github/workflows/bridge-npm-publish.yml'
       - '.github/scripts/test_bridge_build_workflow.py'
       - '.github/workflows/verify-macos-signing.yml'
@@ -29,6 +38,15 @@ on:
       - '.github/scripts/test_publish_desktop_release.py'
   pull_request:
     paths:
+      - '.github/workflows/desktop-linux-release.yml'
+      - '.github/scripts/publish_desktop_linux.py'
+      - '.github/scripts/test_publish_desktop_linux.py'
+      - '.github/scripts/github_release_assets.py'
+      - '.github/scripts/linux_signing.py'
+      - '.github/scripts/sign_bridge_linux.py'
+      - '.github/scripts/publish_bridge_linux_signatures.py'
+      - '.github/scripts/test_bridge_linux_signatures.py'
+      - '.github/workflows/sign-linux-release.yml'
       - '.github/workflows/bridge-npm-publish.yml'
       - '.github/scripts/test_bridge_build_workflow.py'
       - '.github/workflows/verify-macos-signing.yml'
@@ -67,12 +85,17 @@ jobs:
           python-version: '3.13'
       - name: Test bridge build workflow contracts
         run: python -m unittest discover -s .github/scripts -p 'test_bridge_build_workflow.py'
+      - name: Test Linux CLI signing and existing-release publication contracts
+        run: python -m unittest discover -s .github/scripts -p 'test_bridge_linux_signatures.py'
       - name: Test automatic macOS signing workflow contracts
         run: python -m unittest discover -s .github/scripts -p 'test_macos_signing_workflows.py'
       - name: Test desktop release preparation and publication boundaries
+        env:
+          SESORI_LINUX_SIGNING_TEST_REQUIRED: '1'
         run: |
           python -m unittest discover -s .github/scripts -p 'test_prepare_desktop_release.py'
           python -m unittest discover -s .github/scripts -p 'test_publish_desktop_release.py'
+          python -m unittest discover -s .github/scripts -p 'test_publish_desktop_linux.py'
       - name: Lint release gate
         run: shellcheck .github/scripts/check_internal_release.sh
       - name: Test automatic release decisions and attempt recording

@@ -3,6 +3,7 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
@@ -536,6 +537,12 @@ ShellRoute buildHarnessSettingsRoute() {
               );
               return HarnessSettingsDetailView(
                 pluginId: route.pluginId,
+                onShowMcp: () => showMcpInventory(
+                  context: context,
+                  request: McpInventoryRequest(pluginId: route.pluginId, scope: const McpHarnessScope()),
+                  createService: getIt.call<McpService>,
+                  mutationsAllowed: true,
+                ),
                 chrome: _harnessChrome(presentation: route.presentation),
                 connectionBanner: ConnectionBanner.maybeFor(context),
                 onBack: () => context.pop(),

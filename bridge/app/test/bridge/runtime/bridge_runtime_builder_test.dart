@@ -149,6 +149,7 @@ _createPushSubsystemForTest() {
     rateLimiter: rateLimiter,
     tracker: tracker,
     contentBuilder: const PushNotificationContentBuilder(),
+    bridgeIdProvider: FakeBridgeIdProvider("br_test"),
   );
   final telemetryBuilder = PushMaintenanceTelemetryBuilder(
     completionNotifier: completionNotifier,

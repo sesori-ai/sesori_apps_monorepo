@@ -662,6 +662,8 @@ jobs:
             --output notes.md
           cat notes.md
 
+      # Preserve core's existing release/rebuild authority. Signatures follow the
+      # archive set; the later read-only check verifies delivery, not promotion policy.
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -675,6 +677,15 @@ jobs:
             artifacts/*.tar.gz
             artifacts/*.zip
             artifacts/checksums.txt
+            artifacts/*.asc
+
+      - name: Verify public Linux archive signatures
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_TAG: v${{ needs.resolve.outputs.version }}
+        run: |
+          python3 .github/scripts/publish_bridge_linux_signatures.py verify \
+            --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --root artifacts
 
       # Releases created with GITHUB_TOKEN don't fire the `release: released`
       # event, so kick off npm publishing directly when the release went live.

@@ -11,12 +11,28 @@ packaging capability does not imply public downloads or an updater have shipped.
 - Apple CI selects Xcode through `.github/actions/setup-xcode`: stable 27.0 on the
   ARM64 `xcode-27` hosted image and 26.6 on `macos-26-intel`. GitHub's Xcode 27 image
   is in public preview; `macos-latest` does not supply this toolchain. Xcode 27 requires
-  an Apple silicon host, not an ARM64-only app target: preserve the existing deployment
-  targets, universal GUI and package-native helper checks. Missing pinned Xcode must
-  fail setup rather than silently use another installed compiler. The same selection
-  applies to desktop CI/probes, reusable bridge builds and iOS TestFlight builds.
-- Build from committed source with the pinned native SDK. Reject a nonempty
-  build-recorded source patch before supplying signing credentials. Preserve framework
+  an Apple silicon host, not an ARM64-only app target. Preserve the existing deployment
+  targets and package-native helper checks. Missing pinned Xcode must fail setup rather
+  than silently use another installed compiler. The same selection applies to desktop
+  CI/probes, reusable bridge builds and iOS TestFlight builds.
+- ARM `xcode-27` jobs compile both x64 and arm64 GUI/platform-probe payloads, selecting
+  only the target CPU through each Flutter build's Xcode `ARCHS` override. Native build
+  inspection requires single-CPU app and Dart AOT framework binaries; prebuilt frameworks
+  may remain universal. Bridge helper compilation, signing, notarization, extracted-helper
+  E2E and installed probes stay on the package's native CPU. No Rosetta is used.
+- Transfer same-run GUI/probe payloads in tar archives to preserve framework links and
+  executable modes. Native assembly requires the exact source/version/build/OS/CPU/channel
+  defines and a clean GUI source patch before building the helper or supplying signing
+  credentials. Record ARM compiler CPU/toolchain separately from the target/native-helper
+  host; GUI header inspection never executes cross-target code. GUI artifacts are not
+  complete packages and have no signing environment or signing-secret inputs.
+- Keep SDK bootstrap, locked dependency resolution, GUI, probe and native assembly costs
+  separately visible. Windows/Linux native qualification must not wait on macOS GUI jobs.
+  Preflight and existing-package replay must still run when the GUI producer is skipped.
+- Build from committed source with its pinned SDK. Workflow-owned staging tools use the
+  selected product's explicit package configuration and source root, including exact older
+  main-ancestor rebuilds; never silently compile the workflow checkout instead. Reject a
+  nonempty build-recorded source patch before supplying signing credentials. Preserve framework
   symlinks, native CPU support and the complete `Contents/Helpers/bridge/bin`–`lib`
   relationship. The packaged identity continues to control helper admission from
   `Contents/Resources/desktop-bundle.json`; keep JSON out of the code-only Helpers
@@ -47,8 +63,8 @@ packaging capability does not imply public downloads or an updater have shipped.
   from `main`; accept package sources only from `origin/main` or an exact pinned
   retained baseline. Verify clean producers, notarization receipts, exact DMG digests,
   Developer ID identity, tickets and Gatekeeper before
-  installation. The universal GUI must include the selected CPU while the bundled
-  helper must be exactly package-native. On a fresh host, install from the prior DMG,
+  installation. The GUI must support the selected CPU while the bundled helper must
+  be exactly package-native. On a fresh host, install from the prior DMG,
   allow a bounded visible-window readiness interval while the process remains alive,
   require AXPress capability, validate and click the small process-owned menu-bar frame,
   then use system-wide z-order hit testing beside it. Require exact PID ownership and frame anchoring, then
@@ -82,6 +98,11 @@ restoration or authorization; those require new source-bound native evidence.
 | L3 | Client end to end; installed macOS x64 + arm64; representative production plugin | Download and install the signed app into Applications without a security bypass. Verify actual GUI startup, browser login/return, token write/read/relaunch restoration, helper control, runtime launch and user-approved filesystem/TCC behavior. |
 | L4 | Packaged/client end to end; both Mac CPUs | Private helper-Off replacement plus the full coverage below. |
 | L5 | Packaged/client end to end; both Mac CPUs | Include the declared minimum OS and clean-host cases. Combine with the distribution plan's full platform/public ship gate; missing hosts or credentials remain Blocked, not Pass. |
+
+L1 also covers GUI handoff identity/channel/source-patch refusal, explicit product-root
+staging, ARM compiler versus target evidence, native-helper admission, and workflow
+ordering/credential boundaries. Credential-free native CI checks both assembled Mac
+CPUs and relocated helpers; it does not substitute for the signed L2 installed probes.
 
 At L4, install strictly increasing signed DMGs, exercise real tray Quit, reject
 relaunch/orphans and preserve bounded desktop/shared-state and login-registration

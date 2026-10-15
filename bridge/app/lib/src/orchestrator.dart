@@ -69,6 +69,7 @@ import "repositories/filesystem_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
+import "repositories/mcp_repository.dart";
 import "repositories/models/normalized_bridge_event.dart";
 import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
@@ -108,6 +109,7 @@ import "routing/get_catalog_import_statuses_handler.dart";
 import "routing/get_child_sessions_handler.dart";
 import "routing/get_commands_handler.dart";
 import "routing/get_current_project_handler.dart";
+import "routing/get_mcp_authentication_handler.dart";
 import "routing/get_plugin_management_handler.dart";
 import "routing/get_plugin_setup_handler.dart";
 import "routing/get_plugins_handler.dart";
@@ -136,6 +138,11 @@ import "routing/patch_bridge_settings_handler.dart";
 import "routing/patch_plugin_idle_timeout_handler.dart";
 import "routing/plugin_authentication_handlers.dart";
 import "routing/post_agents_handler.dart";
+import "routing/post_mcp_authentication_cancel_handler.dart";
+import "routing/post_mcp_authentication_continue_handler.dart";
+import "routing/post_mcp_authentication_handler.dart";
+import "routing/post_mcp_entry_action_handler.dart";
+import "routing/post_mcp_inventory_handler.dart";
 import "routing/post_plugin_lifecycle_command_handler.dart";
 import "routing/post_session_options_handler.dart";
 import "routing/reject_question_handler.dart";
@@ -163,6 +170,8 @@ import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
 import "services/current_project_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
+import "services/mcp_authentication_service.dart";
+import "services/mcp_service.dart";
 import "services/pending_interaction_service.dart";
 import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
@@ -369,6 +378,7 @@ class Orchestrator({
       rateLimiter: pushRateLimiter,
       tracker: pushTracker,
       contentBuilder: const PushNotificationContentBuilder(),
+      bridgeIdProvider: _bridgeRegistrationService,
     );
     const pushContentBuilder = PushNotificationContentBuilder();
     final completionListener = CompletionPushListener(
@@ -458,6 +468,13 @@ class Orchestrator({
       ),
       now: () => DateTime.now().millisecondsSinceEpoch,
     );
+    final mcpRepository = McpRepository(
+      runtime: _pluginRuntime,
+      sessionDao: _database.sessionDao,
+      projectsDao: _database.projectsDao,
+    );
+    final mcpAuthenticationService = McpAuthenticationService(repository: mcpRepository);
+    final mcpService = McpService(repository: mcpRepository, authenticationService: mcpAuthenticationService);
     final pendingInteractionSupport = PendingInteractionSupport(sessionDao: _database.sessionDao);
     final permissionRepository = PermissionRepository(
       runtime: _pluginRuntime,
@@ -683,6 +700,12 @@ class Orchestrator({
           yoloSettingsService: yoloSettingsService,
           pluginWarmupSettingsService: pluginWarmupSettingsService,
         ),
+        PostMcpInventoryHandler(mcpRepository: mcpRepository),
+        PostMcpEntryActionHandler(mcpService: mcpService),
+        GetMcpAuthenticationHandler(service: mcpAuthenticationService),
+        PostMcpAuthenticationHandler(service: mcpAuthenticationService),
+        PostMcpAuthenticationContinueHandler(service: mcpAuthenticationService),
+        PostMcpAuthenticationCancelHandler(service: mcpAuthenticationService),
         PostPluginLifecycleCommandHandler(lifecycleService: _pluginLifecycleService),
         GetPluginSetupHandler(lifecycleService: _pluginLifecycleService),
         GetPluginsHandler(lifecycleService: _pluginLifecycleService, bridgeIdProvider: _bridgeRegistrationService),
@@ -791,6 +814,8 @@ class Orchestrator({
       pluginManagementSnapshotTokens: _pluginLifecycleService.managementSnapshotTokens,
       pluginInstallProgress: _pluginLifecycleService.installProgress,
       pluginAuthenticationProgress: _pluginLifecycleService.authenticationProgress,
+      mcpService: mcpService,
+      mcpAuthenticationService: mcpAuthenticationService,
       localWireEventsController: localWireEventsController,
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
@@ -905,6 +930,8 @@ class OrchestratorSession._({
   required final SessionPromptService _sessionPromptService,
   required final SessionContinuationService _sessionContinuationService,
   required final SessionContinuationTimerListener _sessionContinuationTimer,
+  required final McpService _mcpService,
+  required final McpAuthenticationService _mcpAuthenticationService,
   required Stream<CatalogImportProgress> catalogImportProgress,
   required Stream<SessionOptionsCacheUpdate> sessionOptionsCacheUpdates,
   required Stream<String> pluginManagementSnapshotTokens,
@@ -977,6 +1004,20 @@ class OrchestratorSession._({
                 }),
               );
           }
+        })
+        .addTo(_subscriptions);
+    _mcpAuthenticationService.changes
+        .listen((_) => _enqueueWireEvent(const SesoriSseEvent.mcpAuthenticationChanged()))
+        .addTo(_subscriptions);
+    _mcpAuthenticationService.inventoryChanges
+        .listen(
+          (change) =>
+              _enqueueWireEvent(SesoriSseEvent.mcpInventoryChanged(pluginId: change.pluginId, scope: change.scope)),
+        )
+        .addTo(_subscriptions);
+    _mcpService.inventoryChanges
+        .listen((change) {
+          _enqueueWireEvent(SesoriSseEvent.mcpInventoryChanged(pluginId: change.pluginId, scope: change.scope));
         })
         .addTo(_subscriptions);
     catalogImportProgress
@@ -1268,6 +1309,7 @@ class OrchestratorSession._({
     );
     await Future.wait([
       attempt(_subscriptions.cancel),
+      attempt(_mcpAuthenticationService.dispose),
       attempt(_pluginEventListener.dispose),
       attempt(_sessionContinuationTimer.dispose),
       attempt(_sessionBindingCommitListener.dispose),
@@ -1279,6 +1321,7 @@ class OrchestratorSession._({
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
     await Future.wait([
+      attempt(_mcpService.dispose),
       attempt(_currentProjectService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
     ]);
@@ -1408,11 +1451,13 @@ class OrchestratorSession._({
         await _bridgeRegistrationService.handleBridgeRevoked();
       }
 
-      // Another bridge on this account took the single relay slot. Reconnect
-      // only on a long backoff so two always-on bridges don't tight-loop
-      // kicking each other (ADR A22); headless/VM failover is preserved
-      // because we still retry, just slowly. The GUI is told separately via
-      // ControlStatusNotifier (it observes the same replaced-close on the
+      // Another bridge with this bridge's id took over its relay connection.
+      // Bridges with different ids never displace this one, but a copy
+      // elsewhere sharing this id (a copied data directory or a cloned
+      // machine) can, so reconnect only on a long backoff so the two
+      // always-on copies don't tight-loop kicking each other (ADR A22);
+      // headless/VM failover is preserved because we still retry, just
+      // slowly. The GUI is told separately via ControlStatusNotifier (it observes the same replaced-close on the
       // connection-state stream); this loop owns only the backoff policy.
       final takenOver = RelayCloseCodes.isBridgeReplaced(
         closeCode: _client.closeCode(connection: connection),
@@ -1420,8 +1465,8 @@ class OrchestratorSession._({
       );
       if (takenOver) {
         Console.warning(
-          "Another bridge for this account has taken over the relay connection. "
-          "Retrying on a long backoff — stop the other bridge to reclaim this slot.",
+          "Another bridge with this bridge's id (for example on a cloned machine) "
+          "took over the relay connection. Retrying on a long backoff — stop the other copy to reclaim it.",
         );
       }
 

@@ -220,7 +220,7 @@ void main() {
     globalEvents = StreamController<SseEvent>.broadcast();
     connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         health: testHealthResponse(),
       ),
     );
@@ -235,7 +235,7 @@ void main() {
     when(() => connectionService.status).thenAnswer((_) => connectionStatus.stream);
     when(() => connectionService.currentStatus).thenReturn(
       ConnectionStatus.connected(
-        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null),
+        config: const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
         health: testHealthResponse(),
       ),
     );

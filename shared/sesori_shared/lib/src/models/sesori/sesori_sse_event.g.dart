@@ -69,6 +69,29 @@ Map<String, dynamic> _$SesoriPluginManagementChangedToJson(
   'type': instance.$type,
 };
 
+SesoriMcpInventoryChanged _$SesoriMcpInventoryChangedFromJson(Map json) =>
+    SesoriMcpInventoryChanged(
+      pluginId: json['pluginId'] as String,
+      scope: McpScope.fromJson(Map<String, dynamic>.from(json['scope'] as Map)),
+      $type: json['type'] as String?,
+    );
+
+Map<String, dynamic> _$SesoriMcpInventoryChangedToJson(
+  SesoriMcpInventoryChanged instance,
+) => <String, dynamic>{
+  'pluginId': instance.pluginId,
+  'scope': instance.scope.toJson(),
+  'type': instance.$type,
+};
+
+SesoriMcpAuthenticationChanged _$SesoriMcpAuthenticationChangedFromJson(
+  Map json,
+) => SesoriMcpAuthenticationChanged($type: json['type'] as String?);
+
+Map<String, dynamic> _$SesoriMcpAuthenticationChangedToJson(
+  SesoriMcpAuthenticationChanged instance,
+) => <String, dynamic>{'type': instance.$type};
+
 SesoriPluginInstallProgress _$SesoriPluginInstallProgressFromJson(Map json) =>
     SesoriPluginInstallProgress(
       pluginId: json['pluginId'] as String,

@@ -30,6 +30,7 @@ import 'package:sesori_dart_core/src/api/feedback_prompt_config_api.dart'
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
 import 'package:sesori_dart_core/src/api/installed_app_build_api.dart' as _i258;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
+import 'package:sesori_dart_core/src/api/mcp_api.dart' as _i187;
 import 'package:sesori_dart_core/src/api/message_image_api.dart' as _i938;
 import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
@@ -54,6 +55,8 @@ import 'package:sesori_dart_core/src/api/storage/session_launch_storage.dart'
 import 'package:sesori_dart_core/src/api/view_declaration_api.dart' as _i37;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
     as _i895;
+import 'package:sesori_dart_core/src/capabilities/relay/target_bridge_storage.dart'
+    as _i267;
 import 'package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart'
     as _i369;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
@@ -130,6 +133,7 @@ import 'package:sesori_dart_core/src/repositories/installed_app_build_repository
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
     as _i933;
+import 'package:sesori_dart_core/src/repositories/mcp_repository.dart' as _i349;
 import 'package:sesori_dart_core/src/repositories/message_image_repository.dart'
     as _i531;
 import 'package:sesori_dart_core/src/repositories/notification_preferences_repository.dart'
@@ -158,6 +162,8 @@ import 'package:sesori_dart_core/src/repositories/voice_repository.dart'
     as _i107;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
     as _i888;
+import 'package:sesori_dart_core/src/routing/computer_switch_dispatcher.dart'
+    as _i433;
 import 'package:sesori_dart_core/src/routing/notification_open_dispatcher.dart'
     as _i516;
 import 'package:sesori_dart_core/src/services/analytics_crawl_gate_service.dart'
@@ -178,6 +184,9 @@ import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
+import 'package:sesori_dart_core/src/services/mcp_authentication_service.dart'
+    as _i585;
+import 'package:sesori_dart_core/src/services/mcp_service.dart' as _i948;
 import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
     as _i72;
 import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
@@ -208,6 +217,8 @@ import 'package:sesori_dart_core/src/services/recent_session_inventory_service.d
     as _i623;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
+import 'package:sesori_dart_core/src/services/selected_computer_service.dart'
+    as _i370;
 import 'package:sesori_dart_core/src/services/session_abort_service.dart'
     as _i386;
 import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
@@ -353,15 +364,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i274.AnalyticsRepository>(
       () => _i274.AnalyticsRepository(api: gh<_i727.AnalyticsApi>()),
     );
-    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
-      () => _i516.NotificationOpenDispatcher(
-        authSession: gh<_i442.AuthSession>(),
-        pushMessagingSource: gh<_i330.PushMessagingSource>(),
-        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
-        routeDispatcher: gh<_i951.RouteDispatcher>(),
-        routeSource: gh<_i366.RouteSource>(),
-      ),
-    );
     gh.lazySingleton<_i958.PluginPreferenceApi>(
       () =>
           _i958.PluginPreferenceApi(persister: gh<_i903.PersisterRepository>()),
@@ -381,6 +383,10 @@ extension GetItInjectableX on _i174.GetIt {
         persister: gh<_i903.PersisterRepository>(),
       ),
     );
+    gh.lazySingleton<_i267.TargetBridgeStorage>(
+      () =>
+          _i267.TargetBridgeStorage(persister: gh<_i903.PersisterRepository>()),
+    );
     gh.lazySingleton<_i209.AppearanceStore>(
       () => _i209.AppearanceStore(persister: gh<_i903.PersisterRepository>()),
     );
@@ -396,6 +402,17 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i649.AnalyticsReleaseCutoffApi>(
       () => _i649.AnalyticsReleaseCutoffApi(
         source: gh<_i345.AnalyticsReleaseCutoffSource>(),
+      ),
+    );
+    gh.lazySingleton<_i369.ConnectionService>(
+      () => _i369.ConnectionService(
+        gh<_i553.RelayCryptoService>(),
+        gh<_i895.RoomKeyStorage>(),
+        gh<_i267.TargetBridgeStorage>(),
+        gh<_i442.AuthTokenProvider>(),
+        gh<_i442.AuthSession>(),
+        gh<_i904.LifecycleSource>(),
+        gh<_i553.FailureReporter>(),
       ),
     );
     gh.lazySingleton<_i818.SessionLaunchRepository>(
@@ -418,15 +435,20 @@ extension GetItInjectableX on _i174.GetIt {
         temporaryDirectoryClient: gh<_i682.TemporaryDirectoryClient>(),
       ),
     );
-    gh.lazySingleton<_i369.ConnectionService>(
-      () => _i369.ConnectionService(
-        gh<_i553.RelayCryptoService>(),
-        gh<_i895.RoomKeyStorage>(),
-        gh<_i442.AuthTokenProvider>(),
-        gh<_i442.AuthSession>(),
-        gh<_i904.LifecycleSource>(),
-        gh<_i553.FailureReporter>(),
+    gh.lazySingleton<_i508.SseEventTracker>(
+      () => _i508.SseEventTracker(
+        gh<_i369.ConnectionService>(),
+        failureReporter: gh<_i553.FailureReporter>(),
       ),
+    );
+    gh.lazySingleton<_i699.RegisteredBridgesService>(
+      () => _i699.RegisteredBridgesService(
+        bridgeRepository: gh<_i205.BridgeRepository>(),
+        registeredBridgesStore: gh<_i217.RegisteredBridgesStore>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        authSession: gh<_i442.AuthSession>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i933.LegalRepository>(
       () => _i933.LegalRepository(api: gh<_i835.LegalApi>()),
@@ -552,6 +574,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1068.FilesystemApi>(
       () => _i1068.FilesystemApi(client: gh<_i857.RelayHttpApiClient>()),
     );
+    gh.lazySingleton<_i187.McpApi>(
+      () => _i187.McpApi(client: gh<_i857.RelayHttpApiClient>()),
+    );
     gh.lazySingleton<_i231.PermissionApi>(
       () => _i231.PermissionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
@@ -566,21 +591,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i143.ViewDeclarationRepository>(
       () => _i143.ViewDeclarationRepository(api: gh<_i37.ViewDeclarationApi>()),
-    );
-    gh.lazySingleton<_i508.SseEventTracker>(
-      () => _i508.SseEventTracker(
-        gh<_i369.ConnectionService>(),
-        failureReporter: gh<_i553.FailureReporter>(),
-      ),
-    );
-    gh.lazySingleton<_i699.RegisteredBridgesService>(
-      () => _i699.RegisteredBridgesService(
-        bridgeRepository: gh<_i205.BridgeRepository>(),
-        registeredBridgesStore: gh<_i217.RegisteredBridgesStore>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        authSession: gh<_i442.AuthSession>(),
-      ),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i204.ProductAnalyticsService>(
       () => _i204.ProductAnalyticsService(
@@ -696,11 +706,20 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i679.PermissionRepository>(
       () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
+    gh.lazySingleton<_i349.McpRepository>(
+      () => _i349.McpRepository(api: gh<_i187.McpApi>()),
+    );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(
         api: gh<_i733.ProjectApi>(),
         filesystemApi: gh<_i1068.FilesystemApi>(),
         sessionApi: gh<_i603.SessionApi>(),
+      ),
+    );
+    gh.factory<_i948.McpService>(
+      () => _i948.McpService(
+        repository: gh<_i349.McpRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
       ),
     );
     gh.lazySingleton<_i177.NewSessionPluginService>(
@@ -720,6 +739,29 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i763.SessionListService(
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
+      ),
+    );
+    gh.lazySingleton<_i585.McpAuthenticationService>(
+      () => _i585.McpAuthenticationService(
+        repository: gh<_i349.McpRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        managementService: gh<_i110.PluginManagementService>(),
+        browserService: gh<_i674.PluginAuthenticationBrowserService>(),
+        locality: gh<_i1023.ActiveBridgeLocality>(),
+      ),
+    );
+    gh.lazySingleton<_i370.SelectedComputerService>(
+      () => _i370.SelectedComputerService(
+        connectionService: gh<_i369.ConnectionService>(),
+        activeBridgeLocality: gh<_i1023.ActiveBridgeLocality>(),
+        registeredBridgesService: gh<_i699.RegisteredBridgesService>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
+    );
+    gh.lazySingleton<_i433.ComputerSwitchDispatcher>(
+      () => _i433.ComputerSwitchDispatcher(
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
+        routeDispatcher: gh<_i951.RouteDispatcher>(),
       ),
     );
     gh.lazySingleton<_i888.AnalyticsRouteListener>(
@@ -761,6 +803,17 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i1033.BridgeSettingsService(
         repository: gh<_i102.BridgeSettingsRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
+      ),
+    );
+    gh.lazySingleton<_i516.NotificationOpenDispatcher>(
+      () => _i516.NotificationOpenDispatcher(
+        authSession: gh<_i442.AuthSession>(),
+        pushMessagingSource: gh<_i330.PushMessagingSource>(),
+        localNotificationClient: gh<_i1037.LocalNotificationClient>(),
+        routeDispatcher: gh<_i951.RouteDispatcher>(),
+        routeSource: gh<_i366.RouteSource>(),
+        selectedComputerService: gh<_i370.SelectedComputerService>(),
+        computerSwitchDispatcher: gh<_i433.ComputerSwitchDispatcher>(),
       ),
     );
     gh.lazySingleton<_i72.MessageThumbnailCacheService>(

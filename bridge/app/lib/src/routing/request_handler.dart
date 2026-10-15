@@ -3,8 +3,8 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../foundation/session_archived_read_only_exception.dart";
 import "../repositories/models/project_not_found_exception.dart";
-import "../services/archived_session_validator.dart";
 import "../services/stale_session_prompt_options_exception.dart";
 import "http_method.dart";
 import "routed_request.dart";

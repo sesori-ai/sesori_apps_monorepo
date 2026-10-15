@@ -275,7 +275,7 @@ void main() {
       final connected = await connectTestClient();
 
       final pending = connected.client.sendControlRequest(subtype: "list_models");
-      final expectation = expectLater(pending, throwsStateError);
+      final expectation = expectLater(pending, throwsA(isA<ClaudeControlException>()));
       await pump();
       await connected.client.dispose();
 

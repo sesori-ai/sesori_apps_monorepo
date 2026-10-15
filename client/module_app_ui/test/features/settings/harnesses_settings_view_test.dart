@@ -127,6 +127,7 @@ void main() {
                 onOpenHarness: ({required pluginId}) => opened.add(pluginId),
               )
             : HarnessSettingsDetailView(
+                onShowMcp: () {},
                 chrome: chrome,
                 pluginId: detailId,
                 connectionBanner: null,
@@ -615,6 +616,37 @@ void main() {
       );
     });
   }
+
+  testWidgets("busy sign-in explains the conflict and retries without cancelling the challenge", (tester) async {
+    phone(tester: tester);
+    publish(
+      plugins: [
+        _ready.copyWith(
+          setup: _ready.setup.copyWith(state: PluginSetupState.authenticationRequired),
+          managementCapabilities: {..._ready.managementCapabilities, PluginManagementCapability.authentication},
+        ),
+      ],
+    );
+    final challenge = PluginAuthenticationBrowserChallenge(
+      authorizationUri: Uri.parse("https://fixture.example/authorize"),
+      expectedCallbackUri: Uri.parse("http://127.0.0.1:43120/callback"),
+    );
+    browserStates.add({"ready": const PluginAuthenticationBrowserBlocked()});
+    authenticationChallenges.add({"ready": challenge});
+    when(() => service.startAuthentication(pluginId: "ready"))
+        .thenAnswer((_) async => PluginAuthenticationStartResult.challenge(challenge: challenge));
+    when(() => service.retryBrowserAuthentication(pluginId: "ready")).thenAnswer((_) async {});
+    await tester.pumpWidget(app(detailId: "ready"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.byKey(const Key("harness_authentication_ready")));
+    await tester.pumpAndSettle();
+    expect(find.text("Finish the current sign-in first, then try again."), findsOneWidget);
+    await tester.tap(find.byKey(const Key("harness_authentication_open_browser")));
+    await tester.pumpAndSettle();
+    verify(() => service.retryBrowserAuthentication(pluginId: "ready")).called(1);
+    verifyNever(() => service.cancelAuthentication(pluginId: "ready"));
+    expect(find.text("Finish the current sign-in first, then try again."), findsOneWidget);
+  });
 
   for (final uncertainCancel in [false, true]) {
     testWidgets("owned challenge reopens except during global timeout; uncertainCancel=$uncertainCancel", (

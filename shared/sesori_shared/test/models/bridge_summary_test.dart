@@ -1,13 +1,23 @@
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+Map<String, Object?> _summaryJson({required String platform, required String status}) => {
+  "id": "br_abc12345",
+  "name": "alex-macbook",
+  "platform": platform,
+  "status": status,
+  "addedAt": "2026-06-01T12:00:00.000Z",
+  "lastSeenAt": null,
+};
+
 void main() {
   group("BridgeSummary", () {
     test("round-trips through JSON", () {
       final original = BridgeSummary(
         id: "br_abc12345",
         name: "alex-macbook",
-        platform: "macos",
+        platform: BridgePlatform.macos,
+        status: BridgeRegistrationStatus.active,
         addedAt: DateTime.utc(2026, 6, 1, 12),
         lastSeenAt: DateTime.utc(2026, 6, 10, 9, 30),
       );
@@ -15,21 +25,48 @@ void main() {
       final json = original.toJson();
       final restored = BridgeSummary.fromJson(json);
 
+      expect(json["platform"], equals("macos"));
+      expect(json["status"], equals("active"));
       expect(restored, equals(original));
     });
 
     test("parses null lastSeenAt", () {
-      final restored = BridgeSummary.fromJson({
-        "id": "br_abc12345",
-        "name": "alex-macbook",
-        "platform": "linux",
-        "addedAt": "2026-06-01T12:00:00.000Z",
-        "lastSeenAt": null,
-      });
+      final restored = BridgeSummary.fromJson(_summaryJson(platform: "linux", status: "inactive"));
 
       expect(restored.id, equals("br_abc12345"));
-      expect(restored.platform, equals("linux"));
       expect(restored.lastSeenAt, isNull);
+    });
+
+    test("parses both registration statuses", () {
+      expect(
+        BridgeSummary.fromJson(_summaryJson(platform: "macos", status: "active")).status,
+        BridgeRegistrationStatus.active,
+      );
+      expect(
+        BridgeSummary.fromJson(_summaryJson(platform: "macos", status: "inactive")).status,
+        BridgeRegistrationStatus.inactive,
+      );
+    });
+
+    test("throws when the status is absent", () {
+      final json = _summaryJson(platform: "macos", status: "active")..remove("status");
+
+      expect(() => BridgeSummary.fromJson(json), throwsA(isA<ArgumentError>()));
+    });
+
+    test("parses every known platform", () {
+      expect(BridgeSummary.fromJson(_summaryJson(platform: "macos", status: "active")).platform, BridgePlatform.macos);
+      expect(
+        BridgeSummary.fromJson(_summaryJson(platform: "windows", status: "active")).platform,
+        BridgePlatform.windows,
+      );
+      expect(BridgeSummary.fromJson(_summaryJson(platform: "linux", status: "active")).platform, BridgePlatform.linux);
+    });
+
+    test("parses an unrecognised platform as unknown", () {
+      final restored = BridgeSummary.fromJson(_summaryJson(platform: "freebsd", status: "active"));
+
+      expect(restored.platform, BridgePlatform.unknown);
     });
   });
 
@@ -41,6 +78,7 @@ void main() {
             "id": "br_abc12345",
             "name": "alex-macbook",
             "platform": "macos",
+            "status": "active",
             "addedAt": "2026-06-01T12:00:00.000Z",
             "lastSeenAt": null,
           },
@@ -99,6 +137,7 @@ void main() {
             "id": "br_abc12345",
             "name": "alex-macbook",
             "platform": "macos",
+            "status": "active",
             "addedAt": "2026-06-01T12:00:00.000Z",
             "lastSeenAt": null,
           },

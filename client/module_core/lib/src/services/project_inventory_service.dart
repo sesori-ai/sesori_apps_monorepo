@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/models/connection_status.dart";
+import "../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../errors/api_error_remote_failure_x.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../logging/logging.dart";
@@ -274,9 +275,22 @@ class ProjectInventoryService({
     ConnectionConnected() || ConnectionReconnecting() || ConnectionLost() => false,
   };
 
+  final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
+    initialStatus: _connectionService.currentStatus,
+  );
+
   void _onConnectionStatusChanged(ConnectionStatus status) {
     logd("[ProjectList] connection status: ${status.runtimeType}");
     if (_state.isClosed) return;
+    if (_targetChange.changed(status: status)) {
+      // Another computer: supersede reads from the previous one and load the
+      // new list exactly as a first load does, waiting for its connection.
+      _fetchGeneration++;
+      _loadedStateAnalyticsReporter.clearCurrentOccurrence();
+      _emit(state: const ProjectListState.loading());
+      unawaited(_loadInitialProjects());
+      return;
+    }
     switch (status) {
       case ConnectionConnected():
         // A reconnect driven by reconnectBridge (the onboarding pull-to-

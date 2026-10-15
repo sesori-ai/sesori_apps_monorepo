@@ -50,6 +50,11 @@ Future<void> main(List<String> arguments) async {
   // spawn a helper, or its first bootstrap token request could go unread.
   logi("Desktop startup: starting the control dispatcher");
   await getIt<ControlMessageDispatcher>().start();
+  // The dispatcher restored the supervised bridge id; pin this computer before
+  // the relay can connect, unless a computer was already picked, and follow a
+  // new id it registers with later.
+  logi("Desktop startup: resolving the initial computer");
+  await getIt<DesktopComputerTargetOrchestrator>().start();
   // Root the shared relay client before the UI builds. Its auth-state listener
   // connects automatically when AuthGate restores or completes a login, and
   // no second reconnect driver is introduced in the desktop shell.

@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "catalog_import_progress.dart";
+import "mcp.dart";
 import "message.dart";
 import "message_part.dart";
 import "plugin_management.dart";
@@ -56,6 +57,13 @@ sealed class SesoriSseEvent with _$SesoriSseEvent {
   const factory pluginManagementChanged({
     required String snapshotToken,
   }) = SesoriPluginManagementChanged;
+
+  @FreezedUnionValue("mcp.inventory.changed")
+  const factory mcpInventoryChanged({required String pluginId, required McpScope scope}) = SesoriMcpInventoryChanged;
+
+  /// Invalidation only: authorization URLs and callbacks stay request-scoped.
+  @FreezedUnionValue("mcp.authentication.changed")
+  const factory mcpAuthenticationChanged() = SesoriMcpAuthenticationChanged;
 
   /// Progress of a phone-triggered managed runtime install for one plugin.
   /// [percent] is only meaningful while [PluginInstallPhase.downloading] with a

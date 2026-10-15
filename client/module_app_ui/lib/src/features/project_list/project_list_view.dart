@@ -8,6 +8,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
+import "../../widgets/computer_menu.dart";
 import "../../widgets/list_search_field.dart";
 import "../../widgets/project_launch_rows_builder.dart";
 import "../../widgets/remote_failure_view.dart";
@@ -41,7 +42,7 @@ typedef ProjectListDisconnectedViewBuilder = Widget Function({
   required BridgeSummary? bridge,
 });
 
-typedef ProjectListDisconnectedActionBuilder = Widget? Function({
+typedef ProjectListDisconnectedActionBuilder = Widget Function({
   required BuildContext context,
   required ProjectListBridgeDisconnected state,
 });
@@ -81,6 +82,9 @@ class const ProjectListView({
   required final ProjectListConnectedEmptyViewBuilder connectedEmptyViewBuilder,
   required final ProjectListConnectionBannerBuilder connectionBannerBuilder,
   required final ProjectListDisconnectedRefresh onRefreshDisconnected,
+
+  /// Switches to a computer picked in the menu under the title.
+  required final ComputerSwitchCallback onSwitchComputer,
 }) extends StatefulWidget {
   @override
   State<ProjectListView> createState() => _ProjectListViewState();
@@ -92,6 +96,10 @@ class _ProjectListViewState() extends State<ProjectListView> {
   /// The search field's text: it narrows project names and Activity's session
   /// titles to what the page already loaded.
   String _query = "";
+
+  /// Opens or closes the computer menu; set by its trigger, the subtitle row,
+  /// so the title above the row can open the same menu.
+  VoidCallback? _toggleComputerMenu;
 
   @override
   void initState() {
@@ -108,38 +116,18 @@ class _ProjectListViewState() extends State<ProjectListView> {
     super.dispose();
   }
 
-  /// The scaffold's floating action for the current [state], with the
-  /// placement that action is designed for: the add-project FAB in the
-  /// trailing corner once projects exist, the onboarding "Need help?" support
-  /// menu centred on the disconnected surfaces, and nothing otherwise — the
+  /// The add-project FAB once projects exist, and nothing otherwise — the
   /// connected-but-empty state carries its own injected add-project call to
-  /// action, which a floating pill would only duplicate.
-  ({Widget? action, PregoFloatingActionAlignment alignment}) _floatingAction({
-    required BuildContext context,
-    required ProjectListState state,
-  }) {
-    if (state is ProjectListLoaded && state.projects.isNotEmpty) {
-      return (
-        action: PregoButtonsIconGlass(
-          icon: TablerRegular.folder_plus,
-          size: PregoButtonsIconGlassSize.xl,
-          iconSize: PregoIconSize.lg,
-          onPressed: () => widget.onAddProject(context: context),
-        ),
-        alignment: PregoFloatingActionAlignment.end,
-      );
-    }
-    // The onboarding/recovery surfaces get the same pill but report distinct
-    // analytics surfaces, so help-seeking is attributable to the funnel step.
-    // It reads as the page's own closing call to action rather than a corner
-    // affordance, so the design centres it under the setup steps.
-    if (state is ProjectListBridgeDisconnected) {
-      return (
-        action: widget.disconnectedActionBuilder(context: context, state: state),
-        alignment: PregoFloatingActionAlignment.center,
-      );
-    }
-    return (action: null, alignment: PregoFloatingActionAlignment.end);
+  /// action, which a floating pill would only duplicate, and the disconnected
+  /// surfaces end their page flow with their own "Need help?" action.
+  Widget? _floatingAction({required BuildContext context, required ProjectListState state}) {
+    if (state is! ProjectListLoaded || state.projects.isEmpty) return null;
+    return PregoButtonsIconGlass(
+      icon: TablerRegular.folder_plus,
+      size: PregoButtonsIconGlassSize.xl,
+      iconSize: PregoIconSize.lg,
+      onPressed: () => widget.onAddProject(context: context),
+    );
   }
 
   @override
@@ -161,13 +149,14 @@ class _ProjectListViewState() extends State<ProjectListView> {
     // on connection changes; [_bannerFor] watches the same cubit below.
     final overlay = context.watch<ConnectionOverlayCubit>().state;
     final online = overlay is ConnectionOverlayHidden && overlay.connected;
-    final floatingAction = _floatingAction(context: context, state: state);
+    final subtitle = _subtitle(context: context, state: state, identity: identity, online: online);
 
     return PregoGlassScaffold(
       title: loc.projectListTitle,
       // A top-level page, so it keeps the large title. The subtitle row names
       // the machine this account is paired with, in every state.
-      subtitle: _subtitle(context: context, state: state, identity: identity, online: online),
+      subtitle: subtitle,
+      onLargeTitleTap: subtitle is ComputerMenu ? () => _toggleComputerMenu?.call() : null,
       // A loaded list hosts the top-nav connection banner; the loading and
       // bridge-disconnected states own their messaging full-screen (setup
       // onboarding or the "turn on your bridge" design), so they suppress it.
@@ -179,11 +168,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
           onPressed: () => widget.onOpenSettings(context: context),
         ),
       ],
-      // Floating action, resolved per state: the add-project FAB once projects
-      // exist, the "Need help?" support menu on the onboarding and
-      // bridge-offline surfaces, and nothing while loading/errored.
-      floatingActionButton: floatingAction.action,
-      floatingActionAlignment: floatingAction.alignment,
+      floatingActionButton: _floatingAction(context: context, state: state),
       onRefresh: _refreshFor(context: context, state: state),
       // Only the loaded list can scan: the disconnected states pull to
       // reconnect, and there is nothing to scan into until the list is there.
@@ -216,6 +201,9 @@ class _ProjectListViewState() extends State<ProjectListView> {
   /// shimmering skeleton rather than being left out: the title block would
   /// otherwise re-lay-out around the name as it lands. A lookup that answered
   /// with nothing to name drops the row for good.
+  ///
+  /// A named computer's row is the computer menu's trigger, and the title
+  /// above it opens the same menu.
   Widget? _subtitle({
     required BuildContext context,
     required ProjectListState state,
@@ -237,10 +225,18 @@ class _ProjectListViewState() extends State<ProjectListView> {
     };
     return switch (identity) {
       BridgeIdentityPending() => const PregoNavSubtitleSkeleton(),
-      BridgeIdentityNamed(:final bridge) => PregoNavSubtitle(
-        text: bridge.name,
-        icon: TablerRegular.device_laptop,
-        status: status,
+      BridgeIdentityNamed(:final bridge) => ComputerMenu(
+        onSelect: ({required bridgeId}) =>
+            widget.onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+        triggerBuilder: (context, toggle) {
+          _toggleComputerMenu = toggle;
+          return PregoNavSubtitle(
+            text: bridge.name,
+            icon: TablerRegular.device_laptop,
+            status: status,
+            action: PregoNavSubtitleAction(onTap: toggle, semanticsHint: context.loc.computerMenuSwitchHint),
+          );
+        },
       ),
       BridgeIdentityUnnamed() => null,
     };
@@ -304,19 +300,32 @@ class _ProjectListViewState() extends State<ProjectListView> {
       // No bridge has ever been registered → setup onboarding; a bridge exists
       // but isn't running → ask to turn it on. Both join the page scroll rather
       // than nesting one of their own, so they scroll under the fixed bar.
-      // hasScrollBody: false lets a body shorter than the viewport sit still
-      // while a taller one — the offline view with its install commands
-      // expanded — scrolls the page. SafeArea(top: false) keeps the last box
-      // clear of the home indicator.
+      // The "Need help?" action closes the flow in the space left below the
+      // body: pinned to the bottom while the body is shorter than the
+      // viewport, right after the last control once it is taller — the offline
+      // view with its install commands expanded — so it never covers the
+      // body. Measured from the body's laid-out extent rather than its
+      // intrinsic height, so the disclosure's animated growth pushes the
+      // action down smoothly. SafeArea(top: false) keeps it clear of the home
+      // indicator.
       final ProjectListBridgeDisconnected disconnected => [
+        SliverToBoxAdapter(
+          child: widget.disconnectedViewBuilder(
+            context: context,
+            state: disconnected,
+            bridge: bridge,
+          ),
+        ),
         SliverFillRemaining(
           hasScrollBody: false,
           child: SafeArea(
             top: false,
-            child: widget.disconnectedViewBuilder(
-              context: context,
-              state: disconnected,
-              bridge: bridge,
+            child: Align(
+              alignment: Alignment.bottomCenter,
+              child: Padding(
+                padding: const EdgeInsetsDirectional.symmetric(vertical: PregoSpacing.xl),
+                child: widget.disconnectedActionBuilder(context: context, state: disconnected),
+              ),
             ),
           ),
         ),

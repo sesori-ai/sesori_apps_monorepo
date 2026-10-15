@@ -165,6 +165,7 @@ void main() {
       projectId: "project-1",
       sessionTitle: "Session title",
       accountId: "user-1",
+      bridgeId: null,
     );
 
     final verification = verify(

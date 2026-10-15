@@ -56,12 +56,14 @@ class const PushNotificationContentBuilder() {
     required String collapseKey,
     required String? sessionId,
     required String? projectId,
+    required String? bridgeId,
   }) {
     final data = NotificationData(
       category: category,
       sessionId: sessionId,
       eventType: eventType,
       projectId: projectId,
+      bridgeId: bridgeId,
     );
 
     return SendNotificationPayload(

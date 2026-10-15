@@ -14,6 +14,7 @@ import "../api/storage/composer_draft_storage.dart";
 import "../api/storage/session_launch_storage.dart";
 import "../capabilities/relay/relay_client.dart";
 import "../capabilities/relay/room_key_storage.dart";
+import "../capabilities/relay/target_bridge_storage.dart";
 import "../capabilities/server_connection/connection_service.dart";
 import "../capabilities/server_connection/server_connection_config.dart";
 import "../capabilities/voice/voice_api.dart";
@@ -22,6 +23,7 @@ import "../cubits/session_launch/session_launch_cubit.dart";
 import "../foundation/models/composer/composer_attachment.dart";
 import "../foundation/models/product_analytics/product_analytics_event.dart";
 import "../foundation/models/session_options/session_options_request_mode.dart";
+import "../foundation/platform/active_bridge_locality.dart";
 import "../platform/deep_link_source.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
@@ -51,6 +53,7 @@ import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
 import "../services/project_viewing_service.dart";
 import "../services/registered_bridges_service.dart";
+import "../services/selected_computer_service.dart";
 import "../services/session_detail_load_service.dart";
 import "../services/session_launch_service.dart";
 import "../services/session_unseen_tracker.dart";
@@ -335,7 +338,14 @@ class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceR
 
 class MockRegisteredBridgesStore() extends Mock implements RegisteredBridgesStore;
 
-class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService;
+class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesService {
+  final BehaviorSubject<List<BridgeSummary>> _bridges = BehaviorSubject.seeded(const []);
+
+  @override
+  ValueStream<List<BridgeSummary>> get bridges => _bridges.stream;
+
+  void emitBridges({required List<BridgeSummary> bridges}) => _bridges.add(bridges);
+}
 
 class MockFailureReporter() extends Mock implements FailureReporter;
 
@@ -365,11 +375,18 @@ class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService 
 
 class MockConnectionService() extends Mock implements ConnectionService {
   final StreamController<void> _dataMayBeStale = StreamController<void>.broadcast();
+  final StreamController<BridgePresenceMessage> _bridgePresence = StreamController<BridgePresenceMessage>.broadcast();
 
   @override
   Stream<void> get dataMayBeStale => _dataMayBeStale.stream;
 
   void emitDataMayBeStale() => _dataMayBeStale.add(null);
+
+  @override
+  Stream<BridgePresenceMessage> get bridgePresence => _bridgePresence.stream;
+
+  void emitBridgePresence({required String bridgeId, required bool online}) =>
+      _bridgePresence.add(BridgePresenceMessage(bridgeId: bridgeId, online: online));
 }
 
 class MockRouteSource({
@@ -637,7 +654,7 @@ void stubSessionRepositoryGetSession({
 }
 
 void registerCoreFallbackValues() {
-  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null));
+  registerFallbackValue(const ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null));
   registerFallbackValue(FakeUri());
   registerFallbackValue(StackTrace.empty);
   registerFallbackValue(testSession());
@@ -758,11 +775,13 @@ BridgeSummary testBridgeSummary({
   String? name = _noString,
   DateTime? addedAt = _noDateTime,
   DateTime? lastSeenAt = _noDateTime,
+  BridgeRegistrationStatus status = BridgeRegistrationStatus.active,
 }) {
   return BridgeSummary(
     id: id ?? "br_test1234",
     name: name ?? "test-macbook",
-    platform: "macos",
+    platform: BridgePlatform.macos,
+    status: status,
     addedAt: addedAt ?? DateTime.utc(2026, 1, 1),
     lastSeenAt: lastSeenAt,
   );
@@ -809,6 +828,52 @@ class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadSe
 }
 
 class MockRoomKeyStorage() extends Mock implements RoomKeyStorage;
+
+/// In-memory [TargetBridgeStorage]; [stored] is the persisted target.
+class FakeTargetBridgeStorage() implements TargetBridgeStorage {
+  String? _stored;
+
+  String? get stored => _stored;
+
+  @override
+  Future<String?> read() async => _stored;
+
+  @override
+  Future<void> write({required String bridgeId}) async => _stored = bridgeId;
+
+  @override
+  Future<void> clear() async => _stored = null;
+}
+
+/// [SelectedComputerService] with no known target computer.
+class FakeSelectedComputerService() implements SelectedComputerService {
+  @override
+  Future<String?> targetBridgeId() async => null;
+
+  @override
+  Future<void> ensureInitialTarget({required String? localBridgeId}) async {}
+
+  @override
+  Future<void> followLocalComputer({required String bridgeId}) async {}
+
+  @override
+  void forgetPick() {}
+
+  @override
+  Future<void> select({required String bridgeId, required ComputerSwitchSource source}) async {}
+}
+
+/// [ActiveBridgeLocality] of a surface that supervises no bridge.
+class const FakeActiveBridgeLocality() implements ActiveBridgeLocality {
+  @override
+  bool isLocalBridge({required String bridgeId}) => false;
+
+  @override
+  String? get localBridgeId => null;
+
+  @override
+  Stream<String?> get localBridgeIdStream => const Stream.empty();
+}
 
 MessageWithParts testMessageWithParts({String? id = _noString}) {
   final messageId = id ?? "msg-1";

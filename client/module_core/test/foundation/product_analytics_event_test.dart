@@ -185,6 +185,23 @@ void main() {
         "product_screen_viewed",
         const {"screen": "session_detail"},
       ),
+      for (final (source, wireValue) in [
+        (ComputerSwitchSource.menu, "menu"),
+        (ComputerSwitchSource.offlineScreen, "offline_screen"),
+        (ComputerSwitchSource.settings, "settings"),
+        (ComputerSwitchSource.alert, "alert"),
+        (ComputerSwitchSource.notification, "notification"),
+      ])
+        (
+          ProductAnalyticsEvent.computerSwitched(source: source, targetOnline: true),
+          "computer_switched",
+          {"source": wireValue, "target_online": "true"},
+        ),
+      (
+        const ProductAnalyticsEvent.computerSwitched(source: ComputerSwitchSource.menu, targetOnline: false),
+        "computer_switched",
+        const {"source": "menu", "target_online": "false"},
+      ),
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {

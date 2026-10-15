@@ -132,6 +132,7 @@ void main() {
           sessionId: "session-root",
           sessionTitle: "Fix the build",
           accountId: "user-1",
+          bridgeId: null,
         ),
       );
     });
@@ -159,6 +160,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
 
@@ -179,6 +181,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -203,6 +206,7 @@ void main() {
           projectId: any(named: "projectId"),
           sessionTitle: any(named: "sessionTitle"),
           accountId: any(named: "accountId"),
+          bridgeId: any(named: "bridgeId"),
         ),
       ).thenAnswer((_) async {});
 
@@ -229,6 +233,7 @@ void main() {
           projectId: any(named: "projectId"),
           sessionTitle: any(named: "sessionTitle"),
           accountId: "user-1",
+          bridgeId: null,
         ),
       ).called(1);
     });
@@ -288,6 +293,7 @@ void main() {
           sessionId: "session-root",
           sessionTitle: null,
           accountId: "user-1",
+          bridgeId: null,
         ),
       );
       final start = service.start();
@@ -317,6 +323,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: null,
         accountId: "user-1",
+        bridgeId: null,
       ),
     );
     await service.start();
@@ -349,6 +356,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
 
@@ -366,6 +374,7 @@ void main() {
         projectId: "project-1",
         sessionTitle: "Fix the build",
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -387,6 +396,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     );
   });
@@ -417,6 +427,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     await service.start();
@@ -437,6 +448,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -462,6 +474,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     await service.start();
@@ -480,6 +493,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -499,6 +513,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     await service.start();
@@ -517,6 +532,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -534,6 +550,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     await service.start();
@@ -550,6 +567,7 @@ void main() {
         projectId: "project-1",
         sessionTitle: "Fix the build",
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -567,6 +585,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     await service.start();
@@ -583,6 +602,7 @@ void main() {
         projectId: "project-1",
         sessionTitle: "Fix the build",
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -605,6 +625,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     );
   });
@@ -628,6 +649,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     );
   });
@@ -652,6 +674,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     );
   });
@@ -670,6 +693,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) => nativeWrite.future);
     await service.start();
@@ -699,6 +723,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     when(
@@ -723,6 +748,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).called(1);
 
@@ -737,6 +763,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).called(1);
   });
@@ -756,6 +783,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) {
       showCalls++;
@@ -783,6 +811,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).captured;
     expect(
@@ -807,6 +836,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     await service.start();
@@ -885,6 +915,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: "Fix the build",
         accountId: "user-1",
+        bridgeId: null,
       ),
     );
     await _flushAsync();
@@ -910,6 +941,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) {
       showCalls++;
@@ -957,6 +989,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) => nativeWrite.future);
     await service.start();
@@ -983,6 +1016,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).called(1);
     verify(localNotificationClient.cancelAll).called(1);
@@ -1002,6 +1036,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     ).thenAnswer((_) async {});
     await service.start();
@@ -1020,6 +1055,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: any(named: "accountId"),
+        bridgeId: any(named: "bridgeId"),
       ),
     );
 
@@ -1034,6 +1070,7 @@ void main() {
         projectId: any(named: "projectId"),
         sessionTitle: any(named: "sessionTitle"),
         accountId: "user-1",
+        bridgeId: null,
       ),
     ).called(1);
   });
@@ -1051,6 +1088,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: "Fix the build",
         accountId: "user-1",
+        bridgeId: null,
       ),
     );
     await _flushAsync();
@@ -1096,6 +1134,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: "Fix the build",
         accountId: "user-1",
+        bridgeId: null,
       ),
     );
     await _flushAsync();
@@ -1114,6 +1153,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: "Fix the build",
         accountId: "user-1",
+        bridgeId: null,
       ),
     );
     await _flushAsync();
@@ -1134,6 +1174,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: null,
         accountId: "user-1",
+        bridgeId: null,
       ),
     );
     await service.start();
@@ -1154,6 +1195,7 @@ void main() {
         sessionId: "session-root",
         sessionTitle: null,
         accountId: "user-1",
+        bridgeId: null,
       ),
     );
     await service.start();

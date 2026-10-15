@@ -3,8 +3,9 @@
 ## Capability
 
 The live link between a client and a bridge: registration, the authenticated relay
-socket and its reconnect policy, encrypted key exchange, single-live-bridge ownership,
-explicit restart, and the connection states the app presents.
+socket and its reconnect policy, encrypted key exchange, several live bridges per
+account and per-bridge ownership, explicit restart, and the connection states the app
+presents.
 
 ## Required Behavior
 
@@ -52,8 +53,54 @@ explicit restart, and the connection states the app presents.
 - Client relay disconnect closes active SSE streams and the socket without
   attempting encrypted sends after disposal. The bridge releases the connection's
   SSE subscription when it receives the phone-disconnected notification.
-- One live bridge per account holds the slot; a second start resolves ownership
-  explicitly, and an explicit restart hands off to its successor cleanly.
+- An account keeps up to 10 bridges live at once, one per registered computer;
+  a different bridge id never displaces another. The relay routes each app to
+  the bridge it names, or, for an app that names none, to the most recently
+  connected bridge. A reconnect with the same bridge id still replaces the
+  previous connection, which closes with `4007`; a second start on the same
+  computer resolves ownership explicitly, and an explicit restart hands off to
+  its successor cleanly. The capability as a whole is in
+  [multi-computer](multi-computer.md).
+- The relay names the bridge in `bridge_connected` and, when it knows one, in
+  `bridge_disconnected`; the app still accepts either notice without an id.
+  It also sends every app of the account `bridge_presence {bridgeId, online}`
+  whenever any of the account's bridges connects or disconnects. The app
+  decodes these notices into typed messages and still logs and ignores a notice
+  type it does not know.
+- The registered-bridge list carries each bridge's `status` (`active` or
+  `inactive`, the connectivity the relay last reported) and its `platform`. A
+  platform the app does not know decodes as unknown instead of failing the
+  list; a missing `status` fails the list, because the auth server ships it
+  before any app that reads it. The app publishes the list as a stream, most recently seen first; a
+  live connection marks it stale so the next read refetches, a failed fetch
+  keeps the last list, and logout empties it.
+- A `bridge_presence` notice updates that computer's status in the list at once,
+  without a fetch, and a notice for a computer the list does not know refetches
+  the list, again after any fetch already running, which may predate the link.
+  The latest notice per computer on the live connection wins over any fetched
+  list, including a fetch that started before the notice or the refetch it
+  triggered, because the auth server learns of the change asynchronously.
+  Those notices are forgotten when the connection drops, so the next fetch
+  decides. A notice never changes the app's own connection state.
+- The app owns one target computer. It names the stored target in its relay
+  `auth`, so reconnects stay on the same computer; with none stored it adopts
+  the bridge the relay reports at join without reconnecting, unless a
+  computer was chosen while that connection was joining. The desktop pins its
+  own supervised bridge when nothing is stored and that bridge's id is known;
+  on a fresh install the id is unknown until the helper first registers, so the
+  first connection follows the relay's default computer, and the desktop retargets to
+  its own bridge once that id appears. It does the same when the id changes (a new
+  login or a re-registration), unless the user picked another computer in this
+  sign-in.
+  Retargeting stores the id,
+  detaches the previous computer's socket before announcing the new target, and
+  reconnects; the single room key either resumes or is cleared by
+  `rekey_required` and replaced through a fresh key exchange. Bridge-scoped
+  caches (project list, recent sessions, live activity) reset from their
+  connection-status subscription when the target moves from one known computer
+  to another (learning the first target is not a change), and a late answer from the
+  previous computer never repopulates them. The bar names the target by id from
+  the registered list, or the list head while no target is known.
 - Bridge registration uses a stable machine name. On macOS, transient
   network-derived numeric hostnames must not replace the machine's LocalHostName.
 - The client distinguishes connected, reconnecting, connection lost, bridge offline, and
@@ -62,10 +109,11 @@ explicit restart, and the connection states the app presents.
   its relay-client state separately from helper relay status, and overlays a connection pill on the main pane
   without moving its contents. The sidebar's This computer popover describes only the supervised local helper.
   When project loading reports either no
-  registered bridge or a registered-but-offline bridge, desktop recovery asks
-  the supervisor to Start and establishes an authenticated relay client; it
-  never falls through to mobile CLI installation or relay-only reconnect
-  guidance.
+  registered bridge or a registered-but-offline bridge while the desktop views
+  this computer, desktop recovery asks the supervisor to Start and establishes an
+  authenticated relay client; it never falls through to mobile CLI installation
+  or relay-only reconnect guidance. Another computer that is offline gets the
+  offline body without Start.
 - Mobile inline connection alerts use a theme-aware rounded card: 16px outer and inner
   padding, 16px corners, a subtle border and status tint, and a readable medium
   title. The bridge-disconnected warning remains informational, with its
@@ -153,16 +201,17 @@ explicit restart, and the connection states the app presents.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | A started bridge reaches readiness and answers a health request; a connected client reports connected. Headless bridge plus relay integration for the client-visible state; no plugin. |
-| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release. No plugin. |
+| L2 Routine | Relay integration for key exchange, a normal drop and reconnect, and clean shutdown; automated minute-spaced startup outage recovery, cancellation, and definitive auth/protocol failure handling; automated and headless bridge for stable machine-name registration plus sleep-policy enable, disable, warning, and wake-lock release; automated target ownership (stored target in `auth`, adoption without reconnect, retarget reconnect, logout clearing, initial-target precedence) and bridge-scoped cache resets that drop a late answer from the previous computer; automated presence notices updating a listed computer in place, refetching for an unknown one (again after a fetch already running), winning over an older in-flight fetch, and being forgotten on a drop. No plugin. |
 | L3 Release | Session pages load through the relay for the new app with the new bridge (deflated), the new app with a v1.9.0 bridge (plain), and a v1.9.0 app with the new bridge (plain). The full connection state machine as presented, explicit restart with successor handoff, second-start ownership resolution, and a slow in-flight request not blocking key exchange or further requests. Client end to end plus headless bridge; a representative harness supplies the slow operation. |
-| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
+| L4 Extended | Relay integration or client end to end for takeover, revocation, pull-driven live token re-authentication, handshake shutdown, app/network recovery, several clients, several live bridges per account (per-app routing, presence notices, same-id replacement, the 10-bridge cap), and alternate client platforms; the cross-platform supervised E2E suite builds and runs a real helper against fake auth/relay/control endpoints for control authentication, token pulls, registration, restart sentinel 86, fresh respawn, unregister, and process cleanup; desktop tests for authenticated spawn gating, first-token handshake, transactional spawn rollback/retry, every supervised exit class, bounded crash retry/give-up, stable-runtime budget reset, manual retry cancellation, prompt-answer ownership, account-bound persisted registration, concurrent logout/stop ordering, token-only deletion verification, tray menu/status updates, Linux host detection, ordered Quit, malformed/newline-free output, bounded persistence, rotation, permissions, and transient storage-path failure recovery. |
 | L5 Full | Store-distributed app against a released bridge over production relay, older app against newer bridge and the reverse for the client/bridge wire contract, and a long-lived headless VM run over repeated reconnects. Packaged or external. |
 
 ## Exploration Guidance
 
 Vary how the connection breaks: process kill, network drop, relay-side close,
 backgrounding, token expiry, competing bridge. Vary whether a client is connected before
-the bridge starts, how many clients are present, and whether restart is explicit.
+the bridge starts, how many clients and bridges are present, whether the bridges share
+an id, and whether restart is explicit.
 
 ## Failure Signals
 
@@ -183,11 +232,23 @@ the bridge starts, how many clients are present, and whether restart is explicit
 - Equivalent route failures produce different statuses depending on the handler
   type, or an unexpected bridge failure is reported as an upstream 502.
 - Reconnect tight-looping, an exhausted iterator reused, or two bridges displacing each
-  other without backoff.
+  other without backoff. A bridge with a different id closing another bridge's
+  connection, or one app's traffic reaching a bridge it did not target.
+- A registered-bridge list that fails to load because a bridge reports an
+  unrecognised platform, a `bridge_presence` notice changing the
+  app's own connection state, or an old account's bridge list surviving logout.
+- A computer's status that lags a presence notice until the next fetch, a fetch
+  that started before a notice reverting the status it set, or a newly linked
+  computer still missing from the list once the refetch its first presence
+  notice triggered has landed.
+- A reconnect landing on a different computer than the one in use, a stored
+  target surviving logout, a desktop launch with no stored target connecting to
+  another computer while its own bridge is registered, or projects, recent
+  sessions or activity from the previous computer showing after a switch.
 - A bridge registering a network-derived numeric hostname as its machine name.
 - A clean shutdown producing reconnects, a cancelled handshake later sending auth, or an
   app stuck reconnecting after the bridge returns. A desktop disconnected
-  project surface offers mobile CLI setup/reconnect instead of supervised Start,
+  project surface for this computer offers mobile CLI setup/reconnect instead of supervised Start,
   Start applies toggle semantics and turns a desired-On bridge Off, or helper
   startup never establishes the desktop relay client.
 - A dead network path leaving the app claiming connected for minutes, or the
@@ -239,6 +300,8 @@ the bridge starts, how many clients are present, and whether restart is explicit
 
 - Bridge orchestrator, relay, key exchange, server ownership, auth, sleep, and control code.
 - Client relay and connection-overlay capabilities and their owning tests.
+- Shared contracts: `bridge_summary_test.dart`, `relay_notice_message_test.dart`;
+  `registered_bridges_service_test.dart` for the list stream and presence notices.
 - Deflate negotiation: `relay_plaintext_codec_test.dart`,
   `orchestrator_request_concurrency_test.dart`, `relay_request_test.dart`,
   `relay_http_client_test.dart`, and `relay_client_handshake_replay_test.dart`.

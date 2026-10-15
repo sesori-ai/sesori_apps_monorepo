@@ -46,6 +46,7 @@ void main() {
             "eventType": "question_asked",
             "sessionId": "session-1",
             "projectId": "project-1",
+            "bridgeId": "br_workstation",
           },
           title: "Weekly planning",
           body: "Agent finished its turn",
@@ -64,6 +65,7 @@ void main() {
             sessionId: "session-1",
             projectId: "project-1",
             sessionTitle: "Weekly planning",
+            bridgeId: "br_workstation",
           ),
         ),
       );
@@ -135,6 +137,7 @@ class RecordingLocalNotificationClient() implements LocalNotificationClient {
     required String? projectId,
     required String? sessionTitle,
     required String? accountId,
+    required String? bridgeId,
   }) async {
     shownNotifications.add(
       ShownNotification(
@@ -144,6 +147,7 @@ class RecordingLocalNotificationClient() implements LocalNotificationClient {
         sessionId: sessionId,
         projectId: projectId,
         sessionTitle: sessionTitle,
+        bridgeId: bridgeId,
       ),
     );
   }
@@ -195,6 +199,7 @@ class const ShownNotification({
   required final String? sessionId,
   required final String? projectId,
   required final String? sessionTitle,
+  required final String? bridgeId,
 }) {
   @override
   bool operator ==(Object other) {
@@ -204,9 +209,10 @@ class const ShownNotification({
         other.category == category &&
         other.sessionId == sessionId &&
         other.projectId == projectId &&
-        other.sessionTitle == sessionTitle;
+        other.sessionTitle == sessionTitle &&
+        other.bridgeId == bridgeId;
   }
 
   @override
-  int get hashCode => Object.hash(title, body, category, sessionId, projectId, sessionTitle);
+  int get hashCode => Object.hash(title, body, category, sessionId, projectId, sessionTitle, bridgeId);
 }

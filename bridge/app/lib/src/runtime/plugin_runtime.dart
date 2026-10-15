@@ -574,6 +574,7 @@ class PluginRuntime({
       yield* _useStream(
         pluginId: pluginId,
         operation: operation,
+        startIfNeeded: true,
         acquisitionResidency: PluginGenerationResidency.transient,
         body: (api, generation) => body(
           PluginCatalogImportLiveSource(
@@ -643,6 +644,7 @@ class PluginRuntime({
     yield* _useStream(
       pluginId: pluginId,
       operation: operation,
+      startIfNeeded: true,
       acquisitionResidency: PluginGenerationResidency.transient,
       body: (api, generation) => body(
         PluginCatalogImportLiveSource(
@@ -733,13 +735,33 @@ class PluginRuntime({
   }) => _useStream(
     pluginId: pluginId,
     operation: operation,
+    startIfNeeded: true,
     acquisitionResidency: PluginGenerationResidency.normal,
     body: body,
   );
 
+  /// Holds an existing generation for a stream without starting a plugin.
+  /// An inactive plugin produces an empty stream.
+  Stream<T> useStreamIfActive<T>({
+    required String pluginId,
+    required Enum operation,
+    required Stream<T> Function(BridgePluginApi api, int generation) body,
+  }) async* {
+    final slot = _requireOperationSlot(pluginId: pluginId, operation: operation);
+    if (!_isRoutable(slot)) return;
+    yield* _useStream(
+      pluginId: pluginId,
+      operation: operation,
+      startIfNeeded: false,
+      acquisitionResidency: PluginGenerationResidency.transient,
+      body: body,
+    );
+  }
+
   Stream<T> _useStream<T>({
     required String pluginId,
     required Enum operation,
+    required bool startIfNeeded,
     required PluginGenerationResidency acquisitionResidency,
     required Stream<T> Function(BridgePluginApi api, int generation) body,
   }) {
@@ -810,7 +832,7 @@ class PluginRuntime({
           final acquired = await _acquire(
             pluginId: pluginId,
             operation: operation,
-            startIfNeeded: true,
+            startIfNeeded: startIfNeeded,
             acquisitionResidency: acquisitionResidency,
           );
           lease = acquired;
