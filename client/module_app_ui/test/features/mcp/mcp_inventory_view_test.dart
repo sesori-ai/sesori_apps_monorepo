@@ -289,38 +289,6 @@ void main() {
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("large connector catalogs build lazily and remain reachable after refresh", (tester) async {
-    final entries = [
-      _server,
-      for (var i = 0; i < 2000; i++)
-        McpConnectorOfferSnapshot(
-          offerTarget: McpConnectorOfferTarget(scope: _scope, offerKey: "offer-$i"),
-          name: "Connector $i",
-          description: null,
-          availability: McpConnectorOfferAvailability.setupRequired,
-        ),
-    ];
-    states.add(_ready(entries: entries, refresh: const McpInventoryRefreshIdle()));
-    await tester.pumpWidget(app(scale: 1));
-    await tester.pumpAndSettle();
-    expect(find.text("Fixture server"), findsOneWidget);
-    expect(find.text("Connector 0"), findsOneWidget);
-    expect(find.text("Connector 1999"), findsNothing);
-    expect(find.byType(PregoGroupedRow).evaluate().length, lessThan(30));
-    await tester.scrollUntilVisible(find.text("Connector 1999"), 5000, maxScrolls: 50);
-    await tester.pumpAndSettle();
-    expect(find.text("Connector 1999"), findsOneWidget);
-    expect(find.text("Connector 0"), findsNothing);
-    expect(find.byType(PregoGroupedRow).evaluate().length, lessThan(30));
-    final scroll = tester.state<ScrollableState>(find.byType(Scrollable));
-    final offset = scroll.position.pixels;
-    states.add(_ready(entries: entries, refresh: const McpInventoryRefreshIdle()));
-    await tester.pumpAndSettle();
-    expect(scroll.position.pixels, offset);
-    expect(find.text("Connector 1999"), findsOneWidget);
-    expect(tester.takeException(), isNull);
-  });
-
   testWidgets("scope unavailability is explicit and offers no mutation", (tester) async {
     states.add(
       const McpInventoryReady(

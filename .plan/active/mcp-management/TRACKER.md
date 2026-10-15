@@ -4,9 +4,8 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Branch: `sesori/mcp-connector-setup`, in the provided `copper-heron` worktree.
-- Current step: 28/32 is in PR [#2003][pr-2003];
-  connector setup is the local successor. Latest merged: 27/32 as
-  [#2001](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2001).
+- Current step: 29/32 connector setup is verified and being published.
+  Latest merged: 28/32 as [#2003][pr-2003] (`74b6cb6747`).
   Native recording remains deferred by the user.
   Claude native forms merged as [#1991][pr-1991].
   Typed transport merged as [#1989][pr-1989].
@@ -54,7 +53,7 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
 | 25/32 | Codex scoped inventory (10.a) | Merged | [#1999][pr-1999]; evidence below |
 | 26/32 | Codex native OAuth ownership (10.b) | Merged | [#2000][pr-2000]; evidence below |
 | 27/32 | Codex typed forms and URL requests | Merged | [#2001][pr-2001]; 46 tests and exact pins |
-| 28/32 | Codex offered connector catalog | In PR | [#2003][pr-2003]; 69 tests and exact pins |
+| 28/32 | Codex offered connector catalog | Merged | [#2003][pr-2003]; 32 checks; exact pins |
 | 29/32 | Connector setup actions and browser handoff | Verified locally | Both architecture reviews approved; 143 cases |
 | 30/32 | Secondary harness support and explicit gaps | Not started | — |
 | 31/32 | Reconcile regression/capability documents | Not started | — |
@@ -73,7 +72,9 @@ The exact titles, scope, estimates, and dependency order are in `PLAN.md`.
   doubled text size. Desktop/phone fixture renders were inspected after integrating
   lazy catalog rows. Both exact Codex pins passed fresh empty-catalog reads.
   Real offers/provider completion, native recording and final L4/package/device
-  qualification remain pending. The successor stays local until #2003 merges.
+  qualification remain pending. Step 28 merged with 32 passing checks and clean
+  completed code/security reviews. Squash-integration conflicts matched the
+  already-integrated parent byte-for-byte; setup source remains unchanged.
 
 - 2026-10-13: inspected current plugin contracts, Claude process/control ownership, Codex approvals, shared
   question/permission models, client browser auth ownership, bridge routing, harness capabilities, and regression proof
