@@ -1778,7 +1778,7 @@ class PluginRuntime({
             slot: slot,
             generation: generation,
             reason: "status stream failed",
-            settledState: PluginRuntimeState.failed,
+            stoppedCleanly: false,
           );
         },
         onDone: () {
@@ -1789,7 +1789,7 @@ class PluginRuntime({
             slot: slot,
             generation: generation,
             reason: "status stream closed",
-            settledState: PluginRuntimeState.failed,
+            stoppedCleanly: false,
           );
         },
       );
@@ -1844,7 +1844,7 @@ class PluginRuntime({
               slot: slot,
               generation: generation,
               reason: "event stream failed",
-              settledState: PluginRuntimeState.failed,
+              stoppedCleanly: false,
             );
           }
         },
@@ -1856,7 +1856,7 @@ class PluginRuntime({
             slot: slot,
             generation: generation,
             reason: "event stream closed",
-            settledState: PluginRuntimeState.failed,
+            stoppedCleanly: false,
           );
         },
       );
@@ -1944,7 +1944,7 @@ class PluginRuntime({
     if (_shuttingDown) return;
     if (status case PluginFailed(:final reason, :final cause)) {
       Log.w('Plugin "${slot.registration.descriptor.id}" failed after startup: $reason', cause);
-      _retireGeneration(slot: slot, generation: generation, reason: reason, settledState: PluginRuntimeState.failed);
+      _retireGeneration(slot: slot, generation: generation, reason: reason, stoppedCleanly: false);
       return;
     }
     if (status is PluginStopped) {
@@ -1952,7 +1952,7 @@ class PluginRuntime({
         slot: slot,
         generation: generation,
         reason: "plugin stopped",
-        settledState: PluginRuntimeState.dormant,
+        stoppedCleanly: true,
       );
       return;
     }
@@ -1977,7 +1977,7 @@ class PluginRuntime({
     required _PluginRuntimeSlot slot,
     required int generation,
     required String reason,
-    required PluginRuntimeState settledState,
+    required bool stoppedCleanly,
   }) {
     if (slot.generation != generation) return;
     final plugin = slot.plugin;
@@ -1995,19 +1995,22 @@ class PluginRuntime({
       try {
         await _waitForDurableCommits(slot);
         if (slot.generation != generation || !identical(slot.plugin, plugin)) return;
+        // A plugin that stopped on its own stays stopping while it is torn
+        // down and settles dormant only once that succeeds, so clients do not
+        // read it as unavailable; the next request starts a fresh generation.
         slot
           ..plugin = null
-          ..state = PluginRuntimeState.failed
+          ..state = stoppedCleanly ? PluginRuntimeState.stopping : PluginRuntimeState.failed
           ..workState = PluginWorkState.unknown;
         _publishSnapshots();
         await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
-        // A plugin that stopped on its own (the Codex app-server exits cleanly
-        // when idle) settles dormant once torn down, so clients do not read it
-        // as unavailable; the next request starts a fresh generation.
-        if (slot.generation == generation && slot.state == PluginRuntimeState.failed) {
-          slot.state = settledState;
+        if (stoppedCleanly && slot.generation == generation && slot.state == PluginRuntimeState.stopping) {
+          slot.state = PluginRuntimeState.dormant;
         }
       } on Object catch (error, stackTrace) {
+        if (stoppedCleanly && slot.generation == generation && slot.state == PluginRuntimeState.stopping) {
+          slot.state = PluginRuntimeState.failed;
+        }
         Log.w(
           'Plugin "${slot.registration.descriptor.id}" cleanup after $reason failed',
           error,

@@ -1870,15 +1870,27 @@ void main() {
   });
 
   test("a plugin that stops on its own settles dormant and restarts on demand", () async {
-    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi(), shutdownGate: shutdownGate.future),
+    );
     final runtime = _runtime(factory: factory);
-    addTearDown(runtime.dispose);
+    addTearDown(() {
+      if (!shutdownGate.isCompleted) shutdownGate.complete();
+      return runtime.dispose();
+    });
     await runtime.startEager(pluginIds: const ["one"]);
     final stoppedPlugin = factory.plugins.single;
 
     stoppedPlugin.statuses
       ..add(const PluginStopping())
       ..add(const PluginStopped());
+    await _waitUntil(() => stoppedPlugin.shutdownCount == 1);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
+
+    shutdownGate.complete();
     await _waitUntil(
       () =>
           runtime.snapshot.single.state == PluginRuntimeState.dormant &&
