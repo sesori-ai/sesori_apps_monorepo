@@ -1779,7 +1779,7 @@ void main() {
     expect(await operation, "prepared");
     await _waitUntil(
       () =>
-          runtime.snapshot.single.state == PluginRuntimeState.failed &&
+          runtime.snapshot.single.state == PluginRuntimeState.dormant &&
           runtime.snapshot.single.transition == PluginRuntimeTransition.none,
     );
     expect(plugin.shutdownInvocationCount, 1);
@@ -1853,7 +1853,7 @@ void main() {
     failedPlugin.statuses.add(const PluginFailed(reason: "terminal", cause: null));
     await _waitUntil(
       () =>
-          runtime.snapshot.single.state == PluginRuntimeState.failed &&
+          runtime.snapshot.single.state == PluginRuntimeState.dormant &&
           runtime.snapshot.single.transition == PluginRuntimeTransition.none,
     );
 

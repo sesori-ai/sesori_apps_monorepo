@@ -1969,9 +1969,12 @@ class PluginRuntime({
       try {
         await _waitForDurableCommits(slot);
         if (slot.generation != generation || !identical(slot.plugin, plugin)) return;
+        // Dormant, not failed: the next request starts a fresh generation, so
+        // a runtime that ended on its own (Codex app-server exits cleanly when
+        // idle) must not read as unavailable to clients until then.
         slot
           ..plugin = null
-          ..state = PluginRuntimeState.failed
+          ..state = PluginRuntimeState.dormant
           ..workState = PluginWorkState.unknown;
         _publishSnapshots();
         await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
