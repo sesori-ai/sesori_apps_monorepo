@@ -1774,13 +1774,23 @@ class PluginRuntime({
           if (slot.generation != generation) return;
           if (_shuttingDown) return;
           Log.w('Plugin "$pluginId" status stream failed', error, stackTrace);
-          _retireFailedGeneration(slot: slot, generation: generation, reason: "status stream failed");
+          _retireGeneration(
+            slot: slot,
+            generation: generation,
+            reason: "status stream failed",
+            settledState: PluginRuntimeState.failed,
+          );
         },
         onDone: () {
           if (slot.generation != generation || slot.plugin == null) return;
           if (_shuttingDown) return;
           Log.w('Plugin "$pluginId" status stream closed before the generation stopped');
-          _retireFailedGeneration(slot: slot, generation: generation, reason: "status stream closed");
+          _retireGeneration(
+            slot: slot,
+            generation: generation,
+            reason: "status stream closed",
+            settledState: PluginRuntimeState.failed,
+          );
         },
       );
       slot.workState = started.currentWorkState;
@@ -1830,14 +1840,24 @@ class PluginRuntime({
           }
           if (slot.generation == generation) {
             Log.w('Plugin "$pluginId" event stream failed', error, stackTrace);
-            _retireFailedGeneration(slot: slot, generation: generation, reason: "event stream failed");
+            _retireGeneration(
+              slot: slot,
+              generation: generation,
+              reason: "event stream failed",
+              settledState: PluginRuntimeState.failed,
+            );
           }
         },
         onDone: () {
           if (slot.generation != generation || slot.plugin == null) return;
           if (_shuttingDown) return;
           Log.w('Plugin "$pluginId" event stream closed before the generation stopped');
-          _retireFailedGeneration(slot: slot, generation: generation, reason: "event stream closed");
+          _retireGeneration(
+            slot: slot,
+            generation: generation,
+            reason: "event stream closed",
+            settledState: PluginRuntimeState.failed,
+          );
         },
       );
       _applyStatus(slot: slot, generation: generation, status: started.currentStatus);
@@ -1924,11 +1944,16 @@ class PluginRuntime({
     if (_shuttingDown) return;
     if (status case PluginFailed(:final reason, :final cause)) {
       Log.w('Plugin "${slot.registration.descriptor.id}" failed after startup: $reason', cause);
-      _retireFailedGeneration(slot: slot, generation: generation, reason: reason);
+      _retireGeneration(slot: slot, generation: generation, reason: reason, settledState: PluginRuntimeState.failed);
       return;
     }
     if (status is PluginStopped) {
-      _retireFailedGeneration(slot: slot, generation: generation, reason: "plugin stopped");
+      _retireGeneration(
+        slot: slot,
+        generation: generation,
+        reason: "plugin stopped",
+        settledState: PluginRuntimeState.dormant,
+      );
       return;
     }
     if (status is PluginStopping) {
@@ -1948,10 +1973,11 @@ class PluginRuntime({
     _publishSnapshots();
   }
 
-  void _retireFailedGeneration({
+  void _retireGeneration({
     required _PluginRuntimeSlot slot,
     required int generation,
     required String reason,
+    required PluginRuntimeState settledState,
   }) {
     if (slot.generation != generation) return;
     final plugin = slot.plugin;
@@ -1969,15 +1995,18 @@ class PluginRuntime({
       try {
         await _waitForDurableCommits(slot);
         if (slot.generation != generation || !identical(slot.plugin, plugin)) return;
-        // Dormant, not failed: the next request starts a fresh generation, so
-        // a runtime that ended on its own (Codex app-server exits cleanly when
-        // idle) must not read as unavailable to clients until then.
         slot
           ..plugin = null
-          ..state = PluginRuntimeState.dormant
+          ..state = PluginRuntimeState.failed
           ..workState = PluginWorkState.unknown;
         _publishSnapshots();
         await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
+        // A plugin that stopped on its own (the Codex app-server exits cleanly
+        // when idle) settles dormant once torn down, so clients do not read it
+        // as unavailable; the next request starts a fresh generation.
+        if (slot.generation == generation && slot.state == PluginRuntimeState.failed) {
+          slot.state = settledState;
+        }
       } on Object catch (error, stackTrace) {
         Log.w(
           'Plugin "${slot.registration.descriptor.id}" cleanup after $reason failed',

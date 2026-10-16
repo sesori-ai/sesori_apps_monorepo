@@ -138,9 +138,19 @@ class ManagedRuntimeMonitor<R>({
     if (_disarmed || !identical(process, _currentHandle?.process)) {
       return;
     }
+    final policy = _restartPolicy;
+    // A clean exit the bridge did not request is a stop, not a crash: the
+    // Codex app-server stops itself when idle, and the next request starts a
+    // fresh one. Only the disabled policy reports it this way; a bounded
+    // policy still respawns its child.
+    if (policy is DisabledRestartPolicy && exitCode == 0) {
+      Log.i("[$_runtimeId] runtime exited on its own with code 0");
+      _status.trySet(const PluginStopping());
+      _status.trySet(const PluginStopped());
+      return;
+    }
     Log.e("[$_runtimeId] runtime exited unexpectedly with code $exitCode");
 
-    final policy = _restartPolicy;
     switch (policy) {
       case DisabledRestartPolicy():
         _status.trySet(

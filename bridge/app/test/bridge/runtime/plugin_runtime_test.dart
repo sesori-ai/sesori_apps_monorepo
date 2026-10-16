@@ -1779,7 +1779,7 @@ void main() {
     expect(await operation, "prepared");
     await _waitUntil(
       () =>
-          runtime.snapshot.single.state == PluginRuntimeState.dormant &&
+          runtime.snapshot.single.state == PluginRuntimeState.failed &&
           runtime.snapshot.single.transition == PluginRuntimeTransition.none,
     );
     expect(plugin.shutdownInvocationCount, 1);
@@ -1853,7 +1853,7 @@ void main() {
     failedPlugin.statuses.add(const PluginFailed(reason: "terminal", cause: null));
     await _waitUntil(
       () =>
-          runtime.snapshot.single.state == PluginRuntimeState.dormant &&
+          runtime.snapshot.single.state == PluginRuntimeState.failed &&
           runtime.snapshot.single.transition == PluginRuntimeTransition.none,
     );
 
@@ -1867,6 +1867,34 @@ void main() {
     expect(factory.startCount, 2);
     expect(runtime.snapshot.single.generation, 2);
     expect(failedPlugin.shutdownCount, 1);
+  });
+
+  test("a plugin that stops on its own settles dormant and restarts on demand", () async {
+    final factory = _FakeGenerationFactory(startGate: Future<void>.value());
+    final runtime = _runtime(factory: factory);
+    addTearDown(runtime.dispose);
+    await runtime.startEager(pluginIds: const ["one"]);
+    final stoppedPlugin = factory.plugins.single;
+
+    stoppedPlugin.statuses
+      ..add(const PluginStopping())
+      ..add(const PluginStopped());
+    await _waitUntil(
+      () =>
+          runtime.snapshot.single.state == PluginRuntimeState.dormant &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+
+    final result = await runtime.use(
+      pluginId: "one",
+      operation: _TestOperation.retry,
+      body: (_) async => "restarted",
+    );
+
+    expect(result, "restarted");
+    expect(factory.startCount, 2);
+    expect(runtime.snapshot.single.generation, 2);
+    expect(stoppedPlugin.shutdownCount, 1);
   });
 
   test("shared factory failures propagate instead of degrading one plugin", () async {

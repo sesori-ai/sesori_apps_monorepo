@@ -58,6 +58,20 @@ void main() {
       expect(fakes.spawn.spawnedPorts, isEmpty);
     });
 
+    test("a disabled restart policy reports a clean unexpected exit as stopped", () async {
+      final status = PluginStatusController(initial: const PluginReady());
+      final tags = _collect(status);
+      final monitor = fakes.monitor(status: status, restartPolicy: const RuntimeRestartPolicy.disabled());
+      final child = _child(pid: 102);
+
+      monitor.arm(_handle(port: 4096, process: child));
+      child.completeExit(0);
+      await pumpEventQueue();
+
+      expect(tags, equals(<String>["ready", "stopping", "stopped"]));
+      expect(fakes.spawn.spawnedPorts, isEmpty);
+    });
+
     test("an unexpected exit restarts on the pinned port and returns to ready", () async {
       final status = PluginStatusController(initial: const PluginReady());
       final tags = _collect(status);
