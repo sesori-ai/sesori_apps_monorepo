@@ -348,6 +348,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
+  A Codex 0.162.1 PATH install (newer than the 0.160.1 managed target) was observed
+  to exit on its own (code 0) after several idle minutes (5 to 20) despite the
+  keepalive. The bridge treats a clean exit after startup as a stop: the harness
+  reports dormant, not failed, while and after the generation is torn down, so an open
+  chat stays usable and the next request starts a fresh app-server. A nonzero exit, a
+  clean exit before startup completes, a terminal plugin failure, a failed teardown,
+  or a failed start still reports failed.
   A root remains busy for lifecycle and safe-stop purposes while any tracked
   child turn runs, even after the root's own turn completes. Lifecycle-wide
   interruption snapshots active roots, children, pending turn admissions, and

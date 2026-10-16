@@ -1869,6 +1869,46 @@ void main() {
     expect(failedPlugin.shutdownCount, 1);
   });
 
+  test("a plugin that stops on its own settles dormant and restarts on demand", () async {
+    final shutdownGate = Completer<void>();
+    final factory = _FakeGenerationFactory(
+      startGate: Future<void>.value(),
+      pluginFactory: (_) => _FakePlugin(api: _FakeApi(), shutdownGate: shutdownGate.future),
+    );
+    final runtime = _runtime(factory: factory);
+    addTearDown(() {
+      if (!shutdownGate.isCompleted) shutdownGate.complete();
+      return runtime.dispose();
+    });
+    await runtime.startEager(pluginIds: const ["one"]);
+    final stoppedPlugin = factory.plugins.single;
+
+    stoppedPlugin.statuses
+      ..add(const PluginStopping())
+      ..add(const PluginStopped());
+    await _waitUntil(() => stoppedPlugin.shutdownCount == 1);
+    expect(runtime.snapshot.single.state, PluginRuntimeState.dormant);
+    expect(runtime.snapshot.single.transition, PluginRuntimeTransition.stopping);
+
+    shutdownGate.complete();
+    await _waitUntil(
+      () =>
+          runtime.snapshot.single.state == PluginRuntimeState.dormant &&
+          runtime.snapshot.single.transition == PluginRuntimeTransition.none,
+    );
+
+    final result = await runtime.use(
+      pluginId: "one",
+      operation: _TestOperation.retry,
+      body: (_) async => "restarted",
+    );
+
+    expect(result, "restarted");
+    expect(factory.startCount, 2);
+    expect(runtime.snapshot.single.generation, 2);
+    expect(stoppedPlugin.shutdownCount, 1);
+  });
+
   test("shared factory failures propagate instead of degrading one plugin", () async {
     const error = BridgeRuntimeServerException("bridge ownership failed");
     final factory = _FakeGenerationFactory(
