@@ -346,6 +346,9 @@ class AcpEventMapper({
   /// current turn. The caller owns the turn boundary and must call this before
   /// the next turn starts.
   List<BridgeSseEvent> finalizeTurn({required String sessionId}) {
+    // A later turn that no prompt begins, such as a Grok wake-up turn, must not
+    // reuse this turn's id-less assistant message and overwrite its text.
+    _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     final accumulators = _textPartAccumulators.remove(sessionId);
     if (accumulators == null) return const [];
 

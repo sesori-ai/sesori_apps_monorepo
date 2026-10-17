@@ -196,26 +196,30 @@ void main() {
     });
 
     test("the autonomous turn's completion finalizes the text it streamed", () {
+      AcpNotification chunk(String text) => AcpNotification(
+        method: "session/update",
+        params: {
+          "sessionId": _root,
+          "update": {
+            "sessionUpdate": "agent_message_chunk",
+            "content": {"type": "text", "text": text},
+          },
+        },
+      );
       mapper
         ..map(_fixture("subagent_spawned.json"))
         ..map(_fixture("subagent_child_prompt.json"))
         ..map(_fixture("subagent_finished_completed.json"))
-        ..map(
-          const AcpNotification(
-            method: "session/update",
-            params: {
-              "sessionId": _root,
-              "update": {
-                "sessionUpdate": "agent_message_chunk",
-                "content": {"type": "text", "text": "Child A finished."},
-              },
-            },
-          ),
-        );
+        ..map(chunk("Child A finished."));
 
       final events = mapper.map(_fixture("subagent_wake_turn_completed.json"));
       final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
       expect(part, isA<PluginMessagePartText>().having((text) => text.text, "text", "Child A finished."));
+
+      mapper.map(chunk("Later."));
+      expect(mapper.map(_fixture("subagent_wake_turn_completed.json")), isEmpty, reason: "a stale completion");
+      final later = mapper.finalizeTurn(sessionId: _root).whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(later.id, isNot(part.id), reason: "the next turn must not overwrite the wake-up reply");
     });
 
     test("subagent_finished cancelled marks the tile cancelled", () {
