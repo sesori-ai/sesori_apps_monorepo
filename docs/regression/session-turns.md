@@ -192,11 +192,21 @@ defaults and queued client sends coherent.
   summary agrees: a background shell or workflow is the main agent's own work
   and keeps `mainAgentRunning` true, so session lists show the session running
   while the transcript shows Working; background sub-agents alone report as
-  running child sessions with the main agent stopped. The CLI's
+  running child sessions with the main agent stopped. A task a sub-agent runs
+  itself (`owned_by_subagent`, such as its own Bash call) keeps the session
+  busy, even after that sub-agent ends, but never sets `mainAgentRunning`.
+  Failure signal: the transcript's sub-agent row vanishes seconds after a
+  background sub-agent starts running tools. The CLI's
   `<task-notification>` delivery records are internal: they finalize the
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
   render in the sub-agent's child session, never as a root turn.
+- Grok's autonomous wake-up turn, which no prompt settles, finalizes its
+  streamed text when its `turn_completed` releases the root hold, and a tool
+  call Grok reported `completed` stays completed when it moves a shell to the
+  background and streams more output as `in_progress`. Failure signal: the
+  sub-agent row stays hidden behind a stale streaming reply or a finished
+  command card that reopened as running.
 - Claude tasks, OpenCode child sessions, and Grok children expose scoped stop.
   The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is

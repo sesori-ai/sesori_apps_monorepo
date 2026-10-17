@@ -186,7 +186,8 @@ class AcpReplayCollector({
         // completed/failed replayed tool card back to pending (status) or drop a
         // separately-sent display title. Mirrors the live mapper's merge so
         // replayed history matches live rendering.
-        if (mappedStatus != null) {
+        // A finished call stays finished, as in the live mapper.
+        if (mappedStatus != null && !draft.status.isTerminal) {
           draft.status = mappedStatus;
           draft.hasExplicitStatus = true;
         }
