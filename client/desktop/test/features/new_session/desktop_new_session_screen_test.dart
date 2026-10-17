@@ -54,6 +54,7 @@ void main() {
     whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
+    when(newSessionCubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
@@ -110,6 +111,7 @@ void main() {
     whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
+    when(newSessionCubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
@@ -199,6 +201,7 @@ void main() {
     whenListen(newSessionCubit, states.stream, initialState: _state);
     when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
     when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
+    when(newSessionCubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
@@ -284,6 +287,7 @@ void main() {
       whenListen(newSessionCubit, const Stream<NewSessionState>.empty(), initialState: _state);
       when(() => newSessionCubit.needsHarnessDiscovery).thenReturn(false);
       when(() => newSessionCubit.hasNoHarnesses).thenReturn(false);
+      when(newSessionCubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
       when(() => newSessionCubit.canSubmit).thenReturn(true);
       when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       var draft = ComposerDraft.typed(text: "");

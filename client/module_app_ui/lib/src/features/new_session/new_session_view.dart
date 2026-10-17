@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/rendering.dart";
@@ -77,7 +78,9 @@ const double _optionsBottomPadding = PregoSpacing.md;
 const _sendingMotionDuration = Duration(milliseconds: 240);
 
 class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProviderStateMixin {
-  bool _dedicatedWorktree = true;
+  /// Null until the stored choice loads; the toggle stays hidden until then.
+  bool? _chosenDedicatedWorktree;
+  bool get _dedicatedWorktree => _chosenDedicatedWorktree ?? true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
   late PregoPopupAlertPresenter _popupAlertPresenter;
@@ -101,6 +104,13 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       duration: _sendingMotionDuration,
       value: context.read<NewSessionCubit>().state.phase is NewSessionPhaseSending ? 1 : 0,
     )..addStatusListener((_) => setState(() {}));
+    // The row stays hidden until the project's worktree support is known,
+    // which comes from the bridge, so the stored choice lands before it shows.
+    unawaited(
+      context.read<NewSessionCubit>().readDedicatedWorktreePreference().then((value) {
+        if (mounted) setState(() => _chosenDedicatedWorktree ??= value);
+      }),
+    );
   }
 
   @override
@@ -235,9 +245,14 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     if (cubit.hasNoHarnesses) return NewSessionNoHarnessNotice(onSettingsPressed: widget.onOpenHarnessSettings);
     if (cubit.needsHarnessDiscovery) return null;
     return switch (data?.projectWorktreeCapability) {
+      // The stored choice is still loading: hold the row's height so the
+      // toggle never appears on and then flips off.
+      NewSessionProjectWorktreeCapability.supported when _chosenDedicatedWorktree == null => const SizedBox(
+        height: _DedicatedWorkspaceRow.height,
+      ),
       NewSessionProjectWorktreeCapability.supported => _DedicatedWorkspaceRow(
         value: _dedicatedWorktree,
-        onChanged: (value) => setState(() => _dedicatedWorktree = value),
+        onChanged: (value) => setState(() => _chosenDedicatedWorktree = value),
       ),
       NewSessionProjectWorktreeCapability.loading || null => const SizedBox(height: _DedicatedWorkspaceRow.height),
       NewSessionProjectWorktreeCapability.unsupported || NewSessionProjectWorktreeCapability.unavailable => null,

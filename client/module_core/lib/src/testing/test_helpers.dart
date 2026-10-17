@@ -31,6 +31,7 @@ import "../platform/route_source.dart";
 import "../platform/url_launcher.dart";
 import "../repositories/bridge_repository.dart";
 import "../repositories/composer_draft_repository.dart";
+import "../repositories/dedicated_worktree_preference_store.dart";
 import "../repositories/models/plugin_discovery_snapshot.dart";
 import "../repositories/models/plugin_management_result.dart";
 import "../repositories/models/session_options_repository_result.dart";
@@ -1091,4 +1092,14 @@ class FakeCatalogRescanService() implements CatalogRescanService {
     await _state.close();
     await _catalogChanged.close();
   }
+}
+
+class FakeDedicatedWorktreePreferenceStore() implements DedicatedWorktreePreferenceStore {
+  final List<bool> writes = [];
+
+  @override
+  Future<bool> read() async => writes.lastOrNull ?? true;
+
+  @override
+  Future<void> write({required bool value}) async => writes.add(value);
 }

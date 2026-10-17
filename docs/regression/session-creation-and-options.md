@@ -209,6 +209,9 @@ variant, and worktree mode, and creating the session with its first input.
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
   themselves is decided behind it.
+- The "New worktree" toggle opens with the value the last session on this device
+  was started with (on when none was ever started), whatever the project or
+  bridge. Only a Send where the toggle was shown updates the remembered value.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries. Completeness
   decides replacement only at capture time; the stored row holds just the

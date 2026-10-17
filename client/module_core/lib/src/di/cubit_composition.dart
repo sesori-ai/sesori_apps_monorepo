@@ -10,6 +10,7 @@ import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
 import "../platform/route_source.dart";
 import "../repositories/composer_draft_repository.dart";
+import "../repositories/dedicated_worktree_preference_store.dart";
 import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
@@ -110,6 +111,7 @@ NewSessionCubit createNewSessionCubit({
     composerDraftRepository: locator<ComposerDraftRepository>(),
     productAnalyticsService: locator<ProductAnalyticsService>(),
     sessionLaunchService: locator<SessionLaunchService>(),
+    dedicatedWorktreePreferenceStore: locator<DedicatedWorktreePreferenceStore>(),
     projectId: projectId,
     projectName: projectName,
   );

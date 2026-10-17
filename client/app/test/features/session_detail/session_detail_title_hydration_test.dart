@@ -182,6 +182,7 @@ void _registerDependencies({
   getIt.registerSingleton<FailureReporter>(failureReporter);
   getIt.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
   getIt.registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository());
+  getIt.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
   getIt.registerSingleton<SessionLaunchService>(
     inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
   );
