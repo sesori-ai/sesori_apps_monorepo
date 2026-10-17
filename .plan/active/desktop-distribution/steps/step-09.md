@@ -60,14 +60,22 @@ Operational ownership and repair: [Linux repositories](../../../../docs/desktop/
 Native KDE run `38769349531` reached the real anonymous window and close-to-tray path,
 then found `/NO_DBUSMENU`. The adapter leaves the native context-menu trigger unset;
 Linux consequently exports no usable menu, and manual `OpenContextMenu` is unsupported.
-11.i.a sets the Linux trigger before publishing the menu/icon. No new state, lifecycle
+11.i.a/#2004 sets the Linux trigger before publishing the menu/icon. No new state, lifecycle
 owner, persistence or macOS/Windows behavior is added.
 
 On 2026-10-15 the user approved landing this focused fix with tests, then obtaining
-native visual and upgrade proof from fresh signed builds. #2002 is paused as 11.i.b;
+native visual and upgrade proof from fresh signed builds. #2002 resumes as 11.i.b;
 its old `1021/1022` package bytes cannot be repaired in place or used to claim the fix.
-Resume its credential-free x64 GNOME/Wayland and ARM64 KDE/X11 gates with corrected
-signed producers, then real-account/session-login coverage in 11.i.c. Stable stays closed.
+The user then approved two separately compiled signed versions of the corrected source
+`0e076d27cb928e3ee802d6e650efc4097ba5fb55`, selected through producers `38774801356`
+and `38791726962`. Strict package-version increase remains required; this is not a
+code/schema migration claim. The report records whether product source changed.
+
+The native gate covers credential-free x64 GNOME/Wayland and ARM64 KDE/X11, encrypted
+fixture persistence and login-registration roundtrip. KDE uses the owned Plasma
+accessibility targets for real pointer clicks, captures the visible menu and clicks
+Quit; it does not substitute direct DBusMenu event dispatch for host interaction.
+Real-account/session-login coverage follows in 11.i.c. Stable stays closed.
 Keep the existing release rollover: QA uses retained signed producer artifacts, not
 historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
 recreated release or silent same-version substitution.

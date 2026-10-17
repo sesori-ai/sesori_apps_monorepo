@@ -193,6 +193,36 @@ anonymous public files and real APT/DNF refresh against HTTPS. Bucket access alo
 not repository delivery. Neither level substitutes for native desktop/account upgrades
 or grants stable admission. See [operations](../desktop/linux-repositories.md).
 
+### Native Linux desktop sessions
+
+`desktop-linux-session.yml` uses native Ubuntu 24.04 x64 GNOME/Wayland without a tray
+host and ARM64 KDE/X11 with StatusNotifier. Both use real GNOME Keyring Secret Service;
+this does not claim KWallet-provider coverage. Sessions use isolated runner homes and
+virtual displays, not CPU emulation. No account credentials or signing/publishing
+permissions are available to this workflow.
+
+The credential-free sequence verifies original signed producer artifacts, builds nonshipping
+storage probes against each corresponding source, installs the old real package, renders
+its anonymous window, performs normal close/native tray Quit, then installs and exercises
+the newer package. KDE identifies the app-owned StatusNotifier title, locates visible
+Plasma targets through accessibility, right-clicks the icon and primary-clicks Quit.
+Plasma 5.27 forwards primary icon clicks as Activate; primary-click menu opening is not
+qualified by this scenario. A captured visible menu is required, not just direct DBusMenu
+event delivery. Preserve the post-click capture on lookup failure for diagnosis.
+Encrypted fixture values must survive replacement; login registration
+must create/read/remove correctly. Inspect the captured anonymous windows before accepting
+native UI evidence. A window PID or passing mocked driver test is not a rendered-app pass.
+Public internal release objects roll away; QA binds to retained successful main producer
+runs instead. Expired artifacts require an explicitly selected new increasing pair, not
+changed release retention, a silently substituted version or same-version fallback.
+Separately compiled signed builds from the same source may verify increasing package
+versions and persistence; report that source did not change and do not claim code/schema
+migration coverage from that case.
+
+Real account restoration, helper On/Off behavior, actual session autostart, unavailable
+Secret Service and remaining distro upgrade rows stay separate gates. This workflow does
+not replace them, publish releases or admit stable Linux.
+
 ## Linux internal-preview publication
 
 The shared internal cycle builds both native Linux CPUs with its source/build number
