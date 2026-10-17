@@ -201,6 +201,12 @@ defaults and queued client sends coherent.
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
   render in the sub-agent's child session, never as a root turn.
+- Grok's autonomous wake-up turn, which no prompt settles, finalizes its
+  streamed text when its `turn_completed` releases the root hold, and a tool
+  call Grok reported `completed` stays completed when it moves a shell to the
+  background and streams more output as `in_progress`. Failure signal: the
+  sub-agent row stays hidden behind a stale streaming reply or a finished
+  command card that reopened as running.
 - Claude tasks, OpenCode child sessions, and Grok children expose scoped stop.
   The client first asks with `confirm`; while sub-agents
   run the bridge refuses with the running count and whether the main agent is

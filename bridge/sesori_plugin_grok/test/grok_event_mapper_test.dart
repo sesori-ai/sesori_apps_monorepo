@@ -195,6 +195,29 @@ void main() {
       expect(tracker.hasActiveWork, isFalse);
     });
 
+    test("the autonomous turn's completion finalizes the text it streamed", () {
+      mapper
+        ..map(_fixture("subagent_spawned.json"))
+        ..map(_fixture("subagent_child_prompt.json"))
+        ..map(_fixture("subagent_finished_completed.json"))
+        ..map(
+          const AcpNotification(
+            method: "session/update",
+            params: {
+              "sessionId": _root,
+              "update": {
+                "sessionUpdate": "agent_message_chunk",
+                "content": {"type": "text", "text": "Child A finished."},
+              },
+            },
+          ),
+        );
+
+      final events = mapper.map(_fixture("subagent_wake_turn_completed.json"));
+      final part = events.whereType<BridgeSseMessagePartUpdated>().single.part;
+      expect(part, isA<PluginMessagePartText>().having((text) => text.text, "text", "Child A finished."));
+    });
+
     test("subagent_finished cancelled marks the tile cancelled", () {
       mapper
         ..map(_fixture("subagent_spawned.json"))

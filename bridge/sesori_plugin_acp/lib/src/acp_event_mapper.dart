@@ -1210,7 +1210,13 @@ class AcpEventMapper({
           : (prior?.tool ?? _contentMapper.toolName(update: update)),
       title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
       shellCommand: shellCommandForToolUpdate(update: update) ?? prior?.shellCommand,
-      status: mappedStatus ?? prior?.status ?? PluginToolStatus.pending,
+      // A finished call stays finished: Grok reports a shell it moved to the
+      // background `completed`, then streams its output `in_progress` with no
+      // later final status.
+      status: switch (prior?.status) {
+        final finished? when finished.isTerminal => finished,
+        final previous => mappedStatus ?? previous ?? PluginToolStatus.pending,
+      },
       contentTracker: contentTracker,
       isFileMutation:
           (prior?.isFileMutation ?? false) ||
