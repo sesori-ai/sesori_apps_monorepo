@@ -17,6 +17,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/queued_session_s
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/session_launch/launch_follow_up.dart";
 import "package:sesori_dart_core/src/repositories/composer_draft_repository.dart";
+import "package:sesori_dart_core/src/repositories/dedicated_worktree_preference_store.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/session_launch_repository.dart";
@@ -148,6 +149,7 @@ void main() {
     NewSessionCubit buildCubit({
       ComposerDraftRepository? composerDraftRepository,
       SessionLaunchRepository? launchRepository,
+      DedicatedWorktreePreferenceStore? dedicatedWorktreePreferenceStore,
     }) => NewSessionCubit(
       connectionService: mockConnectionService,
       newSessionPluginService: NewSessionPluginService(
@@ -169,6 +171,7 @@ void main() {
         selectionTracker: selectionTracker,
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
+      dedicatedWorktreePreferenceStore: dedicatedWorktreePreferenceStore ?? FakeDedicatedWorktreePreferenceStore(),
       projectId: "project-1",
       projectName: null,
     );
@@ -261,6 +264,37 @@ void main() {
         NewSessionProjectWorktreeCapability.supported,
       );
       expect(cubit.canCreateSession, isTrue);
+    });
+
+    test("Send remembers the dedicated worktree choice", () async {
+      when(
+        () => mockSessionService.createSessionWithMessage(
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(testSession(id: "s-1")));
+      final store = FakeDedicatedWorktreePreferenceStore();
+      final cubit = buildCubit(dedicatedWorktreePreferenceStore: store);
+      addTearDown(cubit.close);
+      await waitForComposer(cubit);
+
+      await cubit.submit(
+        attachments: const [],
+        draft: ComposerDraft.typed(text: "hello"),
+        dedicatedWorktree: false,
+        command: null,
+      );
+
+      expect(store.writes, [false]);
+      expect(await cubit.readDedicatedWorktreePreference(), isFalse);
     });
 
     test("project capability failure blocks creation until retry succeeds", () async {
@@ -570,6 +604,7 @@ void main() {
             selectionTracker: selectionTracker,
             authSession: FakeAuthSession(initialState: const AuthState.initial()),
           ),
+          dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
           projectId: "project-1",
           projectName: null,
         );

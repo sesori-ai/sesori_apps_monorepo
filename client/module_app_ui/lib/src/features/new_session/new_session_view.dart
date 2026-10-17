@@ -1,3 +1,4 @@
+import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter/rendering.dart";
@@ -101,6 +102,13 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       duration: _sendingMotionDuration,
       value: context.read<NewSessionCubit>().state.phase is NewSessionPhaseSending ? 1 : 0,
     )..addStatusListener((_) => setState(() {}));
+    // The row stays hidden until the project's worktree support is known,
+    // which comes from the bridge, so the stored choice lands before it shows.
+    unawaited(
+      context.read<NewSessionCubit>().readDedicatedWorktreePreference().then((value) {
+        if (mounted) setState(() => _dedicatedWorktree = value);
+      }),
+    );
   }
 
   @override

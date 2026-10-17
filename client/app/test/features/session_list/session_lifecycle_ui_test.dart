@@ -188,6 +188,7 @@ void main() {
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
       getIt.registerSingleton<SessionRepository>(mockSessionService);
       getIt.registerSingleton<ProjectRepository>(mockProjectRepository);
+      getIt.registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
       registerListServices(
         projectRepository: mockProjectRepository,
       );

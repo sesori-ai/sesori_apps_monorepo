@@ -126,6 +126,8 @@ import 'package:sesori_dart_core/src/repositories/composer_draft_repository.dart
     as _i198;
 import 'package:sesori_dart_core/src/repositories/connection_notification_observation_repository.dart'
     as _i678;
+import 'package:sesori_dart_core/src/repositories/dedicated_worktree_preference_store.dart'
+    as _i24;
 import 'package:sesori_dart_core/src/repositories/feedback_prompt_repository.dart'
     as _i723;
 import 'package:sesori_dart_core/src/repositories/feedback_repository.dart'
@@ -398,6 +400,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i901.ChatInputModeStore>(
       () =>
           _i901.ChatInputModeStore(persister: gh<_i903.PersisterRepository>()),
+    );
+    gh.lazySingleton<_i24.DedicatedWorktreePreferenceStore>(
+      () => _i24.DedicatedWorktreePreferenceStore(
+        persister: gh<_i903.PersisterRepository>(),
+      ),
     );
     gh.lazySingleton<_i507.InstalledAppBuildRepository>(
       () => _i507.InstalledAppBuildRepository(

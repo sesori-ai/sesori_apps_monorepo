@@ -222,6 +222,7 @@ export "src/repositories/bridge_settings_repository.dart";
 export "src/repositories/chat_input_mode_store.dart";
 export "src/repositories/composer_draft_repository.dart";
 export "src/repositories/connection_notification_observation_repository.dart";
+export "src/repositories/dedicated_worktree_preference_store.dart";
 export "src/repositories/feedback_prompt_repository.dart";
 export "src/repositories/feedback_repository.dart";
 export "src/repositories/installed_app_build_repository.dart";

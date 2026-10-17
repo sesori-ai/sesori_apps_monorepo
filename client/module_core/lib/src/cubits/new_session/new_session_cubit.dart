@@ -21,6 +21,7 @@ import "../../foundation/models/session_launch/session_launch_composer.dart";
 import "../../foundation/models/session_launch/session_launch_outcome.dart";
 import "../../logging/logging.dart";
 import "../../repositories/composer_draft_repository.dart";
+import "../../repositories/dedicated_worktree_preference_store.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
 import "../../repositories/project_repository.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
@@ -45,6 +46,7 @@ class NewSessionCubit({
   required final ComposerDraftRepository _composerDraftRepository,
   required final ProductAnalyticsService _productAnalyticsService,
   required final SessionLaunchService _sessionLaunchService,
+  required final DedicatedWorktreePreferenceStore _dedicatedWorktreePreferenceStore,
   required final String _projectId,
 
   /// The project as the composer names it, for an alert about a creation
@@ -892,6 +894,9 @@ class NewSessionCubit({
     _replaceOptionsData(options: _newSessionOptionsService.clearStagedCommand(options: options));
   }
 
+  /// The "New worktree" choice the last session was started with.
+  Future<bool> readDedicatedWorktreePreference() => _dedicatedWorktreePreferenceStore.read();
+
   /// Sends what the composer holds. The first Send creates the session with
   /// [dedicatedWorktree]; a Send while it is being created queues a follow-up
   /// on the same launch, so a second Send is never a second session.
@@ -976,6 +981,10 @@ class NewSessionCubit({
         plugin: selectedPlugin,
       ),
     );
+    // Only a choice the user could see is remembered.
+    if (config.projectWorktreeCapability == NewSessionProjectWorktreeCapability.supported) {
+      unawaited(_dedicatedWorktreePreferenceStore.write(value: dedicatedWorktree));
+    }
     final selectedVariant = selectedAgentModel?.variant;
     // The launch outlives this cubit: its outcome arrives on
     // [_onLaunchOutcome] only while the composer is still open.

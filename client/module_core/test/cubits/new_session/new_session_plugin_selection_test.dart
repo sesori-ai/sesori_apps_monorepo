@@ -154,6 +154,7 @@ void main() {
         selectionTracker: selectionTracker,
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
+      dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
       projectId: "project-1",
       projectName: null,
     );
