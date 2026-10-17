@@ -78,7 +78,10 @@ const double _optionsBottomPadding = PregoSpacing.md;
 const _sendingMotionDuration = Duration(milliseconds: 240);
 
 class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProviderStateMixin {
-  bool _dedicatedWorktree = true;
+  /// Null until the user flips the toggle or the stored choice loads, so a
+  /// late-loading stored choice never overwrites a flip.
+  bool? _chosenDedicatedWorktree;
+  bool get _dedicatedWorktree => _chosenDedicatedWorktree ?? true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
   late PregoPopupAlertPresenter _popupAlertPresenter;
@@ -106,7 +109,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     // which comes from the bridge, so the stored choice lands before it shows.
     unawaited(
       context.read<NewSessionCubit>().readDedicatedWorktreePreference().then((value) {
-        if (mounted) setState(() => _dedicatedWorktree = value);
+        if (mounted) setState(() => _chosenDedicatedWorktree ??= value);
       }),
     );
   }
@@ -245,7 +248,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     return switch (data?.projectWorktreeCapability) {
       NewSessionProjectWorktreeCapability.supported => _DedicatedWorkspaceRow(
         value: _dedicatedWorktree,
-        onChanged: (value) => setState(() => _dedicatedWorktree = value),
+        onChanged: (value) => setState(() => _chosenDedicatedWorktree = value),
       ),
       NewSessionProjectWorktreeCapability.loading || null => const SizedBox(height: _DedicatedWorkspaceRow.height),
       NewSessionProjectWorktreeCapability.unsupported || NewSessionProjectWorktreeCapability.unavailable => null,
