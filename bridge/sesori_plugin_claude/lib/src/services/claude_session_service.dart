@@ -771,6 +771,10 @@ final class ClaudeSessionService({
     final state = _turns[sessionId];
     if (state == null) return;
     switch (message) {
+      // A sub-agent's own task is that sub-agent's work, which its task
+      // already holds; counting it would report the main agent running.
+      case ClaudeTaskStartedMessage(ownedBySubAgent: true):
+        break;
       case ClaudeTaskStartedMessage(taskId: final taskId?):
         state.runningTaskIds[taskId] = message.taskType;
       case ClaudeTaskNotificationMessage(taskId: final taskId?):
