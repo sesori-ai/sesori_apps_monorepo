@@ -62,6 +62,7 @@ void main() {
       );
       final projectInitializationService = ProjectInitializationService(
         worktreeRepository: WorktreeRepository(
+          worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           filesystemApi: const FilesystemApi(),

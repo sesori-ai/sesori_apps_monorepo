@@ -303,20 +303,6 @@ class FilesystemRepository({
     });
   }
 
-  /// Idempotently ensures the `.gitignore` at [projectPath] contains [entry].
-  ///
-  /// Throws [FilesystemPermissionDeniedException] on an OS permission denial.
-  void ensureGitignoreEntry({required String projectPath, required String entry}) {
-    final gitignorePath = p.join(projectPath, ".gitignore");
-    _guard(path: gitignorePath, () {
-      final content = _filesystemApi.readFileIfExists(gitignorePath) ?? "";
-      if (!const LineSplitter().convert(content).contains(entry)) {
-        final separator = content.isEmpty || content.endsWith("\n") ? "" : "\n";
-        _filesystemApi.appendToFile(gitignorePath, "$separator$entry\n");
-      }
-    });
-  }
-
   Set<String> listDirectoryEntryNames({required String path}) {
     return _guard(path: path, () => _filesystemApi.listEntryNames(path).toSet());
   }

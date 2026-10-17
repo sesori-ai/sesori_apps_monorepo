@@ -81,15 +81,6 @@ class const FilesystemApi() {
     Directory(path).deleteSync(recursive: true);
   }
 
-  /// Reads the file at [path], or `null` if it does not exist.
-  String? readFileIfExists(String path) {
-    final file = File(path);
-    if (!file.existsSync()) {
-      return null;
-    }
-    return file.readAsStringSync();
-  }
-
   String resolveFilePath(String path) {
     return File(path).resolveSymbolicLinksSync();
   }
@@ -111,10 +102,5 @@ class const FilesystemApi() {
     } finally {
       file.closeSync();
     }
-  }
-
-  /// Appends [content] to the file at [path], creating it if needed.
-  void appendToFile(String path, String content) {
-    File(path).writeAsStringSync(content, mode: FileMode.append);
   }
 }
