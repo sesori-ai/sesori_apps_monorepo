@@ -78,8 +78,7 @@ const double _optionsBottomPadding = PregoSpacing.md;
 const _sendingMotionDuration = Duration(milliseconds: 240);
 
 class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProviderStateMixin {
-  /// Null until the user flips the toggle or the stored choice loads, so a
-  /// late-loading stored choice never overwrites a flip.
+  /// Null until the stored choice loads; the toggle stays hidden until then.
   bool? _chosenDedicatedWorktree;
   bool get _dedicatedWorktree => _chosenDedicatedWorktree ?? true;
   bool _navigatingToCreatedSession = false;
@@ -246,6 +245,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     if (cubit.hasNoHarnesses) return NewSessionNoHarnessNotice(onSettingsPressed: widget.onOpenHarnessSettings);
     if (cubit.needsHarnessDiscovery) return null;
     return switch (data?.projectWorktreeCapability) {
+      // The stored choice is still loading: hold the row's height so the
+      // toggle never appears on and then flips off.
+      NewSessionProjectWorktreeCapability.supported when _chosenDedicatedWorktree == null => const SizedBox(
+        height: _DedicatedWorkspaceRow.height,
+      ),
       NewSessionProjectWorktreeCapability.supported => _DedicatedWorkspaceRow(
         value: _dedicatedWorktree,
         onChanged: (value) => setState(() => _chosenDedicatedWorktree = value),
