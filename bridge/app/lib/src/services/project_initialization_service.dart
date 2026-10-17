@@ -32,8 +32,8 @@ class ProjectGitSetupException({
 enum ExistingProjectPreparationOutcome() { ready, gitChoiceRequired }
 
 /// Layer 3 service that owns the "create a new project from a directory path"
-/// flow: create the directory, initialize git, write the `.worktrees/`
-/// `.gitignore` entry, then stage and commit an initial revision.
+/// flow: create the directory, initialize git, then stage and commit an
+/// initial revision.
 ///
 /// Decisions and orchestration live here; all filesystem and git execution is
 /// delegated to repositories. On a macOS permission denial the underlying
@@ -43,7 +43,6 @@ class ProjectInitializationService({
     required final WorktreeRepository _worktreeRepository,
     required final FilesystemRepository _filesystemRepository,
   }) {
-  static const String _gitignoreEntry = ".worktrees/";
   static const String _initialCommitMessage = "Initial commit";
 
 
@@ -121,8 +120,6 @@ class ProjectInitializationService({
       operation: "git init",
       run: () => _worktreeRepository.initRepository(path: path),
     );
-
-    _filesystemRepository.ensureGitignoreEntry(projectPath: path, entry: _gitignoreEntry);
 
     await _requireGitStep(
       path: path,

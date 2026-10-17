@@ -57,6 +57,7 @@ void main() {
       );
       final projectInitializationService = ProjectInitializationService(
         worktreeRepository: singlePluginWorktreeRepository(
+          worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           plugin: plugin,
@@ -116,23 +117,6 @@ void main() {
       expect(result.id, equals(path));
       expect(result.name, equals("new-project"));
       expect(result.time, const ProjectTime(created: 1234, updated: 1234));
-    });
-
-    test(".gitignore is created with .worktrees/ entry after git init", () async {
-      final path = "${tempDir.path}/new-project-with-gitignore";
-
-      final result = await handler.handle(
-        makeRequest("POST", "/project/create"),
-        body: ProjectPathRequest(path: path),
-      );
-
-      expect(result.id, equals(path));
-
-      final gitignoreFile = File("$path/.gitignore");
-      expect(gitignoreFile.existsSync(), isTrue);
-
-      final gitignoreContent = await gitignoreFile.readAsString();
-      expect(gitignoreContent, contains(".worktrees/"));
     });
 
     test("path that already exists as directory returns 409", () async {

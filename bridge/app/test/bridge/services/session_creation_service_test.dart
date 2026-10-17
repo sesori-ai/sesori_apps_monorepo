@@ -47,6 +47,7 @@ void main() {
       sessionOptionsService = FakeSessionOptionsService();
       worktreeService = _FakeWorktreeService(
         worktreeRepository: singlePluginWorktreeRepository(
+          worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(

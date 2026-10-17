@@ -12,7 +12,7 @@ import "package:sesori_bridge/src/repositories/models/catalog_import_control.dar
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
-    show normalizeProjectDirectory, resolveUserHomeDirectory;
+    show normalizeProjectDirectory, resolveUserHomeDirectory, sesoriWorktreesDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -423,6 +423,25 @@ void main() {
         ))?.projectId,
         "/private/tmp/session",
       );
+    });
+
+    test("sessions and projects found in bridge worktrees import hidden", () async {
+      final worktreePath = p.join(sesoriWorktreesDirectory(), "project-1234abcd", "blue-otter");
+      final derivedPlugin = _DerivedImportPlugin(
+        launchDirectory: "/tmp/launch",
+        sessions: [_pluginSession(id: "worktree-root", directory: worktreePath)],
+      );
+      final nativePlugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "worktree-project", directory: worktreePath)],
+        rootsByProject: const {},
+        childrenByParent: const {},
+      );
+
+      await _importCompletion(database: database, plugin: derivedPlugin);
+      await _importCompletion(database: database, plugin: nativePlugin);
+
+      expect(await database.projectsDao.getAllProjects(), isNotEmpty);
+      expect(await database.projectsDao.getCatalogProjects(), isEmpty);
     });
 
     test("native import gives an exact project id precedence during a move", () async {

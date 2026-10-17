@@ -1,6 +1,9 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
+import "package:crypto/crypto.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../api/database/daos/projects_dao.dart";
@@ -12,9 +15,8 @@ import "../runtime/plugin_runtime.dart";
 import "models/project_not_found_exception.dart";
 import "models/worktree_types.dart";
 
-const _worktreeDir = ".worktrees";
-
 class WorktreeRepository({
+  required final String _worktreesDirectory,
   required final ProjectsDao _projectsDao,
   required final SessionDao _sessionDao,
   required final FilesystemApi _filesystemApi,
@@ -283,9 +285,23 @@ class WorktreeRepository({
     return removed;
   }
 
+  /// Where the worktree named [slug] for [projectPath] lives:
+  /// `<worktrees root>/<project folder>-<path hash>/<slug>`. The folder name
+  /// keeps paths readable; the hash keeps same-named projects apart.
+  String worktreePathFor({required String projectPath, required String slug}) {
+    final pathHash = sha256.convert(utf8.encode(projectPath)).toString().substring(0, 8);
+    return p.join(_worktreesDirectory, "${p.basename(projectPath)}-$pathHash", slug);
+  }
+
+  /// Whether [worktreePath] is a bridge-owned location the bridge may delete.
+  /// Any folder under the root qualifies, so a worktree created before its
+  /// project moved stays removable.
   bool isValidWorktreePath({required String projectPath, required String worktreePath}) {
-    final expectedPrefix = "$projectPath/$_worktreeDir/";
-    return worktreePath.startsWith(expectedPrefix);
+    if (p.isWithin(_worktreesDirectory, worktreePath)) return true;
+    // COMPATIBILITY 2026-10-17 (v1.9.2): released bridges created worktrees
+    // inside the project under `.worktrees/`. Remove this branch once no
+    // supported bridge can still hold a session in such a worktree.
+    return worktreePath.startsWith("$projectPath/.worktrees/");
   }
 
   Future<String> _resolveBaseBranch({

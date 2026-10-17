@@ -125,8 +125,10 @@ WorktreeRepository singlePluginWorktreeRepository({
   required SessionDao sessionDao,
   required GitCliApi gitApi,
   required BridgePluginApi plugin,
+  required String worktreesDirectory,
 }) {
   return WorktreeRepository(
+    worktreesDirectory: worktreesDirectory,
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     filesystemApi: const FilesystemApi(),

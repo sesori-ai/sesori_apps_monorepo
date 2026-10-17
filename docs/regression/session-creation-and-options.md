@@ -246,7 +246,10 @@ variant, and worktree mode, and creating the session with its first input.
   native identifiers resolved only inside the plugin.
 - Dedicated mode creates a branch and worktree from the resolved base branch
   using a bridge-generated lowercase `color-animal` name; the branch is
-  `sesori/color-animal` and the worktree directory is the bare slug. Generated
+  `sesori/color-animal` and the worktree directory is the bare slug, created at
+  `~/.sesori-worktrees/<project folder>-<8-hex path hash>/<slug>`, outside the
+  project. History import hides sessions found there, and worktrees that older
+  bridges created in `<project>/.worktrees/` stay removable. Generated
   branch refinement keeps the `sesori/` prefix. It checks both branch
   and filesystem-path occupancy across three distinct pairs, then makes bounded
   attempts with a secure hexadecimal suffix. It falls back to the project

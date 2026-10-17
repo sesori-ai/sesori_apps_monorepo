@@ -11,7 +11,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Plugi
 ///   ([projectPathBySessionId], from the sessions⋈projects join). The bridge
 ///   records the owning project on every session it creates, so a session
 ///   running in a dedicated git worktree folds back under the project the user
-///   opened instead of its throwaway `.worktrees/<name>` cwd.
+///   opened instead of its throwaway worktree cwd.
 /// - A session without a row (created outside the bridge) belongs to its own
 ///   working directory — a derive-style backend reports each session only
 ///   under its cwd, and for a non-bridge session that cwd IS the project.

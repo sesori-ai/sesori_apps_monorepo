@@ -344,6 +344,7 @@ class Orchestrator({
       ),
     );
     final worktreeRepository = WorktreeRepository(
+      worktreesDirectory: sesoriWorktreesDirectory(),
       projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
       filesystemApi: const FilesystemApi(),

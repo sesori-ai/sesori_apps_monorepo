@@ -27,6 +27,7 @@ void main() {
     });
 
     WorktreeRepository repository({required bool isGitRepository}) => singlePluginWorktreeRepository(
+      worktreesDirectory: "/worktrees",
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       gitApi: GitCliApi(
@@ -107,6 +108,7 @@ void main() {
     });
 
     WorktreeRepository repository() => singlePluginWorktreeRepository(
+      worktreesDirectory: "/worktrees",
       projectsDao: db.projectsDao,
       sessionDao: db.sessionDao,
       gitApi: GitCliApi(
@@ -164,6 +166,72 @@ void main() {
       );
 
       expect(plugin.deleteWorkspaceCallCount, equals(1));
+    });
+
+    test("drops the project's worktree folder once its last worktree is removed", () async {
+      final worktreesDirectory = await Directory.systemTemp.createTemp("worktree_repository_root_");
+      addTearDown(() => worktreesDirectory.delete(recursive: true));
+      final repo = singlePluginWorktreeRepository(
+        worktreesDirectory: worktreesDirectory.path,
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        gitApi: GitCliApi(
+          streamingProcessRunner: const StreamingProcessRunner(),
+          processRunner: processRunner,
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+        plugin: plugin,
+      );
+      final worktreePath = repo.worktreePathFor(projectPath: "/repo", slug: "session-001");
+      Directory(worktreePath).createSync(recursive: true);
+      processRunner.enqueue(result: _ok()); // prune
+      processRunner.enqueue(result: _ok()); // remove
+
+      await repo.removeWorktree(pluginId: plugin.id, projectPath: "/repo", worktreePath: worktreePath, force: false);
+
+      expect(worktreesDirectory.listSync(), isEmpty);
+    });
+  });
+
+  group("WorktreeRepository worktree layout", () {
+    late AppDatabase db;
+
+    setUp(() => db = createTestDatabase());
+    tearDown(() => db.close());
+
+    WorktreeRepository repository() => singlePluginWorktreeRepository(
+      worktreesDirectory: "/worktrees",
+      projectsDao: db.projectsDao,
+      sessionDao: db.sessionDao,
+      gitApi: GitCliApi(
+        streamingProcessRunner: const StreamingProcessRunner(),
+        processRunner: _FakeProcessRunner(),
+        gitPathExists: ({required String gitPath}) => true,
+      ),
+      plugin: _FakeBridgePlugin(),
+    );
+
+    test("groups worktrees under the project folder name plus a path hash", () {
+      final repo = repository();
+
+      expect(
+        repo.worktreePathFor(projectPath: "/repo/project", slug: "blue-otter"),
+        "/worktrees/project-9a1fd19f/blue-otter",
+      );
+      expect(
+        repo.worktreePathFor(projectPath: "/moved/project", slug: "blue-otter"),
+        "/worktrees/project-c4014039/blue-otter",
+      );
+    });
+
+    test("accepts the worktree root and the legacy in-project folder, nothing else", () {
+      final repo = repository();
+      bool valid(String worktreePath) => repo.isValidWorktreePath(projectPath: "/repo", worktreePath: worktreePath);
+
+      expect(valid("/worktrees/other-12345678/blue-otter"), isTrue);
+      expect(valid("/repo/.worktrees/blue-otter"), isTrue);
+      expect(valid("/repo/blue-otter"), isFalse);
+      expect(valid("/worktrees-other/blue-otter"), isFalse);
     });
   });
 }

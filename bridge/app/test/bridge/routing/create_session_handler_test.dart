@@ -1279,6 +1279,7 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
   this
     : super(
         worktreeRepository: singlePluginWorktreeRepository(
+          worktreesDirectory: "/worktrees",
           projectsDao: database.projectsDao,
           sessionDao: database.sessionDao,
           gitApi: GitCliApi(
