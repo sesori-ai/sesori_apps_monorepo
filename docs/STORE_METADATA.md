@@ -73,7 +73,8 @@ present.
    token isn't left in git config for the fastlane steps).
 3. A **gate** step then runs `git tag --points-at HEAD`: if the latest commit has
    any `v*` tag the listing was already published, so the metadata env vars
-   (`IOS_METADATA_PATH`, `IOS_SCREENSHOTS_PATH`, `ANDROID_METADATA_PATH`) are left
+   (`IOS_METADATA_PATH`, `IOS_SCREENSHOTS_PATH`, `IOS_CREATIVE_ASSETS_PATH`,
+   `ANDROID_METADATA_PATH`) are left
    **empty**; otherwise they point at the cloned tree. (Absolute paths, because
    fastlane runs from `client/app/<platform>` while the clone lives at the
    workspace root.)
@@ -154,6 +155,16 @@ if you actually put them in the repo (an absent/empty `ios/screenshots` or
 Android `<locale>/images` tree is skipped). If you keep the repo text-only,
 nothing image-related is touched.
 
+App Store **header and search results images** (iOS/iPadOS 27+, per locale and
+per version) live in `ios/creative_assets/<locale>/header.*` and
+`search_results.*`; the private repo's README lists the sizes and its validator
+checks them. Pass 1 passes them to `deliver`'s `creative_assets` option with
+`overwrite_creative_assets: true`, which needs a fastlane release containing
+[fastlane#30442](https://github.com/fastlane/fastlane/pull/30442). The lane
+picks the one placement group Apple's reference data allows per placement type
+and fails before any upload if there isn't exactly one. Deleting a file there
+does not remove its App Store placement; remove it in App Store Connect.
+
 ⚠️ Caveat if you do manage screenshots here: iOS `deliver` **hard-fails** on a
 screen size fastlane doesn't yet recognize (happens with every new device), and
 it overwrites the live set in the targeted locales. On iOS this failure lands in
@@ -180,6 +191,9 @@ store-metadata/                         # the private repo
     screenshots/                        # → IOS_SCREENSHOTS_PATH (optional; omit to stay text-only)
       en-US/
         01_*.png  02_*.png  ...         # numeric prefixes control on-store order
+    creative_assets/                    # → IOS_CREATIVE_ASSETS_PATH (optional)
+      en-US/
+        header.png  search_results.png  # App Store header + search results images
   android/                              # → ANDROID_METADATA_PATH (supply metadata_path)
     en-US/                              # Play locale code
       title.txt  short_description.txt  full_description.txt

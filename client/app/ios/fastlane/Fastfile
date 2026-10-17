@@ -88,6 +88,55 @@ def release_notes_by_locale(dir)
   notes.empty? ? nil : notes
 end
 
+# App Store "Header and Search Results" images (iOS/iPadOS 27+) from the
+# metadata repo: ios/creative_assets/<locale>/<stem>.<png|jpg|jpeg>, whose
+# names, locales and sizes that repo's validator checks. Maps each file stem to
+# its App Asset Library placement type.
+CREATIVE_ASSET_PLACEMENTS = {
+  "header" => "PRODUCT_PAGE_HEADER_ASSET",
+  "search_results" => "APP_STORE_SEARCH_RESULTS_ASSET"
+}.freeze
+
+# deliver's creative_assets entries for every image under `dir`. Fails before
+# anything changes when this fastlane cannot upload them (the option comes from
+# fastlane/fastlane#30442).
+def creative_assets(dir)
+  require "deliver"
+  unless Deliver::Options.available_options.any? { |option| option.key == :creative_assets }
+    UI.user_error!("fastlane #{Fastlane::VERSION} cannot upload creative_assets; update fastlane or remove ios/creative_assets")
+  end
+
+  groups = creative_asset_groups
+  Dir.glob("*/*", base: dir).sort.map do |relative|
+    locale, file = relative.split("/")
+    placement_type = CREATIVE_ASSET_PLACEMENTS.fetch(File.basename(file, ".*"))
+    { locale: locale, path: File.join(dir, relative), placement_type: placement_type,
+      placement_group: groups.fetch(placement_type) }
+  end
+end
+
+# The one placement group Apple's reference data lets App Store versions use for
+# each placement type (the check deliver's uploader makes). More than one (say,
+# per device) needs a decision here rather than a guess, so it fails before
+# anything changes.
+def creative_asset_groups
+  reference = Spaceship::ConnectAPI::AppAssetLibraryRefDatum.all.first
+  UI.user_error!("Apple returned no App Asset Library reference data") if reference.nil?
+  feature = (reference.features || []).find { |item| item["featureId"] == "APP_STORE_VERSIONS" } || {}
+  CREATIVE_ASSET_PLACEMENTS.values.to_h do |placement_type|
+    policy = feature.fetch("placementPolicies", []).find { |item| item["placementType"] == placement_type } || {}
+    allowed = policy.fetch("groupLimits", []).select { |group| group.fetch("maxCount", 0).positive? }
+    type = (reference.placement_types || []).find { |item| item["placementTypeId"] == placement_type } || {}
+    mapped = type.fetch("specMappings", []).map { |item| item["placementGroupId"] }
+    groups = allowed.flat_map { |group| group.fetch("groupIds", []) }.uniq & mapped
+    unless groups.size == 1
+      UI.user_error!("Expected one App Store version placement group for #{placement_type}, Apple lists " \
+                     "#{groups.empty? ? 'none' : groups.join(', ')}; nothing changed")
+    end
+    [placement_type, groups.first]
+  end
+end
+
 # How long to wait for a cancelled review submission to clear, and how often to
 # re-check. After cancel_submission, App Store Connect moves the submission
 # through CANCELING before it stops being "in progress"; submitting again before
@@ -412,25 +461,28 @@ platform :ios do
       # populates these paths only when that repo's latest commit has no `v*` tag
       # (unpublished listing changes — see submit-release.yml). Everything present
       # in the cloned tree is uploaded: text from IOS_METADATA_PATH, plus
-      # screenshots from IOS_SCREENSHOTS_PATH when that tree exists. Both resolve
-      # to nil when the paths are unset, making the upload a no-op (preserving
+      # screenshots from IOS_SCREENSHOTS_PATH and header/search results images
+      # from IOS_CREATIVE_ASSETS_PATH when those trees exist. All resolve to nil
+      # when the paths are unset, making the upload a no-op (preserving
       # pre-feature behavior). NOTE:
       # uploading screenshots can hard-fail on a screen size deliver doesn't yet
       # recognize — but that happens in pass 1 below, before submission, so the
       # already-uploaded build is never affected.
       metadata_dir = metadata_dir_from_env("IOS_METADATA_PATH")
       screenshots_dir = metadata_dir_from_env("IOS_SCREENSHOTS_PATH")
+      creative_assets_dir = metadata_dir_from_env("IOS_CREATIVE_ASSETS_PATH")
 
       # Pass 1 — metadata only, NO submission. deliver uploads metadata and
       # submits for review in two separate API calls, so we separate them too:
       # a metadata error here fails BEFORE the build is attached/submitted and
       # therefore can never orphan a half-submitted version. The already-
       # uploaded TestFlight binary is never touched (skip_binary_upload).
-      if metadata_dir || screenshots_dir
+      if metadata_dir || screenshots_dir || creative_assets_dir
         UI.message(
           "Uploading App Store metadata" \
           "#{metadata_dir ? " from #{metadata_dir}" : ''}" \
-          "#{screenshots_dir ? " (+ screenshots from #{screenshots_dir})" : ''}"
+          "#{screenshots_dir ? " (+ screenshots from #{screenshots_dir})" : ''}" \
+          "#{creative_assets_dir ? " (+ header/search results images from #{creative_assets_dir})" : ''}"
         )
         meta_opts = {
           api_key: api_key,
@@ -446,6 +498,12 @@ platform :ios do
         if screenshots_dir
           meta_opts[:screenshots_path] = screenshots_dir
           meta_opts[:overwrite_screenshots] = true # deterministic set in the targeted locales
+        end
+        if creative_assets_dir
+          # Replaces the placement of every image in the folder (a new Asset
+          # Library upload each run). A removed file leaves its placement.
+          meta_opts[:creative_assets] = creative_assets(creative_assets_dir)
+          meta_opts[:overwrite_creative_assets] = true
         end
         deliver(meta_opts)
       end
