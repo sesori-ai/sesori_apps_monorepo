@@ -155,7 +155,7 @@ class ProjectInitializationService({
   void _cleanupCreatedProject({required String path}) {
     try {
       final entries = _filesystemRepository.listDirectoryEntryNames(path: path);
-      const createdEntries = {".git", ".gitignore"};
+      const createdEntries = {".git"};
       if (!entries.every(createdEntries.contains)) {
         Log.w("ProjectInitializationService: leaving failed project directory with unknown content: $path");
         return;

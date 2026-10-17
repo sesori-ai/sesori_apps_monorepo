@@ -301,7 +301,7 @@ class WorktreeRepository({
     // COMPATIBILITY 2026-10-17 (v1.9.2): released bridges created worktrees
     // inside the project under `.worktrees/`. Remove this branch once no
     // supported bridge can still hold a session in such a worktree.
-    return worktreePath.startsWith("$projectPath/.worktrees/");
+    return p.isWithin(p.join(projectPath, ".worktrees"), worktreePath);
   }
 
   Future<String> _resolveBaseBranch({

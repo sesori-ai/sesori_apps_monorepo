@@ -232,6 +232,8 @@ void main() {
       expect(valid("/repo/.worktrees/blue-otter"), isTrue);
       expect(valid("/repo/blue-otter"), isFalse);
       expect(valid("/worktrees-other/blue-otter"), isFalse);
+      expect(valid("/repo/.worktrees/../../elsewhere"), isFalse);
+      expect(valid("/worktrees/../elsewhere"), isFalse);
     });
   });
 }
