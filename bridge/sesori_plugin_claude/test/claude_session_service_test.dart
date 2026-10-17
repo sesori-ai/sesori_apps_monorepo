@@ -832,6 +832,14 @@ void main() {
 
       expect(harness.service.isMainAgentRunning(sessionId: testSessionId), isFalse);
       expect(await _status(harness), isA<PluginSessionStatusBusy>());
+
+      // The shell outlives its sub-agent and keeps the process resident.
+      process.emit(_taskNotificationFrame());
+      await pump();
+      harness.clock.elapse();
+      await pump();
+      expect(await _status(harness), isA<PluginSessionStatusBusy>());
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
     });
 
     test("a forwarded sub-agent frame after the root result does not open a root turn", () async {
