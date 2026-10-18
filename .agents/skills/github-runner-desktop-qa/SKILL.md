@@ -95,6 +95,11 @@ Choose an environment-allowed ref containing `linux-interactive-debug` and the
 intended driver. This may be the approved QA branch while tooling is unmerged;
 do not assume a documentation branch is allowed. Use `main` after delivery.
 
+Only one debug session per ref can remain active. A second same-ref dispatch
+cancels the first, even when selecting another CPU. Stop the owned session and
+confirm cleanup before dispatching another; never redispatch to recover an
+active session.
+
 ```bash
 : "${QA_REF:?Set main or the explicitly approved QA ref}"
 : "${PACKAGING_RUN:?Set the successful retained internal producer run ID}"
@@ -112,7 +117,9 @@ sleep/status-poll loop. When a PR monitor owns CI, use its delivered reports.
 
 The job verifies artifacts before network admission, joins as an ephemeral
 `tag:sesori-ci-debug` node, then starts the anonymous desktop in an isolated home.
-The summary provides its hostname, exact `session.env` path and stop command.
+The summary provides its hostname and workspace-relative session/stop paths.
+Ignore its bare SSH connection examples: use the validated `SSH` array below for
+every connection, and resolve remote paths as step 3 describes.
 Readiness requires a live VNC process and a listening loopback socket; it does not
 prove app behavior. The ready window is **20 minutes**, with a **40-minute job
 ceiling**. Do not extend the session into a persistent or unattended machine.
@@ -123,6 +130,11 @@ Use the generated hostname from that run, not a remembered IP. The following
 Bash setup obtains only that peer's public host keys from the authenticated
 Tailscale control plane. It neither reads personal SSH identities nor modifies
 user SSH configuration. Refuse missing keys; never disable host verification.
+
+First run `/bin/bash --noprofile --norc` **by itself** to open a disposable local
+Bash shell. Paste the following setup and later local SSH commands into that
+child shell. Strict options apply only there; do not enable them in the
+operator's original shell.
 
 ```bash
 set -euo pipefail
@@ -159,9 +171,17 @@ SSH=(ssh -F /dev/null -o "UserKnownHostsFile=$SSH_DIR/known_hosts"
 
 Expect `runner` and the selected native CPU (`aarch64` or `x86_64`). Open an
 interactive shell with `"${SSH[@]}" "runner@$DEBUG_IP"`. **Inside that remote
-shell**, run the exact `source .../session.env` command from the job summary.
-Do not source it locally or assume a new SSH shell inherits Actions variables.
-Its `HOME`, display and D-Bus address belong only to the disposable fixture.
+shell**, bind the current GitHub-hosted checkout before the fixture changes
+`HOME`, then source its absolute session path:
+
+```bash
+REMOTE_WORKSPACE="$HOME/work/sesori_apps_monorepo/sesori_apps_monorepo"
+source "$REMOTE_WORKSPACE/build/linux-debug-session/session.env"
+```
+
+Keep `REMOTE_WORKSPACE` for the absolute stop path in step 5. Do not source the
+file locally or assume a new SSH shell inherits Actions variables. The loaded
+`HOME`, display and D-Bus address belong only to the disposable fixture.
 
 ## 4. Inspect the real desktop
 
@@ -169,8 +189,8 @@ In the remote shell, check `ss -lnt`: VNC port 5900 must bind only to
 `127.0.0.1`/`::1`. VNC has no independent password in this fixture; SSH and the
 restricted tailnet policy protect it. Never remove that loopback restriction.
 
-For visual interaction, run a foreground tunnel in a local terminal with the
-same validated SSH setup:
+For visual interaction, open another disposable local Bash shell and repeat the
+pinned local setup block from step 3 there. Then run a foreground tunnel:
 
 ```bash
 "${SSH[@]}" -N -o ExitOnForwardFailure=yes \
@@ -201,11 +221,13 @@ raw tailnet state, credentials or an unreviewed recursive artifact directory.
 
 ## 5. Stop, clean up and state the proof boundary
 
-1. In the remote session, execute the exact `printf 'stop\n' > .../stop.pipe`
-   command from the summary. The driver owns process-group, package and
-   disposable-home cleanup; the action logs the ephemeral node out afterward.
+1. In the remote shell from step 3, use its absolute stop path:
+   `printf 'stop\n' > "$REMOTE_WORKSPACE/build/linux-debug-session/stop.pipe"`.
+   The driver owns process-group, package and disposable-home cleanup; the action
+   logs the ephemeral node out afterward.
 2. Close the owned local tunnel and SSH shells. Remove only the generated
-   `SSH_DIR` when finished. Never use broad `pkill` or clear personal app data.
+   `SSH_DIR` and exit the disposable local Bash shell when finished. Never use
+   broad `pkill` or clear personal app data.
 3. Confirm completion/logout. If the session is stuck, cancel only its exact
    owned Actions run; do not cancel packaging, release or another user's job.
 4. Record observed CPU, build/source, UI actions, partial failures and cleanup.
