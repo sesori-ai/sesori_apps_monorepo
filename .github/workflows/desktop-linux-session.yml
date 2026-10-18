@@ -70,7 +70,7 @@ jobs:
             libsecret-1-dev libx11-dev libxi-dev dpkg-dev rpm gnupg \
             dbus-x11 python3-dbus python3-pyatspi gnome-keyring libsecret-tools \
             gnome-shell plasma-desktop plasma-workspace kwin-x11 \
-            xvfb xauth wmctrl xdotool imagemagick mesa-utils
+            xvfb xauth wmctrl xdotool x11-utils imagemagick tesseract-ocr tesseract-ocr-eng mesa-utils
       # Release objects roll away by design. Bind QA to original signed producer
       # artifacts instead; do not change retention or recreate historical releases.
       - uses: actions/download-artifact@v4

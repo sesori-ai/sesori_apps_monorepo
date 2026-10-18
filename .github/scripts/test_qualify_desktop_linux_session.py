@@ -10,6 +10,15 @@ from unittest import mock
 import qualify_desktop_linux_session as qualification
 
 
+MENU_OCR = """level\tpage_num\tblock_num\tpar_num\tline_num\tword_num\tleft\ttop\twidth\theight\tconf\ttext
+1\t1\t0\t0\t0\t0\t0\t0\t206\t218\t-1\t
+5\t1\t1\t1\t1\t1\t13\t11\t37\t13\t85.6\tOpen
+5\t1\t1\t1\t1\t2\t55\t10\t42\t11\t90.6\tSesori
+5\t1\t1\t4\t3\t1\t13\t194\t29\t13\t93.3\tQuit
+5\t1\t1\t4\t3\t2\t47\t194\t42\t11\t92.7\tSesori
+"""
+
+
 class LinuxSessionQualificationTest(unittest.TestCase):
     def test_preparation_preserves_sources_and_requires_increasing_package_versions(self):
         for old_build, new_build, same_source, accepted in ((1, 2, False, True), (2, 1, False, False),
@@ -71,6 +80,39 @@ class LinuxSessionQualificationTest(unittest.TestCase):
                                            desktop=qualification.Desktop.GNOME, architecture="x64")
                 process.assert_not_called()
 
+    def test_quit_text_coordinates_use_actual_word_bounds_and_window_origin(self):
+        self.assertEqual(qualification.quit_text_point(tsv=MENU_OCR, origin_x=1051, origin_y=546), (1102, 746))
+
+    def test_quit_text_rejects_other_labels_and_words_on_separate_lines(self):
+        for tsv in (MENU_OCR.replace("\tQuit\n", "\tQuitter\n"),
+                    MENU_OCR.replace("5\t1\t1\t4\t3\t2", "5\t1\t1\t4\t4\t2")):
+            with self.subTest(tsv=tsv):
+                self.assertIsNone(qualification.quit_text_point(tsv=tsv, origin_x=1051, origin_y=546))
+
+    def test_native_quit_reads_only_the_visible_host_owned_popup(self):
+        with tempfile.TemporaryDirectory() as directory:
+            capture = Path(directory) / "menu.png"
+            env = {"DISPLAY": ":95"}
+            with mock.patch.object(qualification, "run", side_effect=[
+                    "11\n22\n", "_NET_WM_WINDOW_TYPE_NORMAL", "_NET_WM_WINDOW_TYPE_POPUP_MENU",
+                    "WINDOW=22\nX=1051\nY=546\nWIDTH=206\nHEIGHT=218\nSCREEN=0\n", "", MENU_OCR]) as run:
+                self.assertEqual(qualification.native_quit_point(pid=17, capture=capture, env=env), (1102, 746))
+            self.assertEqual([call.kwargs["arguments"] for call in run.call_args_list], [
+                ["xdotool", "search", "--onlyvisible", "--pid", "17"],
+                ["xprop", "-id", "11", "_NET_WM_WINDOW_TYPE"],
+                ["xprop", "-id", "22", "_NET_WM_WINDOW_TYPE"],
+                ["xdotool", "getwindowgeometry", "--shell", "22"],
+                ["import", "-window", "22", str(capture)],
+                ["tesseract", str(capture), "stdout", "-l", "eng", "--psm", "6", "tsv"]])
+            self.assertTrue(all(call.kwargs["env"] == env for call in run.call_args_list))
+            self.assertEqual(capture.with_suffix(".tsv").read_text(), MENU_OCR)
+
+    def test_absent_popup_does_not_capture_unrelated_host_windows(self):
+        with mock.patch.object(qualification, "run", side_effect=[
+                "11\n", "_NET_WM_WINDOW_TYPE_NORMAL"]) as run:
+            self.assertIsNone(qualification.native_quit_point(pid=17, capture=Path("unused"), env={}))
+        self.assertEqual(run.call_count, 2)
+
     def test_readiness_is_bounded_and_command_failures_preserve_diagnostics(self):
         with mock.patch.object(qualification.time, "monotonic", side_effect=[0, 0, 2]), \
                 mock.patch.object(qualification.time, "sleep"):
@@ -93,6 +135,8 @@ class LinuxSessionQualificationTest(unittest.TestCase):
         self.assertIn("'.github/scripts/publish_desktop_linux.py'", workflow)
         self.assertIn("'.github/scripts/publish_linux_repository.py'", workflow)
         self.assertIn("python3-pyatspi", workflow)
+        self.assertIn("x11-utils", workflow)
+        self.assertIn("tesseract-ocr tesseract-ocr-eng", workflow)
         self.assertNotIn("previous_tag", workflow)
         self.assertIn("/usr/bin/python3", workflow)
         self.assertIn("dbus-run-session", workflow)

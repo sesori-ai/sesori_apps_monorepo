@@ -204,8 +204,11 @@ permissions are available to this workflow.
 The credential-free sequence verifies original signed producer artifacts, builds nonshipping
 storage probes against each corresponding source, installs the old real package, renders
 its anonymous window, performs normal close/native tray Quit, then installs and exercises
-the newer package. KDE identifies the app-owned StatusNotifier title, locates visible
-Plasma targets through accessibility, right-clicks the icon and primary-clicks Quit.
+the newer package. KDE identifies the app-owned StatusNotifier title, locates its visible
+Plasma icon through accessibility and right-clicks it. The visible popup must belong to
+that Plasma PID and advertise the native popup window type; OCR reads its actual Quit
+label and bounds before a primary pointer click. Preserve the popup image and OCR output
+alongside the full-screen menu capture; do not substitute fixed row coordinates.
 Plasma 5.27 forwards primary icon clicks as Activate; primary-click menu opening is not
 qualified by this scenario. A captured visible menu is required, not just direct DBusMenu
 event delivery. Preserve the post-click capture on lookup failure for diagnosis.

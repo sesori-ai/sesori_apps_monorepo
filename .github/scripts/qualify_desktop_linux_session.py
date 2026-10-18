@@ -1,7 +1,9 @@
 """Native, disposable Actions desktops. No account credentials, publishing or stable admission."""
 
 import argparse
+import csv
 from enum import StrEnum
+import io
 import json
 import os
 from pathlib import Path
@@ -68,6 +70,42 @@ def prepare(*, inputs: Path, output: Path, previous: int, current: int, tooling_
             target.write(f"{label}_source={release['sourceSha']}\n")
 
 
+def quit_text_point(*, tsv: str, origin_x: int, origin_y: int) -> tuple[int, int] | None:
+    lines = {}
+    for word in csv.DictReader(io.StringIO(tsv), delimiter="\t"):
+        if word["text"].strip():
+            line = tuple(word[key] for key in ("page_num", "block_num", "par_num", "line_num"))
+            lines.setdefault(line, []).append(word)
+    for words in lines.values():
+        if " ".join(word["text"].strip() for word in words) != "Quit Sesori":
+            continue
+        left = min(int(word["left"]) for word in words)
+        top = min(int(word["top"]) for word in words)
+        right = max(int(word["left"]) + int(word["width"]) for word in words)
+        bottom = max(int(word["top"]) + int(word["height"]) for word in words)
+        return origin_x + (left + right) // 2, origin_y + (top + bottom) // 2
+    return None
+
+
+def native_quit_point(*, pid: int, capture: Path, env: dict[str, str]) -> tuple[int, int] | None:
+    windows = run(arguments=["xdotool", "search", "--onlyvisible", "--pid", str(pid)], env=env)
+    for window_id in windows.splitlines():
+        kind = run(arguments=["xprop", "-id", window_id, "_NET_WM_WINDOW_TYPE"], env=env)
+        if "_NET_WM_WINDOW_TYPE_POPUP_MENU" not in kind:
+            continue
+        geometry = dict(line.split("=", 1) for line in run(
+            arguments=["xdotool", "getwindowgeometry", "--shell", window_id], env=env).splitlines())
+        # Plasma's real QWidget popup is not exported in its AT-SPI tree. Read the
+        # visible label within that host-owned window, not an assumed row/offset.
+        run(arguments=["import", "-window", window_id, str(capture)], env=env)
+        tsv = run(arguments=["tesseract", str(capture), "stdout", "-l", "eng", "--psm", "6", "tsv"], env=env)
+        capture.with_suffix(".tsv").write_text(tsv)
+        point = quit_text_point(tsv=tsv, origin_x=int(geometry["X"]), origin_y=int(geometry["Y"]))
+        if point:
+            return point
+    return None
+
+
 def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, architecture: str) -> None:
     # Never run the root installer or session controls on a developer's own machine.
     require(platform.system() == "Linux" and os.environ.get("GITHUB_ACTIONS") == "true",
@@ -128,7 +166,7 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             plasma_pid = int(connection.GetConnectionUnixProcessID("org.kde.plasmashell"))
 
             def accessible(*, name: str):
-                # Drain accessibility cache updates after the host opens its menu.
+                # Drain accessibility updates before locating the visible tray icon.
                 context = GLib.MainContext.default()
                 while context.iteration(False):
                     pass
@@ -139,11 +177,8 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                             and node.getState().contains(pyatspi.STATE_SHOWING))
                 return None
 
-            def click(*, node, button: MouseButton):
-                bounds = node.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
-                require(bounds.width > 0 and bounds.height > 0, "Native tray target has no visible bounds")
-                run(arguments=["xdotool", "mousemove", "--sync", str(bounds.x + bounds.width // 2),
-                               str(bounds.y + bounds.height // 2), "click", button], env=env)
+            def click(*, x: int, y: int, button: MouseButton):
+                run(arguments=["xdotool", "mousemove", "--sync", str(x), str(y), "click", button], env=env)
 
             for item in items:
                 service, _, path = str(item).partition("/")
@@ -154,16 +189,19 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                 require(menu_path not in ("/", "/NO_DBUSMENU"), "Native tray does not advertise a usable menu")
                 title = str(properties.Get("org.kde.StatusNotifierItem", "Title"))
                 icon = wait_for(description=f"visible native tray icon {title!r}", check=lambda: accessible(name=title))
+                bounds = icon.queryComponent().getExtents(pyatspi.DESKTOP_COORDS)
+                require(bounds.width > 0 and bounds.height > 0, "Native tray target has no visible bounds")
                 # Plasma 5.27 forwards primary clicks as Activate; its context-menu gesture is right-click.
-                click(node=icon, button=MouseButton.SECONDARY)
+                click(x=bounds.x + bounds.width // 2, y=bounds.y + bounds.height // 2, button=MouseButton.SECONDARY)
                 try:
-                    quit_item = wait_for(description="visible native Quit item",
-                                         check=lambda: accessible(name="Quit Sesori"))
+                    quit_x, quit_y = wait_for(
+                        description="visible native Quit item",
+                        check=lambda: native_quit_point(pid=plasma_pid,
+                                                       capture=output / f"{label}-anonymous-menu-window.png", env=env))
                 finally:
-                    # Retain the host's visible state even when accessibility lookup fails.
-                    time.sleep(0.3)
+                    # Retain the host's visible state even when visual label lookup fails.
                     run(arguments=["import", "-window", "root", str(output / f"{label}-anonymous-menu.png")], env=env)
-                click(node=quit_item, button=MouseButton.PRIMARY)
+                click(x=quit_x, y=quit_y, button=MouseButton.PRIMARY)
                 return
             raise ValueError("No StatusNotifier item belongs to the application")
 
