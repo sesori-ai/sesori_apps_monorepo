@@ -32,11 +32,13 @@ void main() {
   late bool locallyValid;
   late BridgeRegistrationRecord? registration;
 
-  Future<void> unregister({required String accountId}) => probe.unregisterAndLogoutProbe(
-    accountId: accountId,
-    status: status,
-    logout: logout,
-  );
+  Future<void> unregister({required String accountId, required probe.AuthenticatedProbePhase phase}) =>
+      probe.unregisterAndLogoutProbe(
+        accountId: accountId,
+        phase: phase,
+        status: status,
+        logout: logout,
+      );
 
   setUpAll(() => registerFallbackValue(BridgeProcessDesiredState.off));
   setUp(() {
@@ -187,12 +189,43 @@ void main() {
     verifyNever(() => auth.invalidateAllSessions());
   });
 
+  test("successful cleanup requires a registration; failed-run cleanup permits absence", () async {
+    registration = null;
+    when(() => instance.readBridgeDesiredStateForRestore()).thenAnswer((_) async => BridgeProcessDesiredState.on);
+    await expectLater(
+      probe.exerciseAuthenticatedProbe(
+        phase: probe.AuthenticatedProbePhase.onToLogout,
+        auth: auth,
+        instance: instance,
+        unregisterAndLogout: unregister,
+        readInput: () => _user.id,
+      ),
+      throwsStateError,
+    );
+    verifyNever(() => logout.logoutCurrentDevice());
+    expect(locallyValid, isTrue);
+    await probe.exerciseAuthenticatedProbe(
+      phase: probe.AuthenticatedProbePhase.cleanup,
+      auth: auth,
+      instance: instance,
+      unregisterAndLogout: unregister,
+      readInput: () => _user.id,
+    );
+    verify(() => logout.logoutCurrentDevice()).called(1);
+  });
+
   test("cleanup refuses a different registration owner or an unconfirmed deletion", () async {
     registration = _registration.copyWith(accountId: "another-account");
-    await expectLater(unregister(accountId: _user.id), throwsStateError);
+    await expectLater(
+      unregister(accountId: _user.id, phase: probe.AuthenticatedProbePhase.onToLogout),
+      throwsStateError,
+    );
     verifyNever(() => logout.logoutCurrentDevice());
     registration = _registration;
     when(() => logout.logoutCurrentDevice()).thenAnswer((_) async => DesktopLogoutOutcome.completed);
-    await expectLater(unregister(accountId: _user.id), throwsStateError);
+    await expectLater(
+      unregister(accountId: _user.id, phase: probe.AuthenticatedProbePhase.onToLogout),
+      throwsStateError,
+    );
   });
 }

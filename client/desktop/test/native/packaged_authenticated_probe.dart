@@ -20,7 +20,8 @@ Future<String> exerciseAuthenticatedProbe({
   required AuthenticatedProbePhase phase,
   required AuthSession auth,
   required DesktopInstanceService instance,
-  required Future<void> Function({required String accountId}) unregisterAndLogout,
+  required Future<void> Function({required String accountId, required AuthenticatedProbePhase phase})
+  unregisterAndLogout,
   required String Function() readInput,
 }) async {
   // Initial login takes email/password; later phases take only its returned stable account id.
@@ -65,7 +66,7 @@ Future<String> exerciseAuthenticatedProbe({
       if (phase == AuthenticatedProbePhase.onToLogout) {
         await _requireIntent(instance: instance, expected: BridgeProcessDesiredState.on);
       }
-      await unregisterAndLogout(accountId: accountId);
+      await unregisterAndLogout(accountId: accountId, phase: phase);
       _require(condition: !await auth.hasLocallyValidSession(), message: "Fixture logout failed");
   }
   return accountId;
@@ -73,11 +74,16 @@ Future<String> exerciseAuthenticatedProbe({
 
 Future<void> unregisterAndLogoutProbe({
   required String accountId,
+  required AuthenticatedProbePhase phase,
   required BridgeStatusTracker status,
   required DesktopLogoutOrchestrator logout,
 }) async {
   await status.initialize();
   final registration = status.registeredBridge;
+  _require(
+    condition: phase != AuthenticatedProbePhase.onToLogout || registration != null,
+    message: "Registered helper has no persisted bridge record",
+  );
   _require(
     condition: registration == null || registration.accountId == accountId,
     message: "Temporary bridge registration belongs to a different account",
@@ -122,11 +128,13 @@ Future<void> main() async {
         phase: phase,
         auth: getIt<AuthSession>(),
         instance: getIt<DesktopInstanceService>(),
-        unregisterAndLogout: ({required String accountId}) => unregisterAndLogoutProbe(
-          accountId: accountId,
-          status: getIt<BridgeStatusTracker>(),
-          logout: getIt<DesktopLogoutOrchestrator>(),
-        ),
+        unregisterAndLogout: ({required String accountId, required AuthenticatedProbePhase phase}) =>
+            unregisterAndLogoutProbe(
+              accountId: accountId,
+              phase: phase,
+              status: getIt<BridgeStatusTracker>(),
+              logout: getIt<DesktopLogoutOrchestrator>(),
+            ),
         readInput: _readPrivateLine,
       );
       await File("${report.path}.account-id").writeAsString(accountId);

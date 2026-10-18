@@ -131,7 +131,7 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         self.assertEqual(source.count("operation=ProbePhase.LOGIN_ON"), 1)
         self.assertEqual(source.count("credentials.email"), 1)
         self.assertEqual(source.count("credentials.password"), 1)
-        self.assertIn("private_input=[account_id]", source)
+        self.assertEqual(source.count("private_input=[account_id]"), 3)
         self.assertLess(source.index("with authenticated_cleanup("), source.index("launch(candidate=Candidate.PREVIOUS"))
         self.assertLess(source.index('"apt-get", "remove"'), source.index('output / "result.json"'))
         self.assertIn('"stableAdmission": False', source)
@@ -142,7 +142,7 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         self.assertNotIn('arguments=["tesseract"', source)
         self.assertNotIn("menu.Event(", source)
 
-    def test_cleanup_runs_before_session_teardown_on_success_failure_and_cancellation(self):
+    def test_cleanup_runs_before_session_teardown_on_success_failure_and_system_exit(self):
         gui = mock.Mock(args=[qualification.APPLICATION])
         keyring = mock.Mock(args=["gnome-keyring-daemon"])
         for failure in (None, RuntimeError("fixture failure"), SystemExit(143)):

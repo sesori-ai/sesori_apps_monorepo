@@ -43,7 +43,7 @@ HELPER = "/opt/sesori-desktop/bridge/bin/bridge"
 
 @contextmanager
 def authenticated_cleanup(*, processes: list[subprocess.Popen], finish):
-    """Unregister while the owned bus/keyring/home still exist, including after cancellation."""
+    """Attempt unregistration on in-process unwind; forced runner termination can interrupt it."""
     try:
         yield
     finally:

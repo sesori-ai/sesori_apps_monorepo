@@ -260,17 +260,21 @@ later phases compare that private id, not the opaque provider id or email. Ident
 metadata stays inside the owned home and travels through stdin, never uploaded.
 Login seeds only the older version. Exercise signed
 old GUI On then Off, normal close/native tray Quit and no orphan helper; install the
-new package and launch its signed GUI with preserved Off **before** the fixture built
-against that candidate may write anything. Verify local account/Off preservation, set On and exercise
+new package and, on the acceptance path, launch its signed GUI with preserved Off
+**before** the fixture built against that candidate may write anything. Verify local account/Off preservation, set On and exercise
 the new signed GUI's authenticated packaged helper/relay readiness and normal Quit.
 Only the initial fixture may perform email login; preservation checks are local and
 never refresh or reseed. Cleanup loads the existing registration tracker and invokes
-`DesktopLogoutOrchestrator`, requiring the owned bridge registration to be cleared
-before accepting device-local logout. After initial seeding, the same cleanup scope
-runs on success, failure and cancellation: stop only owned GUI groups, attempt
-unregistration while the bus/keyring/home remain available, then remove private state. Only successful cleanup
-and package removal permit success JSON. Never invalidate all account sessions. Failed
-disposable-VM package residue remains bounded; never accept a failed job as evidence.
+`DesktopLogoutOrchestrator`. Successful post-helper cleanup requires the persisted,
+account-matching registration before logout and its confirmed removal afterward;
+a missing record is not proof that nothing needs deletion. After initial seeding,
+in-process completion, errors and `SystemExit` unwind through the cleanup scope:
+stop only owned GUI groups and attempt unregistration while bus/keyring/home remain.
+Only successful cleanup and package removal permit success JSON. Never invalidate
+all account sessions. Failed cleanup, Actions cancellation, step timeout or VM loss
+can bypass or interrupt that scope and leave a QA-only bridge registration; no guaranteed teardown
+is claimed. Failed disposable-VM package residue also remains bounded. Never accept
+an interrupted or failed job as evidence.
 
 GNOME closes the process-owned native window without a tray host. KDE right-clicks
 the actual accessible app tray icon and requires a visible Plasma-PID-owned popup.
