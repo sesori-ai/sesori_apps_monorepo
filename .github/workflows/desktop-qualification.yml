@@ -42,6 +42,7 @@ on:
           - macos-authenticated-upgrade-probe
           - windows-packaging
           - linux-packaging
+          - linux-session
           - linux-interactive-debug
         default: native-builds
       debug_arch:
@@ -55,17 +56,21 @@ on:
         options: [stable, internal]
         default: stable
       packaging_run:
-        description: 'Current trusted packaging run (macOS GUI/upgrade or Linux interactive debug)'
+        description: 'Current trusted packaging run (macOS GUI/upgrade, Linux sessions or interactive debug)'
         type: string
       previous_packaging_run:
-        description: 'Strictly older trusted packaging run (macos upgrade modes only)'
+        description: 'Strictly older trusted packaging run (macOS upgrades or Linux sessions)'
         type: string
   pull_request:
     paths:
       - '.github/workflows/desktop-qualification.yml'
+      - '.github/workflows/desktop-linux-session.yml'
       - '.github/actions/setup-xcode/**'
       - '.github/scripts/qualify_desktop.py'
       - '.github/scripts/test_qualify_desktop.py'
+      - '.github/scripts/qualify_desktop_linux_session.py'
+      - '.github/scripts/test_qualify_desktop_linux_session.py'
+      - '.github/scripts/github_release_assets.py'
       - '.github/scripts/debug_desktop_linux_session.py'
       - '.github/scripts/test_debug_desktop_linux_session.py'
       - '.github/scripts/package_desktop_macos.py'
@@ -114,12 +119,25 @@ concurrency:
   # Parallel Linux/macOS calls from one shared run must not cancel each other.
   group: >-
     desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{
-      inputs.mode == 'linux-interactive-debug' && 'linux-debug' || inputs.mode == 'linux-packaging' && 'linux' || 'other' }}
+      inputs.mode == 'linux-interactive-debug' && 'linux-debug' || inputs.mode == 'linux-session' && 'linux-session' ||
+      inputs.mode == 'linux-packaging' && 'linux' || 'other' }}
   cancel-in-progress: true
 
 jobs:
+  linux-session:
+    needs: tooling
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'linux-session'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/desktop-linux-session.yml
+    with:
+      previous_run: ${{ inputs.previous_packaging_run }}
+      current_run: ${{ inputs.packaging_run }}
+
   linux-interactive-debug:
     if: github.event_name == 'workflow_dispatch' && inputs.mode == 'linux-interactive-debug'
+    # This environment owns ref trust: main plus the explicitly approved dedicated QA branch.
     environment: desktop-linux-debug
     runs-on: ${{ inputs.debug_arch == 'x64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
     timeout-minutes: 40

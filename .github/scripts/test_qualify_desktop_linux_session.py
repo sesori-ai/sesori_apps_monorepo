@@ -65,13 +65,15 @@ class LinuxSessionQualificationTest(unittest.TestCase):
                     self.assertTrue(all(call.kwargs["fingerprint"] == qualification.TRUSTED_PRIMARY_FINGERPRINT
                                         for call in verify.call_args_list))
 
-    def test_ordinary_workstation_and_root_gui_refused_before_any_native_operation(self):
-        for system, actions, uid, message in (("Darwin", "true", 501, "disposable Linux"),
-                                              ("Linux", "false", 1001, "disposable Linux"),
-                                              ("Linux", "true", 0, "never root")):
-            with self.subTest(system=system, actions=actions, uid=uid), \
+    def test_workstation_root_and_wrong_cpu_refused_before_any_native_operation(self):
+        cases = (("Darwin", "true", 501, "x86_64", "disposable Linux"),
+                 ("Linux", "false", 1001, "x86_64", "disposable Linux"),
+                 ("Linux", "true", 0, "x86_64", "never root"),
+                 ("Linux", "true", 1001, "aarch64", "CPU emulation"))
+        for system, actions, uid, machine, message in cases:
+            with self.subTest(system=system, actions=actions, uid=uid, machine=machine), \
                     mock.patch.object(qualification.platform, "system", return_value=system), \
-                    mock.patch.object(qualification.platform, "machine", return_value="x86_64"), \
+                    mock.patch.object(qualification.platform, "machine", return_value=machine), \
                     mock.patch.object(qualification.os, "geteuid", return_value=uid), \
                     mock.patch.dict(os.environ, {"GITHUB_ACTIONS": actions}), \
                     mock.patch.object(qualification.subprocess, "Popen") as process:
@@ -113,6 +115,31 @@ class LinuxSessionQualificationTest(unittest.TestCase):
             self.assertIsNone(qualification.native_quit_point(pid=17, capture=Path("unused"), env={}))
         self.assertEqual(run.call_count, 2)
 
+    def test_stop_process_reaps_a_group_that_exits_during_term_or_kill(self):
+        for vanished in (qualification.signal.SIGTERM, qualification.signal.SIGKILL):
+            with self.subTest(vanished=vanished):
+                process = mock.Mock(pid=41)
+                process.poll.return_value = None
+                process.wait.side_effect = ([0] if vanished == qualification.signal.SIGTERM else
+                                            [qualification.subprocess.TimeoutExpired(["fixture"], 10), 0])
+                signals = ([ProcessLookupError()] if vanished == qualification.signal.SIGTERM else
+                           [None, ProcessLookupError()])
+                with mock.patch.object(qualification.os, "killpg", side_effect=signals) as kill:
+                    qualification.stop_process(process=process)
+                expected = [mock.call(41, qualification.signal.SIGTERM)]
+                if vanished == qualification.signal.SIGKILL:
+                    expected.append(mock.call(41, qualification.signal.SIGKILL))
+                self.assertEqual(kill.call_args_list, expected)
+                process.wait.assert_called_with(timeout=10)
+
+    def test_stop_process_does_not_signal_an_already_reaped_child(self):
+        process = mock.Mock()
+        process.poll.return_value = 0
+        with mock.patch.object(qualification.os, "killpg") as kill:
+            qualification.stop_process(process=process)
+        kill.assert_not_called()
+        process.wait.assert_not_called()
+
     def test_readiness_is_bounded_and_command_failures_preserve_diagnostics(self):
         with mock.patch.object(qualification.time, "monotonic", side_effect=[0, 0, 2]), \
                 mock.patch.object(qualification.time, "sleep"):
@@ -132,8 +159,23 @@ class LinuxSessionQualificationTest(unittest.TestCase):
         self.assertIn("max-parallel: 2", workflow)
         self.assertIn("actions: read", workflow)
         self.assertIn("pattern: desktop-linux-*", workflow)
-        self.assertIn("'.github/scripts/publish_desktop_linux.py'", workflow)
-        self.assertIn("'.github/scripts/publish_linux_repository.py'", workflow)
+        self.assertIn("  workflow_call:\n", workflow)
+        self.assertNotIn("  pull_request:", workflow)
+        self.assertNotIn("  workflow_dispatch:", workflow)
+        self.assertNotIn("default:", workflow)
+        self.assertEqual(workflow.count("required: true"), 2)
+        self.assertIn("run-id: ${{ inputs.previous_run }}\n", workflow)
+        self.assertIn("run-id: ${{ inputs.current_run }}\n", workflow)
+        self.assertLess(workflow.index("Require explicit retained signed producer pair"),
+                        workflow.index("uses: actions/download-artifact"))
+        parent = (Path(__file__).parents[1] / "workflows/desktop-qualification.yml").read_text()
+        job = parent.split("  linux-session:\n", 1)[1].split("\n  linux-interactive-debug:", 1)[0]
+        self.assertIn("if: github.event_name == 'workflow_dispatch' && inputs.mode == 'linux-session'", job)
+        self.assertIn("uses: ./.github/workflows/desktop-linux-session.yml", job)
+        self.assertIn("previous_run: ${{ inputs.previous_packaging_run }}", job)
+        self.assertIn("current_run: ${{ inputs.packaging_run }}", job)
+        self.assertNotIn("secrets:", job)
+        self.assertIn("inputs.mode == 'linux-session' && 'linux-session'", parent)
         self.assertIn("python3-pyatspi", workflow)
         self.assertIn("x11-utils", workflow)
         self.assertIn("tesseract-ocr tesseract-ocr-eng", workflow)

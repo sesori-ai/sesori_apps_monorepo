@@ -1,6 +1,7 @@
 """Native, disposable Actions desktops. No account credentials, publishing or stable admission."""
 
 import argparse
+from contextlib import suppress
 import csv
 from enum import StrEnum
 import io
@@ -45,6 +46,20 @@ def wait_for(*, description: str, check, timeout: int = 60):
             return result
         time.sleep(0.25)
     raise TimeoutError(f"Timed out waiting for {description}")
+
+
+def stop_process(*, process: subprocess.Popen) -> None:
+    if process.poll() is not None:
+        return
+    # Normal Quit can complete between poll and signal. Still reap the tracked child.
+    with suppress(ProcessLookupError):
+        os.killpg(process.pid, signal.SIGTERM)
+    try:
+        process.wait(timeout=10)
+    except subprocess.TimeoutExpired:
+        with suppress(ProcessLookupError):
+            os.killpg(process.pid, signal.SIGKILL)
+        process.wait(timeout=10)
 
 
 def prepare(*, inputs: Path, output: Path, previous: int, current: int, tooling_sha: str) -> None:
@@ -297,13 +312,7 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             }, indent=2) + "\n")
         finally:
             for process in reversed(processes):
-                if process.poll() is None:
-                    os.killpg(process.pid, signal.SIGTERM)
-                    try:
-                        process.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(process.pid, signal.SIGKILL)
-                        process.wait(timeout=10)
+                stop_process(process=process)
             for log in logs:
                 log.close()
 

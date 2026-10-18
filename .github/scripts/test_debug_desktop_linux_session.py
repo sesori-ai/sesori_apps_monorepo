@@ -58,6 +58,20 @@ class LinuxInteractiveDiagnosticsTest(unittest.TestCase):
                     diagnostics.serve(inputs=Path("unused"), output=Path("unused"), architecture="arm64")
                 run.assert_not_called()
 
+    def test_vnc_readiness_requires_a_live_process_and_loopback_listener(self):
+        process = mock.Mock()
+        process.poll.return_value = None
+        with mock.patch.object(diagnostics.socket, "create_connection", side_effect=[
+                ConnectionRefusedError(), mock.MagicMock()]) as connect:
+            self.assertFalse(diagnostics.vnc_ready(process=process))
+            self.assertTrue(diagnostics.vnc_ready(process=process))
+        self.assertEqual(connect.call_args_list, [mock.call(("127.0.0.1", 5900), timeout=1)] * 2)
+        process.poll.return_value = 1
+        with mock.patch.object(diagnostics.socket, "create_connection") as connect:
+            with self.assertRaisesRegex(ValueError, "VNC server exited.*1"):
+                diagnostics.vnc_ready(process=process)
+        connect.assert_not_called()
+
     def test_unattended_stop_pipe_open_is_nonblocking_bounded_and_cleaned(self):
         with tempfile.TemporaryDirectory() as directory:
             control = Path(directory) / "stop.pipe"
@@ -148,8 +162,9 @@ class LinuxInteractiveDiagnosticsTest(unittest.TestCase):
         self.assertIn('"-nolisten", "tcp"', source)
         self.assertLess(source.index('"kwriteconfig5"'), source.index('"startplasma-x11"'))
         self.assertIn('"--key", "Autolock", "false"', source)
-        self.assertIn("os.killpg(process.pid, signal.SIGTERM)", source)
-        self.assertIn("process.wait(timeout=10)", source)
+        self.assertLess(source.index('wait_for(description="loopback VNC listener"'),
+                        source.index('environment = output / "session.env"'))
+        self.assertIn("stop_process(process=process)", source)
         self.assertIn('TemporaryDirectory(prefix="sesori-linux-debug-"', source)
 
 

@@ -7,6 +7,7 @@ import platform
 import select
 import shlex
 import signal
+import socket
 import subprocess
 import tempfile
 
@@ -15,7 +16,7 @@ from github_release_assets import github
 from prepare_desktop_release import read_json, require
 from publish_desktop_linux import MANIFEST, TRUSTED_PRIMARY_FINGERPRINT, prepare as prepare_signed
 from publish_linux_repository import REPOSITORY
-from qualify_desktop_linux_session import run, wait_for
+from qualify_desktop_linux_session import run, stop_process, wait_for
 
 
 SESSION_SECONDS = 20 * 60
@@ -43,6 +44,16 @@ def wait_for_operator(*, control: Path) -> None:
     finally:
         os.close(descriptor)
         control.unlink()
+
+
+def vnc_ready(*, process: subprocess.Popen) -> bool:
+    code = process.poll()
+    require(code is None, f"VNC server exited before listener readiness (status {code})")
+    try:
+        with socket.create_connection(("127.0.0.1", 5900), timeout=1):
+            return True
+    except ConnectionRefusedError:
+        return False
 
 
 def serve(*, inputs: Path, output: Path, architecture: str) -> None:
@@ -104,8 +115,9 @@ def serve(*, inputs: Path, output: Path, architecture: str) -> None:
             wait_for(description="KDE StatusNotifier host",
                      check=lambda: bus.name_has_owner("org.kde.StatusNotifierWatcher"))
             start(arguments=["/usr/bin/sesori-desktop"], label="application")
-            start(arguments=["x11vnc", "-display", ":95", "-localhost", "-rfbport", "5900", "-nopw",
-                             "-forever", "-shared"], label="vnc")
+            vnc = start(arguments=["x11vnc", "-display", ":95", "-localhost", "-rfbport", "5900", "-nopw",
+                                   "-forever", "-shared"], label="vnc")
+            wait_for(description="loopback VNC listener", check=lambda: vnc_ready(process=vnc))
             environment = output / "session.env"
             environment.write_text("".join(f"export {key}={shlex.quote(value)}\n" for key, value in session.items()))
             control = output / "stop.pipe"
@@ -128,13 +140,7 @@ def serve(*, inputs: Path, output: Path, architecture: str) -> None:
         finally:
             signal.signal(signal.SIGTERM, previous_handler)
             for process in reversed(processes):
-                if process.poll() is None:
-                    os.killpg(process.pid, signal.SIGTERM)
-                    try:
-                        process.wait(timeout=10)
-                    except subprocess.TimeoutExpired:
-                        os.killpg(process.pid, signal.SIGKILL)
-                        process.wait(timeout=10)
+                stop_process(process=process)
             for log in logs:
                 log.close()
             run(arguments=["sudo", "apt-get", "remove", "--yes", "sesori-desktop"], timeout=120)

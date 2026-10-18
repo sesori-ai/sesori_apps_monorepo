@@ -1,32 +1,25 @@
 name: Native Linux desktop sessions
 
-# Credential-free native sessions first. Real-account and login-session admission remain separate.
+# The existing qualification workflow owns manual dispatch and requires an explicit retained pair.
+# Automatic tooling contracts never depend on finite-retention product artifacts.
 on:
-  pull_request:
-    paths:
-      - '.github/workflows/desktop-linux-session.yml'
-      - '.github/scripts/qualify_desktop_linux_session.py'
-      - '.github/scripts/test_qualify_desktop_linux_session.py'
-      - '.github/scripts/publish_desktop_linux.py'
-      - '.github/scripts/publish_linux_repository.py'
-      - 'client/desktop/test/native/packaged_platform_probe.dart'
-  workflow_dispatch:
+  workflow_call:
     inputs:
       previous_run:
         description: Successful signed Linux producer run before replacement (artifacts must still be retained)
+        required: true
         type: string
-        default: '38774801356'
       current_run:
         description: Successful signed Linux producer run after replacement (artifacts must still be retained)
+        required: true
         type: string
-        default: '38791726962'
 
 permissions:
   contents: read
   actions: read
 
 concurrency:
-  group: native-linux-desktop-${{ github.event.pull_request.number || github.ref }}
+  group: native-linux-desktop-${{ github.ref }}
   cancel-in-progress: false
 
 jobs:
@@ -49,6 +42,15 @@ jobs:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
     steps:
+      - name: Require explicit retained signed producer pair
+        env:
+          PREVIOUS_RUN: ${{ inputs.previous_run }}
+          CURRENT_RUN: ${{ inputs.current_run }}
+        run: |
+          [[ "$PREVIOUS_RUN" =~ ^[1-9][0-9]*$ && "$CURRENT_RUN" =~ ^[1-9][0-9]*$ ]] || {
+            echo 'Select two retained signed Linux producer runs; no default or latest substitution is allowed.'
+            exit 1
+          }
       - uses: actions/checkout@v6
         with:
           persist-credentials: false
@@ -76,21 +78,21 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.previous_run || '38774801356' }}
+          run-id: ${{ inputs.previous_run }}
           pattern: desktop-linux-*
           path: build/linux-session-producers/previous
       - uses: actions/download-artifact@v4
         with:
           github-token: ${{ github.token }}
-          run-id: ${{ inputs.current_run || '38791726962' }}
+          run-id: ${{ inputs.current_run }}
           pattern: desktop-linux-*
           path: build/linux-session-producers/current
       - name: Verify unchanged signed producer inputs
         id: inputs
         env:
           GH_TOKEN: ${{ github.token }}
-          PREVIOUS_RUN: ${{ inputs.previous_run || '38774801356' }}
-          CURRENT_RUN: ${{ inputs.current_run || '38791726962' }}
+          PREVIOUS_RUN: ${{ inputs.previous_run }}
+          CURRENT_RUN: ${{ inputs.current_run }}
         run: |
           python .github/scripts/qualify_desktop_linux_session.py prepare \
             --previous "$PREVIOUS_RUN" --current "$CURRENT_RUN" --tooling-sha "$GITHUB_SHA" \
