@@ -174,7 +174,10 @@ jobs:
           audience: ${{ vars.TAILSCALE_AUDIENCE }}
           tags: tag:sesori-ci-debug
           hostname: ${{ env.DEBUG_HOST }}
-          args: --ssh --accept-routes=false --accept-dns=false
+          args: --ssh --accept-dns=false
+      - name: Disable the action's default subnet routes before starting the desktop
+        # The pinned action supplies --accept-routes itself; duplicating it in args is rejected.
+        run: sudo tailscale set --accept-routes=false
       - name: Serve a disposable anonymous KDE desktop for at most 20 ready minutes
         timeout-minutes: 25
         run: |

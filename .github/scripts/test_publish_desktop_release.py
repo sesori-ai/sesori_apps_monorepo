@@ -145,9 +145,11 @@ class DesktopReleaseWorkflowTest(unittest.TestCase):
                 self.assertIn("secrets: inherit", build)
                 self.assertIn("build_number: ${{ needs.", build)
                 permissions = build.split("    permissions:\n", 1)[1].split("    uses:", 1)[0]
-                # GitHub validates even skipped nested upgrade jobs, which read PR provenance.
-                self.assertEqual(dict(line.strip().split(": ") for line in permissions.splitlines()),
-                                 {"contents": "read", "actions": "read", "pull-requests": "read"})
+                # Admission includes skipped upgrade-provenance and manual OIDC jobs.
+                scopes = dict(line.strip().split(": ", 1) for line in permissions.splitlines()
+                              if line.strip() and not line.lstrip().startswith("#"))
+                self.assertEqual(scopes, {"contents": "read", "actions": "read",
+                                          "pull-requests": "read", "id-token": "write"})
                 publish = text.split("  publish-desktop:\n", 1)[1].split("\n  #", 1)[0]
                 self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", publish)
                 self.assertIn(build_job, publish)
