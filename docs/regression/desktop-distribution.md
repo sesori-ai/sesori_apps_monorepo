@@ -240,7 +240,8 @@ auth key or client secret is used.
 
 VNC listens only on loopback and requires an SSH tunnel. The desktop has a disposable
 home and real GNOME Keyring, a 20-minute ready window, an explicit stop pipe and a
-40-minute job ceiling. Cleanup terminates owned process groups, removes the fixture
+40-minute job ceiling. Disable Plasma's idle lock only in that disposable home before
+starting the desktop; do not unlock or reconfigure the operator's workstation. Cleanup terminates owned process groups, removes the fixture
 installation/home and logs the ephemeral node out. Diagnostic concurrency is separate
 from packaging; it must never cancel a shared release. Reusable callers admit the
 callee's OIDC scope even though the debug job is skipped; ordinary callee jobs retain

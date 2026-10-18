@@ -146,6 +146,8 @@ class LinuxInteractiveDiagnosticsTest(unittest.TestCase):
         source = Path(diagnostics.__file__).read_text()
         self.assertIn('"-localhost", "-rfbport", "5900"', source)
         self.assertIn('"-nolisten", "tcp"', source)
+        self.assertLess(source.index('"kwriteconfig5"'), source.index('"startplasma-x11"'))
+        self.assertIn('"--key", "Autolock", "false"', source)
         self.assertIn("os.killpg(process.pid, signal.SIGTERM)", source)
         self.assertIn("process.wait(timeout=10)", source)
         self.assertIn('TemporaryDirectory(prefix="sesori-linux-debug-"', source)

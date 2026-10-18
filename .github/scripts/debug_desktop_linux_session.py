@@ -90,6 +90,9 @@ def serve(*, inputs: Path, output: Path, architecture: str) -> None:
             dbus.Interface(bus.get_object("org.freedesktop.DBus", "/org/freedesktop/DBus"),
                            "org.freedesktop.DBus").UpdateActivationEnvironment(session)
             run(arguments=["gsettings", "set", "org.gnome.desktop.interface", "toolkit-accessibility", "true"], env=env)
+            # An unattended operator connection can exceed Plasma's default five-minute idle lock.
+            run(arguments=["kwriteconfig5", "--file", "kscreenlockerrc", "--group", "Daemon",
+                           "--key", "Autolock", "false"], env=env)
             keyring = start(arguments=["gnome-keyring-daemon", "--foreground", "--unlock", "--components=secrets"],
                             label="keyring", stdin=subprocess.PIPE)
             keyring.stdin.write(b"disposable-ci-debug-keyring\n")
