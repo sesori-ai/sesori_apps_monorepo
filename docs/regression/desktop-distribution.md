@@ -223,6 +223,32 @@ Real account restoration, helper On/Off behavior, actual session autostart, unav
 Secret Service and remaining distro upgrade rows stay separate gates. This workflow does
 not replace them, publish releases or admit stable Linux.
 
+### Private interactive Linux diagnostics
+
+`Desktop Native Qualification` has a manual-only `linux-interactive-debug` mode for
+native x64 or ARM64 KDE/X11 runners. It verifies one explicitly selected retained
+signed internal producer before network admission; no rebuild, publishing, account
+credentials or signing secrets are involved. This mode is not a qualification pass.
+
+The `desktop-linux-debug` environment permits only `main` and the dedicated QA branch.
+GitHub OIDC binds the repository/environment subject, workflow name and
+`workflow_dispatch` claim to `tag:sesori-ci-debug`; its only configured variables are
+non-secret `TAILSCALE_CLIENT_ID` and `TAILSCALE_AUDIENCE`. Tailnet policy permits admins
+to reach tagged runners on SSH port 22 as `runner`, with no runner-initiated tailnet
+grant. Preserve unrelated policy rules when configuring this access. No long-lived
+auth key or client secret is used.
+
+VNC listens only on loopback and requires an SSH tunnel. The desktop has a disposable
+home and real GNOME Keyring, a 20-minute ready window, an explicit stop pipe and a
+40-minute job ceiling. Cleanup terminates owned process groups, removes the fixture
+installation/home and logs the ephemeral node out. Diagnostic concurrency is separate
+from packaging; it must never cancel a shared release. Reusable callers admit the
+callee's OIDC scope even though the debug job is skipped; ordinary callee jobs retain
+the read-only default token. No screenshots, homes or logs
+are automatically uploaded from interactive sessions. Operators must not log into a
+real account or introduce credentials; deliberately collected evidence needs privacy
+review. Automated native/account/upgrade/stable gates remain unchanged.
+
 ## Linux internal-preview publication
 
 The shared internal cycle builds both native Linux CPUs with its source/build number

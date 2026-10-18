@@ -75,7 +75,12 @@ The native gate covers credential-free x64 GNOME/Wayland and ARM64 KDE/X11, encr
 fixture persistence and login-registration roundtrip. KDE uses the owned Plasma
 accessibility targets for real pointer clicks, captures the visible menu and clicks
 Quit; it does not substitute direct DBusMenu event dispatch for host interaction.
-Real-account/session-login coverage follows in 11.i.c. Stable stays closed.
+GNOME has passed the corrected signed pair; KDE captures show the real menu and
+Quit item, but accessible lookup still fails. Manual `linux-interactive-debug` in
+`Desktop Native Qualification` provides bounded, credential-free native KDE diagnostics
+through scoped GitHub OIDC, admin-only Tailscale SSH and loopback VNC. It does not replace
+the automated gate or upload interactive data automatically. Real-account/session-login
+coverage follows in 11.i.c. Stable stays closed.
 Keep the existing release rollover: QA uses retained signed producer artifacts, not
 historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
 recreated release or silent same-version substitution.
