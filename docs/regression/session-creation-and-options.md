@@ -209,6 +209,9 @@ variant, and worktree mode, and creating the session with its first input.
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
   themselves is decided behind it.
+- The "New worktree" toggle opens with the value the last session on this device
+  was started with (on when none was ever started), whatever the project or
+  bridge. Only a Send where the toggle was shown updates the remembered value.
 - Concurrent requests coalesce; an incomplete observation never replaces a
   complete cached one, and a moved project invalidates its entries. Completeness
   decides replacement only at capture time; the stored row holds just the
@@ -246,7 +249,10 @@ variant, and worktree mode, and creating the session with its first input.
   native identifiers resolved only inside the plugin.
 - Dedicated mode creates a branch and worktree from the resolved base branch
   using a bridge-generated lowercase `color-animal` name; the branch is
-  `sesori/color-animal` and the worktree directory is the bare slug. Generated
+  `sesori/color-animal` and the worktree directory is the bare slug, created at
+  `~/.sesori-worktrees/<project folder>-<8-hex path hash>/<slug>`, outside the
+  project. History import hides sessions found there, and worktrees that older
+  bridges created in `<project>/.worktrees/` stay removable. Generated
   branch refinement keeps the `sesori/` prefix. It checks both branch
   and filesystem-path occupancy across three distinct pairs, then makes bounded
   attempts with a secure hexadecimal suffix. It falls back to the project

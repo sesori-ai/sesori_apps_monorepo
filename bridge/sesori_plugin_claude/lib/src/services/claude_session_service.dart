@@ -75,6 +75,10 @@ final class _SessionTurnState() {
   /// type is kept for the scoped-stop rejection count.
   final Map<String, ClaudeTaskType> runningTaskIds = {};
 
+  /// The [runningTaskIds] a sub-agent runs, such as its own shells: they keep
+  /// the process resident but are not the main agent's work.
+  final Set<String> subAgentOwnedTaskIds = {};
+
   /// Whether the CLI is doing anything the bridge must keep the process for.
   bool get hasWork => pending > 0 || selfStartedTurn != null || runningTaskIds.isNotEmpty;
 
@@ -125,13 +129,16 @@ final class ClaudeSessionService({
   });
 
   /// Whether the main agent itself works: a queued or self-started turn, or a
-  /// background shell or workflow it launched. Only background sub-agents keep
-  /// the session busy without it; they report as child sessions instead.
+  /// background shell or workflow it launched. Background sub-agents and the
+  /// tasks they run keep the session busy without it; the sub-agents report as
+  /// child sessions instead.
   bool isMainAgentRunning({required String sessionId}) => switch (_turns[sessionId]) {
     final state? =>
       state.pending > 0 ||
           state.selfStartedTurn != null ||
-          state.runningTaskIds.values.any((type) => type != ClaudeTaskType.subAgent),
+          state.runningTaskIds.entries.any(
+            (task) => task.value != ClaudeTaskType.subAgent && !state.subAgentOwnedTaskIds.contains(task.key),
+          ),
     null => false,
   };
 
@@ -575,6 +582,7 @@ final class ClaudeSessionService({
       }
       // Every resident task died with the process.
       state.runningTaskIds.clear();
+      state.subAgentOwnedTaskIds.clear();
       if (identical(_turns[sessionId], state)) {
         _completeSelfStartedTurn(state: state);
         _settleIdle(sessionId: sessionId, state: state);
@@ -755,6 +763,7 @@ final class ClaudeSessionService({
           state.wakeupAt = null;
           final hadWork = state.selfStartedTurn != null || state.runningTaskIds.isNotEmpty;
           state.runningTaskIds.clear();
+          state.subAgentOwnedTaskIds.clear();
           _completeSelfStartedTurn(state: state);
           // Only work this exit ended may settle idle: the reap's own teardown
           // exits an already-idle session and must not rearm the reap.
@@ -773,8 +782,12 @@ final class ClaudeSessionService({
     switch (message) {
       case ClaudeTaskStartedMessage(taskId: final taskId?):
         state.runningTaskIds[taskId] = message.taskType;
+        // A sub-agent's shell can outlive the sub-agent, so it stays tracked
+        // for the process, but it is not the main agent's work.
+        if (message.ownedBySubAgent) state.subAgentOwnedTaskIds.add(taskId);
       case ClaudeTaskNotificationMessage(taskId: final taskId?):
         state.runningTaskIds.remove(taskId);
+        state.subAgentOwnedTaskIds.remove(taskId);
         // A stopped task opens no wake-up turn; if it was the last work, the
         // session is idle now rather than at some later turn.
         _settleIdle(sessionId: sessionId, state: state);

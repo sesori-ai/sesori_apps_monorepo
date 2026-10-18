@@ -310,6 +310,7 @@ void main() {
       whenListen(cubit, states, initialState: _composing);
       when(() => cubit.needsHarnessDiscovery).thenReturn(false);
       when(() => cubit.hasNoHarnesses).thenReturn(false);
+      when(cubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
       when(() => cubit.canSubmit).thenReturn(true);
       when(() => cubit.canRefreshOptions).thenReturn(false);
       when(() => cubit.composerPresentation).thenReturn(const NewSessionComposerReady());

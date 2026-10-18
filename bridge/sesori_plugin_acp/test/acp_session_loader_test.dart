@@ -531,13 +531,22 @@ void main() {
                 "toolCallId": "t1",
                 "rawOutput": {"stdout": "done (final)"},
               }),
+            )
+            // Grok streams a backgrounded shell's output `in_progress` after `completed`.
+            ..consume(
+              upd({
+                "sessionUpdate": "tool_call_update",
+                "toolCallId": "t1",
+                "status": "in_progress",
+                "rawOutput": {"stdout": "done (final)"},
+              }),
             );
 
       final toolPart = collector.build().single.parts.firstWhere((p) => p.type == PluginMessagePartType.tool);
       expect(
         toolPart.state.status,
         PluginToolStatus.completed,
-        reason: "status-less update must not reset to pending",
+        reason: "neither a status-less nor a later in_progress update reopens a finished tool",
       );
       expect(toolPart.state.output, "done (final)");
     });

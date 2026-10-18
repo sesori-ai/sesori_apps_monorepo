@@ -100,8 +100,10 @@ class GrokEventMapper({
     if (promptId == null || !promptId.startsWith(GrokSessionProtocol.autonomousTurnPromptPrefix)) return const [];
     final holdId = promptId.substring(GrokSessionProtocol.autonomousTurnPromptPrefix.length);
     if (holdId.isEmpty) return const [];
-    childSessions.releaseRootHold(rootSessionId: rootSessionId, holdId: holdId);
-    return const [];
+    if (!childSessions.releaseRootHold(rootSessionId: rootSessionId, holdId: holdId)) return const [];
+    // No prompt settles this turn, so its streamed text is finalized here;
+    // left streaming, it would hide the row of still-running sub-agents.
+    return finalizeTurn(sessionId: rootSessionId);
   }
 
   List<BridgeSseEvent> _spawned({

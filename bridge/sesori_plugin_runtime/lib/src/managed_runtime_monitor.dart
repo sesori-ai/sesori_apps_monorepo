@@ -138,9 +138,18 @@ class ManagedRuntimeMonitor<R>({
     if (_disarmed || !identical(process, _currentHandle?.process)) {
       return;
     }
+    final policy = _restartPolicy;
+    // Without restarts, a clean exit after startup is the runtime stopping on
+    // its own, not a crash; a bounded policy still respawns its child, and an
+    // exit before startup completes stays a failure.
+    if (policy is DisabledRestartPolicy && exitCode == 0 && _status.current is! PluginStarting) {
+      Log.i("[$_runtimeId] runtime exited on its own with code 0");
+      _status.trySet(const PluginStopping());
+      _status.trySet(const PluginStopped());
+      return;
+    }
     Log.e("[$_runtimeId] runtime exited unexpectedly with code $exitCode");
 
-    final policy = _restartPolicy;
     switch (policy) {
       case DisabledRestartPolicy():
         _status.trySet(

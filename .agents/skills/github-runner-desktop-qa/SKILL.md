@@ -53,9 +53,11 @@ not this skill directory. Use only the operator-approved checkout/worktree.
   Do not log into real accounts or introduce private projects/transcripts.
 - Do not launch, replace, stop or clear the operator's installed Sesori/Bridge.
   Never run the diagnostic server or its root package installer on a workstation.
-- Screenshots/logs are private until inspected. No interactive artifacts upload
-  automatically; never publish paths, code, prompts, transcripts, account names
-  or tokens. A private network does not make captured content safe to publish.
+- Treat screenshots and session log files as private until inspected. Interactive
+  artifacts do not upload automatically, but CI metadata and step logs retain the
+  connection summary. Never publish private paths, code, prompts, transcripts,
+  account names or tokens, or put them into a job summary. A private network does
+  not make captured content safe to publish.
 
 If federation or policy is missing, establish the restrictions above before
 connecting a runner. Do not replace a custom policy with an allow-all example.
@@ -102,15 +104,18 @@ gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo 
 ```
 
 Use `debug_arch=x64` for the native x64 runner; do not use CPU emulation.
-Record the returned run URL, tooling head, producer/source and CPU. Wait for the
-job's ready summary or native Tailscale peer events, not a sleep/status-poll loop.
-When a PR monitor owns CI, act on its delivered reports rather than polling it.
+Record the new run URL, tooling head, producer/source and CPU. The dispatch CLI
+may acknowledge the event without returning a run ID; locate the matching run
+through the live Actions view or a completion notification, not a guessed latest
+run. Wait for its ready summary or native Tailscale peer events, not a
+sleep/status-poll loop. When a PR monitor owns CI, use its delivered reports.
 
 The job verifies artifacts before network admission, joins as an ephemeral
 `tag:sesori-ci-debug` node, then starts the anonymous desktop in an isolated home.
 The summary provides its hostname, exact `session.env` path and stop command.
-The ready window is **20 minutes**, with a **40-minute job ceiling**. Do not
-extend the session into a persistent or unattended machine.
+Readiness requires a live VNC process and a listening loopback socket; it does not
+prove app behavior. The ready window is **20 minutes**, with a **40-minute job
+ceiling**. Do not extend the session into a persistent or unattended machine.
 
 ## 3. Verify SSH identity and connect
 
@@ -209,6 +214,23 @@ raw tailnet state, credentials or an unreviewed recursive artifact directory.
    Keep its PR draft while required results or screenshots fail or remain
    uninspected; never use an interactive pass to override that gate.
 
+The native package-session gate is explicitly manual because producer artifacts
+expire. Automatic PR checks do not execute that finite-artifact gate. When its
+scenario changes, select a genuine increasing pair of retained signed producers
+and dispatch the existing owner, not `desktop-linux-session.yml` directly:
+
+```bash
+: "${QA_REF:?Set the intended tooling ref}"
+: "${PREVIOUS_PACKAGING_RUN:?Set the older retained signed producer run ID}"
+: "${PACKAGING_RUN:?Set the newer retained signed producer run ID}"
+gh workflow run desktop-qualification.yml --repo sesori-ai/sesori_apps_monorepo \
+  --ref "$QA_REF" -f mode=linux-session \
+  -f previous_packaging_run="$PREVIOUS_PACKAGING_RUN" -f packaging_run="$PACKAGING_RUN"
+```
+
+Assess that run's exact tooling head, native reports and captures separately from
+ordinary green PR checks. Never use fixed producer defaults or a latest fallback.
+
 SSH proves access; an RFB handshake proves forwarding. A screenshot proves one
 visible frame; a manual Quit observation proves that specific interaction.
 None alone proves the automated signed-package replacement, real-account/helper
@@ -223,9 +245,11 @@ separate qualification and production-approval owners.
   `sudo tailscale set --accept-routes=false` before desktop startup. Duplicating
   the flag in `args` fails before authentication; do not loosen policy to fix it.
 - **Reusable permission admission:** GitHub validates skipped nested jobs too.
-  Callers must admit `id-token: write`; ordinary callee jobs keep the read-only
-  default. Preserve signing environments, inherited secrets, finalizer ownership
-  and `store-production`. Update the exact permission contract tests together.
+  Callers of `Desktop Native Qualification` must admit its debug job's
+  `id-token: write`; ordinary callee jobs keep the read-only default. Do not add
+  OIDC authority to the separate native-session callee. Preserve signing
+  environments, inherited secrets, finalizer ownership and `store-production`.
+  Update the exact permission contract tests together.
 - **Idle lock:** disable Plasma auto-lock only in the disposable home before
   startup. Never unlock or reconfigure the operator's workstation. A virtual
   desktop without a real logind session cannot prove OS-login behavior.

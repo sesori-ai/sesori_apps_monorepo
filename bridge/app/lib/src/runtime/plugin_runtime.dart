@@ -1774,13 +1774,23 @@ class PluginRuntime({
           if (slot.generation != generation) return;
           if (_shuttingDown) return;
           Log.w('Plugin "$pluginId" status stream failed', error, stackTrace);
-          _retireFailedGeneration(slot: slot, generation: generation, reason: "status stream failed");
+          _retireGeneration(
+            slot: slot,
+            generation: generation,
+            reason: "status stream failed",
+            stoppedCleanly: false,
+          );
         },
         onDone: () {
           if (slot.generation != generation || slot.plugin == null) return;
           if (_shuttingDown) return;
           Log.w('Plugin "$pluginId" status stream closed before the generation stopped');
-          _retireFailedGeneration(slot: slot, generation: generation, reason: "status stream closed");
+          _retireGeneration(
+            slot: slot,
+            generation: generation,
+            reason: "status stream closed",
+            stoppedCleanly: false,
+          );
         },
       );
       slot.workState = started.currentWorkState;
@@ -1830,14 +1840,24 @@ class PluginRuntime({
           }
           if (slot.generation == generation) {
             Log.w('Plugin "$pluginId" event stream failed', error, stackTrace);
-            _retireFailedGeneration(slot: slot, generation: generation, reason: "event stream failed");
+            _retireGeneration(
+              slot: slot,
+              generation: generation,
+              reason: "event stream failed",
+              stoppedCleanly: false,
+            );
           }
         },
         onDone: () {
           if (slot.generation != generation || slot.plugin == null) return;
           if (_shuttingDown) return;
           Log.w('Plugin "$pluginId" event stream closed before the generation stopped');
-          _retireFailedGeneration(slot: slot, generation: generation, reason: "event stream closed");
+          _retireGeneration(
+            slot: slot,
+            generation: generation,
+            reason: "event stream closed",
+            stoppedCleanly: false,
+          );
         },
       );
       _applyStatus(slot: slot, generation: generation, status: started.currentStatus);
@@ -1924,11 +1944,16 @@ class PluginRuntime({
     if (_shuttingDown) return;
     if (status case PluginFailed(:final reason, :final cause)) {
       Log.w('Plugin "${slot.registration.descriptor.id}" failed after startup: $reason', cause);
-      _retireFailedGeneration(slot: slot, generation: generation, reason: reason);
+      _retireGeneration(slot: slot, generation: generation, reason: reason, stoppedCleanly: false);
       return;
     }
     if (status is PluginStopped) {
-      _retireFailedGeneration(slot: slot, generation: generation, reason: "plugin stopped");
+      _retireGeneration(
+        slot: slot,
+        generation: generation,
+        reason: "plugin stopped",
+        stoppedCleanly: true,
+      );
       return;
     }
     if (status is PluginStopping) {
@@ -1948,10 +1973,11 @@ class PluginRuntime({
     _publishSnapshots();
   }
 
-  void _retireFailedGeneration({
+  void _retireGeneration({
     required _PluginRuntimeSlot slot,
     required int generation,
     required String reason,
+    required bool stoppedCleanly,
   }) {
     if (slot.generation != generation) return;
     final plugin = slot.plugin;
@@ -1969,13 +1995,22 @@ class PluginRuntime({
       try {
         await _waitForDurableCommits(slot);
         if (slot.generation != generation || !identical(slot.plugin, plugin)) return;
+        // A plugin that stopped on its own stays stopping while it is torn
+        // down and settles dormant only once that succeeds, so clients do not
+        // read it as unavailable; the next request starts a fresh generation.
         slot
           ..plugin = null
-          ..state = PluginRuntimeState.failed
+          ..state = stoppedCleanly ? PluginRuntimeState.stopping : PluginRuntimeState.failed
           ..workState = PluginWorkState.unknown;
         _publishSnapshots();
         await _cancelAndShutdownGeneration(slot: slot, plugin: plugin);
+        if (stoppedCleanly && slot.generation == generation && slot.state == PluginRuntimeState.stopping) {
+          slot.state = PluginRuntimeState.dormant;
+        }
       } on Object catch (error, stackTrace) {
+        if (stoppedCleanly && slot.generation == generation && slot.state == PluginRuntimeState.stopping) {
+          slot.state = PluginRuntimeState.failed;
+        }
         Log.w(
           'Plugin "${slot.registration.descriptor.id}" cleanup after $reason failed',
           error,

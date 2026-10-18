@@ -1,10 +1,16 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" as shared;
 
+import "../../models/open_code_mcp_login_challenge.dart";
 import "../../opencode_message_id.dart";
 import "../api/opencode_v2_api.dart";
+import "../models/openapi/connection_info.g.dart";
 import "../models/openapi/form_info.g.dart";
 import "../models/openapi/form_reply.g.dart";
+import "../models/openapi/integration_attempt_encoded.g.dart";
+import "../models/openapi/integration_attempt_status.g.dart";
+import "../models/openapi/integration_info.g.dart";
+import "../models/openapi/integration_method.g.dart";
 import "../models/openapi/location_public_ref.g.dart";
 import "../models/openapi/mcp_status_failed.g.dart";
 import "../models/openapi/mcp_status_needs_auth.g.dart";
@@ -17,6 +23,8 @@ import "../models/openapi/session_info.g.dart";
 import "../models/openapi/session_message_info.g.dart";
 import "../models/openapi/worktree_remove_input.g.dart";
 import "../models/v2_agent_names.dart";
+import "../models/v2_mcp_api_exception.dart";
+import "../models/v2_mcp_authentication.dart";
 import "../models/v2_message_filter.dart";
 import "../models/v2_request_bodies.dart";
 import "v2_mcp_mapper.dart";
@@ -45,6 +53,123 @@ class OpenCodeV2Repository({
   }
 
   Future<String> getSessionDirectory({required String sessionId}) => _api.getMcpSessionDirectory(sessionId: sessionId);
+
+  Future<IntegrationInfo> _mcpIntegration({required String directory, required String name}) async {
+    final servers = await _api.listMcpServers(directory: directory);
+    final server = servers.where((server) => server.name == name).firstOrNull;
+    if (server == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.targetNotFound,
+      );
+    }
+    final integrationId = server.integrationID;
+    if (integrationId == null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.notSupported,
+      );
+    }
+    return await _api.getMcpIntegration(directory: directory, integrationId: integrationId);
+  }
+
+  Future<V2McpAuthenticationTarget> prepareMcpAuthentication({required String directory, required String name}) async {
+    final integration = await _mcpIntegration(directory: directory, name: name);
+    final methods = integration.methods.whereType<IntegrationOAuthMethod>().toList();
+    if (methods.length != 1 || methods.single.form != null) {
+      throw const PluginMcpAuthenticationUnavailableException(
+        reason: PluginMcpAuthenticationUnavailableReason.nativeConfigurationRequired,
+      );
+    }
+    return V2McpAuthenticationTarget(directory: directory, integrationId: integration.id, methodId: methods.single.id);
+  }
+
+  Future<V2McpAuthenticationAttempt> startMcpAuthentication({required V2McpAuthenticationTarget target}) async {
+    final IntegrationAttemptEncoded response;
+    try {
+      response = await _api.startMcpAuthentication(
+        directory: target.directory,
+        integrationId: target.integrationId,
+        methodId: target.methodId,
+      );
+    } on V2McpStartRejectedException catch (error, stackTrace) {
+      Log.w("[opencode-v2] Native MCP start rejected for ${target.integrationId}", error.innerError, stackTrace);
+      Error.throwWithStackTrace(V2McpAuthenticationStartRejected(innerError: error.innerError), stackTrace);
+    }
+    try {
+      if (response.mode != IntegrationAttemptEncodedMode.auto) {
+        throw const FormatException("OpenCode MCP requires native automatic OAuth");
+      }
+      return V2McpAuthenticationReady(
+        attemptId: response.attemptID,
+        challenge: OpenCodeMcpLoginChallenge.parse(value: response.url),
+      );
+    } on Object catch (error, stackTrace) {
+      return V2McpAuthenticationInvalid(attemptId: response.attemptID, cause: error, stackTrace: stackTrace);
+    }
+  }
+
+  Future<V2McpAuthenticationObservation> getMcpAuthenticationStatus({
+    required V2McpAuthenticationTarget target,
+    required String attemptId,
+  }) async {
+    final IntegrationAttemptStatus status;
+    try {
+      status = await _api.getMcpAuthenticationStatus(
+        directory: target.directory,
+        integrationId: target.integrationId,
+        attemptId: attemptId,
+      );
+    } on V2McpAttemptNotFoundException catch (error, stackTrace) {
+      return V2McpAuthenticationRemoved(innerError: error.innerError, stackTrace: stackTrace);
+    }
+    if (status case IntegrationAttemptStatusFailed(:final message)) {
+      // The event wrapper stays privacy-safe; retain the original native
+      // diagnostic locally for an opted-in support log.
+      Log.w(
+        "[opencode-v2] Native MCP authentication failed for ${target.integrationId}/$attemptId",
+        redactMcpOAuthParameterSecrets(message: message),
+      );
+    }
+    return switch (status) {
+      IntegrationAttemptStatusPending() => const V2McpAuthenticationPending(),
+      IntegrationAttemptStatusComplete() => const V2McpAuthenticationTerminal(
+        event: PluginMcpAuthenticationCompleted(),
+      ),
+      IntegrationAttemptStatusExpired() => V2McpAuthenticationTerminal(
+        event: PluginMcpAuthenticationFailed(
+          reason: PluginMcpAuthenticationFailureReason.expired,
+          cause: V2McpAuthenticationException(innerError: StateError("Native MCP authentication expired")),
+          causeStackTrace: StackTrace.current,
+        ),
+      ),
+      IntegrationAttemptStatusFailed(:final message) => V2McpAuthenticationTerminal(
+        event: PluginMcpAuthenticationFailed(
+          reason: PluginMcpAuthenticationFailureReason.nativeFailure,
+          cause: V2McpAuthenticationException(innerError: StateError(message)),
+          causeStackTrace: StackTrace.current,
+        ),
+      ),
+      IntegrationAttemptStatusUnknown() => const V2McpAuthenticationUnknown(),
+    };
+  }
+
+  Future<void> cancelMcpAuthentication({required V2McpAuthenticationTarget target, required String attemptId}) => _api
+      .cancelMcpAuthentication(directory: target.directory, integrationId: target.integrationId, attemptId: attemptId);
+
+  Future<void> submitMcpCallback({required OpenCodeMcpLoginChallenge challenge, required Uri callbackUri}) async {
+    try {
+      challenge.validateCallback(callback: callbackUri);
+    } on FormatException catch (error, stackTrace) {
+      Error.throwWithStackTrace(PluginMcpAuthenticationCallbackRejectedException(innerError: error), stackTrace);
+    }
+    await _api.deliverMcpCallback(callbackUri: callbackUri);
+  }
+
+  Future<void> forgetMcpAuthentication({required String directory, required String name}) async {
+    final integration = await _mcpIntegration(directory: directory, name: name);
+    for (final connection in integration.connections.whereType<ConnectionCredentialInfo>()) {
+      await _api.removeMcpCredential(directory: directory, credentialId: connection.id);
+    }
+  }
 
   Future<void> connectMcpServer({required String directory, required String name}) =>
       _api.connectMcpServer(directory: directory, name: name);

@@ -14,6 +14,7 @@ enum StringPreferenceKey({@override required final String storageKey}) implement
 
 enum BoolPreferenceKey({@override required final String storageKey}) implements BoolPersistenceKey {
   hasRegisteredBridges(storageKey: "has_registered_bridges"),
+  dedicatedWorktree(storageKey: "new_session_dedicated_worktree_v1"),
 }
 
 final class const PluginPreferenceKey({required final String bridgeId}) implements StringPersistenceKey {

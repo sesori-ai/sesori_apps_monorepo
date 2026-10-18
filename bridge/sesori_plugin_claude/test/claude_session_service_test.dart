@@ -809,6 +809,39 @@ void main() {
       expect(harness.repository.isResident(sessionId: testSessionId), isFalse);
     });
 
+    test("a sub-agent's own shell task does not report the main agent running", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+      process.emit({
+        "type": "system",
+        "subtype": "task_started",
+        "session_id": testSessionId,
+        "task_id": "sub-agent-shell",
+        "tool_use_id": "toolu-sub-agent-bash",
+        "description": "Run the build",
+        "task_type": "local_bash",
+        "owned_by_subagent": true,
+        "is_backgrounded": false,
+        "parent_task_id": "agent-task-1",
+      });
+      await pump();
+
+      expect(harness.service.isMainAgentRunning(sessionId: testSessionId), isFalse);
+      expect(await _status(harness), isA<PluginSessionStatusBusy>());
+
+      // The shell outlives its sub-agent and keeps the process resident.
+      process.emit(_taskNotificationFrame());
+      await pump();
+      harness.clock.elapse();
+      await pump();
+      expect(await _status(harness), isA<PluginSessionStatusBusy>());
+      expect(harness.repository.isResident(sessionId: testSessionId), isTrue);
+    });
+
     test("a forwarded sub-agent frame after the root result does not open a root turn", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;

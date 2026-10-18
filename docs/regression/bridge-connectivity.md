@@ -9,6 +9,13 @@ presents.
 
 ## Required Behavior
 
+- MCP inventory, actions and authentication bind to the current bridge identity
+  and connection epoch. Reconnect reads current state without launching a browser
+  or retrying a mutation. Switching bridges with equal native server keys cannot
+  transfer a target, callback, form draft or browser owner. Two clients share
+  native settlement through the authoritative owners; global invalidation events
+  contain no challenge or callback URL. Run both relay trust modes and released/
+  current clients under the [MCP matrix](mcp-management.md#regression-levels).
 - A start is ready only after registration, socket open, auth frame sent, listeners and
   initial summary set up, and the first inbound read armed. During startup, temporary
   authentication, registration and relay connection failures keep the process alive

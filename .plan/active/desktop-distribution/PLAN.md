@@ -541,8 +541,9 @@ these are executable substeps, not a new plan or a Windows dependency.
   and real package replacement. Do not bypass an unadvertised native menu endpoint.
   Diagnose the visible KDE menu/accessibility mismatch through a separate manual,
   bounded Tailscale SSH/loopback-VNC mode. No credentials or diagnostic success may
-  substitute for the committed native gate. Its only new state is runner-local:
-  disposable home, owned processes and a stop pipe; no product or persisted state.
+  substitute for the committed native gate. Its session state is runner-local:
+  disposable home, owned processes and a stop pipe; no product state is written.
+  CI run metadata retains the connection summary; no interactive artifacts are uploaded.
 - `🚧 [desktop-distribution] Qualify authenticated Linux desktop upgrades [step 11.i.c/14]`:
   real-account/helper On/Off, actual login-session launch, unavailable Secret Service
   and remaining nominated-distro upgrades. Container/inert-package checks are not

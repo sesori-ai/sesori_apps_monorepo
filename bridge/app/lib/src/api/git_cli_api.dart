@@ -141,6 +141,8 @@ class GitCliApi({
         "-c",
         "commit.gpgSign=false",
         "commit",
+        // A brand-new project has no files yet, and worktrees need a commit.
+        "--allow-empty",
         "-m",
         message,
       ],
@@ -555,15 +557,16 @@ class GitCliApi({
         }
       }
 
-      // If the parent .worktrees/ directory is now empty, clean it up too.
+      // The caller only passes bridge-owned worktree paths, so the parent is
+      // the bridge's per-project worktree folder; drop it once it is empty.
       final parentDir = worktreeDir.parent;
-      if (parentDir.existsSync() && parentDir.path.split(Platform.pathSeparator).last == ".worktrees") {
+      if (parentDir.existsSync()) {
         try {
           if (parentDir.listSync().isEmpty) {
             parentDir.deleteSync();
           }
         } on FileSystemException catch (e) {
-          Log.w("[GitCli] failed to delete empty .worktrees directory ${parentDir.path}", e);
+          Log.w("[GitCli] failed to delete empty worktree folder ${parentDir.path}", e);
         }
       }
     }

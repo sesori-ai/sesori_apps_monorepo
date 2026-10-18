@@ -1,13 +1,15 @@
 /// How the supervisor responds when a managed runtime exits unexpectedly
 /// while it is meant to be running.
 ///
-/// The legacy behavior is [RuntimeRestartPolicy.disabled] — an unexpected exit
-/// is terminal. The hardened bounded-restart pacing
+/// The legacy behavior is [RuntimeRestartPolicy.disabled] — an unexpected
+/// nonzero exit is terminal. The hardened bounded-restart pacing
 /// ([RuntimeRestartPolicy.bounded]) becomes available only when the real
 /// descriptor opts in at the flip; until then the monitor is simply never
 /// armed, so production behavior is unchanged.
 sealed class const RuntimeRestartPolicy() {
-  /// Legacy: an unexpected exit is terminal and surfaces as `PluginFailed`.
+  /// Legacy: an unexpected nonzero exit is terminal and surfaces as
+  /// `PluginFailed`. A clean (code 0) exit after startup is the runtime
+  /// stopping on its own and surfaces as `PluginStopping` then `PluginStopped`.
   const factory disabled() = DisabledRestartPolicy;
 
   /// Hardened: up to [maxAttempts] restarts within a single failure episode,

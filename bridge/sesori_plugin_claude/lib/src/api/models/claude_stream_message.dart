@@ -77,6 +77,7 @@ sealed class const ClaudeStreamMessage({
             toolUseId: _stringOrNull(json["tool_use_id"]),
             description: _stringOrNull(json["description"]),
             taskType: ClaudeTaskType.parse(json["task_type"]),
+            ownedBySubAgent: json["owned_by_subagent"] == true,
             sessionId: sessionId,
             uuid: uuid,
             raw: json,
@@ -320,6 +321,10 @@ final class const ClaudeTaskStartedMessage({
   required final String? toolUseId,
   required final String? description,
   required final ClaudeTaskType taskType,
+
+  /// Whether a sub-agent runs the task, such as its own foreground shell
+  /// (`owned_by_subagent`, observed on 2.1.301).
+  required final bool ownedBySubAgent,
   required super.sessionId,
   required super.uuid,
   required super.raw,

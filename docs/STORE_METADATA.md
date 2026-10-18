@@ -161,6 +161,13 @@ it overwrites the live set in the targeted locales. On iOS this failure lands in
 you can re-run after fixing the screenshot set. If you'd rather never risk it,
 keep the repo text-only.
 
+**iPhone Duo** screenshots need fastlane 2.241.1 or later (`APP_IPHONE_DUO`;
+`client/app/ios/Gemfile` requires it). They sit in the same
+`ios/screenshots/<locale>/` folder, since `deliver` picks the display type from
+the pixel size: outer display 1398×2034 (landscape 2034×1398), inner display
+2007×2853 (landscape 2853×2007), one set of at most 10. Optional for now; Apple
+requires them for every submission from April 2027.
+
 ## Private repo layout
 
 ```

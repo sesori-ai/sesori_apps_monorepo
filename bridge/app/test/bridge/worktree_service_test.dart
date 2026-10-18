@@ -15,6 +15,8 @@ import "../helpers/fakes/fake_bridge_plugin.dart";
 import "../helpers/test_database.dart";
 
 const _projectId = "/repo/project";
+// `<project folder>-<first 8 hex of sha256(project path)>` under the test root.
+const _projectWorktrees = "/worktrees/project-9a1fd19f";
 
 void main() {
   group("WorktreeService.prepareWorktreeForSession", () {
@@ -35,6 +37,7 @@ void main() {
       final fakePlugin = _FakeBridgePluginApi();
       service = WorktreeService(
         worktreeRepository: singlePluginWorktreeRepository(
+          worktreesDirectory: "/worktrees",
           projectsDao: projectsDao,
           sessionDao: sessionDao,
           gitApi: GitCliApi(
@@ -81,7 +84,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
+      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
       expect(success.baseBranch, equals("main"));
       expect(success.baseCommit, equals("abc123def456"));
 
@@ -126,7 +129,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("/moved/project/.worktrees/${_slugOf(success.branchName)}"));
+      expect(success.path, equals("/worktrees/project-c4014039/${_slugOf(success.branchName)}"));
       for (final invocation in processRunner.invocations) {
         expect(invocation.workingDirectory, equals("/moved/project"));
       }
@@ -144,7 +147,7 @@ void main() {
         projectId: _projectId,
         isDedicated: true,
         createdAt: 123,
-        worktreePath: "$_projectId/.worktrees/session-001",
+        worktreePath: "$_projectWorktrees/session-001",
         branchName: "session-001",
         baseBranch: "main",
         baseCommit: "sha-parent",
@@ -160,7 +163,7 @@ void main() {
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectId/.worktrees/session-001"));
+      expect(success.path, equals("$_projectWorktrees/session-001"));
       expect(success.branchName, equals("session-001"));
       // No git commands should have been called — worktree already exists.
       expect(processRunner.invocations, isEmpty);
@@ -192,7 +195,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
+      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
     });
 
     // -----------------------------------------------------------------------
@@ -264,7 +267,7 @@ void main() {
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
       _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
+      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
       final checkedBranches = processRunner.invocations
           .where(
             (invocation) =>
@@ -281,17 +284,22 @@ void main() {
     });
 
     test("occupied worktree path skips the name before Git creates its branch", () async {
-      final projectDirectory = await Directory.systemTemp.createTemp("worktree_name_collision_");
-      addTearDown(() => projectDirectory.delete(recursive: true));
-      await projectsDao.recordOpenedProject(
-        projectId: _projectId,
-        path: projectDirectory.path,
-        displayName: null,
-        createdAt: 1,
-        updatedAt: 1,
+      final worktreesDirectory = await Directory.systemTemp.createTemp("worktree_name_collision_");
+      addTearDown(() => worktreesDirectory.delete(recursive: true));
+      final repository = singlePluginWorktreeRepository(
+        worktreesDirectory: worktreesDirectory.path,
+        projectsDao: projectsDao,
+        sessionDao: sessionDao,
+        gitApi: GitCliApi(
+          streamingProcessRunner: const StreamingProcessRunner(),
+          processRunner: processRunner,
+          gitPathExists: ({required String gitPath}) => true,
+        ),
+        plugin: _FakeBridgePluginApi(),
       );
+      service = WorktreeService(worktreeRepository: repository);
       processRunner
-        ..generatedPathsToOccupy = 1
+        ..pathToOccupy = ((slug) => repository.worktreePathFor(projectPath: _projectId, slug: slug))
         ..enqueue(result: _ok())
         ..enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"))
         ..enqueue(result: _ok(stdout: "origin\n"))
@@ -510,7 +518,7 @@ void main() {
       expect(suffixCandidates, everyElement(matches(RegExp(r"^sesori/[a-z]+-[a-z]+-[0-9a-f]{6}$"))));
       expect(success.branchName, suffixCandidates.last);
       expect(success.branchName.substring(0, success.branchName.length - 7), normalCandidates.last);
-      expect(success.path, equals("$_projectId/.worktrees/${_slugOf(success.branchName)}"));
+      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
     });
 
     // -----------------------------------------------------------------------
@@ -790,6 +798,7 @@ void main() {
       processRunner = _FakeProcessRunner();
       service = WorktreeService(
         worktreeRepository: singlePluginWorktreeRepository(
+          worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(
@@ -891,6 +900,7 @@ void main() {
       plugin = _FakeBridgePluginApi();
       service = WorktreeService(
         worktreeRepository: singlePluginWorktreeRepository(
+          worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
           gitApi: GitCliApi(
@@ -918,7 +928,7 @@ void main() {
       final result = await service.removeWorktree(
         pluginId: plugin.id,
         projectId: _projectId,
-        worktreePath: "$_projectId/.worktrees/session-001",
+        worktreePath: "$_projectWorktrees/session-001",
         force: false,
       );
 
@@ -929,7 +939,7 @@ void main() {
       expect(pruneInv.arguments, equals(["worktree", "prune"]));
 
       final removeInv = processRunner.invocations[1];
-      expect(removeInv.arguments, equals(["worktree", "remove", "--", "$_projectId/.worktrees/session-001"]));
+      expect(removeInv.arguments, equals(["worktree", "remove", "--", "$_projectWorktrees/session-001"]));
       expect(removeInv.arguments, isNot(contains("--force")));
       expect(removeInv.workingDirectory, equals(_projectId));
     });
@@ -952,7 +962,7 @@ void main() {
       final result = await service.removeWorktree(
         pluginId: plugin.id,
         projectId: _projectId,
-        worktreePath: "/moved/project/.worktrees/session-001",
+        worktreePath: "$_projectWorktrees/session-001",
         force: false,
       );
 
@@ -963,7 +973,7 @@ void main() {
       // The backend resolves the workspace by directory, so best-effort
       // cleanup must point at the live project root too.
       expect(plugin.lastDeleteWorkspaceProjectId, equals("/moved/project"));
-      expect(plugin.lastDeleteWorkspaceWorktreePath, equals("/moved/project/.worktrees/session-001"));
+      expect(plugin.lastDeleteWorkspaceWorktreePath, equals("$_projectWorktrees/session-001"));
     });
 
     test("removeWorktree(force: true): calls prune then remove with --force", () async {
@@ -975,7 +985,7 @@ void main() {
       final result = await service.removeWorktree(
         pluginId: plugin.id,
         projectId: _projectId,
-        worktreePath: "$_projectId/.worktrees/session-001",
+        worktreePath: "$_projectWorktrees/session-001",
         force: true,
       );
 
@@ -985,8 +995,40 @@ void main() {
       final removeInv = processRunner.invocations[1];
       expect(
         removeInv.arguments,
-        equals(["worktree", "remove", "--force", "--", "$_projectId/.worktrees/session-001"]),
+        equals(["worktree", "remove", "--force", "--", "$_projectWorktrees/session-001"]),
       );
+    });
+
+    test("removeWorktree still removes a worktree inside the project's legacy .worktrees folder", () async {
+      // git worktree prune
+      processRunner.enqueue(result: _ok());
+      // git worktree remove <path>
+      processRunner.enqueue(result: _ok());
+
+      final result = await service.removeWorktree(
+        pluginId: plugin.id,
+        projectId: _projectId,
+        worktreePath: "$_projectId/.worktrees/session-001",
+        force: false,
+      );
+
+      expect(result, isTrue);
+      expect(
+        processRunner.invocations[1].arguments,
+        equals(["worktree", "remove", "--", "$_projectId/.worktrees/session-001"]),
+      );
+    });
+
+    test("removeWorktree refuses a path the bridge does not own without running git", () async {
+      final result = await service.removeWorktree(
+        pluginId: plugin.id,
+        projectId: _projectId,
+        worktreePath: "/elsewhere/session-001",
+        force: true,
+      );
+
+      expect(result, isFalse);
+      expect(processRunner.invocations, isEmpty);
     });
 
     // removeWorktree failure → returns false
@@ -1000,7 +1042,7 @@ void main() {
       final result = await service.removeWorktree(
         pluginId: plugin.id,
         projectId: _projectId,
-        worktreePath: "$_projectId/.worktrees/session-001",
+        worktreePath: "$_projectWorktrees/session-001",
         force: false,
       );
 
@@ -1019,7 +1061,7 @@ void main() {
 
     test("renames the still-current unpublished initial branch", () async {
       final result = await service.renameGeneratedBranch(
-        worktreePath: "/repo/.worktrees/blue-otter",
+        worktreePath: "$_projectWorktrees/blue-otter",
         initialBranchName: "blue-otter",
         generatedBranchName: "fix-login-flow",
       );
@@ -1029,7 +1071,7 @@ void main() {
       expect(repository.renameCalls, [
         (oldBranchName: "blue-otter", newBranchName: "sesori/fix-login-flow"),
       ]);
-      expect(repository.lastWorktreePath, "/repo/.worktrees/blue-otter");
+      expect(repository.lastWorktreePath, "$_projectWorktrees/blue-otter");
     });
 
     test("skips invalid, switched, and published branches", () async {
@@ -1225,7 +1267,8 @@ class _FakeProcessRunner() implements ProcessRunner {
 
   final List<_Invocation> invocations = <_Invocation>[];
   final List<Object> _queue = <Object>[];
-  int generatedPathsToOccupy = 0;
+  // Occupies the first generated worktree path, as if a folder already sat there.
+  String Function(String slug)? pathToOccupy;
 
   void enqueue({required ProcessResult result}) {
     _queue.add(result);
@@ -1251,9 +1294,9 @@ class _FakeProcessRunner() implements ProcessRunner {
       ),
     );
 
-    if (generatedPathsToOccupy > 0 && arguments.take(2).join(" ") == "branch --list") {
-      Directory("$workingDirectory/.worktrees/${_slugOf(arguments.last)}").createSync(recursive: true);
-      generatedPathsToOccupy--;
+    if (pathToOccupy case final occupy? when arguments.take(2).join(" ") == "branch --list") {
+      Directory(occupy(_slugOf(arguments.last))).createSync(recursive: true);
+      pathToOccupy = null;
     }
 
     if (_queue.isEmpty) {

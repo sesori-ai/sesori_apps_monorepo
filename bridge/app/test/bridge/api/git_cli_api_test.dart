@@ -30,6 +30,7 @@ void main() {
       "-c",
       "commit.gpgSign=false",
       "commit",
+      "--allow-empty",
       "-m",
       "Initial commit",
     ]);

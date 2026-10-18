@@ -9,7 +9,6 @@ export "../repositories/models/worktree_types.dart";
 
 const _maxWorktreeCreationAttempts = 3;
 const _suffixSpace = 0x1000000;
-const _worktreeDir = ".worktrees";
 // Every bridge-created branch lives under this namespace; worktree directories
 // keep the bare slug.
 const _branchPrefix = "sesori/";
@@ -282,7 +281,7 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     required String baseCommit,
   }) async {
     final branchName = "$_branchPrefix$slug";
-    final worktreePath = "$projectPath/$_worktreeDir/$slug";
+    final worktreePath = _worktreeRepository.worktreePathFor(projectPath: projectPath, slug: slug);
     if (await _worktreeRepository.branchExists(projectPath: projectPath, branchName: branchName) ||
         _worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
       return const _WorktreeCandidateTaken();

@@ -655,7 +655,8 @@ API/repository/connection-fenced lifecycle are implemented. The observing Cubit
 does not cancel on view closure. Request-scoped recovery never auto-launches a
 browser; busy retains the challenge, and reconnect fences callbacks to the old
 bridge. Visible client controls use declared capabilities. Native MCP sign-in is
-implemented for Claude and Codex; other harness adapters remain **not implemented**.
+implemented for Claude, Codex and eligible OpenCode v1/v2 servers. Secondary
+adapter limits are recorded in the source/adapter audit below.
 The shared entry-action API/repository, per-view request owner and observing Cubit
 are implemented for reconnect, enable/disable and credential forgetting. Shells
 provide the read-only posture; pending requests retain readable inventory, late
@@ -682,8 +683,8 @@ availability, including native effect scopes and explicit configuration/platform
 Headless credential forgetting is **implemented** through `POST /mcp/entry/action`;
 it shares the native authentication owner, preserves server definitions, and refreshes
 inventory without claiming that an existing resident connection has disconnected.
-Shared client action UI is **implemented**; other native action adapters remain
-**not implemented** or explicitly **not supported** as recorded below.
+Shared client action UI is **implemented**; native actions remain capability-gated
+per adapter as recorded below.
 Reads never start an integration or agent session.
 Connection, authorization and discovery state remain distinct; only a safe HTTP(S)
 endpoint origin crosses the wire. See
@@ -830,15 +831,24 @@ to the native project/location, with authoritative refresh after controls.
 Project effects invalidate all open inventories for that plugin, covering views
 of other sessions at the same native location.
 The v2 MCP API provides no offered-connector catalog. Native MCP OAuth and
-credential removal are supported through the Integration API when the server
-declares an `integrationID`; Sesori authentication/forgetting remain **not
-implemented** for those servers and **not supported** for servers without one.
-Typed native integration metadata, OAuth start/status/cancel and credential
-removal contracts are available internally; no product authentication action is
-enabled yet. Integration metadata exposes credential IDs without reading secret
-credential values. Isolated 2.0.11 and 2.0.24 probes verify native cancellation,
-automatic loopback completion and exact credential removal without configuration
-writes. This is native API evidence, not full client/provider qualification.
+credential removal are **implemented** through the Integration API when the
+server declares an `integrationID`; authentication additionally requires exactly
+one form-free OAuth method. It is **not supported** for servers without an
+integration. The pinned MCP core registers that method shape; preparation
+validates fresh integration metadata before starting. Forgetting independently
+uses the integration's native credential IDs. Project and exact session locations
+use native integration/method IDs; authentication and forgetting affect the native
+harness profile. Read-only preparation precedes subscription; native OAuth attempt
+creation starts only after subscription. A plugin-local operation observes native status,
+validates/forwards the exact loopback callback without server credentials, and
+confirms attempt removal after cancellation. DELETE can be a no-op during native
+credential persistence; native completion wins that race. Lost start responses
+remain uncertain until runtime retirement; no retry or invented timeout outcome.
+Forgetting reads fresh secret-free integration credential IDs and excludes
+environment connections. Isolated 2.0.11 and 2.0.24 production-owner probes verify
+confirmed cancellation, automatic callback completion, forgetting and signing in
+again, with configuration unchanged. This is native fixture evidence, not full
+client/provider qualification.
 Exact integrity-verified 2.0.11 and
 2.0.24 pass inventory, enable, resident-process reconnect, disable and exact
 session-location lookup through the production adapter in isolated fixtures.
@@ -851,16 +861,92 @@ scope is unavailable without native work. Connection effects are project-scoped.
 Needs-auth and needs-client-registration remain authentication-required, with
 client registration explicitly requiring native configuration. Unknown metadata,
 tools and credential state are not inferred. Offered connectors are **not
-supported by this seam**; v1 authentication/forgetting are **not implemented**
-until the separate native authentication step. The existing PATH floor remains
+supported by this seam**. V1 authentication and credential forgetting are
+**implemented** for configured remote servers with OAuth enabled. Native
+configuration is read through a minimal projection that discards credentials;
+local, OAuth-disabled and unknown server types remain unsupported. Unsupported
+configured callback overrides and malformed remote URLs require native
+configuration before sign-in starts;
+only non-secret redirect metadata is retained and forgetting stays independent.
+Sign-in starts
+on subscription and requires manual callback delivery through native OpenCode's
+code-only API; a browser loopback return alone does not settle this flow. The
+native callback's connected or disabled result is authentication completion;
+disabled follows successful native token persistence without enabling the server.
+Forgetting affects the native
+harness profile and does not write server configuration.
+V1 has no credential-preserving cancellation or pending-status seam. DELETE auth
+also removes credentials, so it is never used for cancellation or retirement.
+Provider-denial callbacks cannot safely settle native pending work; Sesori rejects
+them and retains ownership until native completion or runtime retirement. Lost
+start/callback replies remain uncertain without retry or invented expiry.
+Attached runtimes may retain pending native transports after local retirement.
+An already-authorized start completes directly on 1.17.7; 1.14.17 returns a native
+serialization failure, which remains uncertain until runtime retirement.
+The existing PATH floor remains
 1.14.0, but no exact Git tag/npm artifact exists for it; qualification uses the
 earliest published 1.14.x artifact, 1.14.17, plus target 1.17.7.
 Both integrity-verified binaries pass the production adapter's isolated inventory,
 enable, resident reconnect, disable and exact session lookup; configuration bytes
 remain unchanged and reconnect replaces the fixture process. No model/tool call
-or external provider sign-in occurs.
-The bounded Pi/ACP audit and original provider/package/client/L4 qualification
-remain later steps.
+or external provider sign-in occurs. Both exact versions also pass the production
+authentication service/repository/API using an exact native session, manual
+callback completion, profile credential forgetting and signing in again, with
+configuration unchanged and two fixture token exchanges verified.
+The bounded Pi/ACP source audit follows below. Original provider/package/client/
+L4 qualification remains partial; native fixture success does not establish those
+boundaries. The cumulative [regression matrix](regression/mcp-management.md#regression-levels)
+records the required coverage, including selected packaged/external checks.
+
+### Secondary MCP source and adapter audit
+
+Audited 2026-10-15. These are source/protocol findings, not new native binary,
+provider or client qualification. Existing generic approvals and bounded forms
+remain available independently of MCP management.
+
+| Adapter | Repository minimum → target | Structured MCP management in Sesori |
+|---|---|---|
+| Pi | 0.99.0 → 1.0.4 | Not supported by the resident RPC method set; native `/mcp` command remains usable. |
+| Antigravity | Exact official ACP pair 1.3.0 | Not implemented; standard ACP has no management API. |
+| Copilot | 1.0.78 → 1.0.92 | Not implemented; standard ACP has no management API. |
+| Cursor | 2026.09.23 → 2026.10.01-e373342 | Not implemented; standard ACP has no management API. |
+| DeepSeek | 0.1.5 → 0.2.0 | Not implemented; standard ACP has no management API. |
+| Grok Build | 1.0.5 → 1.0.46 | Not implemented; standard ACP has no management API. |
+| Hermes | 0.20.0 → 0.21.5 | Not implemented; standard ACP has no management API. |
+| Oh My Pi | 17.2.13 → 18.8.0 | Not implemented; standard ACP has no management API. |
+
+Pi's exact [0.99.0 RPC types][pi-mcp-rpc-min] and
+[1.0.4 RPC types][pi-mcp-rpc-target] expose no structured MCP management methods.
+Their files are identical (SHA-256
+`be06a1d53916e03e9274cce9e4833692b235494e4047f1f7139d7f0147daae1a`).
+The native extension retains text status plus login/logout/reconnect commands;
+its [login path][pi-mcp-extension] opens the browser on the native host. Generic
+extension input is not a request-scoped Sesori OAuth operation. The separate
+[CLI list command][pi-mcp-cli] supports JSON but connects enabled servers in a
+fresh process. It cannot report resident session state without starting new
+connections. Neither path is promoted into passive inventory or remote sign-in.
+
+In the [ACP protocol-1 schema snapshot][acp-mcp-schema], `mcpCapabilities.http`
+and `.sse` describe accepted server transports; `session/new` and `session/load`
+take server definitions. They are not inventory, connection controls, OAuth
+attempts or connector discovery. Sesori's `AcpAgentApi` passes an empty
+`mcpServers` list on activation, and each listed ACP adapter uses the same base
+without implementing the optional MCP interfaces. Standard MCP management is
+**not supported by that protocol seam**. Vendor extensions and separate native
+CLIs are **not implemented or qualified** here; this is not a claim that those
+harnesses lack MCP internally.
+
+Existing `session/request_permission` option selection and declared
+`elicitation/create` bounded-form handling stay on their generic owners.
+Agent-account `authenticate` is separate from MCP-server OAuth. Native text,
+command titles or transport-capability flags never imply a product action.
+The existing unsupported-harness inventory result remains authoritative.
+
+[pi-mcp-rpc-min]: https://github.com/earendil-works/pi/blob/4b060d3a98618019adb9985d517516c8e99a2bbe/packages/coding-agent/src/modes/rpc/rpc-types.ts
+[pi-mcp-rpc-target]: https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/coding-agent/src/modes/rpc/rpc-types.ts
+[pi-mcp-extension]: https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/coding-agent/src/extensions/mcp/index.ts
+[pi-mcp-cli]: https://github.com/earendil-works/pi/blob/7c10bd4337495ee613f2224843ecdf349b80d1df/packages/coding-agent/src/extensions/mcp/cli.ts
+[acp-mcp-schema]: https://github.com/agentclientprotocol/agent-client-protocol/blob/59fdb36c3520fe40109e628c48eede5a2a6204df/schema/schema.json
 
 ## Context compaction row
 

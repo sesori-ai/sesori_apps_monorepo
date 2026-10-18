@@ -346,6 +346,9 @@ class AcpEventMapper({
   /// current turn. The caller owns the turn boundary and must call this before
   /// the next turn starts.
   List<BridgeSseEvent> finalizeTurn({required String sessionId}) {
+    // A later turn that no prompt begins, such as a Grok wake-up turn, must not
+    // reuse this turn's id-less assistant message and overwrite its text.
+    _closeCurrentIdlessAssistantContent(sessionId: sessionId);
     final accumulators = _textPartAccumulators.remove(sessionId);
     if (accumulators == null) return const [];
 
@@ -1210,7 +1213,13 @@ class AcpEventMapper({
           : (prior?.tool ?? _contentMapper.toolName(update: update)),
       title: update.containsKey("title") && update["title"] is String ? update["title"] as String? : prior?.title,
       shellCommand: shellCommandForToolUpdate(update: update) ?? prior?.shellCommand,
-      status: mappedStatus ?? prior?.status ?? PluginToolStatus.pending,
+      // A finished call stays finished: Grok reports a shell it moved to the
+      // background `completed`, then streams its output `in_progress` with no
+      // later final status.
+      status: switch (prior?.status) {
+        final finished? when finished.isTerminal => finished,
+        final previous => mappedStatus ?? previous ?? PluginToolStatus.pending,
+      },
       contentTracker: contentTracker,
       isFileMutation:
           (prior?.isFileMutation ?? false) ||

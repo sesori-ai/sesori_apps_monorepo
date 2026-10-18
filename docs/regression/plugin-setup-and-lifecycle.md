@@ -6,6 +6,17 @@ How the bridge discovers, gates, starts, suspends, and reports each registered c
 harness: setup inspection, eligibility, runtime resolution, demand-driven activation and
 idle suspension, the management snapshot, and lifecycle commands.
 
+MCP server OAuth is distinct from coding-harness account authentication. Server
+management uses an already available runtime and declared native capability;
+inventory does not implicitly activate a session or write configuration. Native
+authentication leases its exact runtime generation through settlement. Shutdown
+settles bridge waiters and releases local ownership without claiming cancellation
+or deleting credentials when the native API cannot cancel. Forgetting has its
+own declared effect scope and does not remove server definitions or prove that a
+resident connection has disconnected. Provider/MCP browser ownership is shared
+without cross-owner cancellation; exercise both start orders in the
+[MCP regression matrix](mcp-management.md#regression-levels).
+
 ## Runtime Target Coverage
 
 Targets audited on **2026-09-24**, covering all eleven registered harnesses.
@@ -337,6 +348,13 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   teardown, so a clean owned-runtime exit is neither reported nor restarted as a crash.
 - Codex keeps its long-lived app-server connection active with a local in-memory RPC;
   idle keepalives never trigger remote model discovery, and stop when the plugin is disposed.
+  A Codex 0.162.1 PATH install (newer than the 0.160.1 managed target) was observed
+  to exit on its own (code 0) after several idle minutes (5 to 20) despite the
+  keepalive. The bridge treats a clean exit after startup as a stop: the harness
+  reports dormant, not failed, while and after the generation is torn down, so an open
+  chat stays usable and the next request starts a fresh app-server. A nonzero exit, a
+  clean exit before startup completes, a terminal plugin failure, a failed teardown,
+  or a failed start still reports failed.
   A root remains busy for lifecycle and safe-stop purposes while any tracked
   child turn runs, even after the root's own turn completes. Lifecycle-wide
   interruption snapshots active roots, children, pending turn admissions, and

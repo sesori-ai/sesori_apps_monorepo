@@ -11,6 +11,7 @@ import "package:opencode_plugin/src/v2/models/openapi/integration_attempt_encode
 import "package:opencode_plugin/src/v2/models/openapi/integration_attempt_status.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/integration_method.g.dart";
 import "package:opencode_plugin/src/v2/models/v2_decode_exception.dart";
+import "package:opencode_plugin/src/v2/models/v2_mcp_api_exception.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
@@ -34,6 +35,39 @@ OpenCodeV2Api _api({required Future<http.Response> Function(http.Request) handle
 http.Response _data({required Object data}) => http.Response(jsonEncode({"data": data}), 200);
 
 void main() {
+  test("API translates an explicit start rejection and retains the original cause", () async {
+    final cause = OpenCodeApiException("fixture", 400, responseBody: "Fixture rejection");
+    final api = _api(handler: (_) async => throw cause);
+    await expectLater(
+      api.startMcpAuthentication(directory: _directory, integrationId: _integrationId, methodId: "method"),
+      throwsA(isA<V2McpStartRejectedException>().having((error) => error.innerError, "cause", same(cause))),
+    );
+  });
+
+  for (final tag in ["IntegrationAttemptNotFoundError", "IntegrationNotFoundError"]) {
+    test("only exact native attempt absence is translated: $tag", () async {
+      final cause = OpenCodeApiException(
+        "fixture",
+        404,
+        responseBody: jsonEncode({
+          "_tag": tag,
+          "integrationID": _integrationId,
+          "attemptID": _attemptId,
+          "message": "Fixture absence",
+        }),
+      );
+      final api = _api(handler: (_) async => throw cause);
+      await expectLater(
+        api.getMcpAuthenticationStatus(directory: _directory, integrationId: _integrationId, attemptId: _attemptId),
+        throwsA(
+          tag == "IntegrationAttemptNotFoundError"
+              ? isA<V2McpAttemptNotFoundException>().having((error) => error.innerError, "cause", same(cause))
+              : same(cause),
+        ),
+      );
+    });
+  }
+
   test("reads declared OAuth method and secret-free credential IDs without listing credentials", () async {
     final api = _api(
       handler: (request) async {

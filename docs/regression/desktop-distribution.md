@@ -195,8 +195,12 @@ or grants stable admission. See [operations](../desktop/linux-repositories.md).
 
 ### Native Linux desktop sessions
 
-`desktop-linux-session.yml` uses native Ubuntu 24.04 x64 GNOME/Wayland without a tray
-host and ARM64 KDE/X11 with StatusNotifier. Both use real GNOME Keyring Secret Service;
+Run `Desktop Native Qualification` in manual `linux-session` mode with explicit
+`previous_packaging_run` and `packaging_run` inputs selecting retained signed producers.
+Its reusable `desktop-linux-session.yml` uses disposable native Ubuntu 24.04 x64
+GNOME/Wayland without a tray host and ARM64 KDE/X11 with StatusNotifier. Automatic
+PR tooling/SDK checks do not download these finite-retention inputs.
+Both use real GNOME Keyring Secret Service;
 this does not claim KWallet-provider coverage. Sessions use isolated runner homes and
 virtual displays, not CPU emulation. No account credentials or signing/publishing
 permissions are available to this workflow.
@@ -204,8 +208,11 @@ permissions are available to this workflow.
 The credential-free sequence verifies original signed producer artifacts, builds nonshipping
 storage probes against each corresponding source, installs the old real package, renders
 its anonymous window, performs normal close/native tray Quit, then installs and exercises
-the newer package. KDE identifies the app-owned StatusNotifier title, locates visible
-Plasma targets through accessibility, right-clicks the icon and primary-clicks Quit.
+the newer package. KDE identifies the app-owned StatusNotifier title, locates its visible
+Plasma icon through accessibility and right-clicks it. The visible popup must belong to
+that Plasma PID and advertise the native popup window type; OCR reads its actual Quit
+label and bounds before a primary pointer click. Preserve the popup image and OCR output
+alongside the full-screen menu capture; do not substitute fixed row coordinates.
 Plasma 5.27 forwards primary icon clicks as Activate; primary-click menu opening is not
 qualified by this scenario. A captured visible menu is required, not just direct DBusMenu
 event delivery. Preserve the post-click capture on lookup failure for diagnosis.
@@ -238,17 +245,19 @@ to reach tagged runners on SSH port 22 as `runner`, with no runner-initiated tai
 grant. Preserve unrelated policy rules when configuring this access. No long-lived
 auth key or client secret is used.
 
-VNC listens only on loopback and requires an SSH tunnel. The desktop has a disposable
-home and real GNOME Keyring, a 20-minute ready window, an explicit stop pipe and a
+VNC listens only on loopback and requires an SSH tunnel. Advertise readiness only
+once the VNC process is alive and its loopback listener accepts connections.
+The desktop has a disposable home and real GNOME Keyring, a 20-minute ready window, an explicit stop pipe and a
 40-minute job ceiling. Disable Plasma's idle lock only in that disposable home before
 starting the desktop; do not unlock or reconfigure the operator's workstation. Cleanup terminates owned process groups, removes the fixture
 installation/home and logs the ephemeral node out. Diagnostic concurrency is separate
 from packaging; it must never cancel a shared release. Reusable callers admit the
 callee's OIDC scope even though the debug job is skipped; ordinary callee jobs retain
-the read-only default token. No screenshots, homes or logs
-are automatically uploaded from interactive sessions. Operators must not log into a
-real account or introduce credentials; deliberately collected evidence needs privacy
-review. Automated native/account/upgrade/stable gates remain unchanged.
+the read-only default token. Interactive screenshots, homes and session log files are
+not uploaded as artifacts. CI run metadata and step logs retain the connection summary.
+Operators must not log into a real account or introduce credentials; deliberately
+collected evidence needs privacy review. Interactive success does not replace automated
+native/account/upgrade/stable acceptance.
 
 ## Linux internal-preview publication
 

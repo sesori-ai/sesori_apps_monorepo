@@ -17,6 +17,7 @@ import "repositories/opencode_v2_repository.dart";
 import "repositories/v2_message_mapper.dart";
 import "repositories/v2_model_mapper.dart";
 import "services/opencode_v2_service.dart";
+import "services/v2_mcp_authentication_service.dart";
 import "sse/v2_event_mapper.dart";
 import "sse/v2_event_parser.dart";
 
@@ -28,7 +29,7 @@ class OpenCodeV2Plugin._({
   required String? password,
   required void Function() onConnected,
   required void Function() onDisconnected,
-}) implements OpenCodeManagedApi, McpManagementPluginApi {
+}) implements OpenCodeManagedApi, McpManagementPluginApi, McpAuthenticationPluginApi {
   static final _id = Harness.opencode.name;
   static const _parser = V2EventParser();
   final _eventBuffer = BufferedUntilFirstListener<BridgeSseEvent>();
@@ -62,6 +63,7 @@ class OpenCodeV2Plugin._({
         modelMapper: modelMapper,
         formAnswerMapper: const V2FormAnswerMapper(),
         formAnswerValidator: const V2FormAnswerValidator(),
+        mcpAuthentication: V2McpAuthenticationService(repository: repository, pollInterval: const Duration(seconds: 1)),
       ),
       httpClient: httpClient,
       serverUrl: serverUrl,
@@ -104,6 +106,14 @@ class OpenCodeV2Plugin._({
     required PluginMcpServerTarget target,
     required PluginMcpServerAction action,
   }) => _service.executeMcpServerAction(target: target, action: action);
+
+  @override
+  Future<PluginMcpAuthenticationOperation> beginMcpAuthentication({required PluginMcpServerTarget target}) =>
+      _service.beginMcpAuthentication(target: target);
+
+  @override
+  Future<PluginMcpActionEffectScope> forgetMcpAuthentication({required PluginMcpServerTarget target}) =>
+      _service.forgetMcpAuthentication(target: target);
 
   @override
   Future<void> initialize() => _initializeFuture ??= _initialize();
@@ -155,6 +165,7 @@ class OpenCodeV2Plugin._({
     if (_disposed) return;
     _disposed = true;
     _sseConnection.stop();
+    await _service.disposeMcpAuthentication();
     _httpClient.close(force: true);
     _service.reset();
     await Future.wait([_eventBuffer.close(), _workState.close()]);

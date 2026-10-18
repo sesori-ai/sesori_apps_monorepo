@@ -27,7 +27,12 @@ const _timeoutStatusCode = 504;
 /// count towards [_defaultTimeout]; that 94-folder cold start takes ~10 s here.
 const openCodeMaxConnectionsPerHost = 8;
 
-enum _HttpMethod() { get, post, patch, delete }
+enum _HttpMethod() {
+  get,
+  post,
+  patch,
+  delete,
+}
 
 /// Transport-level HTTP client for the OpenCode REST API.
 ///
@@ -57,16 +62,29 @@ enum _HttpMethod() { get, post, patch, delete }
 /// It also owns Basic-auth header computation and URI construction. It performs
 /// no JSON decoding or model mapping — that stays in [OpenCodeApi].
 class OpenCodeRawHttpClient({
-    required final String _serverURL,
-    required final String? _password,
-    required final http.Client _client,
-  }) {
-
+  required final String _serverURL,
+  required final String? _password,
+  required final http.Client _client,
+}) {
   Map<String, String> get _authHeaders {
     final password = _password;
     if (password == null || password.isEmpty) return const {};
     final creds = base64.encode(utf8.encode("opencode:$password"));
     return {"Authorization": "Basic $creds"};
+  }
+
+  /// Native callback delivery has no OpenCode server credentials or redirects.
+  Future<void> deliverMcpCallback({required Uri callbackUri}) async {
+    final abort = Completer<void>();
+    final request = http.AbortableRequest("GET", callbackUri, abortTrigger: abort.future)..followRedirects = false;
+    try {
+      final response = await _client.send(request).then(http.Response.fromStream).timeout(_defaultTimeout);
+      if (response.statusCode < 200 || response.statusCode >= 300) {
+        throw OpenCodeApiException("MCP callback", response.statusCode);
+      }
+    } finally {
+      abort.complete();
+    }
   }
 
   Future<http.Response> get({
@@ -192,11 +210,10 @@ class OpenCodeApiException(final String endpoint, final int statusCode, {String?
   /// `{"name":"UnknownError","data":{...}}`), which is essential for
   /// diagnosing failures from logs.
   final String? responseBody = switch (responseBody) {
-        null => null,
-        final body when body.length > _maxBodyLength => "${body.substring(0, _maxBodyLength)}…",
-        final body => body,
-      };
-
+    null => null,
+    final body when body.length > _maxBodyLength => "${body.substring(0, _maxBodyLength)}…",
+    final body => body,
+  };
 
   @override
   String toString() {

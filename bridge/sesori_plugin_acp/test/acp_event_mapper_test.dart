@@ -884,6 +884,21 @@ void main() {
       expect(latePart.tool, "read");
       expect(latePart.state.output, "final");
 
+      // Grok streams a backgrounded shell's output as `in_progress` after
+      // reporting it `completed`; the card stays finished.
+      final reopened = mapper.map(
+        update({
+          "sessionUpdate": "tool_call_update",
+          "toolCallId": "tc-3",
+          "status": "in_progress",
+          "rawOutput": {"stdout": "more"},
+        }),
+      );
+      expect(
+        reopened.whereType<BridgeSseMessagePartUpdated>().single.part.state.status,
+        PluginToolStatus.completed,
+      );
+
       // The next turn clears the prior turn's tools to keep the cache bounded.
       mapper.beginTurn(sessionId: "s1", messageId: null);
       final afterTurn = mapper.map(

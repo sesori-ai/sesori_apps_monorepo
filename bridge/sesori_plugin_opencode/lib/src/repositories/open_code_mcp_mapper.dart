@@ -1,5 +1,7 @@
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 
+import "../models/open_code_mcp_authentication_dto.dart";
+import "../models/open_code_mcp_login_challenge.dart";
 import "../models/openapi/mcpstatus.g.dart";
 import "../models/openapi/mcpstatus_connected.g.dart";
 import "../models/openapi/mcpstatus_disabled.g.dart";
@@ -7,20 +9,50 @@ import "../models/openapi/mcpstatus_failed.g.dart";
 import "../models/openapi/mcpstatus_needs_auth.g.dart";
 import "../models/openapi/mcpstatus_needs_client_registration.g.dart";
 
-/// Projects the v1 name-keyed native status map without reading configuration.
+/// Projects status and minimal native authentication eligibility, never secrets.
 class const OpenCodeMcpMapper() {
-  PluginMcpInventorySnapshot map({required Map<String, MCPStatus> servers, required PluginMcpScope scope}) {
+  PluginMcpInventorySnapshot map({
+    required Map<String, MCPStatus> servers,
+    required PluginMcpScope scope,
+    required Map<String, OpenCodeMcpServerConfigurationDto> configuration,
+  }) {
     final names = servers.keys.toList()..sort();
     return PluginMcpInventorySnapshot(
       servers: const PluginMcpCatalogAvailable(),
       connectors: const PluginMcpCatalogNotSupported(),
       entries: List.unmodifiable([
-        for (final name in names) _server(name: name, status: servers[name]!, scope: scope),
+        for (final name in names)
+          _server(name: name, status: servers[name]!, scope: scope, configuration: configuration[name]),
       ]),
     );
   }
 
-  PluginMcpServerSnapshot _server({required String name, required MCPStatus status, required PluginMcpScope scope}) {
+  PluginMcpServerSnapshot _server({
+    required String name,
+    required MCPStatus status,
+    required PluginMcpScope scope,
+    required OpenCodeMcpServerConfigurationDto? configuration,
+  }) {
+    final oauth = configuration?.oauth;
+    final PluginMcpAuthenticationCapability credentials =
+        configuration != null &&
+            configuration.transport == OpenCodeMcpTransport.remote &&
+            oauth is OpenCodeMcpOAuthEnabled &&
+            configuration.url != null
+        ? const PluginMcpAuthenticationCapabilityAvailable(effectScope: PluginMcpActionEffectScope.harness)
+        : const PluginMcpAuthenticationCapabilityUnavailable(
+            reason: PluginMcpAuthenticationCapabilityUnavailableReason.notSupported,
+          );
+    final requiresNativeConfiguration =
+        credentials is PluginMcpAuthenticationCapabilityAvailable &&
+        (status is MCPStatusNeedsClientRegistration ||
+            !supportsOpenCodeMcpRemoteUrl(value: configuration?.url) ||
+            switch (oauth) {
+              OpenCodeMcpOAuthEnabled(:final parameters) => !supportsOpenCodeMcpCallbackOverride(
+                value: parameters.redirectUri,
+              ),
+              _ => false,
+            });
     final actions = switch (status) {
       MCPStatusDisabled() => const [PluginMcpServerAction.enable],
       MCPStatusConnected() || MCPStatusFailed() || MCPStatusNeedsAuth() || MCPStatusNeedsClientRegistration() => const [
@@ -38,14 +70,12 @@ class const OpenCodeMcpMapper() {
       authorization: status is MCPStatusNeedsAuth || status is MCPStatusNeedsClientRegistration
           ? PluginMcpAuthorizationState.required
           : PluginMcpAuthorizationState.unknown,
-      authentication: PluginMcpAuthenticationCapabilityUnavailable(
-        reason: status is MCPStatusNeedsClientRegistration
-            ? PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired
-            : PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
-      ),
-      credentialForgetting: const PluginMcpAuthenticationCapabilityUnavailable(
-        reason: PluginMcpAuthenticationCapabilityUnavailableReason.notImplemented,
-      ),
+      authentication: requiresNativeConfiguration
+          ? const PluginMcpAuthenticationCapabilityUnavailable(
+              reason: PluginMcpAuthenticationCapabilityUnavailableReason.nativeConfigurationRequired,
+            )
+          : credentials,
+      credentialForgetting: credentials,
       actions: List.unmodifiable([
         for (final action in actions)
           PluginMcpServerActionCapability(action: action, effectScope: PluginMcpActionEffectScope.project),

@@ -184,16 +184,6 @@ void main() {
       expect(await repo.listDriveRoots(), isEmpty);
     });
 
-    for (final existingContent in ["build/", "# .worktrees/", "!.worktrees/"]) {
-      test("ensureGitignoreEntry appends an exact rule after '$existingContent'", () {
-        final gitignore = File("${tempDir.path}/.gitignore")..writeAsStringSync(existingContent);
-
-        repository.ensureGitignoreEntry(projectPath: tempDir.path, entry: ".worktrees/");
-
-        expect(gitignore.readAsStringSync(), "$existingContent\n.worktrees/\n");
-      });
-    }
-
     test("listSuggestions ignores a dangling .git symlink", () {
       final directory = Directory("${tempDir.path}/dangling")..createSync();
       Link("${directory.path}/.git").createSync("${tempDir.path}/missing-git-target");
@@ -328,9 +318,6 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
       throw UnimplementedError();
 
   @override
-  String? readFileIfExists(String path) => null;
-
-  @override
   List<int> readFilePrefix({required String path, required int maxBytes}) => throw UnimplementedError();
 
   @override
@@ -338,9 +325,6 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
 
   @override
   String resolveFilePath(String path) => throw UnimplementedError();
-
-  @override
-  void appendToFile(String path, String content) {}
 }
 
 class _GrowingFilesystemApi() implements FilesystemApi {

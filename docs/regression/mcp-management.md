@@ -2,20 +2,25 @@
 
 ## Capability
 
-Backend-neutral inventory contracts describe configured servers and offered
-connectors. The optional plugin read interface and shared wire models are
-implemented. `POST /mcp/inventory` reads Claude Code inventory from an existing
-resident session and Codex inventory from the attached app-server connection.
-Phone and desktop expose a shared read-only inventory and
-server-details view backed by the typed loading lifecycle. `POST /mcp/entry/action`
-exposes explicit live-session Claude reconnect, enable and disable controls to
-headless consumers. Claude native plugin authentication is implemented for
-existing configured HTTP servers. Headless read/start/continue/cancel routes are
-implemented, with shared phone/desktop controls for declared native actions.
-The shared client authentication API, repository, connection-fenced owner and
-observing Cubit are implemented and exposed by the shared connection controls.
-Existing permission flows remain separate. Read-only inventory may inspect an
-archived session if its native process remains live; it grants no session mutation.
+Phone and desktop share configured-server inventory, details, declared controls,
+native sign-in, credential forgetting, typed forms and external-action overlays.
+Headless and relay requests use the same bridge owners. Server connection,
+authorization, tool permission and connector setup are independent facts.
+
+| Adapter | Inventory scope | Existing-server controls | Native sign-in / forgetting | Offered connectors |
+|---|---|---|---|---|
+| Claude Code | Live resident session | Reconnect, enable, disable; session effect | Configured HTTP OAuth / native credentials | Not implemented |
+| Codex | Exact live session or attached harness | Native per-server controls unavailable | Native OAuth / forgetting unsupported | Native paginated catalog and explicit setup handoff |
+| OpenCode v2 | Project or exact native session location | Reconnect, enable, disable; project effect | Eligible native integration / credential IDs | Not supported by the native seam |
+| OpenCode v1 | Project or exact native session directory | Reconnect, enable, disable; project effect | Remote OAuth with eligible URL/callback / native credentials | Not supported by the native seam |
+| Pi and ACP adapters | Structured inventory unavailable | Structured controls unavailable | Structured management unavailable | Structured catalog unavailable |
+
+Eligibility, cancellation, host and native-version limitations are detailed
+below and in [harness capabilities](../HARNESS_CAPABILITIES.md#mcp-management-native-evidence).
+Existing servers and offered connectors are managed; arbitrary server creation,
+removal or configuration editing is outside this feature. Reads do not start a
+session, run a tool or consent to setup. Read-only archived/sub-agent surfaces
+retain inspection when native data is available and grant no session mutation.
 
 ## Required Behavior
 
@@ -239,15 +244,27 @@ native plugin boundary used by the headless attempt owner and shared client cont
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Inspect live Claude MCP inventory and exercise controls without changing persisted configuration. |
-| L2 Routine | Automated codec, adapter/route, and client lifecycle coverage described below. |
-| L3 Release | No additional coverage. |
-| L4 Extended | No additional coverage. |
-| L5 Full | No additional coverage. |
+| L1 Smoke | Live plugin/headless bridge, every inventory-supporting adapter: inspect configured servers, compare native status and execute a declared control where available without changing persisted configuration. Unsupported scopes/catalogs remain explicit. |
+| L2 Routine | Automated codecs, adapters, canonical routes and client/widget owners: distinct target types, full pagination, unknown/missing metadata, typed form validation, fresh target checks, privacy, supported/unsupported methods, native settlement and failures. Exact minimum/target native fixtures or an honest unavailable result for each declared capability. |
+| L3 Release | Client end to end, Claude and Codex separately on macOS desktop with a local bridge and iOS/Android with a remote bridge: inspect tools, declared controls, approve/reject, correct and submit forms, URL/connector setup, sign-in completion/denial/cancellation where supported, and recovery of pending state. OpenCode v1/v2 run their shared supported journey on desktop plus one mobile platform. Existing non-MCP permissions/questions remain usable. |
+| L4 Extended | Relay integration in local E2E and managed trusted modes: two clients, reconnect, bridge switching with colliding server names, foreign/stale callbacks, session archive/stop, process exit, provider/MCP browser overlap in both orders, unsupported forms/trust/entitlement, released/current client interaction and external settlement. Native inventory/control/auth on every supported macOS arm64, Linux x64 and Windows x64 host at minimum/target versions. Record overlay opening/closing mid-scroll, status transitions, browser return/cancellation and another client settling a request; no content jump, draft loss or unexpected sound. |
+| L5 Full | Packaged/external: one packaged build per client platform verifies browser return/link registration; each priority harness uses a real OAuth MCP provider and a real offered connector where exposed, followed by a harmless native tool use. Verify native credential persistence across restart with dev accounts. |
 
-For L1, read a live Claude session through the headless route, compare its
-servers/tools with native status, and inspect them from a client session menu.
-Exercise explicit live-session controls and confirm persisted configuration is unchanged.
+The implementation plan requires cumulative L4 **plus the named L5 packaged/
+external checks above**. Fixture success does not qualify providers, packaging,
+relay modes or unexecuted platforms. Record each boundary/version/build as Pass,
+Partial, Fail, Blocked or Not run; an unavailable account, device or native artifact
+does not lower the matrix. Native recordings remain deferred, not waived.
+
+Permission to use a tool never grants sign-in or installation consent. Form
+variations include required booleans/numbers, labels distinct from choice values,
+omitted optional fields and invalid submission followed by correction without
+draft loss. Run old-client-only and mixed released/current clients on the same
+native request; one completion clears both views. A released client using legacy
+question reply/reject APIs cancels the typed request; it cannot submit typed
+acceptance or semantic decline through that view.
+Catalog setup from harness/project settings works without a live session, never
+fabricates a pending question or connection success, and refreshes on reopening.
 
 Automated codec checks preserve distinct targets, empty/unavailable/failed tool
 states, authorization without grants, independent section availability, and
@@ -436,8 +453,18 @@ Targets remain distinct across locations even when server names match.
 Native connected, pending, disabled, needs-auth, failed and unknown states remain
 distinct. Unknown tools, endpoints, configuration and authentication are not
 inferred. The MCP API exposes no offered-connector inventory. Native integration
-OAuth/forgetting remain unimplemented in Sesori for servers declaring an
-`integrationID`, and unsupported for servers without one. Connect/reconnect and disable
+OAuth/forgetting are implemented for servers declaring an `integrationID`, and
+unsupported for servers without one. Authentication requires exactly one
+form-free OAuth method, as registered by the pinned native MCP core; preparation
+validates fresh metadata. Forgetting is independent of OAuth method eligibility.
+Read-only preparation precedes subscription; native attempt creation starts only
+on subscription. Cancellation before subscription starts no native work. Runtime
+teardown waits within its cleanup budget for a pending start's returned handle.
+Confirmed native attempt disappearance settles as unresolved failure outside
+acknowledged cancellation; unknown status retains ownership. Callback validation
+rejects both `code` and `error` keys even if either value is empty. Native failure
+logs preserve endpoint context while redacting OAuth query secrets.
+Connect/reconnect and disable
 use only the named existing server's location-scoped native controls; they do not
 write server configuration or create/resume sessions. Headless orchestration
 performs the existing authoritative refresh after native completion.
@@ -465,8 +492,8 @@ Provider, client, package and final L4 coverage remain pending.
 
 The location-scoped API can read native integration metadata, start a declared
 OAuth method, observe its attempt, cancel that exact attempt, and remove an exact
-credential ID. These internal contracts do not enable sign-in or forgetting in
-the product yet. IDs come from native metadata; no integration hash is recreated.
+credential ID. The plugin implements the existing authentication interface using
+these contracts. IDs come from native metadata; no integration hash is recreated.
 Only secret-free integration connections are read; the secret credential-list
 endpoint is never needed. Every operation retains the requested native directory.
 Cancellation uses the attempt endpoint and never deletes a credential.
@@ -483,6 +510,34 @@ nullable through a documented surface override, while target 2.0.24's enum
 still decodes. Both versions pass the typed production API probe, including a
 post-removal integration read that confirms no credential connection remains.
 
+The general service retains project/session directory resolution. The stateless
+repository prepares fresh targets and maps native states; a focused service owns
+the native attempt, polling and retirement. Preparation performs no mutation and
+discarding it starts nothing. Only subscription starts OAuth. Native pending,
+unknown and read failures retain ownership; native terminal states or confirmed
+attempt absence settle.
+Callback HTTP acknowledgement is delivery evidence only. Invalid callback host,
+port, path, state, duplicate response values and fragments fail before HTTP.
+Delivery follows no redirects and sends no native server Basic-auth header.
+
+Cancellation first preserves an already-terminal result, then deletes the exact
+attempt and checks native status. A 404 after acknowledged deletion confirms
+removal; surviving pending state can be credential persistence, whose eventual
+native outcome wins. Cancellation failure cannot release ownership. An invalid
+challenge retains its returned handle for cleanup; malformed/lost start replies
+retain uncertainty without retry until runtime retirement. Disposal interrupts
+local observation and attempts native cleanup within a three-second teardown
+budget before transport closes; unresolved cleanup remains logged. This is not
+an authentication deadline or proof of native cancellation.
+
+Forgetting resolves fresh native credential connections and never environment
+values or the secret credential list. It returns harness effects for existing
+headless invalidation. Synthetic controls show sign-in and forgetting with that
+effect scope. Recording remains deferred. Both exact native versions pass through
+production service/repository/API using an exact native session: confirmed
+cancellation, callback, native completion, forgetting and another sign-in, with
+configuration unchanged. Provider/client/package/relay/device/L4 remain pending.
+
 ## OpenCode v1 MCP management
 
 The v1 adapter uses its separate native name-keyed status map. Project scope
@@ -496,17 +551,30 @@ Connected, disabled, failed and unknown connection states remain distinct.
 Needs-auth and needs-client-registration require authentication; registration
 also declares a native-configuration requirement. Endpoints, configuration
 ownership, tools and authenticated state are not inferred from status alone.
-The status map has no offered-connector catalog. OAuth/forgetting remain explicit
-not-implemented capabilities until their separate native owner lands.
+The status map has no offered-connector catalog. Authentication and forgetting
+are available for configured remote servers with OAuth enabled. A minimal native
+configuration projection discards headers, OAuth secrets and unrelated fields.
+Local, OAuth-disabled and unknown types are unsupported; client registration
+requires native configuration before sign-in. Forgetting remains independent of
+that registration requirement and affects the native harness profile. The minimal
+OAuth configuration keeps only redirect metadata; an unsupported configured
+callback is unavailable before mutation, without disabling credential forgetting.
+Configured callbacks cannot predefine OAuth response keys `state`, `code` or
+`error`; those are supplied by the authentication flow.
+Remote sign-in requires an absolute HTTP(S) server URL with a host. Empty or
+malformed URLs require native configuration before authentication starts;
+credential forgetting remains independently available. At 1.17.7 the malformed
+URL otherwise reaches native authentication and returns HTTP 500 without a
+settled operation; 1.14.17 rejects that configuration during inventory instead.
 
 Fresh target lookup precedes each enable/reconnect/disable request. Only the
 native named connect/disconnect route is used, with project effect scope and
-the existing headless authoritative refresh. No config/add/remove route,
-provider sign-in or tool execution is added. HTTP errors retain their response
+the existing headless authoritative refresh. No server-configuration mutation,
+server addition/removal or tool execution is added. HTTP errors retain their response
 diagnostics; malformed native status/session payloads retain original errors and
 stacks through typed failures, rather than appearing as empty success.
-The plugin service owns scope resolution, fresh-target validation and action
-dispatch; the repository maps directory reads and native mutations. Native
+The repository resolves MCP scopes and maps native directory reads and mutations.
+The service validates fresh control targets before dispatch. Native
 writes remain unbounded because HTTP abandonment does not cancel a native
 mutation. Project effects use the shared plugin-wide inventory invalidation.
 
@@ -520,6 +588,73 @@ the existing runtime floor. Both pass isolated production-adapter inventory,
 enable, resident reconnect, disable and exact session lookup; configuration bytes
 remain unchanged and reconnect replaces the fixture process. Fixture success
 does not qualify provider/package/client/L4 or deferred native recording.
+
+V1 authentication starts only when its prepared operation is subscribed. It uses
+the existing project/session directory resolver and validates fresh status and
+configuration before mutation. The native start response's OAuth state must
+match its authorization URI. The shared plugin validator checks the exact
+loopback scheme/origin/port/path/state and rejects duplicate or conflicting
+result keys. V1 sends only the authorization code to the native callback API;
+it does not request the callback URI or open a browser on the bridge. The native
+callback's connected or disabled status completes sign-in; disabled is returned
+after native token persistence without enabling the server. Known failure states settle as
+failure, while unknown or lost responses retain uncertainty. The 1.17.7 explicit
+no-challenge result maps to already-authorized completion. On 1.14.17 the same
+native path returns a serialization failure; Sesori retains uncertainty until
+runtime retirement instead of guessing from inventory or retrying.
+
+No safe cancellation or pending-status/expiry endpoint exists for this native
+flow. Its DELETE auth endpoint also erases credentials and is reserved for
+explicit forgetting, with a fresh target read. Provider-denial callbacks are
+rejected without deleting credentials or claiming native settlement. Runtime
+retirement closes local observation and logs unavailable native cleanup; attached
+servers can retain pending transports. Neither browser return nor request
+timeout is authentication completion. No native auth files are read or written.
+
+Coverage: 26 new v1 authentication cases plus affected controls and shared v2
+callback regressions pass (83 cases), plus affected v1 API/repository/plugin
+cases (178 unique across affected runs), with owning analysis clean. Both exact v1
+pins pass the production service/repository/API fixture using an exact native
+session: manual callback, completion, harness-profile forgetting and another
+sign-in, unchanged configuration and two verified fixture token exchanges.
+Both pins also pass that journey while disabled, preserving disabled connection
+state, and reject a configured non-loopback redirect before any native mutation.
+OAuth diagnostics redact known query and fragment secrets while preserving useful
+endpoint paths and failure context under the repository's local-log policy.
+The extracted callback validator preserves v2 behavior. Synthetic product-widget
+captures show available controls; native recording remains deferred. Real
+provider, packaged client, relay/device and original final L4 remain unqualified.
+
+## Secondary harness capability boundaries
+
+Pi and the ACP family retain existing command, permission and bounded-form
+flows. They do not implement the optional structured MCP inventory/authentication
+interfaces. An inactive adapter returns `pluginInactive`; an active adapter
+without the optional interface returns `unsupportedHarness`. Neither read
+creates/resumes a session, executes a command, opens a browser or writes
+configuration. Generic approvals still select only native offered
+options; supported legacy ACP forms still preserve native reply encoding and
+unsupported forms decline. This audit changes no production behavior.
+
+The versioned [secondary source/adapter audit][secondary-mcp-audit] distinguishes
+missing integration from native protocol limits. Pi's pinned RPC method set has
+no structured MCP management request. Preserve its offered `/mcp` command through
+normal command dispatch; do not parse text into server identities or actions.
+The separate native JSON list starts fresh connections and cannot substitute for
+resident inventory. Native login can open the bridge host's browser; it is not a
+Sesori-owned OAuth challenge. ACP server transport flags and session activation
+server definitions likewise do not declare inventory or authentication controls.
+Vendor management extensions remain unqualified rather than assumed absent.
+
+Material failure signals: an inventory read launches a native process, connects
+a server, executes a slash command or opens a browser; an ACP transport flag
+enables Sign in; an MCP UI path bypasses existing permission/form ownership; a
+generic account-auth method is used for server OAuth. Recheck the native seam
+before adding any future capability. Source inspection does not prove external
+provider policy, packaged behavior or platform runtime compatibility. Original
+final L4 and deferred recording requirements remain pending.
+
+[secondary-mcp-audit]: ../HARNESS_CAPABILITIES.md#secondary-mcp-source-and-adapter-audit
 
 ## Codex native authentication
 

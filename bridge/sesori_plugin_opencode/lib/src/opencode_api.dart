@@ -3,6 +3,8 @@ import "dart:convert";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart" show jsonDecodeListMap, jsonDecodeMap;
 
+import "models/open_code_mcp_api_exception.dart";
+import "models/open_code_mcp_authentication_dto.dart";
 import "models/open_code_mcp_decode_exception.dart";
 import "models/openapi/agent.g.dart";
 import "models/openapi/command.g.dart";
@@ -41,6 +43,74 @@ String? _directoryHeaderValue(String? directory) {
 /// [OpenCodeRawHttpClient], so they apply uniformly and can't be forgotten on a
 /// new endpoint.
 class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
+  Future<OpenCodeMcpConfigurationDto> getMcpConfiguration({required String directory}) async {
+    final response = await _client.get(
+      path: "/config",
+      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+    );
+    return _decodeMcp<OpenCodeMcpConfigurationDto>(
+      body: response.body,
+      operation: "MCP configuration",
+      fromJson: OpenCodeMcpConfigurationDto.fromJson,
+    );
+  }
+
+  Future<OpenCodeMcpAuthenticationResponseDto> startMcpAuthentication({
+    required String directory,
+    required String name,
+  }) async {
+    final response = await _client
+        .post(
+          path: "/mcp/${Uri.encodeComponent(name)}/auth",
+          headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+        )
+        .onError<OpenCodeApiException>((error, stackTrace) {
+          if (error.statusCode < 400 || error.statusCode >= 500) Error.throwWithStackTrace(error, stackTrace);
+          Error.throwWithStackTrace(OpenCodeMcpStartRejectedException(innerError: error), stackTrace);
+        });
+    return _decodeMcp<OpenCodeMcpAuthenticationResponseDto>(
+      body: response.body,
+      operation: "MCP authentication start",
+      fromJson: OpenCodeMcpAuthenticationResponseDto.fromJson,
+    );
+  }
+
+  Future<MCPStatus> completeMcpAuthentication({
+    required String directory,
+    required String name,
+    required String code,
+  }) async {
+    final response = await _client.post(
+      path: "/mcp/${Uri.encodeComponent(name)}/auth/callback",
+      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!, "content-type": "application/json"},
+      body: jsonEncode({"code": code}),
+    );
+    return _decodeMcp<MCPStatus>(
+      body: response.body,
+      operation: "MCP authentication callback",
+      fromJson: MCPStatus.fromJson,
+    );
+  }
+
+  Future<void> forgetMcpAuthentication({required String directory, required String name}) async {
+    await _client.delete(
+      path: "/mcp/${Uri.encodeComponent(name)}/auth",
+      headers: {_directoryOpenCodeHeader: _directoryHeaderValue(directory)!},
+    );
+  }
+
+  T _decodeMcp<T>({
+    required String body,
+    required String operation,
+    required T Function(Map<String, dynamic>) fromJson,
+  }) {
+    try {
+      return fromJson(jsonDecodeMap(body));
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(OpenCodeMcpDecodeException(operation: operation, innerError: error), stackTrace);
+    }
+  }
+
   Future<Map<String, MCPStatus>> getMcpStatus({required String directory}) async {
     final response = await _client.get(
       path: "/mcp",
