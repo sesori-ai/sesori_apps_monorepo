@@ -25,9 +25,10 @@ enum _ProbeKey() implements SecretStorageKey {
 class _ProbeModule() extends RegisterModule;
 
 Future<void> main() async {
-  if (!Platform.isMacOS || Platform.environment["GITHUB_ACTIONS"] != "true") {
-    throw StateError("This fixture may only run on an isolated macOS Actions runner");
+  if ((!Platform.isMacOS && !Platform.isLinux) || Platform.environment["GITHUB_ACTIONS"] != "true") {
+    throw StateError("This fixture may only run on an isolated macOS or Linux Actions runner");
   }
+  final String nativeStore = Platform.isMacOS ? "Keychain" : "Secret Service";
   final String output = Platform.environment["SESORI_PACKAGED_PROBE_OUTPUT"]!;
   final _ProbePhase phase = _ProbePhase.values.byName(Platform.environment["SESORI_PACKAGED_PROBE_PHASE"]!);
   final File report = File(output);
@@ -63,7 +64,7 @@ Future<void> main() async {
             message: "Encrypted write/read failed",
           );
           await storage.write(key: _ProbeKey.value, value: "persisted");
-          await report.writeAsString("PASS shared SQLite/Keychain write/read/update; awaiting a second process\n");
+          await report.writeAsString("PASS shared SQLite/$nativeStore write/read/update; awaiting a second process\n");
         case _ProbePhase.read:
           _require(
             condition: await storage.read(key: _ProbeKey.value) == "persisted",
@@ -87,7 +88,7 @@ Future<void> main() async {
           _require(condition: await data.readAsString() == "owned fixture data", message: "File readback failed");
           await data.delete();
           await report.writeAsString(
-            "PASS shared SQLite/Keychain relaunch/delete, login registration and owned file access\n",
+            "PASS shared SQLite/$nativeStore relaunch/delete, login registration and owned file access\n",
           );
       }
     } finally {

@@ -157,6 +157,8 @@ jobs:
       contents: read
       actions: read
       pull-requests: read
+      # Required for callee admission; its manual debug job is skipped here.
+      id-token: write
     uses: ./.github/workflows/desktop-qualification.yml
     with:
       source_sha: ${{ github.sha }}
@@ -187,6 +189,8 @@ jobs:
       contents: read
       actions: read
       pull-requests: read
+      # Required for callee admission; its ordinary jobs keep read-only tokens.
+      id-token: write
     uses: ./.github/workflows/desktop-qualification.yml
     with:
       source_sha: ${{ github.sha }}

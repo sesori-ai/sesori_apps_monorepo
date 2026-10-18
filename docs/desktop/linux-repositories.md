@@ -7,6 +7,21 @@ account/keyring/tray and genuine application-upgrade qualification remain separa
 Infrastructure or a passing fixture alone is not live publication: bootstrap requires
 a successful main-branch run and anonymous verification of its actual output.
 
+## Accepted preview delivery
+
+[Run 38754986125](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38754986125),
+from merged #1997 (`50e59ba739f9cddae58e5b0ddc325b0d40e628a5`), published
+`1.9.2-1022` on 2026-10-15 using protected production signing and the scoped Google identity.
+Independent anonymous retrieval verified the pinned signatures, expiry and complete
+index/package reference tree. Real APT and DNF clients refreshed and downloaded both
+architectures over HTTPS; native RPM signatures also passed. Those client checks ran
+in an ARM64 Fedora container, without installing or executing the application.
+
+[Retained verification summaries](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2002#issuecomment-6196620863)
+include the independent verifier revision and the exact evidence boundary. This accepts
+preview repository delivery, not native x64/ARM64 application/account qualification or
+stable publication.
+
 ## Ownership and triggers
 
 - `desktop-linux-release.yml` calls the repository workflow after the existing

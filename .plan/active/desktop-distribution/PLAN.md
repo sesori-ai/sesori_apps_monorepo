@@ -70,8 +70,8 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D2 | All six native application targets: macOS, Windows, Linux × x64, arm64. User-approved exception (2026-09-15): the Windows ARM64 installer launcher may use emulation; installed GUI/helper/native libraries remain ARM64. No other silent reduction. |
 | D3 | macOS: direct Developer ID distribution, hardened runtime, notarization, stapled DMGs, manual signed-package updates (D6 fallback). App Store sandboxing does not fit the current host-tool model. |
 | D4 | Windows: direct download first, signed per-user Inno Setup EXE, manual Download update button, and winget discovery. No embedded Windows updater or automatic updates. Store/MSIX is not a launch requirement. |
-| D5 | Linux: DEB and RPM packages with signed APT/RPM repositories. No AppImage, Flatpak, Snap, or custom Linux self-updater in this plan. |
-| D6 | Trust, maturity, broad adoption, and simple integration outrank automation (user clarification 2026-09-15). The explicitly approved manual fallback is selected for macOS in step 5; Sparkle background preparation/install-on-quit is not part of the implementation. No custom updater, security layer, or shutdown machinery just to preserve automation. Windows uses manual signed-installer updates; Linux remains package-manager-owned. Ordinary Quit never unexpectedly reopens the app. |
+| D5 | Linux: retain DEB/RPM and signed APT/RPM repositories. User approved signed x64/ARM64 AppImages on 2026-10-18 as a separate slice after native QA and before Windows, with actual Arch behavior qualification. Defer pacman/AUR; no universal-distro claim, Flatpak, Snap or custom Linux self-updater. |
+| D6 | Trust, maturity, broad adoption, and simple integration outrank automation (user clarification 2026-09-15). The explicitly approved manual fallback is selected for macOS in step 5; Sparkle background preparation/install-on-quit is not part of the implementation. No custom updater, security layer, or shutdown machinery just to preserve automation. Windows uses manual signed-installer updates; DEB/RPM remain package-manager-owned and initial AppImage updates may use manual download/replace. Ordinary Quit never unexpectedly reopens the app. |
 | D7 | GitHub Releases hosts downloadable installers; static GCS hosts signed Linux repositories. No new backend release service. Linux repositories also host their package payloads, rather than relying on cross-origin package-manager redirects. |
 | D8 | Selected 2026-09-25: share the bridge/mobile release cycle; retain platform gates and macOS-first delivery. |
 | D9 | 2026-09-26: retire Gate C with accepted QA gaps; admit macOS publication through the shared cycle. |
@@ -79,6 +79,7 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D11 | Public Linux internal previews approved with stated desktop QA gaps; stable/repository gates stay closed. |
 | D12 | Sign Linux Bridge CLI archives with OpenPGP too; keep CLI and desktop artifacts distinct. |
 | D13 | 2026-10-14: finish Linux, including stable publication, before Windows. GCS package hosting and narrowly scoped GitHub publishing IAM in `sesori-ai` are approved with ordinary storage/download costs. Preserve signing, repository trust, native QA and production approvals; no new release backend. |
+| D14 | 2026-10-18: manual, ephemeral private Linux runner diagnostics through restricted Tailscale GitHub OIDC. Admin-to-runner SSH only; VNC through SSH forwarding. No signing/account credentials, public desktop, runner access into other tailnet devices or replacement of automated qualification. |
 
 ### User-retired QA gate and macOS admission — 2026-09-26
 
@@ -538,10 +539,23 @@ these are executable substeps, not a new plan or a Windows dependency.
   resume paused #2002 with fresh signed producers containing the tray fix. Qualify
   credential-free x64 GNOME/Wayland and ARM64 KDE/X11, Secret Service, normal Quit
   and real package replacement. Do not bypass an unadvertised native menu endpoint.
+  Diagnose the visible KDE menu/accessibility mismatch through a separate manual,
+  bounded Tailscale SSH/loopback-VNC mode. No credentials or diagnostic success may
+  substitute for the committed native gate. Its session state is runner-local:
+  disposable home, owned processes and a stop pipe; no product state is written.
+  CI run metadata retains the connection summary; no interactive artifacts are uploaded.
 - `🚧 [desktop-distribution] Qualify authenticated Linux desktop upgrades [step 11.i.c/14]`:
   real-account/helper On/Off, actual login-session launch, unavailable Secret Service
   and remaining nominated-distro upgrades. Container/inert-package checks are not
   substitutes; stable remains gated on genuine native acceptance.
+- `🚧 [desktop-distribution] Deliver signed portable Linux AppImages [step 11.i.d/14]`:
+  after native qualification, add separate native x64/ARM64 signed downloads through
+  existing release/trust owners while retaining DEB/RPM. Qualify Arch launch, keyring,
+  tray, normal Quit and persistence on actual native environments; identify ARM64's
+  distribution honestly rather than claiming official Arch Linux ARM64 support.
+  Document host/FUSE constraints and manual replacement updates, and correct
+  package-manager-only UI guidance. Defer pacman/AUR and universal-distro claims.
+  Existing native/stable gates remain required.
 - `⚙️ [desktop-distribution] Add Linux repository and stable download guidance [step 11.j/14]`:
   update `sesori-ai/landingpage` using its existing release cache and truthful public
   availability. Stable entries stay hidden until qualified stable completion exists.

@@ -32,10 +32,14 @@ D13 authorizes public GCS package hosting and narrowly scoped GitHub publishing 
 in `sesori-ai`, then completion through stable Linux publication before Windows.
 11.g/#1983 and 11.h/#1997 are merged. Run `38754986125` published `1.9.2-1022`;
 pinned public verification and real HTTPS APT/DNF refresh/download passed for both CPUs.
-Native QA then exposed a Linux tray-menu defect. The user approved landing the focused
-11.i.a fix before fresh signed-build visual qualification. #2002 is paused, not abandoned;
-it resumes as 11.i.b. Authenticated/session-login qualification follows as 11.i.c.
-No native or stable gate is waived.
+Native QA exposed a Linux tray-menu defect; 11.i.a/#2004 merged the focused fix before
+fresh signed-build visual qualification, as approved by the user. #2002 resumes as
+11.i.b against separately compiled, signed versions of that corrected source. The user
+approved same-source version replacement on 2026-10-15, without a code/schema migration
+claim. GNOME passed; KDE's real menu is visible but accessible Quit lookup still fails.
+The user approved private, manual Tailscale runner diagnostics with scoped GitHub OIDC,
+admin-only SSH and loopback VNC; no account/signing credentials or qualification waiver.
+Authenticated/session-login qualification follows as 11.i.c. Stable remains gated.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing
 Cloud Run source storage and Firebase federation remain outside the publisher's authority.
@@ -44,8 +48,9 @@ dispatches stores or creates releases.
 
 Continue original step 9/ordinal 11: metadata and real-tool fixtures (11.g), preview
 hosting/publication (11.h), native desktop and genuine app upgrades (11.i), truthful
-website repository/stable discovery support (11.j), then qualified shared stable
-publication (11.k). Keep one series PR open and at most one successor local. Neither
+signed x64/ARM64 AppImages with Arch behavior qualification (11.i.d, approved
+2026-10-18; retain DEB/RPM and defer pacman/AUR), website repository/stable discovery
+support (11.j), then qualified shared stable publication (11.k). Keep one series PR open and at most one successor local. Neither
 inert package upgrades nor earlier preview waivers establish native desktop readiness.
 
 macOS step 6 is delivered: public `v1.9.1` release `412515090`, build `1017`, product

@@ -42,24 +42,37 @@ on:
           - macos-authenticated-upgrade-probe
           - windows-packaging
           - linux-packaging
+          - linux-session
+          - linux-interactive-debug
         default: native-builds
+      debug_arch:
+        description: 'Manual Linux diagnostic runner CPU (KDE/X11; no qualification or account credentials)'
+        type: choice
+        options: [arm64, x64]
+        default: arm64
       channel:
         description: 'Compiled download channel (macOS/Linux packaging and macOS upgrade modes)'
         type: choice
         options: [stable, internal]
         default: stable
       packaging_run:
-        description: 'Current trusted packaging run (macos GUI/upgrade modes)'
+        description: 'Current trusted packaging run (macOS GUI/upgrade, Linux sessions or interactive debug)'
         type: string
       previous_packaging_run:
-        description: 'Strictly older trusted packaging run (macos upgrade modes only)'
+        description: 'Strictly older trusted packaging run (macOS upgrades or Linux sessions)'
         type: string
   pull_request:
     paths:
       - '.github/workflows/desktop-qualification.yml'
+      - '.github/workflows/desktop-linux-session.yml'
       - '.github/actions/setup-xcode/**'
       - '.github/scripts/qualify_desktop.py'
       - '.github/scripts/test_qualify_desktop.py'
+      - '.github/scripts/qualify_desktop_linux_session.py'
+      - '.github/scripts/test_qualify_desktop_linux_session.py'
+      - '.github/scripts/github_release_assets.py'
+      - '.github/scripts/debug_desktop_linux_session.py'
+      - '.github/scripts/test_debug_desktop_linux_session.py'
       - '.github/scripts/package_desktop_macos.py'
       - '.github/scripts/test_package_desktop_macos.py'
       - 'client/desktop/macos/Bridge.entitlements'
@@ -106,10 +119,92 @@ concurrency:
   # Parallel Linux/macOS calls from one shared run must not cancel each other.
   group: >-
     desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{
+      inputs.mode == 'linux-interactive-debug' && 'linux-debug' || inputs.mode == 'linux-session' && 'linux-session' ||
       inputs.mode == 'linux-packaging' && 'linux' || 'other' }}
   cancel-in-progress: true
 
 jobs:
+  linux-session:
+    needs: tooling
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'linux-session'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/desktop-linux-session.yml
+    with:
+      previous_run: ${{ inputs.previous_packaging_run }}
+      current_run: ${{ inputs.packaging_run }}
+
+  linux-interactive-debug:
+    if: github.event_name == 'workflow_dispatch' && inputs.mode == 'linux-interactive-debug'
+    # This environment owns ref trust: main plus the explicitly approved dedicated QA branch.
+    environment: desktop-linux-debug
+    runs-on: ${{ inputs.debug_arch == 'x64' && 'ubuntu-24.04' || 'ubuntu-24.04-arm' }}
+    timeout-minutes: 40
+    permissions:
+      contents: read
+      actions: read
+      id-token: write
+    env:
+      DEBUG_HOST: sesori-linux-debug-${{ github.run_id }}-${{ github.run_attempt }}
+      DEBUG_ARCH: ${{ inputs.debug_arch }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Require an explicit retained signed producer and configured federation
+        env:
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+          TAILSCALE_CLIENT_ID: ${{ vars.TAILSCALE_CLIENT_ID }}
+          TAILSCALE_AUDIENCE: ${{ vars.TAILSCALE_AUDIENCE }}
+        run: |
+          [[ "$PACKAGING_RUN" =~ ^[1-9][0-9]*$ && -n "$TAILSCALE_CLIENT_ID" && -n "$TAILSCALE_AUDIENCE" ]] || {
+            echo 'Select a retained signed internal packaging run and configure desktop-linux-debug OIDC variables.'
+            exit 1
+          }
+      - name: Install diagnostic tools before joining the private network
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            dbus-x11 python3-dbus python3-pyatspi gnome-keyring libsecret-tools gsettings-desktop-schemas \
+            plasma-desktop plasma-workspace kwin-x11 xvfb xauth wmctrl xdotool imagemagick mesa-utils \
+            x11vnc rpm gnupg
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.packaging_run }}
+          pattern: desktop-linux-*
+          path: build/linux-debug-producer
+      - name: Independently verify original signed internal artifacts without publishing
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PACKAGING_RUN: ${{ inputs.packaging_run }}
+        run: |
+          /usr/bin/python3 .github/scripts/debug_desktop_linux_session.py prepare \
+            --run-id "$PACKAGING_RUN" --tooling-sha "$GITHUB_SHA" \
+            --inputs build/linux-debug-producer --output build/linux-debug-inputs
+      - name: Join the ephemeral runner through restricted GitHub OIDC
+        uses: tailscale/github-action@d1b6cd204f8dceda5b3eaad7f1f767be390056cd # v4
+        with:
+          oauth-client-id: ${{ vars.TAILSCALE_CLIENT_ID }}
+          audience: ${{ vars.TAILSCALE_AUDIENCE }}
+          tags: tag:sesori-ci-debug
+          hostname: ${{ env.DEBUG_HOST }}
+          args: --ssh --accept-dns=false
+      - name: Disable the action's default subnet routes before starting the desktop
+        # The pinned action supplies --accept-routes itself; duplicating it in args is rejected.
+        run: sudo tailscale set --accept-routes=false
+      - name: Serve a disposable anonymous KDE desktop for at most 20 ready minutes
+        timeout-minutes: 25
+        run: |
+          dbus-run-session -- /usr/bin/python3 .github/scripts/debug_desktop_linux_session.py serve \
+            --inputs build/linux-debug-inputs --output build/linux-debug-session \
+            --architecture "$DEBUG_ARCH"
+      # No automatic uploads: interactive diagnostics may contain operator-entered data.
+      # The Tailscale action's post step logs out; the job and isolated home are disposable.
+
   macos-gui:
     needs: tooling
     if: >-
@@ -1013,6 +1108,7 @@ jobs:
           retention-days: 14
 
   tooling:
+    if: github.event_name != 'workflow_dispatch' || inputs.mode != 'linux-interactive-debug'
     runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v6
