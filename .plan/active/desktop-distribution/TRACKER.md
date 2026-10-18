@@ -33,13 +33,18 @@ in `sesori-ai`, then completion through stable Linux publication before Windows.
 11.g/#1983 and 11.h/#1997 are merged. Run `38754986125` published `1.9.2-1022`;
 pinned public verification and real HTTPS APT/DNF refresh/download passed for both CPUs.
 Native QA exposed a Linux tray-menu defect; 11.i.a/#2004 merged the focused fix before
-fresh signed-build visual qualification, as approved by the user. #2002 resumes as
-11.i.b against separately compiled, signed versions of that corrected source. The user
-approved same-source version replacement on 2026-10-15, without a code/schema migration
-claim. GNOME passed; KDE's real menu is visible but accessible Quit lookup still fails.
-The user approved private, manual Tailscale runner diagnostics with scoped GitHub OIDC,
-admin-only SSH and loopback VNC; no account/signing credentials or qualification waiver.
-Authenticated/session-login qualification follows as 11.i.c. Stable remains gated.
+fresh signed-build visual qualification, as approved by the user. 11.i.b/#2002 is merged:
+final run `39122836416` passed native x64 GNOME/Wayland and ARM64 KDE/X11 using original
+signed builds 167→168 of the corrected source. Encrypted SQLite/Secret Service,
+normal Quit/helper cleanup and login-registration roundtrip passed; same-source
+replacement is not code/schema migration or actual OS-login evidence. KDE's existing
+tray-disposed diagnostic remains recorded. Restricted Tailscale diagnostics and
+#2019's canonical runbook/Claude shim are delivered, without account/signing credentials
+or a qualification waiver.
+11.i.c.a adds the separate main-only real-account/helper On/Off replacement mode;
+both-CPU native acceptance follows its merge. 11.i.c.b retains actual session-login,
+unavailable Secret Service, remaining distro and source/schema migration gates.
+Stable remains closed; AppImage, website and stable publication follow these gates.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing
 Cloud Run source storage and Firebase federation remain outside the publisher's authority.

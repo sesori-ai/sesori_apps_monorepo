@@ -536,18 +536,26 @@ these are executable substeps, not a new plan or a Windows dependency.
   The user approved focused-test merge before fresh signed-build visual qualification
   on 2026-10-15. This changes verification order, not stable admission.
 - `🚧 [desktop-distribution] Exercise native Linux desktop sessions [step 11.i.b/14]`:
-  resume paused #2002 with fresh signed producers containing the tray fix. Qualify
-  credential-free x64 GNOME/Wayland and ARM64 KDE/X11, Secret Service, normal Quit
-  and real package replacement. Do not bypass an unadvertised native menu endpoint.
-  Diagnose the visible KDE menu/accessibility mismatch through a separate manual,
-  bounded Tailscale SSH/loopback-VNC mode. No credentials or diagnostic success may
-  substitute for the committed native gate. Its session state is runner-local:
-  disposable home, owned processes and a stop pipe; no product state is written.
-  CI run metadata retains the connection summary; no interactive artifacts are uploaded.
-- `🚧 [desktop-distribution] Qualify authenticated Linux desktop upgrades [step 11.i.c/14]`:
-  real-account/helper On/Off, actual login-session launch, unavailable Secret Service
-  and remaining nominated-distro upgrades. Container/inert-package checks are not
-  substitutes; stable remains gated on genuine native acceptance.
+  merged as #2002. Final run `39122836416` passed credential-free native x64
+  GNOME/Wayland and ARM64 KDE/X11, real Secret Service, normal Quit, increasing signed
+  package replacement and encrypted persistence. Both original signed builds compile
+  the corrected source; no code/schema migration, account or actual OS-login claim.
+  KDE's visible-popup/AT-SPI discrepancy is resolved through exact-label OCR and real
+  pointer activation. Its existing tray-disposed diagnostic remains recorded.
+  Private Tailscale SSH/loopback-VNC diagnostics and #2019's runbook are delivered;
+  runner-local state and no interactive artifact upload do not waive qualification.
+- `🚧 [desktop-distribution] Exercise authenticated Linux replacement [step 11.i.c.a/14]`:
+  add a separate main-only manual mode using the existing QA account, original signed
+  producer inputs and each source's nonshipping typed auth/persistence fixture.
+  Serialize both CPUs and macOS/Linux account use. Verify helper On/Off and normal
+  signed-GUI Quit across replacement; the new GUI must open preserved data before a
+  new-source fixture can rewrite it. Never capture authenticated pixels or upload raw
+  logs/tokens. Tooling tests are not native acceptance; run both CPUs after merge.
+- `🚧 [desktop-distribution] Complete native Linux release gates [step 11.i.c.b/14]`:
+  actual login-session launch, unavailable Secret Service, remaining nominated-distro
+  upgrades and source/schema migration qualification remain required. Container/inert
+  package checks and same-source replacement are not substitutes. Missing native hosts
+  remain blockers, not silently reduced coverage; stable stays gated.
 - `🚧 [desktop-distribution] Deliver signed portable Linux AppImages [step 11.i.d/14]`:
   after native qualification, add separate native x64/ARM64 signed downloads through
   existing release/trust owners while retaining DEB/RPM. Qualify Arch launch, keyring,

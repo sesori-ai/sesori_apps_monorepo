@@ -11,9 +11,13 @@ import unittest
 import urllib.error
 from unittest.mock import Mock, patch
 
-from qualify_desktop_macos_authenticated_upgrade import (
+from desktop_qa_credentials import (
     AUTH_EMAIL_ENVIRONMENT_KEY,
     AUTH_PASSWORD_ENVIRONMENT_KEY,
+    QaCredentials,
+    load_qa_credentials,
+)
+from qualify_desktop_macos_authenticated_upgrade import (
     KEYCHAIN_ACCOUNTS,
     KEYCHAIN_SERVICE,
     PRIVATE_APP_LOG_DIAGNOSTIC_LIMIT_BYTES,
@@ -23,7 +27,6 @@ from qualify_desktop_macos_authenticated_upgrade import (
     DesktopStartupStage,
     KeychainSession,
     LogCursor,
-    QaCredentials,
     QualificationCandidate,
     QualificationPhase,
     _keychain_writer,
@@ -33,7 +36,6 @@ from qualify_desktop_macos_authenticated_upgrade import (
     cleanup_qualification_with_phase,
     delete_auth_keychain,
     launch_authenticated_and_quit,
-    load_qa_credentials,
     load_startup_marker_support,
     parse_keychain_session,
     qualification_cleanup,

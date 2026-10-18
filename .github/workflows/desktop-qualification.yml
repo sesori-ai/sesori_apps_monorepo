@@ -43,6 +43,7 @@ on:
           - windows-packaging
           - linux-packaging
           - linux-session
+          - linux-authenticated-upgrade-probe
           - linux-interactive-debug
         default: native-builds
       debug_arch:
@@ -65,6 +66,10 @@ on:
     paths:
       - '.github/workflows/desktop-qualification.yml'
       - '.github/workflows/desktop-linux-session.yml'
+      - '.github/workflows/desktop-linux-authenticated-upgrade.yml'
+      - '.github/scripts/desktop_qa_credentials.py'
+      - '.github/scripts/qualify_desktop_linux_authenticated_upgrade.py'
+      - '.github/scripts/test_qualify_desktop_linux_authenticated_upgrade.py'
       - '.github/actions/setup-xcode/**'
       - '.github/scripts/qualify_desktop.py'
       - '.github/scripts/test_qualify_desktop.py'
@@ -108,6 +113,7 @@ on:
       - '.github/scripts/inspect_desktop_macos_window.swift'
       - '.github/scripts/quit_desktop_macos.swift'
       - 'client/desktop/test/native/packaged_platform_probe.dart'
+      - 'client/desktop/test/native/packaged_authenticated_probe.dart'
       - '.tool-versions'
       - 'client/desktop/tool/stage_desktop_bundle.dart'
       - 'client/module_desktop_core/lib/src/foundation/models/desktop_bundle_identity.dart'
@@ -116,12 +122,15 @@ permissions:
   contents: read
 
 concurrency:
-  # Parallel Linux/macOS calls from one shared run must not cancel each other.
+  # One QA account/relay slot across both authenticated platforms; queue, never replace it.
+  # Parallel Linux/macOS packaging calls still must not cancel each other.
   group: >-
     desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{
-      inputs.mode == 'linux-interactive-debug' && 'linux-debug' || inputs.mode == 'linux-session' && 'linux-session' ||
-      inputs.mode == 'linux-packaging' && 'linux' || 'other' }}
-  cancel-in-progress: true
+      contains(fromJSON('["macos-authenticated-upgrade-probe","linux-authenticated-upgrade-probe"]'), inputs.mode) &&
+      'authenticated' || inputs.mode == 'linux-interactive-debug' && 'linux-debug' ||
+      inputs.mode == 'linux-session' && 'linux-session' || inputs.mode == 'linux-packaging' && 'linux' || 'other' }}
+  cancel-in-progress: >-
+    ${{ !contains(fromJSON('["macos-authenticated-upgrade-probe","linux-authenticated-upgrade-probe"]'), inputs.mode) }}
 
 jobs:
   linux-session:
@@ -606,6 +615,22 @@ jobs:
           path: build/desktop-macos-upgrade/result/
           if-no-files-found: warn
           retention-days: 14
+
+  linux-authenticated-upgrade:
+    needs: tooling
+    if: >-
+      github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
+      inputs.mode == 'linux-authenticated-upgrade-probe'
+    permissions:
+      contents: read
+      actions: read
+    uses: ./.github/workflows/desktop-linux-authenticated-upgrade.yml
+    with:
+      previous_run: ${{ inputs.previous_packaging_run }}
+      current_run: ${{ inputs.packaging_run }}
+    secrets:
+      SESORI_DESKTOP_QA_EMAIL: ${{ secrets.SESORI_DESKTOP_QA_EMAIL }}
+      SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.SESORI_DESKTOP_QA_PASSWORD }}
 
   macos-authenticated-upgrade:
     # Signing is automatic on main; repository QA credentials remain confined to the later exercise step.
