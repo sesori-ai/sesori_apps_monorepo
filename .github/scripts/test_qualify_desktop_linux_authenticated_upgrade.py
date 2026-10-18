@@ -125,10 +125,14 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         source = inspect.getsource(qualification.session)
         install = source.index("current = install(candidate=Candidate.CURRENT)")
         gui = source.index("launch(candidate=Candidate.CURRENT, intent=HelperIntent.OFF", install)
-        probe = source.index("probe(candidate=Candidate.CURRENT, operation=ProbePhase.OFF_TO_ON)", install)
+        probe = source.index("probe(candidate=Candidate.CURRENT, operation=ProbePhase.OFF_TO_ON,", install)
         self.assertLess(install, gui)
         self.assertLess(gui, probe)
         self.assertEqual(source.count("operation=ProbePhase.LOGIN_ON"), 1)
+        self.assertEqual(source.count("credentials.email"), 1)
+        self.assertEqual(source.count("credentials.password"), 1)
+        self.assertIn("private_input=[account_id]", source)
+        self.assertLess(source.index("with authenticated_cleanup("), source.index("launch(candidate=Candidate.PREVIOUS"))
         self.assertLess(source.index('"apt-get", "remove"'), source.index('output / "result.json"'))
         self.assertIn('"stableAdmission": False', source)
         self.assertIn('"loginSessionAutostartQualified": False', source)
@@ -137,6 +141,26 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         self.assertNotIn('arguments=["import"', source)
         self.assertNotIn('arguments=["tesseract"', source)
         self.assertNotIn("menu.Event(", source)
+
+    def test_cleanup_runs_before_session_teardown_on_success_failure_and_cancellation(self):
+        gui = mock.Mock(args=[qualification.APPLICATION])
+        keyring = mock.Mock(args=["gnome-keyring-daemon"])
+        for failure in (None, RuntimeError("fixture failure"), SystemExit(143)):
+            events = []
+
+            def finish(*, operation):
+                events.append(operation)
+
+            with self.subTest(failure=type(failure).__name__), \
+                    mock.patch.object(qualification, "stop_process", side_effect=lambda **_: events.append("gui")):
+                try:
+                    with qualification.authenticated_cleanup(processes=[keyring, gui], finish=finish):
+                        if failure is not None:
+                            raise failure
+                except BaseException as error:
+                    self.assertIs(error, failure)
+            expected = qualification.ProbePhase.ON_TO_LOGOUT if failure is None else qualification.ProbePhase.CLEANUP
+            self.assertEqual(events, ["gui", expected])
 
     def test_main_only_native_workflow_credentials_are_exercise_only_and_artifacts_are_allowlisted(self):
         workflows = Path(__file__).parents[1] / "workflows"

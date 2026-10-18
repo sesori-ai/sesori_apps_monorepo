@@ -255,15 +255,22 @@ The artifact allowlist contains only bounded `result.json` and `failure.json`.
 The current qualification checkout's nonshipping fixture is compiled separately
 against each candidate's locked product source/APIs, using its `AuthSession` and
 desktop intent service. This is not a historical fixture from each producer, handwritten
-token rows or a replacement GUI. Login seeds only the older version. Exercise signed
+token rows or a replacement GUI. Initial email login returns the stable `AuthUser.id`;
+later phases compare that private id, not the opaque provider id or email. Identity
+metadata stays inside the owned home and travels through stdin, never uploaded.
+Login seeds only the older version. Exercise signed
 old GUI On then Off, normal close/native tray Quit and no orphan helper; install the
 new package and launch its signed GUI with preserved Off **before** the fixture built
 against that candidate may write anything. Verify local account/Off preservation, set On and exercise
 the new signed GUI's authenticated packaged helper/relay readiness and normal Quit.
 Only the initial fixture may perform email login; preservation checks are local and
-never refresh or reseed. Cleanup logs out only this device, removes the owned package
-before success, and removes the private home/processes. Failed disposable-VM package
-residue remains bounded; never treat a failed job as accepted evidence.
+never refresh or reseed. Cleanup loads the existing registration tracker and invokes
+`DesktopLogoutOrchestrator`, requiring the owned bridge registration to be cleared
+before accepting device-local logout. After initial seeding, the same cleanup scope
+runs on success, failure and cancellation: stop only owned GUI groups, attempt
+unregistration while the bus/keyring/home remain available, then remove private state. Only successful cleanup
+and package removal permit success JSON. Never invalidate all account sessions. Failed
+disposable-VM package residue remains bounded; never accept a failed job as evidence.
 
 GNOME closes the process-owned native window without a tray host. KDE right-clicks
 the actual accessible app tray icon and requires a visible Plasma-PID-owned popup.

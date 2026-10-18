@@ -2,6 +2,7 @@
 """Main-only real-account Linux replacement. Authenticated pixels and raw logs stay private."""
 
 import argparse
+from contextlib import contextmanager
 from enum import StrEnum
 import json
 import os
@@ -33,10 +34,24 @@ class ProbePhase(StrEnum):
     ON_TO_OFF = "onToOff"
     OFF_TO_ON = "offToOn"
     ON_TO_LOGOUT = "onToLogout"
+    CLEANUP = "cleanup"
 
 
 APPLICATION = "/usr/bin/sesori-desktop"
 HELPER = "/opt/sesori-desktop/bridge/bin/bridge"
+
+
+@contextmanager
+def authenticated_cleanup(*, processes: list[subprocess.Popen], finish):
+    """Unregister while the owned bus/keyring/home still exist, including after cancellation."""
+    try:
+        yield
+    finally:
+        operation = ProbePhase.CLEANUP if sys.exception() is not None else ProbePhase.ON_TO_LOGOUT
+        for process in reversed(processes):
+            if process.args[0] == APPLICATION:
+                stop_process(process=process)
+        finish(operation=operation)
 
 
 class AuthenticatedQualificationFailure(RuntimeError):
@@ -186,14 +201,12 @@ def session(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, archi
                 return
             raise ValueError("No native tray item belongs to the signed application")
 
-        def probe(*, candidate: Candidate, operation: ProbePhase) -> Path:
+        def probe(*, candidate: Candidate, operation: ProbePhase, private_input: list[str]) -> tuple[Path, str]:
             nonlocal phase
             phase = f"{candidate}-{operation}"
             require(installed_helper_pid() is None, "A helper is running before the nonshipping fixture")
             report = private / f"{phase}.txt"
-            payload = credentials.email + "\n"
-            if operation == ProbePhase.LOGIN_ON:
-                payload += credentials.password + "\n"
+            payload = "\n".join(private_input) + "\n"
             result = subprocess.run([str(probes / candidate / "sesori_desktop")], input=payload, text=True,
                 env={**env, "SESORI_AUTHENTICATED_PROBE_PHASE": operation,
                      "SESORI_AUTHENTICATED_PROBE_OUTPUT": str(report)}, capture_output=True, timeout=90)
@@ -203,7 +216,7 @@ def session(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, archi
             support = Path(Path(str(report) + ".support-path").read_text()).resolve()
             require(support.is_relative_to(home), "Native application support escaped the disposable home")
             require(installed_helper_pid() is None, "Nonshipping fixture started a packaged helper")
-            return support
+            return support, Path(str(report) + ".account-id").read_text()
 
         def launch(*, candidate: Candidate, intent: HelperIntent, support: Path):
             nonlocal phase
@@ -306,23 +319,32 @@ def session(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, archi
                 wait_for(description="KDE tray host", check=lambda: bus.name_has_owner("org.kde.StatusNotifierWatcher"))
             phase = "previous-install"
             previous = install(candidate=Candidate.PREVIOUS)
-            support = probe(candidate=Candidate.PREVIOUS, operation=ProbePhase.LOGIN_ON)
-            launch(candidate=Candidate.PREVIOUS, intent=HelperIntent.ON, support=support)
-            probe(candidate=Candidate.PREVIOUS, operation=ProbePhase.ON_TO_OFF)
-            launch(candidate=Candidate.PREVIOUS, intent=HelperIntent.OFF, support=support)
-            phase = "current-install"
-            current = install(candidate=Candidate.CURRENT)
-            # The new signed GUI opens old data before any new-source probe can rewrite it.
-            launch(candidate=Candidate.CURRENT, intent=HelperIntent.OFF, support=support)
-            probe(candidate=Candidate.CURRENT, operation=ProbePhase.OFF_TO_ON)
-            launch(candidate=Candidate.CURRENT, intent=HelperIntent.ON, support=support)
-            probe(candidate=Candidate.CURRENT, operation=ProbePhase.ON_TO_LOGOUT)
+            support, account_id = probe(candidate=Candidate.PREVIOUS, operation=ProbePhase.LOGIN_ON,
+                                        private_input=[credentials.email, credentials.password])
+
+            def unregister(*, operation: ProbePhase):
+                nonlocal phase
+                completed_phase = phase
+                probe(candidate=Candidate.CURRENT, operation=operation, private_input=[account_id])
+                phase = completed_phase
+
+            with authenticated_cleanup(processes=processes, finish=unregister):
+                launch(candidate=Candidate.PREVIOUS, intent=HelperIntent.ON, support=support)
+                probe(candidate=Candidate.PREVIOUS, operation=ProbePhase.ON_TO_OFF, private_input=[account_id])
+                launch(candidate=Candidate.PREVIOUS, intent=HelperIntent.OFF, support=support)
+                phase = "current-install"
+                current = install(candidate=Candidate.CURRENT)
+                # The new signed GUI opens old data before any new-source probe can rewrite it.
+                launch(candidate=Candidate.CURRENT, intent=HelperIntent.OFF, support=support)
+                probe(candidate=Candidate.CURRENT, operation=ProbePhase.OFF_TO_ON, private_input=[account_id])
+                launch(candidate=Candidate.CURRENT, intent=HelperIntent.ON, support=support)
             phase = "package-removal"
             run(arguments=["sudo", "apt-get", "remove", "--yes", "sesori-desktop"], timeout=120)
             (output / "result.json").write_text(json.dumps({
                 "architecture": architecture, "hostArchitecture": platform.machine(), "desktop": desktop,
                 "previous": previous, "current": current, "observations": observations,
                 "authenticatedSessionSurvivesReplacement": True, "helperOnOffRestoration": True,
+                "temporaryBridgeCleanupCompleted": True,
                 "productSourceChanged": previous["sourceSha"] != current["sourceSha"],
                 "loginSessionAutostartQualified": False, "unavailableSecretServiceQualified": False,
                 "otherNominatedDistrosQualified": False, "stableAdmission": False,

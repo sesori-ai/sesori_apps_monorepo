@@ -13,29 +13,44 @@ enum AuthenticatedProbePhase() {
   onToOff,
   offToOn,
   onToLogout,
+  cleanup,
 }
 
-Future<void> exerciseAuthenticatedProbe({
+Future<String> exerciseAuthenticatedProbe({
   required AuthenticatedProbePhase phase,
   required AuthSession auth,
   required DesktopInstanceService instance,
+  required Future<void> Function({required String accountId}) unregisterAndLogout,
   required String Function() readInput,
 }) async {
-  final String email = readInput();
+  // Initial login takes email/password; later phases take only its returned stable account id.
+  final input = readInput();
   if (phase == AuthenticatedProbePhase.loginOn) {
     _require(condition: !await auth.hasLocallyValidSession(), message: "Fixture already has a session");
-    await auth.loginWithEmail(email: email, password: readInput());
+    await auth.loginWithEmail(email: input, password: readInput());
   } else {
-    // Never log in again or refresh before checking replacement preservation.
-    _require(condition: await auth.hasLocallyValidSession(), message: "Persisted session is unavailable");
-    _require(condition: await auth.restoreLocalSession(), message: "Local account restoration failed");
+    // Cleanup must still attempt unregistration after a failed preservation check.
+    if (phase != AuthenticatedProbePhase.cleanup) {
+      _require(condition: await auth.hasLocallyValidSession(), message: "Persisted session is unavailable");
+    }
+    final restored = await auth.restoreLocalSession();
+    if (phase != AuthenticatedProbePhase.cleanup) {
+      _require(condition: restored, message: "Local account restoration failed");
+    }
   }
-  final state = auth.currentState;
-  _require(
-    condition:
-        state is AuthAuthenticated && state.user.provider == AuthProvider.email && state.user.providerUserId == email,
-    message: "Stored account differs from the dedicated QA account",
-  );
+  final String accountId;
+  if (phase == AuthenticatedProbePhase.cleanup) {
+    accountId = input;
+  } else {
+    final state = auth.currentState;
+    if (state is! AuthAuthenticated || state.user.provider != AuthProvider.email) {
+      throw StateError("Stored account is not an authenticated email account");
+    }
+    accountId = state.user.id;
+    if (phase != AuthenticatedProbePhase.loginOn) {
+      _require(condition: accountId == input, message: "Stored account differs from the initial QA login");
+    }
+  }
   switch (phase) {
     case AuthenticatedProbePhase.loginOn:
       await instance.writeBridgeDesiredState(state: BridgeProcessDesiredState.on);
@@ -46,10 +61,32 @@ Future<void> exerciseAuthenticatedProbe({
       await _requireIntent(instance: instance, expected: BridgeProcessDesiredState.off);
       await instance.writeBridgeDesiredState(state: BridgeProcessDesiredState.on);
     case AuthenticatedProbePhase.onToLogout:
-      await _requireIntent(instance: instance, expected: BridgeProcessDesiredState.on);
-      await auth.logoutCurrentDevice(); // Never invalidate other devices' sessions.
+    case AuthenticatedProbePhase.cleanup:
+      if (phase == AuthenticatedProbePhase.onToLogout) {
+        await _requireIntent(instance: instance, expected: BridgeProcessDesiredState.on);
+      }
+      await unregisterAndLogout(accountId: accountId);
       _require(condition: !await auth.hasLocallyValidSession(), message: "Fixture logout failed");
   }
+  return accountId;
+}
+
+Future<void> unregisterAndLogoutProbe({
+  required String accountId,
+  required BridgeStatusTracker status,
+  required DesktopLogoutOrchestrator logout,
+}) async {
+  await status.initialize();
+  final registration = status.registeredBridge;
+  _require(
+    condition: registration == null || registration.accountId == accountId,
+    message: "Temporary bridge registration belongs to a different account",
+  );
+  final outcome = await logout.logoutCurrentDevice();
+  _require(
+    condition: outcome == DesktopLogoutOutcome.completed && status.registeredBridge == null,
+    message: "Temporary bridge unregistration/logout did not complete",
+  );
 }
 
 Future<void> _requireIntent({
@@ -81,12 +118,18 @@ Future<void> main() async {
     try {
       final support = await getIt<DesktopApplicationSupportDirectory>().resolve();
       await File("${report.path}.support-path").writeAsString(support.path);
-      await exerciseAuthenticatedProbe(
+      final accountId = await exerciseAuthenticatedProbe(
         phase: phase,
         auth: getIt<AuthSession>(),
         instance: getIt<DesktopInstanceService>(),
+        unregisterAndLogout: ({required String accountId}) => unregisterAndLogoutProbe(
+          accountId: accountId,
+          status: getIt<BridgeStatusTracker>(),
+          logout: getIt<DesktopLogoutOrchestrator>(),
+        ),
         readInput: _readPrivateLine,
       );
+      await File("${report.path}.account-id").writeAsString(accountId);
       await report.writeAsString("PASS ${phase.name}\n");
     } finally {
       await getIt.reset();
