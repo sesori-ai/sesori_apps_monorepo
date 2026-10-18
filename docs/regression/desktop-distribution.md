@@ -244,7 +244,11 @@ The existing repository QA email/password secrets appear only in the exercise st
 Consume/remove them before starting even the session-bus daemon; pass fixture input
 through stdin, never argv, child environments or files. Native x64 GNOME/Wayland and
 ARM64 KDE/X11 run serially with real GNOME Keyring. The parent also queues macOS and
-Linux authenticated modes together because they share one account/relay bridge slot.
+Linux authenticated jobs together because they share one account/relay bridge slot.
+Both jobs use the same `queue: max` concurrency group with cancellation disabled;
+GitHub retains up to 100 pending jobs and rejects further arrivals rather than replacing
+older waiters. Authenticated outer workflows use per-run groups so their default pending
+slot cannot discard those requests. Other qualification modes keep existing cancellation.
 No authenticated capture, OCR, remote desktop, raw app/bridge/auth log or home upload.
 The artifact allowlist contains only bounded `result.json` and `failure.json`.
 

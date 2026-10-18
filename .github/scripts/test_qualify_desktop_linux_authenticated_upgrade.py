@@ -181,12 +181,21 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         self.assertEqual(job.count("${{ secrets."), 2)
         concurrency = parent.split("concurrency:\n", 1)[1].split("jobs:\n", 1)[0]
         modes = re.findall(r"contains\(fromJSON\('([^']+)'\), inputs.mode\)", concurrency)
-        self.assertEqual(len(modes), 2)
-        for value in modes:
-            self.assertEqual(set(json.loads(value)),
-                             {"macos-authenticated-upgrade-probe", "linux-authenticated-upgrade-probe"})
-        self.assertIn("'authenticated' ||", concurrency)
-        self.assertIn("${{ !contains(", concurrency)
+        self.assertEqual(len(modes), 1)
+        self.assertEqual(set(json.loads(modes[0])),
+                         {"macos-authenticated-upgrade-probe", "linux-authenticated-upgrade-probe"})
+        self.assertIn("github.run_id || inputs.mode == 'linux-interactive-debug'", concurrency)
+        self.assertIn("inputs.mode == 'linux-session' && 'linux-session'", concurrency)
+        self.assertIn("inputs.mode == 'linux-packaging' && 'linux' || 'other'", concurrency)
+        self.assertIn("cancel-in-progress: true", concurrency)
+        self.assertNotIn("queue:", concurrency)
+        for name in ("linux-authenticated-upgrade", "macos-authenticated-upgrade"):
+            authenticated_job = re.split(r"\n  [\w-]+:\n", parent.split("  " + name + ":\n", 1)[1], maxsplit=1)[0]
+            self.assertIn("github.ref == 'refs/heads/main'", authenticated_job)
+            self.assertIn("    concurrency:\n"
+                          "      group: desktop-authenticated-qualification\n"
+                          "      queue: max\n"
+                          "      cancel-in-progress: false\n", authenticated_job)
 
 
 if __name__ == "__main__":

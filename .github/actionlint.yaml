@@ -4,3 +4,11 @@
 self-hosted-runner:
   labels:
     - xcode-27
+
+# actionlint 1.7.12 lacks GitHub's concurrency.queue. Remove when the linter supports it.
+# Only this key's syntax error is exempt; authenticated workflow contracts enforce max/no cancellation.
+# https://github.com/rhysd/actionlint/issues/746
+paths:
+  .github/workflows/desktop-qualification.yml:
+    ignore:
+      - '^unexpected key "queue" for "concurrency" section\.'

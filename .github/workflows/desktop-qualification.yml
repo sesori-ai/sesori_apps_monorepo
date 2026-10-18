@@ -122,15 +122,14 @@ permissions:
   contents: read
 
 concurrency:
-  # One QA account/relay slot across both authenticated platforms; queue, never replace it.
+  # Authenticated jobs share the account queue below. Their outer workflows must not coalesce waiters.
   # Parallel Linux/macOS packaging calls still must not cancel each other.
   group: >-
     desktop-qualification-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}-${{
       contains(fromJSON('["macos-authenticated-upgrade-probe","linux-authenticated-upgrade-probe"]'), inputs.mode) &&
-      'authenticated' || inputs.mode == 'linux-interactive-debug' && 'linux-debug' ||
+      github.run_id || inputs.mode == 'linux-interactive-debug' && 'linux-debug' ||
       inputs.mode == 'linux-session' && 'linux-session' || inputs.mode == 'linux-packaging' && 'linux' || 'other' }}
-  cancel-in-progress: >-
-    ${{ !contains(fromJSON('["macos-authenticated-upgrade-probe","linux-authenticated-upgrade-probe"]'), inputs.mode) }}
+  cancel-in-progress: true
 
 jobs:
   linux-session:
@@ -621,6 +620,10 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       inputs.mode == 'linux-authenticated-upgrade-probe'
+    concurrency:
+      group: desktop-authenticated-qualification
+      queue: max
+      cancel-in-progress: false
     permissions:
       contents: read
       actions: read
@@ -639,6 +642,10 @@ jobs:
     if: >-
       github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main' &&
       inputs.mode == 'macos-authenticated-upgrade-probe'
+    concurrency:
+      group: desktop-authenticated-qualification
+      queue: max
+      cancel-in-progress: false
     permissions:
       contents: read
       actions: read
