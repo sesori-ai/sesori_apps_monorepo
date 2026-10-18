@@ -68,6 +68,7 @@ def installed_helper_pid() -> int | None:
 
 def require_quit_at_menu_end(*, layout) -> None:
     # Read-only DBusMenu inspection. Actual activation uses the host's keyboard path.
+    # The protocol omits default-valued properties; enabled and visible both default to true.
     visible = [node for node in layout[2] if node[1].get("visible", True)
                and node[1].get("type") != "separator"]
     require(bool(visible) and visible[-1][1].get("label") == "Quit Sesori"

@@ -34,7 +34,8 @@ in `sesori-ai`, then completion through stable Linux publication before Windows.
 pinned public verification and real HTTPS APT/DNF refresh/download passed for both CPUs.
 Native QA exposed a Linux tray-menu defect; 11.i.a/#2004 merged the focused fix before
 fresh signed-build visual qualification, as approved by the user. 11.i.b/#2002 is merged:
-final run `39122836416` passed native x64 GNOME/Wayland and ARM64 KDE/X11 using original
+the [final native record](steps/step-09.md) pins qualification checkout, workspace and
+both jobs of run `39122836416`, which passed x64 GNOME/Wayland and ARM64 KDE/X11 using original
 signed builds 167→168 of the corrected source. Encrypted SQLite/Secret Service,
 normal Quit/helper cleanup and login-registration roundtrip passed; same-source
 replacement is not code/schema migration or actual OS-login evidence. KDE's existing

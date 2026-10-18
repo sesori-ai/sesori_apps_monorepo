@@ -546,10 +546,11 @@ these are executable substeps, not a new plan or a Windows dependency.
   runner-local state and no interactive artifact upload do not waive qualification.
 - `🚧 [desktop-distribution] Exercise authenticated Linux replacement [step 11.i.c.a/14]`:
   add a separate main-only manual mode using the existing QA account, original signed
-  producer inputs and each source's nonshipping typed auth/persistence fixture.
-  Serialize both CPUs and macOS/Linux account use. Verify helper On/Off and normal
-  signed-GUI Quit across replacement; the new GUI must open preserved data before a
-  new-source fixture can rewrite it. Never capture authenticated pixels or upload raw
+  producer inputs. Compile the current nonshipping typed QA fixture separately against
+  each candidate's locked product source/APIs. Serialize both CPUs and macOS/Linux
+  account use. Verify helper On/Off, normal GNOME close and native KDE tray Quit across
+  replacement; the new GUI must open preserved data before the current-candidate
+  fixture can rewrite it. Never capture authenticated pixels or upload raw
   logs/tokens. Tooling tests are not native acceptance; run both CPUs after merge.
 - `🚧 [desktop-distribution] Complete native Linux release gates [step 11.i.c.b/14]`:
   actual login-session launch, unavailable Secret Service, remaining nominated-distro

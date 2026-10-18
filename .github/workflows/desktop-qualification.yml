@@ -57,10 +57,10 @@ on:
         options: [stable, internal]
         default: stable
       packaging_run:
-        description: 'Current trusted packaging run (macOS GUI/upgrade, Linux sessions or interactive debug)'
+        description: 'Current signed producer (macOS GUI/upgrades; Linux sessions/authenticated replacement/debug)'
         type: string
       previous_packaging_run:
-        description: 'Strictly older trusted packaging run (macOS upgrades or Linux sessions)'
+        description: 'Older signed producer (macOS upgrades; Linux sessions/authenticated replacement)'
         type: string
   pull_request:
     paths:

@@ -79,6 +79,8 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         root = (0, {}, [(1, {"label": "private@example.invalid", "enabled": False}, []), quit_node,
                         (4, {"label": "hidden", "visible": False}, [])])
         qualification.require_quit_at_menu_end(layout=root)
+        # DBusMenu omits enabled/visible when their specified default (true) applies.
+        qualification.require_quit_at_menu_end(layout=(0, {}, [(3, {"label": "Quit Sesori"}, [])]))
         for last in ((3, {"label": "Quitter"}, []), (3, {"label": "Quit Sesori", "enabled": False}, []),
                      (3, {"label": "Quit Sesori"}, [quit_node])):
             with self.subTest(last_kind=last[1].get("enabled")):
@@ -92,6 +94,15 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         self.assertEqual([call.kwargs["arguments"] for call in run.call_args_list], [
             ["xdotool", "search", "--onlyvisible", "--pid", "17"],
             ["xprop", "-id", "11", "_NET_WM_WINDOW_TYPE"], ["xprop", "-id", "22", "_NET_WM_WINDOW_TYPE"]])
+        for call in run.call_args_list:
+            self.assertEqual(call.kwargs["env"], {"DISPLAY": ":95"})
+
+    def test_pending_popup_retries_while_the_visible_host_window_remains(self):
+        with mock.patch.object(qualification, "run", side_effect=["11\n", "_NET_WM_WINDOW_TYPE_DOCK"]) as run:
+            self.assertFalse(qualification.visible_popup(pid=17, env={"DISPLAY": ":95"}))
+        self.assertEqual(run.call_count, 2)
+        for call in run.call_args_list:
+            self.assertEqual(call.kwargs["env"], {"DISPLAY": ":95"})
 
     def test_packaged_helper_listing_refuses_multiple_helpers_or_inspection_failure(self):
         for status, text, expected in ((1, "", None), (0, "71\n", 71)):
@@ -138,6 +149,17 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         self.assertNotIn("id-token: write", child)
         self.assertNotIn("environment:", child)
         self.assertNotIn("linux-signing", child)
+        validation = child.split("      - name: Require explicit retained signed producer pair\n", 1)[1].split(
+            "      - uses: actions/checkout@", 1)[0]
+        for candidate in ("previous", "current"):
+            self.assertIn(candidate.upper() + "_RUN: ${{ inputs." + candidate + "_run }}", validation)
+            self.assertIn("run-id: ${{ inputs." + candidate + "_run }}", child)
+        self.assertIn('"$PREVIOUS_RUN" =~ ^[1-9][0-9]*$', validation)
+        self.assertIn('"$CURRENT_RUN" =~ ^[1-9][0-9]*$', validation)
+        self.assertIn('"$PREVIOUS_RUN" != "$CURRENT_RUN"', validation)
+        self.assertIn("exit 1", validation)
+        self.assertLess(child.index("      - name: Require explicit retained signed producer pair\n"),
+                        child.index("      - uses: actions/download-artifact@"))
         exercise = child.split("      - name: Exercise real account", 1)[1].split("      - name: Retain", 1)[0]
         for key in (credentials.AUTH_EMAIL_ENVIRONMENT_KEY, credentials.AUTH_PASSWORD_ENVIRONMENT_KEY):
             self.assertEqual(child.count("${{ secrets." + key + " }}"), 1)
@@ -153,6 +175,8 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         job = parent.split("  linux-authenticated-upgrade:\n", 1)[1].split("  macos-authenticated-upgrade:\n", 1)[0]
         self.assertIn("github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'", job)
         self.assertIn("inputs.mode == 'linux-authenticated-upgrade-probe'", job)
+        self.assertIn("previous_run: ${{ inputs.previous_packaging_run }}", job)
+        self.assertIn("current_run: ${{ inputs.packaging_run }}", job)
         self.assertNotIn("secrets: inherit", job)
         self.assertEqual(job.count("${{ secrets."), 2)
         concurrency = parent.split("concurrency:\n", 1)[1].split("jobs:\n", 1)[0]

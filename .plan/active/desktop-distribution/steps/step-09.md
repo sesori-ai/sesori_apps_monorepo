@@ -75,7 +75,15 @@ The native gate covers credential-free x64 GNOME/Wayland and ARM64 KDE/X11, encr
 fixture persistence and login-registration roundtrip. KDE uses the owned Plasma
 accessibility targets for real pointer clicks, captures the visible menu and clicks
 Quit; it does not substitute direct DBusMenu event dispatch for host interaction.
-Final run `39122836416` passed both CPUs at accepted head `5a75d4b`; #2002 merged.
+Final [run `39122836416`][native-run] passed both CPUs at qualification checkout
+`5a75d4b3c01de0f1a3139bb9e0f864d1296cfe48`, from repository-root `$GITHUB_WORKSPACE`.
+Jobs: [x64 GNOME/Wayland `117662042263`][native-x64] and
+[ARM64 KDE/X11 `117662042236`][native-arm64]; #2002 merged.
+
+[native-run]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39122836416
+[native-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39122836416/job/117662042263
+[native-arm64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39122836416/job/117662042236
+
 All four anonymous windows and both genuine KDE menus were inspected. Original signed
 167→168 bytes passed normal Quit/no orphan helper, real Secret Service/encrypted SQLite
 continuity, login-registration roundtrip and package cleanup. KDE's pre-existing
@@ -85,9 +93,12 @@ scoped OIDC, admin SSH and loopback VNC remain credential-free and never waive a
 
 11.i.c.a adds main-only authenticated replacement using `qa@sesori.com`, credentials
 only in the exercise step and one serialized account/relay slot across Linux and macOS.
-Each product source supplies a nonshipping typed auth/persistence fixture. Login seeds
-only the old package; the newer signed GUI opens preserved data before its fixture can
-change intent. Exercise previous On→Off, replace, then current Off→On and normal Quit.
+The current qualification checkout supplies one nonshipping typed auth/persistence
+fixture, compiled separately against each candidate's locked product source/APIs;
+it does not use a historical fixture from each producer. Login seeds only the old
+package; the newer signed GUI opens preserved data before its fixture can change intent.
+Exercise previous On→Off, replace, then current Off→On, normal GNOME close and native
+KDE tray Quit.
 Authenticated pixels and raw app/bridge/auth output are not uploaded. Linux uses real
 GNOME Keyring in native x64 GNOME/Wayland and ARM64 KDE/X11 sessions. Tooling/mocked
 contracts do not establish acceptance; dispatch both CPUs from merged main.
