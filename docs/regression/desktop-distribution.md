@@ -230,6 +230,69 @@ Real account restoration, helper On/Off behavior, actual session autostart, unav
 Secret Service and remaining distro upgrade rows stay separate gates. This workflow does
 not replace them, publish releases or admit stable Linux.
 
+### Authenticated Linux replacement
+
+Manual `linux-authenticated-upgrade-probe` in `Desktop Native Qualification` owns
+`desktop-linux-authenticated-upgrade.yml`. Both caller and runtime require a main-only
+manual dispatch. Use explicit `previous_packaging_run` and `packaging_run` selecting
+retained successful original signed internal producers; independent primary-key trust,
+byte identity and strictly increasing package versions are unchanged. There is no
+signing/publication role or new approval environment. Ordinary PR checks do not execute
+this credential-bearing path.
+
+The existing repository QA email/password secrets appear only in the exercise step.
+Consume/remove them before starting even the session-bus daemon; pass fixture input
+through stdin, never argv, child environments or files. Native x64 GNOME/Wayland and
+ARM64 KDE/X11 run serially with real GNOME Keyring. The parent also queues macOS and
+Linux authenticated jobs together because they share one account/relay bridge slot.
+Both jobs use the same `queue: max` concurrency group with cancellation disabled;
+GitHub retains up to 100 pending jobs and rejects further arrivals rather than replacing
+older waiters. Authenticated outer workflows use per-run groups so their default pending
+slot cannot discard those requests. Other qualification modes keep existing cancellation.
+No authenticated capture, OCR, remote desktop, raw app/bridge/auth log or home upload.
+The artifact allowlist contains only bounded `result.json` and `failure.json`.
+
+The current qualification checkout's nonshipping fixture is compiled separately
+against each candidate's locked product source/APIs, using its `AuthSession` and
+desktop intent service. This is not a historical fixture from each producer, handwritten
+token rows or a replacement GUI. Initial email login returns the stable `AuthUser.id`;
+later phases compare that private id, not the opaque provider id or email. Identity
+metadata stays inside the owned home and travels through stdin, never uploaded.
+Login seeds only the older version. Exercise signed
+old GUI On then Off, normal close/native tray Quit and no orphan helper; install the
+new package and, on the acceptance path, launch its signed GUI with preserved Off
+**before** the fixture built against that candidate may write anything. Verify local account/Off preservation, set On and exercise
+the new signed GUI's authenticated packaged helper/relay readiness and normal Quit.
+Only the initial fixture may perform email login; preservation checks are local and
+never refresh or reseed. Cleanup loads the existing registration tracker and invokes
+`DesktopLogoutOrchestrator`. Successful post-helper cleanup requires the persisted,
+account-matching registration before logout and its confirmed removal afterward;
+a missing record is not proof that nothing needs deletion. After initial seeding,
+in-process completion, errors and `SystemExit` unwind through the cleanup scope:
+stop only owned GUI groups and attempt unregistration while bus/keyring/home remain.
+Only successful cleanup and package removal permit success JSON. Never invalidate
+all account sessions. Failed cleanup, Actions cancellation, step timeout or VM loss
+can bypass or interrupt that scope and leave a QA-only bridge registration; no guaranteed teardown
+is claimed. Failed disposable-VM package residue also remains bounded. Never accept
+an interrupted or failed job as evidence.
+
+GNOME closes the process-owned native window without a tray host. KDE right-clicks
+the actual accessible app tray icon and requires a visible Plasma-PID-owned popup.
+Read-only advertised menu metadata must end in enabled `Quit Sesori`, including the
+DBusMenu protocol's `enabled=true` default when that property is omitted. Normal
+End/Return keyboard navigation activates that host action. Do not capture authenticated pixels,
+use copied row coordinates, inject DBusMenu events or substitute forced termination.
+This is keyboard-activation evidence, not a new pointer/visual qualification claim.
+Record the existing tray-disposed diagnostic as a boolean if observed; passing Quit
+must not conceal it as a warning-free run.
+
+Accept only successful post-merge native results from both CPUs. Mocked contracts,
+fixture analysis or a green PR do not qualify account restoration. These virtual
+Ubuntu sessions do not establish actual OS-login/autostart, unavailable Secret Service,
+KWallet or other nominated distro coverage. Same-source packages establish replacement
+and persistence, not code/schema migration. Those gates and stable admission stay open.
+No OAuth/browser/MFA login-flow qualification is claimed.
+
 ### Private interactive Linux diagnostics
 
 `Desktop Native Qualification` has a manual-only `linux-interactive-debug` mode for

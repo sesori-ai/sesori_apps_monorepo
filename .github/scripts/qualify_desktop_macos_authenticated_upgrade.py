@@ -17,6 +17,7 @@ import time
 import urllib.error
 import urllib.request
 
+from desktop_qa_credentials import QaCredentials, load_qa_credentials
 from package_desktop_macos import execute
 from qualify_desktop_macos_upgrade import (
     APPLICATION,
@@ -42,8 +43,6 @@ from qualify_desktop_macos_upgrade import (
 
 
 AUTH_ENDPOINT = "https://api.sesori.com/auth/email"
-AUTH_EMAIL_ENVIRONMENT_KEY = "SESORI_DESKTOP_QA_EMAIL"
-AUTH_PASSWORD_ENVIRONMENT_KEY = "SESORI_DESKTOP_QA_PASSWORD"
 KEYCHAIN_SERVICE = "com.sesori.desktop"
 KEYCHAIN_ACCOUNTS = ("access_token", "refresh_token", "auth_user")
 PERSISTED_APP_LOG = SUPPORT_ROOT / "logs/app.log"
@@ -211,12 +210,6 @@ def write_qualification_cleanup_progress(*, output: Path, completed: bool) -> No
 
 
 @dataclass(frozen=True)
-class QaCredentials:
-    email: str
-    password: str
-
-
-@dataclass(frozen=True)
 class KeychainSession:
     access_token: str
     refresh_token: str
@@ -244,16 +237,6 @@ def capture_log_cursor(*, path: Path) -> LogCursor | None:
     except FileNotFoundError:
         return None
     return LogCursor(device=status.st_dev, inode=status.st_ino, offset=status.st_size)
-
-
-def load_qa_credentials() -> QaCredentials:
-    # Consume once, then remove both values before any child process is launched.
-    email = os.environ.pop(AUTH_EMAIL_ENVIRONMENT_KEY, "")
-    password = os.environ.pop(AUTH_PASSWORD_ENVIRONMENT_KEY, "")
-    require(bool(email.strip()), f"{AUTH_EMAIL_ENVIRONMENT_KEY} is required")
-    require(bool(password), f"{AUTH_PASSWORD_ENVIRONMENT_KEY} is required")
-    require("\n" not in email and "\n" not in password, "QA credentials must be single-line values")
-    return QaCredentials(email=email, password=password)
 
 
 def _jwt_expiration(token: str) -> int:

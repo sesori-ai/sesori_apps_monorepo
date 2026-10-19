@@ -64,7 +64,7 @@ Linux consequently exports no usable menu, and manual `OpenContextMenu` is unsup
 owner, persistence or macOS/Windows behavior is added.
 
 On 2026-10-15 the user approved landing this focused fix with tests, then obtaining
-native visual and upgrade proof from fresh signed builds. #2002 resumes as 11.i.b;
+native visual and upgrade proof from fresh signed builds. #2002 delivered 11.i.b;
 its old `1021/1022` package bytes cannot be repaired in place or used to claim the fix.
 The user then approved two separately compiled signed versions of the corrected source
 `0e076d27cb928e3ee802d6e650efc4097ba5fb55`, selected through producers `38774801356`
@@ -75,12 +75,37 @@ The native gate covers credential-free x64 GNOME/Wayland and ARM64 KDE/X11, encr
 fixture persistence and login-registration roundtrip. KDE uses the owned Plasma
 accessibility targets for real pointer clicks, captures the visible menu and clicks
 Quit; it does not substitute direct DBusMenu event dispatch for host interaction.
-GNOME has passed the corrected signed pair; KDE captures show the real menu and
-Quit item, but accessible lookup still fails. Manual `linux-interactive-debug` in
-`Desktop Native Qualification` provides bounded, credential-free native KDE diagnostics
-through scoped GitHub OIDC, admin-only Tailscale SSH and loopback VNC. It does not replace
-the automated gate or upload interactive data automatically. Real-account/session-login
-coverage follows in 11.i.c. Stable stays closed.
+Final [run `39122836416`][native-run] passed both CPUs at qualification checkout
+`5a75d4b3c01de0f1a3139bb9e0f864d1296cfe48`, from repository-root `$GITHUB_WORKSPACE`.
+Jobs: [x64 GNOME/Wayland `117662042263`][native-x64] and
+[ARM64 KDE/X11 `117662042236`][native-arm64]; #2002 merged.
+
+[native-run]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39122836416
+[native-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39122836416/job/117662042263
+[native-arm64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39122836416/job/117662042236
+
+All four anonymous windows and both genuine KDE menus were inspected. Original signed
+167→168 bytes passed normal Quit/no orphan helper, real Secret Service/encrypted SQLite
+continuity, login-registration roundtrip and package cleanup. KDE's pre-existing
+tray-disposed diagnostic remains recorded, not a warning-free quality claim.
+Private `linux-interactive-debug` and #2019's canonical skill/Claude shim are delivered;
+scoped OIDC, admin SSH and loopback VNC remain credential-free and never waive acceptance.
+
+11.i.c.a adds main-only authenticated replacement using `qa@sesori.com`, credentials
+only in the exercise step and one serialized account/relay slot across Linux and macOS.
+The current qualification checkout supplies one nonshipping typed auth/persistence
+fixture, compiled separately against each candidate's locked product source/APIs;
+it does not use a historical fixture from each producer. Login seeds only the old
+package; the newer signed GUI opens preserved data before its fixture can change intent.
+Exercise previous On→Off, replace, then current Off→On, normal GNOME close and native
+KDE tray Quit.
+Authenticated pixels and raw app/bridge/auth output are not uploaded. Linux uses real
+GNOME Keyring in native x64 GNOME/Wayland and ARM64 KDE/X11 sessions. Tooling/mocked
+contracts do not establish acceptance; dispatch both CPUs from merged main.
+11.i.c.b retains actual OS-login, unavailable Secret Service, remaining nominated
+native distros and source/schema migration gates. Same-source inputs cannot prove the
+last gate; no host, signing-policy, publication or installed-Mac change is authorized
+merely by this tooling. Stable stays closed.
 Keep the existing release rollover: QA uses retained signed producer artifacts, not
 historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
 recreated release or silent same-version substitution.

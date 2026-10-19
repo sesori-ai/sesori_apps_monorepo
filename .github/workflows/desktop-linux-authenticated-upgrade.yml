@@ -1,0 +1,147 @@
+name: Authenticated Linux desktop replacement
+
+# Main-only manual entry is owned by Desktop Native Qualification, never PR execution.
+on:
+  workflow_call:
+    inputs:
+      previous_run:
+        required: true
+        type: string
+      current_run:
+        required: true
+        type: string
+    secrets:
+      SESORI_DESKTOP_QA_EMAIL:
+        required: true
+      SESORI_DESKTOP_QA_PASSWORD:
+        required: true
+
+permissions:
+  contents: read
+  actions: read
+
+jobs:
+  desktop:
+    if: github.event_name == 'workflow_dispatch' && github.ref == 'refs/heads/main'
+    strategy:
+      fail-fast: false
+      # Both CPUs use one dedicated production QA account and one relay bridge slot.
+      max-parallel: 1
+      matrix:
+        include:
+          - runner: ubuntu-24.04
+            architecture: x64
+            desktop: gnome-wayland
+          - runner: ubuntu-24.04-arm
+            architecture: arm64
+            desktop: kde-x11
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 45
+    env:
+      CI: 'true'
+      FLUTTER_SUPPRESS_ANALYTICS: 'true'
+    steps:
+      - name: Require explicit retained signed producer pair
+        env:
+          PREVIOUS_RUN: ${{ inputs.previous_run }}
+          CURRENT_RUN: ${{ inputs.current_run }}
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]]
+          [[ "$PREVIOUS_RUN" =~ ^[1-9][0-9]*$ && "$CURRENT_RUN" =~ ^[1-9][0-9]*$ && "$PREVIOUS_RUN" != "$CURRENT_RUN" ]] || {
+            echo 'Select two distinct retained signed Linux producer runs; no default or latest substitution.'
+            exit 1
+          }
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+          architecture: ${{ matrix.architecture }}
+      - name: Verify focused tooling contracts
+        run: |
+          PYTHONPATH=.github/scripts python -m unittest test_qualify_desktop_linux_authenticated_upgrade
+      - name: Install native session and build tools before credentials
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo apt-get update
+          sudo apt-get install --yes --no-install-recommends \
+            clang cmake ninja-build pkg-config libgtk-3-dev liblzma-dev libstdc++-12-dev \
+            libsecret-1-dev libx11-dev libxi-dev dpkg-dev rpm gnupg \
+            dbus-x11 python3-dbus python3-pyatspi gnome-keyring libsecret-tools \
+            gnome-shell plasma-desktop plasma-workspace kwin-x11 \
+            xvfb xauth wmctrl xdotool x11-utils mesa-utils
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.previous_run }}
+          pattern: desktop-linux-*
+          path: build/linux-authenticated-producers/previous
+      - uses: actions/download-artifact@v4
+        with:
+          github-token: ${{ github.token }}
+          run-id: ${{ inputs.current_run }}
+          pattern: desktop-linux-*
+          path: build/linux-authenticated-producers/current
+      - name: Verify original signed producer inputs
+        id: inputs
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PREVIOUS_RUN: ${{ inputs.previous_run }}
+          CURRENT_RUN: ${{ inputs.current_run }}
+        run: |
+          python .github/scripts/qualify_desktop_linux_session.py prepare \
+            --previous "$PREVIOUS_RUN" --current "$CURRENT_RUN" --tooling-sha "$GITHUB_SHA" \
+            --inputs build/linux-authenticated-producers --output build/linux-authenticated-inputs
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.inputs.outputs.previous_source }}
+          path: .qa-previous
+          persist-credentials: false
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ steps.inputs.outputs.current_source }}
+          path: .qa-current
+          persist-credentials: false
+      - name: Bootstrap pinned native SDK
+        run: |
+          for source in .qa-previous .qa-current; do
+            diff <(grep '^flutter ' .tool-versions) <(grep '^flutter ' "$source/.tool-versions")
+          done
+          python .github/scripts/qualify_desktop.py bootstrap \
+            --arch '${{ matrix.architecture }}' --sdk-dir "$RUNNER_TEMP/linux-authenticated-flutter"
+      - name: Build nonshipping auth fixtures against each corresponding source
+        run: |
+          for candidate in previous current; do
+            (
+              cd ".qa-$candidate/client"
+              flutter pub get --enforce-lockfile
+              cd desktop
+              flutter build linux --release --no-pub \
+                --target "$GITHUB_WORKSPACE/client/desktop/test/native/packaged_authenticated_probe.dart"
+            )
+            mkdir -p "build/linux-authenticated-probes/$candidate"
+            cp -a ".qa-$candidate/client/desktop/build/linux/${{ matrix.architecture }}/release/bundle/." \
+              "build/linux-authenticated-probes/$candidate/"
+          done
+      - name: Exercise real account restoration and helper On Off through replacement
+        timeout-minutes: 15
+        env:
+          SESORI_DESKTOP_QA_EMAIL: ${{ secrets.SESORI_DESKTOP_QA_EMAIL }}
+          SESORI_DESKTOP_QA_PASSWORD: ${{ secrets.SESORI_DESKTOP_QA_PASSWORD }}
+        run: |
+          python .github/scripts/qualify_desktop_linux_authenticated_upgrade.py exercise \
+            --inputs build/linux-authenticated-inputs --probes build/linux-authenticated-probes \
+            --desktop '${{ matrix.desktop }}' --architecture '${{ matrix.architecture }}' \
+            --output build/linux-authenticated-evidence
+      - name: Retain only bounded account-free results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: desktop-linux-authenticated-${{ matrix.architecture }}-${{ matrix.desktop }}
+          path: |
+            build/linux-authenticated-evidence/result.json
+            build/linux-authenticated-evidence/failure.json
+          if-no-files-found: warn
+          retention-days: 14
