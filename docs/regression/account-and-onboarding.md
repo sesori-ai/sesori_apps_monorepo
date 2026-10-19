@@ -84,6 +84,10 @@ participates.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.
+- Shared client bodyless DELETE requests, including bridge removal and desktop
+  logout unregistration, do not implicitly declare a JSON request body. Keep
+  authorization and explicit content types intact, and retain JSON defaults for
+  JSON-writing methods; an empty DELETE must not fail as malformed JSON.
 - Bridge registration sends a host key, a salted SHA-256 of the operating
   system's machine identifier (never the raw identifier), so a reinstall on the
   same computer that lost its stored bridge id reuses that computer's existing

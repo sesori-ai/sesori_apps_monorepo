@@ -42,13 +42,15 @@ replacement is not code/schema migration or actual OS-login evidence. KDE's exis
 tray-disposed diagnostic remains recorded. Restricted Tailscale diagnostics and
 #2019's canonical runbook/Claude shim are delivered, without account/signing credentials
 or a qualification waiver.
-11.i.c.a/#2020 and diagnostic follow-up #2021 are merged. Main rerun `39232331204`
-again completed all four signed-GUI On/Off launches per CPU, then identified
-`registrationNotCleared` at `current-onToLogout` on both. The local logout outcome
-completed, but the account-matching persisted registration remained; cleanup and
-package-removal acceptance remain absent. The nonshipping fixture now observes the
-existing repository's deletion result and reports only a closed category plus bounded
-HTTP status when available. No extra request, production fix or cleanup waiver.
+11.i.c.a/#2020 and diagnostic follow-ups #2021/#2022 are merged. Main rerun `39298827266`
+completed all four signed-GUI On/Off launches per CPU, then both reported
+`bridgeDeletionHttpFailed` / HTTP 400 at `current-onToLogout`. Cleanup and package-removal
+acceptance remain absent. A credential-free Fastify 5.8.5 fixture reproduces an empty
+DELETE rejected before its handler when the client implicitly declares JSON. The shared
+HTTP client now omits that default header for bodyless DELETE, preserving authorization,
+explicit content types, JSON writes and existing logout ownership. A new increasing
+signed current producer must contain this production fix before native acceptance;
+original builds 167→168 remain unchanged and cannot qualify it. No extra request or waiver.
 11.i.c.b retains actual session-login, unavailable Secret Service, remaining distro
 and source/schema migration gates.
 Stable remains closed; AppImage, website and stable publication follow these gates.

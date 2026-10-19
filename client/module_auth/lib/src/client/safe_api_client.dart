@@ -10,7 +10,6 @@ enum HttpMethod(final String dioName) {
   put("PUT"),
   patch("PATCH"),
   delete("DELETE"),
-  ;
 }
 
 abstract class SafeApiClient() {
@@ -60,7 +59,7 @@ abstract class SafeApiClient() {
     bool logBody,
   });
 
-  /// If [contentType] is null, [ContentType.json] will be used.
+  /// DELETE sends no body. A null [contentType] adds no Content-Type header.
   Future<ApiResponse<T>> delete<T>(
     Uri url, {
     // ignore: no_slop_linter/prefer_specific_type, json parsing callback
