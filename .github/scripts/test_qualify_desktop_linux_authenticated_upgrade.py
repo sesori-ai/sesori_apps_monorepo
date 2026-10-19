@@ -176,7 +176,7 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
                         "FAIL onToLogout bridgeDeletionHttpFailed 403 private-token\n",
                         "FAIL cleanup bridgeDeletionHttpFailed 403\n",
                         "FAIL onToLogout registrationNotCleared 403\n"):
-            with self.subTest(receipt_kind=receipt.split(" ")[2]), \
+            with self.subTest(receipt=receipt), \
                     self.assertRaises(qualification.NativeProbeFailure) as error:
                 qualification.require_probe_success(exit_code=1, receipt=receipt,
                                                     operation=qualification.ProbePhase.ON_TO_LOGOUT)

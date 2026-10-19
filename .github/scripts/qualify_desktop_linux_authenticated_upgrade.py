@@ -51,6 +51,7 @@ class ProbeFailureReason(StrEnum):
     LOGOUT_STOP_FAILED = "logoutStopFailed"
     LOGOUT_SESSION_CLEAR_FAILED = "logoutSessionClearFailed"
     REGISTRATION_NOT_CLEARED = "registrationNotCleared"
+    BRIDGE_DELETION_PENDING = "bridgeDeletionPending"
     BRIDGE_DELETION_NOT_AUTHENTICATED = "bridgeDeletionNotAuthenticated"
     BRIDGE_DELETION_HTTP_FAILED = "bridgeDeletionHttpFailed"
     BRIDGE_DELETION_INVALID_RESPONSE = "bridgeDeletionInvalidResponse"

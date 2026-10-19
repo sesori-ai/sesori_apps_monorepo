@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -37,7 +39,7 @@ void main() {
   late _Logout logout;
   late bool locallyValid;
   late BridgeRegistrationRecord? registration;
-  late Object? deletionFailure;
+  late probe.AuthenticatedProbeDeletionDiagnostic? deletionDiagnostic;
 
   Future<void> unregister({required String accountId, required probe.AuthenticatedProbePhase phase}) =>
       probe.unregisterAndLogoutProbe(
@@ -45,7 +47,7 @@ void main() {
         phase: phase,
         status: status,
         logout: logout,
-        readDeletionFailure: () => deletionFailure,
+        readDeletionDiagnostic: () => deletionDiagnostic,
       );
 
   setUpAll(() => registerFallbackValue(BridgeProcessDesiredState.off));
@@ -56,7 +58,7 @@ void main() {
     logout = _Logout();
     locallyValid = true;
     registration = _registration;
-    deletionFailure = null;
+    deletionDiagnostic = null;
     when(() => auth.currentState).thenReturn(const AuthState.authenticated(user: _user));
     when(() => auth.hasLocallyValidSession()).thenAnswer((_) async => locallyValid);
     when(() => auth.restoreLocalSession()).thenAnswer((_) async => true);
@@ -263,15 +265,18 @@ void main() {
     when(() => api.deleteBridge(bridgeId: _registration.bridgeId)).thenAnswer((_) async => ApiResponse.error(rejected));
     final response = await repository.deleteBridge(bridgeId: _registration.bridgeId);
     expect(response, isA<ErrorResponse<void>>().having((value) => value.error, "error", same(rejected)));
-    expect(repository.deletionFailure, same(rejected));
+    expect(
+      repository.deletionDiagnostic,
+      isA<probe.AuthenticatedProbeDeletionError>().having((value) => value.innerError, "cause", same(rejected)),
+    );
     when(() => api.deleteBridge(bridgeId: _registration.bridgeId)).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "fixture-private absent")),
     );
     expect(await repository.deleteBridge(bridgeId: _registration.bridgeId), isA<SuccessResponse<void>>());
-    expect(repository.deletionFailure, isNull);
+    expect(repository.deletionDiagnostic, isNull);
     when(() => api.deleteBridge(bridgeId: _registration.bridgeId)).thenAnswer((_) async => ApiResponse.success(null));
     expect(await repository.deleteBridge(bridgeId: _registration.bridgeId), isA<SuccessResponse<void>>());
-    expect(repository.deletionFailure, isNull);
+    expect(repository.deletionDiagnostic, isNull);
     verify(() => api.deleteBridge(bridgeId: _registration.bridgeId)).called(3);
   });
 
@@ -281,13 +286,45 @@ void main() {
     final original = StateError("fixture-private response");
     when(() => api.deleteBridge(bridgeId: _registration.bridgeId)).thenThrow(original);
     await expectLater(repository.deleteBridge(bridgeId: _registration.bridgeId), throwsA(same(original)));
-    expect(repository.deletionFailure, same(original));
+    expect(
+      repository.deletionDiagnostic,
+      isA<probe.AuthenticatedProbeDeletionError>().having((value) => value.innerError, "cause", same(original)),
+    );
+    verify(() => api.deleteBridge(bridgeId: _registration.bridgeId)).called(1);
+  });
+
+  test("unfinished deletion stays distinct when local logout returns before the request", () async {
+    final api = _BridgeApi();
+    final repository = probe.AuthenticatedProbeBridgeRepository(api: api);
+    final response = Completer<ApiResponse<void>>();
+    when(() => api.deleteBridge(bridgeId: _registration.bridgeId)).thenAnswer((_) => response.future);
+    final pending = repository.deleteBridge(bridgeId: _registration.bridgeId);
+    when(() => logout.logoutCurrentDevice()).thenAnswer((_) async => DesktopLogoutOutcome.completed);
+    try {
+      expect(repository.deletionDiagnostic, isA<probe.AuthenticatedProbeDeletionPending>());
+      await expectLater(
+        probe.unregisterAndLogoutProbe(
+          accountId: _accountId,
+          phase: probe.AuthenticatedProbePhase.onToLogout,
+          status: status,
+          logout: logout,
+          readDeletionDiagnostic: () => repository.deletionDiagnostic,
+        ),
+        _throwsFailure(reason: probe.AuthenticatedProbeFailureReason.bridgeDeletionPending),
+      );
+      expect(registration, _registration);
+    } finally {
+      response.complete(ApiResponse.success(null));
+      await pending;
+    }
+    expect(repository.deletionDiagnostic, isNull);
+    expect(registration, _registration);
     verify(() => api.deleteBridge(bridgeId: _registration.bridgeId)).called(1);
   });
 
   test("retained registration surfaces the actual deletion failure without accepting logout", () async {
     final original = ApiError.nonSuccessCode(errorCode: 403, rawErrorString: "fixture-private response");
-    deletionFailure = original;
+    deletionDiagnostic = probe.AuthenticatedProbeDeletionError(innerError: original);
     when(() => logout.logoutCurrentDevice()).thenAnswer((_) async => DesktopLogoutOutcome.completed);
     await expectLater(
       unregister(accountId: _accountId, phase: probe.AuthenticatedProbePhase.onToLogout),

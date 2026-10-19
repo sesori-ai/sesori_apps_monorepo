@@ -255,8 +255,12 @@ Native fixture failures add a closed `probeFailureReason` check/logout-outcome c
 the failure envelope. Match the whole phase-bound receipt; malformed or unknown receipts
 map to `unexpected`, never copied text. The nonshipping fixture observes the existing
 bridge repository's deletion response/error without changing requests, idempotent 404
-handling or production logout ownership. A retained registration can expose a closed
-unauthenticated, HTTP, invalid-response, transport or unexpected-deletion category.
+handling or production logout ownership. A retained registration reports
+`bridgeDeletionPending` if the repository operation is still awaiting a result after
+local logout completes; this observes an unfinished operation, not a specific timeout
+or transport cause, and adds no duplicate deadline or timer. A settled deletion error
+can expose a closed unauthenticated, HTTP, invalid-response, transport or
+unexpected-deletion category.
 HTTP rejection receipts may add `probeHttpStatus`, a whole 100–599 integer; reject
 wrong phases, appended content and malformed/out-of-range statuses. Original typed
 causes and stacks remain private. Distinguish missing registration, incomplete logout,
