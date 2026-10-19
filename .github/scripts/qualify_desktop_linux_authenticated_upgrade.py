@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import platform
+import re
 import signal
 import subprocess
 import sys
@@ -50,6 +51,11 @@ class ProbeFailureReason(StrEnum):
     LOGOUT_STOP_FAILED = "logoutStopFailed"
     LOGOUT_SESSION_CLEAR_FAILED = "logoutSessionClearFailed"
     REGISTRATION_NOT_CLEARED = "registrationNotCleared"
+    BRIDGE_DELETION_NOT_AUTHENTICATED = "bridgeDeletionNotAuthenticated"
+    BRIDGE_DELETION_HTTP_FAILED = "bridgeDeletionHttpFailed"
+    BRIDGE_DELETION_INVALID_RESPONSE = "bridgeDeletionInvalidResponse"
+    BRIDGE_DELETION_TRANSPORT_FAILED = "bridgeDeletionTransportFailed"
+    BRIDGE_DELETION_UNEXPECTED = "bridgeDeletionUnexpected"
     SESSION_NOT_CLEARED = "sessionNotCleared"
     PRIVATE_INPUT_MISSING = "privateInputMissing"
     UNEXPECTED = "unexpected"
@@ -61,9 +67,21 @@ class NativeProbeFailure(RuntimeError):
         super().__init__(f"Native authenticated fixture failed: {reason}")
 
 
+class NativeProbeHttpFailure(NativeProbeFailure):
+    def __init__(self, *, status_code: int):
+        self.status_code = status_code
+        super().__init__(reason=ProbeFailureReason.BRIDGE_DELETION_HTTP_FAILED)
+
+
 def require_probe_success(*, exit_code: int, receipt: str, operation: ProbePhase) -> None:
     if exit_code == 0 and receipt == f"PASS {operation}\n":
         return
+    http_failure = re.fullmatch(
+        rf"FAIL {re.escape(operation)} {ProbeFailureReason.BRIDGE_DELETION_HTTP_FAILED} ([1-5][0-9]{{2}})\n",
+        receipt,
+    )
+    if http_failure:
+        raise NativeProbeHttpFailure(status_code=int(http_failure[1]))
     # Compare whole receipts against the closed vocabulary; never echo unknown content.
     reason = next((reason for reason in ProbeFailureReason if receipt == f"FAIL {operation} {reason}\n"),
                   ProbeFailureReason.UNEXPECTED)
@@ -74,6 +92,8 @@ def public_failure_evidence(*, phase: str, cause: Exception, observations: list)
     evidence = {"phase": phase, "errorType": type(cause).__name__, "completedObservations": observations}
     if isinstance(cause, NativeProbeFailure):
         evidence["probeFailureReason"] = cause.reason
+    if isinstance(cause, NativeProbeHttpFailure):
+        evidence["probeHttpStatus"] = cause.status_code
     return evidence
 
 

@@ -253,9 +253,16 @@ No authenticated capture, OCR, remote desktop, raw app/bridge/auth log or home u
 The artifact allowlist contains only bounded `result.json` and `failure.json`.
 Native fixture failures add a closed `probeFailureReason` check/logout-outcome code to
 the failure envelope. Match the whole phase-bound receipt; malformed or unknown receipts
-map to `unexpected`, never copied text. Original errors/stacks remain in the private
-home. Distinguish a missing registration, incomplete logout and a retained record without
-uploading account identity, response bodies, error messages or log excerpts.
+map to `unexpected`, never copied text. The nonshipping fixture observes the existing
+bridge repository's deletion response/error without changing requests, idempotent 404
+handling or production logout ownership. A retained registration can expose a closed
+unauthenticated, HTTP, invalid-response, transport or unexpected-deletion category.
+HTTP rejection receipts may add `probeHttpStatus`, a whole 100–599 integer; reject
+wrong phases, appended content and malformed/out-of-range statuses. Original typed
+causes and stacks remain private. Distinguish missing registration, incomplete logout,
+retained registration and rejected deletion without uploading account identity, URLs,
+response bodies, error messages or log excerpts. None of these diagnostics accepts a
+failed cleanup, and no extra deletion request is issued.
 
 The current qualification checkout's nonshipping fixture is compiled separately
 against each candidate's locked product source/APIs, using its `AuthSession` and
