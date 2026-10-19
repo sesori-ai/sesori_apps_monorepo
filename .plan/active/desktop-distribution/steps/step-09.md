@@ -114,6 +114,22 @@ Only the allowlisted account-free failure JSON was retrieved. A focused fixture 
 adds closed check/logout-outcome codes, not raw error text, before another main-only run.
 These partial observations do not complete authenticated acceptance or stable admission.
 
+After diagnostic follow-up #2021 merged, [rerun `39232331204`][authenticated-diagnostic-run]
+used qualification checkout `e71263b53d7764e8cfa76c9bb2328fbcfe06c2c0` and the same
+original signed pair. [x64 `117993570864`][authenticated-diagnostic-x64] and
+[ARM64 `117993570892`][authenticated-diagnostic-arm64] again completed all four launches,
+then both reported `registrationNotCleared` at `current-onToLogout`: the registration
+was present and account-matching, and the local logout outcome completed, but its
+record remained. The HTTP/deletion cause is not yet established. Observe the existing
+repository's result inside the nonshipping fixture and report only its closed error
+category and bounded HTTP status when available. Do not change production logout,
+make another deletion request or relax acceptance to compensate. Cleanup, package
+removal and stable admission remain unaccepted; authenticated logs/pixels stay private.
+
+[authenticated-diagnostic-run]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39232331204
+[authenticated-diagnostic-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39232331204/job/117993570864
+[authenticated-diagnostic-arm64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39232331204/job/117993570892
+
 [authenticated-first-run]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124
 [authenticated-first-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124/job/117963200777
 [authenticated-first-arm64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124/job/117963200705

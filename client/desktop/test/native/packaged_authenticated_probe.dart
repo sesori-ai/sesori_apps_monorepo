@@ -30,6 +30,12 @@ enum AuthenticatedProbeFailureReason() {
   logoutStopFailed,
   logoutSessionClearFailed,
   registrationNotCleared,
+  bridgeDeletionPending,
+  bridgeDeletionNotAuthenticated,
+  bridgeDeletionHttpFailed,
+  bridgeDeletionInvalidResponse,
+  bridgeDeletionTransportFailed,
+  bridgeDeletionUnexpected,
   sessionNotCleared,
   privateInputMissing,
   unexpected,
@@ -40,9 +46,58 @@ class const AuthenticatedProbeFailure({required final AuthenticatedProbeFailureR
   String toString() => "AuthenticatedProbeFailure: ${reason.name}";
 }
 
+/// Absence means no pending/error observation, not confirmed registration cleanup.
+sealed class const AuthenticatedProbeDeletionDiagnostic();
+
+class const AuthenticatedProbeDeletionPending() extends AuthenticatedProbeDeletionDiagnostic;
+
+class const AuthenticatedProbeDeletionError({required final Object innerError})
+    extends AuthenticatedProbeDeletionDiagnostic;
+
+/// Observes the real repository result without changing requests, 404 handling or logout ownership.
+class AuthenticatedProbeBridgeRepository({required super.api}) extends BridgeRepository {
+  AuthenticatedProbeDeletionDiagnostic? _deletionDiagnostic;
+
+  AuthenticatedProbeDeletionDiagnostic? get deletionDiagnostic => _deletionDiagnostic;
+
+  @override
+  Future<ApiResponse<void>> deleteBridge({required String bridgeId}) async {
+    _deletionDiagnostic = const AuthenticatedProbeDeletionPending();
+    try {
+      final response = await super.deleteBridge(bridgeId: bridgeId);
+      _deletionDiagnostic = switch (response) {
+        ErrorResponse(:final error) => AuthenticatedProbeDeletionError(innerError: error),
+        SuccessResponse() => null,
+      };
+      return response;
+    } on Object catch (error) {
+      _deletionDiagnostic = AuthenticatedProbeDeletionError(innerError: error);
+      rethrow;
+    }
+  }
+}
+
+class AuthenticatedProbeDeletionFailure({required final Object innerError}) extends AuthenticatedProbeFailure {
+  this : super(reason: _deletionFailureReason(error: innerError));
+}
+
+AuthenticatedProbeFailureReason _deletionFailureReason({required Object error}) => switch (error) {
+  NotAuthenticatedError() => AuthenticatedProbeFailureReason.bridgeDeletionNotAuthenticated,
+  NonSuccessCodeError() => AuthenticatedProbeFailureReason.bridgeDeletionHttpFailed,
+  JsonParsingError() || EmptyResponseError() => AuthenticatedProbeFailureReason.bridgeDeletionInvalidResponse,
+  DartHttpClientError() ||
+  SocketException() ||
+  HandshakeException() => AuthenticatedProbeFailureReason.bridgeDeletionTransportFailed,
+  _ => AuthenticatedProbeFailureReason.bridgeDeletionUnexpected,
+};
+
 String authenticatedProbeFailureReceipt({required AuthenticatedProbePhase phase, required Object error}) {
   final reason = error is AuthenticatedProbeFailure ? error.reason : AuthenticatedProbeFailureReason.unexpected;
-  return "FAIL ${phase.name} ${reason.name}\n";
+  final status = switch (error) {
+    AuthenticatedProbeDeletionFailure(innerError: NonSuccessCodeError(:final errorCode)) => " $errorCode",
+    _ => "",
+  };
+  return "FAIL ${phase.name} ${reason.name}$status\n";
 }
 
 Future<String> exerciseAuthenticatedProbe({
@@ -115,6 +170,7 @@ Future<void> unregisterAndLogoutProbe({
   required AuthenticatedProbePhase phase,
   required BridgeStatusTracker status,
   required DesktopLogoutOrchestrator logout,
+  required AuthenticatedProbeDeletionDiagnostic? Function() readDeletionDiagnostic,
 }) async {
   await status.initialize();
   final registration = status.registeredBridge;
@@ -137,10 +193,16 @@ Future<void> unregisterAndLogoutProbe({
     case DesktopLogoutOutcome.localSessionClearFailed:
       throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.logoutSessionClearFailed);
   }
-  _require(
-    condition: status.registeredBridge == null,
-    reason: AuthenticatedProbeFailureReason.registrationNotCleared,
-  );
+  if (status.registeredBridge != null) {
+    switch (readDeletionDiagnostic()) {
+      case AuthenticatedProbeDeletionPending():
+        throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.bridgeDeletionPending);
+      case AuthenticatedProbeDeletionError(:final innerError):
+        throw AuthenticatedProbeDeletionFailure(innerError: innerError);
+      case null:
+        throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.registrationNotCleared);
+    }
+  }
 }
 
 Future<void> _requireIntent({
@@ -176,13 +238,18 @@ Future<void> main() async {
         phase: phase,
         auth: getIt<AuthSession>(),
         instance: getIt<DesktopInstanceService>(),
-        unregisterAndLogout: ({required String accountId, required AuthenticatedProbePhase phase}) =>
-            unregisterAndLogoutProbe(
-              accountId: accountId,
-              phase: phase,
-              status: getIt<BridgeStatusTracker>(),
-              logout: getIt<DesktopLogoutOrchestrator>(),
-            ),
+        unregisterAndLogout: ({required String accountId, required AuthenticatedProbePhase phase}) async {
+          final repository = AuthenticatedProbeBridgeRepository(api: getIt<BridgeApi>());
+          await getIt.unregister<BridgeRepository>();
+          getIt.registerSingleton<BridgeRepository>(repository);
+          await unregisterAndLogoutProbe(
+            accountId: accountId,
+            phase: phase,
+            status: getIt<BridgeStatusTracker>(),
+            logout: getIt<DesktopLogoutOrchestrator>(),
+            readDeletionDiagnostic: () => repository.deletionDiagnostic,
+          );
+        },
         readInput: _readPrivateLine,
       );
       await File("${report.path}.account-id").writeAsString(accountId);

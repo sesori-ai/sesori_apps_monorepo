@@ -159,6 +159,38 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
             wrapped = qualification.AuthenticatedQualificationFailure(phase="current-onToLogout", cause=cause)
             self.assertIs(wrapped.cause, cause)
 
+    def test_http_failure_receipts_expose_only_an_exact_phase_and_bounded_status(self):
+        for status in (100, 403, 503, 599):
+            for exit_code in (0, 1):
+                with self.subTest(status=status, exit_code=exit_code), \
+                        self.assertRaises(qualification.NativeProbeHttpFailure) as error:
+                    qualification.require_probe_success(
+                        exit_code=exit_code, receipt=f"FAIL onToLogout bridgeDeletionHttpFailed {status}\n",
+                        operation=qualification.ProbePhase.ON_TO_LOGOUT)
+                self.assertEqual(error.exception.status_code, status)
+                self.assertEqual(error.exception.reason, qualification.ProbeFailureReason.BRIDGE_DELETION_HTTP_FAILED)
+        for receipt in ("FAIL onToLogout bridgeDeletionHttpFailed 99\n",
+                        "FAIL onToLogout bridgeDeletionHttpFailed 600\n",
+                        "FAIL onToLogout bridgeDeletionHttpFailed ４０３\n",
+                        "FAIL onToLogout bridgeDeletionHttpFailed 403\nprivate-token",
+                        "FAIL onToLogout bridgeDeletionHttpFailed 403 private-token\n",
+                        "FAIL cleanup bridgeDeletionHttpFailed 403\n",
+                        "FAIL onToLogout registrationNotCleared 403\n"):
+            with self.subTest(receipt=receipt), \
+                    self.assertRaises(qualification.NativeProbeFailure) as error:
+                qualification.require_probe_success(exit_code=1, receipt=receipt,
+                                                    operation=qualification.ProbePhase.ON_TO_LOGOUT)
+            self.assertEqual(error.exception.reason, qualification.ProbeFailureReason.UNEXPECTED)
+            self.assertNotIn("private-token", str(error.exception))
+
+    def test_http_failure_evidence_adds_only_the_bounded_status(self):
+        error = qualification.NativeProbeHttpFailure(status_code=403)
+        self.assertEqual(qualification.public_failure_evidence(
+            phase="current-onToLogout", cause=error, observations=[]), {
+                "phase": "current-onToLogout", "errorType": "NativeProbeHttpFailure", "completedObservations": [],
+                "probeFailureReason": "bridgeDeletionHttpFailed", "probeHttpStatus": 403,
+            })
+
     def test_native_failure_vocabulary_matches_the_current_dart_fixture(self):
         root = Path(__file__).parents[2]
         source = (root / "client/desktop/test/native/packaged_authenticated_probe.dart").read_text()
