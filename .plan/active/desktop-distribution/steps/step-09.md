@@ -91,7 +91,7 @@ tray-disposed diagnostic remains recorded, not a warning-free quality claim.
 Private `linux-interactive-debug` and #2019's canonical skill/Claude shim are delivered;
 scoped OIDC, admin SSH and loopback VNC remain credential-free and never waive acceptance.
 
-11.i.c.a adds main-only authenticated replacement using `qa@sesori.com`, credentials
+11.i.c.a/#2020 merged main-only authenticated replacement using `qa@sesori.com`, credentials
 only in the exercise step and one serialized account/relay slot across Linux and macOS.
 The current qualification checkout supplies one nonshipping typed auth/persistence
 fixture, compiled separately against each candidate's locked product source/APIs;
@@ -102,6 +102,22 @@ KDE tray Quit.
 Authenticated pixels and raw app/bridge/auth output are not uploaded. Linux uses real
 GNOME Keyring in native x64 GNOME/Wayland and ARM64 KDE/X11 sessions. Tooling/mocked
 contracts do not establish acceptance; dispatch both CPUs from merged main.
+
+First [authenticated run `39223070124`][authenticated-first-run] used merged qualification
+checkout `39aebedefb30b60278a27abf18bc210e8820cff0` and the original signed 167→168 pair
+above. [x64 GNOME/Wayland `117963200777`][authenticated-first-x64] and
+[ARM64 KDE/X11 `117963200705`][authenticated-first-arm64] each completed all four
+signed-GUI launches, helper-On relay readiness, helper-Off absence and normal close/Quit.
+Both then failed at `current-onToLogout`, reported only as `ValueError`; cleanup and
+package removal were not accepted. KDE still recorded the existing tray-disposed warning.
+Only the allowlisted account-free failure JSON was retrieved. A focused fixture follow-up
+adds closed check/logout-outcome codes, not raw error text, before another main-only run.
+These partial observations do not complete authenticated acceptance or stable admission.
+
+[authenticated-first-run]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124
+[authenticated-first-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124/job/117963200777
+[authenticated-first-arm64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124/job/117963200705
+
 11.i.c.b retains actual OS-login, unavailable Secret Service, remaining nominated
 native distros and source/schema migration gates. Same-source inputs cannot prove the
 last gate; no host, signing-policy, publication or installed-Mac change is authorized

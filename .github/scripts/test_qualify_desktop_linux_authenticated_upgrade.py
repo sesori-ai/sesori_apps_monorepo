@@ -121,6 +121,51 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
         self.assertIs(failure.cause, original)
         self.assertNotIn("private-token-material", str(failure))
 
+    def test_native_receipts_require_success_exit_and_only_allow_closed_phase_bound_reasons(self):
+        for phase in qualification.ProbePhase:
+            qualification.require_probe_success(exit_code=0, receipt=f"PASS {phase}\n", operation=phase)
+            for reason in qualification.ProbeFailureReason:
+                with self.subTest(phase=phase, reason=reason), \
+                        self.assertRaises(qualification.NativeProbeFailure) as error:
+                    qualification.require_probe_success(exit_code=1, receipt=f"FAIL {phase} {reason}\n",
+                                                        operation=phase)
+                self.assertEqual(error.exception.reason, reason)
+        for receipt in ("", "PASS onToLogout\n", "FAIL cleanup registrationMissing\n",
+                        "FAIL onToLogout private-token\n",
+                        "FAIL onToLogout registrationMissing\nprivate-token"):
+            with self.subTest(receipt_kind=receipt.split(" ", 1)[0]), \
+                    self.assertRaises(qualification.NativeProbeFailure) as error:
+                qualification.require_probe_success(exit_code=1, receipt=receipt,
+                                                    operation=qualification.ProbePhase.ON_TO_LOGOUT)
+            self.assertEqual(error.exception.reason, qualification.ProbeFailureReason.UNEXPECTED)
+            self.assertNotIn("private-token", str(error.exception))
+        with self.assertRaises(qualification.NativeProbeFailure) as error:
+            qualification.require_probe_success(exit_code=0, receipt="FAIL onToLogout registrationMissing\n",
+                                                operation=qualification.ProbePhase.ON_TO_LOGOUT)
+        self.assertEqual(error.exception.reason, qualification.ProbeFailureReason.REGISTRATION_MISSING)
+
+    def test_public_failure_evidence_adds_only_the_closed_reason_not_error_text_or_receipt(self):
+        original = ValueError("private-token private@example.invalid /fixture/private/home")
+        native = qualification.NativeProbeFailure(reason=qualification.ProbeFailureReason.REGISTRATION_NOT_CLEARED)
+        for cause in (original, native):
+            evidence = qualification.public_failure_evidence(phase="current-onToLogout", cause=cause, observations=[])
+            expected = {"phase": "current-onToLogout", "errorType": type(cause).__name__, "completedObservations": []}
+            if cause is native:
+                expected["probeFailureReason"] = "registrationNotCleared"
+            self.assertEqual(evidence, expected)
+            serialized = json.dumps(evidence)
+            for secret in ("private-token", "private@example.invalid", "/fixture/private/home"):
+                self.assertNotIn(secret, serialized)
+            wrapped = qualification.AuthenticatedQualificationFailure(phase="current-onToLogout", cause=cause)
+            self.assertIs(wrapped.cause, cause)
+
+    def test_native_failure_vocabulary_matches_the_current_dart_fixture(self):
+        root = Path(__file__).parents[2]
+        source = (root / "client/desktop/test/native/packaged_authenticated_probe.dart").read_text()
+        body = re.search(r"enum AuthenticatedProbeFailureReason\(\) \{([^}]+)\}", source).group(1)
+        values = set(re.findall(r"^  (\w+),$", body, re.MULTILINE))
+        self.assertEqual(values, {reason.value for reason in qualification.ProbeFailureReason})
+
     def test_current_signed_gui_opens_preserved_data_before_a_new_source_probe(self):
         source = inspect.getsource(qualification.session)
         install = source.index("current = install(candidate=Candidate.CURRENT)")

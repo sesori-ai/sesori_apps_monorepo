@@ -16,6 +16,35 @@ enum AuthenticatedProbePhase() {
   cleanup,
 }
 
+/// Closed diagnostic codes only; original errors and account data stay in the owned home.
+enum AuthenticatedProbeFailureReason() {
+  sessionAlreadyExists,
+  sessionUnavailable,
+  localRestoreFailed,
+  accountProviderChanged,
+  accountChanged,
+  intentChanged,
+  registrationMissing,
+  registrationOwnerChanged,
+  logoutPersistenceFailed,
+  logoutStopFailed,
+  logoutSessionClearFailed,
+  registrationNotCleared,
+  sessionNotCleared,
+  privateInputMissing,
+  unexpected,
+}
+
+class const AuthenticatedProbeFailure({required final AuthenticatedProbeFailureReason reason}) implements Exception {
+  @override
+  String toString() => "AuthenticatedProbeFailure: ${reason.name}";
+}
+
+String authenticatedProbeFailureReceipt({required AuthenticatedProbePhase phase, required Object error}) {
+  final reason = error is AuthenticatedProbeFailure ? error.reason : AuthenticatedProbeFailureReason.unexpected;
+  return "FAIL ${phase.name} ${reason.name}\n";
+}
+
 Future<String> exerciseAuthenticatedProbe({
   required AuthenticatedProbePhase phase,
   required AuthSession auth,
@@ -27,16 +56,22 @@ Future<String> exerciseAuthenticatedProbe({
   // Initial login takes email/password; later phases take only its returned stable account id.
   final input = readInput();
   if (phase == AuthenticatedProbePhase.loginOn) {
-    _require(condition: !await auth.hasLocallyValidSession(), message: "Fixture already has a session");
+    _require(
+      condition: !await auth.hasLocallyValidSession(),
+      reason: AuthenticatedProbeFailureReason.sessionAlreadyExists,
+    );
     await auth.loginWithEmail(email: input, password: readInput());
   } else {
     // Cleanup must still attempt unregistration after a failed preservation check.
     if (phase != AuthenticatedProbePhase.cleanup) {
-      _require(condition: await auth.hasLocallyValidSession(), message: "Persisted session is unavailable");
+      _require(
+        condition: await auth.hasLocallyValidSession(),
+        reason: AuthenticatedProbeFailureReason.sessionUnavailable,
+      );
     }
     final restored = await auth.restoreLocalSession();
     if (phase != AuthenticatedProbePhase.cleanup) {
-      _require(condition: restored, message: "Local account restoration failed");
+      _require(condition: restored, reason: AuthenticatedProbeFailureReason.localRestoreFailed);
     }
   }
   final String accountId;
@@ -45,11 +80,11 @@ Future<String> exerciseAuthenticatedProbe({
   } else {
     final state = auth.currentState;
     if (state is! AuthAuthenticated || state.user.provider != AuthProvider.email) {
-      throw StateError("Stored account is not an authenticated email account");
+      throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.accountProviderChanged);
     }
     accountId = state.user.id;
     if (phase != AuthenticatedProbePhase.loginOn) {
-      _require(condition: accountId == input, message: "Stored account differs from the initial QA login");
+      _require(condition: accountId == input, reason: AuthenticatedProbeFailureReason.accountChanged);
     }
   }
   switch (phase) {
@@ -67,7 +102,10 @@ Future<String> exerciseAuthenticatedProbe({
         await _requireIntent(instance: instance, expected: BridgeProcessDesiredState.on);
       }
       await unregisterAndLogout(accountId: accountId, phase: phase);
-      _require(condition: !await auth.hasLocallyValidSession(), message: "Fixture logout failed");
+      _require(
+        condition: !await auth.hasLocallyValidSession(),
+        reason: AuthenticatedProbeFailureReason.sessionNotCleared,
+      );
   }
   return accountId;
 }
@@ -82,16 +120,26 @@ Future<void> unregisterAndLogoutProbe({
   final registration = status.registeredBridge;
   _require(
     condition: phase != AuthenticatedProbePhase.onToLogout || registration != null,
-    message: "Registered helper has no persisted bridge record",
+    reason: AuthenticatedProbeFailureReason.registrationMissing,
   );
   _require(
     condition: registration == null || registration.accountId == accountId,
-    message: "Temporary bridge registration belongs to a different account",
+    reason: AuthenticatedProbeFailureReason.registrationOwnerChanged,
   );
   final outcome = await logout.logoutCurrentDevice();
+  switch (outcome) {
+    case DesktopLogoutOutcome.completed:
+      break;
+    case DesktopLogoutOutcome.desiredStatePersistenceFailed:
+      throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.logoutPersistenceFailed);
+    case DesktopLogoutOutcome.bridgeStopFailed:
+      throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.logoutStopFailed);
+    case DesktopLogoutOutcome.localSessionClearFailed:
+      throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.logoutSessionClearFailed);
+  }
   _require(
-    condition: outcome == DesktopLogoutOutcome.completed && status.registeredBridge == null,
-    message: "Temporary bridge unregistration/logout did not complete",
+    condition: status.registeredBridge == null,
+    reason: AuthenticatedProbeFailureReason.registrationNotCleared,
   );
 }
 
@@ -101,7 +149,7 @@ Future<void> _requireIntent({
 }) async {
   _require(
     condition: await instance.readBridgeDesiredStateForRestore() == expected,
-    message: "Persisted helper intent changed",
+    reason: AuthenticatedProbeFailureReason.intentChanged,
   );
 }
 
@@ -147,17 +195,19 @@ Future<void> main() async {
   } on Object catch (error, stackTrace) {
     // Both files remain inside the owned private home, never in the artifact allowlist.
     await File("${report.path}.private-error").writeAsString("$error\n$stackTrace\n");
-    await report.writeAsString("FAIL ${phase.name} (${error.runtimeType})\n");
+    await report.writeAsString(authenticatedProbeFailureReceipt(phase: phase, error: error));
     exit(1);
   }
 }
 
 String _readPrivateLine() {
   final value = stdin.readLineSync();
-  if (value == null || value.isEmpty) throw StateError("Missing private fixture input");
+  if (value == null || value.isEmpty) {
+    throw const AuthenticatedProbeFailure(reason: AuthenticatedProbeFailureReason.privateInputMissing);
+  }
   return value;
 }
 
-void _require({required bool condition, required String message}) {
-  if (!condition) throw StateError(message);
+void _require({required bool condition, required AuthenticatedProbeFailureReason reason}) {
+  if (!condition) throw AuthenticatedProbeFailure(reason: reason);
 }

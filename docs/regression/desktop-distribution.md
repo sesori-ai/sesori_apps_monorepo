@@ -251,6 +251,11 @@ older waiters. Authenticated outer workflows use per-run groups so their default
 slot cannot discard those requests. Other qualification modes keep existing cancellation.
 No authenticated capture, OCR, remote desktop, raw app/bridge/auth log or home upload.
 The artifact allowlist contains only bounded `result.json` and `failure.json`.
+Native fixture failures add a closed `probeFailureReason` check/logout-outcome code to
+the failure envelope. Match the whole phase-bound receipt; malformed or unknown receipts
+map to `unexpected`, never copied text. Original errors/stacks remain in the private
+home. Distinguish a missing registration, incomplete logout and a retained record without
+uploading account identity, response bodies, error messages or log excerpts.
 
 The current qualification checkout's nonshipping fixture is compiled separately
 against each candidate's locked product source/APIs, using its `AuthSession` and
