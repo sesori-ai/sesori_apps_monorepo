@@ -271,7 +271,9 @@ failed cleanup, and no extra deletion request is issued.
 The current qualification checkout's nonshipping fixture is compiled separately
 against each candidate's locked product source/APIs, using its `AuthSession` and
 desktop intent service. This is not a historical fixture from each producer, handwritten
-token rows or a replacement GUI. Initial email login returns the stable `AuthUser.id`;
+token rows or a replacement GUI. A production transport fix requires a new signed current
+producer that contains it; a newer qualification checkout against unchanged candidate
+libraries cannot qualify that fix. Initial email login returns the stable `AuthUser.id`;
 later phases compare that private id, not the opaque provider id or email. Identity
 metadata stays inside the owned home and travels through stdin, never uploaded.
 Login seeds only the older version. Exercise signed

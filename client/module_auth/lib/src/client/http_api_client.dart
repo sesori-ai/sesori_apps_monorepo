@@ -192,7 +192,8 @@ class HttpApiClient(final http.Client _client) implements SafeApiClient {
     final effectiveContentType = contentType ?? ContentType.json;
     final allHeaders = {
       ...?headers,
-      HttpHeaders.contentTypeHeader: effectiveContentType.toString(),
+      if (method != HttpMethod.delete || contentType != null)
+        HttpHeaders.contentTypeHeader: effectiveContentType.toString(),
     };
 
     try {

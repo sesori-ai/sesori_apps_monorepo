@@ -120,11 +120,28 @@ original signed pair. [x64 `117993570864`][authenticated-diagnostic-x64] and
 [ARM64 `117993570892`][authenticated-diagnostic-arm64] again completed all four launches,
 then both reported `registrationNotCleared` at `current-onToLogout`: the registration
 was present and account-matching, and the local logout outcome completed, but its
-record remained. The HTTP/deletion cause is not yet established. Observe the existing
-repository's result inside the nonshipping fixture and report only its closed error
-category and bounded HTTP status when available. Do not change production logout,
-make another deletion request or relax acceptance to compensate. Cleanup, package
-removal and stable admission remain unaccepted; authenticated logs/pixels stay private.
+record remained. Follow-up #2022 observes the existing repository operation and exposes
+only a closed category and bounded HTTP status, without extra requests or raw errors.
+
+After #2022 merged, [rerun `39298827266`][authenticated-http-run] used qualification
+checkout `1b3e1de492e3165bc700935e19ae5fdb5201b98a` and the same original signed 167→168
+pair. [x64 `118219055893`][authenticated-http-x64] and
+[ARM64 `118219055828`][authenticated-http-arm64] completed all four launches, then
+both reported `bridgeDeletionHttpFailed` / HTTP 400 at `current-onToLogout`.
+A credential-free local Fastify 5.8.5 reproduction rejects an empty DELETE carrying the
+client's implicit JSON Content-Type before its handler (`FST_ERR_CTP_EMPTY_JSON_BODY`);
+the same empty request without that header succeeds. This is local protocol evidence,
+not a retrieved native error body or authenticated cleanup acceptance.
+The shared HTTP client now omits implicit Content-Type for bodyless DELETE while keeping
+authorization, explicit content types and JSON-writing methods unchanged. Logout ordering,
+registration ownership, idempotent 404 and acceptance checks remain intact. Obtain a new
+increasing signed current producer containing the fix; the original packages cannot test
+changed production code. Cleanup, package removal and stable admission remain unaccepted;
+authenticated logs/pixels stay private.
+
+[authenticated-http-run]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39298827266
+[authenticated-http-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39298827266/job/118219055893
+[authenticated-http-arm64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39298827266/job/118219055828
 
 [authenticated-diagnostic-run]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39232331204
 [authenticated-diagnostic-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39232331204/job/117993570864
