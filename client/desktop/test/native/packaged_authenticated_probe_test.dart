@@ -24,6 +24,10 @@ const _user = AuthUser(
 );
 const _registration = BridgeRegistrationRecord(bridgeId: "fixture-bridge", accountId: _accountId);
 
+Matcher _throwsFailure({required probe.AuthenticatedProbeFailureReason reason}) => throwsA(
+  isA<probe.AuthenticatedProbeFailure>().having((failure) => failure.reason, "reason", reason),
+);
+
 void main() {
   late _Auth auth;
   late _Instance instance;
@@ -126,7 +130,7 @@ void main() {
         unregisterAndLogout: unregister,
         readInput: () => _user.id,
       ),
-      throwsStateError,
+      _throwsFailure(reason: probe.AuthenticatedProbeFailureReason.sessionUnavailable),
     );
     verifyNever(() => instance.writeBridgeDesiredState(state: any(named: "state")));
     locallyValid = true;
@@ -139,7 +143,7 @@ void main() {
         unregisterAndLogout: unregister,
         readInput: () => _user.id,
       ),
-      throwsStateError,
+      _throwsFailure(reason: probe.AuthenticatedProbeFailureReason.intentChanged),
     );
     verifyNever(() => instance.writeBridgeDesiredState(state: any(named: "state")));
   });
@@ -154,7 +158,7 @@ void main() {
         unregisterAndLogout: unregister,
         readInput: () => _user.id,
       ),
-      throwsStateError,
+      _throwsFailure(reason: probe.AuthenticatedProbeFailureReason.accountChanged),
     );
     verifyNever(() => instance.writeBridgeDesiredState(state: any(named: "state")));
   });
@@ -200,7 +204,7 @@ void main() {
         unregisterAndLogout: unregister,
         readInput: () => _user.id,
       ),
-      throwsStateError,
+      _throwsFailure(reason: probe.AuthenticatedProbeFailureReason.registrationMissing),
     );
     verifyNever(() => logout.logoutCurrentDevice());
     expect(locallyValid, isTrue);
@@ -218,14 +222,51 @@ void main() {
     registration = _registration.copyWith(accountId: "another-account");
     await expectLater(
       unregister(accountId: _user.id, phase: probe.AuthenticatedProbePhase.onToLogout),
-      throwsStateError,
+      _throwsFailure(reason: probe.AuthenticatedProbeFailureReason.registrationOwnerChanged),
     );
     verifyNever(() => logout.logoutCurrentDevice());
     registration = _registration;
     when(() => logout.logoutCurrentDevice()).thenAnswer((_) async => DesktopLogoutOutcome.completed);
     await expectLater(
       unregister(accountId: _user.id, phase: probe.AuthenticatedProbePhase.onToLogout),
-      throwsStateError,
+      _throwsFailure(reason: probe.AuthenticatedProbeFailureReason.registrationNotCleared),
+    );
+  });
+
+  test("each failed logout outcome keeps a distinct bounded diagnostic", () async {
+    for (final (outcome, reason) in [
+      (
+        DesktopLogoutOutcome.desiredStatePersistenceFailed,
+        probe.AuthenticatedProbeFailureReason.logoutPersistenceFailed,
+      ),
+      (DesktopLogoutOutcome.bridgeStopFailed, probe.AuthenticatedProbeFailureReason.logoutStopFailed),
+      (DesktopLogoutOutcome.localSessionClearFailed, probe.AuthenticatedProbeFailureReason.logoutSessionClearFailed),
+    ]) {
+      when(() => logout.logoutCurrentDevice()).thenAnswer((_) async => outcome);
+      await expectLater(
+        unregister(accountId: _user.id, phase: probe.AuthenticatedProbePhase.onToLogout),
+        _throwsFailure(reason: reason),
+      );
+      expect(registration, _registration);
+    }
+  });
+
+  test("failure receipts contain only the phase and closed reason, never unexpected error text", () {
+    for (final reason in probe.AuthenticatedProbeFailureReason.values) {
+      expect(
+        probe.authenticatedProbeFailureReceipt(
+          phase: probe.AuthenticatedProbePhase.onToLogout,
+          error: probe.AuthenticatedProbeFailure(reason: reason),
+        ),
+        "FAIL onToLogout ${reason.name}\n",
+      );
+    }
+    expect(
+      probe.authenticatedProbeFailureReceipt(
+        phase: probe.AuthenticatedProbePhase.cleanup,
+        error: StateError("fixture-token private@example.invalid /fixture/private/home\nFAIL cleanup forged"),
+      ),
+      "FAIL cleanup unexpected\n",
     );
   });
 }

@@ -37,6 +37,46 @@ class ProbePhase(StrEnum):
     CLEANUP = "cleanup"
 
 
+class ProbeFailureReason(StrEnum):
+    SESSION_ALREADY_EXISTS = "sessionAlreadyExists"
+    SESSION_UNAVAILABLE = "sessionUnavailable"
+    LOCAL_RESTORE_FAILED = "localRestoreFailed"
+    ACCOUNT_PROVIDER_CHANGED = "accountProviderChanged"
+    ACCOUNT_CHANGED = "accountChanged"
+    INTENT_CHANGED = "intentChanged"
+    REGISTRATION_MISSING = "registrationMissing"
+    REGISTRATION_OWNER_CHANGED = "registrationOwnerChanged"
+    LOGOUT_PERSISTENCE_FAILED = "logoutPersistenceFailed"
+    LOGOUT_STOP_FAILED = "logoutStopFailed"
+    LOGOUT_SESSION_CLEAR_FAILED = "logoutSessionClearFailed"
+    REGISTRATION_NOT_CLEARED = "registrationNotCleared"
+    SESSION_NOT_CLEARED = "sessionNotCleared"
+    PRIVATE_INPUT_MISSING = "privateInputMissing"
+    UNEXPECTED = "unexpected"
+
+
+class NativeProbeFailure(RuntimeError):
+    def __init__(self, *, reason: ProbeFailureReason):
+        self.reason = reason
+        super().__init__(f"Native authenticated fixture failed: {reason}")
+
+
+def require_probe_success(*, exit_code: int, receipt: str, operation: ProbePhase) -> None:
+    if exit_code == 0 and receipt == f"PASS {operation}\n":
+        return
+    # Compare whole receipts against the closed vocabulary; never echo unknown content.
+    reason = next((reason for reason in ProbeFailureReason if receipt == f"FAIL {operation} {reason}\n"),
+                  ProbeFailureReason.UNEXPECTED)
+    raise NativeProbeFailure(reason=reason)
+
+
+def public_failure_evidence(*, phase: str, cause: Exception, observations: list) -> dict:
+    evidence = {"phase": phase, "errorType": type(cause).__name__, "completedObservations": observations}
+    if isinstance(cause, NativeProbeFailure):
+        evidence["probeFailureReason"] = cause.reason
+    return evidence
+
+
 APPLICATION = "/usr/bin/sesori-desktop"
 HELPER = "/opt/sesori-desktop/bridge/bin/bridge"
 
@@ -211,8 +251,7 @@ def session(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, archi
                 env={**env, "SESORI_AUTHENTICATED_PROBE_PHASE": operation,
                      "SESORI_AUTHENTICATED_PROBE_OUTPUT": str(report)}, capture_output=True, timeout=90)
             (private / f"{phase}.log").write_text(result.stdout + result.stderr)
-            require(result.returncode == 0 and report.read_text() == f"PASS {operation}\n",
-                    f"{phase}: native auth/persistence fixture failed")
+            require_probe_success(exit_code=result.returncode, receipt=report.read_text(), operation=operation)
             support = Path(Path(str(report) + ".support-path").read_text()).resolve()
             require(support.is_relative_to(home), "Native application support escaped the disposable home")
             require(installed_helper_pid() is None, "Nonshipping fixture started a packaged helper")
@@ -351,8 +390,8 @@ def session(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, archi
             }, indent=2) + "\n")
         except Exception as error:
             # Never serialize exception text, process output, names or token-bearing data.
-            (output / "failure.json").write_text(json.dumps({"phase": phase, "errorType": type(error).__name__,
-                                                           "completedObservations": observations}, indent=2) + "\n")
+            (output / "failure.json").write_text(json.dumps(public_failure_evidence(
+                phase=phase, cause=error, observations=observations), indent=2) + "\n")
             raise AuthenticatedQualificationFailure(phase=phase, cause=error) from None
         finally:
             for process in reversed(processes):
