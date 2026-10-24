@@ -339,15 +339,20 @@ state.
   present, which was the previous behavior.
 - A session row leads with a 16-point status slot: a turning sparkle while
   running, an amber dot while waiting for the user (which wins over running),
-  a resting sparkle when unread, or nothing, so titles line up. The time sits
+  a resting sparkle when unread, or nothing, so titles line up. The harness
+  logo follows the slot, ahead of the title, in a square of the same size for
+  every harness, and screen readers hear the harness name from it. The time sits
   at the right in secondary and shows whenever the session has an updated
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, one tertiary meta line holds any state that needs
-  words ("Waiting" in amber, retrying, background tasks), then the harness
-  name, the branch shortened in the middle and the pull request. Screen
-  readers hear the waiting state once, from the status slot. Every row names
-  its harness, so rows are 70px at standard text size, and they grow with
+  words ("Waiting" in amber, retrying, background tasks), then the project
+  when the list gives one, the branch shortened in the middle and the pull
+  request; it no longer names the harness. A list filtered to one project,
+  which is every session list today, gives no project. Screen
+  readers hear the waiting state once, from the status slot. The meta line
+  keeps its height when it has nothing to show, so rows are 70px at standard
+  text size, and they grow with
   accessibility text rather than clipping or overflowing. In a narrow pane
   the pull request's indicators clip instead of overflowing. Regular rows form
   one timeline with no Running section: running rows lead Today whatever their
@@ -365,7 +370,8 @@ state.
 - A session being created leads Today in its project's active list, on the
   phone and desktop alike, as a launching row of the same height as a session
   row: the first line of its first message (or "Untitled session"), the AI
-  sparkle in the status slot and "Creating… · `<harness>`" with no time.
+  sparkle in the status slot, the harness logo before the title and
+  "Creating… · `<harness>`" with no time.
   Tapping it explains that the session is still being created and opens
   nothing; it has no menu or swipe actions. It is left out of the chip counts,
   hidden under Running and Unread, while searching and in Archived, and a
@@ -671,8 +677,10 @@ started one. Restore harness eligibility afterwards.
   navigation loses project/session/read-only identity, the New session or root
   file-changes action cannot reach its typed route, or desktop renders dead
   voice/attachment controls instead of honoring declared capabilities.
-- A session row hides its time, loses the harness name, misaligns titles
-  between quiet and busy rows, or clips its meta line under enlarged text.
+- A session row hides its time, loses the harness logo or its spoken harness
+  name, misaligns titles between quiet and busy rows or between harnesses,
+  shows a project in a list filtered to one project, changes height when its
+  meta line is empty, or clips its meta line under enlarged text.
 - Running rows leave the top of Today or open a Running section, awaiting-only
   rows are promoted with them, rows use archive time instead of updated time,
   or render an epoch date when a timestamp is missing.
