@@ -228,6 +228,50 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             (output / f"{label}-probe.log").write_text(result)
             require(report.read_text().startswith("PASS shared SQLite/Secret Service"), "Native storage probe failed")
 
+        def start_keyring():
+            keyring = start(arguments=["gnome-keyring-daemon", "--foreground", "--unlock", "--components=secrets"],
+                            label="keyring", stdin=subprocess.PIPE)
+            keyring.stdin.write(b"disposable-ci-keyring\n")
+            keyring.stdin.close()
+            wait_for(description="Secret Service", check=lambda: bus.name_has_owner("org.freedesktop.secrets"))
+            return keyring
+
+        def launch_and_quit(*, label: str) -> None:
+            process = start(arguments=["/usr/bin/sesori-desktop"], label=f"{label}-application")
+            bounds = wait_for(description=f"{label} application window", check=lambda: window(process=process))
+            application_log = output / f"{label}-application.log"
+            wait_for(description=f"{label} Flutter rendering", check=lambda:
+                     "Desktop startup: rendering the application" in application_log.read_text())
+            # Allow compositor frames after the logged runApp call; inspect saved images before accepting evidence.
+            time.sleep(2)
+            screenshot = output / f"{label}-anonymous.png"
+            if desktop == Desktop.GNOME:
+                capture = dbus.Interface(
+                    bus.get_object("org.gnome.Shell.Screenshot", "/org/gnome/Shell/Screenshot"),
+                    "org.gnome.Shell.Screenshot")
+                shell_eval(script=f"global.get_window_actors().filter(a => a.meta_window.get_pid() === "
+                           f"{process.pid}).forEach(a => a.meta_window.activate(global.get_current_time())); true")
+                # Capture the focused native window, not an early or off-screen frame rectangle.
+                success, _ = capture.ScreenshotWindow(True, False, False, str(screenshot))
+                require(bool(success), "GNOME application capture failed")
+                shell_eval(script=f"global.get_window_actors().filter(a => a.meta_window.get_pid() === "
+                           f"{process.pid}).forEach(a => a.meta_window.delete(global.get_current_time())); true")
+            else:
+                run(arguments=["import", "-window", bounds[0], str(screenshot)], env=env)
+                run(arguments=["wmctrl", "-ic", bounds[0]], env=env)
+                wait_for(description="close-to-tray", check=lambda: not window(process=process))
+                run(arguments=["import", "-window", "root", str(output / f"{label}-anonymous-tray.png")], env=env)
+                tray_quit(process=process, label=label)
+            process.wait(timeout=30)
+            require(process.returncode == 0, f"Normal Quit failed: {process.returncode}")
+            helper = subprocess.run(["pgrep", "-f", r"^/opt/sesori-desktop/bridge/bin/bridge( |$)"],
+                                    capture_output=True, text=True, timeout=10)
+            require(helper.returncode == 1, f"Packaged helper remains after Quit: {helper.stdout}{helper.stderr}")
+            require(screenshot.is_file() and screenshot.stat().st_size > 1000, "Missing native window capture")
+            identity = json.loads(Path("/opt/sesori-desktop/bridge/desktop-bundle.json").read_text())
+            observations.append({"candidate": label, "identity": identity, "nativeWindowAndQuit": True,
+                                 "closeToTray": desktop == Desktop.KDE, "screenshot": screenshot.name})
+
         try:
             if desktop == Desktop.GNOME:
                 env.update({"XDG_CURRENT_DESKTOP": "GNOME", "XDG_SESSION_TYPE": "wayland",
@@ -240,11 +284,7 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             dbus.Interface(bus.get_object("org.freedesktop.DBus", "/org/freedesktop/DBus"),
                            "org.freedesktop.DBus").UpdateActivationEnvironment(activation)
             # Both sessions deliberately use GNOME Keyring's real Secret Service, not a fake store.
-            keyring = start(arguments=["gnome-keyring-daemon", "--foreground", "--unlock", "--components=secrets"],
-                            label="keyring", stdin=subprocess.PIPE)
-            keyring.stdin.write(b"disposable-ci-keyring\n")
-            keyring.stdin.close()
-            wait_for(description="Secret Service", check=lambda: bus.name_has_owner("org.freedesktop.secrets"))
+            keyring = start_keyring()
             if desktop == Desktop.GNOME:
                 # Unsafe mode permits inspection only inside this disposable, credential-free QA session.
                 start(arguments=["gnome-shell", "--wayland", "--headless", "--virtual-monitor=1280x800",
@@ -267,44 +307,22 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
                 identity = json.loads(Path("/opt/sesori-desktop/bridge/desktop-bundle.json").read_text())
                 require(all(identity[key] == release[key] for key in ("version", "buildNumber", "sourceSha")),
                         "Installed application identity differs from qualified release")
-                process = start(arguments=["/usr/bin/sesori-desktop"], label=f"{label}-application")
-                bounds = wait_for(description=f"{label} application window", check=lambda: window(process=process))
-                application_log = output / f"{label}-application.log"
-                wait_for(description=f"{label} Flutter rendering", check=lambda:
-                         "Desktop startup: rendering the application" in application_log.read_text())
-                # Allow compositor frames after the logged runApp call; inspect saved images before accepting evidence.
-                time.sleep(2)
-                screenshot = output / f"{label}-anonymous.png"
-                if desktop == Desktop.GNOME:
-                    capture = dbus.Interface(
-                        bus.get_object("org.gnome.Shell.Screenshot", "/org/gnome/Shell/Screenshot"),
-                        "org.gnome.Shell.Screenshot")
-                    shell_eval(script=f"global.get_window_actors().filter(a => a.meta_window.get_pid() === "
-                               f"{process.pid}).forEach(a => a.meta_window.activate(global.get_current_time())); true")
-                    # Capture the focused native window, not an early or off-screen frame rectangle.
-                    success, _ = capture.ScreenshotWindow(True, False, False, str(screenshot))
-                    require(bool(success), "GNOME application capture failed")
-                    shell_eval(script=f"global.get_window_actors().filter(a => a.meta_window.get_pid() === "
-                               f"{process.pid}).forEach(a => a.meta_window.delete(global.get_current_time())); true")
-                else:
-                    run(arguments=["import", "-window", bounds[0], str(screenshot)], env=env)
-                    run(arguments=["wmctrl", "-ic", bounds[0]], env=env)
-                    wait_for(description="close-to-tray", check=lambda: not window(process=process))
-                    run(arguments=["import", "-window", "root", str(output / f"{label}-anonymous-tray.png")], env=env)
-                    tray_quit(process=process, label=label)
-                process.wait(timeout=30)
-                require(process.returncode == 0, f"Normal Quit failed: {process.returncode}")
-                helper = subprocess.run(["pgrep", "-f", r"^/opt/sesori-desktop/bridge/bin/bridge( |$)"],
-                                        capture_output=True, text=True, timeout=10)
-                require(helper.returncode == 1, f"Packaged helper remains after Quit: {helper.stdout}{helper.stderr}")
-                require(screenshot.is_file() and screenshot.stat().st_size > 1000, "Missing native window capture")
-                observations.append({"candidate": label, "identity": identity, "nativeWindowAndQuit": True,
-                                     "closeToTray": desktop == Desktop.KDE, "screenshot": screenshot.name})
+                launch_and_quit(label=label)
+            # Remove the real Secret Service. The workflow blocks D-Bus re-activation, so the
+            # signed app and probe meet an absent store rather than a silently restarted one.
+            stop_process(process=keyring)
+            wait_for(description="Secret Service absence", check=lambda: not bus.name_has_owner("org.freedesktop.secrets"))
+            probe(label="current", phase="unavailable")
+            launch_and_quit(label="current-unavailable")
+            require(not bus.name_has_owner("org.freedesktop.secrets"), "Secret Service was re-activated")
+            # The same keyring file and password return; the original encrypted value must still read back.
+            keyring = start_keyring()
             probe(label="current", phase="read")
             run(arguments=["sudo", "apt-get", "remove", "--yes", "sesori-desktop"], timeout=120)
             (output / "result.json").write_text(json.dumps({
                 "desktop": desktop, "architecture": architecture, "hostArchitecture": platform.machine(),
                 "observations": observations, "nativeStorageSurvivesUpgrade": True,
+                "unavailableSecretServicePreservesData": True,
                 "productSourceChanged": (observations[0]["identity"]["sourceSha"]
                                          != observations[1]["identity"]["sourceSha"]),
                 "loginRegistrationRoundTrip": True, "authenticatedAccountQualified": False,

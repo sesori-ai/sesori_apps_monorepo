@@ -130,6 +130,11 @@ jobs:
           done
       - name: Exercise native desktops, Secret Service and a genuine package replacement
         run: |
+          # The user service directory precedes the system one. Once the driver stops its keyring,
+          # libsecret must meet a genuinely absent Secret Service instead of auto-starting another.
+          mkdir -p "$HOME/.local/share/dbus-1/services"
+          printf '[D-BUS Service]\nName=org.freedesktop.secrets\nExec=/bin/false\n' \
+            > "$HOME/.local/share/dbus-1/services/sesori-qa-absent-secret-service.service"
           dbus-run-session -- /usr/bin/python3 .github/scripts/qualify_desktop_linux_session.py exercise \
             --inputs build/linux-session-inputs --probes build/linux-session-probes \
             --desktop '${{ matrix.desktop }}' --architecture '${{ matrix.architecture }}' \

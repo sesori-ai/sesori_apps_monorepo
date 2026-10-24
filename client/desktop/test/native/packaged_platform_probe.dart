@@ -12,6 +12,7 @@ import "package:window_manager/window_manager.dart";
 
 enum _ProbePhase() {
   write,
+  unavailable,
   read,
 }
 
@@ -65,6 +66,19 @@ Future<void> main() async {
           );
           await storage.write(key: _ProbeKey.value, value: "persisted");
           await report.writeAsString("PASS shared SQLite/$nativeStore write/read/update; awaiting a second process\n");
+        case _ProbePhase.unavailable:
+          // The encrypted row exists, so reading it needs the native master key. With no
+          // native store, the read must fail typed; the later read phase proves nothing was replaced.
+          try {
+            await storage.read(key: _ProbeKey.value);
+            throw StateError("Encrypted read succeeded without $nativeStore");
+          } on StorageException catch (error) {
+            _require(
+              condition: error.operation == StorageOperation.readMasterKey,
+              message: "Unexpected storage failure: ${error.operation.name}",
+            );
+          }
+          await report.writeAsString("PASS shared SQLite/$nativeStore unavailable: typed master-key refusal\n");
         case _ProbePhase.read:
           _require(
             condition: await storage.read(key: _ProbeKey.value) == "persisted",
