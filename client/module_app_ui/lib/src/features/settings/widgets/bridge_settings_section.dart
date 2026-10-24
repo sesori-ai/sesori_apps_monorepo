@@ -40,8 +40,16 @@ class const BridgeSettingsSection({
   @override
   Widget build(BuildContext context) {
     final state = context.watch<BridgeSettingsCubit>().state;
+    final offline = state is BridgeSettingsDisconnected;
     final onOpenHarnesses = this.onOpenHarnesses;
     final bridgeRows = <Widget>[
+      if (onOpenHarnesses != null)
+        PregoGroupedRow(
+          icon: TablerRegular.plug,
+          title: Text(context.loc.settingsHarnessesTitle),
+          trailing: const Icon(TablerRegular.chevron_right),
+          onTap: offline ? null : onOpenHarnesses,
+        ),
       const _YoloSettingsRow(),
       const _PluginWarmupSettingsRow(),
       PregoGroupedRow(
@@ -70,10 +78,8 @@ class const BridgeSettingsSection({
         },
       ),
     ];
-    // Offline, one line above the group says why the bridge-owned rows are
-    // dimmed, in place of the rows each saying it. Harnesses stays reachable;
-    // its own page says what it cannot load.
-    final offline = state is BridgeSettingsDisconnected;
+    // Offline, one line above the group says why every row, Harnesses
+    // included, is dimmed and disabled, in place of the rows each saying it.
     final description = offline ? context.loc.settingsBridgeOffline : this.description;
     return SettingsSection(
       title: title,
@@ -90,13 +96,6 @@ class const BridgeSettingsSection({
           ],
           PregoGroupedRows(
             children: [
-              if (onOpenHarnesses != null)
-                PregoGroupedRow(
-                  icon: TablerRegular.plug,
-                  title: Text(context.loc.settingsHarnessesTitle),
-                  trailing: const Icon(TablerRegular.chevron_right),
-                  onTap: onOpenHarnesses,
-                ),
               for (final row in bridgeRows) Opacity(opacity: offline ? _offlineRowsOpacity : 1, child: row),
             ],
           ),

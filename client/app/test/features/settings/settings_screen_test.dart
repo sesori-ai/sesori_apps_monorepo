@@ -617,12 +617,14 @@ void main() {
       tester.widget<Opacity>(find.ancestor(of: find.text("YOLO mode"), matching: find.byType(Opacity)).first).opacity,
       lessThan(1),
     );
-    // Harnesses stays at full strength and reachable; its page says what it
-    // cannot load.
-    expect(find.ancestor(of: find.text("Harnesses"), matching: find.byType(Opacity)), findsNothing);
+    // Harnesses dims and stays inert with the rest.
+    expect(
+      tester.widget<Opacity>(find.ancestor(of: find.text("Harnesses"), matching: find.byType(Opacity)).first).opacity,
+      lessThan(1),
+    );
     await tester.tap(find.text("Harnesses"));
     await tester.pumpAndSettle();
-    expect(find.text("harnesses-route"), findsOneWidget);
+    expect(find.text("harnesses-route"), findsNothing);
     verifyNever(bridgeSettingsService.load);
   });
 
