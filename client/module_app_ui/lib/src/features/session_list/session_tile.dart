@@ -460,7 +460,7 @@ class const SessionTile({
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      separator(),
+                      if (details.isNotEmpty) separator(),
                       Flexible(child: PrStatusRow(pr: pr)),
                     ],
                   ),

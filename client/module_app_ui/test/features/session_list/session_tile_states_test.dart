@@ -337,7 +337,27 @@ void main() {
 
     expect(find.text("sesori/add-search"), findsOneWidget);
     expect(find.text("PR #42"), findsOneWidget);
+    expect(find.text(" · "), findsOneWidget);
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+  });
+
+  testWidgets("a pull request alone leads the meta line without a separator", (tester) async {
+    final session = testSession(title: "My Session").copyWith(
+      pullRequest: const PullRequestInfo(
+        number: 42,
+        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
+        title: "Add project search",
+        state: PrState.open,
+        mergeableStatus: PrMergeableStatus.mergeable,
+        reviewDecision: PrReviewDecision.unknown,
+        checkStatus: PrCheckStatus.none,
+      ),
+    );
+
+    await pumpTile(tester, tile(session: session));
+
+    expect(find.text("PR #42"), findsOneWidget);
+    expect(find.text(" · "), findsNothing);
   });
 
   testWidgets("a long branch leaves the pull request its full width", (tester) async {
