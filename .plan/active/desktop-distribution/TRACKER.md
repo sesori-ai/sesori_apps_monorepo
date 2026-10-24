@@ -42,17 +42,14 @@ replacement is not code/schema migration or actual OS-login evidence. KDE's exis
 tray-disposed diagnostic remains recorded. Restricted Tailscale diagnostics and
 #2019's canonical runbook/Claude shim are delivered, without account/signing credentials
 or a qualification waiver.
-11.i.c.a/#2020 and diagnostic follow-ups #2021/#2022 are merged. Main rerun `39298827266`
-completed all four signed-GUI On/Off launches per CPU, then both reported
-`bridgeDeletionHttpFailed` / HTTP 400 at `current-onToLogout`. Cleanup and package-removal
-acceptance remain absent. A credential-free Fastify 5.8.5 fixture reproduces an empty
-DELETE rejected before its handler when the client implicitly declares JSON. The shared
-HTTP client now omits that default header for bodyless DELETE, preserving authorization,
-explicit content types, JSON writes and existing logout ownership. A new increasing
-signed current producer must contain this production fix before native acceptance;
-original builds 167→168 remain unchanged and cannot qualify it. No extra request or waiver.
-11.i.c.b retains actual session-login, unavailable Secret Service, remaining distro
-and source/schema migration gates.
+11.i.c.a (#2020–#2023) is accepted. Authenticated run `39315353686` upgraded original
+signed 167 → new signed 194 (producer `39308635308`, containing the bodyless-DELETE fix)
+on both CPUs, with cleanup and package removal passing. 11.i.c.b adds credential-free
+gates on the same pair: unavailable Secret Service, genuine GDM/SDDM login autostart and
+Debian 13 / Fedora 44 native-CPU upgrade rows. The authenticated run now gets its login
+registration from signed first-run defaults. Schema migration is not applicable
+(`schemaVersion` 1 since before public v1.9.1). Details are in [step 9](steps/step-09.md).
+After merge, rerun the authenticated mode on main to confirm the first-run registration.
 Stable remains closed; AppImage, website and stable publication follow these gates.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing

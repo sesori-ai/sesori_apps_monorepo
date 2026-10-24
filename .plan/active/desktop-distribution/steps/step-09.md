@@ -151,10 +151,37 @@ authenticated logs/pixels stay private.
 [authenticated-first-x64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124/job/117963200777
 [authenticated-first-arm64]: https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39223070124/job/117963200705
 
-11.i.c.b retains actual OS-login, unavailable Secret Service, remaining nominated
-native distros and source/schema migration gates. Same-source inputs cannot prove the
-last gate; no host, signing-policy, publication or installed-Mac change is authorized
-merely by this tooling. Stable stays closed.
+**11.i.c.a accepted.** After #2023, main producer `39308635308` signed new current
+`1.9.2+194` from `b5c73ea8d581794e71c0276fedd25c5f4837f0f0`. Its native jobs were x64
+`118252771211` and ARM64 `118252771280`. Authenticated
+[run `39315353686`](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/39315353686)
+upgraded original 167 → 194 on x64 GNOME/Wayland (job `118275780386`) and ARM64 KDE/X11
+(job `118275780384`). Both bounded receipts report the session surviving replacement,
+helper On/Off restoration, completed temporary-bridge cleanup and
+`productSourceChanged=true`. Only allowlisted receipts were retrieved.
+
+**11.i.c.b gates.**
+
+- Source/schema migration: the 167 → 194 pair is a genuine source change, accepted
+  above. Persisted schema has no migration to prove. Drift `schemaVersion` has been 1
+  since `0818f4bfc4`, which public `v1.9.1` already contains. The desktop never runs the
+  legacy native-storage importer, and no public production Linux desktop baseline
+  exists. Closed with no added test.
+- Unavailable Secret Service, OS-login autostart and the Debian 13 / Fedora 44 upgrade
+  rows run in the credential-free `linux-session` job; see the regression document's
+  native Linux section. A 2026-10-24 host probe established that hosted
+  `ubuntu-24.04` and `ubuntu-24.04-arm` runners provide `seat0` with DRM/fbdev. GDM and
+  SDDM autologin create active `user`-class logind sessions there, and both session
+  managers run XDG autostart. Only x64 exposes `/dev/kvm`. Distro rows therefore run as
+  native-CPU containers in their own userspace on the runner kernel. They are not
+  distro-kernel VMs.
+- Authenticated first-run registration: the fixture now leaves bridge intent unset, so
+  the signed GUI's own first-run defaults admit On and write the login registration.
+  Every helper-On launch checks those bytes. The next main-only authenticated run
+  confirms this.
+
+No host, signing-policy, publication or installed-Mac change is authorized by this
+tooling. Stable stays closed.
 Keep the existing release rollover: QA uses retained signed producer artifacts, not
 historical release objects that can disappear. No hidden-menu bypass, force-Quit pass,
 recreated release or silent same-version substitution.
