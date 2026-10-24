@@ -264,6 +264,51 @@ sealed class V2EventData {
     required List<String> sandboxes,
   }) = V2ProjectUpdated;
 
+  /// Every wire-format type discriminator this hierarchy decodes.
+  static const Set<String> knownTypes = {
+    "server.connected",
+    "session.created",
+    "session.renamed",
+    "session.deleted",
+    "session.execution.started",
+    "session.execution.succeeded",
+    "session.execution.failed",
+    "session.execution.interrupted",
+    "session.inbox.enqueued",
+    "session.inbox.delivered",
+    "session.inbox.cancelled",
+    "session.inbox.delivery.changed",
+    "session.agent.selected",
+    "session.synthetic",
+    "session.step.started",
+    "session.step.ended",
+    "session.step.failed",
+    "session.text.started",
+    "session.text.delta",
+    "session.text.ended",
+    "session.reasoning.started",
+    "session.reasoning.delta",
+    "session.reasoning.ended",
+    "session.tool.input.started",
+    "session.tool.input.delta",
+    "session.tool.input.ended",
+    "session.tool.called",
+    "session.tool.progress",
+    "session.tool.success",
+    "session.tool.failed",
+    "session.retry.scheduled",
+    "session.compaction.started",
+    "session.compaction.delta",
+    "session.compaction.ended",
+    "session.compaction.failed",
+    "permission.asked",
+    "permission.replied",
+    "form.created",
+    "form.replied",
+    "form.cancelled",
+    "project.updated",
+  };
+
   /// Wire-format type discriminator for this event.
   String get type;
 
@@ -1636,13 +1681,13 @@ class V2EventEnvelope {
     required this.data,
   });
   final String id;
-  final double created;
+  final double? created;
   final LocationPublicRef? location;
   final V2EventData data;
   factory V2EventEnvelope.fromJson(Map<String, dynamic> json) {
     return V2EventEnvelope(
       id: json["id"] as String,
-      created: (json["created"] as num).toDouble(),
+      created: json["created"] == null ? null : (json["created"] as num).toDouble(),
       location: json["location"] == null ? null : LocationPublicRef.fromJson(json["location"] as Map<String, dynamic>),
       data: V2EventData.fromJson({...json["data"] as Map<String, dynamic>, "type": json["type"]}),
     );
