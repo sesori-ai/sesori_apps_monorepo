@@ -45,10 +45,11 @@ class const AntigravityPluginDescriptor({
   required final Duration versionProbeTimeout,
   final Duration connectBudget = const Duration(seconds: 15),
 }) extends BridgePluginDescriptor implements InteractivePluginAuthenticationDescriptor {
-  factory production() => const AntigravityPluginDescriptor(
+  factory production() => AntigravityPluginDescriptor(
     callbackHttpClientFactory: HttpClient.new,
     runtimeDownloadHttpClientFactory: http.Client.new,
-    versionProbeTimeout: Duration(seconds: 10),
+    // agy_acp_server.exe cold-starts in ~17 s on Windows, so `--version` needs more headroom there.
+    versionProbeTimeout: Duration(seconds: Platform.isWindows ? 60 : 10),
   );
   static const binOption = "bin";
   static const cliOptions = [
