@@ -120,7 +120,7 @@ void main() {
       expect(catalog.listSessionRecords(), isEmpty);
     });
 
-    test("leaves a session untitled when the CLI wrote no title", () {
+    test("leaves a session untitled when it has neither a title nor a prompt", () {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
 
       expect(catalog.listSessionRecords().single.title, isNull);
@@ -130,6 +130,79 @@ void main() {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "   ");
 
       expect(catalog.listSessionRecords().single.title, isNull);
+    });
+
+    test("prefers a /rename over the CLI's own title", () {
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA, cwd: "/work/alpha", uuid: "u1", content: "Fix the parser"),
+          {"type": "custom-title", "customTitle": "Parser work", "sessionId": _sessionA},
+          {"type": "ai-title", "aiTitle": "Fix CSV parser", "sessionId": _sessionA},
+        ],
+      );
+
+      expect(catalog.listSessionRecords().single.title, "Parser work");
+    });
+
+    test("takes the newest titles from the transcript tail", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA, cwd: "/work/alpha"),
+          {"type": "ai-title", "aiTitle": "First title", "sessionId": _sessionA},
+          for (var i = 0; i < ClaudeTranscriptApi.tailByteBudget ~/ 1000 + 10; i++)
+            {"type": "progress", "data": "x" * 1000},
+          {"type": "ai-title", "aiTitle": "Newest title", "sessionId": _sessionA},
+        ],
+      );
+
+      expect(catalog.listSessionRecords().single.title, "Newest title");
+
+      File(path).writeAsStringSync(
+        "${jsonEncode({"type": "custom-title", "customTitle": "Renamed late", "sessionId": _sessionA})}\n",
+        mode: FileMode.append,
+      );
+
+      expect(catalog.listSessionRecords().single.title, "Renamed late");
+    });
+
+    test("titles an unnamed session with its first typed prompt", () {
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(_sessionA, cwd: "/work/alpha", uuid: "u1", content: "<command-name>/clear</command-name>"),
+          _userRecord(_sessionA, cwd: "/work/alpha", uuid: "u2", content: "Injected skill body", isMeta: true),
+          _userRecord(
+            _sessionA,
+            cwd: "/work/alpha",
+            uuid: "u3",
+            content: [
+              {"type": "text", "text": "  Rename the\n\nCSV   parser  "},
+            ],
+          ),
+          _userRecord(_sessionA, cwd: "/work/alpha", uuid: "u4", content: "A later prompt"),
+        ],
+      );
+
+      expect(catalog.listSessionRecords().single.title, "Rename the CSV parser");
+    });
+
+    test("bounds a first prompt used as a title", () {
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [_userRecord(_sessionA, cwd: "/work/alpha", uuid: "u1", content: "a" * 300)],
+      );
+
+      expect(catalog.listSessionRecords().single.title, "${"a" * 100}…");
     });
 
     test("orders sessions newest first with undated ones last", () async {
@@ -257,6 +330,9 @@ Map<String, Object?> _userRecord(
   bool isSidechain = false,
   String timestamp = "2026-08-04T10:00:00.000Z",
   String? branch,
+  String? uuid,
+  Object? content,
+  bool isMeta = false,
 }) => {
   "type": "user",
   "sessionId": sessionId,
@@ -265,6 +341,9 @@ Map<String, Object?> _userRecord(
   "timestamp": timestamp,
   "version": "2.1.221",
   "gitBranch": ?branch,
+  "uuid": ?uuid,
+  if (content != null) "message": {"role": "user", "content": content},
+  if (isMeta) "isMeta": true,
 };
 
 void _writeSession(

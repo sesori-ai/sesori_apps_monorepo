@@ -30,6 +30,9 @@ sealed class ClaudeTranscriptRecordDto with _$ClaudeTranscriptRecordDto {
     @JsonKey(fromJson: _stringOrNull) required String? gitBranch,
     @JsonKey(fromJson: _stringOrNull) required String? version,
     @JsonKey(fromJson: _stringOrNull) required String? aiTitle,
+
+    /// The name a user gave the session with `/rename`.
+    @JsonKey(fromJson: _stringOrNull) required String? customTitle,
     @JsonKey(fromJson: _stringOrNull) required String? uuid,
     @JsonKey(fromJson: _boolOrNull) required bool? isMeta,
     @JsonKey(fromJson: _boolOrNull) required bool? isVisibleInTranscriptOnly,

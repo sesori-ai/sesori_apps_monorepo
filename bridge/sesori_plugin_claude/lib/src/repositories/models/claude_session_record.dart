@@ -14,8 +14,8 @@ class const ClaudeSessionRecord({
   /// The directory the session ran in.
   required final String cwd,
 
-  /// From the CLI's own `ai-title` record, or a sub-agent's meta description.
-  /// Null when neither exists.
+  /// For a root session, its `/rename`, the CLI's own title or its first
+  /// prompt; for a sub-agent, its meta description. Null when none exists.
   required final String? title,
   required final DateTime? createdAt,
 

@@ -28,13 +28,21 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
   /// CLI version, creation time, and the `ai-title` record — sits in the first
   /// few lines. Measured across 60 real transcripts the title record's line
   /// number was at most 50 (median 13), so 64 clears the observed range with
-  /// margin. A title written past the bound degrades to an untitled session,
-  /// the same outcome as a session the CLI never titled.
+  /// margin. A title written past the bound is still found by
+  /// [readTailTitleRecords] once the CLI re-appends it.
   ///
   /// The bound is what makes enumeration affordable: reading these transcripts
   /// in full meant 1,060 MiB across 1,888 files on the machine this was
   /// measured on.
   static const int headerLineBudget = 64;
+
+  /// How many trailing bytes [readTailTitleRecords] scans.
+  ///
+  /// The CLI keeps re-appending a session's title records as its transcript
+  /// grows, so a `/rename` made long after the header still sits near the end.
+  /// Across real transcripts of up to 400 MB the newest title record was at
+  /// most 31 KB from the end on CLI 2.1.310.
+  static const int tailByteBudget = 64 * 1024;
 
   /// `$CLAUDE_CONFIG_DIR`, else `<home>/.claude`. Null when no home resolves.
   String? get claudeHome {
@@ -77,6 +85,37 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     // still being appended to, so the same suppression applies.
     return _decodeRecords(lines, ignoreMalformedLastLine: true);
   }
+
+  /// Decodes the `custom-title` and `ai-title` records within the last
+  /// [tailByteBudget] bytes.
+  ///
+  /// The tail is mostly tool output, so other lines are dropped before they
+  /// are decoded. The CLI writes compact JSON, which makes the type a plain
+  /// substring; the same text inside a prompt is escaped and never matches.
+  List<ClaudeTranscriptLineDto> readTailTitleRecords({required String transcriptPath}) {
+    final handle = File(transcriptPath).openSync();
+    final int start;
+    final List<int> bytes;
+    try {
+      final length = handle.lengthSync();
+      // One byte before the window, so a record starting exactly at the
+      // window's edge stays whole.
+      start = length > tailByteBudget ? length - tailByteBudget - 1 : 0;
+      handle.setPositionSync(start);
+      bytes = handle.readSync(length - start);
+    } finally {
+      handle.closeSync();
+    }
+    final lines = const LineSplitter().convert(const Utf8Decoder(allowMalformed: true).convert(bytes));
+    // The first line is the end of a record before the window, or empty.
+    final titles = [
+      for (final line in start > 0 ? lines.skip(1) : lines)
+        if (_titleTypes.any(line.contains)) line,
+    ];
+    return _decodeRecords(titles, ignoreMalformedLastLine: true);
+  }
+
+  static const List<String> _titleTypes = ['"type":"custom-title"', '"type":"ai-title"'];
 
   /// Decodes every record in a transcript.
   List<ClaudeTranscriptLineDto> readTranscript({required String transcriptPath}) {
