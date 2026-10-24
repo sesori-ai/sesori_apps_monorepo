@@ -98,14 +98,16 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     final List<int> bytes;
     try {
       final length = handle.lengthSync();
-      start = length > tailByteBudget ? length - tailByteBudget : 0;
+      // One byte before the window, so a record starting exactly at the
+      // window's edge stays whole.
+      start = length > tailByteBudget ? length - tailByteBudget - 1 : 0;
       handle.setPositionSync(start);
       bytes = handle.readSync(length - start);
     } finally {
       handle.closeSync();
     }
     final lines = const LineSplitter().convert(const Utf8Decoder(allowMalformed: true).convert(bytes));
-    // A window that starts inside the file starts inside a record.
+    // The first line is the end of a record before the window, or empty.
     final titles = [
       for (final line in start > 0 ? lines.skip(1) : lines)
         if (_titleTypes.any(line.contains)) line,

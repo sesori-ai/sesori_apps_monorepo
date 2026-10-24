@@ -199,6 +199,23 @@ void main() {
       expect(titles.last.record.customTitle, "Renamed");
     });
 
+    test("keeps a title record that starts exactly at the tail window's edge", () {
+      final title = "${jsonEncode({"type": "ai-title", "aiTitle": "At the edge", "sessionId": _sessionA})}\n";
+      final paddingOverhead = "${jsonEncode({"type": "progress", "data": ""})}\n".length;
+      final padding =
+          "${jsonEncode({"type": "progress", "data": "x" * (ClaudeTranscriptApi.tailByteBudget - title.length - paddingOverhead)})}\n";
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [_userRecord(_sessionA)],
+      );
+      File(path).writeAsStringSync("$title$padding", mode: FileMode.append);
+      expect(title.length + padding.length, ClaudeTranscriptApi.tailByteBudget);
+
+      expect(api.readTailTitleRecords(transcriptPath: path).single.record.aiTitle, "At the edge");
+    });
+
     test("keeps the first record of a transcript smaller than the tail budget", () {
       final path = _writeTranscript(
         claudeHome,
