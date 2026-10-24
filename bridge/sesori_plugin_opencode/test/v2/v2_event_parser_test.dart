@@ -6,10 +6,10 @@ import "package:test/test.dart";
 void main() {
   const parser = V2EventParser();
 
-  test("decodes global event envelopes without requiring a location", () {
-    final event = parser.parse(rawData: '{"id":"event-1","created":1,"type":"server.connected","data":{}}')!;
+  test("decodes server.connected frames, which carry no created or location", () {
+    final event = parser.parse(rawData: '{"id":"event-1","type":"server.connected","data":{}}')!;
     expect(event.id, "event-1");
-    expect(event.created, 1);
+    expect(event.created, isNull);
     expect(event.location, isNull);
     expect(event.data, isA<V2ServerConnected>());
   });
@@ -35,7 +35,7 @@ void main() {
       "[]",
       '{"id":"event-3","created":3,"type":"future.event","data":{}}',
       '{"id":"event-4","created":4,"type":"session.text.delta","data":{}}',
-      '{"id":"event-5","type":"server.connected","data":{}}',
+      '{"id":"event-5","type":"server.connected"}',
     ]) {
       expect(parser.parse(rawData: raw), isNull);
     }

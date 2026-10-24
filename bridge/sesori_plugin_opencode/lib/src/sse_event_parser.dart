@@ -90,7 +90,7 @@ class SseEventParser() {
         );
       }
 
-      if (!_knownEventTypes.contains(type)) {
+      if (!SseEventData.knownTypes.contains(type)) {
         return SseParseResult(
           outcome: SseParseOutcome.unknownEventType,
           eventType: eventType,
@@ -131,53 +131,6 @@ class SseEventParser() {
     return SseEventData.fromJson({"type": type, ...properties});
   }
 }
-
-const Set<String> _knownEventTypes = {
-  "server.connected",
-  "server.heartbeat",
-  "server.instance.disposed",
-  "global.disposed",
-  "session.created",
-  "session.updated",
-  "session.deleted",
-  "session.diff",
-  "session.error",
-  "session.compacted",
-  "session.status",
-  "session.idle",
-  "command.executed",
-  "message.updated",
-  "message.removed",
-  "message.part.updated",
-  "message.part.delta",
-  "message.part.removed",
-  "pty.created",
-  "pty.updated",
-  "pty.exited",
-  "pty.deleted",
-  "permission.asked",
-  "permission.replied",
-  "permission.updated",
-  "question.asked",
-  "question.replied",
-  "question.rejected",
-  "todo.updated",
-  "project.updated",
-  "vcs.branch.updated",
-  "file.edited",
-  "file.watcher.updated",
-  "lsp.updated",
-  "lsp.client.diagnostics",
-  "mcp.tools.changed",
-  "mcp.browser.open.failed",
-  "installation.updated",
-  "installation.update-available",
-  "workspace.ready",
-  "workspace.failed",
-  "tui.toast.show",
-  "worktree.ready",
-  "worktree.failed",
-};
 
 const Set<String> _ignoredEventTypes = {
   "sync",

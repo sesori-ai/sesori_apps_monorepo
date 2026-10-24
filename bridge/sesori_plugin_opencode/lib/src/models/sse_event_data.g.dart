@@ -167,6 +167,54 @@ sealed class SseEventData {
   const factory SseEventData.worktreeReady() = SseWorktreeReady;
   const factory SseEventData.worktreeFailed() = SseWorktreeFailed;
 
+  /// Every wire-format type discriminator this hierarchy decodes.
+  static const Set<String> knownTypes = {
+    "server.connected",
+    "server.heartbeat",
+    "server.instance.disposed",
+    "global.disposed",
+    "session.created",
+    "session.updated",
+    "session.deleted",
+    "session.diff",
+    "session.error",
+    "session.compacted",
+    "session.status",
+    "session.idle",
+    "command.executed",
+    "message.updated",
+    "message.removed",
+    "message.part.updated",
+    "message.part.delta",
+    "message.part.removed",
+    "pty.created",
+    "pty.updated",
+    "pty.exited",
+    "pty.deleted",
+    "permission.asked",
+    "permission.replied",
+    "permission.updated",
+    "question.asked",
+    "question.replied",
+    "question.rejected",
+    "todo.updated",
+    "project.updated",
+    "vcs.branch.updated",
+    "file.edited",
+    "file.watcher.updated",
+    "lsp.updated",
+    "lsp.client.diagnostics",
+    "mcp.tools.changed",
+    "mcp.browser.open.failed",
+    "installation.updated",
+    "installation.update-available",
+    "workspace.ready",
+    "workspace.failed",
+    "tui.toast.show",
+    "worktree.ready",
+    "worktree.failed",
+  };
+
   /// Wire-format type discriminator for this event.
   String get type;
 

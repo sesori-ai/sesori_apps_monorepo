@@ -208,6 +208,9 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
     // Same conversion as native Session.Message.ID.fromEvent; inbox IDs already
     // are message IDs and do not use this conversion.
     final messageId = envelope.id.replaceFirst(RegExp("^evt_"), "msg_");
+    // Only global frames such as server.connected omit `created`.
+    final created = envelope.created;
+    if (created == null) return const [];
     final ({String sessionId, SessionMessageInfo message})? notice = switch (envelope.data) {
       V2SessionAgentSelected(:final sessionID, :final agent, :final previous) => (
         sessionId: sessionID,
@@ -216,7 +219,7 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
           metadata: null,
           agent: agent,
           previous: previous,
-          time: SessionMessageAgentSelectedTime(created: envelope.created),
+          time: SessionMessageAgentSelectedTime(created: created),
         ),
       ),
       V2SessionSynthetic(:final sessionID, :final text, :final description) => (
@@ -226,7 +229,7 @@ class const V2EventMapper({required final V2ModelMapper _modelMapper, required f
           metadata: null,
           text: text,
           description: description,
-          time: SessionMessageSyntheticTime(created: envelope.created),
+          time: SessionMessageSyntheticTime(created: created),
         ),
       ),
       _ => null,

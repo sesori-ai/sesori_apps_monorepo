@@ -10,7 +10,14 @@ import "../models/v2_event.g.dart";
 class const V2EventParser() {
   V2EventEnvelope? parse({required String rawData}) {
     try {
-      return V2EventEnvelope.fromJson(jsonDecodeMap(rawData));
+      final json = jsonDecodeMap(rawData);
+      final type = json["type"];
+      // OpenCode emits many registry/catalog events the bridge does not use.
+      if (type is String && !V2EventData.knownTypes.contains(type)) {
+        Log.d("[opencode-v2] ignoring unsupported SSE event type: $type");
+        return null;
+      }
+      return V2EventEnvelope.fromJson(json);
     } on Object catch (error, stackTrace) {
       Log.w(
         "[opencode-v2] dropping malformed or unsupported SSE event",

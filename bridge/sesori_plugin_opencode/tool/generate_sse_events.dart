@@ -158,6 +158,13 @@ void main(List<String> args) {
     }
   }
   out.writeln();
+  out.writeln('  /// Every wire-format type discriminator this hierarchy decodes.');
+  out.writeln('  static const Set<String> knownTypes = {');
+  for (final ev in events) {
+    out.writeln('    ${_rawString(ev['type'] as String)},');
+  }
+  out.writeln('  };');
+  out.writeln();
   out.writeln('  /// Wire-format type discriminator for this event.');
   out.writeln('  String get type;');
   out.writeln();
