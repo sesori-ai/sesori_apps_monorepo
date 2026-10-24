@@ -28,6 +28,8 @@ esac
 
 [[ ! -e /opt/sesori-desktop ]] || { echo 'Container already has a Sesori installation' >&2; exit 1; }
 useradd --create-home qa
+# Xvfb runs as the ordinary user, which cannot create the shared socket directory itself.
+install -d -m 1777 /tmp/.X11-unix
 # The ordinary user cannot traverse the runner's home; give it private copies instead.
 cp -a "$probes" /tmp/qa-probes
 chmod -R a+rX /tmp/qa-probes
@@ -61,6 +63,7 @@ as_qa() {
       fi
       Xvfb :96 -screen 0 1280x800x24 -nolisten tcp & xvfb=$!
       for _ in $(seq 50); do [[ -e /tmp/.X11-unix/X96 ]] && break; sleep 0.2; done
+      [[ -e /tmp/.X11-unix/X96 ]]
       SESORI_PACKAGED_PROBE_PHASE="$PHASE" SESORI_PACKAGED_PROBE_OUTPUT="$EVIDENCE/$PHASE-storage.txt" \
         timeout 120 "$PROBE" > "$EVIDENCE/$PHASE-probe.log" 2>&1
       grep -q "^PASS shared SQLite/Secret Service" "$EVIDENCE/$PHASE-storage.txt"
