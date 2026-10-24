@@ -176,6 +176,43 @@ void main() {
       expect(api.readTranscript(transcriptPath: path), hasLength(records.length));
     });
 
+    test("decodes only whole title records within the tail budget", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          {"type": "ai-title", "aiTitle": "Too old", "sessionId": _sessionA},
+          for (var i = 0; i < ClaudeTranscriptApi.tailByteBudget ~/ 1000 + 10; i++)
+            {"type": "ai-title", "aiTitle": "x" * 1000, "sessionId": _sessionA},
+          _userRecord(_sessionA),
+          {"type": "custom-title", "customTitle": "Renamed", "sessionId": _sessionA},
+        ],
+      );
+
+      late List<ClaudeTranscriptLineDto> titles;
+      final warnings = _captureWarnings(() => titles = api.readTailTitleRecords(transcriptPath: path));
+
+      expect(warnings, isEmpty);
+      expect(titles.map((line) => line.record.type).toSet(), {"ai-title", "custom-title"});
+      expect(titles.map((line) => line.record.aiTitle), isNot(contains("Too old")));
+      expect(titles.last.record.customTitle, "Renamed");
+    });
+
+    test("keeps the first record of a transcript smaller than the tail budget", () {
+      final path = _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          {"type": "ai-title", "aiTitle": "Only title", "sessionId": _sessionA},
+          _userRecord(_sessionA),
+        ],
+      );
+
+      expect(api.readTailTitleRecords(transcriptPath: path).single.record.aiTitle, "Only title");
+    });
+
     test("keeps every complete record when the file ends mid-write", () {
       final path = p.join(claudeHome.path, "projects", "-work-alpha", "$_sessionA.jsonl");
       Directory(p.dirname(path)).createSync(recursive: true);

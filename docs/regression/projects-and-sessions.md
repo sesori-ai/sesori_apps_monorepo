@@ -416,6 +416,13 @@ state.
   and detail adopt the durable session facts without marking unseen or moving the
   worktree directory. The initial system prompt remains truthful about the
   directory and branch that existed when the backend session was created.
+- A Claude root session imported from its transcript is titled by its newest
+  `/rename` (`custom-title`), else the CLI's newest `ai-title`, else the first
+  prompt the user typed, on one line and cut to 100 characters with "…".
+  Slash commands, harness-generated turns, compaction summaries, peer messages
+  and task outcomes never title it. Title records count from the first 64
+  lines and the last 64 KiB, where the CLI keeps re-appending them, so a
+  `/rename` made late in a long session still counts.
 - Claude import lists a sub-agent transcript under `<root>/subagents/` as a
   child session of that root (id `agent-<agentId>`, title from its meta
   description, the root's directory), roots only in per-project pages and
