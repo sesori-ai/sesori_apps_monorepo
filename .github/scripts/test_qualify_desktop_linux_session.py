@@ -191,6 +191,8 @@ class LinuxSessionQualificationTest(unittest.TestCase):
         fedora = (Path(__file__).parent / "Dockerfile.linux-signing").read_text().split("FROM ", 1)[1].split("\n", 1)[0]
         self.assertIn(f"DEBIAN_IMAGE: {debian}\n", workflow)
         self.assertIn(f"FEDORA_IMAGE: {fedora}\n", workflow)
+        self.assertLess(workflow.index("Upgrade and exercise Secret Service"),
+                        workflow.index("qualify_desktop_linux_session.py login"))
 
 
 if __name__ == "__main__":

@@ -17,7 +17,7 @@ import time
 
 from desktop_qa_credentials import QaCredentials, load_qa_credentials
 from publish_desktop_linux import MANIFEST, require
-from qualify_desktop_linux_session import Desktop, MouseButton, run, stop_process, wait_for
+from qualify_desktop_linux_session import LOGIN_REGISTRATION, Desktop, MouseButton, run, stop_process, wait_for
 
 
 class Candidate(StrEnum):
@@ -331,7 +331,12 @@ def session(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, archi
                                "Failed to update the system tray menu: Bad state: System tray is disposed"
                                in application_log.read_text()}
             if intent == HelperIntent.ON:
-                observation.update({"authenticatedProfileConfirmed": True, "relayServing": True})
+                # Authenticated first-run defaults register login launch; replacement must keep it.
+                registration = Path(env["XDG_CONFIG_HOME"]) / "autostart/com.sesori.desktop.desktop"
+                require(registration.is_file() and registration.read_text() == LOGIN_REGISTRATION,
+                        "Signed login registration differs")
+                observation.update({"authenticatedProfileConfirmed": True, "relayServing": True,
+                                    "signedLoginRegistration": True})
             else:
                 observation["helperAbsentDuringOff"] = True
             observations.append(observation)

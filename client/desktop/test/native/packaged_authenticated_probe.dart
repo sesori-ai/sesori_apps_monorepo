@@ -144,7 +144,8 @@ Future<String> exerciseAuthenticatedProbe({
   }
   switch (phase) {
     case AuthenticatedProbePhase.loginOn:
-      await instance.writeBridgeDesiredState(state: BridgeProcessDesiredState.on);
+      // Leave intent unset: the signed GUI's genuine first-run defaults admit On and register login launch.
+      break;
     case AuthenticatedProbePhase.onToOff:
       await _requireIntent(instance: instance, expected: BridgeProcessDesiredState.on);
       await instance.writeBridgeDesiredState(state: BridgeProcessDesiredState.off);

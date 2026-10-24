@@ -37,7 +37,7 @@ jobs:
             architecture: arm64
             desktop: kde-x11
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
@@ -159,6 +159,22 @@ jobs:
                 "$PWD/build/linux-session-probes" '${{ matrix.architecture }}' \
                 "$PWD/build/linux-session-evidence/$name" 2>&1 | tee "build/linux-session-evidence/$name.log"
           done
+      - name: Autostart the signed app through a genuine display-manager login
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -euo pipefail
+          # The real login must meet the distro's normal Secret Service activation again.
+          rm "$HOME/.local/share/dbus-1/services/sesori-qa-absent-secret-service.service"
+          if [[ '${{ matrix.desktop }}' == gnome-wayland ]]; then
+            sudo apt-get install --yes --no-install-recommends gdm3 gnome-session dbus-user-session
+          else
+            sudo apt-get install --yes --no-install-recommends sddm dbus-user-session xserver-xorg-core \
+              xserver-xorg-video-fbdev xserver-xorg-video-modesetting xserver-xorg-input-libinput
+          fi
+          /usr/bin/python3 .github/scripts/qualify_desktop_linux_session.py login \
+            --inputs build/linux-session-inputs --desktop '${{ matrix.desktop }}' \
+            --architecture '${{ matrix.architecture }}' --output build/linux-session-evidence/login
       - name: Retain credential-free native evidence
         if: always()
         uses: actions/upload-artifact@v4
