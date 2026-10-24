@@ -15,7 +15,7 @@
 | 2.b/13 | Scan cancel, dismiss, deep pull and per-harness scan removed | Not started | — |
 | 3/13 | Searchable picker with Open another folder | Not started | — |
 | 4/13 | Settings › Projects | Not started | — |
-| 5/13 | Row logo and project label | Not started | — |
+| 5/13 | Row logo and project label | Done | `sesori/app-simplification-step-5` |
 | 6/13 | All-projects list model | Not started | — |
 | 7.a/13 | Archived across projects | Not started | — |
 | 7.b/13 | All-projects home and route tree | Not started | — |

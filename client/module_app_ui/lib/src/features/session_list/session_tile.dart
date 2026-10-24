@@ -17,17 +17,19 @@ import "session_scheduled_resume.dart";
 /// snackbar, closing a deleted session's detail route).
 typedef SessionOpenedCallback = void Function({required Session session});
 
-/// A single session row: a status slot, the title and when the session last
-/// changed, over one tertiary meta line with the harness, branch and pull
-/// request.
+/// A single session row: a status slot, the harness logo, the title and when
+/// the session last changed, over one tertiary meta line with the project,
+/// branch and pull request.
 ///
 /// The leading slot says how the session is doing: the sparkle rotates while
 /// an agent works and rests solid — the same "new activity" mark the project
 /// list uses — when the session has activity the user hasn't opened; an amber
 /// dot means it waits for the user. A quiet session leaves the slot empty, so
-/// titles still line up. The time always shows at the trailing edge; a quiet
-/// session with a scheduled auto-continuation shows when it resumes. States
-/// that need words lead the meta line in their colour.
+/// titles still line up. The harness logo follows the slot in a square of one
+/// size for every harness, and is the only place the row names the harness.
+/// The time always shows at the trailing edge; a quiet session with a
+/// scheduled auto-continuation shows when it resumes. States that need words
+/// lead the meta line in their colour.
 ///
 /// Tapping opens the session; long-pressing — or right-clicking with a mouse —
 /// opens its actions in a [PregoAnchorMenu] anchored to the row, which blurs
@@ -48,6 +50,10 @@ typedef SessionOpenedCallback = void Function({required Session session});
 class const SessionTile({
   super.key,
   required final Session session,
+
+  /// The session's project, leading the meta line; null hides it, as in a
+  /// list already filtered to one project.
+  required final String? projectLabel,
   required final bool isArchived,
 
   /// The service-owned running classification: an active session that only
@@ -244,6 +250,12 @@ class const SessionTile({
               null => null,
             },
           ),
+          // The glyph is decorative, so the harness is named in words too:
+          // the meta line no longer says it.
+          Semantics(
+            label: PregoBrandLogo.displayNameFor(session.pluginId),
+            child: _HarnessLogo(pluginId: session.pluginId),
+          ),
           Expanded(
             child: _title(context: context, pointer: pointer),
           ),
@@ -397,22 +409,15 @@ class const SessionTile({
   }
 
   /// The row's second line, under the title: any state that needs words, then
-  /// the harness, branch and pull request, apart by middle dots.
+  /// the project, branch and pull request, apart by middle dots.
   Widget _metaLine({required BuildContext context, required bool pointer}) {
     final prego = context.prego;
     final style = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
     final status = _statusLabel(context: context);
     final details = <({int flex, Widget child})>[
       if (status != null) (flex: 1, child: status),
-      (
-        flex: 1,
-        child: Text(
-          PregoBrandLogo.displayNameFor(session.pluginId),
-          style: style,
-          maxLines: 1,
-          overflow: TextOverflow.ellipsis,
-        ),
-      ),
+      if (projectLabel case final project?)
+        (flex: 1, child: Text(project, style: style, maxLines: 1, overflow: TextOverflow.ellipsis)),
       // Branch names are the one unbounded detail; both ends tell them apart.
       if (session.branchName case final branch?)
         (flex: 2, child: PregoEllipsisText(text: branch, style: style, ellipsis: PregoEllipsis.middle)),
@@ -460,6 +465,10 @@ class const SessionTile({
                     ],
                   ),
                 ),
+              // With nothing to show, an empty line of the meta text still
+              // takes its height at the current text scale, so the row stays as
+              // tall as its neighbours and as the launching row it replaces.
+              if (details.isEmpty && session.pullRequest == null) Text("", style: style),
             ],
           ),
         ),
@@ -496,9 +505,9 @@ class const SessionTile({
 }
 
 /// A new session the bridge is still creating, in [SessionTile]'s geometry so
-/// the real row takes its place without moving anything: the first line of
-/// the first message, the running sparkle, and "Creating…" before the harness
-/// on the meta line, with no time.
+/// the real row takes its place without moving anything: the running sparkle,
+/// the harness logo, the first line of the first message, and "Creating…"
+/// before the harness on the meta line, with no time.
 ///
 /// A tap answers with the row's press feedback and an alert that the session
 /// cannot be opened yet. There is no menu and no swipe: both act on a session.
@@ -540,6 +549,8 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                           child: ExcludeSemantics(child: PregoAiLoader(size: _statusSlotSize)),
                         ),
                       ),
+                      // Silent, unlike the real row's: the meta line names the harness here.
+                      _HarnessLogo(pluginId: launch.pluginId),
                       Expanded(
                         child: Text(
                           launch.title ?? loc.sessionListUntitled,
@@ -571,6 +582,15 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
       ),
     );
   }
+}
+
+/// The harness mark between the status slot and the title, shared by the
+/// session row and the launching row so a title never moves when one becomes
+/// the other.
+class const _HarnessLogo({required final String pluginId}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) =>
+      PregoBrandLogo(pluginId: pluginId, size: _brandLogoSize, color: context.prego.colors.textSecondary);
 }
 
 /// Whether the pointer is over the row or keyboard focus is inside it.
@@ -605,6 +625,10 @@ const double _metaLineHeight = 20;
 
 const double _statusSlotSize = 16;
 const double _waitingDotSize = 8;
+
+/// As large as the status slot's marks, so the title line reads as one row
+/// of equal glyphs ahead of the text.
+const double _brandLogoSize = 16;
 
 /// The most of the meta line the pull request may take before it clips.
 const double _pullRequestMaxShare = 0.8;
