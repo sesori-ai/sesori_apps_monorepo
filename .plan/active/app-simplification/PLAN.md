@@ -40,7 +40,7 @@
 | D10 | The phone and tablet sidebar footer holds the computer switcher, Settings and collapse. Desktop keeps its bridge button, shortcut hints, palette and connection pill. The bundled bridge, bridge controls, shortcut hints, palette, window drag and file-access card are omitted on mobile. |
 | D11 | Pulling or pressing Refresh does the reload plus the import across every harness. Automatic reloads never import. |
 | D12 | The scan row stays and shows progress, with no Cancel and no Dismiss. When it finishes it fades out and new sessions slide into the list. A failed harness shows a short alert and is logged. |
-| D13 | Removed: the deep-pull gesture, the scan menu items, the desktop project page's Refresh/Scan menu, and the per-harness “Scan for sessions” in Settings. A bridge older than v1.5.2 (no `/plugin/import`) just reloads. |
+| D13 | Removed: the deep-pull gesture, the scan menu items, the desktop project page's Refresh/Scan menu, and the per-harness “Scan for sessions” in Settings. A bridge older than v1.7.0 has no `/plugin/management` harness list to import from, so it just reloads. |
 | D14 | The new-session picker is searchable: a bottom sheet on the phone that rises with the keyboard, and a popover on tablet and desktop. It is the same component as the title switcher. Its top entry is “Open another folder…”, which opens the existing folder browser and then selects the new project. Search matches known project names and paths only; with no match it shows “No projects match…” and keeps the add entry. Paths show only when names collide. It works with one project or none. |
 | D15 | The new-session screen's default project is the filtered project, otherwise the project of the newest session. The phone reads the live project list (`NewSessionProjectsCubit` goes). |
 | D16 | Project management moves to a new Settings › Projects page that reuses the project rows: rename, hide, remove-missing and “Open another folder…”. |
@@ -105,7 +105,10 @@ belongs to session detail, so neither is affected.
     `prego_sliver_refresh_control.dart`) and draws Cancel and Dismiss.
   - `desktop_session_list_screen.dart` has a Refresh/Scan menu, and `harness_settings_detail_view.dart` has a
     per-harness scan.
-  - A bridge older than v1.5.2 returns 404 for `/plugin/import`, which maps to unsupported.
+  - `startAll` fans out to the routable harnesses from the `/plugin/management` snapshot.
+    - That route shipped in v1.7.0; `/plugin/import` is in v1.5.2.
+    - A bridge without the snapshot publishes unsupported and makes no request.
+    - A 404 from `/plugin/import` also maps to unsupported.
   - A settled scan clears itself after 4 s. `CatalogRescanFailed` and `CatalogRescanPartlyFailed` carry counts
     only.
 - **Viewed project.**
@@ -210,7 +213,7 @@ belongs to session detail, so neither is affected.
 - **`CatalogRescanService`** keeps `startAll`, progress, and its 4 s self-clear after settling. It loses
   `start(pluginId)`, `cancel` and `dismiss`.
   - Settled failures name their failed plugin ids, so the UI can show harness names.
-  - `unsupported` (a bridge older than v1.5.2) settles silently, so the refresh is only a reload (D13).
+  - `unsupported` (a bridge older than v1.7.0) settles silently, so the refresh is only a reload (D13).
 - **`RouteSource.projectPageVisibility`** becomes `homeVisibility`, so `ProjectInventoryService`'s two refresh
   triggers keep working.
 
@@ -262,12 +265,13 @@ belongs to session detail, so neither is affected.
 - The per-project `sessions` def is renamed `projectSessions` and kept at `/projects/:projectId/sessions` for the
   desktop project page only, until step 11.
 - Notifications open `[home, sessionDetail]`. `closeDeletedSessionRoute` returns to `home`.
-- With no `project`, new session shows the zero-project state: the picker with only “Open another folder…”. The
+- With no `project`, new session opens with the picker and nothing selected. It lists the known projects under
+  “Open another folder…”, and with an empty inventory it shows only that entry (the zero-project state). The
   `NewSessionCubit` is created once a project is chosen.
 
 ## Compatibility
 
-- No wire change. Bridges older than v1.5.2 keep working, because refresh degrades to a reload (D13). The client
+- No wire change. Bridges older than v1.7.0 keep working, because refresh degrades to a reload (D13). The client
   stops calling `DELETE /plugin/import`, but the bridge route stays for released apps.
 - `DesktopSidebarLayout` drops four fields. The stored JSON's extra keys are ignored on decode, so no migration is
   needed.
@@ -381,6 +385,9 @@ This document and `TRACKER.md`. Verification: Markdown only.
     `SessionListRefreshCubit.refresh`.
   - The per-project session list's pull calls a new `SessionListCubit.refreshAndImport`, which does its own reload
     plus `startAll`. That list is gone in step 8.
+    - This is a deliberate transitional exception. That list's rows come from its own cubit, not from the
+      inventories the refresh cubit reloads.
+    - Both entry points start the same `CatalogRescanService` operation, so import state keeps one owner.
   - The scan rows read the refresh cubit's scan state. `CatalogScanFailureAlerts` shows the D12 alert from
     failed plugin ids, and the service logs each failure.
   - Remove the `ProjectListCubit` and `ProjectInventoryService` scan methods and `catalogScan` state.
@@ -479,7 +486,8 @@ This document and `TRACKER.md`. Verification: Markdown only.
     list, until step 9.
 - **New session.**
   - New session passes `defaultProjectId`.
-  - The zero-project state is the picker with only “Open another folder…”.
+  - Without a default, the picker opens with nothing selected and lists the known projects. Only an empty
+    inventory shows the zero-project state (just “Open another folder…”).
   - Session detail creates its own action-mode `SessionListCubit`.
 - **Desktop.**
   - Desktop serves `home` with `DesktopHomePane`, and its new-session and detail routes move to the new paths.
@@ -593,8 +601,8 @@ Run the matrix below, record the results in `TRACKER.md`, and move the plan to
   - Archived from the footer;
   - the folder picker;
   - Settings › Projects.
-- **Plugins.** Refresh across every harness installed on the test machine. A failing harness, and a bridge without
-  `/plugin/import`, show the documented degradation. No plugin behavior changes.
+- **Plugins.** Refresh across every harness installed on the test machine. A failing harness, and a bridge older than
+  v1.7.0, show the documented degradation. No plugin behavior changes.
 - **Platforms.** Android, Windows and Linux are covered by shared widget and unit tests. Nothing here is
   platform-specific beyond the macOS desktop shell.
 - **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement. None has been
