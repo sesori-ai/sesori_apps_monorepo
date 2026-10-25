@@ -35,10 +35,6 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [
-        BlocProvider(
-          lazy: false,
-          create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
-        ),
         BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
         BlocProvider(
           create: (_) => LinkedComputerAlertCubit(

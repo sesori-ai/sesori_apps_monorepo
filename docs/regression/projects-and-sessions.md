@@ -253,13 +253,6 @@ state.
   the open session; archiving or deleting it empties the pane.
   Collapse hides the sidebar completely until the pane's restore button brings it back; the collapse lasts until
   the app restarts and survives rotation. Only a shown sidebar claims the list's project viewing.
-- A session being created leads the desktop home's Running section as a launching row: the AI sparkle, its title
-  and "Creating… · `<harness>` · `<project>`" with no time. A tap explains that it is still being created and opens
-  nothing. Its session takes its place once it runs, or gives way at once to its waiting row when it first waits
-  on the user; until then it stays out of the desktop home's Recent. A newer launch whose session runs while an
-  older one below it is still being created keeps its row until the older one lands or fails, then takes its own
-  row's place. The section's rows and headings grow and shrink in as they enter and leave, so the rows below move
-  continuously (instantly under reduced motion), and a failed launch's row leaves.
 - However a phone session is reached, from the home or a notification, Android back (edge gesture or
   button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
   holds for sheets over harness settings and archived sessions.

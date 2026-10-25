@@ -27,7 +27,7 @@ SessionLaunchState resolveSessionLaunchState({required List<SessionLaunch> launc
 /// What one surface draws for launches, carried from one update to the next.
 final class const LaunchRows({
   /// The launching rows, newest first: launches still waiting for their
-  /// session, and launches whose session has not reached the row's slot yet.
+  /// session, and launches whose session has not reached the row's place yet.
   required final List<LaunchingSession> placeholders,
 
   /// For each drawn placeholder whose launch has a session: that session, and
@@ -77,26 +77,18 @@ final class const LaunchRows({
 /// session, arriving before the reply that names it (D12).
 ///
 /// [launching] holds only the launches this surface draws rows for, and
-/// [sessions] is the surface's list in order. [slot] is the rows the
-/// launching rows lead, in order: a session takes its row's place only at
-/// the head of these. A launch whose session is among [placedSessionIds],
-/// shown outside the slot where it needs no further update to settle (it waits
-/// on the user), gives way at once.
+/// [sessions] is the surface's list in order, which the launching rows lead.
 LaunchRows resolveHeldLaunchSessions({
   required LaunchRows previous,
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
   required List<Session> sessions,
-  required List<Session> slot,
-  required Set<String> placedSessionIds,
 }) {
   LaunchRows pass(LaunchRows previous) => _resolveHeldLaunchSessionsOnce(
     previous: previous,
     launching: launching,
     sessionIds: sessionIds,
     sessions: sessions,
-    slot: slot,
-    placedSessionIds: placedSessionIds,
   );
   // A row that goes as an ordinary change can leave the rows above it in
   // place, so pass again until no more rows settle. A pass without a sessions
@@ -113,8 +105,6 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
   required List<Session> sessions,
-  required List<Session> slot,
-  required Set<String> placedSessionIds,
 }) {
   final listed = [for (final session in sessions) session.id];
   final present = listed.toSet();
@@ -139,18 +129,18 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
   }
   rows.sort((a, b) => _newestFirst(a: a, b: b));
 
-  final slotIds = [for (final session in slot) session.id];
-  final kept = rows.length - _inPlaceCount(rows: rows, resolved: resolved, slot: slotIds);
+  final kept = rows.length - _inPlaceCount(rows: rows, resolved: resolved, sessions: listed);
   // The rows that would take their places were the rows whose sessions have
-  // not reached the slot yet gone: still waiting (bounded by the create
+  // not reached the list yet gone: still waiting (bounded by the create
   // timeout), or named with the session still on its way. They wait those out.
-  final inSlot = slotIds.toSet();
-  final slotRows = [
+  final listedRows = [
     for (final row in rows)
-      if (resolved[row.launchId] case final launch? when inSlot.contains(launch.sessionId)) row,
+      if (resolved[row.launchId] case final launch? when present.contains(launch.sessionId)) row,
   ];
   final inPlaceOnceSettled = {
-    for (final row in slotRows.skip(slotRows.length - _inPlaceCount(rows: slotRows, resolved: resolved, slot: slotIds)))
+    for (final row in listedRows.skip(
+      listedRows.length - _inPlaceCount(rows: listedRows, resolved: resolved, sessions: listed),
+    ))
       row.launchId,
   };
   final placeholders = <LaunchingSession>[];
@@ -162,9 +152,8 @@ LaunchRows _resolveHeldLaunchSessionsOnce({
       placeholders.add(row);
     } else if (index >= kept) {
       rowKeys[launch.sessionId] = row.launchId;
-    } else if (!placedSessionIds.contains(launch.sessionId) &&
-        (inPlaceOnceSettled.contains(row.launchId) ||
-            !(present.contains(launch.sessionId) && launch.arrived && sessionsChanged))) {
+    } else if (inPlaceOnceSettled.contains(row.launchId) ||
+        !(present.contains(launch.sessionId) && launch.arrived && sessionsChanged)) {
       placeholders.add(row);
       named[row.launchId] = (
         sessionId: launch.sessionId,
@@ -247,21 +236,13 @@ LaunchRows latchLaunchSessions({
   );
 }
 
-/// Where a surface draws a project's launching rows: at the head of
-/// [sessions]. See [resolveHeldLaunchSessions] for [placedSessionIds].
-typedef LaunchSlot = ({List<Session> sessions, Set<String> placedSessionIds});
-
-/// Each project's launching rows on a surface that draws a project's launches
-/// at the head of its [slots] rows: Activity's rows for the project, or all
-/// of the project's sessions. A launch's session takes its row's place only
-/// there; until then it is held out of the project's other rows, which the
-/// project's sessions follow the slot in, so it reaching the slot is a
-/// sessions update. A project whose sessions are not loaded keeps its rows.
+/// Each project's launching rows on a surface that leads each project's
+/// sessions with its launches (see [resolveHeldLaunchSessions]). A project
+/// whose sessions are not loaded keeps its rows.
 Map<String, LaunchRows> resolveProjectLaunchRows({
   required Map<String, LaunchRows> previous,
   required SessionLaunchState launches,
   required Map<String, RecentSessionsEntry> entries,
-  required Map<String, LaunchSlot> slots,
 }) => {
   for (final MapEntry(key: projectId, value: entry) in entries.entries)
     projectId: _projectLaunchRows(
@@ -272,7 +253,6 @@ Map<String, LaunchRows> resolveProjectLaunchRows({
       ],
       sessionIds: launches.sessionIds,
       entry: entry,
-      slot: slots[projectId] ?? (sessions: const [], placedSessionIds: const {}),
     ),
 };
 
@@ -281,37 +261,32 @@ LaunchRows _projectLaunchRows({
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
   required RecentSessionsEntry entry,
-  required LaunchSlot slot,
-}) {
-  if (entry is! RecentSessionsLoaded) {
-    return latchLaunchSessions(previous: previous, launching: launching, sessionIds: sessionIds);
-  }
-  final inSlot = {for (final session in slot.sessions) session.id};
-  return resolveHeldLaunchSessions(
+}) => switch (entry) {
+  RecentSessionsLoaded(:final visibleSessions) => resolveHeldLaunchSessions(
     previous: previous,
     launching: launching,
     sessionIds: sessionIds,
-    sessions: [
-      ...slot.sessions,
-      ...entry.visibleSessions.where((session) => !inSlot.contains(session.id)),
-    ],
-    slot: slot.sessions,
-    placedSessionIds: slot.placedSessionIds,
-  );
-}
+    sessions: visibleSessions,
+  ),
+  RecentSessionsLoading() || RecentSessionsFailed() => latchLaunchSessions(
+    previous: previous,
+    launching: launching,
+    sessionIds: sessionIds,
+  ),
+};
 
 /// How many of the last [rows] can give way to their sessions in place: the
-/// longest tail whose sessions open [slot] in the rows' order.
+/// longest tail whose sessions open [sessions] in the rows' order.
 int _inPlaceCount({
   required List<LaunchingSession> rows,
   required Map<String, ({String sessionId, bool arrived})> resolved,
-  required List<String> slot,
+  required List<String> sessions,
 }) {
   for (var count = rows.length; count > 0; count--) {
     final tail = rows.sublist(rows.length - count);
     var matches = true;
     for (var index = 0; index < count && matches; index++) {
-      matches = resolved[tail[index].launchId]?.sessionId == slot.elementAtOrNull(index);
+      matches = resolved[tail[index].launchId]?.sessionId == sessions.elementAtOrNull(index);
     }
     if (matches) return count;
   }

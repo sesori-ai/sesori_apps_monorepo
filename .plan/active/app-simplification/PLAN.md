@@ -378,7 +378,8 @@ Dependencies:
 - **2.a and 5** are independent; 2.b follows 2.a.
 - **3 follows 2.a** (`SessionScope`), 4 follows 3, and 6 follows 2.a and 5.
 - **7.a follows 6**; 7.b.i follows 3, 4 and 7.a; 7.b.ii follows 7.b.i; 8 follows 7.b.ii.
-- **9 follows 8**; 10.a.i follows 9; 10.a.ii follows 10.a.i; 10.b follows 10.a.ii; 11 follows 10.b.
+- **9 follows 8**; 10.a.i follows 9; 10.a.ii follows 10.a.i; 10.b follows 10.a.ii; 11.i follows 10.b, and
+  11.ii, 11.iii and 11.iv follow in order.
 - **12 follows every implementation step**, and 13 comes last.
 
 Step 7.b is split in two:
@@ -397,6 +398,14 @@ Step 10.a is split in two:
   project filter and the list-claim restore. The analyzer makes it delete the private sidebar widgets the old body
   used, so it stays above the soft cap; the public layout fields and cubit methods stay for 10.b, and the activity
   projection, which the home sections read, for 11.
+
+Step 11 is split in four:
+
+- **11.i** makes the desktop home the new-session composer, moves the palette onto the shared list and removes Recent
+  sessions with the home sections.
+- **11.ii** removes the desktop project page, its breadcrumbs and the exits that opened it.
+- **11.iii** removes the session list cubit's view mode, which only that page used.
+- **11.iv** removes the project-sessions route and the list-claim stack.
 
 ### Step 1 — Publish the plan (🌱)
 

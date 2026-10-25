@@ -202,7 +202,6 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                           ),
                           maxContentWidth: DesktopSessionListView.maxContentWidth,
                           transcriptWidth: desktopTranscriptWidth,
-                          footer: null,
                         ),
                       ),
                     ),
