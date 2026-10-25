@@ -18,7 +18,6 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
-import "package:sesori_desktop/core/widgets/desktop_sidebar.dart";
 import "package:sesori_desktop/core/widgets/desktop_sidebar_expansion.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -197,7 +196,7 @@ void main() {
   final page = find.byKey(const Key("cockpit-content"));
   final list = find.byKey(const Key("desktop-sidebar-session-list"));
   final filterTrigger = find.byKey(const Key("desktop-sidebar-filter"));
-  const margin = DesktopSidebar.panelMargin;
+  const margin = FloatingSidebarPanel.margin;
   // The page starts past the open panel and the gaps on either side of it, or
   // at the window's edge while the sidebar is hidden.
   double pageStart(WidgetTester tester) => tester.getTopLeft(page).dx;
@@ -1270,6 +1269,35 @@ void main() {
     auth.add(const AuthGateState.signedOut());
     await tester.pumpAndSettle();
     expect(palette, findsNothing);
+  }, variant: TargetPlatformVariant.desktop());
+
+  testWidgets("the command palette offers every project's sessions whatever the sidebar's filter, search and chip", (
+    tester,
+  ) async {
+    tester.view.devicePixelRatio = 1;
+    tester.view.physicalSize = const Size(1200, 800);
+    addTearDown(tester.view.resetPhysicalSize);
+    addTearDown(tester.view.resetDevicePixelRatio);
+    seedTwoProjects();
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: app(state: running),
+      ),
+    );
+    await tester.pumpAndSettle();
+    sessions
+      ..selectProject(projectId: "project-2")
+      ..setQuery(query: "build")
+      ..setQuickFilter(filter: SessionListQuickFilter.running);
+    await tester.pumpAndSettle();
+    expect(sessions.state.rows, isEmpty, reason: "the sidebar's list shows neither session");
+
+    await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
+    await tester.pumpAndSettle();
+    final palette = find.byKey(const Key("desktop-command-palette"));
+    expect(find.descendant(of: palette, matching: find.textContaining("Fix the build")), findsOneWidget);
+    expect(find.descendant(of: palette, matching: find.textContaining("Write docs")), findsOneWidget);
   }, variant: TargetPlatformVariant.desktop());
 }
 

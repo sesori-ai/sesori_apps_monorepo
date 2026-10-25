@@ -247,6 +247,17 @@ Widget sessionRowApp({
 }) {
   const project = ProjectSummary(id: "project-1", name: "Project One", path: "/project-1", time: null);
   final sessions = _MockAllSessionsCubit();
+  final rows = [
+    AllSessionsRow(
+      session: session,
+      project: project,
+      isRunning: false,
+      isUnseen: session.unseen,
+      isAwaitingInput: false,
+      isRetrying: false,
+      backgroundTaskCount: 0,
+    ),
+  ];
   whenListen(
     sessions,
     const Stream<AllSessionsState>.empty(),
@@ -254,17 +265,8 @@ Widget sessionRowApp({
       projectId: null,
       query: "",
       quickFilter: SessionListQuickFilter.all,
-      rows: [
-        AllSessionsRow(
-          session: session,
-          project: project,
-          isRunning: false,
-          isUnseen: session.unseen,
-          isAwaitingInput: false,
-          isRetrying: false,
-          backgroundTaskCount: 0,
-        ),
-      ],
+      everyProjectRows: rows,
+      rows: rows,
       counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
       failures: const [],
       isLoading: false,

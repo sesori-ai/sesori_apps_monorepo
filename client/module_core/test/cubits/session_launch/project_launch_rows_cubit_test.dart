@@ -11,8 +11,7 @@ void main() {
   final created = testSession(id: "created");
   late BehaviorSubject<Map<String, RecentSessionsEntry>> inventory;
   late SessionLaunchRepository launches;
-  // The slots' inputs here: sessions the surface leaves out of its slot.
-  late ProjectLaunchRowsCubit<Set<String>> cubit;
+  late ProjectLaunchRowsCubit cubit;
 
   Map<String, RecentSessionsEntry> loaded(List<Session> sessions) => {
     "project-1": RecentSessionsLoaded(
@@ -32,18 +31,6 @@ void main() {
     cubit = ProjectLaunchRowsCubit(
       inventoryService: inventoryService,
       launchService: inMemorySessionLaunchService(launchRepository: launches),
-      slots: ({required entries, required inputs}) => {
-        for (final MapEntry(key: projectId, value: entry) in entries.entries)
-          if (entry is RecentSessionsLoaded)
-            projectId: (
-              sessions: [
-                for (final session in entry.visibleSessions)
-                  if (!inputs.contains(session.id)) session,
-              ],
-              placedSessionIds: const {},
-            ),
-      },
-      slotInputs: const {},
       initialRows: const {},
     );
   });
@@ -76,19 +63,6 @@ void main() {
 
     inventory.add(loaded([created, existing]));
     await pumpEventQueue();
-    expect(cubit.state["project-1"]?.placeholders, isEmpty);
-    expect(cubit.state["project-1"]?.rowKeys, {"created": "launch-1"});
-  });
-
-  test("re-resolves when only the slots' inputs change", () async {
-    cubit.updateSlotInputs(inputs: {"created"});
-    launch();
-    launches.promote(launchId: "launch-1", session: created);
-    inventory.add(loaded([created, existing]));
-    await pumpEventQueue();
-    expect(cubit.state["project-1"]?.heldSessionIds, {"created"}, reason: "it is outside the slot");
-
-    cubit.updateSlotInputs(inputs: const {});
     expect(cubit.state["project-1"]?.placeholders, isEmpty);
     expect(cubit.state["project-1"]?.rowKeys, {"created": "launch-1"});
   });

@@ -90,19 +90,9 @@ class const _ActiveSessions({required final AllSessionsList list}) extends State
 class _ActiveSessionsState() extends State<_ActiveSessions> {
   Set<String> _hiddenSessionIds = const {};
 
-  static Map<String, LaunchSlot> _projectSlots({
-    required Map<String, RecentSessionsEntry> entries,
-    required () inputs,
-  }) => {
-    for (final MapEntry(key: projectId, value: entry) in entries.entries)
-      if (entry is RecentSessionsLoaded) projectId: (sessions: entry.visibleSessions, placedSessionIds: const {}),
-  };
-
   @override
-  Widget build(BuildContext context) => ProjectLaunchRowsBuilder<()>(
+  Widget build(BuildContext context) => ProjectLaunchRowsBuilder(
     initialRows: const {},
-    slots: _projectSlots,
-    slotInputs: (),
     builder: ({required context, required launchRows}) {
       final hidden = {
         ...context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),

@@ -1,9 +1,12 @@
+import "dart:math" as math;
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "floating_sidebar_panel.dart";
 
 /// The width from which the session shell shows its sidebar beside the
 /// content pane (D7).
@@ -22,12 +25,14 @@ enum SessionShellLayout() {
 
 typedef SessionSidebarFooterBuilder = Widget Function({required VoidCallback onCollapse});
 
-/// The session routes' shell: from [wideLayoutBreakpoint], a fixed-width
-/// sidebar beside the content pane; below it, the content alone.
+/// The session routes' shell: from [wideLayoutBreakpoint], the sidebar floats
+/// as a fixed-width [FloatingSidebarPanel] beside the content pane, as on
+/// desktop; below it, the content alone.
 ///
-/// Collapsing hides the sidebar completely: it slides out while the content
-/// pane widens, and a restore button grows in before the leading of every page
-/// in the pane (D9). The collapsed flag lives only as long as the shell.
+/// Collapsing hides the sidebar completely: the panel and its margins slide
+/// out while the content pane widens, and a restore button grows in before the
+/// leading of every page in the pane (D9). The collapsed flag lives only as
+/// long as the shell.
 ///
 /// It reports whether the sidebar shows to the scope's [AllSessionsCubit],
 /// which owns the wide-pane claim.
@@ -53,7 +58,7 @@ class const SessionSidebarShell({
 }
 
 class _SessionSidebarShellState() extends State<SessionSidebarShell> with SingleTickerProviderStateMixin {
-  /// The touch sidebar's fixed width (D9).
+  /// The touch panel's fixed width (D9).
   static const double _sidebarWidth = 320;
   static const Duration _motion = Duration(milliseconds: 260);
 
@@ -104,7 +109,46 @@ class _SessionSidebarShellState() extends State<SessionSidebarShell> with Single
         if (!isWide) {
           return _SessionShellLayoutScope(layout: SessionShellLayout.pages, child: widget.child);
         }
-        final prego = context.prego;
+        const margin = FloatingSidebarPanel.margin;
+        // The panel floats clear of a landscape notch, the status bar and the
+        // home indicator, with its gap to the pane after it.
+        final sidebar = SafeArea(
+          right: false,
+          child: Padding(
+            padding: const EdgeInsets.all(margin),
+            child: FloatingSidebarPanel(
+              key: const Key("session-sidebar"),
+              width: _sidebarWidth,
+              // Clear of the screen's edges, the panel's rows need no inset.
+              child: MediaQuery.removePadding(
+                context: context,
+                removeLeft: true,
+                removeTop: true,
+                removeRight: true,
+                removeBottom: true,
+                child: Column(
+                  children: [
+                    Expanded(
+                      // Ink paints on the nearest Material, outside the list's
+                      // own clip: this one keeps a row's highlight above the
+                      // footer, as on desktop.
+                      child: Material(
+                        type: MaterialType.transparency,
+                        clipBehavior: Clip.hardEdge,
+                        child: widget.sidebar,
+                      ),
+                    ),
+                    Divider(height: 1, color: context.prego.colors.borderPrimary),
+                    widget.footer(onCollapse: () => _setCollapsed(collapsed: true)),
+                  ],
+                ),
+              ),
+            ),
+          ),
+        );
+        // What the collapse slides out: the panel with its margins.
+        final sidebarExtent = MediaQuery.paddingOf(context).left + margin + _sidebarWidth + margin;
+        final pane = PregoTopNavigationShellLeading(leading: _restoreButton, child: widget.child);
         // The shell-level Scaffold is the single root Scaffold beside the
         // sidebar, so snackbars span the sidebar and the content pane instead of
         // attaching to a pane page's transient Scaffold.
@@ -119,44 +163,34 @@ class _SessionSidebarShellState() extends State<SessionSidebarShell> with Single
                 // and the screen reader.
                 Offstage(
                   offstage: _sidebar.isDismissed,
-                  child: SizeTransition(
-                    // Aligned to its end, the sidebar slides out rather than
-                    // narrowing.
-                    axis: Axis.horizontal,
-                    alignment: AlignmentDirectional.centerEnd,
-                    sizeFactor: _sidebarCurve,
-                    child: SizedBox(
-                      key: const Key("session-sidebar"),
-                      // A landscape notch's inset widens the sidebar rather
-                      // than narrowing its content.
-                      width: _sidebarWidth + MediaQuery.paddingOf(context).left,
-                      child: Material(
-                        color: prego.colors.bgSecondary,
-                        child: Row(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Expanded(
-                              child: SafeArea(
-                                right: false,
-                                child: Column(
-                                  children: [
-                                    Expanded(child: widget.sidebar),
-                                    Divider(height: 1, color: prego.colors.borderPrimary),
-                                    widget.footer(onCollapse: () => _setCollapsed(collapsed: true)),
-                                  ],
-                                ),
-                              ),
-                            ),
-                            VerticalDivider(width: 1, color: prego.colors.borderPrimary),
-                          ],
-                        ),
-                      ),
+                  child: ListenableBuilder(
+                    listenable: _sidebarCurve,
+                    // Aligned to its end, the panel slides out at its full
+                    // width rather than squeezing its rows.
+                    builder: (context, panel) => Align(
+                      alignment: AlignmentDirectional.centerEnd,
+                      widthFactor: _sidebarCurve.value,
+                      child: panel,
                     ),
+                    child: sidebar,
                   ),
                 ),
                 Expanded(
                   key: const Key("session-sidebar-content"),
-                  child: PregoTopNavigationShellLeading(leading: _restoreButton, child: widget.child),
+                  child: ListenableBuilder(
+                    listenable: _sidebarCurve,
+                    builder: (context, _) {
+                      // Beside the panel the pane is clear of the screen's
+                      // edge, so it takes back that edge's inset only as the
+                      // collapse brings it there.
+                      final data = MediaQuery.of(context);
+                      final edgeInset = math.max(0.0, data.padding.left - sidebarExtent * _sidebarCurve.value);
+                      return MediaQuery(
+                        data: data.copyWith(padding: data.padding.copyWith(left: edgeInset)),
+                        child: pane,
+                      );
+                    },
+                  ),
                 ),
               ],
             ),
