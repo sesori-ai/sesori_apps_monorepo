@@ -244,9 +244,9 @@ state.
   its footer holds the computer switcher, Archived, Settings and collapse. With no session open the pane is a new
   session in the list's default project, which holds once chosen so another session turning newest never moves
   the draft; with no default yet it asks for a project with nothing selected, and its picker opens on a tap
-  rather than by itself. Another filter
-  moves the draft to the filter's default, and New session in the sidebar returns the pane to it. The open page (a session, new session or File
-  Changes) fills the pane and the list marks the open session; archiving or deleting it empties the pane.
+  rather than by itself. Another filter moves the draft to the filter's default, and New session in the sidebar
+  returns the pane to it. The open page (a session, new session or File Changes) fills the pane and the list marks
+  the open session; archiving or deleting it empties the pane.
   Collapse hides the sidebar completely until the pane's restore button brings it back; the collapse lasts until
   the app restarts and survives rotation. Only a shown sidebar claims the list's project viewing.
 - A session being created leads the desktop home's Running section as a launching row: the AI sparkle, its title
