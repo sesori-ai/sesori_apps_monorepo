@@ -363,7 +363,8 @@ Series total: 13. Titles are exact. Each implementation step updates the regress
 | 7.b.ii | 🚧 [app-simplification] Make the all-projects list the home [step 7.b.ii/13] | 2,100 |
 | 8 | 🌿 [app-simplification] Remove the Projects screen and per-project phone list [step 8/13] | 1,500 (deletions) |
 | 9 | 🚧 [app-simplification] Show the sidebar on wide phones and tablets [step 9/13] | 1,200 |
-| 10.a | ⚙️ [app-simplification] Put the shared list in the desktop sidebar [step 10.a/13] | 900 |
+| 10.a.i | 🌿 [app-simplification] Add the desktop Archived page [step 10.a.i/13] | 250 |
+| 10.a.ii | 🚧 [app-simplification] Put the shared list in the desktop sidebar [step 10.a.ii/13] | 2,300 (mostly deletions) |
 | 10.b | 🌿 [app-simplification] Remove desktop Activity, the rail and folded sections [step 10.b/13] | 1,300 (deletions) |
 | 11 | ⚙️ [app-simplification] Open desktop on the composer and remove the project page [step 11/13] | 1,300 |
 | 12 | 🌱 [app-simplification] Reconcile regression documents [step 12/13] | 300 |
@@ -374,7 +375,7 @@ Dependencies:
 - **2.a and 5** are independent; 2.b follows 2.a.
 - **3 follows 2.a** (`SessionScope`), 4 follows 3, and 6 follows 2.a and 5.
 - **7.a follows 6**; 7.b.i follows 3, 4 and 7.a; 7.b.ii follows 7.b.i; 8 follows 7.b.ii.
-- **9 follows 8**; 10.a follows 9; 10.b follows 10.a; 11 follows 10.b.
+- **9 follows 8**; 10.a.i follows 9; 10.a.ii follows 10.a.i; 10.b follows 10.a.ii; 11 follows 10.b.
 - **12 follows every implementation step**, and 13 comes last.
 
 Step 7.b is split in two:
@@ -385,6 +386,14 @@ Step 7.b is split in two:
 - **7.b.ii** switches the route tree and the phone home together, because the per-project pages cannot sit inside
   the new tree. A route-only step would change every path twice. It stays above the soft cap because the def rename
   moves every consumer, desktop included, in lockstep.
+
+Step 10.a is split in two:
+
+- **10.a.i** adds the desktop Archived route and the sidebar footer's Archived entry, with no sidebar body change.
+- **10.a.ii** swaps the sidebar body for the shared list, with full-hide collapse, pane visibility, the palette's
+  project filter and the list-claim restore. The analyzer makes it delete the private sidebar widgets the old body
+  used, so it stays above the soft cap; the public layout fields, cubit methods and the activity projection stay for
+  10.b.
 
 ### Step 1 — Publish the plan (🌱)
 
@@ -578,6 +587,9 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Regression docs:** `navigation-transitions.md` and `projects-and-sessions.md`.
 
 ### Step 10.a — Desktop sidebar on the shared list (⚙️)
+
+10.a.i ships the footer's Archived entry and its route, with their tests and the macOS Archived check. 10.a.ii ships
+the rest of this checklist.
 
 - **Sidebar body.** `AllSessionsList` under New session and Search, which still opens the palette.
 - **Footer.** It keeps the desktop extras and adds Archived, which opens a new desktop archived route.

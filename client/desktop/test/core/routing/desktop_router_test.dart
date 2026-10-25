@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:flutter/services.dart";
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -64,6 +65,7 @@ void main() {
     final shell = buildDesktopRoutes().single as ShellRoute;
     final pages = shell.routes.whereType<GoRoute>().toList();
     for (final def in [
+      AppRouteDef.archivedSessions,
       AppRouteDef.projectSessions,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
@@ -242,6 +244,35 @@ void main() {
     await tester.tap(find.text("delete open session"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _sessions.buildPath());
+  });
+
+  testWidgets("Archived opens over its opener, opens rows read-only and closes back", (tester) async {
+    final router = _callbackRouter(initialRoute: _detail(readOnly: false));
+    addTearDown(router.dispose);
+    await tester.pumpWidget(_app(router: router));
+    await tester.tap(find.text("sidebar archived"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, AppRouteDef.archivedSessions.path);
+    // Archived again from the footer keeps the one page.
+    await tester.tap(find.text("sidebar archived"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("open archived row"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: true).buildPath());
+    await _commandBracket(tester);
+    expect(router.state.uri.path, AppRouteDef.archivedSessions.path);
+    await tester.tap(find.text("close archived"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
+  });
+
+  testWidgets("Archived reached directly closes to the home", (tester) async {
+    final router = _callbackRouter(initialRoute: const AppRoute.archivedSessions());
+    addTearDown(router.dispose);
+    await tester.pumpWidget(_app(router: router));
+    await tester.tap(find.text("close archived"));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.path, AppRouteDef.home.path);
   });
 
   testWidgets("new-session replaces its page and retains the opener", (tester) async {
@@ -436,6 +467,12 @@ const _session = Session(
   time: SessionTime(created: 1, updated: 2, archived: 3),
 );
 
+Widget _app({required GoRouter router}) => MaterialApp.router(
+  localizationsDelegates: AppLocalizations.localizationsDelegates,
+  supportedLocales: AppLocalizations.supportedLocales,
+  routerConfig: router,
+);
+
 /// Exercise production route decoders/callbacks without constructing auth,
 /// transport, or backend-owning screen providers. Content is tested separately.
 GoRouter _callbackRouter({required AppRoute initialRoute}) {
@@ -444,10 +481,21 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
     initialLocation: initialRoute.buildPath(),
     routes: [
       ShellRoute(
-        builder: (context, state, child) => CallbackShortcuts(
-          bindings: _shellShortcuts(context: context, state: state),
-          child: Focus(autofocus: true, child: child),
-        ),
+        builder: (context, state, child) {
+          final cockpit = _cockpit(context: context, state: state);
+          return CallbackShortcuts(
+            bindings: {desktopShortcut(key: LogicalKeyboardKey.bracketLeft): cockpit.onGoBack},
+            child: Focus(
+              autofocus: true,
+              child: Column(
+                children: [
+                  TextButton(onPressed: cockpit.onOpenArchived, child: const Text("sidebar archived")),
+                  Expanded(child: child),
+                ],
+              ),
+            ),
+          );
+        },
         routes: [
           for (final page in shell.routes.whereType<GoRoute>())
             GoRoute(
@@ -504,6 +552,23 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                         ),
                       ],
                       DesktopSessionDiffsScreen() => [button(label: "project", action: screen.onOpenProject)],
+                      BlocProvider(child: final ArchivedSessionsView archived) => [
+                        button(
+                          label: "open archived row",
+                          action: () => archived.onSessionTap(
+                            row: const AllSessionsRow(
+                              session: _session,
+                              project: ProjectSummary(id: "p", name: "UI / Core", path: "/fixture", time: null),
+                              isRunning: false,
+                              isUnseen: false,
+                              isAwaitingInput: false,
+                              isRetrying: false,
+                              backgroundTaskCount: 0,
+                            ),
+                          ),
+                        ),
+                        button(label: "close archived", action: archived.onClose),
+                      ],
                       _ => [const Text("home")],
                     },
                   ),
@@ -516,14 +581,13 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
   );
 }
 
-/// The production shell's Go back binding, bound to [context].
-Map<ShortcutActivator, VoidCallback> _shellShortcuts({required BuildContext context, required GoRouterState state}) {
+/// The production cockpit's callbacks, bound to [context].
+DesktopCockpitShell _cockpit({required BuildContext context, required GoRouterState state}) {
   final shell = buildDesktopRoutes().single as ShellRoute;
   final gate = shell.builder?.call(context, state, const SizedBox());
   if (gate is! AuthGate) fail("The desktop shell must start with its AuthGate");
   final provider = gate.child as DesktopCockpitCubitProvider;
-  final cockpit = (provider.child as Builder).builder(context) as DesktopCockpitShell;
-  return {desktopShortcut(key: LogicalKeyboardKey.bracketLeft): cockpit.onGoBack};
+  return (provider.child as Builder).builder(context) as DesktopCockpitShell;
 }
 
 /// A screen a page opens over itself, as the session page opens Prompts:

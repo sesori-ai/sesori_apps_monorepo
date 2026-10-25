@@ -50,6 +50,7 @@ class const DesktopSidebar({
   required final VoidCallback onAddProject,
   required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenBridgeSettings,
+  required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   /// The gap the shell keeps around this floating panel; what pops out beside
@@ -162,6 +163,7 @@ class const DesktopSidebar({
               autoCollapsed: autoCollapsed,
               onToggleCollapsed: onToggleCollapsed,
               onOpenBridgeSettings: onOpenBridgeSettings,
+              onOpenArchived: onOpenArchived,
               onOpenSettings: onOpenSettings,
             ),
           ],
@@ -239,6 +241,7 @@ class const _SidebarFooter({
   required final bool autoCollapsed,
   required final VoidCallback onToggleCollapsed,
   required final VoidCallback onOpenBridgeSettings,
+  required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   @override
@@ -276,6 +279,15 @@ class const _SidebarFooter({
     );
     final refresh = control(_SidebarRefreshButton(projectState: projectState, iconSize: PregoIconSize.md, color: null));
     final controls = [
+      control(
+        IconButton(
+          key: const Key("desktop-sidebar-archived"),
+          tooltip: loc.archivedSessionsTitle,
+          padding: const EdgeInsets.all(PregoSpacing.sm),
+          onPressed: onOpenArchived,
+          icon: Icon(TablerRegular.archive, size: PregoIconSize.md, semanticLabel: loc.archivedSessionsTitle),
+        ),
+      ),
       control(
         IconButton(
           key: const Key("desktop-sidebar-settings"),

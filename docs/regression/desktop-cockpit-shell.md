@@ -28,9 +28,9 @@ The main pane hosts one full-width routed page.
   drag only after it travels further than a click tolerates, so toolbar controls keep their clicks,
   undelayed, and a text selection or a scrollbar still wins its own press. Where the band and a zooming
   region overlap, one press still reaches the host once.
-- Open, the sidebar's footer is one 44-point row: This computer, then Settings and collapse. Refresh sits
-  on the Projects header beside New project. The rail stacks the footer: This computer, then refresh and
-  Settings, then collapse, since it fits two controls a line. The session list clips its rows' highlights, so a
+- Open, the sidebar's footer is one 44-point row: This computer, then Archived, Settings and collapse. Refresh
+  sits on the Projects header beside New project. The rail stacks the footer: This computer, then refresh and
+  Archived, then Settings and collapse, since it fits two controls a line. The session list clips its rows' highlights, so a
   highlighted row scrolled under the section above never shows through it.
 - The native window chrome is forced to the app's effective brightness (the in-app mode, or the system's
   while the app follows it) and again on every change, because a host can only be forced light or dark.
@@ -55,7 +55,8 @@ The main pane hosts one full-width routed page.
   with its shortcut at the row's end; with no projects it reads Add project. The small New project button on the Projects section header uses the shared folder dialog and project-list
   cubit, and hides with the collapsed sidebar, where the home pane still offers it. The collapse control owns
   sidebar presentation. The compact Projects shortcut opens home, including empty/recovery states when the window is
-  too narrow to expand. The separated footer groups This computer with the Settings and collapse controls.
+  too narrow to expand. The separated footer groups This computer with the Archived, Settings and collapse
+  controls.
   Icon/status hints and truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
 - Explicit sidebar refresh runs through `SessionListRefreshCubit` and the shared `SessionListRefreshService` over the
   same scoped project and recent inventory services, and starts the all-harness import beside the reload. The cockpit
@@ -194,9 +195,15 @@ The main pane hosts one full-width routed page.
   Closed or superseded reads cannot seed shared unseen state, and an older
   completion cannot release a newer pending read.
 - The sidebar is the only navigation pane, including at minimum window width.
-  All sessions, new session, detail, and diffs are sibling main-pane routes.
+  All sessions, archived sessions, new session, detail, and diffs are sibling main-pane routes.
   Only the all-sessions page creates a full list owner; recent-session menus
   remain non-viewing action scopes.
+- The footer's Archived opens the Archived sessions page over the current page: the shared archived list across
+  projects, read through the sidebar's shared project filter, with each row naming its project. It never claims
+  project viewing. A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
+  returns to the page it opened over, or home when there is none, and pressing Archived while it is the top page
+  does nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
+  card say why.
 - The all-sessions page is a toolbar over one timeline. The toolbar names the project and its repository,
   starts a New session in that project (hidden while an empty project shows the composer, and folded to its
   icon on a narrow pane or under large text), toggles Archived, and has a Refresh button; nothing floats
@@ -412,6 +419,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   when the list shows it first, and shows no composer under Archived (`desktop_session_list_screen_test`).
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, Changes breadcrumb and file selection, home states, package-font resolution.
+- The footer's Archived control (`desktop_cockpit_shell_test`); the Archived page pushed once over its opener, its
+  rows opening read-only over it, and its close returning to the opener or, reached directly, home
+  (`desktop_router_test`).
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
   project-collapse and section-fold persistence, every running row beside two others, Show more paging and its
   reset, a row's compact time with its spoken form and its drop under larger text, shared menu/route callbacks. All-project admission happens once per
@@ -442,6 +452,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Viewing a remote computer from the home header while the local bridge keeps serving a phone, and the remote
   offline body when that computer's bridge stops.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
+- Archived from the footer: the page fades in over the open page, a row opens read-only, Cmd/Ctrl+[ comes back,
+  and the close returns to the opener.
 - The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
 - The unified macOS title bar: the traffic lights on the expanded panel above New session and above the
   rail, dragging by the room beside the lights, by a page toolbar and by the top of the login screen,
@@ -496,6 +508,8 @@ after the user picked another one.
 - `client/desktop/lib/core/widgets/desktop_bridge_recovery_card.dart`
 - `client/desktop/lib/core/widgets/desktop_bridge_popover.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
+- `client/desktop/test/core/routing/desktop_router_test.dart`
+- `client/module_app_ui/lib/src/features/session_list/archived_sessions_view.dart`
 - `client/desktop/lib/core/platform/desktop_route_dispatcher.dart`
 - `client/module_app_ui/lib/src/features/session_detail/session_detail_activity_owner.dart`
 - `client/desktop/lib/features/home/desktop_home_pane.dart`

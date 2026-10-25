@@ -120,6 +120,10 @@ entirely along with its transcript and its dedicated worktree.
   failure alert. Archived lists never claim a viewed project. Swipe and menu
   actions run on a per-row action cubit; a deleted row leaves when the bridge's
   `session.deleted` event arrives.
+- Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the sidebar footer's
+  Archived under the sidebar's shared filter, with the archive empty state and no artwork. Its rows open the
+  ordinary session page read-only over it, Delete asks in the desktop dialog, and its close returns to the page
+  it opened over, or home when reached directly (see `desktop-cockpit-shell.md`). While the computer is disconnected it lists nothing.
 - Archived detail (`/archived-sessions/<projectId>/<sessionId>`) is read-only
   from its first frame. In the composer's place it
   shows what the newest agent reply ran with as read-only pills (see

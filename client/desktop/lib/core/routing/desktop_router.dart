@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -13,6 +14,7 @@ import "../../features/session_diffs/desktop_session_diffs_screen.dart";
 import "../../features/sessions/desktop_session_detail_screen.dart";
 import "../../features/sessions/desktop_session_list_screen.dart";
 import "../../features/settings/desktop_settings_modal.dart";
+import "../di/injection.dart";
 import "../widgets/desktop_cockpit_shell.dart";
 
 /// Root navigator shared by desktop routes and app-wide presentation hosts.
@@ -85,6 +87,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             onOpenProjects: () => _goRoute(context: context, route: const AppRoute.home()),
+            // Pushed over the page it opened from, which its close returns to.
+            onOpenArchived: () {
+              if (state.uri.path == AppRouteDef.archivedSessions.path) return;
+              _pushRoute(context: context, route: const AppRoute.archivedSessions());
+            },
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
             onGoBack: () => _goBack(context: context),
             child: Builder(
@@ -155,6 +162,47 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
           );
         },
+      ),
+      GoRoute(
+        path: AppRouteDef.archivedSessions.path,
+        builder: (BuildContext context, GoRouterState state) => BlocProvider(
+          // Archived reads the sidebar's shared filter (D6).
+          create: (context) => createAllSessionsCubit(
+            context: context,
+            mode: AllSessionsMode.archived,
+            filterTracker: getIt<SessionListFilterTracker>(),
+            sessionListService: getIt<SessionListService>(),
+            projectViewingService: getIt<ProjectViewingService>(),
+          ),
+          child: ArchivedSessionsView(
+            emptyState: const SessionArchivedEmptyState(artwork: null),
+            // The connection pill and the sidebar's recovery card already say so.
+            disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
+            onClose: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
+            onSessionTap: ({required row}) => _pushRoute(
+              context: context,
+              route: AppRoute.sessionDetail(
+                projectId: row.project.id,
+                projectName: projectDisplayName(loc: context.loc, project: row.project),
+                sessionId: row.session.id,
+                sessionTitle: row.session.title,
+                readOnly: true,
+                fromLaunch: false,
+              ),
+            ),
+            actionDispatcher: const SessionListActionDispatcher(
+              deleteConfirmation: SessionDeleteConfirmation.alert,
+              onSessionArchived: null,
+              onSessionDeleted: null,
+              onSessionMarkedUnread: null,
+            ),
+            createActionCubit: ({required projectId, required session}) => createSessionListCubit(
+              locator: getIt,
+              projectId: projectId,
+              mode: SessionListMode.actions(sessions: [session]),
+            ),
+          ),
+        ),
       ),
       GoRoute(
         path: AppRouteDef.newSession.path,
