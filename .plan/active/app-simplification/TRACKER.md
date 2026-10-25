@@ -22,6 +22,7 @@
 | 7.b.ii/13 | All-projects home and route tree | Done | #2043 |
 | 8/13 | Projects screen removed | Done | #2044 |
 | 9/13 | Wide phone and tablet sidebar | Done | #2045 |
+| 9.b/13 | Floating phone and tablet sidebar panel, a step 9 follow-up for the user's request | Done | #2049 |
 | 10.a.i/13 | Desktop Archived page and footer entry | Done | #2046 |
 | 10.a.ii/13 | Desktop sidebar on the shared list | Done | #2047 |
 | 10.b/13 | Desktop Activity and rail removed | Done | #2048 |

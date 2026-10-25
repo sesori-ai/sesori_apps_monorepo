@@ -72,7 +72,6 @@ class const DesktopCockpitShell({
   required final Widget child,
 }) extends StatelessWidget {
   static const double autoCollapseBreakpoint = 760;
-  static const double _panelRadius = 14;
 
   @override
   Widget build(BuildContext context) {
@@ -305,27 +304,14 @@ class const _SidebarPanel({
   Widget build(BuildContext context) {
     final width = context.select((DesktopSidebarCubit cubit) => cubit.state.width);
     final expansion = DesktopSidebarExpansion.of(context);
-    const radius = DesktopCockpitShell._panelRadius;
     final panel = Row(
       mainAxisSize: MainAxisSize.min,
       children: [
         _TitleBarStrip(
           windowHost: windowHost,
-          child: Container(
-            key: const Key("desktop-cockpit-sidebar"),
-            width: width,
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              boxShadow: context.prego.shadows.lg,
-            ),
-            foregroundDecoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(radius),
-              border: Border.all(color: context.prego.colors.borderSecondary),
-            ),
-            child: ClipRRect(borderRadius: BorderRadius.circular(radius), child: child),
-          ),
+          child: FloatingSidebarPanel(key: const Key("desktop-cockpit-sidebar"), width: width, child: child),
         ),
-        SizedBox(width: DesktopSidebar.panelMargin, child: resizeHandle),
+        SizedBox(width: FloatingSidebarPanel.margin, child: resizeHandle),
       ],
     );
     return DesktopSidebarExpansionSelector<bool>(
@@ -357,7 +343,7 @@ class const _TitleBarStrip({required final WindowHost? windowHost, required fina
   @override
   Widget build(BuildContext context) {
     final windowHost = this.windowHost;
-    const margin = DesktopSidebar.panelMargin;
+    const margin = FloatingSidebarPanel.margin;
     final panel = Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(margin, margin, 0, margin),
       child: child,

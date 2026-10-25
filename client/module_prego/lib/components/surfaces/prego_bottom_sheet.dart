@@ -205,7 +205,11 @@ class const PregoBottomSheet({
   }
 }
 
-enum PregoBottomSheetBodySize() { natural, seventyPercent, full }
+enum PregoBottomSheetBodySize() {
+  natural,
+  seventyPercent,
+  full,
+}
 
 /// Presents a [PregoBottomSheet] as a modal route and returns the value it is
 /// popped with.
@@ -261,9 +265,12 @@ Future<T?> showPregoBottomSheet<T>({
           0.0,
           screenHeight - topInset - PregoBottomSheet.contentTopInset - bottomInset,
         );
+        // A keyboard rising under a seventy-percent sheet takes its room from
+        // the body, so the header and a just-tapped search field stay still.
+        final restingBottomInset = handleBottomSafeArea ? MediaQuery.viewPaddingOf(sheetContext).bottom : 0.0;
         final preferredHeight = bodySize == PregoBottomSheetBodySize.full
             ? maxBody
-            : math.min(screenHeight * 0.7 - keyboard, maxBody);
+            : math.min(screenHeight * 0.7 - math.max(0.0, bottomInset - restingBottomInset), maxBody);
         final height = math.min(math.max(preferredHeight, screenHeight * 0.3), maxBody);
         body = SizedBox(height: height, child: body);
       }

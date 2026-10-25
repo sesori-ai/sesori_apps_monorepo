@@ -60,7 +60,9 @@ class const PregoPickerPopover({
 ///
 /// Under a pointer the field takes focus, so typing filters at once. Up and
 /// Down move a highlight through the options, and so does the mouse; Enter
-/// picks the highlighted option, and Esc closes the picker.
+/// picks the highlighted option, and Esc closes the picker. Under touch the
+/// field waits for a tap, so opening a picker never raises the keyboard over
+/// the options.
 class const PregoPickerSearchList({
   super.key,
   required final String searchHint,
@@ -74,10 +76,6 @@ class const PregoPickerSearchList({
   /// Shown instead of an empty list; null shows nothing.
   required final String? emptyText,
   required final VoidCallback onClose,
-
-  /// Whether the field also takes focus under touch, raising the keyboard as
-  /// the picker opens. It always does under a pointer.
-  required final bool focusesUnderTouch,
 }) extends StatefulWidget {
   @override
   State<PregoPickerSearchList> createState() => _PickerSearchListState();
@@ -194,7 +192,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
                 ? const EdgeInsetsDirectional.fromSTEB(4, 4, 4, 0)
                 : const EdgeInsetsDirectional.fromSTEB(12, 12, 12, 0),
             child: TextField(
-              autofocus: pointer || widget.focusesUnderTouch,
+              autofocus: pointer,
               autocorrect: false,
               decoration: InputDecoration(
                 hintText: widget.searchHint,
