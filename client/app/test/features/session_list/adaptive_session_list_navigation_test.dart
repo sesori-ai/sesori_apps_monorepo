@@ -275,7 +275,7 @@ void main() {
 
     await tester.tap(find.text("Project Two"));
     await tester.pumpAndSettle();
-    await tester.tap(find.text("All projects").last);
+    await tester.tap(find.text("Show all projects"));
     await tester.pumpAndSettle();
     expect(find.text("Session One"), findsOneWidget);
     expect(find.text("Session Two"), findsOneWidget);
@@ -329,7 +329,7 @@ void main() {
     await pick(trigger: switcher, option: "Project Two");
     expect(draftProject(), "p2");
 
-    await pick(trigger: switcher, option: "All projects");
+    await pick(trigger: switcher, option: "Show all projects");
     expect(draftProject(), "p1");
 
     // The header moves the draft and leaves the filter.

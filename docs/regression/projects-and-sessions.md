@@ -229,10 +229,10 @@ state.
   [cockpit contract](desktop-cockpit-shell.md).
 - The phone opens signed in on the home (`/sessions`): one list of every listed project's active sessions in the
   shared session-row timeline below, with search and the All, Running and Unread chips. Each row names its
-  project. The large title reads "All projects" with a chevron, and a tap opens the project picker in filter mode,
-  led by "All projects" and then the known projects. Picking a project narrows the list to it: the title takes
-  its name, rows stop naming the project, and an empty result names the project. "All projects" restores the
-  whole list. This is the filter Archived shares; it resets on restart, on a computer switch, and when its project
+  project. The large title reads "All projects" with a chevron, and a tap opens the project picker in filter mode:
+  the known projects, with a "Show all projects" button pinned below them. Picking a project narrows the list to
+  it: the title takes its name, rows stop naming the project, and an empty result names the project. "Show all
+  projects" restores the whole list; while it is already shown, the button carries the check and only closes. This is the filter Archived shares; it resets on restart, on a computer switch, and when its project
   leaves the list. The header holds New session, the computer button, Archived and Settings. New session opens in the filtered
   project, else the project of the newest session, else asks for a project
   ([session creation](session-creation-and-options.md)); Archived opens under the current filter. A pull refreshes
@@ -371,7 +371,7 @@ state.
   every project the home and Archived name each row's. Screen
   readers hear the waiting state once, from the status mark. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
-  text size, and they grow with
+  text size, under touch and under a pointer alike, and they grow with
   accessibility text rather than clipping or overflowing. In a narrow pane
   the pull request's indicators clip instead of overflowing. Regular rows form
   one timeline with no Running section: running rows lead Today whatever their

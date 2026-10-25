@@ -2176,7 +2176,9 @@
     "placeholders": {"projectName": {"type": "String"}}
   },
   "projectPickerAllProjects": "All projects",
-  "@projectPickerAllProjects": {"description": "The home's title while unfiltered, and the project filter's first entry, which lists every project's sessions."},
+  "@projectPickerAllProjects": {"description": "The home's title and the desktop sidebar's project filter while the list shows every project's sessions."},
+  "projectPickerShowAllProjects": "Show all projects",
+  "@projectPickerShowAllProjects": {"description": "Button pinned below the project filter's list that clears the filter, so the list shows every project's sessions; checked while it already does."},
   "projectPickerChooseProject": "Choose a project",
   "@projectPickerChooseProject": {"description": "The new-session project pill while no project is chosen yet."},
   "archivedSessionsToday": "Today",

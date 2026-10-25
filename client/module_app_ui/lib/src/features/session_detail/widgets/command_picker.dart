@@ -95,6 +95,7 @@ class _CommandPickerState() extends State<CommandPicker> {
       searchHint: loc.sessionDetailCommandSearch,
       onQueryChanged: _setQuery,
       header: null,
+      footer: null,
       rows: _rows,
       emptyText: loc.sessionDetailNoCommands,
       onClose: widget.onClose,
