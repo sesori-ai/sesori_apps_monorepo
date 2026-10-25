@@ -377,6 +377,7 @@ void main() {
             BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
             BlocProvider<AuthGateCubit>.value(value: authGateCubit),
             _projectList(projects: const []),
+            RepositoryProvider<ConnectionService>.value(value: MockConnectionService()),
           ],
           child: MaterialApp.router(
             routerConfig: router,
