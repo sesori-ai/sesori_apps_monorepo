@@ -45,6 +45,9 @@ class GetSessionsHandler({
     final timeoutStopwatch = Stopwatch()..start();
     final prRefreshFuture = _triggerPrRefresh(
       projectId: projectId,
+      // COMPATIBILITY 2026-10-25 (v1.9.2): Released apps up to v1.9.1 send
+      // waitForPrData: true on pull-to-refresh; current apps never do. Remove the
+      // explicit policy and the wait below once no supported app release sends it.
       refreshPolicy: body.waitForPrData ? PrRefreshPolicy.explicit : PrRefreshPolicy.background,
     );
 

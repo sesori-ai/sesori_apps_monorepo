@@ -367,6 +367,6 @@ void main() {
     expect(identical(listCubit(), first), isTrue);
     expect(find.byKey(const ValueKey("session-detail-session-2")), findsOneWidget);
     // Each project's sessions are read once, not again per route.
-    verify(() => harness.projectRepository.listSessions(projectId: "p2", waitForPrData: false)).called(1);
+    verify(() => harness.projectRepository.listSessions(projectId: "p2")).called(1);
   });
 }

@@ -105,11 +105,10 @@ void main() {
       verifyNever(
         () => mockProjectRepository.listSessions(
           projectId: any(named: "projectId"),
-          waitForPrData: any(named: "waitForPrData"),
         ),
       );
       when(
-        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+        () => mockProjectRepository.listSessions(projectId: projectId),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session.copyWith(title: "Renamed")])));
       expect(await cubit.renameSession(sessionId: session.id, title: "Renamed"), isTrue);
       expect(cubit.state.sessions.single.title, "Renamed");
@@ -123,7 +122,7 @@ void main() {
       );
       when(() => mockSessionService.renameSession(sessionId: later.id, title: "Later renamed"))
           .thenAnswer((_) async => ApiResponse.success(later.copyWith(title: "Later renamed")));
-      when(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer(
+      when(() => mockProjectRepository.listSessions(projectId: projectId)).thenAnswer(
         (_) async => ApiResponse.success(
           SessionListResponse(
             items: [
@@ -135,7 +134,7 @@ void main() {
       );
       expect(await cubit.renameSession(sessionId: later.id, title: "Later renamed"), isTrue);
       await cubit.close();
-      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId)).called(2);
     });
 
     blocTest<SessionListCubit, SessionListState>(
@@ -144,7 +143,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -183,7 +181,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -230,7 +227,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -260,7 +256,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
         return buildCubit(sessions: [testSession(id: "s1")]);
@@ -283,7 +278,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -319,7 +313,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
@@ -356,7 +349,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
@@ -400,7 +392,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -417,7 +408,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -449,7 +439,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession()])),
@@ -462,7 +451,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final result = await cubit.refreshSessions();
@@ -498,7 +486,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: [existing])),
@@ -546,7 +533,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -599,7 +585,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(responses.removeAt(0)));
       final cubit = buildCubit();
@@ -632,7 +617,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -685,7 +669,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -724,7 +707,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -772,7 +754,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -790,7 +771,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -826,7 +806,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
@@ -845,7 +824,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => completer.future);
 
@@ -873,7 +851,6 @@ void main() {
         verify(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).called(1);
       },
@@ -897,7 +874,6 @@ void main() {
       verifyNever(
         () => mockProjectRepository.listSessions(
           projectId: any(named: "projectId"),
-          waitForPrData: any(named: "waitForPrData"),
         ),
       );
     });
@@ -908,7 +884,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         return buildRefreshingCubit();
@@ -951,7 +926,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         return buildRefreshingCubit();
@@ -992,7 +966,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         return buildRefreshingCubit();
@@ -1069,7 +1042,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: "global",
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
@@ -1108,7 +1080,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1151,7 +1122,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1219,7 +1189,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1265,7 +1234,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1284,7 +1252,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1320,7 +1287,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final renameCompleter = Completer<ApiResponse<Session>>();
@@ -1336,7 +1302,7 @@ void main() {
       final postRenameRefreshCompleter = Completer<ApiResponse<SessionListResponse>>();
       var refreshRequestCount = 0;
       when(
-        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+        () => mockProjectRepository.listSessions(projectId: projectId),
       ).thenAnswer((_) {
         refreshRequestCount++;
         return refreshRequestCount == 1 ? staleRefreshCompleter.future : postRenameRefreshCompleter.future;
@@ -1362,7 +1328,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final renameCompleter = Completer<ApiResponse<Session>>();
@@ -1378,7 +1343,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) => refreshCompleter.future);
 
@@ -1399,7 +1363,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final firstRenameCompleter = Completer<ApiResponse<Session>>();
@@ -1433,7 +1396,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final firstRenameCompleter = Completer<ApiResponse<Session>>();
@@ -1474,7 +1436,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final firstRenameCompleter = Completer<ApiResponse<Session>>();
@@ -1513,7 +1474,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1560,7 +1520,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1596,7 +1555,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1645,7 +1603,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(title: "Original")])));
         return buildRefreshingCubit();
@@ -1655,7 +1612,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(title: "Refreshed")])));
         mockConnectionService.emitDataMayBeStale();
@@ -1674,7 +1630,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) {
           final response = Completer<ApiResponse<SessionListResponse>>();
@@ -1713,7 +1668,6 @@ void main() {
         verify(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).called(2);
       },
@@ -1723,7 +1677,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -1754,7 +1707,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -1801,7 +1753,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) => response.future);
       mockSseEventTracker.emitSessionActivity({
@@ -1840,7 +1791,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
@@ -1863,7 +1813,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1", unseen: true)])),
@@ -1889,7 +1838,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1", unseen: true)])),
@@ -1911,7 +1859,6 @@ void main() {
       verify(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).called(1);
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isTrue);
@@ -1933,7 +1880,7 @@ void main() {
         () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
       ).thenAnswer((_) => deleteReply.future);
       when(
-        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+        () => mockProjectRepository.listSessions(projectId: projectId),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
       final cubit = buildCubit(sessions: [session]);
 
@@ -1959,7 +1906,7 @@ void main() {
 
       expect(cubit.isClosed, isTrue);
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
-      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId)).called(1);
       verify(
         () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
       ).called(1);
@@ -1976,7 +1923,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
         final cubit = buildCubit();
@@ -1988,7 +1934,6 @@ void main() {
         verify(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).called(1);
       });
@@ -2007,7 +1952,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => nextResponse());
 
@@ -2043,7 +1987,7 @@ void main() {
           _ => successfulResponse(sessions: const []),
         };
         when(
-          () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+          () => mockProjectRepository.listSessions(projectId: projectId),
         ).thenAnswer((_) => nextResponse());
 
         final cubit = buildCubit();
@@ -2076,7 +2020,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => nextResponse());
 
@@ -2113,7 +2056,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => nextResponse());
 

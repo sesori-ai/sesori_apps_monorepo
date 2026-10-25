@@ -75,14 +75,8 @@ class ProjectRepository({
     return _filesystemApi.createDirectory(parentPath: parentPath, name: name);
   }
 
-  Future<ApiResponse<SessionListResponse>> listSessions({
-    required String projectId,
-    required bool waitForPrData,
-  }) {
-    return _api.listSessions(
-      projectId: projectId,
-      waitForPrData: waitForPrData,
-    );
+  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
+    return _api.listSessions(projectId: projectId);
   }
 
   Future<ApiResponse<Project>> renameProject({
@@ -101,10 +95,7 @@ class ProjectRepository({
         final projects = success.data.data;
         final projectRoots = await Future.wait(
           projects.map((project) async {
-            final sessionsResponse = await _api.listSessions(
-              projectId: project.id,
-              waitForPrData: false,
-            );
+            final sessionsResponse = await _api.listSessions(projectId: project.id);
             final List<Session> roots;
             switch (sessionsResponse) {
               case SuccessResponse(:final data):

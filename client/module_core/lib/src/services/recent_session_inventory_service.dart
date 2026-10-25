@@ -152,7 +152,7 @@ class RecentSessionInventoryService({
         _put(projectId: projectId, entry: RecentSessionsLoading());
       }
       final unseenTick = _sessionUnseenTracker.tick;
-      final response = await _sessionListService.listSessions(projectId: projectId, waitForPrData: false);
+      final response = await _sessionListService.listSessions(projectId: projectId);
       if (response case ErrorResponse(:final error)) {
         loge("Failed to load recent sessions for project $projectId", error);
       }

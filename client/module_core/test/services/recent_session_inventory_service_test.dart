@@ -33,7 +33,7 @@ void main() {
     status = BehaviorSubject.seeded(const ConnectionStatus.disconnected());
     when(() => connection.status).thenAnswer((_) => status.stream);
     when(() => connection.currentStatus).thenAnswer((_) => status.value);
-    when(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false))
+    when(() => repository.listSessions(projectId: any(named: "projectId")))
         .thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
     projectListService = ProjectListService(
       repository: repository,
@@ -63,7 +63,7 @@ void main() {
 
   RecentSessionsLoaded loaded() => inventory.state.value[projectId]! as RecentSessionsLoaded;
   void stubSessions({required List<Session> sessions}) {
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+    when(() => repository.listSessions(projectId: projectId))
         .thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: sessions)));
   }
 
@@ -81,8 +81,8 @@ void main() {
     await projectListService.listProjects();
     await Future<void>.delayed(Duration.zero);
 
-    verify(() => repository.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
-    verify(() => repository.listSessions(projectId: "project-2", waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: "project-1")).called(1);
+    verify(() => repository.listSessions(projectId: "project-2")).called(1);
   });
 
   test("switching computers clears the inventory and drops a late read from the previous one", () async {
@@ -103,8 +103,7 @@ void main() {
         ),
       ),
     );
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
-        .thenAnswer((_) => lateSessions.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => lateSessions.future);
     await projectListService.listProjects();
     if (inventory.state.value.isEmpty) await inventory.state.firstWhere((state) => state.isNotEmpty);
 
@@ -132,8 +131,7 @@ void main() {
         _ => Future.value(ApiResponse.success(const Projects(data: [current]))),
       };
     });
-    when(() => repository.listSessions(projectId: removed.id, waitForPrData: false))
-        .thenAnswer((_) => removedSessions.future);
+    when(() => repository.listSessions(projectId: removed.id)).thenAnswer((_) => removedSessions.future);
     final staleRead = projectListService.listProjects();
     await projectListService.listProjects();
     if (inventory.state.value.length != 2) await inventory.state.skip(1).firstWhere((state) => state.length == 2);
@@ -148,9 +146,9 @@ void main() {
     final previousCurrent = inventory.state.value[current.id];
     connection.emitDataMayBeStale();
     await inventory.state.skip(1).firstWhere((state) => !identical(state[current.id], previousCurrent));
-    verify(() => repository.listSessions(projectId: current.id, waitForPrData: false)).called(2);
-    verify(() => repository.listSessions(projectId: removed.id, waitForPrData: false)).called(1);
-    verifyNever(() => repository.listSessions(projectId: stale.id, waitForPrData: false));
+    verify(() => repository.listSessions(projectId: current.id)).called(2);
+    verify(() => repository.listSessions(projectId: removed.id)).called(1);
+    verifyNever(() => repository.listSessions(projectId: stale.id));
   });
 
   test("accepted local project removal evicts its entry and fences its pending read", () async {
@@ -160,8 +158,7 @@ void main() {
     when(() => repository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(const Projects(data: [kept, hidden])),
     );
-    when(() => repository.listSessions(projectId: hidden.id, waitForPrData: false))
-        .thenAnswer((_) => hiddenSessions.future);
+    when(() => repository.listSessions(projectId: hidden.id)).thenAnswer((_) => hiddenSessions.future);
 
     await projectListService.listProjects();
     if (inventory.state.value.length != 2) await inventory.state.skip(1).firstWhere((state) => state.length == 2);
@@ -173,14 +170,14 @@ void main() {
     expect(inventory.state.value.keys, [kept.id]);
     connection.emitDataMayBeStale();
     await Future<void>.delayed(Duration.zero);
-    verify(() => repository.listSessions(projectId: kept.id, waitForPrData: false)).called(2);
-    verify(() => repository.listSessions(projectId: hidden.id, waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: kept.id)).called(2);
+    verify(() => repository.listSessions(projectId: hidden.id)).called(1);
   });
 
   test("lazy reads deduplicate and use active ordering", () async {
     expect(inventory.state.value, isEmpty);
     final reply = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => reply.future);
     final pending = inventory.ensureLoaded(projectId: projectId);
     final refresh = inventory.refresh();
     await inventory.ensureLoaded(projectId: projectId);
@@ -205,7 +202,7 @@ void main() {
     expect(() => loaded().archivedSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().activityBySessionId.clear(), throwsUnsupportedError);
     expect(() => loaded().listStateBySessionId.clear(), throwsUnsupportedError);
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: projectId)).called(1);
   });
 
   test("live running/unseen state reorders locally without touching an unrelated entry", () async {
@@ -229,7 +226,7 @@ void main() {
     expect(loaded().visibleSessions.first.id, "old");
     expect(loaded().isRunning(session: old), isTrue);
     expect(identical(inventory.state.value["other"], other), isTrue);
-    verify(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: any(named: "projectId"))).called(2);
   });
 
   test("root create/update/archive/delete mutate inventory without refetching", () async {
@@ -265,14 +262,14 @@ void main() {
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: projectId)).called(1);
   });
 
   test("lifecycle events during a read coalesce into a fresh snapshot", () async {
     final old = testSession(id: "deleted");
     final created = testSession(id: "created");
     final reply = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => reply.future);
     final pending = inventory.ensureLoaded(projectId: projectId);
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: old)));
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
@@ -287,12 +284,12 @@ void main() {
     expect(loaded().sourceSessions.single.id, "created");
     expect(loaded().sourceSessions.single.title, "Current");
     expect(unseen.seededSessions, hasLength(1));
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: projectId)).called(2);
   });
 
   test("catalog invalidation replaces in-flight reads; old results cannot seed unseen state", () async {
     final old = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => old.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => old.future);
     final pending = inventory.ensureLoaded(projectId: projectId);
     stubSessions(sessions: [testSession(id: "fresh")]);
     catalog.emitCatalogChanged();
@@ -301,11 +298,11 @@ void main() {
     await pending;
     expect(loaded().sourceSessions.single.id, "fresh");
     expect(unseen.seededSessions, hasLength(1));
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: projectId)).called(2);
   });
 
   test("failed entries retry on reconnect and project invalidation refreshes only known projects", () async {
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+    when(() => repository.listSessions(projectId: projectId))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     await inventory.ensureLoaded(projectId: projectId);
     expect(inventory.state.value[projectId], isA<RecentSessionsFailed>());
@@ -316,7 +313,7 @@ void main() {
     events.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: projectId)));
     await inventory.state.skip(1).firstWhere((state) => state[projectId] is RecentSessionsLoaded);
     await inventory.retry(projectId: projectId);
-    verify(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false)).called(4);
+    verify(() => repository.listSessions(projectId: any(named: "projectId"))).called(4);
   });
 
   for (final invalidation in [
@@ -330,7 +327,7 @@ void main() {
       final previous = loaded();
       final started = Completer<void>();
       final reply = Completer<ApiResponse<SessionListResponse>>();
-      when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) {
+      when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) {
         started.complete();
         return reply.future;
       });
@@ -352,7 +349,7 @@ void main() {
       expect(loaded().isUnseen(session: session), isFalse);
       expect(loaded().isRunning(session: session), isTrue);
       expect(unseen.seededSessions, hasLength(2));
-      verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
+      verify(() => repository.listSessions(projectId: projectId)).called(2);
     });
   }
 
@@ -362,7 +359,7 @@ void main() {
       stubSessions(sessions: [session]);
       await inventory.ensureLoaded(projectId: projectId);
       final reply = Completer<ApiResponse<SessionListResponse>>();
-      when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+      when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => reply.future);
       final pending = inventory.refresh();
       unseen.applyLocalSessionUnseen(projectId: projectId, sessionId: session.id, unseen: false);
       await Future<void>.delayed(Duration.zero);
@@ -377,7 +374,7 @@ void main() {
       expect(loaded().sourceSessions, [session]);
       expect(loaded().isUnseen(session: session), isFalse);
       expect(unseen.seededSessions, hasLength(1));
-      verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
+      verify(() => repository.listSessions(projectId: projectId)).called(2);
     });
   }
 
@@ -390,7 +387,7 @@ void main() {
     stubSessions(sessions: [deleted, archived]);
     await inventory.ensureLoaded(projectId: projectId);
     final reply = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => reply.future);
     final pending = inventory.refresh();
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: renamed)));
@@ -404,7 +401,7 @@ void main() {
     expect(loaded().visibleSessions.single, renamed);
     expect(loaded().sourceSessions, unorderedEquals([renamed, archivedUpdate]));
     expect(unseen.seededSessions, hasLength(2));
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
+    verify(() => repository.listSessions(projectId: projectId)).called(3);
   });
 
   test("superseded refresh completion cannot release a newer pending read", () async {
@@ -413,10 +410,10 @@ void main() {
     stubSessions(sessions: [known]);
     await inventory.ensureLoaded(projectId: projectId);
     final older = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => older.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => older.future);
     final oldRead = inventory.retry(projectId: projectId);
     final newer = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => newer.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => newer.future);
     final currentRead = inventory.retry(projectId: projectId);
     older.complete(ApiResponse.success(SessionListResponse(items: [testSession(id: "stale", unseen: true)])));
     await oldRead;
@@ -430,7 +427,7 @@ void main() {
     await currentRead;
     expect(loaded().sourceSessions, unorderedEquals([known, created]));
     expect(unseen.seededSessions, hasLength(2));
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(4);
+    verify(() => repository.listSessions(projectId: projectId)).called(4);
   });
 
   for (final failure in _RefreshFailure.values) {
@@ -442,10 +439,10 @@ void main() {
         stubSessions(sessions: [known]);
         await inventory.ensureLoaded(projectId: projectId);
         final reply = Completer<ApiResponse<SessionListResponse>>();
-        when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+        when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => reply.future);
         final pending = inventory.retry(projectId: projectId);
         events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
-        when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) async {
+        when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) async {
           if (failure == _RefreshFailure.exception) throw StateError("follow-up failed");
           return ApiResponse.error(ApiError.generic());
         });
@@ -457,8 +454,7 @@ void main() {
         switch (recovery) {
           case _RefreshRecovery.inventory:
             final nextReply = Completer<ApiResponse<SessionListResponse>>();
-            when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
-                .thenAnswer((_) => nextReply.future);
+            when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => nextReply.future);
             final rearmed = inventory.ensureLoaded(projectId: projectId);
             await inventory.ensureLoaded(projectId: projectId);
             final newest = testSession(id: "newest");
@@ -479,7 +475,7 @@ void main() {
         expect(unseen.seededSessions, hasLength(2));
         // Successful application retires the signal; an ordinary ensure stays cached.
         await inventory.ensureLoaded(projectId: projectId);
-        verify(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+        verify(() => repository.listSessions(projectId: projectId))
             .called(recovery == _RefreshRecovery.inventory ? 5 : 4);
       });
     }
@@ -488,10 +484,10 @@ void main() {
   test("failed initial coalesced read still requires explicit retry", () async {
     final created = testSession(id: "created");
     final reply = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => reply.future);
     final pending = inventory.ensureLoaded(projectId: projectId);
     events.add(SseEvent(data: SesoriSseEvent.sessionCreated(info: created)));
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+    when(() => repository.listSessions(projectId: projectId))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     reply.complete(ApiResponse.success(const SessionListResponse(items: [])));
     await pending;
@@ -502,21 +498,21 @@ void main() {
     await inventory.retry(projectId: projectId);
     expect(loaded().sourceSessions, [created]);
     await inventory.ensureLoaded(projectId: projectId);
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
+    verify(() => repository.listSessions(projectId: projectId)).called(3);
   });
 
   test("empty explicit refresh succeeds without starting reads", () async {
     expect(await inventory.refresh(), isTrue);
-    verifyNever(() => repository.listSessions(projectId: any(named: "projectId"), waitForPrData: false));
+    verifyNever(() => repository.listSessions(projectId: any(named: "projectId")));
   });
 
   test("explicit refresh waits for every admitted project and reports partial failure", () async {
     await inventory.ensureLoaded(projectId: projectId);
     await inventory.ensureLoaded(projectId: "other");
     final otherReply = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+    when(() => repository.listSessions(projectId: projectId))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-    when(() => repository.listSessions(projectId: "other", waitForPrData: false)).thenAnswer((_) => otherReply.future);
+    when(() => repository.listSessions(projectId: "other")).thenAnswer((_) => otherReply.future);
     var settled = false;
     final refresh = inventory.refresh().then((result) {
       settled = true;
@@ -528,7 +524,7 @@ void main() {
     otherReply.complete(ApiResponse.success(SessionListResponse(items: [otherSession])));
     expect(await refresh, isFalse);
     expect((inventory.state.value["other"]! as RecentSessionsLoaded).sourceSessions, [otherSession]);
-    verify(() => repository.listSessions(projectId: "other", waitForPrData: false)).called(2);
+    verify(() => repository.listSessions(projectId: "other")).called(2);
   });
 
   test("explicit refresh follows a completed failed successor despite retained rows", () async {
@@ -536,13 +532,13 @@ void main() {
     stubSessions(sessions: [known]);
     await inventory.ensureLoaded(projectId: projectId);
     final older = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => older.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => older.future);
     bool? reported;
     final refresh = inventory.refresh().then((result) {
       reported = result;
       return result;
     });
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
+    when(() => repository.listSessions(projectId: projectId))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     await inventory.retry(projectId: projectId);
     await Future<void>.delayed(Duration.zero);
@@ -551,7 +547,7 @@ void main() {
     expect(await refresh, isFalse);
     await Future<void>.delayed(Duration.zero);
     expect(loaded().sourceSessions, [known]);
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(3);
+    verify(() => repository.listSessions(projectId: projectId)).called(3);
   });
 
   test("explicit refresh follows a later owner after its awaited successor applied", () async {
@@ -559,8 +555,7 @@ void main() {
     await inventory.ensureLoaded(projectId: projectId);
     final replies = List.generate(3, (_) => Completer<ApiResponse<SessionListResponse>>());
     var reads = 0;
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
-        .thenAnswer((_) => replies[reads++].future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => replies[reads++].future);
     var settled = false;
     final refresh = inventory.refresh().then((result) {
       settled = true;
@@ -592,8 +587,7 @@ void main() {
       await inventory.ensureLoaded(projectId: projectId);
       final replies = List.generate(replacement ? 2 : 1, (_) => Completer<ApiResponse<SessionListResponse>>());
       var reads = 0;
-      when(() => repository.listSessions(projectId: projectId, waitForPrData: false))
-          .thenAnswer((_) => replies[reads++].future);
+      when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => replies[reads++].future);
       bool? reported;
       final refresh = inventory.refresh().then((result) {
         reported = result;
@@ -617,13 +611,13 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       expect(inventory.state.value, isEmpty);
       expect(unseen.seededSessions, hasLength(1));
-      verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(replacement ? 3 : 2);
+      verify(() => repository.listSessions(projectId: projectId)).called(replacement ? 3 : 2);
     });
   }
 
   test("dispose cancels listeners and late reads cannot seed shared unseen state", () async {
     final reply = Completer<ApiResponse<SessionListResponse>>();
-    when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
+    when(() => repository.listSessions(projectId: projectId)).thenAnswer((_) => reply.future);
     var driverSettled = false;
     final pending = inventory.ensureLoaded(projectId: projectId).then((_) => driverSettled = true);
     bool? reported;
@@ -641,7 +635,7 @@ void main() {
     expect(await refresh, isFalse);
     expect(await inventory.refresh(), isFalse);
     expect(unseen.seededSessions, isEmpty);
-    verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+    verify(() => repository.listSessions(projectId: projectId)).called(1);
   });
 }
 

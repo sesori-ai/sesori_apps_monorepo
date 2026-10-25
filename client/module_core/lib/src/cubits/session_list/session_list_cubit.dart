@@ -558,7 +558,7 @@ class SessionListCubit({
       // Captured BEFORE the fetch so the seed can't overwrite a live update
       // that arrives while the request is in flight.
       final unseenTick = _sessionUnseenTracker.tick;
-      final sessionsResponse = await _sessionListService.listSessions(projectId: _projectId, waitForPrData: false);
+      final sessionsResponse = await _sessionListService.listSessions(projectId: _projectId);
       if (isClosed) return _SessionFetchOutcome.superseded;
       if (requestGeneration != _fetchGeneration) {
         if (sessionsResponse case ErrorResponse(:final error)) {

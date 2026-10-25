@@ -158,7 +158,6 @@ class AdaptiveSessionRouterTestHarness() {
     when(
       () => projectRepository.listSessions(
         projectId: any(named: "projectId"),
-        waitForPrData: any(named: "waitForPrData"),
       ),
     ).thenAnswer((invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
