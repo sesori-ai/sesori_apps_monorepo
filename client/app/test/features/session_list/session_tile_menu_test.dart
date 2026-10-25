@@ -2,7 +2,6 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -14,7 +13,7 @@ import "../../helpers/test_helpers.dart";
 
 /// Long-pressing a session row opens its actions in an anchored popover
 /// ([PregoAnchorMenu]) rather than a bottom sheet, so the row stays visible
-/// beside the menu — the same treatment the project list gets. The entries come
+/// beside the menu — the same treatment project rows get. The entries come
 /// from the real [SessionListActionDispatcher], so this covers the wiring from
 /// the row all the way to the actions it dispatches.
 class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
@@ -28,51 +27,21 @@ void main() {
     when(() => cubit.retainActionScope()).thenReturn(() {});
   });
 
-  /// Renders the real panel with the real action dispatcher behind the rows.
-  Future<void> pumpPanel(WidgetTester tester, {required Session session}) async {
+  /// Renders the real list with the real action dispatcher behind the row.
+  Future<void> pumpRow(WidgetTester tester, {required Session session}) async {
     when(() => cubit.state).thenReturn(
       SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
-
-    const dispatcher = SessionListActionDispatcher(
-      deleteConfirmation: SessionDeleteConfirmation.sheet,
-      onSessionArchived: null,
-      onSessionDeleted: null,
-      onSessionMarkedUnread: null,
-    );
-
     await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>(
-        create: (_) => StubConnectionOverlayCubit(),
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => PendingSessionArchiveCubit(
-                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
-              ),
-            ),
-            RepositoryProvider(create: (_) => idleSessionLaunchService()),
-          ],
-          child: MaterialApp(
-            theme: ThemeData(extensions: [PregoDesignSystem.light]),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-            home: Material(
-              child: BlocProvider<SessionListCubit>.value(
-                value: cubit,
-                child: SessionListPanel(
-                  onOpenArchived: cubit.toggleArchived,
-                  projectName: "Project One",
-                  onNewSession: () {},
-                  onSessionTap: ({required session}) {},
-                  actionDispatcher: dispatcher,
-                  archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-                  onBack: null,
-                ),
-              ),
-            ),
-          ),
+      sessionRowApp(
+        actions: cubit,
+        dispatcher: const SessionListActionDispatcher(
+          deleteConfirmation: SessionDeleteConfirmation.sheet,
+          onSessionArchived: null,
+          onSessionDeleted: null,
+          onSessionMarkedUnread: null,
         ),
+        session: session,
       ),
     );
     await tester.pumpAndSettle();
@@ -86,7 +55,7 @@ void main() {
   testWidgets("long-pressing a session opens its actions in an anchored menu, not a bottom sheet", (tester) async {
     final session = testSession(title: "My Session");
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
 
     expect(find.text("Rename"), findsNothing);
 
@@ -106,7 +75,7 @@ void main() {
   testWidgets("right-clicking a session opens the same anchored menu", (tester) async {
     final session = testSession(title: "My Session");
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
 
     // The mouse counterpart of the long-press, for the desktop app.
     await tester.tap(find.widgetWithText(SessionTile, "My Session"), buttons: kSecondaryMouseButton);
@@ -119,7 +88,7 @@ void main() {
   testWidgets("Delete is the only entry tinted as destructive", (tester) async {
     final session = testSession(title: "My Session");
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await longPressTile(tester, title: "My Session");
 
     // Delete destroys the audit record, so only Delete shouts. If every
@@ -142,7 +111,7 @@ void main() {
       (_) async {},
     );
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await longPressTile(tester, title: "My Session");
 
     await tester.tap(find.widgetWithText(InkWell, "Mark as unread"));
@@ -159,7 +128,7 @@ void main() {
       time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: 1700000001000),
     );
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await longPressTile(tester, title: "Old Session");
 
     expect(find.widgetWithText(InkWell, "Rename"), findsNothing);
@@ -170,62 +139,8 @@ void main() {
 
   testWidgets("archiving hides the row at once, and Undo brings it back", (tester) async {
     final session = testSession(title: "My Session");
-    when(() => cubit.state).thenReturn(
-      SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
-    );
 
-    const dispatcher = SessionListActionDispatcher(
-      deleteConfirmation: SessionDeleteConfirmation.sheet,
-      onSessionArchived: null,
-      onSessionDeleted: null,
-      onSessionMarkedUnread: null,
-    );
-    // A router, not a plain MaterialApp: the archive confirmation sheet closes
-    // itself through GoRouter, which the lint requires over direct Navigator.
-    final router = GoRouter(
-      routes: [
-        GoRoute(
-          path: "/",
-          builder: (context, state) => Scaffold(
-            body: BlocProvider<SessionListCubit>.value(
-              value: cubit,
-              child: SessionListPanel(
-                onOpenArchived: cubit.toggleArchived,
-                projectName: "Project One",
-                onNewSession: () {},
-                onSessionTap: ({required session}) {},
-                actionDispatcher: dispatcher,
-                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-                onBack: null,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-
-    await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>(
-        create: (_) => StubConnectionOverlayCubit(),
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => PendingSessionArchiveCubit(
-                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
-              ),
-            ),
-            RepositoryProvider(create: (_) => idleSessionLaunchService()),
-          ],
-          child: MaterialApp.router(
-            routerConfig: router,
-            theme: ThemeData(extensions: [PregoDesignSystem.light]),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-          ),
-        ),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await pumpRow(tester, session: session);
     await longPressTile(tester, title: "My Session");
 
     await tester.tap(find.widgetWithText(InkWell, "Archive"));
@@ -235,7 +150,7 @@ void main() {
     expect(find.widgetWithText(FilledButton, "Archive"), findsNothing);
     expect(find.widgetWithText(SessionTile, "My Session"), findsNothing);
 
-    tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>().undo();
+    tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>().undo();
     await tester.pumpAndSettle();
     expect(find.widgetWithText(SessionTile, "My Session"), findsOneWidget);
   });
@@ -243,7 +158,7 @@ void main() {
   testWidgets("tapping outside dismisses the menu without acting on the session", (tester) async {
     final session = testSession(title: "My Session");
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await longPressTile(tester, title: "My Session");
 
     await tester.tapAt(const Offset(4, 4));

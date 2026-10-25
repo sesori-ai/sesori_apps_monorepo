@@ -41,14 +41,6 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
             connectionService: getIt<ConnectionService>(),
           ),
         ),
-        BlocProvider(
-          create: (_) => ComputerSwitcherCubit(
-            registeredBridgesService: getIt<RegisteredBridgesService>(),
-            connectionService: getIt<ConnectionService>(),
-            selectedComputerService: getIt<SelectedComputerService>(),
-            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
-          ),
-        ),
       ],
       child: const _MobileSettingsView(),
     );
@@ -70,7 +62,7 @@ class const _MobileSettingsView() extends StatelessWidget {
       onOpenProjects: () => context.pushRoute(const AppRoute.settingsProjects()),
       onOpenDefaultInput: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
       onOpenRateSesori: () => unawaited(_openRateSesori(context: context)),
-      // The dispatcher lands on the new computer's Projects root, which
+      // The dispatcher lands on the new computer's home, which
       // replaces this page.
       onSwitchComputer: ({required bridgeId, required source}) =>
           unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),

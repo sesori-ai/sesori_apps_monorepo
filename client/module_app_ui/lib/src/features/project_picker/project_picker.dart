@@ -10,7 +10,6 @@ import "../../extensions/build_context_x.dart";
 import "../../widgets/session_split/session_split_breakpoints.dart";
 import "../project_list/add_project_dialog.dart";
 import "../project_list/project_path_labels.dart";
-import "../project_list/widgets/project_tile.dart";
 
 typedef NewSessionProjectSelected = void Function({required String projectId, required String projectName});
 

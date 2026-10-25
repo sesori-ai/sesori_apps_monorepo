@@ -262,7 +262,7 @@ belongs to session detail, so neither is affected.
 /sessions/new?project=<id>                 new session (project optional)
 /sessions/:projectId/:sessionId            session detail
 /sessions/:projectId/:sessionId/diffs      diffs
-/archived-sessions?project=<id>            Archived list (step 7.a)
+/archived-sessions                         Archived list (step 7.a), under the home's shared filter
 /archived-sessions/:projectId/:sessionId   archived detail
 /settings/projects                         Settings › Projects (step 4)
 ```
@@ -329,7 +329,8 @@ All of it is caused by this change, and each step removes what it obsoletes:
   - the Projects screen (`project_list_screen.dart`, `project_list_view.dart`);
   - the phone per-project list (`session_list_screen.dart`, `session_list_cubit_provider.dart`), with
     `SessionListScaffold` and `SessionListPanel`;
-  - duplicated label logic, folded into `project_path_labels.dart`.
+  - duplicated label logic, folded into `project_path_labels.dart`;
+  - Archived's `?project=` query, since the shared filter carries the home's project.
 - **Step 9:** `SessionSplitShell`, `EmptySessionDetailPanel` and `session_split_scope.dart`.
 - **Step 10.b:**
   - the activity projection (`session_activity_projection.dart`);
@@ -339,7 +340,7 @@ All of it is caused by this change, and each step removes what it obsoletes:
   - the four layout fields.
 - **Step 11:**
   - `DesktopSessionListScreen`, the `projectSessions` def, and the desktop home sections with `activity_tile.dart`;
-  - the view mode of `SessionListCubit` and `SessionListCubitProvider`;
+  - the view mode of `SessionListCubit` and `DesktopSessionListCubitProvider`;
   - `SessionListFilteredContent` and `SessionListLaunchRowsCubit`;
   - `RecentSessionsCubit`, once the palette reads `AllSessionsCubit`.
 

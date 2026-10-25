@@ -12,7 +12,13 @@ import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
 import "../../widgets/bridge_update_sheet.dart";
 import "new_folder_dialog.dart";
-import "widgets/project_tile.dart";
+import "project_path_labels.dart";
+
+typedef ProjectOpenedCallback = void Function({
+  required BuildContext context,
+  required ProjectSummary project,
+  required String displayName,
+});
 
 /// Shows the Add Project modal: a bottom sheet on touch, a dialog on pointer.
 ///

@@ -101,8 +101,6 @@
   "@listSearchNoMatches": {"description": "Shown under a list's search field when no loaded title matches the query."},
   "listSearchClear": "Clear search",
   "@listSearchClear": {"description": "Accessibility label of the button that empties a list's search field."},
-  "projectListSearchHint": "Search projects and sessions",
-  "@projectListSearchHint": {"description": "Placeholder of the search field above the phone's projects list."},
   "sessionListSearchHint": "Search sessions",
   "@sessionListSearchHint": {"description": "Placeholder of the search field above the phone's session list."},
   "sessionListFilterEmpty": "No sessions match this filter",
@@ -152,14 +150,8 @@
   "desktopSettingsThisComputer": "This computer",
   "@desktopSettingsThisComputer": {"description": "Separates local supervised-bridge status and diagnostics from connected-bridge settings."},
   "projectListTitle": "Projects",
-  "projectListActivity": "Activity",
-  "@projectListActivity": {
-    "description": "Heading over the sessions waiting for the user or running, across projects, at the top of Projects."
-  },
   "projectListLoadingSemantics": "Loading projects",
   "projectListDefaultName": "Default project",
-  "projectListRefreshSuccess": "Projects updated",
-  "projectListRefreshFailed": "Could not refresh projects",
   "projectListErrorTitle": "Failed to load projects",
   "projectListRetry": "Retry",
   "projectListRunning": "{count, plural, =1{Running} other{{count} running}}",
@@ -909,14 +901,6 @@
   "notificationCategoryConnectionStatusDescription": "Bridge online and offline status changes",
   "notificationCategorySystemUpdate": "System updates",
   "sessionListTitle": "Sessions",
-  "sessionListTitleWithName": "{name} — Sessions",
-  "@sessionListTitleWithName": {
-    "placeholders": {
-      "name": {
-        "type": "String"
-      }
-    }
-  },
   "sessionListLoadingSemantics": "Loading sessions",
   "sessionListEmptyTitle": "Start your first session",
   "@sessionListEmptyTitle": {
@@ -1385,7 +1369,6 @@
   "backgroundTaskStatusIdle": "Idle",
   "backgroundTaskStatusBusy": "Running",
   "backgroundTaskStatusRetry": "Retrying",
-  "sessionListToggleArchived": "Show archived",
   "sessionListEmptyArchived": "No archived sessions",
   "sessionListArchive": "Archive",
   "sessionListMarkRead": "Mark as read",

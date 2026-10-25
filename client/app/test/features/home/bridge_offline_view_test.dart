@@ -6,7 +6,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
-import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -18,7 +17,7 @@ import "../../helpers/test_helpers.dart";
 // computers as one-tap switches; a single info control; and the
 // install-commands disclosure that closes the body.
 //
-// Pumps the real [ProjectListScreen] (its cubit is built from getIt, so every
+// Pumps the real home (its cubits are built from getIt, so every
 // dependency is registered as a mock below) driven into the bridge-offline
 // state through the connection status stream.
 // ---------------------------------------------------------------------------
@@ -114,7 +113,7 @@ void main() {
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
+          home: testHome(),
         ),
       ),
     );

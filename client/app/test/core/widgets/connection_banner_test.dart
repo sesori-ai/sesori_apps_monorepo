@@ -1,9 +1,7 @@
-import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
-import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
@@ -21,25 +19,14 @@ class _MutableConnectionOverlayCubit({super.initialState}) extends StubConnectio
   void reconnect() => reconnectCount++;
 }
 
-class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
-
 Widget _app({required ConnectionOverlayCubit cubit, required Widget home}) {
   return BlocProvider<ConnectionOverlayCubit>.value(
     value: cubit,
-    child: MultiBlocProvider(
-      providers: [
-        BlocProvider(
-          create: (_) =>
-              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
-        ),
-        RepositoryProvider(create: (_) => idleSessionLaunchService()),
-      ],
-      child: MaterialApp(
-        theme: ThemeData(extensions: [PregoDesignSystem.light]),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: home,
-      ),
+    child: MaterialApp(
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+      home: home,
     ),
   );
 }
@@ -225,48 +212,5 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Bridge disconnected"), findsNothing);
     expect(tester.getTopLeft(find.byType(GlassAppBar)).dy, restingBarTop);
-  });
-
-  testWidgets("a real screen's top nav hosts the banner when the bridge is offline", (tester) async {
-    // Representative guard for the per-screen `banner:` wiring (session list;
-    // detail/diffs/new-session/settings follow the identical pattern).
-    final overlayCubit = StubConnectionOverlayCubit(initialState: const ConnectionOverlayState.bridgeOffline());
-    addTearDown(overlayCubit.close);
-    final sessionListCubit = _MockSessionListCubit();
-    when(() => sessionListCubit.projectId).thenReturn("project-1");
-    whenListen(
-      sessionListCubit,
-      const Stream<SessionListState>.empty(),
-      initialState: const SessionListState.loading(),
-    );
-
-    await tester.pumpWidget(
-      _app(
-        cubit: overlayCubit,
-        home: BlocProvider<SessionListCubit>.value(
-          value: sessionListCubit,
-          child: SessionListScaffold(
-            onOpenArchived: sessionListCubit.toggleArchived,
-            onSessionTap: ({required session}) {},
-            actionDispatcher: const SessionListActionDispatcher(
-              deleteConfirmation: SessionDeleteConfirmation.sheet,
-              onSessionArchived: null,
-              onSessionDeleted: null,
-              onSessionMarkedUnread: null,
-            ),
-            archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-            onNewSession: () {},
-            onBack: null,
-            connectionBanner: const ConnectionBanner(),
-          ),
-        ),
-      ),
-    );
-    // No pumpAndSettle: the loading state's spinner animates indefinitely.
-    await tester.pump();
-    await tester.pump(const Duration(milliseconds: 400));
-
-    expect(find.byType(ConnectionBanner), findsOneWidget);
-    expect(find.text("Bridge disconnected"), findsOneWidget);
   });
 }

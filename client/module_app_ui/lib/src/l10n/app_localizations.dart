@@ -349,12 +349,6 @@ abstract class AppLocalizations {
   /// **'Clear search'**
   String get listSearchClear;
 
-  /// Placeholder of the search field above the phone's projects list.
-  ///
-  /// In en, this message translates to:
-  /// **'Search projects and sessions'**
-  String get projectListSearchHint;
-
   /// Placeholder of the search field above the phone's session list.
   ///
   /// In en, this message translates to:
@@ -505,12 +499,6 @@ abstract class AppLocalizations {
   /// **'Projects'**
   String get projectListTitle;
 
-  /// Heading over the sessions waiting for the user or running, across projects, at the top of Projects.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity'**
-  String get projectListActivity;
-
   /// No description provided for @projectListLoadingSemantics.
   ///
   /// In en, this message translates to:
@@ -522,18 +510,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Default project'**
   String get projectListDefaultName;
-
-  /// No description provided for @projectListRefreshSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Projects updated'**
-  String get projectListRefreshSuccess;
-
-  /// No description provided for @projectListRefreshFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not refresh projects'**
-  String get projectListRefreshFailed;
 
   /// No description provided for @projectListErrorTitle.
   ///
@@ -2383,12 +2359,6 @@ abstract class AppLocalizations {
   /// **'Sessions'**
   String get sessionListTitle;
 
-  /// No description provided for @sessionListTitleWithName.
-  ///
-  /// In en, this message translates to:
-  /// **'{name} — Sessions'**
-  String sessionListTitleWithName(String name);
-
   /// No description provided for @sessionListLoadingSemantics.
   ///
   /// In en, this message translates to:
@@ -3402,12 +3372,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retrying'**
   String get backgroundTaskStatusRetry;
-
-  /// No description provided for @sessionListToggleArchived.
-  ///
-  /// In en, this message translates to:
-  /// **'Show archived'**
-  String get sessionListToggleArchived;
 
   /// No description provided for @sessionListEmptyArchived.
   ///

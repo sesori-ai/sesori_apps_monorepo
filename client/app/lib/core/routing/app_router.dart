@@ -573,20 +573,14 @@ ShellRoute buildArchivedSessionsRoute() {
       child: _shellBackHandler(
         navigatorKey: navigatorKey,
         child: BlocProvider(
-          create: (context) {
-            final cubit = createAllSessionsCubit(
-              context: context,
-              mode: AllSessionsMode.archived,
-              filterTracker: getIt<SessionListFilterTracker>(),
-              sessionListService: getIt<SessionListService>(),
-              projectViewingService: getIt<ProjectViewingService>(),
-            );
-            // A filtered entry narrows the shared filter (D6); only the list
-            // route names a project, so a direct detail entry keeps it as is.
-            final projectId = AppRouteArchivedSessions.fromParams(queryParams: state.uri.queryParameters).projectId;
-            if (projectId != null) cubit.selectProject(projectId: projectId);
-            return cubit;
-          },
+          // Archived reads the home's shared filter (D6).
+          create: (context) => createAllSessionsCubit(
+            context: context,
+            mode: AllSessionsMode.archived,
+            filterTracker: getIt<SessionListFilterTracker>(),
+            sessionListService: getIt<SessionListService>(),
+            projectViewingService: getIt<ProjectViewingService>(),
+          ),
           child: child,
         ),
       ),

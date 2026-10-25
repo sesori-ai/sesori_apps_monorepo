@@ -25,4 +25,18 @@ void main() {
     expect(_labels([_project("a", "/app"), _project("b", "/work/app")]), {"a": "/app", "b": "/work/app"});
     expect(_labels([_project("a", r"C:\app"), _project("b", r"D:\app")]), {"a": "C:/app", "b": "D:/app"});
   });
+
+  test("hostPathBasename returns the last folder for either separator", () {
+    expect(hostPathBasename(path: "/Users/me/app"), "app");
+    expect(hostPathBasename(path: r"C:\work\app"), "app");
+  });
+
+  test("hostPathBasename keeps a Windows drive root whole", () {
+    expect(hostPathBasename(path: r"C:\"), r"C:\");
+    expect(hostPathBasename(path: "C:/"), "C:/");
+  });
+
+  test("hostPathBasename keeps a colon-suffixed folder's name", () {
+    expect(hostPathBasename(path: "/work/build:"), "build:");
+  });
 }

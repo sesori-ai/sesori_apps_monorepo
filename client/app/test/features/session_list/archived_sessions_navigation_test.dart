@@ -97,7 +97,7 @@ void main() {
       expect(find.text("Archived record"), findsNothing);
       await tester.tap(find.byKey(const Key("home-archived")));
       await tester.pumpAndSettle();
-      expect(harness.router.state.uri.toString(), "/archived-sessions?project=p1");
+      expect(harness.router.state.uri.toString(), "/archived-sessions");
       expect(GetIt.instance<SessionListFilterTracker>().projectId.value, "p1");
       expect(find.text("Archived sessions"), findsOneWidget);
       expect(find.text("Live record"), findsNothing);
@@ -135,7 +135,7 @@ void main() {
     final harness = await setUpArchive(
       tester: tester,
       size: const Size(440, 956),
-      initialLocation: const AppRoute.archivedSessions(projectId: null).buildPath(),
+      initialLocation: const AppRoute.archivedSessions().buildPath(),
       currentRouteDef: AppRouteDef.archivedSessions,
       sessionsByProject: {
         "p1": [live, audit],
@@ -169,7 +169,7 @@ void main() {
     final harness = await setUpArchive(
       tester: tester,
       size: const Size(440, 956),
-      initialLocation: const AppRoute.archivedSessions(projectId: null).buildPath(),
+      initialLocation: const AppRoute.archivedSessions().buildPath(),
       currentRouteDef: AppRouteDef.archivedSessions,
       sessionsByProject: {
         "p1": [live, audit],
@@ -194,7 +194,7 @@ void main() {
     final harness = await setUpArchive(
       tester: tester,
       size: const Size(440, 956),
-      initialLocation: const AppRoute.archivedSessions(projectId: null).buildPath(),
+      initialLocation: const AppRoute.archivedSessions().buildPath(),
       currentRouteDef: AppRouteDef.archivedSessions,
       sessionsByProject: {
         "p1": [audit],
@@ -331,7 +331,7 @@ void main() {
     );
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
-    unawaited(harness.router.push<void>(const AppRoute.archivedSessions(projectId: "p1").buildPath()));
+    unawaited(harness.router.push<void>(const AppRoute.archivedSessions().buildPath()));
     await tester.pumpAndSettle();
     final listContext = tester.element(find.byType(ArchivedSessionsView));
     unawaited(

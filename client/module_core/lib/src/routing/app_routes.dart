@@ -102,7 +102,7 @@ sealed class const AppRoute() {
     required String projectId,
     required String? projectName,
   }) = AppRouteProjectSessions;
-  const factory archivedSessions({required String? projectId}) = AppRouteArchivedSessions;
+  const factory archivedSessions() = AppRouteArchivedSessions;
   const factory archivedSessionDetail({
     required String projectId,
     required String? projectName,
@@ -155,7 +155,7 @@ sealed class const AppRoute() {
         pathParams: pathParams,
         queryParams: queryParams,
       ),
-      AppRouteDef.archivedSessions => AppRouteArchivedSessions.fromParams(queryParams: queryParams),
+      AppRouteDef.archivedSessions => const AppRoute.archivedSessions(),
       AppRouteDef.archivedSessionDetail => AppRouteArchivedSessionDetail.fromParams(
         pathParams: pathParams,
         queryParams: queryParams,
@@ -452,21 +452,14 @@ class const AppRouteSessionDiffs({
   }
 }
 
-/// Archived sessions across every project. [projectId] narrows the shared
-/// project filter on entry; null opens with the filter as it is.
-class const AppRouteArchivedSessions({required final String? projectId}) extends AppRoute {
-  static const _projectQueryParam = "project";
-
-  /// Decodes from query parameter maps (inverse of [buildPath]).
-  factory fromParams({required Map<String, String> queryParams}) {
-    return AppRouteArchivedSessions(projectId: queryParams[_projectQueryParam]);
-  }
-
+/// Archived sessions across every project, under the home's shared project
+/// filter (D6).
+class const AppRouteArchivedSessions() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.archivedSessions;
 
   @override
-  String buildPath() => _appendQuery(path: def.path, queryParameters: {_projectQueryParam: ?projectId});
+  String buildPath() => def.path;
 }
 
 class const AppRouteArchivedSessionDetail({

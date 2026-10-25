@@ -9,7 +9,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
-import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -22,7 +21,7 @@ import "../../helpers/test_helpers.dart";
 // setup or the bridge-offline view. (The connected-but-empty state carries no
 // onboarding widgets anymore, so it fires no onboarding events.)
 //
-// Pumps the real [ProjectListScreen] (its cubit is built from getIt, so every
+// Pumps the real home (its cubits are built from getIt, so every
 // dependency is registered as a mock below) driven into each state through
 // the connection status stream + project list responses.
 // ---------------------------------------------------------------------------
@@ -119,7 +118,7 @@ void main() {
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
+          home: testHome(),
         ),
       ),
     );
