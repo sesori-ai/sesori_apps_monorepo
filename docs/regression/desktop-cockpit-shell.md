@@ -341,10 +341,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   new-session replacement, Changes file selection, home states, package-font resolution.
 - Add project from the sidebar's empty New session row opening New session in the added project
   (`desktop_cockpit_shell_test`).
-- The footer holding no Archived control (`desktop_cockpit_shell_test`); the settings window's Archived row
-  closing the window and opening Archived (`desktop_settings_screens_test`); the Archived page pushed once over its opener, its
-  rows opening read-only over it, and its close returning to the opener or, reached directly, home
-  (`desktop_router_test`).
+- The settings window's Archived row closing the window and opening Archived (`desktop_settings_screens_test`);
+  the Archived page pushed once over its opener, its rows opening read-only over it, and its close returning to
+  the opener or, reached directly, home (`desktop_router_test`).
 - Live inventory mutations, action-scope viewing isolation, invalidation/disposal. All-project admission happens
   once per entering ID, including offscreen projects. Empty/loading/failed entries keep project-local retry. Keep
   loaded rows

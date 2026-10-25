@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 1/7.
+- Current step: 4/7; steps 2, 3 and 4 are independent.
 - User decisions: D1–D15 in `PLAN.md`, agreed 2026-10-25 over two review rounds.
 
 ## Delivery
