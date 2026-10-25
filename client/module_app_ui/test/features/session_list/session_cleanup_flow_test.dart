@@ -66,7 +66,8 @@ void main() {
                 child: Material(
                   child: Builder(
                     builder: (context) => TextButton(
-                      onPressed: () => dispatcher.handleSessionArchive(context: context, session: session),
+                      onPressed: () =>
+                          dispatcher.handleSessionArchive(context: context, cubit: cubit, session: session),
                       child: const Text("go"),
                     ),
                   ),
@@ -205,7 +206,8 @@ void main() {
                   child: Material(
                     child: Builder(
                       builder: (context) => TextButton(
-                        onPressed: () => dispatcher.handleSessionDelete(context: context, session: target),
+                        onPressed: () =>
+                            dispatcher.handleSessionDelete(context: context, cubit: cubit, session: target),
                         child: const Text("go"),
                       ),
                     ),

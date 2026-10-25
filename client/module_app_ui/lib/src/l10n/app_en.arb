@@ -2250,6 +2250,11 @@
   "harnessesStatusRunning": "Running",
   "archivedSessionsTitle": "Archived sessions",
   "archivedSessionsClose": "Close archived sessions",
+  "allSessionsProjectFailed": "Couldn’t load {projectName}",
+  "@allSessionsProjectFailed": {
+    "description": "Retry row of a session list across projects, for one project whose sessions failed to load.",
+    "placeholders": {"projectName": {"type": "String"}}
+  },
   "archivedSessionsToday": "Today",
   "@archivedSessionsToday": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsYesterday": "Yesterday",

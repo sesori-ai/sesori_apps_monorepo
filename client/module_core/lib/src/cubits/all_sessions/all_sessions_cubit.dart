@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
 import "package:rxdart/rxdart.dart";
@@ -30,7 +32,8 @@ enum _ListClaimStatus() {
 /// In [AllSessionsMode.active] it also declares the viewed project: the list
 /// claim while a filter is set, and the wide pane a shell reports through
 /// [setPaneVisible]. "All projects" claims nothing, because the bridge is told
-/// one project. [AllSessionsMode.archived] never claims.
+/// one project. [AllSessionsMode.archived] never claims, and reloads the
+/// inventory when it opens: the bridge publishes no event on archive.
 class AllSessionsCubit({
   required final AllSessionsMode _mode,
   required final RecentSessionInventoryService _recentInventory,
@@ -64,11 +67,18 @@ class AllSessionsCubit({
       ..add(_recentInventory.state.skip(1).listen((_) => _update()))
       ..add(_projectInventory.stateStream.skip(1).listen((_) => _update()))
       ..add(_filterTracker.projectId.skip(1).listen((_) => _update()));
+    if (_mode == AllSessionsMode.archived) unawaited(_recentInventory.refresh());
   }
 
   /// Filters the list to [projectId], or lists every project for null. The
   /// filter is shared by every all-projects list and lasts for the app's run.
-  void selectProject({required String? projectId}) => _filterTracker.select(projectId: projectId);
+  ///
+  /// The state follows at once, so a list opened filtered never draws a frame
+  /// of the previous filter.
+  void selectProject({required String? projectId}) {
+    _filterTracker.select(projectId: projectId);
+    _update();
+  }
 
   void setQuery({required String query}) => _emit(query: query, quickFilter: state.quickFilter);
 

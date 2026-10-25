@@ -3,11 +3,7 @@ import "package:test/test.dart";
 
 void main() {
   group("AppRoute", () {
-    test("archive route decoding requires project and session identity", () {
-      expect(
-        () => AppRoute.fromDef(def: AppRouteDef.archivedSessions, pathParams: const {}, queryParams: const {}),
-        throwsArgumentError,
-      );
+    test("archived detail decoding requires project and session identity", () {
       expect(
         () => AppRoute.fromDef(
           def: AppRouteDef.archivedSessionDetail,
@@ -18,29 +14,32 @@ void main() {
       );
     });
 
-    test("archive routes round-trip encoded identity and never carry editable intent", () {
-      final routes = [
-        const AppRoute.archivedSessions(projectId: "project/1", projectName: "A & B"),
-        const AppRoute.archivedSessionDetail(
-          projectId: "project/1",
-          projectName: "A & B",
-          sessionId: "session/2",
-          sessionTitle: "Audit ?",
-        ),
-      ];
-      for (final route in routes) {
+    test("archived list carries an optional project filter", () {
+      for (final projectId in [null, "project/1"]) {
+        final route = AppRoute.archivedSessions(projectId: projectId);
         final uri = Uri.parse(route.buildPath());
-        final decoded = AppRoute.fromDef(
-          def: route.def,
-          pathParams: {
-            projectIdPathParam: uri.pathSegments[1],
-            if (uri.pathSegments.length > 3) sessionIdPathParam: uri.pathSegments[3],
-          },
-          queryParams: uri.queryParameters,
-        );
-        expect(decoded.buildPath(), route.buildPath());
-        expect(uri.queryParameters.containsKey("readOnly"), isFalse);
+        expect(uri.path, "/archived-sessions");
+        final decoded = AppRoute.fromDef(def: route.def, pathParams: const {}, queryParams: uri.queryParameters);
+        expect(decoded, isA<AppRouteArchivedSessions>().having((route) => route.projectId, "projectId", projectId));
       }
+    });
+
+    test("archived detail round-trips encoded identity and never carries editable intent", () {
+      const route = AppRoute.archivedSessionDetail(
+        projectId: "project/1",
+        projectName: "A & B",
+        sessionId: "session/2",
+        sessionTitle: "Audit ?",
+      );
+      final uri = Uri.parse(route.buildPath());
+      expect(uri.pathSegments.first, "archived-sessions");
+      final decoded = AppRoute.fromDef(
+        def: route.def,
+        pathParams: {projectIdPathParam: uri.pathSegments[1], sessionIdPathParam: uri.pathSegments[2]},
+        queryParams: uri.queryParameters,
+      );
+      expect(decoded.buildPath(), route.buildPath());
+      expect(uri.queryParameters.containsKey("readOnly"), isFalse);
     });
 
     test("Default input round-trips a parameterless settings route with a pinned screen name", () {

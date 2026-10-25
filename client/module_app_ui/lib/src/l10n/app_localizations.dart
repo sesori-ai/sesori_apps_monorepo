@@ -5299,6 +5299,12 @@ abstract class AppLocalizations {
   /// **'Close archived sessions'**
   String get archivedSessionsClose;
 
+  /// Retry row of a session list across projects, for one project whose sessions failed to load.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load {projectName}'**
+  String allSessionsProjectFailed(String projectName);
+
   /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:

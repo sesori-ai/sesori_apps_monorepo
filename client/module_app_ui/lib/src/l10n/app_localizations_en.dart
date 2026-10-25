@@ -3052,6 +3052,11 @@ class AppLocalizationsEn extends AppLocalizations {
   String get archivedSessionsClose => 'Close archived sessions';
 
   @override
+  String allSessionsProjectFailed(String projectName) {
+    return 'Couldn’t load $projectName';
+  }
+
+  @override
   String get archivedSessionsToday => 'Today';
 
   @override
