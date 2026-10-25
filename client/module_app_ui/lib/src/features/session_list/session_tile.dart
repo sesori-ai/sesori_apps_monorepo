@@ -45,8 +45,9 @@ typedef SessionOpenedCallback = void Function({required Session session});
 /// likewise. The swipes are the quick paths; the menu stays the discoverable
 /// and assistive one.
 ///
-/// Under a [PregoInteractionMode.pointer] scope the row is denser, and hovering
-/// or focusing it swaps the time for its read toggle and Archive.
+/// Under a [PregoInteractionMode.pointer] scope the row keeps the touch row's
+/// size, and hovering or focusing it swaps the time for its read toggle and
+/// Archive.
 class const SessionTile({
   super.key,
   required final Session session,
@@ -150,13 +151,13 @@ class const SessionTile({
                 onLongPress: openMenu,
                 hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
                 child: Padding(
-                  padding: _rowPadding(pointer: pointer),
+                  padding: _rowPadding,
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
-                    spacing: pointer ? 0 : PregoSpacing.xxs,
+                    spacing: _lineGap,
                     children: [
-                      _titleRow(context: context, pointer: pointer, revealActions: revealActions),
-                      _metaLine(context: context, pointer: pointer),
+                      _titleRow(context: context, revealActions: revealActions),
+                      _metaLine(context: context),
                     ],
                   ),
                 ),
@@ -228,7 +229,7 @@ class const SessionTile({
     );
   }
 
-  Widget _titleRow({required BuildContext context, required bool pointer, required bool revealActions}) {
+  Widget _titleRow({required BuildContext context, required bool revealActions}) {
     final state = _state(context: context);
     // The row's width caps a resume time, which a narrow row with large text
     // could not otherwise fit beside the title.
@@ -244,7 +245,7 @@ class const SessionTile({
           ),
           Expanded(
             child: _TitleLine(
-              title: _title(context: context, pointer: pointer),
+              title: _title(context: context),
               mark: state == null ? null : Semantics(label: state.label, child: state.mark),
             ),
           ),
@@ -268,9 +269,9 @@ class const SessionTile({
   /// the titles that really did overflow, without a row paying to be measured
   /// twice. The ramp is an ellipsis wide rather than the design's, which is
   /// the price of that.
-  Widget _title({required BuildContext context, required bool pointer}) {
+  Widget _title({required BuildContext context}) {
     final prego = context.prego;
-    final size = pointer ? prego.textTheme.textSm : prego.textTheme.textMd;
+    final size = prego.textTheme.textMd;
 
     return Text(
       session.title ?? context.loc.sessionListUntitled,
@@ -334,7 +335,7 @@ class const SessionTile({
           style: IconButton.styleFrom(
             tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             padding: EdgeInsets.zero,
-            fixedSize: const Size(28, _pointerTitleLineHeight),
+            fixedSize: const Size(28, _titleLineHeight),
             minimumSize: Size.zero,
           ),
         );
@@ -399,7 +400,7 @@ class const SessionTile({
 
   /// The row's second line, starting under the logo: any state that needs
   /// words, then the project and pull request, apart by middle dots.
-  Widget _metaLine({required BuildContext context, required bool pointer}) {
+  Widget _metaLine({required BuildContext context}) {
     final prego = context.prego;
     final style = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
     final details = <Widget>[
@@ -414,7 +415,7 @@ class const SessionTile({
     // A minimum rather than a fixed height: scaled-up accessibility text grows
     // the line instead of being cropped to the 1x line box.
     return ConstrainedBox(
-      constraints: BoxConstraints(minHeight: pointer ? 0 : _metaLineHeight),
+      constraints: const BoxConstraints(minHeight: _metaLineHeight),
       child: LayoutBuilder(
         builder: (context, constraints) => Row(
           children: [
@@ -497,7 +498,6 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
     final prego = context.prego;
     final loc = context.loc;
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
-    final titleSize = pointer ? prego.textTheme.textSm : prego.textTheme.textMd;
     return DecoratedBox(
       // The hairline [PregoSwipeActions] draws under a real row.
       decoration: BoxDecoration(
@@ -510,10 +510,10 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
             onTap: () => PregoPopupAlertPresenter.of(context).show(title: loc.sessionListLaunchingAlert),
             hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
             child: Padding(
-              padding: _rowPadding(pointer: pointer),
+              padding: _rowPadding,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
-                spacing: pointer ? 0 : PregoSpacing.xxs,
+                spacing: _lineGap,
                 children: [
                   Row(
                     spacing: PregoSpacing.xs,
@@ -524,7 +524,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                         child: _TitleLine(
                           title: Text(
                             launch.title ?? loc.sessionListUntitled,
-                            style: titleSize.regular.copyWith(color: prego.colors.textPrimary),
+                            style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
                             maxLines: 1,
                             softWrap: false,
                             overflow: TextOverflow.fade,
@@ -536,7 +536,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
                     ],
                   ),
                   ConstrainedBox(
-                    constraints: BoxConstraints(minHeight: pointer ? 0 : _metaLineHeight),
+                    constraints: const BoxConstraints(minHeight: _metaLineHeight),
                     child: Text(
                       "${loc.sessionListCreating}$_separator${PregoBrandLogo.displayNameFor(launch.pluginId)}",
                       style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
@@ -557,10 +557,12 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
 /// The row's insets, shared with the launching row: the harness logo leads
 /// [PregoSpacing.lg] in, and the time keeps the toolbar's [PregoSpacing.xl]
 /// from the trailing edge.
-EdgeInsetsDirectional _rowPadding({required bool pointer}) {
-  final vertical = pointer ? PregoSpacing.xs : PregoSpacing.lg;
-  return EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, vertical, PregoSpacing.xl, vertical);
-}
+const EdgeInsetsDirectional _rowPadding = EdgeInsetsDirectional.fromSTEB(
+  PregoSpacing.lg,
+  PregoSpacing.lg,
+  PregoSpacing.xl,
+  PregoSpacing.lg,
+);
 
 /// A title with the status mark right after its text. A long title fades out
 /// before the mark, so the mark always shows; without one the title takes the
@@ -615,10 +617,11 @@ class _PointerRevealState() extends State<_PointerReveal> {
   );
 }
 
-/// The row's line boxes, from the type scale it renders: a 14/20 pointer title
-/// over a 12/18 meta line with 20px minimum height.
-const double _pointerTitleLineHeight = 20;
+/// The row's line boxes, from the type scale it renders: a 16/24 title over a
+/// 12/18 meta line with 20px minimum height, [_lineGap] apart.
+const double _titleLineHeight = 24;
 const double _metaLineHeight = 20;
+const double _lineGap = PregoSpacing.xxs;
 
 const double _markSize = 16;
 const double _waitingDotSize = 8;

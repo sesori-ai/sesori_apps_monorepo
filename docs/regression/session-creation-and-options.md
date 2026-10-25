@@ -36,6 +36,12 @@ variant, and worktree mode, and creating the session with its first input.
   keyboard highlight starts on the first matching project, Up from there reaches the action, and Enter opens
   it when nothing matches. It closes the picker, opens the folder browser once the picker has closed, and
   selects the project the browser adds.
+  Filtering a list instead, the picker holds only projects, and a full-width "Show all projects" button is
+  pinned below the list, outside its scroll, set off by a hairline; on a phone it rides above the raised
+  keyboard while the search stays still. The search never hides it. It is always there: while every project is
+  shown it carries a check, no project is checked, and it only closes the picker; otherwise it clears the
+  filter. Under a pointer Down past the last project highlights it and Enter picks it, while typing then Enter
+  picks the first matching project.
   Search matches project names and paths; a path shows under a name only when another project shares that
   name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
   project's setup page, so a session is never created in the project that was left, and a draft stays with
@@ -547,6 +553,10 @@ startup-extension file failure, retry once the filesystem is usable.
   keyboard rises, moves the header behind
   its sheet, or leaves the page on the old project after the folder browser
   adds one.
+- The filtering picker lists "Show all projects" among the projects, hides it
+  behind a search or a scroll, leaves it out or unchecked while every project
+  is shown, checks a project then, or lets Enter after a search pick it over a
+  match.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a

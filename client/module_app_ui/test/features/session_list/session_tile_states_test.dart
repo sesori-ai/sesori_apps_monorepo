@@ -554,15 +554,30 @@ void main() {
   });
 
   group("in pointer mode", () {
-    testWidgets("an idle row stays near 44 pt with its meta line", (tester) async {
-      await pumpPointerTile(
-        tester,
-        tile(
-          session: testSession(title: "My Session", updatedAt: now),
-        ),
+    testWidgets("a row has exactly the touch row's metrics: 12 px padding, the 16 pt title and the 2 px gap", (
+      tester,
+    ) async {
+      final row = tile(
+        session: testSession(title: "My Session", updatedAt: now),
+        projectLabel: "demo-app",
       );
+      ({double height, double? titleSize, double titleTop, double metaTop}) metrics() {
+        final top = tester.getTopLeft(find.byType(SessionTile)).dy;
+        return (
+          height: tester.getSize(find.byType(SessionTile)).height,
+          titleSize: tester.widget<Text>(find.text("My Session")).style?.fontSize,
+          titleTop: tester.getTopLeft(find.text("My Session")).dy - top,
+          metaTop: tester.getTopLeft(find.text("demo-app")).dy - top,
+        );
+      }
 
-      expect(tester.getSize(find.byType(SessionTile)).height, inInclusiveRange(44, 48));
+      await pumpTile(tester, row);
+      final touch = metrics();
+      await pumpPointerTile(tester, row);
+
+      expect(metrics(), touch);
+      // The 18 px meta text sits centred in its 20 px line, 1 px down.
+      expect(touch, (height: rowHeight, titleSize: 16.0, titleTop: 12.0, metaTop: 12.0 + 24 + 2 + 1));
       expect(find.text("now"), findsOneWidget);
     });
 

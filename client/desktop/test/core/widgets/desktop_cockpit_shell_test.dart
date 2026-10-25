@@ -331,7 +331,7 @@ void main() {
     expect(find.descendant(of: list, matching: find.text("Fix the build")), findsNothing);
     await tester.tap(filterTrigger);
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(of: picker, matching: find.text("All projects")));
+    await tester.tap(find.descendant(of: picker, matching: find.text("Show all projects")));
     await tester.pumpAndSettle();
     expect(filter.value, isNull);
     expect(find.descendant(of: filterTrigger, matching: find.text("All projects")), findsOneWidget);

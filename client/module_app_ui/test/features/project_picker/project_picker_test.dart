@@ -9,6 +9,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
@@ -192,24 +193,69 @@ void main() {
     expect(selected, ["api demo-api"]);
   });
 
-  testWidgets("filtering, All projects leads in place of the action and clears the filter", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true);
-    expect(find.text("All projects"), findsOneWidget);
-    expect(find.text("Open another folder…"), findsNothing);
+  final showAll = find.text("Show all projects");
+  final footer = find.ancestor(of: showAll, matching: find.byType(PregoButtonsSolid));
+  Finder checkIn(Finder scope) => find.descendant(of: scope, matching: find.byIcon(TablerRegular.check));
+  Finder row(String name) => find.ancestor(of: find.text(name), matching: find.byType(InkWell)).first;
 
-    await tester.tap(find.text("All projects"));
+  testWidgets("filtering, Show all projects is pinned below the list in place of the action and clears the filter", (
+    tester,
+  ) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true);
+    expect(footer, findsOneWidget);
+    expect(find.text("Open another folder…"), findsNothing);
+    // Below every project and outside their scroll, not one of them.
+    expect(topOf(tester: tester, finder: footer), greaterThan(tester.getBottomLeft(find.text("demo-api")).dy));
+    expect(find.descendant(of: find.byType(ListView), matching: showAll), findsNothing);
+    // Another project is the choice, so only that project is checked.
+    expect(checkIn(footer), findsNothing);
+    expect(checkIn(row("demo-app")), findsOneWidget);
+
+    await tester.tap(showAll);
     await tester.pumpAndSettle();
     expect(allProjectsPicks, 1);
     expect(find.text("Search projects"), findsNothing);
   });
 
-  testWidgets("filtering nothing yet, All projects is selected and picking it changes nothing", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp], selectedProjectId: null, filters: true);
+  testWidgets("showing every project, the footer is there checked, no project is, and it only closes", (
+    tester,
+  ) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], selectedProjectId: null, filters: true);
+    expect(checkIn(footer), findsOneWidget);
+    expect(checkIn(find.byType(ListView)), findsNothing);
 
-    await tester.tap(find.text("All projects"));
+    await tester.tap(showAll);
     await tester.pumpAndSettle();
     expect(allProjectsPicks, 0);
     expect(find.text("Search projects"), findsNothing);
+  });
+
+  testWidgets("filtering, the search narrows only the projects and never hides the footer", (tester) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true);
+
+    await search(tester: tester, query: "api");
+    expect(footer, findsOneWidget);
+    expect(find.text("demo-app"), findsNothing);
+    await search(tester: tester, query: "all projects");
+    expect(footer, findsOneWidget);
+    expect(find.text("No projects match"), findsOneWidget);
+  });
+
+  testWidgets("a phone sheet keeps the footer at its bottom, riding the keyboard up without moving the search", (
+    tester,
+  ) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], size: const Size(390, 844), filters: true);
+    // Low in the sheet, in thumb reach, well clear of the two rows.
+    final restingBottom = tester.getBottomLeft(footer).dy;
+    expect(restingBottom, greaterThan(700));
+    final searchTop = topOf(tester: tester, finder: find.byType(TextField));
+
+    await tester.tap(find.byType(TextField));
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    await tester.pumpAndSettle();
+    expect(tester.getBottomLeft(footer).dy, lessThanOrEqualTo(844 - 300));
+    expect(topOf(tester: tester, finder: find.byType(TextField)), searchTop);
+    expect(find.text("demo-app"), findsOneWidget);
   });
 
   bool searchHasFocus(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
@@ -290,5 +336,74 @@ void main() {
     await search(tester: tester, query: "zzz");
     await press(tester: tester, key: LogicalKeyboardKey.enter);
     expect(find.byType(AddProjectDialog), findsOneWidget);
+  });
+
+  bool footerHighlighted(WidgetTester tester) {
+    final ring = find.ancestor(of: footer, matching: find.byType(DecoratedBox)).first;
+    return (tester.widget<DecoratedBox>(ring).decoration as BoxDecoration).boxShadow != null;
+  }
+
+  testWidgets("under a pointer Down past the last project highlights the footer, which Enter picks", (tester) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true, mode: PregoInteractionMode.pointer);
+    expect(footerHighlighted(tester), isFalse);
+
+    // From the first project, past the second, onto the footer, where it holds.
+    for (var i = 0; i < 3; i++) {
+      await press(tester: tester, key: LogicalKeyboardKey.arrowDown);
+    }
+    expect(footerHighlighted(tester), isTrue);
+    await press(tester: tester, key: LogicalKeyboardKey.arrowUp);
+    expect(footerHighlighted(tester), isFalse);
+    await press(tester: tester, key: LogicalKeyboardKey.arrowDown);
+
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(allProjectsPicks, 1);
+    expect(selected, isEmpty);
+    expect(find.text("Search projects"), findsNothing);
+  });
+
+  testWidgets("under a pointer Enter after typing picks the first matching project, never the footer", (
+    tester,
+  ) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true, mode: PregoInteractionMode.pointer);
+
+    // Nothing matching leaves nothing for Enter, though Down still reaches the footer.
+    await search(tester: tester, query: "zzz");
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(selected, isEmpty);
+    expect(allProjectsPicks, 0);
+    expect(find.text("Search projects"), findsOneWidget);
+    await press(tester: tester, key: LogicalKeyboardKey.arrowDown);
+    expect(footerHighlighted(tester), isTrue);
+
+    await search(tester: tester, query: "api");
+    expect(footerHighlighted(tester), isFalse);
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(selected, ["api demo-api"]);
+    expect(allProjectsPicks, 0);
+  });
+
+  testWidgets("under a pointer Enter on the footer Tab focused presses it, not the highlighted project", (
+    tester,
+  ) async {
+    await pumpPicker(
+      tester: tester,
+      projects: [_demoApp, _demoApi],
+      selectedProjectId: "api",
+      filters: true,
+      mode: PregoInteractionMode.pointer,
+    );
+
+    bool footerFocused() =>
+        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<PregoButtonsSolid>() != null;
+    for (var i = 0; i < 5 && !footerFocused(); i++) {
+      await press(tester: tester, key: LogicalKeyboardKey.tab);
+    }
+    expect(footerFocused(), isTrue);
+
+    // demo-app still holds the highlight.
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(allProjectsPicks, 1);
+    expect(selected, isEmpty);
   });
 }

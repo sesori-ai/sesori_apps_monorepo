@@ -185,6 +185,7 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                 searchHint: loc.desktopCommandPaletteHint,
                 onQueryChanged: (query) => setState(() => _query = query),
                 header: null,
+                footer: null,
                 rows: rows,
                 emptyText: loc.listSearchNoMatches,
                 onClose: widget.onClose,

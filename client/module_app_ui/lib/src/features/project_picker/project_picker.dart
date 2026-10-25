@@ -22,17 +22,18 @@ typedef NewSessionProjectSelected = void Function({required String projectId, re
 /// pinned above the search, which filters only the projects, so it is there
 /// with one project, with none, and when nothing matches. It opens the folder
 /// browser and then selects the project that adds. Filtering a list instead
-/// ([onAllProjects] set), "All projects" leads the list. A path shows only
-/// under a name another project shares.
+/// ([onAllProjects] set), "Show all projects" is a button pinned below the
+/// list, checked while no project is chosen. A path shows only under a name
+/// another project shares.
 class const ProjectPicker({
   super.key,
 
-  /// Null selects nothing, or "All projects" while filtering.
+  /// Null selects nothing, or every project while filtering.
   required final String? selectedProjectId,
   required final NewSessionProjectSelected onSelected,
 
-  /// Clears a list's filter. Set, the picker filters: "All projects" leads the
-  /// list, and "Open another folder…" is left out.
+  /// Clears a list's filter. Set, the picker filters: "Show all projects" is
+  /// pinned below the list, and "Open another folder…" is left out.
   required final VoidCallback? onAllProjects,
 
   /// Builds the trigger; the callback opens the picker.
@@ -135,24 +136,13 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
             project.path.toLowerCase().contains(query))
           project,
     ];
-    final onAllProjects = widget.onAllProjects;
     return [
-      if (onAllProjects != null)
-        PregoPickerSearchOption(
-          isSelected: widget.selectedProjectId == null,
-          onPick: () {
-            widget.onClose();
-            if (widget.selectedProjectId != null) onAllProjects();
-          },
-          child: _PickerRow(icon: TablerRegular.folders, title: loc.projectPickerAllProjects, detail: null),
-        ),
       if (matches.isEmpty && query.isNotEmpty) PregoPickerSearchNote(text: loc.projectPickerNoMatches),
       for (final project in matches)
         PregoPickerSearchOption(
           isSelected: project.id == widget.selectedProjectId,
           onPick: () => _pickProject(project: project, name: nameOf(project)),
           child: _PickerRow(
-            icon: TablerRegular.folder,
             title: nameOf(project),
             // Only a shared name needs its path to be told apart.
             detail: (nameCounts[nameOf(project)] ?? 0) > 1 ? pathLabels[project.id] ?? project.path : null,
@@ -174,6 +164,7 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
       _projects = projects;
       rows = _rows = _buildRows();
     }
+    final onAllProjects = widget.onAllProjects;
     return PregoPickerSearchList(
       searchHint: context.loc.projectPickerSearchHint,
       onQueryChanged: (query) => setState(() {
@@ -181,7 +172,7 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
         _rows = _buildRows();
       }),
       // An action rather than a project, so the search leaves it alone.
-      header: widget.onAllProjects == null
+      header: onAllProjects == null
           ? PregoPickerSearchOption(
               isSelected: false,
               onPick: () {
@@ -193,6 +184,19 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
               child: const _OpenFolderRow(),
             )
           : null,
+      // Always there while filtering, checked when it is already the choice,
+      // so it never reads as one more project.
+      footer: onAllProjects == null
+          ? null
+          : PregoPickerSearchFooter(
+              label: context.loc.projectPickerShowAllProjects,
+              icon: TablerRegular.folders,
+              isSelected: widget.selectedProjectId == null,
+              onPick: () {
+                widget.onClose();
+                if (widget.selectedProjectId != null) onAllProjects();
+              },
+            ),
       rows: rows,
       emptyText: null,
       onClose: widget.onClose,
@@ -224,10 +228,9 @@ class const _OpenFolderRow() extends StatelessWidget {
   }
 }
 
-/// An entry's icon and name, over the path that tells it apart when it has
-/// one.
-class const _PickerRow({required final IconData icon, required final String title, required final String? detail})
-    extends StatelessWidget {
+/// A project's folder icon and name, over the path that tells it apart when it
+/// has one.
+class const _PickerRow({required final String title, required final String? detail}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
@@ -235,7 +238,7 @@ class const _PickerRow({required final IconData icon, required final String titl
     return Row(
       spacing: PregoSpacing.md,
       children: [
-        Icon(icon, size: PregoIconSize.sm, color: prego.colors.textTertiary),
+        Icon(TablerRegular.folder, size: PregoIconSize.sm, color: prego.colors.textTertiary),
         Expanded(
           child: Column(
             mainAxisSize: MainAxisSize.min,
