@@ -352,7 +352,8 @@ def build_appimage(*, bundle: Path, work: Path, output: Path, arch: str, identit
     run(command=["unsquashfs", "-offset", str(offset), "-no-progress", "-d", str(extracted), str(package)], cwd=work)
     contents = extracted / "usr/bin"
     bundled = [row for row in payload_inventory(root=contents) if row["path"] not in VELOPACK_ADDED_FILES]
-    if bundled != payload_inventory(root=bundle) or not (contents / "UpdateNix").is_file():
+    added = all((contents / name).is_file() for name in VELOPACK_ADDED_FILES)
+    if bundled != payload_inventory(root=bundle) or not added:
         raise ValueError("AppImage does not contain the exact staged bundle")
     if sha256(extracted / f"{PACKAGE_NAME}.png") != sha256(ICON_SOURCE):
         raise ValueError("AppImage icon differs from the application icon")

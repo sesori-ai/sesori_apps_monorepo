@@ -285,7 +285,8 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertIn("/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\n%config(noreplace) /etc/yum.repos.d/sesori.repo\n", spec)
         self.assertEqual(evidence["dependencies"], ["libc.so.6()(64bit)"])
 
-    def build_appimage(self, *, image_bundle: Path | None = None, nupkg: bytes = b"vpk package"):
+    def build_appimage(self, *, image_bundle: Path | None = None, nupkg: bytes = b"vpk package",
+                       image_icon: bytes | None = None):
         """Run build_appimage with a fake vpk that writes a runtime-prefixed image of `image_bundle`."""
         work, output = self.root / "appimage work", self.root / "appimage output"
         work.mkdir()
@@ -314,6 +315,8 @@ class LinuxPackagingTests(unittest.TestCase):
                 (appdir / "usr/bin/UpdateNix").write_bytes(elf(machine=62))
                 (appdir / "usr/bin/sq.version").write_text("<package/>")
                 packaging.shutil.copy2(packaging.ICON_SOURCE, appdir / "sesori-desktop.png")
+                if image_icon is not None:
+                    (appdir / "sesori-desktop.png").write_bytes(image_icon)
             return "squashfs-root/AppRun\n"
 
         response = mock.MagicMock()
@@ -366,6 +369,16 @@ class LinuxPackagingTests(unittest.TestCase):
         (changed / "data/flutter_assets/NOTICE").unlink()
         with self.assertRaisesRegex(ValueError, "exact staged bundle"):
             self.build_appimage(image_bundle=changed)
+
+    def test_appimage_without_the_velopack_manifest_refuses(self):
+        # A Velopack file the fake image does not contain stands in for a missing sq.version.
+        with mock.patch.object(packaging, "VELOPACK_ADDED_FILES", {"UpdateNix", "sq.version", "missing"}), \
+                self.assertRaisesRegex(ValueError, "exact staged bundle"):
+            self.build_appimage()
+
+    def test_appimage_with_a_different_icon_refuses(self):
+        with self.assertRaisesRegex(ValueError, "icon differs"):
+            self.build_appimage(image_icon=b"other icon")
 
     def test_existing_output_refuses_before_tools_or_payload_changes(self):
         output = self.root / "existing"

@@ -119,7 +119,8 @@ a shell `AppRun`, the `sesori-desktop` desktop entry (`Exec=sesori_desktop`,
 The image is read back with `unsquashfs` at the runtime's ELF offset; its `usr/bin` must match
 the staged bundle exactly and its icon the application icon. Packaging never executes it. vpk's
 full `.nupkg` and `releases.<channel>.json` are kept as the unpublished
-`desktop-velopack-linux-<arch>` artifact. The AppImage is unchanged by signing and covered only by the signed checksums. It needs
+`desktop-velopack-linux-<arch>` artifact.
+The AppImage is unchanged by signing and covered only by the signed checksums. It needs
 host GTK 3, libsecret, EGL/GLES and glibc 2.39 or newer (the Ubuntu 24.04 build host), plus FUSE.
 It installs no menu entry, and launch at login autostarts the
 image file named by `APPIMAGE`, not its transient mount. Repositories serve only the DEB/RPM rows.
