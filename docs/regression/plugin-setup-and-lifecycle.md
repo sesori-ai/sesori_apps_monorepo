@@ -473,7 +473,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   the overview flow; X from either page dismisses only the harness modal, preserving the
   same New Session page and draft. Direct detail links construct overview ancestry without
   creating an unrelated Settings page, and links without an opener fall back to
-  signed-in Projects on both shells. Removed IDs show an unavailable detail, not another harness.
+  the signed-in home. Removed IDs show an unavailable detail, not another harness.
   Authentication and force sheets belong to this flow and leave with it; sheet dismissal
   remains distinct from cancelling authentication. Safe lifecycle conflicts still authorize
   force confirmation, never an install retry.

@@ -54,15 +54,15 @@ The main pane hosts one full-width routed page.
   the project filter, "All projects ▾" or the chosen project's name, heads the shared all-projects session list
   beside Refresh: it opens the shared project picker, and its pick is the shared filter that lasts for the app's
   run. The list is the phone's (see `projects-and-sessions.md`): its search field, All, Running and Unread
-  chips, date headings with running sessions leading Today, launching rows, the catalog scan row and
+  chips, date headings with running sessions under Today, launching rows, the catalog scan row and
   project-local retry. Each row names its project while the filter shows all of them, and opens its session in
   that project; the open session is highlighted. Adding a project otherwise lives on home and in Settings ›
   Projects. Icon/status hints and truncated-label hints remain useful, while fully visible labels need no
   duplicate tooltip.
 - Explicit sidebar refresh runs through `SessionListRefreshCubit` and the shared `SessionListRefreshService` over the
-  same scoped project and recent inventory services, and starts the all-harness import beside the reload. The cockpit
-  shows no import progress row; a failed import raises the shared alert naming its harnesses. It awaits the project
-  phase before refreshing admitted recent entries, joining initial reads
+  same scoped project and recent inventory services, and starts the all-harness import beside the reload. The
+  sidebar's scan row above the list reports the import; a failed import raises the shared alert naming its
+  harnesses. It awaits the project phase before refreshing admitted recent entries, joining initial reads
   already in flight. An ordinary project failure still allows retained recent entries to update; either phase failing
   produces failure feedback. Useful rows stay visible. Busy controls cannot dispatch duplicate intent, and busy/idle
   refresh plus Settings expose accessible names and keyboard actions.
@@ -74,7 +74,7 @@ The main pane hosts one full-width routed page.
 - Each signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
 - Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session row open New Session for the open project, else the
-  sidebar's filtered project, else the most recently active one; with no project yet they open the New project
+  sidebar's filtered project, else the most recently active one; with no project yet they open the Add project
   dialog. They do nothing until the project
   inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
   Cmd/Ctrl+B toggles the saved sidebar choice except during automatic narrow-window collapse, where it does nothing
@@ -223,7 +223,7 @@ The main pane hosts one full-width routed page.
   beside Open logs (tertiary). In dark mode none reads as disabled. Compact mode keeps the primary action and full tooltip. Open
   Logs is also available in the This computer popover. Command locks still disable
   recovery mutations, and start failures do not offer nonexistent child logs.
-- The canonical `/projects` home receives startup via `/splash` redirect and
+- The canonical `/sessions` home receives startup via `/splash` redirect and
   anchors notification route stacks; returning home retains shared inventory
   refresh. No separate project grid competes with the sidebar.
 - A root popup temporarily suspends the covered session's viewed/activity claim,
