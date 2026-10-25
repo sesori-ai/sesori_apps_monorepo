@@ -12,7 +12,6 @@ import "package:theme_prego/module_prego.dart";
 import "../di/injection.dart";
 import "desktop_bridge_popover.dart";
 import "desktop_bridge_recovery_card.dart";
-import "desktop_sidebar_expansion.dart";
 import "desktop_window_drag_area.dart";
 
 typedef SidebarSessionOpenedCallback = void Function({
@@ -45,8 +44,6 @@ class const DesktopSidebar({
 
   @override
   Widget build(BuildContext context) {
-    // The panel slides in and out whole (D9), so its rows never fold.
-    const expansion = kAlwaysCompleteAnimation;
     final state = context.watch<ProjectListCubit>().state;
     final filterId = context.select((AllSessionsCubit cubit) => cubit.state.projectId);
     final filterName = switch (state) {
@@ -67,14 +64,12 @@ class const DesktopSidebar({
         right: false,
         child: Column(
           children: [
-            _TopStrip(windowHost: windowHost, expansion: expansion),
+            _TopStrip(windowHost: windowHost),
             // A quiet row, not a filled button: with no projects it offers to add one.
             _SidebarButton(
               key: const Key("desktop-sidebar-new-session"),
               label: state is ProjectListLoaded && state.projects.isEmpty ? loc.addProject : loc.sessionListNewSession,
               icon: const Icon(TablerRegular.plus, size: PregoIconSize.md),
-              expansion: expansion,
-              selected: false,
               status: null,
               shortcut: newSessionShortcut,
               onPressed: state is ProjectListLoaded ? onStartNewSession : null,
@@ -83,8 +78,6 @@ class const DesktopSidebar({
               key: const Key("desktop-sidebar-search"),
               label: loc.desktopSearch,
               icon: const Icon(TablerRegular.search, size: PregoIconSize.md),
-              expansion: expansion,
-              selected: false,
               status: null,
               shortcut: defaultTargetPlatform == TargetPlatform.macOS ? "⌘K" : "Ctrl+K",
               onPressed: onOpenSearch,
@@ -145,25 +138,19 @@ class const DesktopSidebar({
 }
 
 /// The space above the panel's first control. On macOS the traffic lights sit
-/// on the expanded panel, so it grows to clear them and stands in for the title
-/// bar: it drags the window and zooms it on a double click.
-class const _TopStrip({required final WindowHost? windowHost, required final Animation<double> expansion})
-    extends StatelessWidget {
+/// on the panel, so it grows to clear them and stands in for the title bar: it
+/// drags the window and zooms it on a double click.
+class const _TopStrip({required final WindowHost? windowHost}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final windowHost = this.windowHost;
     if (windowHost == null) return const SizedBox(height: 12);
-    return AnimatedBuilder(
-      animation: expansion,
-      builder: (context, _) {
-        final height = 12 + 22 * expansion.value;
-        return DesktopWindowDragArea(
-          windowHost: windowHost,
-          height: height,
-          zoomOnDoubleClick: true,
-          child: SizedBox(height: height, width: double.infinity),
-        );
-      },
+    const height = 34.0;
+    return DesktopWindowDragArea(
+      windowHost: windowHost,
+      height: height,
+      zoomOnDoubleClick: true,
+      child: const SizedBox(height: height, width: double.infinity),
     );
   }
 }
@@ -316,13 +303,10 @@ class const _SidebarFooter({
                       triggerBuilder: (context, toggle) => _SidebarButton(
                         label: loc.desktopSettingsThisComputer,
                         icon: const Icon(TablerRegular.server, size: PregoIconSize.md),
-                        expansion: kAlwaysCompleteAnimation,
-                        selected: false,
                         // A status dot, not a glyph: no icon token applies.
                         status: (
                           icon: Icon(TablerSolid.circle, size: 8, color: bridgeColor),
                           label: bridge.statusLabel,
-                          detail: null,
                         ),
                         shortcut: null,
                         onPressed: toggle,
@@ -379,13 +363,12 @@ class const _SidebarButton({
   super.key,
   required final String label,
   required final Widget icon,
-  required final Animation<double> expansion,
-  required final bool selected,
 
-  /// [detail] is short text shown beside [icon] while the sidebar is open.
-  required final ({Widget icon, String? label, String? detail})? status,
+  /// Shown at the row's end; its label joins the row's tooltip and spoken
+  /// label.
+  required final ({Widget icon, String label})? status,
 
-  /// Shown at the row's end while the sidebar is open, and in its tooltip otherwise.
+  /// Shown at the row's end.
   required final String? shortcut,
   required final VoidCallback? onPressed,
 }) extends StatelessWidget {
@@ -393,143 +376,70 @@ class const _SidebarButton({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final status = this.status;
-    final statusLabel = status?.label;
-    final statusDetail = status?.detail;
-    final description = statusLabel == null ? label : "$label, $statusLabel";
+    final description = status == null ? label : "$label, ${status.label}";
     final shortcut = this.shortcut;
-    final tooltip = shortcut == null ? description : context.loc.desktopShortcutHint(description, shortcut);
     final color = onPressed == null ? prego.colors.textDisabled : prego.colors.textPrimary;
     final textStyle = prego.textTheme.textSm.medium.copyWith(color: color);
-    return DesktopSidebarPhaseBuilder(
-      expansion: expansion,
-      builder: (context, phase) => Padding(
-        padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xxs),
-        child: _ConditionalTooltip(
-          enabled: phase != DesktopSidebarPhase.open || status != null,
-          message: tooltip,
-          child: Semantics(
-            button: true,
-            enabled: onPressed != null,
-            selected: selected,
-            label: description,
-            onTap: onPressed,
-            excludeSemantics: true,
-            child: InkWell(
-              mouseCursor: WidgetStateMouseCursor.clickable,
-              onTap: onPressed,
-              // The opaque hover would hide the selected fill, which the row's
-              // trailing controls keep showing.
-              hoverColor: selected ? Colors.transparent : prego.colors.bgSecondaryHover,
-              focusColor: prego.colors.textBrandPrimary.withValues(alpha: 0.18),
-              // The selected row fills the sidebar's width.
-              child: Ink(
-                color: selected ? desktopSidebarSelectedFill(prego.colors) : null,
-                padding: const EdgeInsets.symmetric(
-                  horizontal: PregoSpacing.md + PregoSpacing.sm,
-                  vertical: PregoSpacing.xs,
-                ),
-                child: Row(
-                  children: [
-                    SizedBox(
-                      width: 28,
-                      height: 28,
-                      child: Stack(
-                        clipBehavior: Clip.none,
-                        alignment: Alignment.center,
-                        children: [
-                          IconTheme(
-                            data: IconThemeData(color: color),
-                            child: icon,
-                          ),
-                          if (status != null && phase != DesktopSidebarPhase.open)
-                            PositionedDirectional(
-                              end: -4,
-                              top: -4,
-                              child: FadeTransition(
-                                opacity: ReverseAnimation(expansion),
-                                child: DecoratedBox(
-                                  decoration: BoxDecoration(color: prego.colors.bgSecondary, shape: BoxShape.circle),
-                                  child: status.icon,
-                                ),
-                              ),
-                            ),
-                        ],
-                      ),
-                    ),
-                    if (phase != DesktopSidebarPhase.rail)
-                      Expanded(
-                        child: FadeTransition(
-                          opacity: expansion,
-                          child: _LabelInset(
-                            expansion: expansion,
-                            child: status == null
-                                ? _TooltipWhenTruncated(message: label, style: textStyle)
-                                : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
-                          ),
-                        ),
-                      ),
-                    if (shortcut != null && phase == DesktopSidebarPhase.open)
-                      Padding(
-                        padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
-                        child: ExcludeSemantics(
-                          child: Text(
-                            shortcut,
-                            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                          ),
-                        ),
-                      ),
-                    if (status != null && phase != DesktopSidebarPhase.rail)
-                      DesktopSidebarExpansionBuilder(
-                        expansion: expansion,
-                        builder: (expansion, statusSlot) => ClipRect(
-                          child: Align(
-                            alignment: AlignmentDirectional.centerStart,
-                            widthFactor: expansion,
-                            child: statusSlot,
-                          ),
-                        ),
-                        child: FadeTransition(
-                          opacity: expansion,
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              if (statusDetail != null)
-                                Padding(
-                                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
-                                  child: Text(
-                                    statusDetail,
-                                    maxLines: 1,
-                                    style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                                  ),
-                                ),
-                              SizedBox(width: 24, height: 20, child: Center(child: status.icon)),
-                            ],
-                          ),
-                        ),
-                      ),
-                  ],
+    final button = Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: description,
+      onTap: onPressed,
+      excludeSemantics: true,
+      child: InkWell(
+        mouseCursor: WidgetStateMouseCursor.clickable,
+        onTap: onPressed,
+        hoverColor: prego.colors.bgSecondaryHover,
+        focusColor: prego.colors.textBrandPrimary.withValues(alpha: 0.18),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md + PregoSpacing.sm, vertical: PregoSpacing.xs),
+          child: Row(
+            children: [
+              SizedBox(
+                width: 28,
+                height: 28,
+                child: Center(
+                  child: IconTheme(
+                    data: IconThemeData(color: color),
+                    child: icon,
+                  ),
                 ),
               ),
-            ),
+              Expanded(
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                  child: status == null
+                      ? _TooltipWhenTruncated(message: label, style: textStyle)
+                      : Text(label, maxLines: 1, overflow: TextOverflow.ellipsis, style: textStyle),
+                ),
+              ),
+              if (shortcut != null)
+                Padding(
+                  padding: const EdgeInsetsDirectional.only(start: PregoSpacing.md),
+                  child: ExcludeSemantics(
+                    child: Text(
+                      shortcut,
+                      style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+                    ),
+                  ),
+                ),
+              if (status != null) SizedBox(width: 24, height: 20, child: Center(child: status.icon)),
+            ],
           ),
         ),
       ),
     );
+    return Padding(
+      padding: const EdgeInsets.symmetric(vertical: PregoSpacing.xxs),
+      // A status shows only its icon, so the tooltip names it.
+      child: status == null
+          ? button
+          : Tooltip(
+              message: shortcut == null ? description : context.loc.desktopShortcutHint(description, shortcut),
+              child: button,
+            ),
+    );
   }
-}
-
-/// A label's start inset, which grows with the sidebar.
-class const _LabelInset({required final Animation<double> expansion, required final Widget child})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => DesktopSidebarExpansionBuilder(
-    expansion: expansion,
-    builder: (expansion, child) => Padding(
-      padding: EdgeInsetsDirectional.only(start: PregoSpacing.md * expansion),
-      child: child,
-    ),
-    child: child,
-  );
 }
 
 class const _TooltipWhenTruncated({
@@ -551,27 +461,6 @@ class const _TooltipWhenTruncated({
       return painter.didExceedMaxLines ? Tooltip(message: message, child: text) : text;
     },
   );
-}
-
-class const _ConditionalTooltip({
-  required final bool enabled,
-  required final String message,
-  required final Widget child,
-}) extends StatefulWidget {
-  @override
-  State<_ConditionalTooltip> createState() => _ConditionalTooltipState();
-}
-
-class _ConditionalTooltipState() extends State<_ConditionalTooltip> {
-  // Toggling the tooltip moves the child instead of rebuilding it: the rail
-  // animation flips every row's tooltip in one frame.
-  final GlobalKey _childKey = GlobalKey();
-
-  @override
-  Widget build(BuildContext context) {
-    final child = KeyedSubtree(key: _childKey, child: widget.child);
-    return widget.enabled ? Tooltip(message: widget.message, child: child) : child;
-  }
 }
 
 /// The selected row's fill. It spans the sidebar's width.

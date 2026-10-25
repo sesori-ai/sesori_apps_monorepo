@@ -42,12 +42,13 @@ const _desktopSessionActions = SessionListActionDispatcher(
   // An archived session is read-only, so its open page gives way to the project.
   onSessionArchived: _closeDeletedSessionRoute,
   onSessionDeleted: _closeDeletedSessionRoute,
-  onSessionMarkedUnread: deferMarkedUnreadSession,
+  onSessionMarkedUnread: null,
 );
 
 /// One routed main pane beside the sidebar, under a single authenticated shell.
-/// Only the all-sessions page owns a full session-list view claim; the sidebar's
-/// recent inventory remains mounted independently of main-pane navigation.
+/// The sidebar's shared list stays mounted across main-pane navigation; a
+/// filtered list claims its project as viewed, and an open project page's own
+/// claim takes over until that page closes.
 final GoRouter desktopRouter = GoRouter(
   navigatorKey: desktopRootNavigatorKey,
   initialLocation: AppRouteDef.splash.path,

@@ -5,12 +5,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 /// What an Activity surface's slots read besides the inventory: the inputs of
 /// its [SessionActivityProjection].
-typedef ActivitySlotInputs = ({
-  List<ProjectSummary> projects,
-  Map<String, int> deferredSessions,
-  Set<String> hiddenSessionIds,
-  String? stickySessionId,
-});
+typedef ActivitySlotInputs = ({List<ProjectSummary> projects, Set<String> hiddenSessionIds});
 
 /// The Activity an Activity surface lists, from the inventory and its inputs.
 SessionActivityProjection activityProjection({
@@ -19,8 +14,6 @@ SessionActivityProjection activityProjection({
 }) => SessionActivityProjection.from(
   projects: inputs.projects,
   entries: entries,
-  deferredSessions: inputs.deferredSessions,
-  stickySessionId: inputs.stickySessionId,
   hiddenSessionIds: inputs.hiddenSessionIds,
 );
 

@@ -24,12 +24,10 @@ void main() {
   });
 
   test("restores layout and clamps saved width", () async {
-    when(repository.readSidebarLayout).thenAnswer(
-      (_) async => const DesktopSidebarLayout(width: 900, collapsed: true, collapsedProjectIds: {"project-1"}),
-    );
+    when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout(width: 900, collapsed: true));
     cubit = DesktopSidebarCubit(repository: repository);
     await pumpEventQueue();
-    expect(cubit.state, const DesktopSidebarLayout(width: 420, collapsed: true, collapsedProjectIds: {"project-1"}));
+    expect(cubit.state, const DesktopSidebarLayout(width: 420, collapsed: true));
   });
 
   test("drag clamps in memory and persists only on commit", () async {
@@ -55,17 +53,6 @@ void main() {
     expect(cubit.state, const DesktopSidebarLayout(collapsed: true));
     await cubit.toggleCollapsed();
     expect(cubit.state, const DesktopSidebarLayout());
-    verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(3);
-  });
-
-  test("folding a section persists and leaves the other section alone", () async {
-    cubit = DesktopSidebarCubit(repository: repository);
-    await pumpEventQueue();
-    await cubit.toggleActivitySection();
-    expect(cubit.state, const DesktopSidebarLayout(activitySectionCollapsed: true));
-    await cubit.toggleProjectsSection();
-    await cubit.toggleActivitySection();
-    expect(cubit.state, const DesktopSidebarLayout(projectsSectionCollapsed: true));
     verify(() => repository.writeSidebarLayout(layout: any(named: "layout"))).called(3);
   });
 
@@ -107,24 +94,6 @@ void main() {
     await Future.wait([first, second]);
     expect(writes, 2);
     expect(cubit.state.collapsed, isFalse);
-  });
-
-  test("deferring persists the stamp, re-deferring counts as newest and the cap drops the oldest", () async {
-    when(repository.readSidebarLayout).thenAnswer(
-      (_) async => DesktopSidebarLayout(
-        deferredSessions: {for (var index = 0; index < DesktopSidebarCubit.maxDeferredSessions; index++) "s$index": 1},
-      ),
-    );
-    cubit = DesktopSidebarCubit(repository: repository);
-    await pumpEventQueue();
-    await cubit.deferSession(sessionId: "s0", updatedAt: 7);
-    expect(cubit.state.deferredSessions.keys.last, "s0");
-    expect(cubit.state.deferredSessions["s0"], 7);
-    await cubit.deferSession(sessionId: "new", updatedAt: 9);
-    expect(cubit.state.deferredSessions.length, DesktopSidebarCubit.maxDeferredSessions);
-    expect(cubit.state.deferredSessions.keys.first, "s2");
-    expect(cubit.state.deferredSessions.keys.last, "new");
-    verify(() => repository.writeSidebarLayout(layout: cubit.state)).called(1);
   });
 }
 
