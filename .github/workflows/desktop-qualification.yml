@@ -28,7 +28,7 @@ on:
         description: 'macOS/Linux packaging: optional exact main-ancestor source (blank = current main)'
         type: string
       build_number:
-        description: 'macOS/Linux packaging: shared product build number (blank = qualification run number)'
+        description: 'macOS/Linux/Windows packaging: shared product build number (blank = qualification run number)'
         type: string
       mode:
         description: 'Qualification mode (no product publication)'
@@ -52,7 +52,7 @@ on:
         options: [arm64, x64]
         default: arm64
       channel:
-        description: 'Compiled download channel (macOS/Linux packaging and macOS upgrade modes)'
+        description: 'Compiled download channel (macOS/Linux/Windows packaging and macOS upgrade modes)'
         type: choice
         options: [stable, internal]
         default: stable
@@ -99,9 +99,10 @@ on:
       - '.github/scripts/Dockerfile.linux-signing'
       - '.github/scripts/linux_signing.py'
       - '.github/scripts/sign_bridge_linux.py'
-      - 'client/desktop/tool/windows_installer.iss'
       - 'client/app/android/app/src/main/ic_launcher-playstore.png'
       - 'client/desktop/windows/runner/main.cpp'
+      - 'client/desktop/windows/runner/resources/app_icon.ico'
+      - 'client/desktop/lib/core/platform/io_launch_at_login.dart'
       - '.github/scripts/macos_signing_ci.sh'
       - '.github/scripts/test_macos_signing_workflows.py'
       - '.github/scripts/probe_sparkle.swift'
@@ -784,6 +785,8 @@ jobs:
     env:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
       PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
     defaults:
       run:
@@ -796,6 +799,10 @@ jobs:
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
+      # Runs Velopack's vpk, which the packager installs from its pinned, checksum-verified package.
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
       - name: Bootstrap pinned native SDK
         env:
           SDK_DIR: ${{ runner.temp }}/desktop-qualification-flutter
@@ -805,6 +812,9 @@ jobs:
           python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
             2>&1 | tee build/desktop-qualification/bootstrap.log
       - name: Build exact native GUI and helper bundle
+        env:
+          BUILD_NUMBER: ${{ inputs.build_number || github.run_number }}
+          CHANNEL: ${{ inputs.channel }}
         run: |
           set -euo pipefail
           (cd bridge && dart pub get --enforce-lockfile) 2>&1 | tee build/desktop-qualification/bridge-pub.log
@@ -812,73 +822,51 @@ jobs:
           VERSION="$(awk '/^version:/{print $2; exit}' client/desktop/pubspec.yaml)"
           echo "SESORI_WINDOWS_VERSION=${VERSION%%+*}" >> "$GITHUB_ENV"
           (cd client/desktop && dart run tool/stage_desktop_bundle.dart \
-            --build-number '${{ github.run_number }}' --output '${{ github.workspace }}/build/desktop-bundle') \
+            --build-number "$BUILD_NUMBER" --channel "$CHANNEL" \
+            --output '${{ github.workspace }}/build/desktop-bundle') \
             2>&1 | tee build/desktop-qualification/bundle-build.log
           if [[ -s build/desktop-bundle/build-source-changes.patch ]]; then
             echo 'Commit build-generated source changes before installer compilation.' >&2
             exit 1
           fi
-      - name: Acquire pinned official Inno Setup compiler
-        shell: pwsh
-        timeout-minutes: 10
-        env:
-          INNO_DIR: ${{ runner.temp }}/inno-setup-7.1.0
-        run: |
-          $ErrorActionPreference = 'Stop'
-          $asset = Join-Path $env:RUNNER_TEMP 'innosetup-7.1.0-x64.exe'
-          Invoke-WebRequest -Uri 'https://github.com/jrsoftware/issrc/releases/download/is-7_1_0/innosetup-7.1.0-x64.exe' -OutFile $asset
-          if ((Get-FileHash $asset -Algorithm SHA256).Hash -ne '0362a383ed217d4c4239b5933866dd96d3eb2102737da92f80f6057a4b40df2f') {
-            throw 'Inno compiler download hash mismatch'
-          }
-          # PowerShell preserves Inno switches; Git Bash can rewrite /VERYSILENT as a path.
-          # Compiler/installer launcher emulation only is approved on ARM64.
-          $log = Join-Path $env:GITHUB_WORKSPACE 'build/desktop-qualification/inno-install.log'
-          $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', '/SP-', "/DIR=`"$env:INNO_DIR`"", "/LOG=`"$log`"")
-          $installed = Start-Process -FilePath $asset -ArgumentList $arguments -Wait -PassThru
-          if ($installed.ExitCode -ne 0) { throw "Inno compiler install failed: $($installed.ExitCode)" }
-          "SESORI_ISCC=$(Join-Path $env:INNO_DIR 'ISCC.exe')" >> $env:GITHUB_ENV
-      - name: Compile unsigned private installer from verified bundle
+      - name: Pack unsigned private Velopack installer from verified bundle with pinned vpk
         run: |
           set -euo pipefail
           python .github/scripts/package_desktop_windows.py package \
             --bundle build/desktop-bundle/bundle --arch '${{ matrix.arch }}' \
-            --version "$SESORI_WINDOWS_VERSION" --iscc "$SESORI_ISCC" \
+            --version "$SESORI_WINDOWS_VERSION" \
             --output build/desktop-windows-packaging \
             2>&1 | tee build/desktop-qualification/windows-packaging.log
-      - name: Probe mutex refusal, isolated install and bounded uninstall
+      - name: Probe isolated install, same-version reinstall and uninstall
         shell: pwsh
         run: |
           $ErrorActionPreference = 'Stop'
           $package = Resolve-Path "build/desktop-windows-packaging/Sesori-windows-${{ matrix.arch }}-$env:SESORI_WINDOWS_VERSION.exe"
           $install = Join-Path $env:RUNNER_TEMP 'Sesori isolated install'
+          $current = Join-Path $install 'current'
           $shared = Join-Path $env:LOCALAPPDATA 'sesori'
           New-Item -ItemType Directory -Path $shared -Force | Out-Null
           Set-Content -Path (Join-Path $shared 'keep.txt') -Value 'preserve'
           $runKey = 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Run'
           New-Item -Path $runKey -Force | Out-Null
           New-ItemProperty -Path $runKey -Name Sesori -Value 'preexisting-login-intent' -PropertyType String -Force | Out-Null
-          $arguments = @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART', "/DIR=`"$install`"")
-          $installed = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
+          # Start-Process joins arguments with spaces, so paths keep their own quotes.
+          $logs = (Resolve-Path 'build/desktop-windows-packaging').Path
+          $arguments = @('--silent', '--installto', "`"$install`"", '--log')
+          $installed = Start-Process -FilePath $package -ArgumentList ($arguments + "`"$logs\setup-install.log`"") -Wait -PassThru
           if ($installed.ExitCode -ne 0) { throw "Install failed: $($installed.ExitCode)" }
-          $currentUserSid = [System.Security.Principal.WindowsIdentity]::GetCurrent().User.Value
-          $runningMutexName = "Global\com.sesori.desktop.running.$currentUserSid"
-          $mutex = [Threading.Mutex]::new($false, $runningMutexName)
-          $blocked = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
-          $setupMutexExit = $blocked.ExitCode
-          $mutex.Dispose()
-          if ($setupMutexExit -eq 0) { throw 'Upgrade ignored running GUI marker' }
-          $upgraded = Start-Process -FilePath $package -ArgumentList $arguments -Wait -PassThru
+          $upgraded = Start-Process -FilePath $package -ArgumentList ($arguments + "`"$logs\setup-reinstall.log`"") -Wait -PassThru
           if ($upgraded.ExitCode -ne 0) { throw "Upgrade failed: $($upgraded.ExitCode)" }
           if ((Get-ItemPropertyValue -Path $runKey -Name Sesori) -ne 'preexisting-login-intent') {
             throw 'Install or upgrade changed login intent'
           }
-          python .github/scripts/package_desktop_windows.py verify-installed --bundle $install --arch '${{ matrix.arch }}' --version $env:SESORI_WINDOWS_VERSION |
+          python .github/scripts/package_desktop_windows.py verify --bundle $current --arch '${{ matrix.arch }}' --version $env:SESORI_WINDOWS_VERSION |
             Set-Content -Encoding utf8 build/desktop-windows-packaging/installed-inventory.json
           if ($LASTEXITCODE -ne 0) { throw 'Installed payload verification failed' }
           $stagedRoot = (Resolve-Path 'build/desktop-bundle/bundle').Path
           $recordedPayload = Get-ChildItem $stagedRoot -File -Recurse | ForEach-Object {
             $relative = [IO.Path]::GetRelativePath($stagedRoot, $_.FullName)
-            $installedPath = Join-Path $install $relative
+            $installedPath = Join-Path $current $relative
             if (-not (Test-Path $installedPath -PathType Leaf)) { throw "Installed payload missing: $relative" }
             $stagedHash = (Get-FileHash $_.FullName -Algorithm SHA256).Hash
             $installedHash = (Get-FileHash $installedPath -Algorithm SHA256).Hash
@@ -889,45 +877,47 @@ jobs:
             [string[]]($recordedPayload | ForEach-Object { $_.relativePath }),
             [StringComparer]::OrdinalIgnoreCase
           )
-          $unexpectedInstalled = Get-ChildItem $install -File -Recurse | Where-Object {
-            $relative = [IO.Path]::GetRelativePath($install, $_.FullName)
-            -not $recordedPaths.Contains($relative) -and $relative -notmatch '^unins[0-9]{3}\.(dat|exe|msg)$'
+          # Velopack adds only its manifest to current\; its updater, launcher and package sit in the install root.
+          $unexpectedInstalled = Get-ChildItem $current -File -Recurse | Where-Object {
+            $relative = [IO.Path]::GetRelativePath($current, $_.FullName)
+            -not $recordedPaths.Contains($relative) -and $relative -ne 'sq.version'
           }
           if ($unexpectedInstalled) {
             throw "Unexpected installed payload: $($unexpectedInstalled.FullName -join ', ')"
           }
-          $unrecorded = Join-Path $install 'user-created-keep.txt'
-          Set-Content -Path $unrecorded -Value 'unrecorded'
-          $uninstaller = Join-Path $install 'unins000.exe'
-          $mutex = [Threading.Mutex]::new($false, $runningMutexName)
-          $blocked = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
-          $uninstallMutexExit = $blocked.ExitCode
-          $mutex.Dispose()
-          if ($uninstallMutexExit -eq 0) { throw 'Uninstall ignored running GUI marker' }
-          $removed = Start-Process -FilePath $uninstaller -ArgumentList @('/VERYSILENT', '/SUPPRESSMSGBOXES', '/NORESTART') -Wait -PassThru
+          $uninstaller = Join-Path $install 'Update.exe'
+          $removed = Start-Process -FilePath $uninstaller -ArgumentList @('uninstall', '--silent') -Wait -PassThru
           if ($removed.ExitCode -ne 0) { throw "Uninstall failed: $($removed.ExitCode)" }
           foreach ($payload in $recordedPayload) {
-            if (Test-Path (Join-Path $install $payload.relativePath)) {
+            if (Test-Path (Join-Path $current $payload.relativePath)) {
               throw "Recorded payload remains: $($payload.relativePath)"
             }
           }
-          if ((Get-Content $unrecorded) -ne 'unrecorded') { throw 'Unrecorded file changed' }
+          if (Test-Path 'HKCU:\Software\Microsoft\Windows\CurrentVersion\Uninstall\sesori-desktop') {
+            throw 'Uninstall entry remains after uninstall'
+          }
           if (Get-ItemProperty -Path $runKey -Name Sesori -ErrorAction SilentlyContinue) { throw 'Login value remains after uninstall' }
           if ((Get-Content (Join-Path $shared 'keep.txt')) -ne 'preserve') { throw 'Shared sentinel changed' }
           @{
             architecture = '${{ matrix.arch }}'
-            setupMutexExit = $setupMutexExit
-            uninstallMutexExit = $uninstallMutexExit
             installedPayloadVerified = $true
             sameVersionUpgradeVerified = $true
-            uninstallRemovedOnlyRecordedPayload = $true
-            proofBoundary = 'Silent fixture: nonzero exits with mutex held and success without it; no diagnostic-specific refusal proof. Not interactive GUI, account, SmartScreen, signing, or product QA'
+            uninstallRemovedPayloadAndLoginValue = $true
+            proofBoundary = 'Silent fixture only; Velopack stops running app processes itself, which is not exercised. Not interactive GUI, account, SmartScreen, signing, update, or product QA'
           } | ConvertTo-Json | Set-Content -Encoding utf8 build/desktop-windows-packaging/installer-probe.json
       - name: Upload private unsigned installer
         uses: actions/upload-artifact@v4
         with:
           name: desktop-windows-packages-${{ matrix.arch }}
           path: build/desktop-windows-packaging/Sesori-windows-*.exe
+          if-no-files-found: error
+          retention-days: 14
+      - name: Upload the unpublished Velopack release package and feed
+        uses: actions/upload-artifact@v4
+        with:
+          # Outside the desktop-windows-* pattern, so no release consumer downloads it.
+          name: desktop-velopack-windows-${{ matrix.arch }}
+          path: build/desktop-windows-packaging/velopack/
           if-no-files-found: error
           retention-days: 14
       - name: Upload qualification evidence, including partial failures
