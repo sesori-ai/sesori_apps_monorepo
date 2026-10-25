@@ -154,6 +154,11 @@ class LinuxRepositoryTests(unittest.TestCase):
                 output = self.work / channel.value
                 report = self.build(root=root, output=output, channel=channel)
                 self.assertEqual(report["channel"], channel.value)
+                # Hosting authenticates each channel's own tree and refuses it as the other channel.
+                self.assertEqual(hosting.verify(root=output, channel=channel, fingerprint=self.fingerprint), report)
+                other = next(other for other in repository.Channel if other is not channel)
+                with self.assertRaisesRegex(ValueError, "Repository channel differs"):
+                    hosting.verify(root=output, channel=other, fingerprint=self.fingerprint)
                 self.assertEqual(report["signerFingerprint"], self.fingerprint)
                 self.assertEqual({row["name"] for row in report["files"]},
                                  {p.relative_to(output).as_posix() for p in output.rglob("*")
@@ -200,7 +205,7 @@ class LinuxRepositoryTests(unittest.TestCase):
         self.assertEqual(issued, issued_at.replace(microsecond=0))
         self.assertEqual(expires - issued, timedelta(days=30))
         with self.assertRaisesRegex(ValueError, "expired"):
-            hosting.verify(root=output, fingerprint=self.fingerprint)
+            hosting.verify(root=output, channel=repository.Channel.INTERNAL, fingerprint=self.fingerprint)
         keyring = self.public_keyring(output=output)
         keys.run(command=["gpgv", "--homedir", str(keyring.parent), "--keyring", str(keyring),
                           str(release.with_name("InRelease"))], env=self.env)
@@ -217,7 +222,7 @@ class LinuxRepositoryTests(unittest.TestCase):
     def test_publication_authenticates_references_not_just_producer_inventory(self):
         original = self.work / "original"
         self.build(root=self.releases[42], output=original)
-        hosting.verify(root=original, fingerprint=self.fingerprint)
+        hosting.verify(root=original, channel=repository.Channel.INTERNAL, fingerprint=self.fingerprint)
         targets = ["apt/dists/internal/main/binary-amd64/Packages",
                    next(original.glob("apt/pool/internal/amd64/*.deb")).relative_to(original).as_posix(),
                    next(original.glob("rpm/internal/x86_64/repodata/*primary*")).relative_to(original).as_posix(),
@@ -234,19 +239,19 @@ class LinuxRepositoryTests(unittest.TestCase):
                         row.update(sha256=keys.sha256(path=path), bytes=path.stat().st_size)
                 (output / repository.REPORT).write_text(json.dumps(report))
                 with self.assertRaises((ValueError, subprocess.CalledProcessError)):
-                    hosting.verify(root=output, fingerprint=self.fingerprint)
+                    hosting.verify(root=output, channel=repository.Channel.INTERNAL, fingerprint=self.fingerprint)
         report = json.loads((original / repository.REPORT).read_text())
         report["signerFingerprint"] = "0" * 40
         (original / repository.REPORT).write_text(json.dumps(report))
         with self.assertRaisesRegex(ValueError, "Unexpected repository signer"):
-            hosting.verify(root=original, fingerprint="0" * 40)
+            hosting.verify(root=original, channel=repository.Channel.INTERNAL, fingerprint="0" * 40)
         report["signerFingerprint"] = self.fingerprint
         extra = original / "unrelated-private-file"
         extra.write_text("must never be published")
         report["files"].append({"name": extra.name, "sha256": keys.sha256(path=extra), "bytes": extra.stat().st_size})
         (original / repository.REPORT).write_text(json.dumps(report))
         with self.assertRaisesRegex(ValueError, "unauthenticated"):
-            hosting.verify(root=original, fingerprint=self.fingerprint)
+            hosting.verify(root=original, channel=repository.Channel.INTERNAL, fingerprint=self.fingerprint)
 
     def test_mixed_channel_missing_cpu_wrong_signer_and_tampering_refuse_completion(self):
         for failure in ("channel", "missing", "signer", "package", "checksums", "signature"):

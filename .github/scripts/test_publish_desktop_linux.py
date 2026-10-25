@@ -34,7 +34,9 @@ class PublishLinuxTest(unittest.TestCase):
         self.root = Path(temporary.name)
         self.output = self.root / "prepared"
         self.args = dict(root=self.root, output=self.output, source_sha=SOURCE, tooling_sha=TOOLING,
-                         repository=REPO, run_id=42, current_run_id=None, version="1.9.1", build_number=1016)
+                         channel=publisher.Channel.INTERNAL, repository=REPO, run_id=42, current_run_id=None,
+                         version="1.9.1", build_number=1016)
+        self.tag = TAG
         save(path=self.root / "run.json", value={"id": 42, "repository": {"full_name": REPO},
              "path": ".github/workflows/desktop-qualification.yml", "event": "workflow_dispatch",
              "conclusion": "success", "head_sha": TOOLING, "head_branch": "main", "status": "completed"})
@@ -78,11 +80,11 @@ class PublishLinuxTest(unittest.TestCase):
         self.tag_source = SOURCE
 
     def github(self, *, arguments):
-        if arguments == ["api", f"repos/{REPO}/releases/tags/{TAG}"]:
+        if arguments == ["api", f"repos/{REPO}/releases/tags/{self.tag}"]:
             return json.dumps(self.release)
-        if arguments == ["api", f"repos/{REPO}/commits/{TAG}"]:
+        if arguments == ["api", f"repos/{REPO}/commits/{self.tag}"]:
             return json.dumps({"sha": self.tag_source})
-        self.assertEqual(arguments[:3], ["release", "upload", TAG])
+        self.assertEqual(arguments[:3], ["release", "upload", self.tag])
         self.assertEqual(arguments[4:], ["--repo", REPO])
         path = Path(arguments[3])
         self.assertNotIn(path.name, self.public, "Never overwrite an existing release asset")
@@ -92,7 +94,7 @@ class PublishLinuxTest(unittest.TestCase):
 
     def download(self, url, *, timeout):
         self.assertEqual(timeout, 60)
-        prefix = f"https://github.com/{REPO}/releases/download/{TAG}/"
+        prefix = f"https://github.com/{REPO}/releases/download/{self.tag}/"
         self.assertTrue(url.startswith(prefix))
         return io.BytesIO(self.public[url.removeprefix(prefix)])
 
@@ -159,7 +161,7 @@ class PublishLinuxTest(unittest.TestCase):
             with self.subTest(field=field):
                 self.release.update(draft=field == "draft", prerelease=field != "prerelease")
                 self.tag_source = TOOLING if field == "source" else SOURCE
-                with self.assertRaisesRegex(ValueError, "internal release required|tag source differs"):
+                with self.assertRaisesRegex(ValueError, "already be public|internal pre-release|tag source differs"):
                     self.publish(output=self.root / field)
                 self.assertEqual(self.uploads, [])
 
@@ -183,12 +185,45 @@ class PublishLinuxTest(unittest.TestCase):
                 self.assertEqual(self.uploads, [])
                 self.assertNotIn(publisher.MANIFEST, self.public)
 
-    def test_stable_channel_cannot_be_relabeled_as_internal(self):
+    def compile_stable(self):
         for path in self.root.glob("*/desktop-bundle/dart-defines.env"):
             path.write_text(path.read_text().replace("CHANNEL=internal", "CHANNEL=stable"))
-        with self.assertRaisesRegex(ValueError, "Only compiled internal"):
-            self.publish()
+        self.tag = "v1.9.1"
+
+    def test_compiled_channel_is_never_relabeled_in_either_direction(self):
+        self.compile_stable()
+        with self.assertRaisesRegex(ValueError, "Cannot relabel compiled channel"):
+            self.publish(output=self.root / "as-internal")
         self.assertEqual(self.uploads, [])
+        for path in self.root.glob("*/desktop-bundle/dart-defines.env"):
+            path.write_text(path.read_text().replace("CHANNEL=stable", "CHANNEL=internal"))
+        with self.assertRaisesRegex(ValueError, "Cannot relabel compiled channel"):
+            self.publish(output=self.root / "as-stable", channel=publisher.Channel.STABLE)
+        self.assertEqual(self.uploads, [])
+
+    def test_stable_attaches_to_the_approved_release_whether_or_not_promoted(self):
+        self.compile_stable()
+        for prerelease in (False, True):
+            with self.subTest(prerelease=prerelease):
+                self.public = {"checksums.txt": b"core", "desktop-release.json": b"mac completion"}
+                self.release = {"draft": False, "prerelease": prerelease,
+                                "assets": [{"name": name} for name in self.public]}
+                self.uploads.clear()
+                self.publish(output=self.root / f"stable-{prerelease}", channel=publisher.Channel.STABLE)
+                metadata = json.loads(self.public[publisher.MANIFEST])
+                self.assertEqual((metadata["channel"], metadata["tag"]), ("stable", "v1.9.1"))
+                self.assertEqual(self.uploads[-1], publisher.MANIFEST)
+                self.assertEqual(self.public["desktop-release.json"], b"mac completion")
+
+    def test_stable_refuses_draft_or_differently_sourced_release(self):
+        self.compile_stable()
+        for field in ("draft", "source"):
+            with self.subTest(field=field):
+                self.release.update(draft=field == "draft", prerelease=False)
+                self.tag_source = TOOLING if field == "source" else SOURCE
+                with self.assertRaisesRegex(ValueError, "already be public|tag source differs"):
+                    self.publish(output=self.root / field, channel=publisher.Channel.STABLE)
+                self.assertEqual(self.uploads, [])
 
     def test_tampered_package_is_rejected_before_any_public_write(self):
         next(self.root.glob("desktop-linux-packages-arm64/*.deb")).write_bytes(b"tampered")
@@ -221,6 +256,15 @@ class PublishLinuxTest(unittest.TestCase):
         self.publish(current_run_id=42, tooling_sha=SOURCE)
         self.assertIn(publisher.MANIFEST, self.public)
 
+    def test_production_submission_can_finish_its_own_stable_build_of_an_older_source(self):
+        self.compile_stable()
+        self.release["prerelease"] = False
+        path = self.root / "run.json"
+        save(path=path, value=json.loads(path.read_text()) | {
+            "path": ".github/workflows/submit-release.yml", "status": "in_progress", "conclusion": None})
+        self.publish(current_run_id=42, channel=publisher.Channel.STABLE)
+        self.assertEqual(json.loads(self.public[publisher.MANIFEST])["producerWorkflowSha"], TOOLING)
+
 
 class LinuxWorkflowTest(unittest.TestCase):
     def test_public_verification_instructions_match_the_repository_pin(self):
@@ -236,7 +280,8 @@ class LinuxWorkflowTest(unittest.TestCase):
         self.assertIn("needs: [preflight, next-build-number, desktop-linux, finalize]", workflow)
         self.assertIn("needs: [preflight, next-build-number, ios, android, bridge]", workflow)
         self.assertIn("vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'", workflow)
-        self.assertNotIn("desktop-linux-release.yml", (WORKFLOWS / "submit-release.yml").read_text())
+        publish = workflow.split("  publish-desktop-linux:\n", 1)[1].split("\n\n", 1)[0]
+        self.assertIn("channel: internal", publish)
         producer = (WORKFLOWS / "desktop-qualification.yml").read_text()
         self.assertIn("inputs.mode == 'linux-packaging' && 'linux' || 'other'", producer)
         linux = producer.split("  linux-distribution:\n", 1)[1].split("  tooling:\n", 1)[0]
@@ -246,6 +291,27 @@ class LinuxWorkflowTest(unittest.TestCase):
             self.assertIn(expected, linux)
         self.assertIn("python .github/scripts/qualify_desktop.py bootstrap", linux)  # Product's SDK pin.
         self.assertIn("python .github/scripts/package_desktop_linux.py package", linux)  # Product's icon/plugins.
+
+    def test_production_builds_and_publishes_stable_linux_after_the_approved_release(self):
+        workflow = (WORKFLOWS / "submit-release.yml").read_text()
+        build = workflow.split("  build-desktop-linux:\n", 1)[1].split("\n\n", 1)[0]
+        for expected in ("inputs.track == 'production' && inputs.platforms != 'bridge-only'", "needs: resolve",
+                         "uses: ./.github/workflows/desktop-qualification.yml", "mode: linux-packaging",
+                         "channel: stable", "source_sha: ${{ needs.resolve.outputs.commit_sha }}",
+                         "build_number: ${{ needs.resolve.outputs.build_number }}", "secrets: inherit"):
+            self.assertIn(expected, build)
+        publish = workflow.split("  publish-desktop-linux:\n", 1)[1].split("\n\n", 1)[0]
+        for expected in ("needs: [resolve, build-desktop-linux, release]", "needs.release.result == 'success'",
+                         "uses: ./.github/workflows/desktop-linux-release.yml", "channel: stable",
+                         "packaging_run: ${{ github.run_id }}", "id-token: write", "secrets: inherit"):
+            self.assertIn(expected, publish)
+        # Admission rides on the existing production approval; no new variable or environment.
+        self.assertNotIn("vars.", build + publish)
+        self.assertNotIn("environment:", build + publish)
+        # Core finalizers never wait on, or change because of, Linux.
+        for job in ("tag", "release"):
+            core = workflow.split(f"\n  {job}:\n", 1)[1].split("\n    steps:", 1)[0]
+            self.assertNotIn("desktop-linux", core)
 
     def test_publisher_is_main_only_and_never_needs_signing_or_store_credentials(self):
         workflow = (WORKFLOWS / "desktop-linux-release.yml").read_text()

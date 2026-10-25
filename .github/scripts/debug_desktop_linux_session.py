@@ -27,7 +27,7 @@ def prepare(*, inputs: Path, output: Path, run_id: int, tooling_sha: str) -> Non
     (inputs / "run.json").write_text(github(arguments=["api", f"repos/{REPOSITORY}/actions/runs/{run_id}"]))
     identity = read_json(inputs / "desktop-linux-evidence-x64/desktop-bundle/bundle/bridge/desktop-bundle.json")
     prepare_signed(root=inputs, output=output, source_sha=identity["sourceSha"], tooling_sha=tooling_sha,
-                   repository=REPOSITORY, run_id=run_id, current_run_id=None,
+                   channel=Channel.INTERNAL, repository=REPOSITORY, run_id=run_id, current_run_id=None,
                    version=identity["version"], build_number=identity["buildNumber"])
     verify_release(root=output, channel=Channel.INTERNAL, fingerprint=TRUSTED_PRIMARY_FINGERPRINT)
 

@@ -28,7 +28,8 @@ class LinuxInteractiveDiagnosticsTest(unittest.TestCase):
                 "api", f"repos/{diagnostics.REPOSITORY}/actions/runs/42"])
             self.assertEqual(json.loads((root / "run.json").read_text()), {"id": 42})
             prepare.assert_called_once_with(root=root, output=root / "prepared", source_sha="a" * 40,
-                                            tooling_sha="b" * 40, repository=diagnostics.REPOSITORY,
+                                            tooling_sha="b" * 40, channel=diagnostics.Channel.INTERNAL,
+                                            repository=diagnostics.REPOSITORY,
                                             run_id=42, current_run_id=None, version="1.9.2", build_number=168)
             verify.assert_called_once_with(root=root / "prepared", channel=diagnostics.Channel.INTERNAL,
                                            fingerprint=diagnostics.TRUSTED_PRIMARY_FINGERPRINT)
