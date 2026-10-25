@@ -62,22 +62,32 @@ New-format N→N+1 preservation needs two shared-store builds.
 ## Private Windows installer qualification
 
 Manual `windows-packaging` qualification builds unsigned x64 and ARM64 per-user
-Inno Setup packages from exact native staged bundles. Install defaults to
-`%LOCALAPPDATA%\Programs\Sesori`; shortcuts launch `sesori_desktop.exe`. Setup and
-uninstall refuse while `Global\com.sesori.desktop.running.<current-user-SID>` exists.
-This per-user marker spans Windows sessions, stays owned by GUI process until OS
-termination, and does not reject another GUI instance.
-Installer never starts Sesori, enables login launch, closes/restarts processes, or
-removes unrecorded files. Uninstall additionally removes only existing `Sesori`
-login value; shared credentials, runtimes, databases, history and projects remain.
+installers from exact native staged bundles with Velopack's `vpk pack` (`--packId sesori-desktop`,
+the compiled channel, pack version `<version>` for stable and `<version>-internal.<build>` for
+internal). The `vpk` 1.2.161 tool package is pinned by SHA-256 and installed only from that
+verified file. vpk's `sesori-desktop-<channel>-Setup.exe` is renamed to
+`Sesori-windows-<arch>-<version>.exe`. Its full `.nupkg` and `releases.<channel>.json` are kept
+as the unpublished `desktop-velopack-windows-<arch>` artifact. The package must contain the exact
+staged bundle plus Velopack's updater, launcher stub and `sq.version`, every binary native to the
+target CPU (the Setup and updater included), and the Setup must embed that package.
 
-The Inno Setup 7.1.0 x64 acquisition installer is checksum-verified before it
-installs the compiler. Compiler and installer launcher may run under Windows ARM64
-emulation; GUI, helper and shipped libraries
-must match target CPU. Isolated runner probes use per-user global mutex fixtures and
-compare every staged relative file path and SHA-256 with the installed payload; only
-Inno's generated uninstaller files are excluded from the installed extra-file set.
-They do not start the product and prove silent fixture behavior only. Output remains private, unsigned CI evidence:
+Setup installs into `%LOCALAPPDATA%\sesori-desktop`: the bundle in `current\`, beside
+`Update.exe`, a `Sesori.exe` launcher and `packages\`. It creates only the Start menu
+`Sesori\Sesori` shortcut and a `sesori-desktop` uninstall entry with the app icon. An
+interactive install starts Sesori when it finishes; a silent one does not. Setup, reinstall
+and uninstall stop running Sesori processes under the install folder instead of refusing.
+Velopack runs `sesori_desktop.exe --veloapp-<hook> <version>` at install, update and
+uninstall; the Windows runner answers every hook before starting Flutter, and the uninstall
+hook removes only the `Sesori` login value. Install never enables login launch. Uninstall
+deletes the whole install folder; shared credentials, runtimes, databases, history and
+projects outside it remain.
+
+Isolated runner probes install silently into a temporary folder, reinstall the same version,
+verify the `current\` inventory, and compare every staged relative file path and SHA-256
+with it; only `sq.version` is allowed as an extra file. After silent uninstall no recorded
+payload, uninstall entry or login value remains, and a pre-existing login value survives
+install and reinstall. They do not start the product and prove silent fixture behavior only.
+Output remains private, unsigned CI evidence:
 it does not establish publisher trust, SmartScreen reputation, interactive behavior,
 account restoration, upgrades, or release readiness.
 
@@ -658,8 +668,9 @@ historical evidence as shared-store qualification.
   previews, pre-desktop cleanup stays intact and current-release retries remain valid.
   The npm-cleanup shell separately preserves desktop previews with or without stable
   desktop assets while still deleting same-version core-only internal releases.
-  Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
-  compiler arguments, bounded installer directives and no-overwrite diagnostics.
+  Windows fixtures cover identity/CPU refusal, complete native inventory, the pinned vpk
+  install and pack arguments, exact-bundle and embedded-package refusal, the runner's
+  hook handling and no-overwrite diagnostics.
   Linux publication fixtures cover compiled-channel/source/build refusal, real GPGV
   checksum verification, independent platform completion, anonymous delivery failure,
   immutable retries and separate core/macOS ownership. Package fixtures cover identity/CPU
@@ -700,9 +711,10 @@ Wrong channel/CPU fragment, guessed architecture for source builds, private or
 unshipped artifact links, permanently pinned previews, core-only releases hiding usable
 desktop downloads, stable schema borrowing preview availability, a dead Linux/self-update button, raw release-version
 inference, losing attention settings, startup network waits, or a download action
-that stops/restarts the app or helper. Windows setup/uninstall proceeding while GUI
-mutex exists, changing login intent during install, launching the app, forced close/
-restart, wrong-CPU payloads, or broad uninstall cleanup are failures. Linux package ownership of
+that stops/restarts the app or helper. On Windows, changing login intent during install,
+a hook that starts the GUI, a silent install that launches the app, wrong-CPU payloads,
+uninstall leaving the login value, or uninstall touching data outside the install folder
+are failures. Linux package ownership of
 `/usr/bin/sesori-bridge`, user homes or autostart entries; guessed runtime dependencies;
 non-native container execution; package scriptlets; altered staged payloads; or calling
 a same-version reinstall an N→N+1 upgrade are failures. Manual replacement must never
