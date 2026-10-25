@@ -117,6 +117,7 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
               urlLauncher: getIt(),
               launchAtLogin: getIt(),
               updateService: getIt(),
+              exitOrchestrator: getIt(),
               hiddenLaunch: hiddenLaunch,
             );
             final initialized = cubit.initialize();

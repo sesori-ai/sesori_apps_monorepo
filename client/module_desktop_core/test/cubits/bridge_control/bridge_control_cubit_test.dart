@@ -29,6 +29,7 @@ void main() {
     late _FakeInstalledDesktopBundleSource bundleSource;
     late _FakeDesktopRelaunchApi relaunchApi;
     late DesktopUpdateService updateService;
+    late DesktopExitOrchestrator exitOrchestrator;
     late BridgeControlCubit cubit;
 
     setUp(() {
@@ -50,8 +51,8 @@ void main() {
       updateService = DesktopUpdateService(
         updateRepository: DesktopUpdateRepository(bundleSource: bundleSource, relaunchApi: relaunchApi),
         instanceRepository: _RecordingDesktopInstanceRepository(),
-        processService: processService,
       );
+      exitOrchestrator = DesktopExitOrchestrator(processService: processService, updateService: updateService);
       cubit = BridgeControlCubit(
         processService: processService,
         statusTracker: statusTracker,
@@ -67,6 +68,7 @@ void main() {
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
         updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: false,
       );
     });
@@ -285,6 +287,7 @@ void main() {
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
         updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: true,
       );
       addTearDown(hiddenCubit.close);
@@ -312,6 +315,7 @@ void main() {
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
         updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: true,
       );
       addTearDown(hiddenCubit.close);
@@ -647,6 +651,7 @@ void main() {
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
         updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: false,
       );
       addTearDown(quittingCubit.close);

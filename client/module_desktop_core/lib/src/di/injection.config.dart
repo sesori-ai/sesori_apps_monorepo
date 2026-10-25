@@ -46,6 +46,8 @@ import 'package:sesori_desktop_core/src/orchestration/desktop_bridge_takeover_or
     as _i850;
 import 'package:sesori_desktop_core/src/orchestration/desktop_computer_target_orchestrator.dart'
     as _i945;
+import 'package:sesori_desktop_core/src/orchestration/desktop_exit_orchestrator.dart'
+    as _i240;
 import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
     as _i165;
 import 'package:sesori_desktop_core/src/orchestration/desktop_startup_orchestrator.dart'
@@ -230,6 +232,13 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i407.DesktopUpdateService>(
+      () => _i407.DesktopUpdateService(
+        updateRepository: gh<_i737.DesktopUpdateRepository>(),
+        instanceRepository: gh<_i210.DesktopInstanceRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i175.ControlCommandService>(
       () => _i175.ControlCommandService(
         repository: gh<_i171.ControlCommandRepository>(),
@@ -260,6 +269,12 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i948.AuthSession>(),
       ),
     );
+    gh.lazySingleton<_i240.DesktopExitOrchestrator>(
+      () => _i240.DesktopExitOrchestrator(
+        processService: gh<_i765.BridgeProcessService>(),
+        updateService: gh<_i407.DesktopUpdateService>(),
+      ),
+    );
     gh.lazySingleton<_i455.DesktopStartupOrchestrator>(
       () => _i455.DesktopStartupOrchestrator(
         instanceService: gh<_i494.DesktopInstanceService>(),
@@ -268,14 +283,6 @@ extension GetItInjectableX on _i174.GetIt {
         windowBoundsService: gh<_i68.WindowBoundsService>(),
         authSession: gh<_i948.AuthSession>(),
         launchAtLogin: gh<_i589.LaunchAtLogin>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i407.DesktopUpdateService>(
-      () => _i407.DesktopUpdateService(
-        updateRepository: gh<_i737.DesktopUpdateRepository>(),
-        instanceRepository: gh<_i210.DesktopInstanceRepository>(),
-        processService: gh<_i765.BridgeProcessService>(),
       ),
       dispose: (i) => i.dispose(),
     );

@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:io";
 
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
@@ -14,7 +13,6 @@ void main() {
   late _FakeInstalledDesktopBundleSource bundleSource;
   late _MockDesktopRelaunchApi relaunchApi;
   late _MockDesktopInstanceRepository instanceRepository;
-  late _MockBridgeProcessService processService;
 
   setUp(() {
     bundleSource = _FakeInstalledDesktopBundleSource(
@@ -24,21 +22,16 @@ void main() {
     );
     relaunchApi = _MockDesktopRelaunchApi();
     instanceRepository = _MockDesktopInstanceRepository();
-    processService = _MockBridgeProcessService();
     when(() => instanceRepository.readAutomaticUpdates()).thenAnswer((_) async => DesktopAutomaticUpdates.enabled);
     when(
       () => instanceRepository.writeAutomaticUpdates(preference: any(named: "preference")),
     ).thenAnswer((_) async {});
-    when(() => processService.desiredState).thenReturn(BridgeProcessDesiredState.on);
-    when(() => processService.stop()).thenAnswer((_) async {});
-    when(() => processService.start()).thenAnswer((_) async {});
     when(() => relaunchApi.relaunchInstalledPackage()).thenAnswer((_) async {});
   });
 
   DesktopUpdateService service() => DesktopUpdateService(
     updateRepository: DesktopUpdateRepository(bundleSource: bundleSource, relaunchApi: relaunchApi),
     instanceRepository: instanceRepository,
-    processService: processService,
   );
 
   group("initial state", () {
@@ -156,45 +149,24 @@ void main() {
     });
   });
 
-  group("prepareExit", () {
-    test("quit only stops the helper", () async {
+  group("prepareRestartToUpdate", () {
+    test("a Linux package relaunches the installed package", () async {
       final updates = service();
       addTearDown(updates.dispose);
-      await updates.prepareExit(intent: DesktopExitIntent.quit);
-      verify(() => processService.stop()).called(1);
-      verifyNever(() => relaunchApi.relaunchInstalledPackage());
+      await updates.prepareRestartToUpdate();
+      verify(() => relaunchApi.relaunchInstalledPackage()).called(1);
     });
 
-    test("restart to update relaunches the package after the helper stopped", () async {
-      final updates = service();
-      addTearDown(updates.dispose);
-      await updates.prepareExit(intent: DesktopExitIntent.restartToUpdate);
-      verifyInOrder([() => processService.stop(), () => relaunchApi.relaunchInstalledPackage()]);
-      verifyNever(() => processService.start());
-    });
-
-    test("a failed relaunch restores a helper that was on and reports the failure", () async {
-      final updates = service();
-      addTearDown(updates.dispose);
-      when(() => relaunchApi.relaunchInstalledPackage()).thenThrow(const ProcessException("sesori-desktop", []));
-      await expectLater(
-        updates.prepareExit(intent: DesktopExitIntent.restartToUpdate),
-        throwsA(isA<ProcessException>()),
+    test("installs without an engine do nothing", () async {
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: _linuxBuild.copyWith(os: DesktopBundleOs.macos),
+        isAppImage: false,
+        channel: DesktopReleaseChannel.stable,
       );
-      verifyInOrder([
-        () => processService.stop(),
-        () => relaunchApi.relaunchInstalledPackage(),
-        () => processService.start(),
-      ]);
-    });
-
-    test("a failed relaunch leaves a helper that was off stopped", () async {
       final updates = service();
       addTearDown(updates.dispose);
-      when(() => processService.desiredState).thenReturn(BridgeProcessDesiredState.off);
-      when(() => relaunchApi.relaunchInstalledPackage()).thenThrow(const ProcessException("sesori-desktop", []));
-      await expectLater(updates.prepareExit(intent: DesktopExitIntent.restartToUpdate), throwsA(anything));
-      verifyNever(() => processService.start());
+      await updates.prepareRestartToUpdate();
+      verifyNever(() => relaunchApi.relaunchInstalledPackage());
     });
   });
 }
@@ -230,5 +202,3 @@ class _FakeInstalledDesktopBundleSource({
 class _MockDesktopRelaunchApi() extends Mock implements DesktopRelaunchApi;
 
 class _MockDesktopInstanceRepository() extends Mock implements DesktopInstanceRepository;
-
-class _MockBridgeProcessService() extends Mock implements BridgeProcessService;

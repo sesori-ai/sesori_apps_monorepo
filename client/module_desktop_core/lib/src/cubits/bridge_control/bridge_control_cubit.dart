@@ -11,6 +11,7 @@ import "../../foundation/platform/launch_at_login.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../foundation/platform/window_host.dart";
 import "../../orchestration/desktop_bridge_takeover_orchestrator.dart";
+import "../../orchestration/desktop_exit_orchestrator.dart";
 import "../../repositories/bridge_process_log_repository.dart";
 import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
@@ -45,6 +46,7 @@ class BridgeControlCubit._create({
   required final UrlLauncher _urlLauncher,
   required final LaunchAtLogin _launchAtLogin,
   required final DesktopUpdateService _updateService,
+  required final DesktopExitOrchestrator _exitOrchestrator,
   required final bool _hiddenLaunch,
 }) extends Cubit<BridgeControlState> {
   new({
@@ -62,6 +64,7 @@ class BridgeControlCubit._create({
     required UrlLauncher urlLauncher,
     required LaunchAtLogin launchAtLogin,
     required DesktopUpdateService updateService,
+    required DesktopExitOrchestrator exitOrchestrator,
     required bool hiddenLaunch,
   }) : this._create(
          processService: processService,
@@ -78,6 +81,7 @@ class BridgeControlCubit._create({
          urlLauncher: urlLauncher,
          launchAtLogin: launchAtLogin,
          updateService: updateService,
+         exitOrchestrator: exitOrchestrator,
          hiddenLaunch: hiddenLaunch,
        );
 
@@ -411,7 +415,7 @@ class BridgeControlCubit._create({
     // intent. An explicit Bridge Off action has already persisted Off; Quit
     // only stops the current process so a later launch can restore last-On.
     try {
-      await _updateService.prepareExit(intent: intent);
+      await _exitOrchestrator.prepareExit(intent: intent);
     } on Object catch (error, stackTrace) {
       logw("Desktop ${intent.name} stopped because preparing the exit failed", error, stackTrace);
       _markQuitFailed();
