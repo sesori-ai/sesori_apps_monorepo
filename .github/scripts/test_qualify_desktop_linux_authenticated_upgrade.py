@@ -230,7 +230,7 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
 
             with self.subTest(failure=type(failure).__name__), \
                     mock.patch.object(qualification, "stop_process", side_effect=lambda **_: events.append("gui")), \
-                    mock.patch.object(qualification, "installed_helper_pid", side_effect=[4242, None]) as helper, \
+                    mock.patch.object(qualification, "installed_helper_pid", side_effect=[4242, None, None]) as helper, \
                     mock.patch.object(qualification.time, "sleep"):
                 try:
                     with qualification.authenticated_cleanup(processes=[keyring, gui], finish=finish):
@@ -240,7 +240,21 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
                     self.assertIs(error, failure)
             expected = qualification.ProbePhase.ON_TO_LOGOUT if failure is None else qualification.ProbePhase.CLEANUP
             self.assertEqual(events, ["gui", expected])
-            self.assertEqual(helper.call_count, 2)
+            self.assertEqual(helper.call_count, 3)
+
+    def test_cleanup_kills_a_helper_that_outlives_the_wait_and_still_unregisters(self):
+        gui = mock.Mock(args=[qualification.APPLICATION])
+        events = []
+        alive = [True]
+        with mock.patch.object(qualification, "stop_process"), \
+                mock.patch.object(qualification, "installed_helper_pid", side_effect=lambda: 4242 if alive[0] else None), \
+                mock.patch.object(qualification, "wait_for", side_effect=[TimeoutError("helper"), None]), \
+                mock.patch.object(qualification.os, "kill",
+                                  side_effect=lambda pid, sig: (events.append((pid, sig)), alive.__setitem__(0, False))):
+            with qualification.authenticated_cleanup(
+                    processes=[gui], finish=lambda *, operation: events.append(operation)):
+                pass
+        self.assertEqual(events, [(4242, qualification.signal.SIGKILL), qualification.ProbePhase.ON_TO_LOGOUT])
 
     def test_main_only_native_workflow_credentials_are_exercise_only_and_artifacts_are_allowlisted(self):
         workflows = Path(__file__).parents[1] / "workflows"

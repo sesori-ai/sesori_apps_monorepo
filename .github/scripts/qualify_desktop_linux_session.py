@@ -374,7 +374,7 @@ def login(*, inputs: Path, output: Path, desktop: Desktop, architecture: str) ->
     # The forked daemon claims the bus name asynchronously.
     wait_for(description="unlocked Secret Service", check=lambda: subprocess.run(
         ["busctl", "--user", "status", "org.freedesktop.secrets"], env=env,
-        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0)
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, timeout=10).returncode == 0)
     registration = Path.home() / ".config/autostart/com.sesori.desktop.desktop"
     registration.parent.mkdir(parents=True, exist_ok=True)
     registration.write_text(LOGIN_REGISTRATION)
