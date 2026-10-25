@@ -2,7 +2,7 @@
 """Main-only real-account Linux replacement. Authenticated pixels and raw logs stay private."""
 
 import argparse
-from contextlib import contextmanager
+from contextlib import contextmanager, suppress
 from enum import StrEnum
 import json
 import os
@@ -112,6 +112,14 @@ def authenticated_cleanup(*, processes: list[subprocess.Popen], finish):
         for process in reversed(processes):
             if process.args[0] == APPLICATION:
                 stop_process(process=process)
+        # The helper shares the GUI's process group but finishes its own shutdown after the GUI exits.
+        # A helper that never exits is killed so account unregistration still runs.
+        with suppress(TimeoutError):
+            wait_for(description="packaged helper exit", check=lambda: installed_helper_pid() is None, timeout=30)
+        if (helper := installed_helper_pid()) is not None:
+            with suppress(ProcessLookupError):
+                os.kill(helper, signal.SIGKILL)
+            wait_for(description="killed packaged helper exit", check=lambda: installed_helper_pid() is None)
         finish(operation=operation)
 
 
