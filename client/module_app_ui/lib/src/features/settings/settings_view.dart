@@ -40,6 +40,7 @@ class const SettingsView({
   required final VoidCallback? onOpenNotifications,
   required final VoidCallback onOpenHarnesses,
   required final VoidCallback onOpenProjects,
+  required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenDefaultInput,
   required final VoidCallback onOpenRateSesori,
 
@@ -124,6 +125,7 @@ class const SettingsView({
                   description: null,
                   onOpenHarnesses: onOpenHarnesses,
                   onOpenProjects: onOpenProjects,
+                  onOpenArchived: onOpenArchived,
                   onSwitchComputer: onSwitchComputer,
                   onManageComputers: onManageComputers,
                 ),

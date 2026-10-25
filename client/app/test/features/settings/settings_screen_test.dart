@@ -94,6 +94,10 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
         path: "/settings/projects",
         builder: (context, state) => const Scaffold(body: Text("projects-route")),
       ),
+      GoRoute(
+        path: "/archived-sessions",
+        builder: (context, state) => const Scaffold(body: Text("archived-route")),
+      ),
     ],
   );
 
@@ -326,6 +330,24 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("projects-route"), findsOneWidget);
+  });
+
+  testWidgets("Archived sessions follows Projects in the Bridge settings and opens Archived", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    final bridgeGroup = find.ancestor(of: find.text("YOLO mode"), matching: find.byType(PregoGroupedRows));
+    final archived = find.descendant(of: bridgeGroup, matching: find.text("Archived sessions"));
+    expect(archived, findsOneWidget);
+    final archivedTop = tester.getTopLeft(archived).dy;
+    expect(tester.getTopLeft(find.text("Projects")).dy, lessThan(archivedTop));
+    expect(archivedTop, lessThan(tester.getTopLeft(find.text("YOLO mode")).dy));
+
+    await tester.tap(archived);
+    await tester.pumpAndSettle();
+
+    expect(find.text("archived-route"), findsOneWidget);
   });
 
   testWidgets("Preferences groups Notifications and Default input between Bridge and Appearance", (tester) async {
@@ -663,6 +685,16 @@ void main() {
     await tester.tap(find.text("Projects"));
     await tester.pumpAndSettle();
     expect(find.text("projects-route"), findsNothing);
+    // And Archived sessions.
+    expect(
+      tester
+          .widget<Opacity>(find.ancestor(of: find.text("Archived sessions"), matching: find.byType(Opacity)).first)
+          .opacity,
+      lessThan(1),
+    );
+    await tester.tap(find.text("Archived sessions"));
+    await tester.pumpAndSettle();
+    expect(find.text("archived-route"), findsNothing);
     verifyNever(bridgeSettingsService.load);
   });
 

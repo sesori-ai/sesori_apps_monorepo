@@ -41,6 +41,7 @@ class const ArchivedSessionsView({
         disconnectedBuilder: disconnectedBuilder,
         emptyState: emptyState,
         header: null,
+        endClearance: 0,
       ),
     ],
   );

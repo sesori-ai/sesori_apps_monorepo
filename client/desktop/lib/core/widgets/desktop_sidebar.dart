@@ -36,7 +36,6 @@ class const DesktopSidebar({
   required final SessionListActionDispatcher sessionActions,
   required final VoidCallback onToggleCollapsed,
   required final VoidCallback onOpenBridgeSettings,
-  required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   @override
@@ -115,6 +114,7 @@ class const DesktopSidebar({
                       emptyState: SessionEmptyState(projectName: filterName),
                       // The filter heads the list already, beside Refresh.
                       header: null,
+                      endClearance: 0,
                     ),
                   ],
                 ),
@@ -125,7 +125,6 @@ class const DesktopSidebar({
               bridgeColor: bridgeColor,
               onToggleCollapsed: onToggleCollapsed,
               onOpenBridgeSettings: onOpenBridgeSettings,
-              onOpenArchived: onOpenArchived,
               onOpenSettings: onOpenSettings,
             ),
           ],
@@ -258,7 +257,6 @@ class const _SidebarFooter({
   required final Color bridgeColor,
   required final VoidCallback onToggleCollapsed,
   required final VoidCallback onOpenBridgeSettings,
-  required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
   @override
@@ -313,19 +311,6 @@ class const _SidebarFooter({
                       contentBuilder: (context, close) => DesktopBridgePopover(
                         close: close,
                         onOpenSettings: onOpenBridgeSettings,
-                      ),
-                    ),
-                  ),
-                  control(
-                    IconButton(
-                      key: const Key("desktop-sidebar-archived"),
-                      tooltip: loc.archivedSessionsTitle,
-                      padding: const EdgeInsets.all(PregoSpacing.sm),
-                      onPressed: onOpenArchived,
-                      icon: Icon(
-                        TablerRegular.archive,
-                        size: PregoIconSize.md,
-                        semanticLabel: loc.archivedSessionsTitle,
                       ),
                     ),
                   ),

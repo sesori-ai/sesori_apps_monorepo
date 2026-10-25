@@ -233,11 +233,11 @@ void main() {
     final router = _callbackRouter(initialRoute: _detail(readOnly: false));
     addTearDown(router.dispose);
     await tester.pumpWidget(_app(router: router));
-    await tester.tap(find.text("sidebar archived"));
+    await tester.tap(find.text("settings archived"));
     await tester.pumpAndSettle();
     expect(router.state.uri.path, AppRouteDef.archivedSessions.path);
-    // Archived again from the footer keeps the one page.
-    await tester.tap(find.text("sidebar archived"));
+    // Archived again from Settings keeps the one page.
+    await tester.tap(find.text("settings archived"));
     await tester.pumpAndSettle();
     await tester.tap(find.text("open archived row"));
     await tester.pumpAndSettle();
@@ -450,7 +450,11 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
               autofocus: true,
               child: Column(
                 children: [
-                  TextButton(onPressed: cockpit.onOpenArchived, child: const Text("sidebar archived")),
+                  // As Settings' Archived row opens it, once its window has closed.
+                  TextButton(
+                    onPressed: () => openDesktopArchived(router: GoRouter.of(context)),
+                    child: const Text("settings archived"),
+                  ),
                   Expanded(child: child),
                 ],
               ),

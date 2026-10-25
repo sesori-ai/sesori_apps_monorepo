@@ -17,8 +17,8 @@ class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDisp
 
 /// The home's title, which is the same large title on every state, alone under
 /// the bar: the computer this account is paired with is a button in the bar,
-/// between New session and Archived. The bodies join the scaffold's page scroll
-/// rather than nesting one of their own.
+/// before Settings. The bodies join the scaffold's page scroll rather than
+/// nesting one of their own.
 ///
 /// The button holds its place in every state. Until the computer is named it
 /// takes no taps; once named, its label names the computer and its state, and
@@ -162,7 +162,7 @@ void main() {
     expect(tester.getTopLeft(find.text("Make sure the Bridge is running")).dy, lessThan(bodyBefore));
   });
 
-  testWidgets("the computer button sits before Archived and opens the computer menu, which switches", (
+  testWidgets("the bar holds the computer button and Settings, and the menu switches computers", (
     tester,
   ) async {
     final dispatcher = _MockComputerSwitchDispatcher();
@@ -196,10 +196,19 @@ void main() {
     mockRegisteredBridgesService.emitBridges(bridges: bridges);
     await pumpScreen(tester, hasRegisteredBridges: true, bridges: bridges);
     expectNoComputerLine();
-    // The wide sidebar footer's order: New session, computer, Archived.
-    final buttonX = tester.getCenter(computerButton).dx;
-    expect(buttonX, greaterThan(tester.getCenter(find.byKey(const Key("home-new-session"))).dx));
-    expect(buttonX, lessThan(tester.getCenter(find.byKey(const Key("home-archived"))).dx));
+    // Exactly two bar buttons, in the wide sidebar footer's order: computer,
+    // Settings. New session floats over the list instead.
+    final barButtons = find.descendant(
+      of: find.byType(PregoTopNavigation),
+      matching: find.byType(PregoButtonsIconGlass),
+    );
+    expect(barButtons, findsNWidgets(2));
+    expect(tester.widget(barButtons.first).key, const Key("home-computer"));
+    expect(tester.widget<PregoButtonsIconGlass>(barButtons.last).semanticLabel, "Settings");
+    expect(
+      find.descendant(of: find.byType(PregoTopNavigation), matching: find.byKey(const Key("home-new-session"))),
+      findsNothing,
+    );
 
     // The menu leads with the current computer, which the button does not name.
     await tester.tap(computerButton);

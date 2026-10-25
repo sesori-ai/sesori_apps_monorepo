@@ -7,7 +7,7 @@ import "../../core/routing/app_router.dart";
 import "onboarding/bridge_onboarding.dart";
 
 /// The phone and tablet sidebar's footer (D10): the computer switcher, then
-/// Archived (D6), Settings and collapse.
+/// Settings and collapse. Archived opens from Settings.
 class const HomeSidebarFooter({super.key, required final VoidCallback onCollapse}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -24,13 +24,6 @@ class const HomeSidebarFooter({super.key, required final VoidCallback onCollapse
         children: [
           Expanded(
             child: Align(alignment: AlignmentDirectional.centerStart, child: computer ?? const SizedBox.shrink()),
-          ),
-          PregoButtonsIconGlass(
-            key: const Key("home-archived"),
-            icon: TablerRegular.archive,
-            size: PregoButtonsIconGlassSize.md,
-            semanticLabel: loc.archivedSessionsTitle,
-            onPressed: () => context.pushRoute(const AppRoute.archivedSessions()),
           ),
           PregoButtonsIconGlass(
             key: const Key("home-settings"),

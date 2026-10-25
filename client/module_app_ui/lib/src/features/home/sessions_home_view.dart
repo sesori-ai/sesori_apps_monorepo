@@ -29,10 +29,9 @@ typedef HomeDisconnectedRefresh = Future<void> Function({
 sealed class const SessionsHomePresentation();
 
 /// The phone's page: the project switcher is the title, alone under the bar,
-/// and the bar holds New session, the computer button, Archived and Settings.
+/// the bar holds the computer button and Settings, and New session floats at
+/// the bottom right.
 final class const SessionsHomePage({
-  /// Opens Archived, which shares the list's filter (D6).
-  required final HomeAction onOpenArchived,
   required final HomeAction onOpenSettings,
   required final Widget? Function({required BuildContext context}) connectionBannerBuilder,
 
@@ -105,7 +104,11 @@ class const SessionsHomeView({
       ),
       ProjectListLoading() || ProjectListFailed() => null,
     };
-    List<Widget> slivers({required String? selectedSessionId, required Widget? header}) => [
+    List<Widget> slivers({
+      required String? selectedSessionId,
+      required Widget? header,
+      required double endClearance,
+    }) => [
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
       if (projects is ProjectListLoaded)
         SliverToBoxAdapter(
@@ -121,6 +124,7 @@ class const SessionsHomeView({
             ? SafeArea(top: false, child: noProjectsState)
             : SessionEmptyState(projectName: filterName),
         header: header,
+        endClearance: endClearance,
       ),
     ];
 
@@ -139,6 +143,7 @@ class const SessionsHomeView({
             ),
             ...slivers(
               selectedSessionId: selectedSessionId,
+              endClearance: 0,
               header: switcher(
                 triggerBuilder: (context, open) => _SidebarSwitcherHeading(title: title, onPressed: open),
               ),
@@ -162,29 +167,32 @@ class const SessionsHomeView({
       ),
       banner: _bannerFor(context: context, state: projects, page: page),
       actions: [
-        PregoButtonsIconGlass(
-          key: const Key("home-new-session"),
-          icon: TablerRegular.plus,
-          semanticLabel: loc.sessionListNewSession,
-          onPressed: newSession,
-        ),
-        // In the wide sidebar footer's order: computer, Archived, Settings.
+        // In the wide sidebar footer's order: computer, Settings.
         _HomeComputerButton(onSwitchComputer: page.onSwitchComputer, onManageComputers: page.onManageComputers),
-        PregoButtonsIconGlass(
-          key: const Key("home-archived"),
-          icon: TablerRegular.archive,
-          semanticLabel: loc.archivedSessionsTitle,
-          onPressed: () => page.onOpenArchived(context: context),
-        ),
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,
           semanticLabel: loc.settingsTitle,
           onPressed: () => page.onOpenSettings(context: context),
         ),
       ],
+      // The scaffold holds it still above the home indicator while the list
+      // scrolls under it.
+      floatingActionButton: PregoButtonsIconGlass(
+        key: const Key("home-new-session"),
+        icon: TablerRegular.plus,
+        size: _newSessionButtonSize,
+        iconSize: PregoIconSize.lg,
+        semanticLabel: loc.sessionListNewSession,
+        onPressed: newSession,
+      ),
       onRefresh: onRefresh,
       // An open session covers the page, so no row is selected.
-      slivers: slivers(selectedSessionId: null, header: null),
+      slivers: slivers(
+        selectedSessionId: null,
+        header: null,
+        // The last row scrolls clear of the floating New session button.
+        endClearance: _newSessionButtonSize.diameter + kFloatingActionButtonMargin,
+      ),
     );
   }
 
@@ -350,6 +358,9 @@ class const _HomeComputerButton({
     );
   }
 }
+
+/// The phone page's floating New session button.
+const PregoButtonsIconGlassSize _newSessionButtonSize = PregoButtonsIconGlassSize.xl;
 
 /// The sidebar's first row: a new session in the list's default project.
 class const _SidebarNewSession({super.key, required final VoidCallback onPressed}) extends StatelessWidget {
