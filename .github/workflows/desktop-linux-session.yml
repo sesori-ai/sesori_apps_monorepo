@@ -159,6 +159,44 @@ jobs:
                 "$PWD/build/linux-session-probes" '${{ matrix.architecture }}' \
                 "$PWD/build/linux-session-evidence/$name" 2>&1 | tee "build/linux-session-evidence/$name.log"
           done
+      - name: Replace the portable AppImage on native Arch Linux with a Plasma 6 tray host
+        env:
+          ARCH_X64_IMAGE: docker.io/library/archlinux@sha256:52dfbd5afb23a220d5ee92dafcb4c788d96c026ed04179890c23adef4c897fa0
+          # Arch has no official ARM64 image. Import the community Arch Linux ARM rootfs only after its
+          # build-system signature verifies against this pinned primary fingerprint.
+          ARCH_ARM_SIGNER: 68B3537F39A313B3E574D06777193F152BDBE6A6
+        run: |
+          set -euo pipefail
+          if [[ '${{ matrix.architecture }}' == x64 ]]; then
+            image="$ARCH_X64_IMAGE"
+            docker pull --quiet "$image"
+          else
+            rootfs="$RUNNER_TEMP/archlinuxarm"
+            export GNUPGHOME="$rootfs/gnupg"
+            install -d -m 700 "$GNUPGHOME"
+            for file in ArchLinuxARM-aarch64-latest.tar.gz ArchLinuxARM-aarch64-latest.tar.gz.sig; do
+              curl --fail --silent --show-error --location --retry 3 --output "$rootfs/$file" \
+                "http://os.archlinuxarm.org/os/$file"
+            done
+            gpg --batch --keyserver hkps://keyserver.ubuntu.com --recv-keys "$ARCH_ARM_SIGNER"
+            gpg --batch --status-fd 1 --verify "$rootfs/ArchLinuxARM-aarch64-latest.tar.gz.sig" \
+              "$rootfs/ArchLinuxARM-aarch64-latest.tar.gz" | grep -q "^\[GNUPG:\] VALIDSIG $ARCH_ARM_SIGNER "
+            sha256sum "$rootfs/ArchLinuxARM-aarch64-latest.tar.gz" | tee build/linux-session-evidence/archlinuxarm.sha256
+            image=sesori-archlinuxarm
+            docker import "$rootfs/ArchLinuxARM-aarch64-latest.tar.gz" "$image"
+          fi
+          [[ "$(docker run --rm "$image" uname -m)" == "$(uname -m)" ]] || {
+            echo 'Arch container architecture differs from native host'; exit 1;
+          }
+          # GTK's glycin image loaders sandbox themselves with bwrap user namespaces, as on a real Arch desktop.
+          sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          # The AppImage runtime mounts itself through FUSE; bwrap needs unshare, which the default profiles deny.
+          docker run --rm --device /dev/fuse --cap-add SYS_ADMIN \
+            --security-opt apparmor=unconfined --security-opt seccomp=unconfined \
+            -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" "$image" \
+            bash .github/scripts/qualify_desktop_linux_appimage.sh "$PWD/build/linux-session-inputs" \
+              "$PWD/build/linux-session-probes" '${{ matrix.architecture }}' \
+              "$PWD/build/linux-session-evidence/arch" 2>&1 | tee build/linux-session-evidence/arch.log
       - name: Autostart the signed app through a genuine display-manager login
         env:
           DEBIAN_FRONTEND: noninteractive

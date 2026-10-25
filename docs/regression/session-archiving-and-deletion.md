@@ -271,8 +271,9 @@ ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity compos
 tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
 mobile `session_detail_activity_navigation_test` and
 `archived_sessions_navigation_test` (filtered entry, every project's archives,
-delete and read state from a row, detail and unwinding), shared `all_sessions_list_test` (including
-the failed and disconnected project list) and `all_sessions_cubit_test`, desktop `desktop_session_detail_screen_test`, shared
+delete and read state from a row, detail and unwinding, the offline page), shared
+`all_sessions_list_test` (including the failed and disconnected project list) and
+`all_sessions_cubit_test`, desktop `desktop_session_detail_screen_test`, shared
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
 confirmations, the forced refusal and the kept-worktree notice; and

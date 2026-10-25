@@ -213,6 +213,15 @@ from before this change lack the AppImage and can no longer be prepared; build a
 pair. 11.i.d.b adds Arch rows (x64 official image, ARM64 the community Arch Linux ARM
 port) for launch, keyring, tray, Quit and persistence across replacement.
 
+**11.i.d.b — Arch qualification, accepted.** Fresh main producers `40159666182` →
+`40160283183` (source `0ec554f2a3`) carry AppImages. `linux-session` run `40161934369`
+passed every row on both CPUs, including Arch with Plasma 6: FUSE launch, render, mounted
+identity, tray, launch-at-login registration of the image path, tray Quit with unmount
+and no helper, same-path replacement, hidden relaunch with the registration retained, and
+preserved probe data. The first run, `40161067607`, passed Arch on both CPUs, but x64 GNOME
+read the autostarted app's cgroup before gnome-session moved it into its scope. The
+login check now waits for that move.
+
 No host, signing-policy, publication or installed-Mac change is authorized by this
 tooling. Stable stays closed.
 Keep the existing release rollover: QA uses retained signed producer artifacts, not

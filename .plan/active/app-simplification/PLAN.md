@@ -245,7 +245,7 @@ belongs to session detail, so neither is affected.
 ### `app`
 
 - The route tree.
-- The home screen, which hosts onboarding, offline and disconnected, moved from `project_list_screen.dart` to
+- The onboarding, offline and disconnected views, moved from `project_list_screen.dart` to
   `features/home/onboarding`.
 - The mobile sidebar footer.
 
