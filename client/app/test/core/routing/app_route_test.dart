@@ -284,8 +284,7 @@ void main() {
       // System back reaches the shell's own navigator before the shell page.
       expect(widget, isA<NavigatorPopHandler<void>>());
       final sidebarShell = (widget as NavigatorPopHandler<void>).child as SessionSidebarShell;
-      final sidebar = sidebarShell.sidebar as HomeScreen;
-      expect(sidebar.presentation, SessionsHomePresentation.sidebar);
+      final sidebar = sidebarShell.sidebar as HomeSidebar;
       expect(sidebar.selectedSessionId, "ses-99");
     });
 

@@ -11,7 +11,7 @@ import "package:material_ui/material_ui.dart"
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart"
-    show AllSessionsList, AppLocalizations, SessionListActionDispatcher, SessionScope, SessionsHomePresentation;
+    show AllSessionsList, AppLocalizations, SessionListActionDispatcher, SessionScope;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
@@ -226,7 +226,7 @@ Widget testHome() {
           ),
         ),
       ],
-      child: const HomeScreen(presentation: SessionsHomePresentation.page, selectedSessionId: null),
+      child: const HomeScreen(),
     ),
   );
 }

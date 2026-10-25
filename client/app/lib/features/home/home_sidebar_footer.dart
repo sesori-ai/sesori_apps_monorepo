@@ -15,11 +15,7 @@ class const HomeSidebarFooter({super.key, required final VoidCallback onCollapse
     final computer = homeComputerSubtitle(
       context: context,
       onSwitchComputer: switchComputer,
-      // Settings goes under the page so Back from Computers lands there.
-      onManageComputers: ({required context}) {
-        context.pushRoute(const AppRoute.settings());
-        context.pushRoute(const AppRoute.settingsComputers());
-      },
+      onManageComputers: manageComputers,
     );
     return Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, PregoSpacing.md, PregoSpacing.md, PregoSpacing.md),

@@ -105,6 +105,30 @@ void main() {
       expect(tester.widget<SessionTile>(inSidebar(find.byType(SessionTile))).selected, isFalse);
     });
 
+    testWidgets("with no default project the pane asks for one, with nothing selected", (tester) async {
+      await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
+        sessions: const [],
+      );
+
+      expect(inContent(find.byType(NewSessionProjectPrompt)), findsOneWidget);
+      expect(find.byType(NewSessionView), findsNothing);
+      // At rest the pane waits for a tap rather than opening the picker.
+      expect(find.text("Open another folder…"), findsNothing);
+
+      await tester.tap(inContent(find.byKey(const Key("new_session_project"))));
+      await tester.pumpAndSettle();
+      expect(find.text("Open another folder…"), findsOneWidget);
+      await tester.tap(find.text("Project One").last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NewSessionProjectPrompt), findsNothing);
+      expect(tester.widget<NewSessionView>(inContent(find.byType(NewSessionView))).projectId, "p1");
+    });
+
     testWidgets("collapse slides the sidebar out and the pane's restore button brings it back", (tester) async {
       final harness = await pumpShell(
         tester,

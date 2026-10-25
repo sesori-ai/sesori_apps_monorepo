@@ -5,14 +5,20 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../project_picker/project_picker.dart";
 
-/// The new-session page before it has a project: it asks for one, and its
-/// picker opens once the page is up, with nothing selected. With no projects at
-/// all the picker offers only "Open another folder…".
+/// The new-session page, or the home's composer pane, before it has a project:
+/// it asks for one, with nothing selected. With no projects at all the picker
+/// offers only "Open another folder…".
 class const NewSessionProjectPrompt({
   super.key,
   required final NewSessionProjectSelected onProjectSelected,
-  required final VoidCallback onBack,
+
+  /// Null where nothing lies behind the page, such as the home's content pane.
+  required final VoidCallback? onBack,
   required final Widget? banner,
+
+  /// Opens the picker once the page is up, for a page just asked for. A pane
+  /// at rest waits for a tap instead.
+  required final bool opensPicker,
 }) extends StatefulWidget {
   @override
   State<NewSessionProjectPrompt> createState() => _NewSessionProjectPromptState();
@@ -24,6 +30,7 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
   @override
   void initState() {
     super.initState();
+    if (!widget.opensPicker) return;
     // The picker's trigger exists only after the first frame.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _openPicker?.call();

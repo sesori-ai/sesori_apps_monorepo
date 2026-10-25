@@ -222,11 +222,12 @@ void main() {
 
   Future<AdaptiveSessionRouterTestHarness> setUpTwoProjects({
     required WidgetTester tester,
+    required Size size,
     required Map<String, List<Session>> sessionsByProject,
   }) async {
     final harness = await setUpHome(
       tester: tester,
-      size: const Size(390, 800),
+      size: size,
       initialLocation: "/sessions",
       currentRouteDef: AppRouteDef.home,
       sessionsByProject: sessionsByProject,
@@ -247,6 +248,7 @@ void main() {
   testWidgets("the title filters the home to one project, and New session starts there", (tester) async {
     final harness = await setUpTwoProjects(
       tester: tester,
+      size: const Size(390, 800),
       sessionsByProject: {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
         "p2": [adaptiveTestSession(projectId: "p2", id: "session-2", title: "Session Two")],
@@ -280,7 +282,11 @@ void main() {
   });
 
   testWidgets("with no session yet, New session asks for a project and lists the known ones", (tester) async {
-    final harness = await setUpTwoProjects(tester: tester, sessionsByProject: const {"p1": [], "p2": []});
+    final harness = await setUpTwoProjects(
+      tester: tester,
+      size: const Size(390, 800),
+      sessionsByProject: const {"p1": [], "p2": []},
+    );
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
@@ -295,6 +301,41 @@ void main() {
     await tester.tap(find.text("Project Two"));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), "/sessions/new?project=p2&name=Project+Two");
+  });
+
+  testWidgets("the wide pane's draft follows the filter and the header", (tester) async {
+    final harness = await setUpTwoProjects(
+      tester: tester,
+      size: const Size(1024, 800),
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+        "p2": [],
+      },
+    );
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+    final switcher = find.byKey(const Key("home-sidebar-switcher"));
+    String draftProject() => tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId;
+    Future<void> pick({required Finder trigger, required String option}) async {
+      await tester.tap(trigger);
+      await tester.pumpAndSettle();
+      await tester.tap(find.text(option).last);
+      await tester.pumpAndSettle();
+    }
+
+    // The newest session's project.
+    expect(draftProject(), "p1");
+
+    await pick(trigger: switcher, option: "Project Two");
+    expect(draftProject(), "p2");
+
+    await pick(trigger: switcher, option: "All projects");
+    expect(draftProject(), "p1");
+
+    // The header moves the draft and leaves the filter.
+    await pick(trigger: find.byKey(const Key("new_session_project")), option: "Project Two");
+    expect(draftProject(), "p2");
+    expect(find.descendant(of: switcher, matching: find.text("All projects")), findsOneWidget);
   });
 
   testWidgets("the wide home keeps one list across every project's routes", (tester) async {

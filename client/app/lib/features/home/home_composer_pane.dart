@@ -10,9 +10,10 @@ import "../../core/routing/app_router.dart";
 import "../../core/widgets/mobile_composer_presentation_scope.dart";
 
 /// The content pane beside the sidebar while no session is open: a new
-/// session in the list's default project (D15).
+/// session in the list's default project (D15), or, without a default, the
+/// project prompt with nothing selected.
 ///
-/// The project holds once the default settles, so a session elsewhere turning
+/// The project holds once a default lands, so a session elsewhere turning
 /// newest never moves a draft; choosing another filter, or another project in
 /// the header, moves it.
 class const HomeComposerPane({super.key}) extends StatefulWidget {
@@ -21,51 +22,68 @@ class const HomeComposerPane({super.key}) extends StatefulWidget {
 }
 
 class _HomeComposerPaneState() extends State<HomeComposerPane> {
-  String? _filterProjectId;
-  String? _heldProjectId;
+  /// The draft's project, or null until a default lands or one is chosen.
+  String? _projectId;
 
   /// Counts the sessions this pane started. The page stays under the session
   /// it opens, so each start leaves a fresh composer to come back to.
   int _launches = 0;
 
   @override
+  void initState() {
+    super.initState();
+    _projectId = context.read<AllSessionsCubit>().state.defaultProjectId;
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final (filterProjectId, defaultProjectId) = context.select(
-      (AllSessionsCubit cubit) => (cubit.state.projectId, cubit.state.defaultProjectId),
-    );
-    if (filterProjectId != _filterProjectId) {
-      _filterProjectId = filterProjectId;
-      _heldProjectId = null;
-    }
+    final isLoading = context.select((AllSessionsCubit cubit) => cubit.state.isLoading);
     final Widget pane = switch (context.watch<ProjectListCubit>().state) {
       ProjectListLoaded(:final projects) when projects.isNotEmpty => _composer(
         projects: projects,
-        defaultProjectId: defaultProjectId,
+        isLoading: isLoading,
       ),
       // The sidebar shows why there is nothing to start.
-      ProjectListLoading() ||
-      ProjectListLoaded() ||
-      ProjectListFailed() ||
-      ProjectListBridgeDisconnected() => PregoGlassScaffold(
-        key: const Key("home-composer-pane-empty"),
-        title: context.loc.sessionListNewSession,
-        titleMode: PregoTopNavigationTitleMode.backLeading,
-        banner: ConnectionBanner.maybeFor(context),
-        slivers: const [],
-      ),
+      ProjectListLoading() || ProjectListLoaded() || ProjectListFailed() || ProjectListBridgeDisconnected() => _empty(),
     };
-    return AnimatedSwitcher(
-      duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-      child: pane,
+    return BlocListener<AllSessionsCubit, AllSessionsState>(
+      // Another filter moves the draft to its default; until the draft has a
+      // project, the first default to land is taken up.
+      listenWhen: (previous, current) =>
+          previous.projectId != current.projectId ||
+          (_projectId == null && previous.defaultProjectId != current.defaultProjectId),
+      listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
+      child: AnimatedSwitcher(
+        duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+        child: pane,
+      ),
     );
   }
 
-  Widget _composer({required List<ProjectSummary> projects, required String? defaultProjectId}) {
-    ProjectSummary? byId(String? id) => projects.where((project) => project.id == id).firstOrNull;
-    final project = byId(_heldProjectId) ?? byId(defaultProjectId) ?? projects.first;
-    // Before any session names a default, the first listed project stands in
-    // without holding.
-    if (_heldProjectId == null && defaultProjectId != null) _heldProjectId = project.id;
+  Widget _empty() => PregoGlassScaffold(
+    key: const Key("home-composer-pane-empty"),
+    title: context.loc.sessionListNewSession,
+    titleMode: PregoTopNavigationTitleMode.backLeading,
+    banner: ConnectionBanner.maybeFor(context),
+    slivers: const [],
+  );
+
+  /// The draft's composer, or the prompt for its project.
+  Widget _composer({required List<ProjectSummary> projects, required bool isLoading}) {
+    final project = projects.where((project) => project.id == _projectId).firstOrNull;
+    if (project == null) {
+      // A list still loading may yet name a default, so the prompt waits.
+      if (isLoading) return _empty();
+      return NewSessionProjectPrompt(
+        key: const Key("home-composer-pane-prompt"),
+        onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
+        onBack: null,
+        banner: ConnectionBanner.maybeFor(context),
+        // Nobody asked for it yet: the pane shows on rotation, a filter
+        // change or under an opened session, so the picker waits for a tap.
+        opensPicker: false,
+      );
+    }
     final projectId = project.id;
     final projectName = projectDisplayName(loc: context.loc, project: project);
     return BlocProvider(
@@ -78,7 +96,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
         child: NewSessionView(
           projectId: projectId,
           projectName: projectName,
-          onProjectSelected: ({required projectId, required projectName}) => setState(() => _heldProjectId = projectId),
+          onProjectSelected: ({required projectId, required projectName}) => setState(() => _projectId = projectId),
           onBack: null,
           onOpenHarnessSettings: () => context.pushRoute(
             const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.modal),

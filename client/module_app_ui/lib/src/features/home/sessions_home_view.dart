@@ -25,18 +25,31 @@ typedef HomeDisconnectedRefresh = Future<void> Function({
   required ProjectListBridgeDisconnected state,
 });
 
-/// Where [SessionsHomeView] shows.
-enum SessionsHomePresentation() {
-  /// The phone's page: the project switcher is the title, the computer
-  /// switcher sits under it, and the bar holds New session, Archived and
-  /// Settings.
-  page,
+/// Where [SessionsHomeView] shows, with what only that place needs.
+sealed class const SessionsHomePresentation();
 
-  /// The wide layout's sidebar body: New session, then the list with the
-  /// project switcher heading it under the search field (D4). The sidebar's
-  /// footer holds the rest (D10).
-  sidebar,
-}
+/// The phone's page: the project switcher is the title, the computer switcher
+/// sits under it, and the bar holds New session, Archived and Settings.
+final class const SessionsHomePage({
+  /// Opens Archived, which shares the list's filter (D6).
+  required final HomeAction onOpenArchived,
+  required final HomeAction onOpenSettings,
+  required final Widget? Function({required BuildContext context}) connectionBannerBuilder,
+
+  /// Switches to a computer picked in the menu under the title.
+  required final ComputerSwitchCallback onSwitchComputer,
+
+  /// Opens the Computers page from the menu under the title.
+  required final HomeAction onManageComputers,
+}) extends SessionsHomePresentation;
+
+/// The wide layout's sidebar body: New session, then the list with the project
+/// switcher heading it under the search field (D4). The sidebar's footer holds
+/// the rest (D10), and the content pane beside it the connection banner.
+final class const SessionsHomeSidebar({
+  /// The session the content pane beside the list shows, if any.
+  required final String? selectedSessionId,
+}) extends SessionsHomePresentation;
 
 /// The signed-in home: the session list across projects, under a title that
 /// filters it to one project and the computer it reaches.
@@ -47,36 +60,17 @@ enum SessionsHomePresentation() {
 class const SessionsHomeView({
   super.key,
   required final SessionsHomePresentation presentation,
-
-  /// The session the content pane beside the list shows, if any.
-  required final String? selectedSessionId,
   required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final ActionSessionListCubitFactory createActionCubit,
 
   /// Opens a new session in the list's default project, or with none chosen.
   required final HomeNewSessionCallback onNewSession,
-
-  /// Opens Archived, which shares the list's filter (D6). The page's only;
-  /// the sidebar's footer opens it beside the list.
-  required final HomeAction onOpenArchived,
-
-  /// The page's only, as [onOpenArchived] is.
-  required final HomeAction onOpenSettings,
   required final AllSessionsDisconnectedBuilder disconnectedBuilder,
 
   /// The empty state of a computer with no projects yet.
   required final Widget noProjectsState,
-
-  /// The page's only: beside the sidebar, the content pane shows the banner.
-  required final Widget? Function({required BuildContext context}) connectionBannerBuilder,
   required final HomeDisconnectedRefresh onRefreshDisconnected,
-
-  /// Switches to a computer picked in the menu under the title.
-  required final ComputerSwitchCallback onSwitchComputer,
-
-  /// Opens the Computers page from the menu under the title.
-  required final HomeAction onManageComputers,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -111,7 +105,7 @@ class const SessionsHomeView({
       ),
       ProjectListLoading() || ProjectListFailed() => null,
     };
-    List<Widget> slivers({required Widget? header}) => [
+    List<Widget> slivers({required String? selectedSessionId, required Widget? header}) => [
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
       if (projects is ProjectListLoaded)
         SliverToBoxAdapter(
@@ -130,24 +124,29 @@ class const SessionsHomeView({
       ),
     ];
 
-    if (presentation == SessionsHomePresentation.sidebar) {
-      return CustomScrollView(
-        physics: onRefresh == null
-            ? const AlwaysScrollableScrollPhysics()
-            : const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
-        slivers: [
-          if (onRefresh != null)
-            PregoSliverRefreshControl(onRefresh: onRefresh, decorate: null, onPulledExtentChanged: null),
-          SliverToBoxAdapter(
-            child: _SidebarNewSession(key: const Key("home-new-session"), onPressed: newSession),
-          ),
-          ...slivers(
-            header: switcher(
-              triggerBuilder: (context, open) => _SidebarSwitcherHeading(title: title, onPressed: open),
+    final SessionsHomePage page;
+    switch (presentation) {
+      case SessionsHomeSidebar(:final selectedSessionId):
+        return CustomScrollView(
+          physics: onRefresh == null
+              ? const AlwaysScrollableScrollPhysics()
+              : const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
+          slivers: [
+            if (onRefresh != null)
+              PregoSliverRefreshControl(onRefresh: onRefresh, decorate: null, onPulledExtentChanged: null),
+            SliverToBoxAdapter(
+              child: _SidebarNewSession(key: const Key("home-new-session"), onPressed: newSession),
             ),
-          ),
-        ],
-      );
+            ...slivers(
+              selectedSessionId: selectedSessionId,
+              header: switcher(
+                triggerBuilder: (context, open) => _SidebarSwitcherHeading(title: title, onPressed: open),
+              ),
+            ),
+          ],
+        );
+      case final SessionsHomePage pagePresentation:
+        page = pagePresentation;
     }
 
     return PregoGlassScaffold(
@@ -163,10 +162,10 @@ class const SessionsHomeView({
       ),
       subtitle: homeComputerSubtitle(
         context: context,
-        onSwitchComputer: onSwitchComputer,
-        onManageComputers: onManageComputers,
+        onSwitchComputer: page.onSwitchComputer,
+        onManageComputers: page.onManageComputers,
       ),
-      banner: _bannerFor(context: context, state: projects),
+      banner: _bannerFor(context: context, state: projects, page: page),
       actions: [
         PregoButtonsIconGlass(
           key: const Key("home-new-session"),
@@ -178,16 +177,17 @@ class const SessionsHomeView({
           key: const Key("home-archived"),
           icon: TablerRegular.archive,
           semanticLabel: loc.archivedSessionsTitle,
-          onPressed: () => onOpenArchived(context: context),
+          onPressed: () => page.onOpenArchived(context: context),
         ),
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,
           semanticLabel: loc.settingsTitle,
-          onPressed: () => onOpenSettings(context: context),
+          onPressed: () => page.onOpenSettings(context: context),
         ),
       ],
       onRefresh: onRefresh,
-      slivers: slivers(header: null),
+      // An open session covers the page, so no row is selected.
+      slivers: slivers(selectedSessionId: null, header: null),
     );
   }
 
@@ -195,9 +195,13 @@ class const SessionsHomeView({
   /// owns its screen with its own call to action, so it shows the banner only
   /// for a lost connection, which nothing else there reports. Loading and the
   /// disconnected pages report the connection themselves.
-  Widget? _bannerFor({required BuildContext context, required ProjectListState state}) {
+  static Widget? _bannerFor({
+    required BuildContext context,
+    required ProjectListState state,
+    required SessionsHomePage page,
+  }) {
     if (state is! ProjectListLoaded) return null;
-    final banner = connectionBannerBuilder(context: context);
+    final banner = page.connectionBannerBuilder(context: context);
     if (state.projects.isNotEmpty) return banner;
     return context.watch<ConnectionOverlayCubit>().state is ConnectionOverlayConnectionLost ? banner : null;
   }

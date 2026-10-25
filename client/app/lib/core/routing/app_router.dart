@@ -110,7 +110,7 @@ extension on AppRoute {
       AppRouteArchivedSessionDetail() => throw StateError("Archive pages belong to their flow shell"),
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
-      AppRouteHome() => const HomeScreen(presentation: SessionsHomePresentation.page, selectedSessionId: null),
+      AppRouteHome() => const HomeScreen(),
       AppRouteProjectSessions() => throw StateError("The project page is desktop only"),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsDefaultInput() => const DefaultInputSettingsScreen(),
@@ -329,10 +329,7 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
       builder: (context, state, child) => _shellBackHandler(
         navigatorKey: sessionShellNavigatorKey,
         child: SessionSidebarShell(
-          sidebar: HomeScreen(
-            presentation: SessionsHomePresentation.sidebar,
-            selectedSessionId: state.pathParameters[sessionIdPathParam],
-          ),
+          sidebar: HomeSidebar(selectedSessionId: state.pathParameters[sessionIdPathParam]),
           footer: ({required onCollapse}) => HomeSidebarFooter(onCollapse: onCollapse),
           child: child,
         ),
@@ -348,10 +345,7 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
             child: Builder(
               builder: (context) => switch (SessionSidebarShell.layoutOf(context)) {
                 SessionShellLayout.pane => const HomeComposerPane(),
-                SessionShellLayout.pages => const HomeScreen(
-                  presentation: SessionsHomePresentation.page,
-                  selectedSessionId: null,
-                ),
+                SessionShellLayout.pages => const HomeScreen(),
               },
             ),
           ),
