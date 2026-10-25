@@ -23,7 +23,7 @@
 | 8/13 | Projects screen removed | Done | #2044 |
 | 9/13 | Wide phone and tablet sidebar | Done | #2045 |
 | 10.a.i/13 | Desktop Archived page and footer entry | Done | #2046 |
-| 10.a.ii/13 | Desktop sidebar on the shared list | Done | `sesori/app-simplification-step-10a-ii` |
+| 10.a.ii/13 | Desktop sidebar on the shared list | Done | #2047 |
 | 10.b/13 | Desktop Activity and rail removed | Done | `sesori/app-simplification-step-10b` |
 | 11/13 | Desktop composer home; project page removed | Not started | — |
 | 12/13 | Regression documents reconciled | Not started | — |
