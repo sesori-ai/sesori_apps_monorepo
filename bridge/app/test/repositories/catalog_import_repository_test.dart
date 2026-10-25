@@ -205,7 +205,10 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
 
       final statuses = await repository
@@ -578,7 +581,10 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final published = <SessionBackendActivity>[];
       final subscription = repository.backendActivity.listen(published.addAll);
@@ -638,7 +644,10 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
 
       await repository
@@ -1011,7 +1020,10 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final control = CatalogImportControl(
         rescanRequested: true,
@@ -1048,7 +1060,10 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
 
       final statuses = await repository
@@ -1110,7 +1125,10 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final finished = Completer<void>();
       Object? streamError;
@@ -1158,7 +1176,10 @@ void main() {
         projectsDao: projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final publication = repository
           .importCatalog(
@@ -1205,7 +1226,10 @@ void main() {
         projectsDao: database.projectsDao,
         sessionDao: sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
 
       await expectLater(
@@ -1352,6 +1376,8 @@ class _RecordingSessionDao({
 
 class _TrackingProjectCatalogIdentityCalculator({required final String firstProjectId, required final String firstPath})
     extends ProjectCatalogIdentityCalculator {
+  this : super(scratchRoot: "/scratch", pathContext: p.context);
+
   Map<String, ProjectDto>? _firstProjectsById;
   Map<String, ProjectDto>? _firstProjectsByNormalizedPath;
   int callCount = 0;

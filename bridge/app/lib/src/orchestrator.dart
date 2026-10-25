@@ -7,6 +7,7 @@ import "dart:typed_data";
 import "package:clock/clock.dart";
 import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
+import "package:path/path.dart" as p;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -87,6 +88,7 @@ import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
 import "repositories/pull_request_repository.dart";
 import "repositories/question_repository.dart";
+import "repositories/scratch_repository.dart";
 import "repositories/session_continuation_repository.dart";
 import "repositories/session_diff_repository.dart";
 import "repositories/session_metadata_repository.dart";
@@ -265,7 +267,11 @@ class Orchestrator({
     final pluginComposition = _pluginLifecycleService.compositionView;
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
-    const projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator();
+    final scratchRoot = normalizeProjectDirectory(directory: sesoriScratchDirectory());
+    final projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator(
+      scratchRoot: scratchRoot,
+      pathContext: p.context,
+    );
     final gitCliApi = GitCliApi(
       processRunner: _processRunner,
       streamingProcessRunner: const StreamingProcessRunner(),
@@ -352,6 +358,12 @@ class Orchestrator({
       runtime: _pluginRuntime,
     );
     final worktreeService = WorktreeService(worktreeRepository: worktreeRepository);
+    final scratchRepository = ScratchRepository(
+      filesystemApi: const FilesystemApi(),
+      sessionDao: _database.sessionDao,
+      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
+      scratchRoot: scratchRoot,
+    );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,
     );
@@ -527,6 +539,8 @@ class Orchestrator({
       newSessionDefaultsRepository: newSessionDefaultsRepository,
       sessionMutationDispatcher: sessionMutationDispatcher,
       sessionOptionsService: sessionOptionsService,
+      scratchRepository: scratchRepository,
+      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
     );
     final projectInitializationService = ProjectInitializationService(
       worktreeRepository: worktreeRepository,
@@ -625,6 +639,7 @@ class Orchestrator({
       sessionLifecycleService: sessionLifecycleService,
       sessionMutationDispatcher: sessionMutationDispatcher,
       chatHistoryService: chatHistoryService,
+      scratchRepository: scratchRepository,
     );
     final sessionAbortService = SessionAbortService(
       continuations: sessionContinuations,

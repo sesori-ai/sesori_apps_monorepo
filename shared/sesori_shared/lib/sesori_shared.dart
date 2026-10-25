@@ -70,6 +70,7 @@ export "src/models/sesori/plugin_setup_response.dart";
 export "src/models/sesori/pr_enums.dart";
 export "src/models/sesori/project.dart";
 export "src/models/sesori/project_activity_summary.dart";
+export "src/models/sesori/project_kind.dart";
 export "src/models/sesori/provider_info.dart";
 export "src/models/sesori/pull_request_info.dart";
 export "src/models/sesori/pull_request_refresh_settings.dart";

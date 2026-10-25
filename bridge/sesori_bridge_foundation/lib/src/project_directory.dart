@@ -11,4 +11,10 @@ import "package:path/path.dart" as p;
 /// `absolute` is defensive; it also preserves drive roots like `C:\` on
 /// Windows.)
 String normalizeProjectDirectory({required String directory}) =>
-    p.normalize(p.absolute(directory));
+    normalizeProjectDirectoryWithContext(pathContext: p.context, directory: directory);
+
+/// [normalizeProjectDirectory] under [pathContext]'s path style instead of the
+/// host's, so a path rule built on it can be tested with Windows paths on any
+/// host.
+String normalizeProjectDirectoryWithContext({required p.Context pathContext, required String directory}) =>
+    pathContext.normalize(pathContext.absolute(directory));

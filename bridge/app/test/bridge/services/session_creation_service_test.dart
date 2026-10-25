@@ -1,12 +1,16 @@
 import "dart:async";
 import "dart:io";
 
+import "package:clock/clock.dart";
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/session_creation_service.dart";
@@ -35,10 +39,18 @@ void main() {
     late NewSessionDefaultsRepository defaultsRepository;
     late SessionCreationService service;
     late FakeSessionOptionsService sessionOptionsService;
+    late Directory scratchParent;
+    late String scratchRoot;
+    late ProjectCatalogIdentityCalculator calculator;
+    late ScratchRepository scratchRepository;
 
     setUp(() async {
       db = createTestDatabase();
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
+      scratchParent = await Directory.systemTemp.createTemp("session-creation-scratch-");
+      scratchRoot = p.join(scratchParent.path, "scratch");
+      calculator = ProjectCatalogIdentityCalculator(scratchRoot: scratchRoot, pathContext: p.context);
+      scratchRepository = testScratchRepository(sessionDao: db.sessionDao, scratchRoot: scratchRoot);
+      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", scratchRoot]);
       defaultsRepository = NewSessionDefaultsRepository(
         dao: NewSessionDefaultsDao(database: db),
       );
@@ -78,6 +90,8 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: scratchRepository,
+        projectCatalogIdentityCalculator: calculator,
       );
     });
 
@@ -86,6 +100,7 @@ void main() {
       await operationDispatcher.dispose();
       await mutationDispatcher.dispose();
       await db.close();
+      await scratchParent.delete(recursive: true);
     });
 
     test("validates the project before plugin and creation side effects", () async {
@@ -144,6 +159,8 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: scratchRepository,
+        projectCatalogIdentityCalculator: calculator,
       );
 
       final creation = localService.createSession(
@@ -277,6 +294,8 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: scratchRepository,
+        projectCatalogIdentityCalculator: calculator,
       );
 
       final creation = localService.createSession(
@@ -394,6 +413,8 @@ void main() {
         newSessionDefaultsRepository: gatedDefaultsRepository,
         sessionMutationDispatcher: mutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: scratchRepository,
+        projectCatalogIdentityCalculator: calculator,
       );
       var creationCompleted = false;
       final creation = localService.createSession(
@@ -438,6 +459,8 @@ void main() {
         newSessionDefaultsRepository: _ThrowingNewSessionDefaultsRepository(),
         sessionMutationDispatcher: mutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: scratchRepository,
+        projectCatalogIdentityCalculator: calculator,
       );
       late Session created;
 
@@ -651,6 +674,42 @@ void main() {
       expect(stored?.worktreePath, isNull);
       expect(stored?.baseCommit, "fallback-head");
       expect(worktreeService.resolveCalls, 1);
+    });
+
+    test("runs a scratch session in a new dated folder and ignores a dedicated-worktree request", () async {
+      final created = await withClock(
+        Clock.fixed(DateTime(2026, 3, 7, 23, 30)),
+        () => service.createSession(
+          request: CreateSessionRequest(
+            projectId: scratchRoot,
+            pluginId: "fake",
+            dedicatedWorktree: true,
+            parts: const [PromptPart.text(text: "Build it")],
+            variant: null,
+            agent: null,
+            model: null,
+            command: null,
+          ),
+        ),
+      );
+
+      final folders = Directory(scratchRoot).listSync();
+      expect(folders, hasLength(1));
+      final folder = folders.single;
+      expect(folder, isA<Directory>());
+      expect(p.dirname(folder.path), scratchRoot);
+      expect(p.basename(folder.path), startsWith("2026-03-07-"));
+      expect(plugin.lastCreateDirectory, folder.path);
+      expect(plugin.lastCreateParts, [const PluginPromptPart.text(text: "Build it")]);
+      expect(worktreeService.prepareCalls, isZero);
+      expect(worktreeService.resolveCalls, isZero);
+      final stored = await db.sessionDao.getSession(sessionId: created.id);
+      expect(stored?.projectId, scratchRoot);
+      expect(stored?.directory, folder.path);
+      expect(stored?.isDedicated, isFalse);
+      expect(stored?.worktreePath, isNull);
+      expect(stored?.branchName, isNull);
+      expect(stored?.baseCommit, isNull);
     });
 
     test("allocates around a cross-plugin backend-id collision without changing the retained binding", () async {

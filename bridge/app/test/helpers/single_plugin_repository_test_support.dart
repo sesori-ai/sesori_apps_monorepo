@@ -1,3 +1,4 @@
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/catalog_hydrations_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
@@ -13,6 +14,7 @@ import "package:sesori_bridge/src/repositories/project_catalog_identity_calculat
 import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/repositories/provider_repository.dart";
 import "package:sesori_bridge/src/repositories/question_repository.dart";
+import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
@@ -53,7 +55,7 @@ ProjectRepository singlePluginProjectRepository({
     unseenCalculator: unseenCalculator,
     filesystemApi: filesystemApi,
     gitCliApi: gitCliApi,
-    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+    projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
   );
 }
 
@@ -66,7 +68,7 @@ ProjectActivityRepository singlePluginProjectActivityRepository({
     runtime: createTestPluginRuntime(plugins: [plugin]),
     projectsDao: projectsDao,
     sessionDao: sessionDao,
-    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+    projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
     aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }
@@ -115,7 +117,7 @@ SessionRepository singlePluginSessionRepository({
     projectsDao: projectsDao,
     pullRequestDao: pullRequestDao,
     unseenCalculator: unseenCalculator,
-    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+    projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
     aggregateSourceDeadline: const Duration(seconds: 5),
   );
 }
@@ -148,6 +150,21 @@ CatalogImportRepository singlePluginCatalogImportRepository({
     projectsDao: projectsDao,
     sessionDao: sessionDao,
     catalogHydrationsDao: catalogHydrationsDao,
-    projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+    projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
+  );
+}
+
+/// A real [ScratchRepository] over [sessionDao] whose scratch root is
+/// [scratchRoot], which tests that never create a scratch session can leave
+/// as a path that does not exist.
+ScratchRepository testScratchRepository({required SessionDao sessionDao, required String scratchRoot}) {
+  return ScratchRepository(
+    filesystemApi: const FilesystemApi(),
+    sessionDao: sessionDao,
+    projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+      scratchRoot: scratchRoot,
+      pathContext: p.context,
+    ),
+    scratchRoot: scratchRoot,
   );
 }

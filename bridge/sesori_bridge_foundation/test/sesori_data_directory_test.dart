@@ -1,5 +1,6 @@
 import "dart:io" show Platform;
 
+import "package:path/path.dart" as path;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
@@ -51,6 +52,23 @@ void main() {
 
     test("is stable across calls (single resolution)", () {
       expect(sesoriDataDirectory(), equals(sesoriDataDirectory()));
+    });
+  });
+
+  group("Sesori home folders", () {
+    final home =
+        resolveUserHomeDirectory(environment: Platform.environment) ?? (throw StateError("the test needs a home"));
+
+    test("puts worktrees in <home>/.sesori/worktrees", () {
+      expect(sesoriWorktreesDirectory(), path.join(home, ".sesori", "worktrees"));
+    });
+
+    test("puts project-less session folders in <home>/.sesori/scratch", () {
+      expect(sesoriScratchDirectory(), path.join(home, ".sesori", "scratch"));
+    });
+
+    test("keeps both roots under one .sesori folder", () {
+      expect(path.dirname(sesoriWorktreesDirectory()), path.dirname(sesoriScratchDirectory()));
     });
   });
 

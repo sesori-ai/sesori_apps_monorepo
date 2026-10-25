@@ -193,7 +193,10 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
       sessionDao: database.sessionDao,
       unseenCalculator: unseenCalculator,
       filesystemApi: filesystemApi,
-      projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+        scratchRoot: "/scratch",
+        pathContext: p.context,
+      ),
     );
     final results = <Map<String, Object?>>[];
     results.add(
@@ -433,7 +436,10 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
       projectsDao: database.projectsDao,
       pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
-      projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+      projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+        scratchRoot: "/scratch",
+        pathContext: p.context,
+      ),
       aggregateSourceDeadline: const Duration(seconds: 5),
     );
   }
