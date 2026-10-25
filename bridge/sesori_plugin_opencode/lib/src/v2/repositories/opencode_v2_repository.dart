@@ -221,12 +221,11 @@ class OpenCodeV2Repository({
       _api.listSessions(directory: null, parentId: null),
       _api.listProjects(),
     );
+    final projectIds = _listedProjectIds(projects: projects);
     return [
       for (final session in sessions)
-        _modelMapper.mapSessionMetadata(
-          session: session,
-          projectId: _projectId(session: session, projects: projects),
-        ),
+        if (projectIds[session.projectID] case final projectId?)
+          _modelMapper.mapSessionMetadata(session: session, projectId: projectId),
     ];
   }
 
@@ -235,12 +234,11 @@ class OpenCodeV2Repository({
       _api.listSessions(directory: null, parentId: sessionId),
       _api.listProjects(),
     );
+    final projectIds = _listedProjectIds(projects: projects);
     return [
       for (final session in sessions)
-        _modelMapper.mapSession(
-          session: session,
-          projectId: _projectId(session: session, projects: projects),
-        ),
+        if (projectIds[session.projectID] case final projectId?)
+          _modelMapper.mapSession(session: session, projectId: projectId),
     ];
   }
 
@@ -511,6 +509,13 @@ class OpenCodeV2Repository({
 
   String _projectId({required SessionInfo session, required List<Project> projects}) =>
       projects.firstWhere((project) => project.id == session.projectID).canonical;
+
+  /// Native project ID to canonical directory. OpenCode omits archived projects
+  /// from this list but still lists their sessions; list reads skip those
+  /// sessions, as their projects are hidden too.
+  Map<String, String> _listedProjectIds({required List<Project> projects}) => {
+    for (final project in projects) project.id: project.canonical,
+  };
 
   PluginProjectActivity? _activity({required List<SessionInfo> sessions}) {
     if (sessions.isEmpty) return null;

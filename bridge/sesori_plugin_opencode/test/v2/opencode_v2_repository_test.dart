@@ -121,6 +121,17 @@ void main() {
     expect(api.agentDirectories, isEmpty);
   });
 
+  test("skips sessions of archived projects that OpenCode omits from the project list", () async {
+    api.sessions = [
+      api.initialSession,
+      api.initialSession.copyWith(id: "archived", parentID: "session-fixture", projectID: "archived-project"),
+    ];
+    final metadata = await repository.getSessionMetadata();
+    expect(metadata.map((session) => session.id), ["session-fixture"]);
+    final children = await repository.getChildSessions(sessionId: "session-fixture");
+    expect(children, isEmpty);
+  });
+
   test("uses the session location for display names and preserves native transcript identities", () async {
     api.currentSession = api.initialSession.copyWith(
       agent: "build",
