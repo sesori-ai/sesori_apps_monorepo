@@ -28,7 +28,19 @@ SYSTEM_PARENT_PATHS = {
     Path("."), Path("opt"), Path("usr"), Path("usr/bin"), Path("usr/share"),
     Path("usr/share/applications"), Path("usr/share/icons"), Path("usr/share/icons/hicolor"),
     Path("usr/share/icons/hicolor/512x512"), Path("usr/share/icons/hicolor/512x512/apps"),
+    Path("etc"), Path("etc/apt"), Path("etc/apt/keyrings"), Path("etc/apt/sources.list.d"),
+    Path("etc/pki"), Path("etc/pki/rpm-gpg"), Path("etc/yum.repos.d"),
 }
+# Installing a package registers its channel's signed repository, so the system updater delivers new versions.
+# These are the website's manual-setup paths: an earlier manual setup is replaced, never duplicated.
+LINUX_REPOSITORY = "https://storage.googleapis.com/sesori-ai-linux-packages"
+REPOSITORY_KEY_SOURCE = ROOT / "client/desktop/linux/packaging/sesori-linux-public.asc"
+APT_KEY = Path("etc/apt/keyrings/sesori.asc")
+APT_SOURCE = Path("etc/apt/sources.list.d/sesori.list")
+RPM_KEY = Path("etc/pki/rpm-gpg/RPM-GPG-KEY-sesori")
+RPM_REPOSITORY = Path("etc/yum.repos.d/sesori.repo")
+REPOSITORY_PATHS = {"deb": {APT_KEY, APT_SOURCE}, "rpm": {RPM_KEY, RPM_REPOSITORY}}
+CHANNELS = ("stable", "internal")
 DYNAMIC_LOAD_PATTERN = re.compile(rb"\b(?:dlopen|DynamicLibrary\.open)\s*\(")
 DESKTOP_ENTRY_TEXT = ("[Desktop Entry]\nType=Application\nName=Sesori\nComment=AI coding cockpit\n"
                       "Exec={exec}\nIcon=sesori-desktop\nTerminal=false\nCategories=Development;Utility;\n")
@@ -94,6 +106,26 @@ def verify_bundle(*, bundle: Path, arch: str) -> dict:
     return {"identity": identity, "binaries": inventory(root=bundle, target_os="linux", arch=arch)}
 
 
+def compiled_channel(*, bundle: Path) -> str:
+    defines = dict(line.split("=", 1) for line in
+                   (bundle.parent / "dart-defines.env").read_text(encoding="utf-8").splitlines())
+    channel = defines.get("SESORI_DESKTOP_RELEASE_CHANNEL")
+    if channel not in CHANNELS:
+        raise ValueError(f"Bundle has no compiled release channel: {channel}")
+    return channel
+
+
+def repository_files(*, package_format: str, channel: str) -> dict[Path, str]:
+    key = REPOSITORY_KEY_SOURCE.read_text(encoding="utf-8")
+    if package_format == "deb":
+        return {APT_KEY: key, APT_SOURCE: f"deb [signed-by=/{APT_KEY}] {LINUX_REPOSITORY}/apt {channel} main\n"}
+    name = "Sesori internal previews" if channel == "internal" else "Sesori"
+    return {RPM_KEY: key, RPM_REPOSITORY: (
+        f"[sesori-{channel}]\nname={name}\nbaseurl={LINUX_REPOSITORY}/rpm/{channel}/$basearch\n"
+        # An unreachable Sesori repository must never block the system's other updates.
+        f"enabled=1\ngpgcheck=1\nrepo_gpgcheck=1\ngpgkey=file:///{RPM_KEY}\nskip_if_unavailable=1\n")}
+
+
 def linux_plugin_packages() -> tuple[str, ...]:
     contents = LINUX_PLUGINS.read_text(encoding="utf-8")
     match = re.search(r"list\(APPEND FLUTTER_PLUGIN_LIST\s+(.*?)\)", contents, re.DOTALL)
@@ -142,9 +174,10 @@ def payload_inventory(*, root: Path) -> list[dict]:
     return rows
 
 
-def verify_owned_paths(*, paths: list[str]) -> dict:
+def verify_owned_paths(*, paths: list[str], package_format: str) -> dict:
     owned = {PurePosixPath(path.strip()) for path in paths if path.strip()}
-    required = {PurePosixPath("/" + path.as_posix()) for path in SYSTEM_INTEGRATION_PATHS}
+    required = {PurePosixPath("/" + path.as_posix())
+                for path in SYSTEM_INTEGRATION_PATHS | REPOSITORY_PATHS[package_format]}
     parents = {PurePosixPath("/" if path == Path(".") else "/" + path.as_posix()) for path in SYSTEM_PARENT_PATHS}
     install_root = PurePosixPath("/" + INSTALL_ROOT.as_posix())
     unexpected = sorted(str(path) for path in owned if path not in required | parents
@@ -155,7 +188,7 @@ def verify_owned_paths(*, paths: list[str]) -> dict:
     return {"ownedPaths": len(owned), "boundedSystemOwnership": True}
 
 
-def assemble_payload(*, bundle: Path, root: Path) -> None:
+def assemble_payload(*, bundle: Path, root: Path, package_format: str) -> None:
     destination = root / INSTALL_ROOT
     shutil.copytree(bundle, destination, symlinks=True)
     launcher = root / LAUNCHER
@@ -168,6 +201,10 @@ def assemble_payload(*, bundle: Path, root: Path) -> None:
     icon = root / ICON
     icon.parent.mkdir(parents=True)
     shutil.copy2(ICON_SOURCE, icon)
+    for path, contents in repository_files(package_format=package_format, channel=compiled_channel(bundle=bundle)).items():
+        (root / path).parent.mkdir(parents=True, exist_ok=True)
+        (root / path).write_text(contents, encoding="utf-8")
+        (root / path).chmod(0o644)
 
 
 def assemble_appdir(*, bundle: Path, root: Path) -> None:
@@ -251,7 +288,9 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
         + "\n%description\nSesori desktop cockpit\n\n"
         "%prep\n\n%build\n\n%install\nmkdir -p %{buildroot}\ncp -a %{_sourcedir}/payload/. %{buildroot}/\n\n"
         "%files\n/opt/sesori-desktop\n/usr/bin/sesori-desktop\n"
-        "/usr/share/applications/sesori-desktop.desktop\n/usr/share/icons/hicolor/512x512/apps/sesori-desktop.png\n",
+        "/usr/share/applications/sesori-desktop.desktop\n/usr/share/icons/hicolor/512x512/apps/sesori-desktop.png\n"
+        # A user who edits or disables the repository keeps that choice; the key always follows releases.
+        + f"/{RPM_KEY}\n%config(noreplace) /{RPM_REPOSITORY}\n",
         encoding="utf-8",
     )
     command = ["rpmbuild", "-bb", "--define", f"_topdir {top}", str(spec)]
@@ -300,11 +339,11 @@ def build_appimage(*, root: Path, work: Path, output: Path, arch: str, identity:
                                          cwd=work).splitlines()}
 
 
-def verify_installed(*, bundle: Path, installed_root: Path, arch: str) -> dict:
+def verify_installed(*, bundle: Path, installed_root: Path, arch: str, package_format: str) -> dict:
     evidence = verify_bundle(bundle=bundle, arch=arch)
     with tempfile.TemporaryDirectory(prefix="sesori-linux-expected-") as temporary:
         expected_root = Path(temporary)
-        assemble_payload(bundle=bundle, root=expected_root)
+        assemble_payload(bundle=bundle, root=expected_root, package_format=package_format)
         expected = payload_inventory(root=expected_root)
     actual = []
     for row in expected:
@@ -350,7 +389,7 @@ def package(*, bundle: Path, output: Path, arch: str, package_format: str, packa
         if package_format == "appimage":
             assemble_appdir(bundle=bundle, root=root)
         else:
-            assemble_payload(bundle=bundle, root=root)
+            assemble_payload(bundle=bundle, root=root, package_format=package_format)
         payload = payload_inventory(root=root)
         builder = {"deb": build_deb, "rpm": build_rpm, "appimage": build_appimage}[package_format]
         artifact, package_evidence = builder(root=root, work=work, output=output, arch=arch,
@@ -383,7 +422,9 @@ def main() -> None:
     parser.add_argument("--installed-root", type=Path, default=Path("/"))
     args = parser.parse_args()
     if args.operation == "verify-owned-paths":
-        print(json.dumps(verify_owned_paths(paths=sys.stdin.read().splitlines()), indent=2))
+        if args.format not in REPOSITORY_PATHS:
+            parser.error("verify-owned-paths requires --format deb or rpm")
+        print(json.dumps(verify_owned_paths(paths=sys.stdin.read().splitlines(), package_format=args.format), indent=2))
         return
     if args.bundle is None or args.arch is None:
         parser.error(f"{args.operation} requires --bundle and --arch")
@@ -391,8 +432,10 @@ def main() -> None:
         print(json.dumps(verify_bundle(bundle=args.bundle.resolve(), arch=args.arch), indent=2))
         return
     if args.operation == "verify-installed":
+        if args.format not in REPOSITORY_PATHS:
+            parser.error("verify-installed requires --format deb or rpm")
         print(json.dumps(verify_installed(bundle=args.bundle.resolve(), installed_root=args.installed_root.resolve(),
-                                          arch=args.arch), indent=2))
+                                          arch=args.arch, package_format=args.format), indent=2))
         return
     if args.format is None or args.output is None or args.package_config is None:
         parser.error("package requires --format, --output and --package-config")

@@ -28,7 +28,7 @@
 | 10.b/13 | Desktop Activity and rail removed | Done | #2048 |
 | 11.i/13 | Desktop composer home; palette on the shared list; Recent sessions removed | Done | #2052 |
 | 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Done | #2054 |
-| 11.iii/13 | Session list view mode removed | Done | `sesori/app-simplification-step-11-iii` |
+| 11.iii/13 | Session list view mode removed | Done | #2058 |
 | 11.iv/13 | Project-sessions route and list-claim stack removed | Done | `sesori/app-simplification-step-11-iv` |
 | 12/13 | Regression documents reconciled | Not started | — |
 | 13/13 | L3 matrix run; plan retired | Not started | — |
