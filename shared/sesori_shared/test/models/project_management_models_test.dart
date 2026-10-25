@@ -56,6 +56,44 @@ void main() {
 
       expect(summary.directoryMissing, isFalse);
     });
+
+    test("reads an older bridge's omitted kind as a folder", () {
+      final summary = ProjectSummary.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "path": "/projects/a",
+        "time": {"created": 1, "updated": 2},
+      });
+
+      expect(summary.kind, ProjectKind.folder);
+    });
+
+    test("reads an unknown kind from a newer bridge as a folder", () {
+      final summary = ProjectSummary.fromJson({
+        "id": "/projects/a",
+        "name": "A",
+        "path": "/projects/a",
+        "time": {"created": 1, "updated": 2},
+        "kind": "workspace",
+      });
+
+      expect(summary.kind, ProjectKind.folder);
+    });
+
+    test("JSON roundtrip carries the scratch kind", () {
+      const summary = ProjectSummary(
+        id: "/home/alex/.sesori/scratch",
+        name: "No project",
+        path: "/home/alex/.sesori/scratch",
+        time: ProjectTime(created: 1, updated: 2),
+        kind: ProjectKind.scratch,
+      );
+
+      final json = summary.toJson();
+
+      expect(json, containsPair("kind", "scratch"));
+      expect(ProjectSummary.fromJson(json), summary);
+    });
   });
 
   group("Project", () {

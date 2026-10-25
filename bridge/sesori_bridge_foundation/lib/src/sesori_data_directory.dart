@@ -39,15 +39,26 @@ String sesoriDataDirectory() {
   return "$homeDir/.local/share/sesori";
 }
 
-/// The root that holds every bridge-created git worktree: `<home>/.sesori-worktrees`.
+/// The root that holds every bridge-created git worktree: `<home>/.sesori/worktrees`.
 ///
 /// Outside every project, so editors opening a project do not index its
 /// worktrees as nested projects, and under a home dot-folder, so history
 /// import hides sessions run there instead of listing them as projects.
 /// Shared by every bridge data directory, like the attachment root. Throws
 /// [StateError] when the home environment variable is unset.
-String sesoriWorktreesDirectory() =>
-    path.join(_requireUserHome(environment: Platform.environment), ".sesori-worktrees");
+String sesoriWorktreesDirectory() => path.join(_sesoriHomeDirectory(), "worktrees");
+
+/// The root that holds one bridge-created folder per project-less session:
+/// `<home>/.sesori/scratch`.
+///
+/// A hidden home folder, so cloud-sync tools and editors leave the sessions'
+/// files alone. Shared by every bridge data directory, like the worktree root.
+/// Throws [StateError] when the home environment variable is unset.
+String sesoriScratchDirectory() => path.join(_sesoriHomeDirectory(), "scratch");
+
+/// `<home>/.sesori`, the one home folder that holds Sesori's worktrees and
+/// scratch folders.
+String _sesoriHomeDirectory() => path.join(_requireUserHome(environment: Platform.environment), ".sesori");
 
 /// Resolves the persistent attachment root shared by every bridge data directory
 /// for the current OS user.

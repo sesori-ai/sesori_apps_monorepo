@@ -25,6 +25,13 @@ _ProjectSummary _$ProjectSummaryFromJson(Map json) => _ProjectSummary(
       : ProjectTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
   hasUnseenChanges: json['hasUnseenChanges'] as bool? ?? false,
   directoryMissing: json['directoryMissing'] as bool? ?? false,
+  kind:
+      $enumDecodeNullable(
+        _$ProjectKindEnumMap,
+        json['kind'],
+        unknownValue: ProjectKind.folder,
+      ) ??
+      ProjectKind.folder,
 );
 
 Map<String, dynamic> _$ProjectSummaryToJson(_ProjectSummary instance) =>
@@ -35,7 +42,13 @@ Map<String, dynamic> _$ProjectSummaryToJson(_ProjectSummary instance) =>
       'time': ?instance.time?.toJson(),
       'hasUnseenChanges': instance.hasUnseenChanges,
       'directoryMissing': instance.directoryMissing,
+      'kind': _$ProjectKindEnumMap[instance.kind]!,
     };
+
+const _$ProjectKindEnumMap = {
+  ProjectKind.folder: 'folder',
+  ProjectKind.scratch: 'scratch',
+};
 
 _Project _$ProjectFromJson(Map json) => _Project(
   id: json['id'] as String,

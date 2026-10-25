@@ -6,6 +6,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/models/session_operation.dart";
 import "../repositories/new_session_defaults_repository.dart";
+import "../repositories/project_catalog_identity_calculator.dart";
+import "../repositories/scratch_repository.dart";
 import "../repositories/session_metadata_repository.dart";
 import "../repositories/session_repository.dart";
 import "session_mutation_dispatcher.dart";
@@ -21,6 +23,8 @@ class SessionCreationService({
   required final NewSessionDefaultsRepository _newSessionDefaultsRepository,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final SessionOptionsService _sessionOptionsService,
+  required final ScratchRepository _scratchRepository,
+  required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
 }) {
   final PendingOperations _lateMetadataWork = PendingOperations();
   bool _acceptingLateMetadata = true;
@@ -66,12 +70,24 @@ class SessionCreationService({
       pluginId: request.pluginId,
       operation: SessionOperation.createSession,
     );
-    final worktreeResult = await _prepareWorktree(request: request);
-    final worktreeState = await _resolveWorktreeState(
-      projectId: request.projectId,
-      projectDirectory: projectDirectory,
-      worktreeResult: worktreeResult,
-    );
+    final WorktreeResult? worktreeResult;
+    final _SessionCreationWorktreeState worktreeState;
+    if (_projectCatalogIdentityCalculator.isScratchRoot(path: request.projectId)) {
+      // A project-less session runs in its own new folder. There is no
+      // repository to branch from, so a dedicated-worktree request is ignored.
+      worktreeResult = null;
+      worktreeState = _InPlaceSessionCreationWorktreeState(
+        directory: await _scratchRepository.createSessionDirectory(),
+        baseCommit: null,
+      );
+    } else {
+      worktreeResult = await _prepareWorktree(request: request);
+      worktreeState = await _resolveWorktreeState(
+        projectId: request.projectId,
+        projectDirectory: projectDirectory,
+        worktreeResult: worktreeResult,
+      );
+    }
     final created = await _sessionRepository.createSession(
       pluginId: request.pluginId,
       projectId: request.projectId,

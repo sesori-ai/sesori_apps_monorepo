@@ -3,6 +3,7 @@ import "dart:async";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
+import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
 import "package:sesori_bridge/src/services/session_cleanup_result.dart";
@@ -179,6 +180,7 @@ void main() {
         sessionId: "root",
         deleteWorktree: true,
         force: false,
+        deleteSessionFolder: false,
       );
 
       expect(result, isA<CleanupRejected>());
@@ -287,6 +289,7 @@ class _Fixture() {
       sessionLifecycleService: lifecycle,
       sessionMutationDispatcher: mutations,
       chatHistoryService: chatHistory.service,
+      scratchRepository: _UnusedScratchRepository(),
     );
   }
 
@@ -295,6 +298,7 @@ class _Fixture() {
       sessionId: "root",
       deleteWorktree: false,
       force: false,
+      deleteSessionFolder: false,
     );
     if (result is CleanupRejected) throw StateError("unexpected cleanup rejection");
   }
@@ -556,4 +560,12 @@ class _MissingFilesystemRepository() implements FilesystemRepository {
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _UnusedScratchRepository() implements ScratchRepository {
+  @override
+  Future<String> createSessionDirectory() => throw UnimplementedError();
+
+  @override
+  Future<void> deleteSessionDirectoryIfUnused({required String path}) => throw UnimplementedError();
 }

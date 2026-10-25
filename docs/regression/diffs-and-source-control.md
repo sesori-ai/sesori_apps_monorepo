@@ -113,7 +113,10 @@ and in-place sessions, and default versus explicit base branches.
 - Live client end-to-end diff coverage remains phone-only. Desktop diff routing
   and shared rendering are automated but still need a live desktop release exercise.
 - Non-git and commitless sessions have no comparison baseline and intentionally
-  return an empty diff rather than a source-control result.
+  return an empty diff rather than a source-control result. A scratch session's
+  own folder under `~/.sesori/scratch` is a plain folder that the bridge never
+  runs `git init` in, so it is always such a session and its Changes page has
+  nothing to show.
 - A creation-time HEAD-capture failure is currently persisted as no baseline and
   later returns an empty diff, indistinguishable from a commitless session.
 
