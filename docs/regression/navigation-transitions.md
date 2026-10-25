@@ -54,7 +54,7 @@ desktop main-pane transitions distinct.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
+| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; the notification-open and computer-switch dispatcher tests prove a notification opens its session over the home (switching computers first) and a switch replaces the stack with the home; session deletion navigation coverage proves deleting the open session returns home; desktop router coverage proves the project page's exits; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
 | L3 Release | Client end to end on iOS and Android: exercise a standard push/pop, compact session navigation, a settings child, and the settings modal. |
 | L4 Extended | Client end to end on macOS and with reduced motion enabled: repeat the transition matrix and exercise split-view pane fading where the viewport supports it. |
 | L5 Full | No additional coverage. |

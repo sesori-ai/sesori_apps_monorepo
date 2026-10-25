@@ -34,8 +34,8 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
   events, or older installed binaries.
 - Screens use the pinned route mapping with vendor automatic reporting disabled. Events fire at authoritative
   outcomes, not taps, capture occurrence time at their seam, and deferred candidates emit at most once, dropping on
-  disable, logout, or account switch. Results state SDK acceptance, not delivery. The home (`/sessions`) on both
-  apps, the desktop project page and Archived all report the `sessions` screen.
+  disable, logout, or account switch. Results state SDK acceptance, not delivery. On the phone, the home (`/sessions`)
+  and Archived both report the `sessions` screen. The desktop reports no screens.
 - Switching computers reports `computer_switched` with a pinned `source` (`menu`, `offline_screen`, `settings`,
   `alert`, `notification`, `computers_page`) and `target_online`, never a computer name or identifier. It fires when
   the switch is made, before the new connection's outcome is known.

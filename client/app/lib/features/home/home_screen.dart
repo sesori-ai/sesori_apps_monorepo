@@ -32,7 +32,8 @@ class const HomeScreen({
     ),
     actionDispatcher: const SessionListActionDispatcher(
       deleteConfirmation: SessionDeleteConfirmation.sheet,
-      onSessionArchived: null,
+      // Beside the list from 700 pt, an archived open session leaves the pane.
+      onSessionArchived: closeDeletedSessionRoute,
       onSessionDeleted: closeDeletedSessionRoute,
       onSessionMarkedUnread: null,
     ),
