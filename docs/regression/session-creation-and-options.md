@@ -10,7 +10,7 @@ variant, and worktree mode, and creating the session with its first input.
 
 - The desktop sidebar's New session button and Cmd+N (Ctrl+N on Windows/Linux) open the typed setup route.
   They use the open project, else the sidebar's filtered project, else the most recently active one; with no
-  project yet they open the New project dialog, and the project it adds opens in setup.
+  project yet they open the Add project dialog, and the project it adds opens in setup.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
 - The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
   project: the filtered project, else the project of the newest session. With no default it opens a "New
