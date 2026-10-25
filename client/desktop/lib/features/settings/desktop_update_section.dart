@@ -22,7 +22,8 @@ class const DesktopUpdateSection({super.key, required final DesktopUpdateDestina
       ),
       DesktopPackageManagerUpdate() => (
         "Package-managed updates",
-        "Use your distribution's signed package repository when available. Quit Sesori before upgrading.",
+        "Your system's software updater installs new versions from Sesori's signed repository. "
+            "Quit Sesori before upgrading.",
         null,
       ),
       DesktopDevelopmentUpdate() => (

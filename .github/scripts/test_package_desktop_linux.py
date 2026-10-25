@@ -41,6 +41,8 @@ class LinuxPackagingTests(unittest.TestCase):
             "os": "linux",
             "architecture": "x64",
         }), encoding="utf-8")
+        (self.root / "dart-defines.env").write_text(
+            'SESORI_DESKTOP_BUNDLE_IDENTITY={}\nSESORI_DESKTOP_RELEASE_CHANNEL=internal\n', encoding="utf-8")
         self.plugin_root = self.root / "plugins"
         packages = []
         for name in packaging.linux_plugin_packages():
@@ -112,7 +114,7 @@ class LinuxPackagingTests(unittest.TestCase):
 
     def test_payload_preserves_complete_bundle_and_owns_only_bounded_system_paths(self):
         package_root = self.root / "package root"
-        packaging.assemble_payload(bundle=self.bundle, root=package_root)
+        packaging.assemble_payload(bundle=self.bundle, root=package_root, package_format="deb")
         installed = package_root / packaging.INSTALL_ROOT
         self.assertEqual(packaging.payload_inventory(root=installed), packaging.payload_inventory(root=self.bundle))
         launcher = package_root / packaging.LAUNCHER
@@ -123,11 +125,41 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertTrue((package_root / packaging.ICON).is_file())
         package_paths = ["/", "/opt", "/opt/sesori-desktop", "/usr", "/usr/bin", "/usr/share",
                          "/usr/share/applications", "/usr/share/icons", "/usr/share/icons/hicolor",
-                         "/usr/share/icons/hicolor/512x512", "/usr/share/icons/hicolor/512x512/apps"]
+                         "/usr/share/icons/hicolor/512x512", "/usr/share/icons/hicolor/512x512/apps",
+                         "/etc", "/etc/apt", "/etc/apt/keyrings", "/etc/apt/sources.list.d"]
         package_paths.extend("/" + item["path"] for item in packaging.payload_inventory(root=package_root))
-        self.assertTrue(packaging.verify_owned_paths(paths=package_paths)["boundedSystemOwnership"])
+        self.assertTrue(packaging.verify_owned_paths(paths=package_paths, package_format="deb")["boundedSystemOwnership"])
         with self.assertRaisesRegex(ValueError, "unexpected=.*usr/bin/sesori-bridge"):
-            packaging.verify_owned_paths(paths=package_paths + ["/usr/bin/sesori-bridge"])
+            packaging.verify_owned_paths(paths=package_paths + ["/usr/bin/sesori-bridge"], package_format="deb")
+        with self.assertRaisesRegex(ValueError, "missing=.*sesori.repo"):
+            packaging.verify_owned_paths(paths=package_paths, package_format="rpm")
+
+    def test_packages_register_their_compiled_channel_repository(self):
+        key = packaging.REPOSITORY_KEY_SOURCE.read_text()
+        self.assertIn("BEGIN PGP PUBLIC KEY BLOCK", key)
+        for channel in packaging.CHANNELS:
+            with self.subTest(channel=channel):
+                (self.root / "dart-defines.env").write_text(f"SESORI_DESKTOP_RELEASE_CHANNEL={channel}\n")
+                deb_root, rpm_root = self.root / f"deb {channel}", self.root / f"rpm {channel}"
+                packaging.assemble_payload(bundle=self.bundle, root=deb_root, package_format="deb")
+                packaging.assemble_payload(bundle=self.bundle, root=rpm_root, package_format="rpm")
+                # Byte-identical to the website's manual setup line, so dpkg replaces it in place.
+                self.assertEqual((deb_root / packaging.APT_SOURCE).read_text(),
+                                 "deb [signed-by=/etc/apt/keyrings/sesori.asc] "
+                                 f"https://storage.googleapis.com/sesori-ai-linux-packages/apt {channel} main\n")
+                self.assertEqual((deb_root / packaging.APT_KEY).read_text(), key)
+                self.assertFalse((deb_root / "etc/yum.repos.d").exists())
+                repository = (rpm_root / packaging.RPM_REPOSITORY).read_text()
+                self.assertTrue(repository.startswith(f"[sesori-{channel}]\n"))
+                self.assertIn(f"baseurl=https://storage.googleapis.com/sesori-ai-linux-packages/rpm/{channel}/$basearch\n",
+                              repository)
+                self.assertIn("enabled=1\ngpgcheck=1\nrepo_gpgcheck=1\n"
+                              "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\nskip_if_unavailable=1\n", repository)
+                self.assertEqual((rpm_root / packaging.RPM_KEY).read_text(), key)
+                self.assertEqual((rpm_root / packaging.RPM_REPOSITORY).stat().st_mode & 0o777, 0o644)
+        (self.root / "dart-defines.env").write_text("SESORI_DESKTOP_RELEASE_CHANNEL=beta\n")
+        with self.assertRaisesRegex(ValueError, "compiled release channel"):
+            packaging.assemble_payload(bundle=self.bundle, root=self.root / "unknown", package_format="deb")
 
     def test_actual_plugin_sources_are_checked_for_explicit_dynamic_loading(self):
         audit = packaging.audit_dynamic_loading(package_config=self.package_config)
@@ -143,7 +175,7 @@ class LinuxPackagingTests(unittest.TestCase):
 
     def test_dpkg_shlibdeps_generates_dependencies_from_every_elf(self):
         package_root = self.root / "deb root"
-        packaging.assemble_payload(bundle=self.bundle, root=package_root)
+        packaging.assemble_payload(bundle=self.bundle, root=package_root, package_format="deb")
         work = self.root / "deb work"
         work.mkdir()
         with mock.patch.object(packaging, "run", return_value="shlibs:Depends=libc6 (>= 2.34), libgtk-3-0\n") as command:
@@ -187,7 +219,7 @@ class LinuxPackagingTests(unittest.TestCase):
 
     def test_deb_metadata_has_no_maintainer_scripts_and_uses_staged_version(self):
         package_root = self.root / "deb root"
-        packaging.assemble_payload(bundle=self.bundle, root=package_root)
+        packaging.assemble_payload(bundle=self.bundle, root=package_root, package_format="deb")
         work, output = self.root / "deb work", self.root / "deb output"
         work.mkdir()
         output.mkdir()
@@ -217,7 +249,7 @@ class LinuxPackagingTests(unittest.TestCase):
 
     def test_rpm_uses_auto_elf_requirements_without_scriptlets(self):
         package_root = self.root / "rpm root"
-        packaging.assemble_payload(bundle=self.bundle, root=package_root)
+        packaging.assemble_payload(bundle=self.bundle, root=package_root, package_format="rpm")
         work, output = self.root / "rpm work", self.root / "rpm output"
         work.mkdir()
         output.mkdir()
@@ -249,6 +281,7 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertIn("%global debug_package %{nil}", spec)
         self.assertNotIn("__os_install_post", spec)
         self.assertNotRegex(spec, r"(?m)^%(pre|post|preun|postun)\b")
+        self.assertIn("/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\n%config(noreplace) /etc/yum.repos.d/sesori.repo\n", spec)
         self.assertEqual(evidence["dependencies"], ["libc.so.6()(64bit)"])
 
     def test_appimage_appends_pinned_runtime_and_verifies_embedded_appdir(self):
