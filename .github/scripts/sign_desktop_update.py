@@ -17,7 +17,10 @@ ED25519_SPKI_PREFIX = bytes.fromhex("302a300506032b6570032100")
 
 
 def _openssl(*args: str) -> bytes:
-    return subprocess.run(["openssl", *args], check=True, capture_output=True).stdout
+    result = subprocess.run(["openssl", *args], capture_output=True)
+    if result.returncode != 0:
+        raise RuntimeError(f"openssl {args[0]} failed: {result.stderr.decode(errors='replace').strip()}")
+    return result.stdout
 
 
 def public_key(*, key: Path) -> str:
@@ -45,7 +48,11 @@ def verify(*, public_key_b64: str, payload: Path, signature_b64: str) -> bool:
              "-in", str(payload), "-sigfile", str(signature_file)],
             capture_output=True,
         )
-    return result.returncode == 0
+    if result.returncode == 0:
+        return True
+    if b"Signature Verification Failure" in result.stdout:
+        return False
+    raise RuntimeError(f"openssl could not check the update signature: {result.stderr.decode(errors='replace').strip()}")
 
 
 def main() -> int:

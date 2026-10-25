@@ -35,6 +35,9 @@ class SignDesktopUpdateTest(unittest.TestCase):
         self.payload.write_text('{"Assets":[{"Version":"9.9.9"}]}\n')
         self.assertFalse(signing.verify(public_key_b64=public_key, payload=self.payload, signature_b64=signature))
 
+        with self.assertRaisesRegex(RuntimeError, "could not check"):
+            signing.verify(public_key_b64=public_key, payload=self.root / "missing.json", signature_b64=signature)
+
     def test_refuses_a_key_that_is_not_ed25519(self):
         with self.assertRaisesRegex(ValueError, "not an Ed25519 key"):
             signing.sign(key=self._key("rsa.pem", "rsa"), payload=self.payload)
