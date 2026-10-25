@@ -1,4 +1,4 @@
-part of "../project_list_screen.dart";
+part of "bridge_onboarding.dart";
 
 // ===========================================================================
 // "Why is this needed?" info sheet

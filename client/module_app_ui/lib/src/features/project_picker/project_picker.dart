@@ -14,18 +14,25 @@ import "../project_list/widgets/project_tile.dart";
 
 typedef NewSessionProjectSelected = void Function({required String projectId, required String projectName});
 
-/// Chooses the project a new session starts in from the live list, searchable
-/// by name and path: a bottom sheet that rises with the keyboard on a phone,
-/// and a popover anchored to the trigger on wide layouts and under a pointer.
+/// Chooses a project from the live list, searchable by name and path: a
+/// bottom sheet that rises with the keyboard on a phone, and a popover anchored
+/// to the trigger on wide layouts and under a pointer.
 ///
-/// "Open another folder…" leads whatever the search, so it is there with one
-/// project, with none, and when nothing matches. It opens the folder browser
-/// and then selects the project that adds. A path shows only under a name
-/// another project shares.
+/// Choosing a new session's project, "Open another folder…" leads whatever the
+/// search, so it is there with one project, with none, and when nothing
+/// matches. It opens the folder browser and then selects the project that adds.
+/// Filtering a list instead ([onAllProjects] set), "All projects" leads. A path
+/// shows only under a name another project shares.
 class const ProjectPicker({
   super.key,
-  required final String selectedProjectId,
+
+  /// Null selects nothing, or "All projects" while filtering.
+  required final String? selectedProjectId,
   required final NewSessionProjectSelected onSelected,
+
+  /// Clears a list's filter. Set, the picker filters: "All projects" leads in
+  /// place of "Open another folder…".
+  required final VoidCallback? onAllProjects,
 
   /// Builds the trigger; the callback opens the picker.
   required final PregoPopoverTriggerBuilder triggerBuilder,
@@ -43,6 +50,7 @@ class const ProjectPicker({
       child: _ProjectPickerList(
         selectedProjectId: selectedProjectId,
         onSelected: onSelected,
+        onAllProjects: onAllProjects,
         // Runs once the picker's route has finished closing. The folder
         // browser opens over this widget's context, which outlives the picker.
         onOpenFolder: () => unawaited(
@@ -88,8 +96,9 @@ class const ProjectPicker({
 }
 
 class const _ProjectPickerList({
-  required final String selectedProjectId,
+  required final String? selectedProjectId,
   required final NewSessionProjectSelected onSelected,
+  required final VoidCallback? onAllProjects,
   required final VoidCallback onOpenFolder,
   required final VoidCallback onClose,
   required final bool focusesUnderTouch,
@@ -128,17 +137,28 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
             project.path.toLowerCase().contains(query))
           project,
     ];
+    final onAllProjects = widget.onAllProjects;
     return [
-      PregoPickerSearchOption(
-        isSelected: false,
-        onPick: () {
-          final route = ModalRoute.of(context);
-          widget.onClose();
-          // A popped route completes only once its closing animation ends.
-          unawaited(route?.completed.then((_) => widget.onOpenFolder()));
-        },
-        child: _PickerRow(icon: TablerRegular.folder_plus, title: loc.projectPickerOpenFolder, detail: null),
-      ),
+      if (onAllProjects != null)
+        PregoPickerSearchOption(
+          isSelected: widget.selectedProjectId == null,
+          onPick: () {
+            widget.onClose();
+            if (widget.selectedProjectId != null) onAllProjects();
+          },
+          child: _PickerRow(icon: TablerRegular.folders, title: loc.projectPickerAllProjects, detail: null),
+        )
+      else
+        PregoPickerSearchOption(
+          isSelected: false,
+          onPick: () {
+            final route = ModalRoute.of(context);
+            widget.onClose();
+            // A popped route completes only once its closing animation ends.
+            unawaited(route?.completed.then((_) => widget.onOpenFolder()));
+          },
+          child: _PickerRow(icon: TablerRegular.folder_plus, title: loc.projectPickerOpenFolder, detail: null),
+        ),
       if (matches.isEmpty && query.isNotEmpty) PregoPickerSearchNote(text: loc.projectPickerNoMatches),
       for (final project in matches)
         PregoPickerSearchOption(

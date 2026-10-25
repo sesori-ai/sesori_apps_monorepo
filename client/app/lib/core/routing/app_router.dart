@@ -6,6 +6,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../features/home/onboarding/bridge_onboarding.dart";
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
 import "../../features/project_list/project_list_screen.dart";
@@ -631,10 +632,9 @@ ShellRoute buildArchivedSessionsRoute() {
         navigatorKey: navigatorKey,
         child: BlocProvider(
           create: (context) {
-            final cubit = AllSessionsCubit(
+            final cubit = createAllSessionsCubit(
+              context: context,
               mode: AllSessionsMode.archived,
-              recentInventory: context.read<RecentSessionInventoryService>(),
-              projectInventory: context.read<ProjectInventoryService>(),
               filterTracker: getIt<SessionListFilterTracker>(),
               sessionListService: getIt<SessionListService>(),
               projectViewingService: getIt<ProjectViewingService>(),
@@ -654,6 +654,7 @@ ShellRoute buildArchivedSessionsRoute() {
         path: AppRouteDef.archivedSessions.path,
         builder: (context, state) => ArchivedSessionsView(
           emptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
+          disconnectedBuilder: ({required context, required state}) => DisconnectedComputerSlivers(state: state),
           onClose: () => close(context: context),
           onSessionTap: ({required row}) => context.pushRoute(
             AppRoute.archivedSessionDetail(

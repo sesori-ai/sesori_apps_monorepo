@@ -2195,6 +2195,10 @@
     "description": "Retry row of a session list across projects, for one project whose sessions failed to load.",
     "placeholders": {"projectName": {"type": "String"}}
   },
+  "projectPickerAllProjects": "All projects",
+  "@projectPickerAllProjects": {"description": "The home's title while unfiltered, and the project filter's first entry, which lists every project's sessions."},
+  "projectPickerChooseProject": "Choose a project",
+  "@projectPickerChooseProject": {"description": "The new-session project pill while no project is chosen yet."},
   "archivedSessionsToday": "Today",
   "@archivedSessionsToday": {"description": "Date heading shared by regular and archived session lists."},
   "archivedSessionsYesterday": "Yesterday",

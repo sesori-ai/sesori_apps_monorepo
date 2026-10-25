@@ -5245,6 +5245,18 @@ abstract class AppLocalizations {
   /// **'Couldn’t load {projectName}'**
   String allSessionsProjectFailed(String projectName);
 
+  /// The home's title while unfiltered, and the project filter's first entry, which lists every project's sessions.
+  ///
+  /// In en, this message translates to:
+  /// **'All projects'**
+  String get projectPickerAllProjects;
+
+  /// The new-session project pill while no project is chosen yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Choose a project'**
+  String get projectPickerChooseProject;
+
   /// Date heading shared by regular and archived session lists.
   ///
   /// In en, this message translates to:

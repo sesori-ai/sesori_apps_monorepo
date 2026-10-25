@@ -12,6 +12,7 @@ import "session_list_action_dispatcher.dart";
 class const ArchivedSessionsView({
   super.key,
   required final Widget emptyState,
+  required final AllSessionsDisconnectedBuilder disconnectedBuilder,
   required final VoidCallback onClose,
   required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
@@ -36,6 +37,8 @@ class const ArchivedSessionsView({
         onSessionTap: onSessionTap,
         actionDispatcher: actionDispatcher,
         createActionCubit: createActionCubit,
+        selectedSessionId: null,
+        disconnectedBuilder: disconnectedBuilder,
         emptyState: emptyState,
       ),
     ],

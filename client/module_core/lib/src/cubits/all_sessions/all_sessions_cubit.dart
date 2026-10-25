@@ -73,6 +73,8 @@ class AllSessionsCubit({
     if (_mode == AllSessionsMode.archived) unawaited(_recentInventory.refresh());
   }
 
+  AllSessionsMode get mode => _mode;
+
   /// Filters the list to [projectId], or lists every project for null. The
   /// filter is shared by every all-projects list and lasts for the app's run.
   ///

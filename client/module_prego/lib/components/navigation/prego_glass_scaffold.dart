@@ -101,6 +101,15 @@ class const PregoGlassScaffold({
   /// announce. Collapsing mode only.
   final VoidCallback? onLargeTitleTap,
 
+  /// Wraps the large title, for a page whose title is itself a control, such
+  /// as a picker's trigger. It receives the title as drawn, fading with the
+  /// collapse; a title that has faded away takes no taps. Collapsing mode only.
+  final Widget Function(BuildContext context, Widget title)? largeTitleBuilder,
+
+  /// An icon after the large title, in its colour and fade, such as the
+  /// chevron of a title that opens a picker. Collapsing mode only.
+  final IconData? largeTitleTrailingIcon,
+
   /// An inline alert hosted in the top-navigation area, below the status bar
   /// and above the bar row (e.g. a [PregoInlineAlertsNotifications]).
   ///
@@ -357,6 +366,8 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
             title: widget.title,
             subtitle: widget.subtitle,
             onTitleTap: widget.onLargeTitleTap,
+            titleBuilder: widget.largeTitleBuilder,
+            trailingIcon: widget.largeTitleTrailingIcon,
             scrollController: _scrollController,
             inBar: titleInBar,
             onHeightChanged: _onLargeTitleHeightChanged,
@@ -636,6 +647,8 @@ class const _LargeTitleSliver({
   required final String title,
   required final Widget? subtitle,
   required final VoidCallback? onTitleTap,
+  required final Widget Function(BuildContext context, Widget title)? titleBuilder,
+  required final IconData? trailingIcon,
   required final ScrollController scrollController,
 
   /// Whether the title rests in the bar row: it then takes the bar's own
@@ -649,6 +662,8 @@ class const _LargeTitleSliver({
     final prego = context.prego;
     final subtitle = this.subtitle;
     final onTitleTap = this.onTitleTap;
+    final titleBuilder = this.titleBuilder;
+    final trailingIcon = this.trailingIcon;
     final pulledExtent = this.pulledExtent;
     final horizontalInset = inBar ? PregoSpacing.xl : PregoSpacing.x3l;
 
@@ -665,14 +680,23 @@ class const _LargeTitleSliver({
           // Fade via text alpha instead of an Opacity layer — no saveLayer per frame.
           final opacity = (1 - collapseProgress).clamp(0.0, 1.0);
 
-          final text = Text(
+          final color = prego.colors.textPrimary.withMultipliedOpacity(opacity);
+          final label = Text(
             title,
-            style: prego.textTheme.displayMd.bold.copyWith(
-              color: prego.colors.textPrimary.withMultipliedOpacity(opacity),
-            ),
+            style: prego.textTheme.displayMd.bold.copyWith(color: color),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           );
+          final text = trailingIcon == null
+              ? label
+              : Row(
+                  mainAxisSize: MainAxisSize.min,
+                  spacing: PregoSpacing.xs,
+                  children: [
+                    Flexible(child: label),
+                    Icon(trailingIcon, size: PregoIconSize.lg, color: color),
+                  ],
+                );
           final titleBlock = inBar
               ? ConstrainedBox(
                   constraints: const BoxConstraints(minHeight: PregoTopNavigation.barHeight),
@@ -680,7 +704,9 @@ class const _LargeTitleSliver({
                 )
               : text;
           // Like the subtitle below, a title that has faded away takes no taps.
-          final titleText = onTitleTap == null || opacity == 0
+          final titleText = titleBuilder != null
+              ? IgnorePointer(ignoring: opacity == 0, child: titleBuilder(context, titleBlock))
+              : onTitleTap == null || opacity == 0
               ? titleBlock
               : GestureDetector(
                   behavior: HitTestBehavior.opaque,

@@ -134,7 +134,7 @@ class const SessionListContent({
                 case SessionListHeadingEntry(:final heading):
                   return SessionListHeading(heading: heading, isFirst: index == 0);
                 case SessionListItemEntry(item: _LaunchRow(:final launch)):
-                  return _settling(
+                  return launchRowSettling(
                     context: context,
                     launching: true,
                     child: Padding(
@@ -186,7 +186,7 @@ class const SessionListContent({
                     ),
                   );
                   return launchRows.rowKeys.containsKey(session.id)
-                      ? _settling(context: context, launching: false, child: row)
+                      ? launchRowSettling(context: context, launching: false, child: row)
                       : row;
               }
             },
@@ -211,15 +211,15 @@ class const SessionListContent({
       ),
     };
   }
-
-  /// A launching row and the session row that takes its place share one
-  /// list item, so the change cross-fades in place rather than collapsing one
-  /// row and opening another.
-  static Widget _settling({required BuildContext context, required bool launching, required Widget child}) =>
-      AnimatedSwitcher(
-        duration: prefersReducedMotion(context) ? Duration.zero : _settleDuration,
-        child: KeyedSubtree(key: ValueKey(launching), child: child),
-      );
 }
+
+/// A launching row and the session row that takes its place share one list
+/// item, so the change cross-fades in place rather than collapsing one row and
+/// opening another.
+Widget launchRowSettling({required BuildContext context, required bool launching, required Widget child}) =>
+    AnimatedSwitcher(
+      duration: prefersReducedMotion(context) ? Duration.zero : _settleDuration,
+      child: KeyedSubtree(key: ValueKey(launching), child: child),
+    );
 
 const Duration _settleDuration = Duration(milliseconds: 200);

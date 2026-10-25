@@ -1,23 +1,14 @@
 import "dart:async";
 
-import "package:cupertino_ui/cupertino_ui.dart" show CupertinoColors, CupertinoDynamicColor;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
-import "package:share_plus/share_plus.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
-import "package:theme_prego/module_prego.dart";
 
 import "../../core/di/injection.dart";
-import "../../core/external_link.dart";
 import "../../core/routing/app_router.dart";
-import "../../core/widgets/connection_graphic.dart";
-
-part "onboarding/onboarding_view.dart";
-part "onboarding/why_bridge_info_sheet.dart";
-part "widgets/bridge_offline_view.dart";
+import "../home/onboarding/bridge_onboarding.dart";
 
 /// Mobile composition for the shared project inventory.
 ///
@@ -70,26 +61,23 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
         },
         onOpenProject: _openProject,
         disconnectedViewBuilder: ({required context, required state, required bridge}) => state.hasRegisteredBridges
-            ? _BridgeOfflineView(bridge: bridge, onSwitchComputer: _switchComputer)
-            : const _ConnectBridgeChecklist(),
-        disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
+            ? BridgeOfflineView(bridge: bridge, onSwitchComputer: switchComputer)
+            : const ConnectBridgeChecklist(),
+        disconnectedActionBuilder: ({required context, required state}) => NeedHelpMenu(
           surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
           // The offline fix is the command above, so help stays a quiet link.
           quiet: state.hasRegisteredBridges,
         ),
-        connectedEmptyViewBuilder: ({required context}) => _ConnectedEmptyView(
+        connectedEmptyViewBuilder: ({required context}) => ConnectedEmptyView(
           onAddProject: () => _showAddProject(context: context),
         ),
         connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
         onRefreshDisconnected: ({required context, required state}) =>
             context.read<ProjectListCubit>().reconnectBridge(),
-        onSwitchComputer: _switchComputer,
+        onSwitchComputer: switchComputer,
       ),
     );
   }
-
-  static void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
-      unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
 
   static void _showAddProject({required BuildContext context}) {
     unawaited(

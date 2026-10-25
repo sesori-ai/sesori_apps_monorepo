@@ -67,6 +67,7 @@ class const NewSessionHeader({
               ProjectPicker(
                 selectedProjectId: projectId,
                 onSelected: onProjectSelected,
+                onAllProjects: null,
                 triggerBuilder: (_, open) => pill(onPressed: open),
               ),
             ?harness,
