@@ -138,8 +138,9 @@ and keep native close/quit behavior safe.
   navigation, links, and image actions. Root active sessions open the shared
   diff view, and the session list opens shared session creation with plugin,
   model, command, attachment, and dedicated-workspace options. Desktop supplies
-  text-first composition with a click-to-talk mic (see `voice-input.md`). The sidebar supplies recent-session navigation at every width;
-  only All sessions owns the full list cubit. New-session, transcript and diff
+  text-first composition with a click-to-talk mic (see `voice-input.md`). The sidebar's shared list supplies
+   session navigation at every width.
+  New-session, transcript and diff
   pages each occupy the full main pane. Desktop Enter
   sends from the inline composer, Shift+Enter inserts a newline, and active IME
   composition retains Enter for candidate confirmation. Escape first releases
@@ -368,7 +369,6 @@ verify the actual relocated helper, not merely the presence of its binary.
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_bridge_popover.dart`
 - `client/desktop/lib/features/home/desktop_home_pane.dart`
-- `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
 - `client/desktop/lib/features/sessions/desktop_session_detail_screen.dart`
 - `client/desktop/lib/features/new_session/desktop_new_session_screen.dart`
 - `client/desktop/lib/features/session_diffs/desktop_session_diffs_screen.dart`

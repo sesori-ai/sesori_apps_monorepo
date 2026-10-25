@@ -59,9 +59,10 @@ class const DesktopCockpitShell({
   required final String? selectedProjectId,
   required final String? selectedSessionId,
   required final SidebarSessionOpenedCallback onOpenSession,
+
+  /// Opens a new session in a project, including one just added.
   required final ProjectOpenedCallback onNewSession,
   required final SessionListActionDispatcher sessionActions,
-  required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
@@ -79,8 +80,9 @@ class const DesktopCockpitShell({
     final sessions = context.read<AllSessionsCubit>();
     // macOS only: the window has no title bar of its own (see `FlutterWindowHost`).
     final windowHost = defaultTargetPlatform == TargetPlatform.macOS ? getIt<WindowHost>() : null;
+    // A first project's next step is its first session.
     void addProject() => unawaited(
-      showAddProjectDialog(context: context, onProjectAdded: onOpenProject),
+      showAddProjectDialog(context: context, onProjectAdded: onNewSession),
     );
     // The open project, else the list's new-session default (the filter, else
     // the newest session's project), else the first listed one; with no

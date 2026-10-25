@@ -46,7 +46,7 @@ final class const AllSessionsState({
   required final String query,
   required final SessionListQuickFilter quickFilter,
 
-  /// Every listed project's rows in [rows]' order, whatever the filter, the
+  /// Every loaded project's rows in [rows]' order, whatever the filter, the
   /// query and the chip, less the hidden sessions: what a jump-to search
   /// offers.
   required final List<AllSessionsRow> everyProjectRows,

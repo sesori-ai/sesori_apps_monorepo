@@ -148,9 +148,8 @@ void main() {
                 selectedProjectId: "project-1",
                 selectedSessionId: null,
                 onOpenSession: _openSession,
-                onNewSession: _openProject,
+                onNewSession: _newSession,
                 sessionActions: _sessionActions,
-                onOpenProject: _openProject,
                 onOpenBridgeSettings: _noOp,
                 onOpenArchived: _noOp,
                 onOpenSettings: _noOp,
@@ -217,9 +216,8 @@ void main() {
           selectedProjectId: "project-1",
           selectedSessionId: null,
           onOpenSession: _openSession,
-          onNewSession: _openProject,
+          onNewSession: _newSession,
           sessionActions: _sessionActions,
-          onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenSettings: _noOp,
@@ -294,9 +292,8 @@ void main() {
           selectedSessionId: null,
           onOpenSession: ({required context, required project, required displayName, required session}) =>
               opened.add((project.id, displayName, session.id)),
-          onNewSession: _openProject,
+          onNewSession: _newSession,
           sessionActions: _sessionActions,
-          onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenSettings: _noOp,
@@ -411,9 +408,8 @@ void main() {
           selectedProjectId: null,
           selectedSessionId: null,
           onOpenSession: _openSession,
-          onNewSession: _openProject,
+          onNewSession: _newSession,
           sessionActions: _sessionActions,
-          onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenSettings: _noOp,
@@ -460,9 +456,8 @@ void main() {
           selectedProjectId: null,
           selectedSessionId: null,
           onOpenSession: _openSession,
-          onNewSession: _openProject,
+          onNewSession: _newSession,
           sessionActions: _sessionActions,
-          onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenArchived: () => opens++,
           onOpenSettings: _noOp,
@@ -511,9 +506,8 @@ void main() {
           selectedProjectId: "project-1",
           selectedSessionId: null,
           onOpenSession: _openSession,
-          onNewSession: _openProject,
+          onNewSession: _newSession,
           sessionActions: _sessionActions,
-          onOpenProject: _openProject,
           onOpenBridgeSettings: () => bridgeOpens++,
           onOpenArchived: _noOp,
           onOpenSettings: () => settingsOpens++,
@@ -880,7 +874,6 @@ void main() {
           onNewSession: ({required context, required project, required displayName}) =>
               started.add((project.id, displayName)),
           sessionActions: _sessionActions,
-          onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenArchived: _noOp,
           onOpenSettings: _noOp,
@@ -942,7 +935,7 @@ void main() {
       expect(find.byType(AddProjectDialog), findsNothing);
     });
 
-    testWidgets("without any project it offers to add one", (tester) async {
+    testWidgets("without any project it offers to add one, then starts a session there", (tester) async {
       final connection = _MockConnectionService();
       const status = ConnectionStatus.connected(
         config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
@@ -967,7 +960,12 @@ void main() {
       await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));
       await tester.pumpAndSettle();
       expect(started, isEmpty);
-      expect(find.byType(AddProjectDialog), findsOneWidget);
+      final dialog = find.byType(AddProjectDialog);
+      expect(dialog, findsOneWidget);
+      tester
+          .widget<AddProjectDialog>(dialog)
+          .onProjectAdded(context: tester.element(dialog), project: openProject, displayName: "open-one");
+      expect(started, [("project-open", "open-one")]);
     });
   });
 
@@ -1172,9 +1170,8 @@ void main() {
             selectedSessionId: null,
             onOpenSession: ({required context, required project, required displayName, required session}) =>
                 opened.add(session.id),
-            onNewSession: _openProject,
+            onNewSession: _newSession,
             sessionActions: _sessionActions,
-            onOpenProject: _openProject,
             onOpenBridgeSettings: _noOp,
             onOpenArchived: _noOp,
             onOpenSettings: _noOp,
@@ -1349,7 +1346,7 @@ void _openSession({
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
 
 void _noOp() {}
-void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
+void _newSession({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 
 class _MockRefreshService() extends Mock implements SessionListRefreshService;
 

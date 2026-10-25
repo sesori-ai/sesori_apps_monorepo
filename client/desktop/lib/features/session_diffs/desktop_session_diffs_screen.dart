@@ -12,11 +12,7 @@ import "../../core/widgets/desktop_page_toolbar.dart";
 /// back with Cmd/Ctrl+[, so its toolbar has no Back.
 class const DesktopSessionDiffsScreen({
   super.key,
-  required final String? projectName,
   required final String sessionId,
-
-  /// Opens the project's session list from the toolbar breadcrumb.
-  required final VoidCallback onOpenProject,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -33,7 +29,7 @@ class const DesktopSessionDiffsScreen({
       child: SessionDiffsView(
         chrome: SessionDiffsSplit(
           headerBuilder: ({required context, required title, required summary}) => DesktopPageToolbar(
-            breadcrumb: (label: projectName ?? context.loc.sessionListTitle, onPressed: onOpenProject),
+            breadcrumb: null,
             status: null,
             title: title,
             subtitle: summary == null ? null : PregoNavSubtitle(text: summary),

@@ -8,9 +8,9 @@ variant, and worktree mode, and creating the session with its first input.
 
 ## Required Behavior
 
-- Desktop's project New session action, the sidebar's New session button and Cmd+N (Ctrl+N on Windows/Linux)
-  open the same typed setup route. The button and shortcut use the open project, else the most recently active
-  one; with no project yet they open the New project dialog.
+- The desktop sidebar's New session button and Cmd+N (Ctrl+N on Windows/Linux) open the typed setup route.
+  They use the open project, else the sidebar's filtered project, else the most recently active one; with no
+  project yet they open the New project dialog, and the project it adds opens in setup.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
 - The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
   project: the filtered project, else the project of the newest session. With no default it opens a "New
@@ -40,8 +40,8 @@ variant, and worktree mode, and creating the session with its first input.
   name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
   project's setup page, so a session is never created in the project that was left, and a draft stays with
   the project it was typed in; choosing the current project only closes the picker. The desktop home's
-  composer uses the same picker and keeps its draft per picked project; the desktop project page names its
-  project without a picker. On the phone the header sits above the options and hides while the composer's
+  composer uses the same picker and keeps its draft per picked project. On the phone the header sits above
+   the options and hides while the composer's
   keyboard is open, so the options stay in view while typing; the picker's own keyboard leaves it in place.
 - The composer shows the agent entry only when the harness advertises more than one selectable agent.
   Claude, Codex, Copilot, Cursor and OMP advertise only their default mode as one agent, so their composer

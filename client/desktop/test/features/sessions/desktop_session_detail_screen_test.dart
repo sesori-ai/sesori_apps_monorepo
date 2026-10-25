@@ -223,8 +223,6 @@ void main() {
               sessionActions: _actions,
               onMarkedUnread: () {},
               readOnly: false,
-              projectName: "UI / Core",
-              onOpenProject: () {},
               onOpenParentSession: ({required parentSessionId}) {},
               onShowDiffs: () => diffCalls++,
               onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) {},
@@ -346,8 +344,6 @@ void main() {
                 sessionActions: _actions,
                 onMarkedUnread: () {},
                 readOnly: false,
-                projectName: "UI / Core",
-                onOpenProject: () {},
                 onOpenParentSession: ({required parentSessionId}) {},
                 onShowDiffs: () {},
                 onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
@@ -395,7 +391,6 @@ void main() {
     late _MockSessionListCubit listCubit;
     late List<Session> markedUnread;
     late int leftPage;
-    late int openedProject;
     late List<String> openedParents;
 
     Future<void> pumpPage(
@@ -425,7 +420,6 @@ void main() {
       ).thenAnswer((_) async {});
       markedUnread = [];
       leftPage = 0;
-      openedProject = 0;
       openedParents = [];
       await tester.binding.setSurfaceSize(const Size(1400, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -459,8 +453,6 @@ void main() {
                   ),
                   onMarkedUnread: () => leftPage++,
                   readOnly: readOnly,
-                  projectName: "UI / Core",
-                  onOpenProject: () => openedProject++,
                   onOpenParentSession: ({required parentSessionId}) => openedParents.add(parentSessionId),
                   onShowDiffs: () {},
                   onOpenSession: ({
@@ -595,7 +587,6 @@ void main() {
 
       await tester.tap(breadcrumb);
       expect(openedParents, ["parent-1"]);
-      expect(openedProject, 0);
     });
 
     testWidgets("Mark unread from the menu shows its shortcut, sends read: false and leaves the page", (
