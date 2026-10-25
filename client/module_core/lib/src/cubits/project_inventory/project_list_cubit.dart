@@ -25,9 +25,6 @@ class ProjectListCubit({required final ProjectInventoryService _inventoryService
   Future<bool> renameProject({required String projectId, required String name}) =>
       _inventoryService.renameProject(projectId: projectId, name: name);
 
-  Future<AddProjectOutcome> createProject({required String parentPath, required String name}) =>
-      _inventoryService.createProject(parentPath: parentPath, name: name);
-
   Future<CreateDirectoryOutcome> createDirectory({required String parentPath, required String name}) =>
       _inventoryService.createDirectory(parentPath: parentPath, name: name);
 

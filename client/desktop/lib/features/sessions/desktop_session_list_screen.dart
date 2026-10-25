@@ -182,15 +182,13 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                         projectId: cubit.projectId,
                         projectName: projectName,
                         // The page names its project; the header shows it without a picker.
-                        projects: const [],
-                        onProjectSelected: ({required projectId, required projectName}) {},
+                        projectChoice: null,
                         onBack: () {},
                         onOpenHarnessSettings: widget.onOpenHarnessSettings,
                         onSessionCreated: onSessionTap,
-                        composerScopeBuilder: ({required child}) =>
-                            DesktopComposerPresentationScope(
-                              child: DesktopVoiceInputScope(projectId: cubit.projectId, child: child),
-                            ),
+                        composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(
+                          child: DesktopVoiceInputScope(projectId: cubit.projectId, child: child),
+                        ),
                         // The desktop root owns its single connection banner.
                         banner: null,
                         pageChrome: NewSessionPageChrome(

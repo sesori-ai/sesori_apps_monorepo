@@ -22,14 +22,6 @@ class ProjectRepository({
     return _api.listProjects();
   }
 
-  Future<ApiResponse<Project>> createProject({
-    required String parentPath,
-    required String name,
-  }) {
-    final path = _hostPathContext(parentPath).join(parentPath, name);
-    return _api.createProject(path: path);
-  }
-
   String? parentHostPath({required String path}) {
     final parent = _hostPathContext(path).dirname(path);
     return parent == path ? null : parent;
@@ -75,8 +67,8 @@ class ProjectRepository({
 
   /// Creates a plain folder named [name] under [parentPath] on the bridge host.
   ///
-  /// Unlike [createProject] this only makes the directory — the caller decides
-  /// whether to register it as a project afterwards.
+  /// This only makes the directory — the caller decides whether to register
+  /// it as a project afterwards.
   Future<ApiResponse<FilesystemSuggestion>> createDirectory({
     required String parentPath,
     required String name,

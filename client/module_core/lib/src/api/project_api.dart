@@ -10,14 +10,6 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
     return _client.get("/projects", fromJson: Projects.fromJson);
   }
 
-  Future<ApiResponse<Project>> createProject({required String path}) {
-    return _client.post(
-      "/project/create",
-      body: ProjectPathRequest(path: path),
-      fromJson: Project.fromJson,
-    );
-  }
-
   Future<ApiResponse<Project>> discoverProject({
     required String path,
     required OpenProjectGitAction gitAction,

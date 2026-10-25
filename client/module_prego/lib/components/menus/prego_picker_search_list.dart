@@ -20,6 +20,10 @@ class const PregoPickerSearchOption({
   required final Widget child,
 }) extends PregoPickerSearchRow;
 
+/// A line of quiet text among the rows, such as why nothing below an option
+/// matches. The highlight passes over it.
+class const PregoPickerSearchNote({required final String text}) extends PregoPickerSearchRow;
+
 /// Opens a composer picker in a popover beside its trigger: [pointerWidth]
 /// wide under a pointer, and as wide as the screen allows under touch.
 class const PregoPickerPopover({
@@ -70,6 +74,10 @@ class const PregoPickerSearchList({
   /// Shown instead of an empty list; null shows nothing.
   required final String? emptyText,
   required final VoidCallback onClose,
+
+  /// Whether the field also takes focus under touch, raising the keyboard as
+  /// the picker opens. It always does under a pointer.
+  required final bool focusesUnderTouch,
 }) extends StatefulWidget {
   @override
   State<PregoPickerSearchList> createState() => _PickerSearchListState();
@@ -143,14 +151,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
         child: Center(child: PregoActivityIndicator(color: null)),
       ),
       ([], null) => const SizedBox.shrink(),
-      ([], final String text) => Padding(
-        padding: const EdgeInsets.all(PregoSpacing.x3l),
-        child: Text(
-          text,
-          textAlign: TextAlign.center,
-          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-        ),
-      ),
+      ([], final String text) => _Note(text: text),
       (final List<PregoPickerSearchRow> rows, _) => ListView.builder(
         controller: _scrollController,
         // Still lazy: the popover's height cap bounds the list.
@@ -159,6 +160,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
         itemCount: rows.length,
         itemBuilder: (context, index) => switch (rows[index]) {
           PregoPickerSearchHeading(:final text) => _Heading(text: text, pointer: pointer),
+          PregoPickerSearchNote(:final text) => _Note(text: text),
           final PregoPickerSearchOption option => _OptionRow(
             key: index == _highlighted ? _highlightedKey : null,
             option: option,
@@ -192,7 +194,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
                 ? const EdgeInsetsDirectional.fromSTEB(4, 4, 4, 0)
                 : const EdgeInsetsDirectional.fromSTEB(12, 12, 12, 0),
             child: TextField(
-              autofocus: pointer,
+              autofocus: pointer || widget.focusesUnderTouch,
               autocorrect: false,
               decoration: InputDecoration(
                 hintText: widget.searchHint,
@@ -211,6 +213,22 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
           ),
           Flexible(child: list),
         ],
+      ),
+    );
+  }
+}
+
+/// Quiet centred text in the list's place or among its rows.
+class const _Note({required final String text}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Padding(
+      padding: const EdgeInsets.all(PregoSpacing.x3l),
+      child: Text(
+        text,
+        textAlign: TextAlign.center,
+        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
       ),
     );
   }

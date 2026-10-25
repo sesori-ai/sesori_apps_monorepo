@@ -1,8 +1,9 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
@@ -27,7 +28,6 @@ class const DesktopNewSessionScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final projectList = context.watch<ProjectListCubit>().state;
     return BlocProvider(
       create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
       child: DesktopNewSessionView(
@@ -37,8 +37,17 @@ class const DesktopNewSessionScreen({
         onOpenProject: onOpenProject,
         onOpenHarnessSettings: onOpenHarnessSettings,
         onSessionCreated: onSessionCreated,
-        onProjectSelected: onProjectSelected,
-        projects: projectList is ProjectListLoaded ? projectList.projects : const [],
+        projectChoice: NewSessionProjectChoice(
+          onProjectSelected: onProjectSelected,
+          openFolder: ({required context, required onProjectAdded}) => unawaited(
+            showAddProjectDialog(
+              context: context,
+              cubit: context.read<ProjectListCubit>(),
+              connectionService: getIt<ConnectionService>(),
+              onProjectAdded: onProjectAdded,
+            ),
+          ),
+        ),
       ),
     );
   }
@@ -55,31 +64,22 @@ class const DesktopNewSessionView({
   required final VoidCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
-  required final NewSessionProjectSelected onProjectSelected,
-  required final List<ProjectSummary> projects,
+  required final NewSessionProjectChoice projectChoice,
 }) extends StatelessWidget {
   static const double maxContentWidth = 760;
-
-  /// The loaded list knows the current name; the route's can be missing or stale.
-  String _projectLabel({required BuildContext context}) {
-    final current = projects.where((project) => project.id == projectId).firstOrNull;
-    return current == null
-        ? projectName ?? context.loc.projectListDefaultName
-        : projectDisplayName(loc: context.loc, project: current);
-  }
 
   @override
   Widget build(BuildContext context) {
     return NewSessionView(
       projectId: projectId,
       projectName: projectName,
-      projects: projects,
-      onProjectSelected: onProjectSelected,
+      projectChoice: projectChoice,
       onBack: onBack,
       onOpenHarnessSettings: onOpenHarnessSettings,
       onSessionCreated: onSessionCreated,
-      composerScopeBuilder: ({required child}) =>
-          DesktopComposerPresentationScope(child: DesktopVoiceInputScope(projectId: projectId, child: child)),
+      composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(
+        child: DesktopVoiceInputScope(projectId: projectId, child: child),
+      ),
       // The desktop root owns its single connection banner.
       banner: null,
       pageChrome: NewSessionPageChrome(
@@ -87,7 +87,10 @@ class const DesktopNewSessionView({
         transcriptWidth: desktopTranscriptWidth,
         footer: null,
         topBar: DesktopPageToolbar(
-          breadcrumb: (label: _projectLabel(context: context), onPressed: onOpenProject),
+          breadcrumb: (
+            label: liveProjectName(context: context, projectId: projectId, projectName: projectName),
+            onPressed: onOpenProject,
+          ),
           status: null,
           title: context.loc.sessionListNewSession,
           subtitle: null,
