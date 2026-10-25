@@ -11,21 +11,16 @@ import subprocess
 import tempfile
 from datetime import UTC, datetime, timedelta
 from email.utils import format_datetime
-from enum import StrEnum
 
 from linux_signing import signing_key, sha256
 from prepare_desktop_release import require
-from publish_desktop_linux import MANIFEST, PUBLIC_DESKTOP_KEY, TRUSTED_PRIMARY_FINGERPRINT, verify_checksums
+from publish_desktop_linux import (Channel, MANIFEST, PUBLIC_DESKTOP_KEY, TRUSTED_PRIMARY_FINGERPRINT,
+                                   verify_checksums)
 from sign_desktop_linux import CHECKSUMS, PUBLIC_KEY, verify_rpm
 
 ARCHITECTURES = {"x64": ("amd64", "x86_64"), "arm64": ("arm64", "aarch64")}
 REPORT = "repository.json"
 APT_METADATA_LIFETIME = timedelta(days=30)
-
-
-class Channel(StrEnum):
-    STABLE = "stable"
-    INTERNAL = "internal"
 
 
 def command(*, arguments: list[str], cwd: Path, env: dict[str, str]) -> str:

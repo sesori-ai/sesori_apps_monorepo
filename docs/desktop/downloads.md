@@ -115,7 +115,10 @@ No public download is available.
 
 ## Linux package managers
 
-Signed APT and RPM repositories and stable Linux downloads remain unpublished.
+Production attaches stable Linux DEB/RPM/AppImage files to the approved `v<X.Y.Z>`
+release with its own `desktop-linux-release.json` (`channel: stable`); none is published
+yet. Signed [APT/RPM repositories](linux-repositories.md) host `internal` and `stable`
+separately; stable appears after the first stable Linux release.
 Opt-in internal DEB/RPM previews use `desktop-linux-release.json` as their independent
 completion marker, with native x64/arm64 packages named
 `Sesori-linux-<arch>-<version>-<build>.<deb|rpm>`. The website must not infer them from
@@ -132,9 +135,9 @@ keeps public delivery separate from native GUI/account/upgrade proof.
 Verify each CPU's `desktop-linux-<arch>-checksums.txt` and `.asc` using
 `desktop-linux-public.asc` and the independently pinned primary fingerprint in
 [Linux signing guidance](linux-signing.md). This is not an APT/RPM repository key setup.
-RPMs have native signatures; DEBs are covered by signed checksums. Package fixtures
-cover Ubuntu 24.04, Debian 13 and Fedora 44, not GUI/login/keyring/tray behavior or a
-real N→N+1 upgrade. Those gaps are accepted only for internal previews.
+RPMs have native signatures; DEBs are covered by signed checksums. Per-release package
+fixtures cover Ubuntu 24.04, Debian 13 and Fedora 44. Native GUI/login/keyring/tray and
+N→N+1 upgrades were qualified separately on earlier signed builds, not for every release.
 
 Each Linux producer also emits a portable `Sesori-linux-<arch>-<version>-<build>.AppImage`;
 the image itself is unsigned and its checksum is in the signed checksums. It needs host GTK 3,
