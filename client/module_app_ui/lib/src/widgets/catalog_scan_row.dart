@@ -3,13 +3,10 @@ import "dart:ui" as ui;
 
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:theme_prego/components/buttons/prego_buttons_solid.dart" show PregoSkeuomorphicOverlay;
-import "package:theme_prego/interactions/prego_tappable.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../extensions/build_context_x.dart";
 import "../l10n/app_localizations.dart";
-import "bridge_update_sheet.dart";
 
 /// How long the row takes to grow in or fold away.
 const Duration _revealDuration = Duration(milliseconds: 260);
@@ -25,7 +22,8 @@ const Duration _startupWaitThreshold = Duration(seconds: 3);
 /// The catalog scan reported as one quiet row above a list.
 ///
 /// Live scans use the coordinated loading card designed for this flow;
-/// terminal outcomes keep their severity-tinted report cards.
+/// terminal outcomes keep their severity-tinted report cards. The row has no
+/// controls: the scan clears itself once settled, and the row folds away.
 ///
 /// Ordinary live phases keep one supporting row, so progress changes do not
 /// shove the list. The prolonged-startup heading and explanation may wrap and
@@ -36,23 +34,7 @@ class const CatalogScanRow({
   /// The scan to report, read from the hosting list's own state so the row
   /// re-renders with the list rather than subscribing separately.
   required final CatalogRescanState _scan,
-
-  /// Stops a scan in flight. Offered while the scan is live, because the pull
-  /// gesture commits mid-drag and has no release to cancel on.
-  required final VoidCallback _onCancel,
-
-  /// Clears a finished scan the user has read.
-  required final VoidCallback _onDismiss,
 }) extends StatefulWidget {
-  /// The pull-to-refresh second stage that starts a scan, carrying the caption
-  /// that says what crossing the deeper threshold will do.
-  ///
-  /// Lives beside the row so the gesture that starts a scan and the row that
-  /// reports it stay worded together, and every list gets the same invitation.
-  static PregoDeepRefresh deepRefresh({required BuildContext context, required VoidCallback onStart}) {
-    return PregoDeepRefresh(onDeepRefresh: onStart, pullCaption: context.loc.catalogScanPullCaption);
-  }
-
   @override
   State<CatalogScanRow> createState() => _CatalogScanRowState();
 }
@@ -102,8 +84,8 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     super.initState();
     WidgetsBinding.instance.addObserver(this);
     // Drops the retained card once it has finished folding away. Without this
-    // its labels and its live action button stay mounted at zero height, where
-    // a keyboard or screen reader can still reach an invisible control.
+    // its labels stay mounted at zero height, where a screen reader can still
+    // reach invisible text.
     _reveal.addStatusListener(_onRevealStatus);
     _syncStartupWait();
   }
@@ -171,10 +153,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       CatalogRescanSaving() ||
       CatalogRescanSucceeded() ||
       CatalogRescanPartlyFailed() ||
-      CatalogRescanFailed() ||
-      CatalogRescanUnsupported() ||
-      CatalogRescanNotConnected() ||
-      CatalogRescanNoHarness() => null,
+      CatalogRescanFailed() => null,
     };
     if (pluginName == _startupWaitPluginName && (_startupWaitTimer != null || _startupWaitElapsed)) return;
     _startupWaitTimer?.cancel();
@@ -193,10 +172,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
         CatalogRescanSaving() ||
         CatalogRescanSucceeded() ||
         CatalogRescanPartlyFailed() ||
-        CatalogRescanFailed() ||
-        CatalogRescanUnsupported() ||
-        CatalogRescanNotConnected() ||
-        CatalogRescanNoHarness() => false,
+        CatalogRescanFailed() => false,
       };
       if (!stillWaitingForSameHarness) return;
       setState(() => _startupWaitElapsed = true);
@@ -259,18 +235,12 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
           // entrance transform and its short-lived image filter change.
           child: Semantics(
             container: true,
-            // Keep the icon-only cancel action as a separately focusable node;
-            // otherwise this live-region container merges its localized label
-            // into the changing status announcement.
-            explicitChildNodes: true,
             liveRegion: widget._scan is! CatalogRescanReading,
             child: shown.tone == _ScanTone.working
                 ? _ScanLoadingCard(
                     title: shown.title,
                     supportingText: shown.detail,
                     wrapSupportingText: shown.wrapDetail,
-                    cancelLabel: shown.actionLabel,
-                    onCancel: shown.onAction,
                   )
                 : Padding(
                     padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
@@ -282,11 +252,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     );
   }
 
-  Future<void> _showBridgeUpdateThenDismiss() async {
-    await showBridgeUpdateSheet(context: context);
-    if (mounted) widget._onDismiss();
-  }
-
   /// The one place the scan state decides how the row reads.
   ///
   /// `null` is the idle row, which folds away to nothing.
@@ -296,8 +261,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       tone: _ScanTone.working,
       title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
       detail: loc.catalogScanPreparingOneDetail(pendingPluginName),
-      actionLabel: loc.catalogScanCancel,
-      onAction: widget._onCancel,
     ),
     CatalogRescanStarting(:final activePluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
       tone: _ScanTone.working,
@@ -308,8 +271,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
           ? loc.catalogScanWaitingDetail(activePluginName)
           : loc.catalogScanStartingDetail(activePluginName),
       wrapDetail: _startupWaitElapsed,
-      actionLabel: loc.catalogScanCancel,
-      onAction: widget._onCancel,
     ),
     CatalogRescanReading(:final activePluginName, :final sessionsSeen, :final finishedHarnessCount, :final pluginIds) =>
       _RowContent(
@@ -318,31 +279,23 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
         detail: sessionsSeen == 0
             ? loc.catalogScanReadingDetail(activePluginName)
             : loc.catalogScanReadingCountDetail(activePluginName, sessionsSeen),
-        actionLabel: loc.catalogScanCancel,
-        onAction: widget._onCancel,
       ),
     CatalogRescanSaving(:final activePluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
       tone: _ScanTone.working,
       title: loc.catalogScanRunningTitle(finishedHarnessCount, pluginIds.length),
       detail: loc.catalogScanSavingDetail(activePluginName),
-      actionLabel: loc.catalogScanCancel,
-      onAction: widget._onCancel,
     ),
     CatalogRescanSucceeded(:final counts) => _RowContent(
       tone: _ScanTone.done,
       icon: TablerRegular.circle_check,
       title: loc.catalogScanCompleteTitle,
-      detail: catalogScanCountsLine(loc: loc, counts: counts),
-      actionLabel: loc.catalogScanDismiss,
-      onAction: widget._onDismiss,
+      detail: _countsLine(loc: loc, counts: counts),
     ),
     CatalogRescanPartlyFailed(:final succeededCount, :final failedCount) => _RowContent(
       tone: _ScanTone.attention,
       icon: TablerRegular.alert_triangle,
       title: loc.catalogScanPartlyFailedTitle,
       detail: loc.catalogScanPartlyFailedDetail(failedCount, succeededCount + failedCount),
-      actionLabel: loc.catalogScanDismiss,
-      onAction: widget._onDismiss,
     ),
     // The bridge's own error text never reaches the client, so the row names
     // the log that has it rather than guessing at a cause.
@@ -351,39 +304,6 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
       icon: TablerRegular.alert_circle,
       title: loc.catalogScanFailedTitle,
       detail: loc.catalogScanFailedDetail,
-      actionLabel: loc.catalogScanDismiss,
-      onAction: widget._onDismiss,
-    ),
-    // Not a failure of this scan but of the pairing, so it reads as something
-    // to fix rather than something to retry. The update steps carry what the
-    // row says, so the row folds away once they close.
-    CatalogRescanUnsupported() => _RowContent(
-      tone: _ScanTone.attention,
-      icon: TablerRegular.arrow_up_circle,
-      title: loc.catalogScanUnsupportedTitle,
-      detail: loc.catalogScanUnsupportedDetail,
-      actionLabel: loc.bridgeUpdateHowTo,
-      onAction: () => unawaited(_showBridgeUpdateThenDismiss()),
-    ),
-    // No request was sent, so the row names the missing bridge connection
-    // instead of falsely claiming that the user's harnesses are absent.
-    CatalogRescanNotConnected() => _RowContent(
-      tone: _ScanTone.attention,
-      icon: TablerRegular.plug_connected_x,
-      title: loc.catalogScanNotConnectedTitle,
-      detail: loc.catalogScanNotConnectedDetail,
-      actionLabel: loc.catalogScanDismiss,
-      onAction: widget._onDismiss,
-    ),
-    // Nothing was ever asked of the connected bridge, so the row says what is
-    // missing instead of leaving the pull that started it with no answer.
-    CatalogRescanNoHarness() => _RowContent(
-      tone: _ScanTone.attention,
-      icon: TablerRegular.plug_connected_x,
-      title: loc.catalogScanNoHarnessTitle,
-      detail: loc.catalogScanNoHarnessDetail,
-      actionLabel: loc.catalogScanDismiss,
-      onAction: widget._onDismiss,
     ),
   };
 }
@@ -394,9 +314,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
 /// result reads "3 new sessions" instead of trailing a zero, and a scan that
 /// only turned up a project does not lead with the sessions it did not find.
 ///
-/// Shared by the row and by the Settings toast, so one scan never reads two
-/// different ways depending on where it is reported.
-String catalogScanCountsLine({required AppLocalizations loc, required CatalogRescanCounts counts}) {
+String _countsLine({required AppLocalizations loc, required CatalogRescanCounts counts}) {
   final (sessions, projects) = switch (counts) {
     CatalogRescanDelta(:final newSessions, :final newProjects) => (
       newSessions == 0 ? null : loc.catalogScanNewSessionCount(newSessions),
@@ -438,11 +356,9 @@ class const _RowContent({
   required final String title,
   required final String detail,
   final bool wrapDetail = false,
-  required final String actionLabel,
-  required final VoidCallback onAction,
 });
 
-/// The Figma result card: leading mark, two fixed lines, one tinted action.
+/// The Figma result card: leading mark and two fixed lines.
 class const _ScanCard({required final _RowContent content}) extends StatelessWidget {
   static const double _minHeight = 69;
   // Figma's radial is 483.76px wide for a 69px vertical radius.
@@ -460,23 +376,11 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
       context,
       side: BorderSide(color: colors.borderPrimary),
     );
-    final (accent, markColor, actionColor) = switch (content.tone) {
+    final (accent, markColor) = switch (content.tone) {
       _ScanTone.working => throw StateError("Working scans require the loading card."),
-      _ScanTone.done => (
-        colors.bgSuccessSecondary,
-        colors.textSuccessPrimary,
-        colors.textSuccessPrimary,
-      ),
-      _ScanTone.attention => (
-        colors.bgWarningSecondary,
-        colors.fgWarningSecondary,
-        colors.textWarningPrimary,
-      ),
-      _ScanTone.problem => (
-        colors.bgErrorSolid,
-        colors.fgErrorPrimary,
-        colors.textErrorPrimary,
-      ),
+      _ScanTone.done => (colors.bgSuccessSecondary, colors.textSuccessPrimary),
+      _ScanTone.attention => (colors.bgWarningSecondary, colors.fgWarningSecondary),
+      _ScanTone.problem => (colors.bgErrorSolid, colors.fgErrorPrimary),
     };
     final textBlock = Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -496,11 +400,6 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
           style: prego.textTheme.textSm.medium.copyWith(color: colors.textSecondary),
         ),
       ],
-    );
-    final action = _ScanDismissButton(
-      label: content.actionLabel,
-      color: actionColor,
-      onPressed: content.onAction,
     );
 
     return Column(
@@ -545,26 +444,7 @@ class const _ScanCard({required final _RowContent content}) extends StatelessWid
                       child: Icon(icon, size: _scanMarkSize, color: markColor),
                     ),
                     const SizedBox(width: PregoSpacing.sm),
-                    Expanded(
-                      child: wrapsText
-                          ? Column(
-                              crossAxisAlignment: CrossAxisAlignment.stretch,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                textBlock,
-                                const SizedBox(height: PregoSpacing.xs),
-                                Align(alignment: AlignmentDirectional.centerEnd, child: action),
-                              ],
-                            )
-                          : Row(
-                              crossAxisAlignment: CrossAxisAlignment.center,
-                              children: [
-                                Expanded(child: textBlock),
-                                const SizedBox(width: PregoSpacing.xs),
-                                action,
-                              ],
-                            ),
-                    ),
+                    Expanded(child: textBlock),
                   ],
                 ),
               ),
@@ -581,8 +461,6 @@ class const _ScanLoadingCard({
   required final String title,
   required final String supportingText,
   required final bool wrapSupportingText,
-  required final String cancelLabel,
-  required final VoidCallback onCancel,
 }) extends StatefulWidget {
   @override
   State<_ScanLoadingCard> createState() => _ScanLoadingCardState();
@@ -714,11 +592,6 @@ class _ScanLoadingCardState()
                             ),
                           ],
                         ),
-                      ),
-                      const SizedBox(width: PregoSpacing.lg),
-                      _ScanCancelButton(
-                        semanticLabel: widget.cancelLabel,
-                        onPressed: widget.onCancel,
                       ),
                     ],
                   ),
@@ -903,68 +776,6 @@ class const _ScanLoadingBeamPainter({required final Color color, required final 
   }
 }
 
-class const _ScanCancelButton({
-  required final String semanticLabel,
-  required final VoidCallback onPressed,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.prego.colors;
-    final radius = BorderRadius.circular(PregoRadius.full);
-
-    return Semantics(
-      button: true,
-      label: semanticLabel,
-      onTap: onPressed,
-      child: ExcludeSemantics(
-        child: _ScanFocusableAction(
-          borderRadius: radius,
-          onPressed: onPressed,
-          child: SizedBox.square(
-            dimension: 36,
-            child: PregoTappable(
-              onTap: onPressed,
-              borderRadius: radius,
-              overlayInset: 1,
-              overlayColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
-                if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
-                return null;
-              }),
-              containerBuilder: (child) => DecoratedBox(
-                decoration: BoxDecoration(
-                  color: colors.bgSurface4,
-                  border: Border.all(color: colors.borderSecondary),
-                  borderRadius: radius,
-                  boxShadow: [
-                    BoxShadow(color: colors.shadowXs, offset: const Offset(0, 1), blurRadius: 2),
-                  ],
-                ),
-                child: ClipRRect(
-                  borderRadius: radius,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      child,
-                      PregoSkeuomorphicOverlay(
-                        innerBorderColor: colors.skeuomorphicInnerBorder,
-                        bottomShadowColor: colors.skeuomorphicShadow,
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-              child: Center(
-                child: Icon(TablerRegular.x, size: PregoIconSize.md, color: colors.textSecondary),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
 /// Deep Scan cards use one 24px silhouette in every terminal state. iOS gets
 /// Flutter's native continuous superellipse, which is the platform equivalent
 /// of Figma's roughly 60% corner smoothing; Android keeps the same radius with
@@ -982,103 +793,6 @@ ShapeBorder _deepScanCardShape(
 bool _isTextEnlarged({required BuildContext context, required TextStyle style}) {
   final fontSize = style.fontSize;
   return fontSize != null && MediaQuery.textScalerOf(context).scale(fontSize) > fontSize;
-}
-
-/// The label-only action from the terminal Figma variants: 76×36 at least,
-/// wider when a longer label such as "How to update" needs the room.
-class const _ScanDismissButton({
-  required final String label,
-  required final Color color,
-  required final VoidCallback onPressed,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final prego = context.prego;
-    final colors = prego.colors;
-    final radius = BorderRadius.circular(PregoRadius.full);
-    final actionConstraints = _isTextEnlarged(context: context, style: prego.textTheme.textSm.medium)
-        ? const BoxConstraints(minWidth: 76, minHeight: 36)
-        : const BoxConstraints(minWidth: 76, minHeight: 36, maxHeight: 36);
-
-    return Semantics(
-      button: true,
-      label: label,
-      onTap: onPressed,
-      child: ExcludeSemantics(
-        child: _ScanFocusableAction(
-          borderRadius: radius,
-          onPressed: onPressed,
-          child: ConstrainedBox(
-            key: const ValueKey("catalog-scan-dismiss-action"),
-            constraints: actionConstraints,
-            child: PregoTappable(
-              onTap: onPressed,
-              borderRadius: radius,
-              overlayColor: WidgetStateProperty.resolveWith((states) {
-                if (states.contains(WidgetState.pressed)) return colors.bgGrayPressed;
-                if (states.contains(WidgetState.hovered)) return colors.bgGrayHover;
-                return null;
-              }),
-              containerBuilder: (child) => ClipRRect(borderRadius: radius, child: child),
-              child: Center(
-                widthFactor: 1,
-                child: Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                  child: Text(
-                    label,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textSm.medium.copyWith(color: color),
-                  ),
-                ),
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-}
-
-class const _ScanFocusableAction({
-  required final BorderRadius borderRadius,
-  required final VoidCallback onPressed,
-  required final Widget child,
-}) extends StatefulWidget {
-  @override
-  State<_ScanFocusableAction> createState() => _ScanFocusableActionState();
-}
-
-class _ScanFocusableActionState() extends State<_ScanFocusableAction> {
-  bool _showFocusHighlight = false;
-
-  @override
-  Widget build(BuildContext context) {
-    final colors = context.prego.colors;
-    return FocusableActionDetector(
-      onShowFocusHighlight: (show) => setState(() => _showFocusHighlight = show),
-      actions: {
-        ActivateIntent: CallbackAction<ActivateIntent>(
-          onInvoke: (_) {
-            widget.onPressed();
-            return null;
-          },
-        ),
-      },
-      child: DecoratedBox(
-        decoration: BoxDecoration(
-          borderRadius: widget.borderRadius,
-          boxShadow: _showFocusHighlight
-              ? [
-                  BoxShadow(color: colors.focusRing, spreadRadius: 4),
-                  BoxShadow(color: colors.bgSurface1, spreadRadius: 2),
-                ]
-              : null,
-        ),
-        child: widget.child,
-      ),
-    );
-  }
 }
 
 /// Stretches Flutter's circular radial into Figma's wide, top-centred ellipse.

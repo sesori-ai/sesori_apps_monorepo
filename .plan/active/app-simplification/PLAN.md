@@ -412,6 +412,13 @@ This document and `TRACKER.md`. Verification: Markdown only.
 
 - **Remove** everything listed under *Cleanup* for 2.b.
 - **Row.** The scan row fades out with a size transition when the service self-clears.
+- **Dead states.** Not connected, no harness and unsupported needed Dismiss, so `startAll` no longer produces
+  them: it returns silently and the refresh is a plain reload; an unreadable harness list is logged. Failed and
+  partly failed results self-clear like success; the D12 alert is their lasting report.
+- **Desktop project page.** Its overflow menu held only Refresh once Scan went, so it becomes a Refresh button
+  until step 11 removes the page.
+- **Playbook.** The scan-row widgetbook playbook goes with the states it showed, and `client/app` drops its
+  `widgetbook` dev dependency.
 - **Verification:**
   - Service tests trimmed to `startAll`, settle and self-clear.
   - A widget test for the fade.
@@ -421,13 +428,19 @@ This document and `TRACKER.md`. Verification: Markdown only.
 ### Step 3 — Searchable picker with Open another folder (⚙️)
 
 - **`ProjectPicker`.**
-  - Both modes (D14), backed by `ProjectListCubit` from `SessionScope`.
+  - New-session mode only, backed by `ProjectListCubit` from `SessionScope`. The filter mode waits for its first
+    consumer in step 7.b; D14 holds because it extends this same component.
   - A bottom sheet on the phone, lifted by `viewInsets`, and a popover on wide layouts and desktop.
   - Paths shown only on name collisions, via `project_path_labels.dart`.
 - **Open another folder.** “Open another folder…” calls `showAddProjectDialog`, and its `onProjectAdded` selects
   the new project.
 - **Phone wiring.** The phone new-session screen uses the live list; remove `NewSessionProjectsCubit` and the dead
   `createProject` pair.
+  - The phone header hides only while the composer holds the keyboard. Hiding it for any keyboard would unmount
+    the picker's trigger under its own sheet, jumping the page behind it and leaving the folder browser no
+    context to open from.
+- **Desktop wiring.** The desktop new-session page and the home composer use the same picker in popover form; the
+  project page, which names its own project, shows no picker until step 11 removes it.
 - **Verification:**
   - Widget tests: search narrows, a no-match keeps the add entry, collisions show paths, zero and one project.
   - Simulator: the portrait sheet with the keyboard, and the iPad popover.
@@ -440,9 +453,12 @@ This document and `TRACKER.md`. Verification: Markdown only.
   - `ProjectsSettingsView` reuses `ProjectTile`'s `menuEntries` (rename, hide, remove-missing) and adds “Open
     another folder…”.
   - Offline, it dims like the other bridge rows.
+- **Folder browser.** `SessionScope` provides `ConnectionService`, so the picker and this page open the browser
+  themselves. The `ProjectFolderOpener` typedef and the shells' `openFolder` copies go.
 - **Routes.**
   - Phone: route `settingsProjects("/settings/projects")`.
-  - Desktop: `DesktopSettingsTab.projects`, with the cockpit's `ProjectListCubit` re-provided by value.
+  - Desktop: `DesktopSettingsTab.projects`, with the cockpit's `ProjectListCubit` and `ConnectionService`
+    re-provided by value. The sidebar's settings opener reads them from inside `DesktopCockpitCubitProvider`.
 - **Verification:**
   - Widget tests: rows, menu actions and the offline state.
   - A simulator screenshot and a macOS screenshot.
@@ -490,7 +506,8 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Routes.** Install the route tree above. Every `projects` consumer moves to `home`, `homeVisibility` replaces
   `projectPageVisibility`, and `ProjectViewingService` gets its new mapping.
 - **Phone home.**
-  - `AllSessionsList` with the title `ProjectPicker` (filter mode) and the computer switcher under it.
+  - `AllSessionsList` with the title `ProjectPicker` and the computer switcher under it. This step adds the
+    picker's filter mode, led by “All projects”, for that title switcher.
   - Header buttons for new session, Archived and Settings.
   - The onboarding, offline and disconnected states.
   - At ≥700 pt the new routes sit in a ShellRoute that still uses `SessionSplitShell`, with `AllSessionsList` as its

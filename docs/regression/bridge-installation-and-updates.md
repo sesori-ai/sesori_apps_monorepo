@@ -90,7 +90,7 @@ client's update steps shown wherever a feature needs a newer bridge.
   command has a copy button that briefly turns into a check. Entry points: the
   session's old-bridge notice (in place of Harness Settings; blocked harnesses keep
   Harness Settings), the three bridge settings rows, the Harnesses screen, a harness
-  login refused as unsupported, the list and harness-card scan rows, the new-folder
+  login refused as unsupported, the new-folder
   alert, and the session menu's auto-continuation entry.
 - The bridge reports its kind in `/global/health` as `bridgeKind`: `desktop` when
   Sesori Desktop supervises it (`--control-url`), otherwise `cli`. A missing or

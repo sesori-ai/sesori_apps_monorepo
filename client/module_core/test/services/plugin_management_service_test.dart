@@ -21,7 +21,6 @@ import "package:sesori_dart_core/src/services/models/plugin_install_state.dart";
 import "package:sesori_dart_core/src/services/plugin_authentication_browser_service.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
-import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -325,14 +324,11 @@ void main() {
         authenticationBrowserService: browserService,
         activeBridgeLocality: const _RemoteBridgeLocality(),
       );
-      final scan = FakeCatalogRescanService();
       final cubit = PluginManagementCubit(
         service: service,
         urlLauncher: _MockUrlLauncher(),
-        catalogRescanService: scan,
       );
       addTearDown(() async {
-        await scan.onDispose();
         await service.onDispose();
       });
       await _waitFor(() => cubit.state is PluginManagementReady);
@@ -1889,15 +1885,12 @@ void main() {
         connectionService: connection,
         productAnalyticsService: analytics,
       );
-      final scan = FakeCatalogRescanService();
       final cubit = PluginManagementCubit(
         service: service,
         urlLauncher: _MockUrlLauncher(),
-        catalogRescanService: scan,
       );
       addTearDown(() async {
         await cubit.close();
-        await scan.onDispose();
         await service.onDispose();
         await connection.dispose();
       });

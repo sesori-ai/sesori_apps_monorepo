@@ -35,10 +35,11 @@ class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService
 class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
-class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
 class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 
 /// A desktop whose own bridge is [bridgeId].
 class const _LocalBridge({required final String bridgeId}) implements ActiveBridgeLocality {
@@ -132,11 +133,12 @@ void main() {
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
-  late BehaviorSubject<CatalogRescanState> catalogScanStates;
   late int logoutCompletions;
   late _MockFileAccessCubit fileAccess;
   late MockRegisteredBridgesService registeredBridges;
   late _MockComputerSwitchDispatcher computerSwitchDispatcher;
+  late _MockProjectListCubit projectList;
+  late _MockConnectionOverlayCubit connectionOverlay;
 
   setUp(() async {
     await getIt.reset();
@@ -215,19 +217,14 @@ void main() {
     authenticationChallenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded(const {});
     authenticationBrowserStates = BehaviorSubject<Map<String, PluginAuthenticationBrowserState>>.seeded(const {});
     authenticationTerminal = StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
-    catalogScanStates = BehaviorSubject<CatalogRescanState>.seeded(const CatalogRescanState.idle());
     pluginService = _MockPluginManagementService();
-    final catalogRescanService = _MockCatalogRescanService();
     when(() => pluginService.snapshots).thenAnswer((_) => pluginSnapshots.stream);
     when(() => pluginService.installStates).thenAnswer((_) => installStates.stream);
     when(() => pluginService.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => pluginService.authenticationBrowserStates).thenAnswer((_) => authenticationBrowserStates.stream);
     when(() => pluginService.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
     when(pluginService.onDispose).thenAnswer((_) async {});
-    when(() => catalogRescanService.state).thenAnswer((_) => catalogScanStates.stream);
-    when(catalogRescanService.onDispose).thenAnswer((_) async {});
     getIt.registerSingleton<PluginManagementService>(pluginService);
-    getIt.registerSingleton<CatalogRescanService>(catalogRescanService);
     getIt.registerSingleton<UrlLauncher>(_MockUrlLauncher());
     registeredBridges = MockRegisteredBridgesService();
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridges);
@@ -241,6 +238,20 @@ void main() {
       ),
     ).thenAnswer((_) async {});
     getIt.registerSingleton<ComputerSwitchDispatcher>(computerSwitchDispatcher);
+    projectList = _MockProjectListCubit();
+    whenListen(
+      projectList,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(
+        projects: [ProjectSummary(id: "demo", name: "demo-app", path: "/work/demo-app", time: null)],
+      ),
+    );
+    connectionOverlay = _MockConnectionOverlayCubit();
+    whenListen(
+      connectionOverlay,
+      const Stream<ConnectionOverlayState>.empty(),
+      initialState: const ConnectionOverlayState.hidden(connected: true),
+    );
   });
 
   tearDown(() async {
@@ -255,7 +266,6 @@ void main() {
     await authenticationChallenges.close();
     await authenticationBrowserStates.close();
     await authenticationTerminal.close();
-    await catalogScanStates.close();
   });
 
   Future<GoRouter> open({required WidgetTester tester, required DesktopSettingsTab tab}) async {
@@ -263,15 +273,21 @@ void main() {
       initialLocation: "/session",
       routes: [
         ShellRoute(
-          builder: (_, state, child) => BlocProvider<AuthGateCubit>.value(
-            value: authGateCubit,
+          // Below the root navigator, as in the cockpit: the settings window
+          // reaches the project list only through what it re-provides.
+          builder: (_, state, child) => MultiBlocProvider(
+            providers: [
+              BlocProvider<AuthGateCubit>.value(value: authGateCubit),
+              BlocProvider<ProjectListCubit>.value(value: projectList),
+              RepositoryProvider<ConnectionService>.value(value: getIt<ConnectionService>()),
+            ],
             child: Builder(
               builder: (context) {
                 // Exercise registered shortcuts without mounting production DI or the cockpit.
                 final shell = buildDesktopRoutes().single as ShellRoute;
                 final gate = shell.builder!(context, state, child) as AuthGate;
-                final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
-                final cockpit = provider.child as DesktopCockpitShell;
+                final provider = gate.child as DesktopCockpitCubitProvider;
+                final cockpit = (provider.child as Builder).builder(context) as DesktopCockpitShell;
                 return CallbackShortcuts(
                   bindings: {desktopShortcut(key: LogicalKeyboardKey.comma): cockpit.onOpenSettings},
                   child: cockpit.child,
@@ -307,6 +323,7 @@ void main() {
           BlocProvider<FileAccessCubit>.value(value: fileAccess),
           BlocProvider<AppearanceCubit>.value(value: appearanceCubit),
           BlocProvider<ChatInputModeCubit>.value(value: chatInputModeCubit),
+          BlocProvider<ConnectionOverlayCubit>.value(value: connectionOverlay),
         ],
         // As in the desktop shell, so owned sheets open as dialogs.
         child: PregoInteractionScope(
@@ -440,6 +457,24 @@ void main() {
     await tester.ensureVisible(find.text("v0.1.0 (1)"));
     await tester.pump();
     expect(find.text("v0.1.0 (1)").hitTestable(), findsOneWidget);
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("Projects lists the cockpit's projects and opens the folder browser over the window", (tester) async {
+    when(() => projectList.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
+      (_) async => const FilesystemSuggestionsSuccess(
+        suggestions: FilesystemSuggestions(data: [], path: "/work"),
+      ),
+    );
+    when(() => projectList.parentHostPath(path: any(named: "path"))).thenReturn(null);
+    await open(tester: tester, tab: DesktopSettingsTab.projects);
+    expect(find.text("demo-app"), findsOneWidget);
+    expect(find.text("/work/demo-app"), findsOneWidget);
+
+    await tester.tap(find.byKey(const Key("projects-settings-open-folder")));
+    await tester.pumpAndSettle();
+    expect(find.byType(AddProjectDialog), findsOneWidget);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
 

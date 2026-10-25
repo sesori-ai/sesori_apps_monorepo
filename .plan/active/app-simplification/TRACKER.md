@@ -11,10 +11,10 @@
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/13 | Publish the plan | Done | #2027 |
-| 2.a/13 | One session scope; every refresh imports | Done | `sesori/app-simplification-step-2a` |
-| 2.b/13 | Scan cancel, dismiss, deep pull and per-harness scan removed | Not started | — |
-| 3/13 | Searchable picker with Open another folder | Not started | — |
-| 4/13 | Settings › Projects | Not started | — |
+| 2.a/13 | One session scope; every refresh imports | Done | #2032 |
+| 2.b/13 | Scan cancel, dismiss, deep pull and per-harness scan removed | Done | `sesori/app-simplification-step-2b` |
+| 3/13 | Searchable picker with Open another folder | Done | #2034 |
+| 4/13 | Settings › Projects | Done | `sesori/app-simplification-step-4` |
 | 5/13 | Row logo and project label | Done | #2030 |
 | 6/13 | All-projects list model | Done | `sesori/app-simplification-step-6` |
 | 7.a/13 | Archived across projects | Not started | — |

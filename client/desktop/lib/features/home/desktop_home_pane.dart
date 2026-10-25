@@ -98,7 +98,7 @@ class const DesktopHomePane({
                 ),
                 ProjectListBridgeDisconnected() => _disconnectedView(context: context),
                 ProjectListLoaded() => _DesktopHomeEmptyView(
-                  onAddProject: () => _showAddProject(context: context, onOpenProject: onOpenProject),
+                  onAddProject: () => unawaited(showAddProjectDialog(context: context, onProjectAdded: onOpenProject)),
                 ),
               },
             ),
@@ -127,17 +127,6 @@ class const DesktopHomePane({
 
   static void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
       unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
-
-  static void _showAddProject({required BuildContext context, required ProjectOpenedCallback onOpenProject}) {
-    unawaited(
-      showAddProjectDialog(
-        context: context,
-        cubit: context.read<ProjectListCubit>(),
-        connectionService: getIt<ConnectionService>(),
-        onProjectAdded: onOpenProject,
-      ),
-    );
-  }
 }
 
 /// "Viewing: …" above the home: which computer's projects the desktop shows,
@@ -404,7 +393,6 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       child: NewSessionView(
         projectId: picked.id,
         projectName: displayName,
-        projects: projects,
         onProjectSelected: ({required projectId, required projectName}) => setState(() => _pickedProjectId = projectId),
         // The home is where Back would lead; there is nothing to leave.
         onBack: () {},

@@ -191,6 +191,7 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                 rows: rows,
                 emptyText: loc.listSearchNoMatches,
                 onClose: widget.onClose,
+                focusesUnderTouch: false,
               ),
             ),
           ),

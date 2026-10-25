@@ -2712,23 +2712,6 @@ void main() {
         expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
       });
 
-      test("forwards the scan intents to the service", () async {
-        stubSessions();
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-
-        cubit
-          ..startCatalogScan()
-          ..cancelCatalogScan()
-          ..dismissCatalogScan();
-        await Future<void>.delayed(Duration.zero);
-
-        expect(fakeCatalogRescanService.startAllCalls, 1);
-        expect(fakeCatalogRescanService.cancelCalls, 1);
-        expect(fakeCatalogRescanService.dismissCalls, 1);
-      });
-
       test("refreshAndImport reloads with PR data and starts an import", () async {
         stubSessions();
         final cubit = buildCubit();

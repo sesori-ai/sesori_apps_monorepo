@@ -1,5 +1,3 @@
-import "package:sesori_auth/sesori_auth.dart";
-
 /// What a completed rescan found, as one aggregate across every harness that
 /// took part.
 ///
@@ -71,12 +69,6 @@ sealed class const CatalogRescanState() {
 
   const factory failed({required Set<String> failedPluginIds}) = CatalogRescanFailed;
 
-  const factory unsupported() = CatalogRescanUnsupported;
-
-  const factory notConnected() = CatalogRescanNotConnected;
-
-  const factory noHarness() = CatalogRescanNoHarness;
-
   /// Whether a rescan is in flight. Leaving this is what tells a list to
   /// refresh, since a committed import raises no invalidation of its own.
   bool get isLive =>
@@ -138,47 +130,3 @@ final class const CatalogRescanPartlyFailed({
 /// Every harness failed. Carries no message: `CatalogImportFailed.message` is
 /// the bridge's raw `error.toString()` and is never lifted into client state.
 final class const CatalogRescanFailed({required final Set<String> failedPluginIds}) extends CatalogRescanState;
-
-/// This bridge cannot rescan at all, because it predates the import route.
-final class const CatalogRescanUnsupported() extends CatalogRescanState;
-
-/// No live bridge connection is available to receive a rescan request.
-final class const CatalogRescanNotConnected() extends CatalogRescanState;
-
-/// There is no harness to rescan on the connected bridge: either no management
-/// snapshot has arrived yet, the one that arrived failed, or none of its
-/// harnesses is routable.
-///
-/// One variant for all three, because a rescan cannot start in any of them and
-/// the user's next move is the same. Without it a fan-out over an empty set
-/// would return silently, leaving the pull that asked for it with nothing to
-/// show for itself.
-final class const CatalogRescanNoHarness() extends CatalogRescanState;
-
-/// Outcome of a rescan aimed at one named harness.
-///
-/// A targeted request reports back to the card that asked for it, unlike the
-/// fan-out, which silently skips a harness that cannot import.
-sealed class const CatalogRescanStartResult() {
-  const factory accepted() = CatalogRescanStartAccepted;
-
-  const factory notImportable() = CatalogRescanStartNotImportable;
-
-  const factory unsupported() = CatalogRescanStartUnsupported;
-
-  const factory failed({required ApiError cause}) = CatalogRescanStartFailed;
-}
-
-final class const CatalogRescanStartAccepted() extends CatalogRescanStartResult;
-
-/// The bridge knows this harness but will not import from it right now.
-final class const CatalogRescanStartNotImportable() extends CatalogRescanStartResult;
-
-/// The bridge has no catalog import route.
-final class const CatalogRescanStartUnsupported() extends CatalogRescanStartResult;
-
-/// The request failed. [cause] is retained for the local log, because a
-/// transport or decoding failure may never have reached the bridge and so
-/// cannot be explained by the bridge's own log. It is not for display: the card
-/// renders bounded text only.
-final class const CatalogRescanStartFailed({required final ApiError cause}) extends CatalogRescanStartResult;

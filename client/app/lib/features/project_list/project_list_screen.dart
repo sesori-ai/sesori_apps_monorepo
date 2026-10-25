@@ -93,12 +93,7 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
 
   static void _showAddProject({required BuildContext context}) {
     unawaited(
-      showAddProjectDialog(
-        context: context,
-        cubit: context.read<ProjectListCubit>(),
-        connectionService: getIt<ConnectionService>(),
-        onProjectAdded: _openProject,
-      ),
+      showAddProjectDialog(context: context, onProjectAdded: _openProject),
     );
   }
 

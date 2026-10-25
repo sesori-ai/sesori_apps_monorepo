@@ -3,7 +3,6 @@ import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../core/di/injection.dart";
 import "../../core/routing/app_router.dart";
@@ -16,27 +15,19 @@ class const NewSessionScreen({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MultiBlocProvider(
-      // Replacing the route keeps its page, so the project keys the providers:
-      // another project gets fresh cubits and never the one that was left.
+    return BlocProvider(
+      // Replacing the route keeps its page, so the project keys the provider:
+      // another project gets a fresh cubit and never the one that was left.
       key: ValueKey(projectId),
-      providers: [
-        BlocProvider(
-          create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
-        ),
-        BlocProvider(create: (_) => NewSessionProjectsCubit(projectListService: getIt<ProjectListService>())),
-      ],
-      child: Builder(
-        builder: (context) => _build(context: context, projects: context.watch<NewSessionProjectsCubit>().state),
-      ),
+      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
+      child: Builder(builder: (context) => _build(context: context)),
     );
   }
 
-  Widget _build({required BuildContext context, required List<ProjectSummary> projects}) {
+  Widget _build({required BuildContext context}) {
     return NewSessionView(
       projectId: projectId,
       projectName: projectName,
-      projects: projects,
       // A different project is a different page: the route builds a fresh
       // cubit for it.
       onProjectSelected: ({required projectId, required projectName}) => context.replaceRoute(

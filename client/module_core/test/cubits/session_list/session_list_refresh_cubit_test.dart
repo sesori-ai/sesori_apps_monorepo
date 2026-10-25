@@ -49,10 +49,15 @@ void main() {
   test("projects the import state and keeps the reload status", () async {
     when(service.refresh).thenAnswer((_) async => true);
     const failed = CatalogRescanState.partlyFailed(succeededCount: 1, failedPluginIds: {"codex"});
-    scan.add(const CatalogRescanState.noHarness());
+    const live = CatalogRescanState.preparingOne(
+      pendingPluginName: "Codex",
+      finishedHarnessCount: 0,
+      pluginIds: {"codex"},
+    );
+    scan.add(live);
     final cubit = SessionListRefreshCubit(service: service);
     addTearDown(cubit.close);
-    expect(cubit.state.scan, isA<CatalogRescanNoHarness>());
+    expect(cubit.state.scan, same(live));
     await cubit.refresh();
     scan.add(failed);
     await Future<void>.delayed(Duration.zero);

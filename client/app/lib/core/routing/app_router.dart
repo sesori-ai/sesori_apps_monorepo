@@ -19,6 +19,7 @@ import "../../features/settings/default_input_settings_screen.dart";
 import "../../features/settings/harnesses_settings_screen.dart";
 import "../../features/settings/notification_settings_screen.dart";
 import "../../features/settings/profile_screen.dart";
+import "../../features/settings/projects_settings_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../di/injection.dart";
@@ -43,6 +44,7 @@ const _settingsDefaultInputRouteSegment = "default-input";
 const _settingsNotificationsRouteSegment = "notifications";
 const _settingsProfileRouteSegment = "profile";
 const _settingsComputersRouteSegment = "computers";
+const _settingsProjectsRouteSegment = "projects";
 
 extension AppRouteToGoRoute on AppRouteDef {
   /// Returns the [GoRoute] for this route definition with an exhaustive
@@ -116,6 +118,7 @@ extension on AppRoute {
       AppRouteSettingsHarnessDetail() => throw StateError("Harness pages belong to their flow shell"),
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSettingsComputers() => const ComputersScreen(),
+      AppRouteSettingsProjects() => const ProjectsSettingsScreen(),
       AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
         projectId: projectId,
         projectName: projectName,
@@ -287,6 +290,7 @@ List<RouteBase> _buildAppRoutes({
               getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
           sessionCleanupService: getIt<SessionCleanupService>(),
           sessionLaunchService: getIt<SessionLaunchService>(),
+          connectionService: getIt<ConnectionService>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
           child: child,
@@ -458,6 +462,10 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
         GoRoute(
           path: _settingsComputersRouteSegment,
           builder: (context, state) => AppRouteDef.settingsComputers._buildScreen(context: context, state: state),
+        ),
+        GoRoute(
+          path: _settingsProjectsRouteSegment,
+          builder: (context, state) => AppRouteDef.settingsProjects._buildScreen(context: context, state: state),
         ),
       ],
     ),

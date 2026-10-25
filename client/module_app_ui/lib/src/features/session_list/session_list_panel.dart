@@ -141,21 +141,11 @@ class const SessionListPanel({
         if (canRefresh)
           PregoSliverRefreshControl(
             onRefresh: () => refreshSessionList(context),
-            deepRefresh: CatalogScanRow.deepRefresh(
-              context: context,
-              onStart: () => context.read<SessionListCubit>().startCatalogScan(),
-            ),
             decorate: null,
             onPulledExtentChanged: null,
           ),
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
-        SliverToBoxAdapter(
-          child: CatalogScanRow(
-            scan: catalogScan,
-            onCancel: () => context.read<SessionListCubit>().cancelCatalogScan(),
-            onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
-          ),
-        ),
+        SliverToBoxAdapter(child: CatalogScanRow(scan: catalogScan)),
         SessionListFilteredContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,

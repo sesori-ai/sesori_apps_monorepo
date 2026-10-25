@@ -55,7 +55,7 @@ void main() {
     expect(find.text("Couldn't import from 2 harnesses: Codex, Claude Code"), findsOneWidget);
   });
 
-  testWidgets("progress, success and an unsupported bridge raise no alert", (tester) async {
+  testWidgets("progress, success and the self-clear raise no alert", (tester) async {
     await pumpAlerts(tester);
 
     await emit(
@@ -69,7 +69,7 @@ void main() {
         counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
       ),
     );
-    await emit(tester, const CatalogRescanState.unsupported());
+    await emit(tester, const CatalogRescanState.idle());
 
     expect(find.textContaining("Couldn't import"), findsNothing);
   });

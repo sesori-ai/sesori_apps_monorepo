@@ -116,6 +116,7 @@ class AnalyticsRouteListener {
     AppRouteDef.projects => AnalyticsScreen.projects,
     AppRouteDef.settings ||
     AppRouteDef.settingsComputers ||
+    AppRouteDef.settingsProjects ||
     AppRouteDef.settingsHarnesses ||
     AppRouteDef.settingsHarnessDetail => AnalyticsScreen.settings,
     AppRouteDef.settingsDefaultInput => AnalyticsScreen.settingsDefaultInput,

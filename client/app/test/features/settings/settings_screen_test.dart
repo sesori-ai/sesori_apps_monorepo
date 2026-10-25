@@ -90,6 +90,10 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
         path: "/settings/harnesses",
         builder: (context, state) => const Scaffold(body: Text("harnesses-route")),
       ),
+      GoRoute(
+        path: "/settings/projects",
+        builder: (context, state) => const Scaffold(body: Text("projects-route")),
+      ),
     ],
   );
 
@@ -296,6 +300,23 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text("harnesses-route"), findsOneWidget);
+  });
+
+  testWidgets("Projects follows Harnesses in the Bridge settings and opens Settings › Projects", (tester) async {
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    final bridgeGroup = find.ancestor(of: find.text("YOLO mode"), matching: find.byType(PregoGroupedRows));
+    expect(find.descendant(of: bridgeGroup, matching: find.text("Projects")), findsOneWidget);
+    final projectsTop = tester.getTopLeft(find.text("Projects")).dy;
+    expect(tester.getTopLeft(find.text("Harnesses")).dy, lessThan(projectsTop));
+    expect(projectsTop, lessThan(tester.getTopLeft(find.text("YOLO mode")).dy));
+
+    await tester.tap(find.text("Projects"));
+    await tester.pumpAndSettle();
+
+    expect(find.text("projects-route"), findsOneWidget);
   });
 
   testWidgets("Preferences groups Notifications and Default input between Bridge and Appearance", (tester) async {
@@ -625,6 +646,14 @@ void main() {
     await tester.tap(find.text("Harnesses"));
     await tester.pumpAndSettle();
     expect(find.text("harnesses-route"), findsNothing);
+    // So does Projects.
+    expect(
+      tester.widget<Opacity>(find.ancestor(of: find.text("Projects"), matching: find.byType(Opacity)).first).opacity,
+      lessThan(1),
+    );
+    await tester.tap(find.text("Projects"));
+    await tester.pumpAndSettle();
+    expect(find.text("projects-route"), findsNothing);
     verifyNever(bridgeSettingsService.load);
   });
 

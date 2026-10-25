@@ -1,7 +1,6 @@
 import "dart:ui" as ui;
 
 import "package:flutter/rendering.dart";
-import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -9,14 +8,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 void main() {
-  late int cancelCount;
-  late int dismissCount;
-
-  setUp(() {
-    cancelCount = 0;
-    dismissCount = 0;
-  });
-
   Widget harness(
     CatalogRescanState scan, {
     bool reducedMotion = false,
@@ -27,11 +18,7 @@ void main() {
     final system = designSystem ?? PregoDesignSystem.light;
     final row = RepaintBoundary(
       key: const ValueKey("catalog-scan-row-boundary"),
-      child: CatalogScanRow(
-        scan: scan,
-        onCancel: () => cancelCount++,
-        onDismiss: () => dismissCount++,
-      ),
+      child: CatalogScanRow(scan: scan),
     );
     return MaterialApp(
       theme: ThemeData(
@@ -191,9 +178,6 @@ void main() {
             loc.catalogScanPartlyFailedTitle,
           ),
           (const CatalogRescanState.failed(failedPluginIds: {"codex"}), loc.catalogScanFailedTitle),
-          (const CatalogRescanState.unsupported(), loc.catalogScanUnsupportedTitle),
-          (const CatalogRescanState.notConnected(), loc.catalogScanNotConnectedTitle),
-          (const CatalogRescanState.noHarness(), loc.catalogScanNoHarnessTitle),
         ];
         Rect? initialMark;
         Offset? initialTitle;
@@ -212,10 +196,6 @@ void main() {
           if (textScale == 1) {
             expect(markRect, initialMark);
             expect(titleOffset, initialTitle);
-          } else if (!scan.isLive) {
-            final textBlock = find.ancestor(of: find.text(title), matching: find.byType(Column)).first;
-            final action = find.byKey(const ValueKey("catalog-scan-dismiss-action"));
-            expect(tester.getTopLeft(action).dy - tester.getBottomLeft(textBlock).dy, PregoSpacing.xs);
           }
           expect(tester.takeException(), isNull);
         }
@@ -235,7 +215,6 @@ void main() {
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(find.text(loc.catalogScanRunningTitle(0, 1)), findsOneWidget);
       expect(find.byKey(const ValueKey("prego-deep-scan-card")), findsOneWidget);
-      expect(find.bySemanticsLabel(loc.catalogScanCancel), findsOneWidget);
     });
 
     testWidgets("matches the 402 by 101 Figma loading geometry", (tester) async {
@@ -265,7 +244,7 @@ void main() {
         tester.widget<PregoAiLoader>(find.byType(PregoAiLoader)).fillMode,
         PregoAiLoaderFillMode.outline,
       );
-      expect(tester.getSize(find.bySemanticsLabel("Cancel")), const Size.square(36));
+      expect(find.bySemanticsLabel("Cancel"), findsNothing, reason: "a scan in flight offers no control");
     });
 
     testWidgets("keeps the scan graphic visible in the light theme", (tester) async {
@@ -522,9 +501,6 @@ void main() {
       );
       expect(explanation.maxLines, isNull);
       expect(explanation.overflow, isNull);
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      await tester.tap(find.bySemanticsLabel(loc.catalogScanCancel));
-      expect(cancelCount, 1);
     });
 
     testWidgets("restarts the prolonged startup threshold when the harness changes", (tester) async {
@@ -606,53 +582,6 @@ void main() {
       expect(find.text("Waiting for Codex · 1 of 2 finished"), findsOneWidget);
     });
 
-    testWidgets("cancels the scan in flight from the running row", (tester) async {
-      await pumpRow(
-        tester,
-        const CatalogRescanState.reading(
-          activePluginName: "Codex",
-          sessionsSeen: 1,
-          finishedHarnessCount: 0,
-          pluginIds: {"codex"},
-        ),
-      );
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(
-        tester
-            .getSemantics(find.bySemanticsLabel(loc.catalogScanCancel))
-            .getSemanticsData()
-            .hasAction(SemanticsAction.tap),
-        isTrue,
-      );
-      await tester.tap(find.bySemanticsLabel(loc.catalogScanCancel));
-
-      expect(cancelCount, 1);
-      expect(dismissCount, 0);
-    });
-
-    testWidgets("focuses and activates Cancel from the keyboard", (tester) async {
-      await pumpRow(
-        tester,
-        const CatalogRescanState.reading(
-          activePluginName: "Codex",
-          sessionsSeen: 1,
-          finishedHarnessCount: 0,
-          pluginIds: {"codex"},
-        ),
-      );
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.pump();
-      expect(FocusManager.instance.primaryFocus, isNotNull);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pump();
-
-      expect(cancelCount, 1);
-      expect(dismissCount, 0);
-    });
-
     testWidgets("matches the 402 by 101 Figma terminal geometry and type rhythm", (tester) async {
       await pumpRow(
         tester,
@@ -667,15 +596,11 @@ void main() {
       final row = find.byType(CatalogScanRow);
       final card = find.byKey(const ValueKey("catalog-scan-terminal-card"));
       final mark = find.byKey(const ValueKey("catalog-scan-terminal-icon"));
-      final action = find.byKey(const ValueKey("catalog-scan-dismiss-action"));
 
       expect(tester.getSize(row), const Size(402, 101));
       expect(tester.getSize(card), const Size(370, 69));
       expect(tester.getTopLeft(card) - tester.getTopLeft(row), const Offset(16, 16));
       expect(tester.getSize(mark), const Size.square(20));
-      // 76 wide at least; a label longer than Figma's "Dismiss" widens it instead of truncating.
-      expect(tester.getSize(action).height, 36);
-      expect(tester.getSize(action).width, greaterThanOrEqualTo(76));
 
       final container = tester.widget<Container>(card);
       final decoration = container.decoration! as ShapeDecoration;
@@ -720,7 +645,6 @@ void main() {
               CatalogRescanState scan,
               Color accent,
               Color mark,
-              Color action,
             })
           >[
             (
@@ -730,19 +654,16 @@ void main() {
               ),
               accent: PregoColorsDark.bgSuccessSecondary,
               mark: PregoColorsDark.textSuccessPrimary,
-              action: PregoColorsDark.textSuccessPrimary,
             ),
             (
               scan: const CatalogRescanState.partlyFailed(succeededCount: 2, failedPluginIds: {"codex"}),
               accent: PregoColorsDark.bgWarningSecondary,
               mark: PregoColorsDark.fgWarningSecondary,
-              action: PregoColorsDark.textWarningPrimary,
             ),
             (
               scan: const CatalogRescanState.failed(failedPluginIds: {"codex", "claude", "opencode"}),
               accent: PregoColorsDark.bgErrorSolid,
               mark: PregoColorsDark.fgErrorPrimary,
-              action: PregoColorsDark.textErrorPrimary,
             ),
           ];
 
@@ -776,14 +697,6 @@ void main() {
           ),
         );
         expect(icon.color, outcome.mark);
-
-        final dismiss = tester.widget<Text>(
-          find.descendant(
-            of: find.byKey(const ValueKey("catalog-scan-dismiss-action")),
-            matching: find.text("Dismiss"),
-          ),
-        );
-        expect(dismiss.style!.color, outcome.action);
       }
     });
 
@@ -797,9 +710,6 @@ void main() {
           ),
           const CatalogRescanState.partlyFailed(succeededCount: 2, failedPluginIds: {"codex"}),
           const CatalogRescanState.failed(failedPluginIds: {"codex", "claude", "opencode"}),
-          const CatalogRescanState.unsupported(),
-          const CatalogRescanState.notConnected(),
-          const CatalogRescanState.noHarness(),
         ];
 
         for (final outcome in outcomes) {
@@ -917,31 +827,6 @@ void main() {
       expect(find.text("Check bridge logs"), findsOneWidget);
     });
 
-    testWidgets("explains an older bridge instead of reporting a failure", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.unsupported());
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(find.text(loc.catalogScanUnsupportedTitle), findsOneWidget);
-      expect(find.text(loc.catalogScanUnsupportedDetail), findsOneWidget);
-    });
-
-    testWidgets("asks for a bridge connection instead of claiming there is no harness", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.notConnected());
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(find.text(loc.catalogScanNotConnectedTitle), findsOneWidget);
-      expect(find.text(loc.catalogScanNotConnectedDetail), findsOneWidget);
-      expect(find.text(loc.catalogScanNoHarnessTitle), findsNothing);
-    });
-
-    testWidgets("says there is nothing to scan when no harness is ready", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.noHarness());
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(find.text(loc.catalogScanNoHarnessTitle), findsOneWidget);
-      expect(find.text(loc.catalogScanNoHarnessDetail), findsOneWidget);
-    });
-
     // The reading row's session count changes with every enumerated session, so
     // announcing it would interrupt a screen reader throughout a long scan.
     testWidgets("announces every state except the one whose count keeps moving", (tester) async {
@@ -979,23 +864,65 @@ void main() {
       );
     });
 
-    // SizeTransition only changes layout, so a retained card would keep its
-    // labels and its live action button reachable by keyboard at zero height.
-    testWidgets("unmounts the card once it has folded away", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.failed(failedPluginIds: {"codex"}));
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(find.text(loc.catalogScanDismiss, skipOffstage: false), findsOneWidget);
-
-      await pumpRow(tester, const CatalogRescanState.idle());
-
-      expect(
-        find.text(loc.catalogScanDismiss, skipOffstage: false),
-        findsNothing,
-        reason: "an invisible action must not stay in the tree",
+    // The service clears a settled scan by itself, so the row's exit is the
+    // only signal the result has gone: it fades while folding, and whatever sits
+    // below it slides up continuously instead of jumping.
+    testWidgets("fades out and folds smoothly once the scan clears itself", (tester) async {
+      Widget list(CatalogRescanState scan) => MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: Scaffold(
+          body: Column(
+            children: [
+              CatalogScanRow(scan: scan),
+              const SizedBox(key: ValueKey("below"), height: 40),
+            ],
+          ),
+        ),
       );
+      double belowTop() => tester.getTopLeft(find.byKey(const ValueKey("below"))).dy;
+      final fade = find.descendant(of: find.byType(CatalogScanRow), matching: find.byType(FadeTransition));
+      double opacity() => tester.widget<FadeTransition>(fade).opacity.value;
+      final loc = await AppLocalizations.delegate.load(const Locale("en"));
+
+      await tester.pumpWidget(
+        list(
+          const CatalogRescanState.succeeded(
+            harnessCount: 1,
+            counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
+          ),
+        ),
+      );
+      await tester.pumpAndSettle();
+      final start = belowTop();
+      expect(start, greaterThan(0));
+      expect(opacity(), 1);
+
+      await tester.pumpWidget(list(const CatalogRescanState.idle()));
+      final positions = <double>[];
+      final opacities = <double>[];
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (fade.evaluate().isEmpty) break;
+        positions.add(belowTop());
+        opacities.add(opacity());
+      }
+      await tester.pumpAndSettle();
+
+      var previous = start;
+      for (final position in positions) {
+        expect(position, lessThanOrEqualTo(previous), reason: "the content below only ever moves up");
+        expect(previous - position, lessThan(start * 0.4), reason: "no single frame jumps the content");
+        previous = position;
+      }
+      expect(positions.where((position) => position > 0 && position < start).length, greaterThanOrEqualTo(5));
+      expect(opacities.any((value) => value > 0 && value < 1), isTrue, reason: "the card fades as it folds");
+      expect(belowTop(), 0);
       expect(
-        find.byKey(const ValueKey("catalog-scan-dismiss-action"), skipOffstage: false),
+        find.text(loc.catalogScanCompleteTitle, skipOffstage: false),
         findsNothing,
+        reason: "a folded card leaves no invisible text in the tree",
       );
     });
 
@@ -1009,11 +936,7 @@ void main() {
             body: Builder(
               builder: (context) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(disableAnimations: true),
-                child: CatalogScanRow(
-                  scan: const CatalogRescanState.idle(),
-                  onCancel: () => cancelCount++,
-                  onDismiss: () => dismissCount++,
-                ),
+                child: const CatalogScanRow(scan: CatalogRescanState.idle()),
               ),
             ),
           ),
@@ -1030,14 +953,12 @@ void main() {
             body: Builder(
               builder: (context) => MediaQuery(
                 data: MediaQuery.of(context).copyWith(disableAnimations: true),
-                child: CatalogScanRow(
-                  scan: const CatalogRescanState.preparingOne(
+                child: const CatalogScanRow(
+                  scan: CatalogRescanState.preparingOne(
                     pendingPluginName: "Codex",
                     finishedHarnessCount: 0,
                     pluginIds: {"codex"},
                   ),
-                  onCancel: () => cancelCount++,
-                  onDismiss: () => dismissCount++,
                 ),
               ),
             ),
@@ -1117,37 +1038,6 @@ void main() {
       expect(beamX(tester), -18);
     });
 
-    testWidgets("dismisses a finished scan without cancelling anything", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.failed(failedPluginIds: {"codex"}));
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(
-        tester
-            .getSemantics(find.bySemanticsLabel(loc.catalogScanDismiss))
-            .getSemanticsData()
-            .hasAction(SemanticsAction.tap),
-        isTrue,
-      );
-      await tester.tap(find.text(loc.catalogScanDismiss));
-
-      expect(dismissCount, 1);
-      expect(cancelCount, 0);
-    });
-
-    testWidgets("focuses and activates Dismiss from the keyboard", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.failed(failedPluginIds: {"codex"}));
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.tab);
-      await tester.pump();
-      expect(FocusManager.instance.primaryFocus, isNotNull);
-
-      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-      await tester.pump();
-
-      expect(dismissCount, 1);
-      expect(cancelCount, 0);
-    });
-
     testWidgets("expands loading and terminal cards for accessibility text", (tester) async {
       const textScaler = _BodyTextScaler();
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
@@ -1182,9 +1072,6 @@ void main() {
         expect(text.maxLines, isNull);
         expect(text.overflow, isNull);
       }
-      final actionSize = tester.getSize(find.byKey(const ValueKey("catalog-scan-dismiss-action")));
-      expect(actionSize.width, greaterThan(76));
-      expect(actionSize.height, greaterThan(36));
       expect(tester.takeException(), isNull);
     });
   });

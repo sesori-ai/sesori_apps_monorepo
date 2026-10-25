@@ -51,9 +51,6 @@ class SessionListRefreshCubit({required final SessionListRefreshService _service
     return reloaded;
   }
 
-  void cancelImport() => _service.cancelImport();
-  void dismissImport() => _service.dismissImport();
-
   @override
   Future<void> close() async {
     await _scanSubscription.cancel();

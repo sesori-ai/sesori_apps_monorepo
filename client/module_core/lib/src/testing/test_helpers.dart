@@ -1025,20 +1025,16 @@ class FakeAuthSession({required AuthState initialState}) implements AuthSession 
 ///
 /// The real service owns a whole operation lifecycle; a consumer only cares
 /// that it publishes state, announces committed catalog changes, and accepts
-/// intents, so this exposes exactly those.
+/// a start, so this exposes exactly those.
 class FakeCatalogRescanService() implements CatalogRescanService {
   final BehaviorSubject<CatalogRescanState> _state = BehaviorSubject.seeded(
     const CatalogRescanState.idle(),
   );
   final StreamController<void> _catalogChanged = StreamController<void>.broadcast(sync: true);
 
-  final List<void> _startAlls = [];
-  final List<void> _cancels = [];
-  final List<void> _dismisses = [];
+  int _startAllCalls = 0;
 
-  int get startAllCalls => _startAlls.length;
-  int get cancelCalls => _cancels.length;
-  int get dismissCalls => _dismisses.length;
+  int get startAllCalls => _startAllCalls;
 
   @override
   ValueStream<CatalogRescanState> get state => _state.stream;
@@ -1046,36 +1042,8 @@ class FakeCatalogRescanService() implements CatalogRescanService {
   @override
   Stream<void> get catalogChanged => _catalogChanged.stream;
 
-  /// Plugin ids passed to [start], in call order.
-  final List<String> startedPluginIds = [];
-
-  CatalogRescanStartResult _startResult = const CatalogRescanStartResult.accepted();
-
-  /// Sets what [start] answers, so a test can drive a rejection.
-  void stubStartResult(CatalogRescanStartResult result) => _startResult = result;
-
   @override
-  Future<void> startAll() async => _startAlls.add(null);
-
-  void Function()? _beforeStartAnswers;
-
-  /// Sets a hook that runs inside [start] before it answers, so a test can
-  /// drive the state the real service would already have published by then: a
-  /// definite rejection settles the operation before the call returns.
-  void stubBeforeStartAnswers(void Function() hook) => _beforeStartAnswers = hook;
-
-  @override
-  Future<CatalogRescanStartResult> start({required String pluginId}) async {
-    startedPluginIds.add(pluginId);
-    _beforeStartAnswers?.call();
-    return _startResult;
-  }
-
-  @override
-  Future<void> cancel() async => _cancels.add(null);
-
-  @override
-  void dismiss() => _dismisses.add(null);
+  Future<void> startAll() async => _startAllCalls++;
 
   /// Publishes [next] as the current scan state.
   void emit(CatalogRescanState next) => _state.add(next);

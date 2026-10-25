@@ -12,7 +12,6 @@ class const DesktopHarnessesSettingsScreen({super.key, required final Widget chi
     create: (_) => PluginManagementCubit(
       service: getIt<PluginManagementService>(),
       urlLauncher: getIt<UrlLauncher>(),
-      catalogRescanService: getIt<CatalogRescanService>(),
     ),
     child: HarnessSettingsFlowView(child: child),
   );

@@ -12,9 +12,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-/// The project list is one of the three surfaces that host a catalog scan: it
-/// starts one from the second stage of its pull and reports it in a row above
-/// the list.
+/// The project list is one of the three surfaces that host a catalog scan:
+/// every pull imports, and the scan reports in a row above the list.
 ///
 /// A live scan row spins forever, so these pump a fixed duration rather than
 /// settling.
@@ -99,44 +98,6 @@ void main() {
     await tester.pump(_rowSettled);
   }
 
-  /// Keeps pulling the list down in small steps until [until] holds, so these
-  /// tests describe how far the user pulls rather than how much overscroll a
-  /// given drag distance happens to produce under bouncing physics.
-  Future<void> pullFurtherUntil(WidgetTester tester, TestGesture gesture, bool Function() until) async {
-    for (var step = 0; step < 20 && !until(); step++) {
-      await gesture.moveBy(const Offset(0, 40));
-      await tester.pump();
-      // The deep stage fires from a post-frame callback, because the refresh
-      // control calls its builder from inside the sliver's layout.
-      await tester.pump();
-    }
-  }
-
-  testWidgets("pulling past the second threshold starts a scan across every harness", (tester) async {
-    final loc = await pumpLoadedList(tester);
-    final gesture = await tester.startGesture(tester.getCenter(find.text("My Project")));
-
-    // Past the ordinary trigger, the pull invites the deeper one …
-    await pullFurtherUntil(tester, gesture, () => find.text(loc.catalogScanPullCaption).evaluate().isNotEmpty);
-    expect(find.text(loc.catalogScanPullCaption), findsOneWidget);
-    expect(rescanService.startAllCalls, 0, reason: "the deeper threshold has not been crossed yet");
-
-    // … and crossing it starts the scan while the finger is still down, which
-    // is why the row that reports it has to offer its own cancel.
-    await pullFurtherUntil(tester, gesture, () => rescanService.startAllCalls > 0);
-    expect(rescanService.startAllCalls, 1);
-    await tester.pump(const Duration(milliseconds: 300));
-    // The control hands reporting to the scan row and says nothing more.
-    expect(find.text(loc.catalogScanPullCaption), findsNothing);
-
-    // Still one scan however much further the same pull travels.
-    await pullFurtherUntil(tester, gesture, () => false);
-    expect(rescanService.startAllCalls, 1);
-
-    await gesture.up();
-    await tester.pumpAndSettle();
-  });
-
   testWidgets("confirms an ordinary pull", (tester) async {
     final loc = await pumpLoadedList(tester);
 
@@ -149,21 +110,15 @@ void main() {
     expect(rescanService.startAllCalls, 1, reason: "every pull imports");
   });
 
-  // A pull that fires the second stage runs no ordinary refresh at all, so it
-  // has nothing to confirm and the scan row is the only report.
-  testWidgets("does not confirm a pull that started a scan", (tester) async {
+  // The pull has one stage: however far it travels, it is one ordinary refresh.
+  testWidgets("a long pull is still one ordinary refresh", (tester) async {
     final loc = await pumpLoadedList(tester);
 
-    final gesture = await tester.startGesture(tester.getCenter(find.text("My Project")));
-    await pullFurtherUntil(tester, gesture, () => rescanService.startAllCalls > 0);
-    await gesture.up();
+    await tester.drag(find.text("My Project"), const Offset(0, 600));
     await tester.pumpAndSettle();
 
-    expect(
-      find.text(loc.projectListRefreshSuccess),
-      findsNothing,
-      reason: "the scan is the report; a confirmation beside it says the smaller half twice",
-    );
+    expect(find.text(loc.projectListRefreshSuccess), findsOneWidget);
+    expect(rescanService.startAllCalls, 1);
   });
 
   testWidgets("reports a running scan above the list without displacing it", (tester) async {
@@ -185,7 +140,7 @@ void main() {
     expect(find.text("My Project"), findsOneWidget);
   });
 
-  testWidgets("clears the row once the scan is dismissed", (tester) async {
+  testWidgets("folds the row away once the scan clears itself", (tester) async {
     await pumpLoadedList(tester);
 
     final loc = await AppLocalizations.delegate.load(const Locale("en"));
@@ -204,24 +159,8 @@ void main() {
     expect(find.text("My Project"), findsOneWidget);
   });
 
-  testWidgets("cancels the scan from the row it is reported in", (tester) async {
-    final loc = await pumpLoadedList(tester);
-
-    await emitScan(
-      tester,
-      const CatalogRescanState.preparingOne(
-        pendingPluginName: "Codex",
-        finishedHarnessCount: 0,
-        pluginIds: {"codex"},
-      ),
-    );
-    await tester.tap(find.bySemanticsLabel(loc.catalogScanCancel));
-
-    expect(rescanService.cancelCalls, 1);
-  });
-
-  testWidgets("clears a finished scan the user has read", (tester) async {
-    final loc = await pumpLoadedList(tester);
+  testWidgets("reports a finished scan with no control to press", (tester) async {
+    await pumpLoadedList(tester);
 
     await emitScan(
       tester,
@@ -231,13 +170,11 @@ void main() {
       ),
     );
     expect(find.text("4 new sessions in 1 new project"), findsOneWidget);
-
-    await tester.tap(find.text(loc.catalogScanDismiss));
-    expect(rescanService.dismissCalls, 1);
+    expect(find.text("Dismiss"), findsNothing, reason: "the service clears a settled scan by itself");
   });
 
   // Nothing to scan into yet, and the pull there already means "reconnect".
-  testWidgets("offers no scan while the bridge is disconnected", (tester) async {
+  testWidgets("shows no scan row while the bridge is disconnected", (tester) async {
     when(() => mockProjectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.error(ApiError.generic()),
     );

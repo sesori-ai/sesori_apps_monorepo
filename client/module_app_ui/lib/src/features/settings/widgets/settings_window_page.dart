@@ -94,7 +94,7 @@ class const SettingsWindowPage({
     physics: onRefresh == null ? null : const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
     slivers: [
       if (onRefresh case final onRefresh?)
-        PregoSliverRefreshControl(onRefresh: onRefresh, deepRefresh: null, decorate: null, onPulledExtentChanged: null),
+        PregoSliverRefreshControl(onRefresh: onRefresh, decorate: null, onPulledExtentChanged: null),
       const SliverToBoxAdapter(child: SizedBox(height: topInset)),
       ...slivers,
     ],
