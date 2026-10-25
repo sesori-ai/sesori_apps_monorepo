@@ -34,7 +34,7 @@ desktop main-pane transitions distinct.
   replaces the stack with the home, and deleting the open session returns to it.
 - The desktop serves the same home route with its own home pane. Its
   new-session fallback, mark-unread, archive and delete exits return there, and
-  a desktop session opened from a notification goes back to it.
+  a desktop session opened from a notification goes back to the home.
 - Settings and modal harness settings rise from the bottom on every platform;
   settings child pages use the standard platform push.
 - Login uses its intentional fade and logo hero motion.

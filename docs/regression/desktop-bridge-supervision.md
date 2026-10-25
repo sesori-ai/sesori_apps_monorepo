@@ -138,7 +138,8 @@ and keep native close/quit behavior safe.
   navigation, links, and image actions. Root active sessions open the shared
   diff view, and the session list opens shared session creation with plugin,
   model, command, attachment, and dedicated-workspace options. Desktop supplies
-  text-first composition with a click-to-talk mic (see `voice-input.md`). The sidebar's shared list supplies session navigation at every width.
+  text-first composition with a click-to-talk mic (see `voice-input.md`). The sidebar's shared list supplies
+   session navigation at every width.
   New-session, transcript and diff
   pages each occupy the full main pane. Desktop Enter
   sends from the inline composer, Shift+Enter inserts a newline, and active IME

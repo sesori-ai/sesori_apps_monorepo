@@ -28,18 +28,18 @@ typedef HomeDisconnectedRefresh = Future<void> Function({
 /// Where [SessionsHomeView] shows, with what only that place needs.
 sealed class const SessionsHomePresentation();
 
-/// The phone's page: the project switcher is the title, the computer switcher
-/// sits under it, and the bar holds New session, Archived and Settings.
+/// The phone's page: the project switcher is the title, alone under the bar,
+/// and the bar holds New session, the computer button, Archived and Settings.
 final class const SessionsHomePage({
   /// Opens Archived, which shares the list's filter (D6).
   required final HomeAction onOpenArchived,
   required final HomeAction onOpenSettings,
   required final Widget? Function({required BuildContext context}) connectionBannerBuilder,
 
-  /// Switches to a computer picked in the menu under the title.
+  /// Switches to a computer picked in the computer button's menu.
   required final ComputerSwitchCallback onSwitchComputer,
 
-  /// Opens the Computers page from the menu under the title.
+  /// Opens the Computers page from the computer button's menu.
   required final HomeAction onManageComputers,
 }) extends SessionsHomePresentation;
 
@@ -160,11 +160,6 @@ class const SessionsHomeView({
           child: Semantics(button: true, child: title),
         ),
       ),
-      subtitle: homeComputerSubtitle(
-        context: context,
-        onSwitchComputer: page.onSwitchComputer,
-        onManageComputers: page.onManageComputers,
-      ),
       banner: _bannerFor(context: context, state: projects, page: page),
       actions: [
         PregoButtonsIconGlass(
@@ -173,6 +168,8 @@ class const SessionsHomeView({
           semanticLabel: loc.sessionListNewSession,
           onPressed: newSession,
         ),
+        // In the wide sidebar footer's order: computer, Archived, Settings.
+        _HomeComputerButton(onSwitchComputer: page.onSwitchComputer, onManageComputers: page.onManageComputers),
         PregoButtonsIconGlass(
           key: const Key("home-archived"),
           icon: TablerRegular.archive,
@@ -218,12 +215,31 @@ class const SessionsHomeView({
   }
 }
 
+/// The paired computer's status as its dot reports it: the disconnected pages
+/// carry the error dot, every other state plain reachability, green only while
+/// the relay-to-bridge chain is fully connected.
+PregoNavStatus _computerStatus({required BuildContext context}) {
+  final overlay = context.watch<ConnectionOverlayCubit>().state;
+  final online = overlay is ConnectionOverlayHidden && overlay.connected;
+  return switch (context.watch<ProjectListCubit>().state) {
+    ProjectListBridgeDisconnected() => PregoNavStatus.error,
+    ProjectListLoading() ||
+    ProjectListLoaded() ||
+    ProjectListFailed() => online ? PregoNavStatus.online : PregoNavStatus.offline,
+  };
+}
+
+/// Opens the Computers page from the computer menu, which with one computer
+/// leaves management to Settings (plan decision D7).
+VoidCallback? _manageComputersFrom({required BuildContext context, required HomeAction onManageComputers}) =>
+    context.watch<ComputerSwitcherCubit>().state.computers.length > 1
+    ? () => onManageComputers(context: context)
+    : null;
+
 /// The computer this account is paired with, in a single line, and the
-/// trigger of the computer menu: under the home's title, and in the sidebar's
-/// footer (D10). Only the status dot changes with the state: the disconnected
-/// pages carry the error dot, every other state plain reachability. Before any
-/// bridge is registered there is no computer to name, so the line says what
-/// setup is waiting for.
+/// trigger of the computer menu, in the wide sidebar's footer (D10). Only the
+/// status dot changes with the state. Before any bridge is registered there is
+/// no computer to name, so the line says what setup is waiting for.
 ///
 /// While the computer's name is unknown the line holds its place with a
 /// skeleton, so nothing moves when the name lands.
@@ -232,31 +248,20 @@ Widget? homeComputerSubtitle({
   required ComputerSwitchCallback onSwitchComputer,
   required HomeAction onManageComputers,
 }) {
-  final state = context.watch<ProjectListCubit>().state;
-  if (state case ProjectListBridgeDisconnected(hasRegisteredBridges: false)) {
+  if (context.watch<ProjectListCubit>().state case ProjectListBridgeDisconnected(hasRegisteredBridges: false)) {
     return PregoNavSubtitle(
       text: context.loc.projectsOnboardingWaitingForBridge,
       icon: TablerRegular.broadcast_off,
       status: PregoNavStatus.error,
     );
   }
-  // Green only while the relay-to-bridge chain is fully connected.
-  final overlay = context.watch<ConnectionOverlayCubit>().state;
-  final online = overlay is ConnectionOverlayHidden && overlay.connected;
-  final status = switch (state) {
-    ProjectListBridgeDisconnected() => PregoNavStatus.error,
-    ProjectListLoading() ||
-    ProjectListLoaded() ||
-    ProjectListFailed() => online ? PregoNavStatus.online : PregoNavStatus.offline,
-  };
+  final status = _computerStatus(context: context);
   return switch (context.watch<BridgeIdentityCubit>().state) {
     BridgeIdentityPending() => const PregoNavSubtitleSkeleton(),
     BridgeIdentityNamed(:final bridge) => ComputerMenu(
       onSelect: ({required bridgeId}) => onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
-      // With one computer, management stays in Settings (plan decision D7).
-      onManageComputers: context.watch<ComputerSwitcherCubit>().state.computers.length > 1
-          ? () => onManageComputers(context: context)
-          : null,
+      onManageComputers: _manageComputersFrom(context: context, onManageComputers: onManageComputers),
+      currentFirst: false,
       triggerBuilder: (context, toggle) => PregoNavSubtitle(
         text: bridge.name,
         icon: TablerRegular.device_laptop,
@@ -266,6 +271,84 @@ Widget? homeComputerSubtitle({
     ),
     BridgeIdentityUnnamed() => null,
   };
+}
+
+/// The phone bar's computer: a glyph whose corner dot reports the computer's
+/// status, crossfading as it changes, and which opens the computer menu with
+/// the current computer first, since the button does not name it.
+///
+/// It holds its place in every state, so the bar never shifts. Until a
+/// computer is named it takes no taps and shows no dot: while the lookup runs
+/// it looks as it will once named, and with no computer to name it looks
+/// disabled.
+class const _HomeComputerButton({
+  required final ComputerSwitchCallback onSwitchComputer,
+  required final HomeAction onManageComputers,
+}) extends StatelessWidget {
+  /// The dot's diameter, ring included.
+  static const double _dotSize = 10;
+  static const double _ringWidth = 2;
+
+  @override
+  Widget build(BuildContext context) {
+    final loc = context.loc;
+    final prego = context.prego;
+    final identity = context.watch<BridgeIdentityCubit>().state;
+    final status = _computerStatus(context: context);
+    final name = switch (identity) {
+      BridgeIdentityNamed(:final bridge) => bridge.name,
+      BridgeIdentityPending() || BridgeIdentityUnnamed() => null,
+    };
+    final label = name == null
+        ? loc.homeComputerButtonUnnamed
+        : switch (status) {
+            PregoNavStatus.online => loc.homeComputerButtonOnline(name),
+            PregoNavStatus.offline => loc.homeComputerButtonConnecting(name),
+            PregoNavStatus.error => loc.homeComputerButtonOffline(name),
+          };
+    final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    return ComputerMenu(
+      onSelect: ({required bridgeId}) => onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+      onManageComputers: _manageComputersFrom(context: context, onManageComputers: onManageComputers),
+      currentFirst: true,
+      triggerBuilder: (context, toggle) {
+        final button = Stack(
+          clipBehavior: Clip.none,
+          children: [
+            PregoButtonsIconGlass(
+              key: const Key("home-computer"),
+              icon: TablerRegular.device_laptop,
+              semanticLabel: label,
+              iconColor: identity is BridgeIdentityPending ? prego.colors.textPrimary : null,
+              onPressed: name == null ? null : toggle,
+            ),
+            PositionedDirectional(
+              end: 1,
+              bottom: 1,
+              child: IgnorePointer(
+                child: AnimatedContainer(
+                  duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 250),
+                  curve: Curves.easeOut,
+                  width: _dotSize,
+                  height: _dotSize,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: name == null ? Colors.transparent : status.dotColor(colors: prego.colors),
+                    // Cut out of the button by the page's colour.
+                    border: Border.all(
+                      color: name == null ? Colors.transparent : prego.colors.bgSurface1,
+                      width: _ringWidth,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+        return pointer ? Tooltip(message: label, excludeFromSemantics: true, child: button) : button;
+      },
+    );
+  }
 }
 
 /// The sidebar's first row: a new session in the list's default project.

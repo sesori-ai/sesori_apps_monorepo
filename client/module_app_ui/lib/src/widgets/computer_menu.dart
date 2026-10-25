@@ -23,6 +23,10 @@ class const ComputerMenu({
   /// Opens the Computers page from a "Manage computers…" item below the
   /// computers, or null where the menu offers no way there.
   required final VoidCallback? onManageComputers,
+
+  /// Lists the current computer first, for a trigger that does not name it;
+  /// otherwise the computers keep the account's order.
+  required final bool currentFirst,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -30,13 +34,17 @@ class const ComputerMenu({
     final currentId = state.currentId;
     final onManageComputers = this.onManageComputers;
     return PregoAnchorMenu(
-      // The trigger is a flat text row, which a glass popup would not match.
+      // Flat whatever the trigger, so the menu looks the same from a text row
+      // and from the phone home's glass button.
       flat: true,
       acquireOpenLease: null,
       menuWidth: 280,
       triggerBuilder: triggerBuilder,
       entriesBuilder: () => [
-        for (final computer in state.computers)
+        for (final computer in [
+          if (currentFirst) ...state.computers.where((computer) => computer.id == currentId),
+          ...state.computers.where((computer) => !currentFirst || computer.id != currentId),
+        ])
           PregoMenuItem(
             key: ValueKey("computer-menu-${computer.id}"),
             title: computer.name,

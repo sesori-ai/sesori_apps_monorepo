@@ -12,7 +12,14 @@ enum PregoNavStatus() {
 
   /// Not connected, and the page is about that — a red dot. Used by the
   /// bridge onboarding, where waiting for a connection *is* the screen.
-  error,
+  error;
+
+  /// The status dot's colour, wherever a dot reports this status.
+  Color dotColor({required PregoColors colors}) => switch (this) {
+    PregoNavStatus.online => colors.fgSuccessSecondary,
+    PregoNavStatus.offline => colors.fgDisabledSubtle,
+    PregoNavStatus.error => colors.fgErrorPrimary,
+  };
 }
 
 /// The contextual subtitle row of the top navigation bar's back-leading title
@@ -76,11 +83,7 @@ class const PregoNavSubtitle({
               height: _dotSize,
               decoration: BoxDecoration(
                 shape: BoxShape.circle,
-                color: switch (status) {
-                  PregoNavStatus.online => prego.colors.fgSuccessSecondary,
-                  PregoNavStatus.offline => prego.colors.fgDisabledSubtle,
-                  PregoNavStatus.error => prego.colors.fgErrorPrimary,
-                },
+                color: status.dotColor(colors: prego.colors),
               ),
             ),
           if (icon != null) Icon(icon, size: _iconSize, color: prego.colors.textTertiary),

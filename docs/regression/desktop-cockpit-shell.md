@@ -149,8 +149,8 @@ The main pane hosts one full-width routed page.
   defaults to the arrow on desktop, so the Prego theme and each custom tap target opt in.
 - No page toolbar has a back arrow, so every toolbar starts its content at the same left edge.
   Cmd/Ctrl+[ returns a pushed page to its opener, including child-to-parent navigation, and does nothing
-  on a page reached from the sidebar; New session reached directly goes back to the home. No page title
-  carries a project crumb; a subtask's title leads with a "Main session" crumb instead. Archived rows open
+  on a page reached from the sidebar; New session reached directly goes back to the home. A session's title
+  is its name; a subtask's title leads with a "Main session" crumb. Archived rows open
   read-only. New-session creation replaces its page with detail. Deleting or archiving the open session
   returns to the home.
 - The Changes page uses the same toolbar: the File changes title and the file
@@ -160,7 +160,7 @@ The main pane hosts one full-width routed page.
   is still changed.
 - A session being archived is hidden from the sidebar and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
-  undone, refused or fails. Archiving the open session leaves its page. See
+  undone, refused or fails. Archiving the open session returns to the home. See
   `session-archiving-and-deletion.md`.
 - The new session page uses the same toolbar, titled New session, above one
   centred column no wider than the session page's composer: the shared heading and project selector (see
