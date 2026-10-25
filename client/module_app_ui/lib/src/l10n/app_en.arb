@@ -2131,7 +2131,7 @@
   },
   "catalogScanImportFailedAlert": "{count, plural, =1{Couldn't import from {harnesses}} other{Couldn't import from {count} harnesses: {harnesses}}}",
   "@catalogScanImportFailedAlert": {
-    "description": "Alert title when a refresh's import failed for some harnesses. harnesses lists the harnesses' names.",
+    "description": "Alert title when a refresh's import failed for one or more harnesses. harnesses lists the failed harnesses' names.",
     "placeholders": {
       "count": {
         "type": "int"

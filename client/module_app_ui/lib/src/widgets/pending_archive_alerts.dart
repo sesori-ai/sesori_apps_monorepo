@@ -10,7 +10,14 @@ import "../features/session_list/session_list_action_dispatcher.dart";
 
 /// The one place that tells the user what a pending archive is doing: the
 /// "Archived" alert with Undo, then the refusal alert or the error toast.
-class const PendingArchiveAlerts({super.key, required final Widget child}) extends StatefulWidget {
+class const PendingArchiveAlerts({
+  super.key,
+
+  /// The navigator whose overlay shows the alerts, for a shell that mounts
+  /// this above its router. Null where this already sits under a navigator.
+  required final GlobalKey<NavigatorState>? navigatorKey,
+  required final Widget child,
+}) extends StatefulWidget {
   @override
   State<PendingArchiveAlerts> createState() => _PendingArchiveAlertsState();
 }
@@ -34,8 +41,17 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
     super.dispose();
   }
 
+  /// Null before the shell's navigator has mounted.
+  PregoPopupAlertPresenter? get _presenter {
+    final navigatorKey = widget.navigatorKey;
+    if (navigatorKey == null) return PregoPopupAlertPresenter.of(context);
+    final overlay = navigatorKey.currentState?.overlay;
+    return overlay == null ? null : PregoPopupAlertPresenter.fromOverlayState(overlay);
+  }
+
   void _offerUndo() {
-    final presenter = PregoPopupAlertPresenter.of(context);
+    final presenter = _presenter;
+    if (presenter == null) return;
     final cubit = context.read<PendingSessionArchiveCubit>();
     presenter.show(
       title: context.loc.sessionListArchived,
@@ -55,7 +71,7 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
   }
 
   void _showFailure() {
-    PregoPopupAlertPresenter.of(context).show(
+    _presenter?.show(
       title: context.loc.sessionListArchiveFailed,
       variant: PregoPopupAlertsNotificationsVariant.error,
     );
@@ -64,7 +80,7 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
   /// Tells the user the archive kept a worktree another session still uses.
   /// Informational: there was nothing to decide, and the Undo window is over.
   void _showWorktreeKept() {
-    PregoPopupAlertPresenter.of(context).show(
+    _presenter?.show(
       title: context.loc.sessionListArchived,
       content: PregoPopupAlertContent(message: context.loc.sessionListCleanupWorktreeKept),
     );
@@ -98,7 +114,10 @@ class _PendingArchiveAlertsState() extends State<PendingArchiveAlerts> {
         }
       case PendingSessionArchiveRefused(:final session, :final rejection):
         final cubit = context.read<PendingSessionArchiveCubit>();
-        if (!await showSessionArchiveRefusedAlert(context: context, rejection: rejection)) return;
+        final navigatorKey = widget.navigatorKey;
+        final dialogContext = navigatorKey == null ? context : navigatorKey.currentContext;
+        if (dialogContext == null) return;
+        if (!await showSessionArchiveRefusedAlert(context: dialogContext, rejection: rejection)) return;
         // The alert was the confirmation; no second Undo window.
         unawaited(cubit.commitForced(session: session));
     }

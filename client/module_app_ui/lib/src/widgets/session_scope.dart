@@ -26,6 +26,11 @@ class const SessionScope({
   createRefreshService,
   required final SessionCleanupService sessionCleanupService,
   required final SessionLaunchService sessionLaunchService,
+
+  /// The navigator whose overlay shows the scope's alerts, so they share one
+  /// alert slot with the pages' own alerts when the scope sits above that
+  /// navigator. Null shows them on the nearest overlay.
+  required final GlobalKey<NavigatorState>? alertNavigatorKey,
   required final Widget child,
 }) extends StatelessWidget {
   @override
@@ -55,7 +60,11 @@ class const SessionScope({
           RepositoryProvider<SessionLaunchService>.value(value: sessionLaunchService),
         ],
         child: PendingArchiveAlerts(
-          child: SessionLaunchFailureAlerts(child: CatalogScanFailureAlerts(child: child)),
+          navigatorKey: alertNavigatorKey,
+          child: SessionLaunchFailureAlerts(
+            navigatorKey: alertNavigatorKey,
+            child: CatalogScanFailureAlerts(navigatorKey: alertNavigatorKey, child: child),
+          ),
         ),
       ),
     ),
