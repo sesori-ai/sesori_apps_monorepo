@@ -48,7 +48,8 @@ class SessionListCubit({
   Completer<void>? _actionOperationsDrained;
   SessionCleanupRejection? _lastCleanupRejection;
 
-  /// The full server response; the state shows only its unarchived sessions.
+  /// The caller-supplied rows until the first successful refresh, then the full server response; the state
+  /// shows only the unarchived sessions.
   List<Session> _allSessions = sessions;
 
   this : super(const SessionListState(sessions: [], activeSessionIds: {}, unseenBySessionId: {})) {
