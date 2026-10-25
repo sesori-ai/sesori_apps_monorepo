@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 10.a/13 follows 9/13.
+- Current step: 10.b/13 follows 10.a.ii/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -22,7 +22,7 @@
 | 7.b.ii/13 | All-projects home and route tree | Done | #2043 |
 | 8/13 | Projects screen removed | Done | #2044 |
 | 9/13 | Wide phone and tablet sidebar | Done | #2045 |
-| 10.a.i/13 | Desktop Archived page and footer entry | Done | `sesori/app-simplification-step-10a-i` |
+| 10.a.i/13 | Desktop Archived page and footer entry | Done | #2046 |
 | 10.a.ii/13 | Desktop sidebar on the shared list | Done | `sesori/app-simplification-step-10a-ii` |
 | 10.b/13 | Desktop Activity and rail removed | Not started | — |
 | 11/13 | Desktop composer home; project page removed | Not started | — |
