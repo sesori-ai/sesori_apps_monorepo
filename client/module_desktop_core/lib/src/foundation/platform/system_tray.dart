@@ -11,6 +11,7 @@ enum SystemTrayCommand() {
   toggleBridge,
   takeOver,
   toggleLaunchAtLogin,
+  restartToUpdate,
   quit,
 }
 

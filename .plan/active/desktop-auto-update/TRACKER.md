@@ -2,8 +2,8 @@
 
 | Step | Scope | Status |
 |---|---|---|
-| 1 | Raise the automatic-update plan | in-progress |
-| 2 | Desktop update state and restart flow | pending |
+| 1 | Raise the automatic-update plan | done (#2055) |
+| 2 | Desktop update state and restart flow | in-progress |
 | 3 | Update-key signing tooling | pending (needs user key setup) |
 | 4 | Sparkle on macOS | pending |
 | 5 | Velopack packaging for Windows and AppImage | pending |

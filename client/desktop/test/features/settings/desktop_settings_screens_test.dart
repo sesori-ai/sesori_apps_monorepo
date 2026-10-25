@@ -12,7 +12,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
-import "package:sesori_desktop/core/desktop_update_configuration.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
@@ -36,6 +35,7 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
 class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
+class _MockDesktopUpdateService() extends Mock implements DesktopUpdateService;
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
@@ -101,6 +101,7 @@ const _bridgeState = BridgeControlState(
   toggleTarget: BridgeProcessDesiredState.on,
   launchAtLoginEnabled: false,
   controlStatus: BridgeControlStatus.offline,
+  updateState: DesktopUpdateManagedBySystem(),
 );
 
 void main() {
@@ -114,6 +115,7 @@ void main() {
     registerFallbackValue(AppearanceMode.system);
     registerFallbackValue(ChatInputMode.voiceFirst);
     registerFallbackValue(DesktopAttentionPreference.enabled);
+    registerFallbackValue(DesktopAutomaticUpdates.enabled);
     registerFallbackValue(ComputerSwitchSource.settings);
   });
 
@@ -127,6 +129,9 @@ void main() {
   late _MockPluginManagementService pluginService;
   late BehaviorSubject<ConnectionStatus> connectionStatuses;
   late BehaviorSubject<DesktopAttentionPreference> attentionPreferences;
+  late _MockDesktopUpdateService desktopUpdateService;
+  late BehaviorSubject<DesktopUpdateState> updateStates;
+  late BehaviorSubject<DesktopAutomaticUpdates> automaticUpdates;
   late BehaviorSubject<ProductAnalyticsState> analyticsStates;
   late BehaviorSubject<PluginManagementLoadResult> pluginSnapshots;
   late BehaviorSubject<Map<String, PluginInstallState>> installStates;
@@ -201,6 +206,21 @@ void main() {
           attentionPreferences.add(invocation.namedArguments[#preference]! as DesktopAttentionPreference);
         });
     getIt.registerSingleton<DesktopAttentionService>(desktopAttentionService);
+    updateStates = BehaviorSubject<DesktopUpdateState>.seeded(
+      const DesktopUpdateUnavailable(reason: DesktopUpdateUnavailableReason.developmentBuild),
+    );
+    automaticUpdates = BehaviorSubject<DesktopAutomaticUpdates>.seeded(DesktopAutomaticUpdates.enabled);
+    desktopUpdateService = _MockDesktopUpdateService();
+    when(() => desktopUpdateService.states).thenAnswer((_) => updateStates.stream);
+    when(() => desktopUpdateService.currentState).thenAnswer((_) => updateStates.value);
+    when(() => desktopUpdateService.automaticUpdates).thenAnswer((_) => automaticUpdates.stream);
+    when(() => desktopUpdateService.currentAutomaticUpdates).thenAnswer((_) => automaticUpdates.value);
+    when(() => desktopUpdateService.setAutomaticUpdates(preference: any(named: "preference"))).thenAnswer((
+      invocation,
+    ) async {
+      automaticUpdates.add(invocation.namedArguments[#preference]! as DesktopAutomaticUpdates);
+    });
+    getIt.registerSingleton<DesktopUpdateService>(desktopUpdateService);
     analyticsStates = BehaviorSubject<ProductAnalyticsState>.seeded(
       const ProductAnalyticsState(
         preference: ProductAnalyticsPreferenceKnown(preference: ProductAnalyticsPreference.enabled),
@@ -260,6 +280,8 @@ void main() {
     await getIt.reset();
     await appearanceCubit.close();
     await attentionPreferences.close();
+    await updateStates.close();
+    await automaticUpdates.close();
     await connectionStatuses.close();
     await chatInputModeCubit.close();
     await analyticsStates.close();
@@ -358,66 +380,61 @@ void main() {
     home: child,
   );
 
-  test("update configuration rejects malformed present values without guessing a link", () {
-    expect(
-      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable", isAppImage: false),
-      isA<DesktopDevelopmentUpdate>(),
-    );
-    expect(
-      () => resolveDesktopUpdateDestination(encodedIdentity: "not-json", encodedChannel: "stable", isAppImage: false),
-      throwsA(isA<Object>()),
-    );
-    expect(
-      () => resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "preview", isAppImage: false),
-      throwsArgumentError,
-    );
-  });
+  Widget updateSection() => app(
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider<BridgeControlCubit>.value(value: bridgeControl),
+        BlocProvider(create: (_) => DesktopUpdateCubit(service: desktopUpdateService)),
+      ],
+      child: const Scaffold(body: DesktopUpdateSection()),
+    ),
+  );
 
-  testWidgets("manual update opens its channel and CPU index without claiming a release", (tester) async {
-    const identity = DesktopBundleIdentity(
-      version: "1.8.4",
-      buildNumber: 24,
-      sourceSha: "source",
-      os: DesktopBundleOs.macos,
-      architecture: DesktopBundleArchitecture.arm64,
-    );
-    final destination = resolveDesktopUpdateDestination(
-      encodedIdentity: identity.encode(),
-      encodedChannel: "internal",
-      isAppImage: false,
-    );
-    final uri = (destination as DesktopManualDownload).uri;
+  testWidgets("a manual-download install opens its downloads index", (tester) async {
+    final uri = Uri.parse("https://sesori.com/desktop/#internal-macos-arm64");
+    updateStates.add(DesktopUpdateManualDownload(downloadsUri: uri));
     final launcher = getIt<UrlLauncher>();
     when(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).thenAnswer((_) async => true);
-    await tester.pumpWidget(
-      app(
-        child: Scaffold(body: DesktopUpdateSection(destination: destination)),
-      ),
-    );
+    await tester.pumpWidget(updateSection());
     expect(find.textContaining("Closing the window is not Quit"), findsOneWidget);
-    expect(uri.fragment, "internal-macos-arm64");
+    expect(find.byType(PregoSwitch), findsNothing);
     await tester.tap(find.text("View downloads"));
     await tester.pump();
     verify(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).called(1);
   });
 
-  for (final destination in <DesktopUpdateDestination>[
-    const DesktopDevelopmentUpdate(),
-    const DesktopPackageManagerUpdate(),
-  ]) {
-    testWidgets("$destination renders guidance without a download action", (tester) async {
-      await tester.pumpWidget(
-        app(
-          child: Scaffold(body: DesktopUpdateSection(destination: destination)),
-        ),
-      );
-      expect(find.text("View downloads"), findsNothing);
-      expect(
-        find.text(destination is DesktopDevelopmentUpdate ? "Development build" : "Package-managed updates"),
-        findsOneWidget,
-      );
-    });
-  }
+  testWidgets("a development build offers no updater controls", (tester) async {
+    await tester.pumpWidget(updateSection());
+    expect(find.text("Development build"), findsOneWidget);
+    expect(find.text("View downloads"), findsNothing);
+    expect(find.text("Check for updates"), findsNothing);
+    expect(find.byType(PregoSwitch), findsNothing);
+  });
+
+  testWidgets("a package install toggles and checks, then offers Restart to update once installed", (tester) async {
+    updateStates.add(const DesktopUpdateManagedBySystem());
+    when(desktopUpdateService.check).thenAnswer((_) => updateStates.add(const DesktopUpdateReady(version: "1.8.5")));
+    when(bridgeControl.restartToUpdate).thenAnswer((_) async {});
+    await tester.pumpWidget(updateSection());
+    expect(find.text("Restart to update"), findsNothing);
+
+    await tester.tap(find.byType(PregoSwitch));
+    await tester.pump();
+    verify(() => desktopUpdateService.setAutomaticUpdates(preference: DesktopAutomaticUpdates.disabled)).called(1);
+    expect(tester.widget<PregoSwitch>(find.byType(PregoSwitch)).value, isFalse);
+
+    final checkRow = tester.getTopLeft(find.text("Check for updates"));
+    await tester.tap(find.text("Check for updates"));
+    await tester.pumpAndSettle();
+    verify(desktopUpdateService.check).called(1);
+    // The new row opens below; the rows above it stay where they were.
+    expect(tester.getTopLeft(find.text("Check for updates")), checkRow);
+    expect(find.textContaining("Version 1.8.5 is installed"), findsOneWidget);
+
+    await tester.tap(find.text("Restart to update"));
+    await tester.pump();
+    verify(bridgeControl.restartToUpdate).called(1);
+  });
 
   for (final status in FileAccessStatus.values) {
     testWidgets("Bridge shows local permission $status even after home dismissal", (tester) async {
@@ -660,6 +677,7 @@ void main() {
         toggleTarget: BridgeProcessDesiredState.off,
         launchAtLoginEnabled: false,
         controlStatus: BridgeControlStatus.offline,
+        updateState: DesktopUpdateManagedBySystem(),
       ),
     );
     when(bridgeControl.stopBridge).thenAnswer((_) async => bridgeStates.add(_bridgeState));

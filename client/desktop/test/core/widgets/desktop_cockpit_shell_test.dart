@@ -1023,6 +1023,7 @@ void main() {
       toggleTarget: base.toggleTarget,
       launchAtLoginEnabled: base.launchAtLoginEnabled,
       controlStatus: base.controlStatus,
+      updateState: base.updateState,
     );
     updates.add(locked);
     await tester.pump();
@@ -1285,6 +1286,7 @@ BridgeControlState _state({
     plugin: ControlPluginHealthState.unknown,
     activeSessionCount: 0,
   ),
+  updateState: const DesktopUpdateManagedBySystem(),
 );
 
 RecentSessionsLoaded _loaded({required List<Session> sessions}) => RecentSessionsLoaded(

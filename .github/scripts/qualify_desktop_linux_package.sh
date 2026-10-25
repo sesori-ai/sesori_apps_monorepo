@@ -84,7 +84,7 @@ esac
 for removed in /opt/sesori-desktop /usr/bin/sesori-desktop \
   /usr/share/applications/sesori-desktop.desktop \
   /usr/share/icons/hicolor/512x512/apps/sesori-desktop.png /etc/apt/sources.list.d/sesori.list \
-  /etc/apt/keyrings/sesori.asc /etc/yum.repos.d/sesori.repo /etc/pki/rpm-gpg/RPM-GPG-KEY-sesori; do
+  /etc/apt/keyrings/sesori.asc /etc/apt/apt.conf.d/52sesori-unattended-upgrades /etc/yum.repos.d/sesori.repo /etc/pki/rpm-gpg/RPM-GPG-KEY-sesori; do
   [[ ! -e "$removed" && ! -L "$removed" ]] || { echo "Package-owned path remains: $removed" >&2; exit 1; }
 done
 sentinel_after="$(find /root/.config/sesori /root/.local/share/sesori /root/.local/share/sesori-attachments \

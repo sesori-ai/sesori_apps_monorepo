@@ -409,6 +409,72 @@ abstract class AppLocalizations {
   /// **'Start Sesori in the background when you sign in to this computer.'**
   String get desktopSettingsLaunchAtLoginDescription;
 
+  /// Section title for the desktop app's own updates.
+  ///
+  /// In en, this message translates to:
+  /// **'Desktop updates'**
+  String get desktopUpdatesTitle;
+
+  /// Opens the published desktop downloads page.
+  ///
+  /// In en, this message translates to:
+  /// **'View downloads'**
+  String get desktopUpdatesViewDownloads;
+
+  /// Manual update guidance for installs without an automatic engine.
+  ///
+  /// In en, this message translates to:
+  /// **'See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.'**
+  String get desktopUpdatesViewDownloadsDescription;
+
+  /// Shown for source builds, which cannot update themselves.
+  ///
+  /// In en, this message translates to:
+  /// **'Development build'**
+  String get desktopUpdatesDevelopmentBuild;
+
+  /// Explains that a development build updates from its checkout.
+  ///
+  /// In en, this message translates to:
+  /// **'Update from your source checkout. Automatic updates are unavailable for this build.'**
+  String get desktopUpdatesDevelopmentBuildDescription;
+
+  /// Switch for background update checks.
+  ///
+  /// In en, this message translates to:
+  /// **'Automatic updates'**
+  String get desktopUpdatesAutomatic;
+
+  /// Explains the automatic updates switch.
+  ///
+  /// In en, this message translates to:
+  /// **'Look for new versions in the background.'**
+  String get desktopUpdatesAutomaticDescription;
+
+  /// Runs one update check now.
+  ///
+  /// In en, this message translates to:
+  /// **'Check for updates'**
+  String get desktopUpdatesCheck;
+
+  /// Linux package installs receive updates from the system package manager.
+  ///
+  /// In en, this message translates to:
+  /// **'Your system\'s software updater installs new versions from Sesori\'s signed repository.'**
+  String get desktopUpdatesCheckPackageDescription;
+
+  /// Restarts the desktop app into an installed update.
+  ///
+  /// In en, this message translates to:
+  /// **'Restart to update'**
+  String get desktopUpdatesRestart;
+
+  /// Shown when a newer installed version waits for a restart.
+  ///
+  /// In en, this message translates to:
+  /// **'Version {version} is installed. Restart Sesori to start using it.'**
+  String desktopUpdatesRestartDescription(String version);
+
   /// Settings owned by the connected bridge, which may be on another computer.
   ///
   /// In en, this message translates to:
