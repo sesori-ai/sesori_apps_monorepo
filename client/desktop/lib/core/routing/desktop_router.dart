@@ -159,7 +159,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             createActionCubit: ({required projectId, required session}) => createSessionListCubit(
               locator: getIt,
               projectId: projectId,
-              mode: SessionListMode.actions(sessions: [session]),
+              sessions: [session],
             ),
           ),
         ),

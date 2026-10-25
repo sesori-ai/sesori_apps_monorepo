@@ -31,15 +31,13 @@ void main() {
     required bool running,
   }) async {
     when(() => cubit.state).thenReturn(
-      SessionListState.loaded(
+      SessionListState(
         sessions: [session],
-        filter: SessionListFilter.active,
         activeSessionIds: {
           if (running)
             "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
         },
-        baseBranch: null,
-        repoSlug: null,
+        unseenBySessionId: const {},
       ),
     );
     final dispatcher = SessionListActionDispatcher(
@@ -113,7 +111,7 @@ void main() {
   testWidgets("the row menu offers one Archive, never a keep-worktree variant", (tester) async {
     final worktreeSession = session.copyWith(hasWorktree: true);
     when(() => cubit.state).thenReturn(
-      SessionListState.loaded(sessions: [worktreeSession], baseBranch: null, repoSlug: null),
+      SessionListState(sessions: [worktreeSession], activeSessionIds: const {}, unseenBySessionId: const {}),
     );
     const dispatcher = SessionListActionDispatcher(
       deleteConfirmation: SessionDeleteConfirmation.alert,
@@ -169,7 +167,7 @@ void main() {
       final pending = [...rejections];
       SessionCleanupRejection? lastRejection;
       when(() => cubit.state).thenReturn(
-        SessionListState.loaded(sessions: [target], baseBranch: null, repoSlug: null),
+        SessionListState(sessions: [target], activeSessionIds: const {}, unseenBySessionId: const {}),
       );
       when(() => cubit.lastCleanupRejection).thenAnswer((_) => lastRejection);
       when(

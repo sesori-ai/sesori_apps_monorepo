@@ -107,7 +107,7 @@ class const DesktopSidebar({
                       createActionCubit: ({required projectId, required session}) => createSessionListCubit(
                         locator: getIt,
                         projectId: projectId,
-                        mode: SessionListMode.actions(sessions: [session]),
+                        sessions: [session],
                       ),
                       selectedSessionId: selectedSessionId,
                       // The footer's recovery card says so.

@@ -1,5 +1,5 @@
 /// Typed, transport-agnostic reason for a failed remote request, surfaced by
-/// feature failure states (e.g. [ProjectListState.failed], [SessionListState.failed],
+/// feature failure states (e.g. [ProjectListState.failed],
 /// [SessionDetailState.failed], [NewSessionPhase.creationError],
 /// [NewSessionPhase.discoveryError]) so the UI can perform an exhaustive switch
 /// for localized messages.

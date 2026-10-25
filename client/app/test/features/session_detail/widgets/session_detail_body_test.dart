@@ -389,7 +389,7 @@ void main() {
     final unseen = testConstSession.copyWith(unseen: true);
     final sessions = MockSessionListCubit();
     when(() => sessions.state).thenReturn(
-      SessionListState.loaded(sessions: [unseen], baseBranch: null, repoSlug: null),
+      SessionListState(sessions: [unseen], activeSessionIds: const {}, unseenBySessionId: const {}),
     );
     when(
       () => sessions.markSessionSeen(

@@ -1,6 +1,5 @@
 import "package:sesori_dart_core/src/cubits/session_detail/local_send_phase.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
-import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
 import "package:sesori_dart_core/src/services/models/project_list_state.dart";
 import "package:sesori_dart_core/testing.dart";
@@ -52,11 +51,6 @@ void main() {
           .retryErrorMessage,
       "Provider overloaded",
     );
-  });
-
-  test("SessionListLoaded.isRefreshing defaults to false", () {
-    const state = SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null);
-    expect((state as SessionListLoaded).isRefreshing, isFalse);
   });
 
   test("ProjectListLoaded.isRefreshing defaults to false", () {

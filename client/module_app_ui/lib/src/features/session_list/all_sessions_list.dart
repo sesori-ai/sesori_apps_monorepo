@@ -15,7 +15,6 @@ import "../../widgets/remote_failure_view.dart";
 import "../project_list/project_path_labels.dart";
 import "session_date_label.dart";
 import "session_list_action_dispatcher.dart";
-import "session_list_content.dart";
 import "session_list_headings.dart";
 import "session_tile.dart";
 
@@ -259,7 +258,7 @@ class const _Sessions({
           },
           itemBuilder: (_, index, entry) => switch (entry) {
             SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
-            SessionListItemEntry(item: _LaunchItem(:final launch)) => launchRowSettling(
+            SessionListItemEntry(item: _LaunchItem(:final launch)) => _launchRowSettling(
               context: context,
               launching: true,
               child: Padding(
@@ -337,6 +336,17 @@ class const _Sessions({
         ),
       ),
     );
-    return tookLaunchRow ? launchRowSettling(context: context, launching: false, child: tile) : tile;
+    return tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: tile) : tile;
   }
 }
+
+/// A launching row and the session row that takes its place share one list
+/// item, so the change cross-fades in place rather than collapsing one row and
+/// opening another.
+Widget _launchRowSettling({required BuildContext context, required bool launching, required Widget child}) =>
+    AnimatedSwitcher(
+      duration: prefersReducedMotion(context) ? Duration.zero : _settleDuration,
+      child: KeyedSubtree(key: ValueKey(launching), child: child),
+    );
+
+const Duration _settleDuration = Duration(milliseconds: 200);

@@ -49,7 +49,7 @@ class const SessionDetailScreen({
           create: (_) => createSessionListCubit(
             locator: getIt,
             projectId: projectId,
-            mode: const SessionListMode.actions(sessions: []),
+            sessions: const [],
           ),
         ),
       ],

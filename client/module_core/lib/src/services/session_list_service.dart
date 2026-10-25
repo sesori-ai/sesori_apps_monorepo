@@ -13,14 +13,8 @@ class SessionListService({
   required final ProjectRepository _repository,
   required final SessionActivityCalculator _activityCalculator,
 }) {
-  Future<ApiResponse<SessionListResponse>> listSessions({
-    required String projectId,
-    required bool waitForPrData,
-  }) async {
-    final response = await _repository.listSessions(
-      projectId: projectId,
-      waitForPrData: waitForPrData,
-    );
+  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) async {
+    final response = await _repository.listSessions(projectId: projectId);
     return switch (response) {
       SuccessResponse(:final data) => ApiResponse.success(
         SessionListResponse(items: _sortSessions(data.items)),
@@ -44,7 +38,6 @@ class SessionListService({
     final visible = projected.where(
       (session) => switch (filter) {
         SessionListFilter.active => session.time?.archived == null,
-        SessionListFilter.all => true,
         SessionListFilter.archived => session.time?.archived != null,
       },
     );

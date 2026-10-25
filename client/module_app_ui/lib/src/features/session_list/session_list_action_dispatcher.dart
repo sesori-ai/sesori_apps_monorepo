@@ -155,8 +155,7 @@ class const SessionListActionDispatcher({
   /// never chooses otherwise: the bridge's cleanup refusal is what protects
   /// unfinished work.
   void _archive({required BuildContext context, required SessionListCubit cubit, required Session session}) {
-    final state = cubit.state;
-    final isRunning = state is SessionListLoaded && state.isSessionRunning(session: session);
+    final isRunning = cubit.state.isSessionRunning(session: session);
     unawaited(() async {
       if (isRunning && !await _confirmArchiveRunning(context: context, session: session)) return;
       if (!context.mounted) return;
@@ -219,10 +218,8 @@ class const SessionListActionDispatcher({
     if (!read) onSessionMarkedUnread?.call(context: context, session: session);
   }
 
-  /// The row's effective unseen state: the cubit's live tracking when loaded,
-  /// else what the session payload said.
-  bool _isUnseen({required SessionListCubit cubit, required Session session}) {
-    final state = cubit.state;
-    return state is SessionListLoaded ? state.isSessionUnseen(session: session) : session.unseen;
-  }
+  /// The row's effective unseen state: the cubit's live tracking, else what
+  /// the session payload said.
+  bool _isUnseen({required SessionListCubit cubit, required Session session}) =>
+      cubit.state.isSessionUnseen(session: session);
 }

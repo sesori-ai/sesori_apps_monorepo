@@ -4,21 +4,15 @@ import "package:bloc_test/bloc_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart" show AppRouteDef;
 import "package:sesori_dart_core/src/api/session_api.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart";
-import "package:sesori_dart_core/src/cubits/session_list/session_list_mode.dart";
 import "package:sesori_dart_core/src/cubits/session_list/session_list_state.dart";
-import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
-import "package:sesori_dart_core/src/repositories/project_repository.dart";
-import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
-import "package:sesori_dart_core/src/services/models/session_list_filter.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_cleanup_service.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
@@ -38,8 +32,6 @@ void main() {
     late MockConnectionService mockConnectionService;
     late MockSseEventTracker mockSseEventTracker;
     late FakeSessionUnseenTracker fakeSessionUnseenTracker;
-    late MockProjectViewingService mockProjectViewingService;
-    late MockRouteSource mockRouteSource;
     late MockFailureReporter mockFailureReporter;
     late StreamController<SseEvent> eventController;
     late BehaviorSubject<ConnectionStatus> statusController;
@@ -57,7 +49,6 @@ void main() {
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();
-      mockProjectViewingService = stubbedProjectViewingService();
       mockFailureReporter = MockFailureReporter();
       eventController = StreamController<SseEvent>.broadcast();
       statusController = BehaviorSubject<ConnectionStatus>.seeded(
@@ -66,13 +57,6 @@ void main() {
       // Must be stubbed before any cubit is built — constructor subscribes immediately.
       when(() => mockConnectionService.events).thenAnswer((_) => eventController.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
-      when(
-        () => mockProjectRepository.getGitContext(projectId: any(named: "projectId")),
-      ).thenAnswer(
-        (_) async => ApiResponse.success(
-          const ProjectGitContext(baseBranch: null, repoSlug: null, repoProvider: RepoProvider.other),
-        ),
-      );
       when(
         () => mockFailureReporter.recordFailure(
           error: any(named: "error"),
@@ -91,65 +75,54 @@ void main() {
     });
 
     /// Convenience factory — stubs must be set up before calling this.
-    SessionListCubit buildCubit() => SessionListCubit(
-      mode: const SessionListMode.view(),
+    SessionListCubit buildCubit({List<Session> sessions = const []}) => SessionListCubit(
+      sessions: sessions,
       sessionRepository: mockSessionService,
       sessionCleanupService: SessionCleanupService(repository: mockSessionService),
       sessionListService: sessionListService,
-      projectRepository: mockProjectRepository,
       connectionService: mockConnectionService,
       sseEventTracker: mockSseEventTracker,
       sessionUnseenTracker: fakeSessionUnseenTracker,
-      projectViewingService: mockProjectViewingService,
-      routeSource: mockRouteSource,
       projectId: projectId,
       failureReporter: mockFailureReporter,
       catalogRescanService: fakeCatalogRescanService,
     );
 
-    test("sidebar action scope skips initial fetch/view claims and retains rename refresh", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.home);
+    /// The constructor never fetches. This starts the refresh a list performs
+    /// when it first opens, so the fetched sessions are the first emission.
+    SessionListCubit buildRefreshingCubit() {
+      final cubit = buildCubit();
+      unawaited(cubit.refreshSessions());
+      return cubit;
+    }
+
+    test("seeded sessions show without a fetch and renames refresh the list", () async {
       final session = testSession(title: "Original");
       when(() => mockSessionService.renameSession(sessionId: session.id, title: "Renamed"))
           .thenAnswer((_) async => ApiResponse.success(session.copyWith(title: "Renamed")));
-      final cubit = SessionListCubit(
-        mode: SessionListMode.actions(sessions: [session]),
-        sessionRepository: mockSessionService,
-        sessionCleanupService: SessionCleanupService(repository: mockSessionService),
-        sessionListService: sessionListService,
-        projectRepository: mockProjectRepository,
-        connectionService: mockConnectionService,
-        sseEventTracker: mockSseEventTracker,
-        sessionUnseenTracker: fakeSessionUnseenTracker,
-        projectViewingService: mockProjectViewingService,
-        routeSource: mockRouteSource,
-        projectId: projectId,
-        failureReporter: mockFailureReporter,
-        catalogRescanService: fakeCatalogRescanService,
-      );
-      expect((cubit.state as SessionListLoaded).sessions.single.id, session.id);
+      final cubit = buildCubit(sessions: [session]);
+      expect(cubit.state.sessions.single.id, session.id);
       verifyNever(
         () => mockProjectRepository.listSessions(
           projectId: any(named: "projectId"),
-          waitForPrData: any(named: "waitForPrData"),
         ),
       );
       when(
-        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+        () => mockProjectRepository.listSessions(projectId: projectId),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session.copyWith(title: "Renamed")])));
       expect(await cubit.renameSession(sessionId: session.id, title: "Renamed"), isTrue);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "Renamed");
+      expect(cubit.state.sessions.single.title, "Renamed");
       // A later successful sidebar retry can discover a row this scope never
       // received. Refresh only that menu target, preserving the other row.
       final later = testSession(id: "later-session", title: "Discovered later");
       cubit.updateActionSession(session: later);
       expect(
-        (cubit.state as SessionListLoaded).sessions.map((session) => session.id),
+        cubit.state.sessions.map((session) => session.id),
         containsAll([session.id, later.id]),
       );
       when(() => mockSessionService.renameSession(sessionId: later.id, title: "Later renamed"))
           .thenAnswer((_) async => ApiResponse.success(later.copyWith(title: "Later renamed")));
-      when(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer(
+      when(() => mockProjectRepository.listSessions(projectId: projectId)).thenAnswer(
         (_) async => ApiResponse.success(
           SessionListResponse(
             items: [
@@ -160,117 +133,9 @@ void main() {
         ),
       );
       expect(await cubit.renameSession(sessionId: later.id, title: "Later renamed"), isTrue);
-      mockRouteSource.emitRoute(AppRouteDef.projectSessions);
-      await Future<void>.delayed(Duration.zero);
       await cubit.close();
-      verifyNever(() => mockProjectViewingService.beginListClaim(projectId: any(named: "projectId")));
-      verifyNever(() => mockProjectViewingService.releaseClaim(claim: any(named: "claim")));
-      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId)).called(2);
     });
-
-    test("successful list render readies its project claim and close releases it", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
-      when(
-        () => mockProjectRepository.listSessions(
-          projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
-      final cubit = buildCubit();
-
-      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-      verify(() => mockProjectViewingService.beginListClaim(projectId: projectId)).called(1);
-      verify(
-        () => mockProjectViewingService.markClaimReady(
-          claim: any(named: "claim"),
-          projectId: projectId,
-        ),
-      ).called(1);
-
-      await cubit.close();
-      verify(
-        () => mockProjectViewingService.releaseClaim(claim: any(named: "claim")),
-      ).called(1);
-    });
-
-    test("tracker replay and archive toggle leave loading intact until REST completes", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
-      final response = Completer<ApiResponse<SessionListResponse>>();
-      when(
-        () => mockProjectRepository.listSessions(
-          projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
-        ),
-      ).thenAnswer((_) => response.future);
-
-      final cubit = buildCubit();
-      addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
-
-      cubit.toggleArchived();
-      expect(cubit.state, isA<SessionListLoading>());
-
-      response.complete(ApiResponse.success(const SessionListResponse(items: [])));
-      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-    });
-
-    test("failed initial list render marks its claim failed and archive toggle preserves failure", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
-      when(
-        () => mockProjectRepository.listSessions(
-          projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-      final cubit = buildCubit();
-
-      await cubit.stream.firstWhere((state) => state is SessionListFailed);
-      cubit.toggleArchived();
-      expect(cubit.state, isA<SessionListFailed>());
-      verify(() => mockProjectViewingService.beginListClaim(projectId: projectId)).called(1);
-      verify(
-        () => mockProjectViewingService.markClaimFailed(claim: any(named: "claim")),
-      ).called(1);
-      await cubit.close();
-    });
-
-    // -------------------------------------------------------------------------
-    // 1. Constructor triggers load only — no route refresh on initial emission
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "constructor: with sessions route already visible, only the initial load runs",
-      build: () {
-        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession()])));
-        return buildCubit();
-      },
-      act: (_) async {
-        await Future<void>.delayed(Duration.zero);
-        mockRouteSource.emitRoute(AppRouteDef.projectSessions);
-        await Future<void>.delayed(Duration.zero);
-      },
-      expect: () => [
-        isA<SessionListLoaded>().having(
-          (s) => s.sessions.length,
-          "sessions count",
-          1,
-        ),
-      ],
-      verify: (_) {
-        verify(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).called(1);
-      },
-    );
 
     blocTest<SessionListCubit, SessionListState>(
       "REST session list is sorted by updated timestamp descending",
@@ -278,7 +143,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -300,10 +164,10 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (state) => state.sessions.map((session) => session.id).toList(),
           "session order",
           ["untitled", "B", "A", "a"],
@@ -314,11 +178,9 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "running activity received after REST creates a timestamp-ordered prefix",
       build: () {
-        mockRouteSource = MockRouteSource();
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -331,7 +193,7 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (_) async {
         await Future<void>.delayed(Duration.zero);
@@ -345,7 +207,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (state) => state.sessions.map((session) => session.id).toList(),
           "session order",
           ["A", "C", "B"],
@@ -356,7 +218,6 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "running activity received before REST uses timestamps when sessions arrive",
       build: () {
-        mockRouteSource = MockRouteSource();
         mockSseEventTracker.emitSessionActivity({
           projectId: {
             "C": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
@@ -366,7 +227,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -379,10 +239,10 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (state) => state.sessions.map((session) => session.id).toList(),
           "session order",
           ["A", "C", "B"],
@@ -390,110 +250,21 @@ void main() {
       ],
     );
 
-    // -------------------------------------------------------------------------
-    // 2. Route return refresh — projects → sessions triggers one silent reload
-    // -------------------------------------------------------------------------
-
     blocTest<SessionListCubit, SessionListState>(
-      "route return: refreshes once when navigation returns to sessions",
-      build: () {
-        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.home);
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [testSession(id: "s1", title: "Original")],
-            ),
-          ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [testSession(id: "s1", title: "Refreshed")],
-            ),
-          ),
-        );
-        mockRouteSource.emitRoute(AppRouteDef.projectSessions);
-        await Future<void>.delayed(Duration.zero);
-        mockRouteSource.emitRoute(AppRouteDef.projectSessions);
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>().having(
-          (s) => s.sessions.first.title,
-          "refreshed session title",
-          "Refreshed",
-        ),
-      ],
-      verify: (_) {
-        verify(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).called(2);
-      },
-    );
-
-    // -------------------------------------------------------------------------
-    // 3. Load success — multiple sessions returned
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "loadSessions: emits SessionListLoaded with all returned sessions",
-      build: () {
-        final sessions = [
-          testSession(id: "s1", title: "First"),
-          testSession(id: "s2", title: "Second"),
-        ];
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: sessions)));
-        return buildCubit();
-      },
-      expect: () => [
-        isA<SessionListLoaded>().having(
-          (s) => s.sessions.length,
-          "sessions count",
-          2,
-        ),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 4. Load empty — loaded with empty list
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "loadSessions: emits SessionListLoaded with empty list when server returns none",
+      "refreshSessions: replaces the seeded sessions with the server list",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: <Session>[])));
-        return buildCubit();
+        return buildCubit(sessions: [testSession(id: "s1")]);
+      },
+      act: (cubit) async {
+        expect(await cubit.refreshSessions(), isTrue);
       },
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (s) => s.sessions,
           "sessions",
           isEmpty,
@@ -501,26 +272,39 @@ void main() {
       ],
     );
 
-    // -------------------------------------------------------------------------
-    // 5. Load error → SessionListFailed
-    // -------------------------------------------------------------------------
-
     blocTest<SessionListCubit, SessionListState>(
-      "loadSessions: emits SessionListFailed when API returns an error",
+      "refreshSessions: keeps archived sessions out of the visible list",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
-        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-        return buildCubit();
+        ).thenAnswer(
+          (_) async => ApiResponse.success(
+            SessionListResponse(
+              items: [
+                testSession(
+                  id: "archived",
+                  archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
+                ),
+                testSession(id: "active"),
+              ],
+            ),
+          ),
+        );
+        return buildRefreshingCubit();
       },
-      expect: () => [isA<SessionListFailed>()],
+      expect: () => [
+        isA<SessionListState>().having(
+          (s) => s.sessions.map((session) => session.id).toList(),
+          "visible sessions",
+          ["active"],
+        ),
+      ],
     );
 
     // -------------------------------------------------------------------------
-    // 7. deleteSession success — optimistic removal, API succeeds, returns true
+    // deleteSession success — optimistic removal, API succeeds, returns true
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -529,7 +313,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
@@ -539,7 +322,7 @@ void main() {
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse<void>.success(null));
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -552,7 +335,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (s) => s.sessions,
           "sessions after delete",
           isEmpty,
@@ -566,7 +349,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
         when(
@@ -578,7 +360,7 @@ void main() {
         ).thenThrow(
           _cleanupRejected(const CleanupIssue.branchMismatch(expected: "feat/session-1", actual: "main")),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -595,55 +377,21 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions, "sessions after optimistic delete", isEmpty),
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions after rollback", 1),
+        isA<SessionListState>().having((s) => s.sessions, "sessions after optimistic delete", isEmpty),
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions after rollback", 1),
       ],
     );
 
     // -------------------------------------------------------------------------
-    // 9. toggleArchived — flips showArchived flag, re-emits filtered sessions
+    // refreshSessions success — emits the new sessions, returns true
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "toggleArchived: shows archived sessions when showArchived becomes true",
-      build: () {
-        final archivedSession = testSession(
-          id: "s1",
-          archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
-        );
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])));
-        return buildCubit();
-      },
-      act: (cubit) async {
-        // Wait for initial load (archived session filtered out → sessions: []).
-        await Future<void>.delayed(Duration.zero);
-        cubit.toggleArchived();
-      },
-      // Skip the initial SessionListLoaded(sessions: []) — archived filtered out.
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>()
-            .having((s) => s.filter, "filter", SessionListFilter.all)
-            .having((s) => s.sessions.length, "visible sessions", 1),
-      ],
-    );
-
-    // -------------------------------------------------------------------------
-    // 10. refreshSessions success — no loading state, emits loaded, returns true
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "refreshSessions: emits loaded without loading state and returns true",
+      "refreshSessions: emits the refreshed sessions and returns true",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -652,7 +400,7 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -660,7 +408,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -672,10 +419,9 @@ void main() {
         final result = await cubit.refreshSessions();
         expect(result, isTrue);
       },
-      skip: 1, // skip constructor's initial loaded emission
+      skip: 1, // skip the first refresh's emission
       expect: () => [
-        // Only SessionListLoaded — no SessionListLoading in between.
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (s) => s.sessions.first.title,
           "refreshed session title",
           "Refreshed",
@@ -684,7 +430,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 11. refreshSessions failure — keeps current state, returns false
+    // refreshSessions failure — keeps current state, returns false
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -693,12 +439,11 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession()])),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -706,77 +451,14 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final result = await cubit.refreshSessions();
         expect(result, isFalse);
       },
-      skip: 1, // skip constructor's initial loaded emission
-      // No state changes — current loaded state is preserved.
+      skip: 1, // skip the first refresh's emission
+      // No state changes — current state is preserved.
       expect: () => <SessionListState>[],
-    );
-
-    // -------------------------------------------------------------------------
-    // 12. refreshSessions preserves showArchived toggle across refresh
-    // -------------------------------------------------------------------------
-
-    blocTest<SessionListCubit, SessionListState>(
-      "refreshSessions: preserves showArchived flag after refresh",
-      build: () {
-        final archivedSession = testSession(
-          id: "s1",
-          archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
-        );
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [archivedSession])),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        // Wait for initial load (archived session filtered out).
-        await Future<void>.delayed(Duration.zero);
-        // Toggle archived on so the session becomes visible.
-        cubit.toggleArchived();
-        // Return session with a different title so the refresh emits a
-        // distinct state (bloc deduplicates identical states).
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            SessionListResponse(
-              items: [
-                testSession(
-                  id: "s1",
-                  title: "Refreshed",
-                  archivedAt: DateTime.fromMillisecondsSinceEpoch(1700000001000),
-                ),
-              ],
-            ),
-          ),
-        );
-        final result = await cubit.refreshSessions();
-        expect(result, isTrue);
-      },
-      skip: 1, // skip constructor's initial loaded emission (sessions: [])
-      expect: () => [
-        // toggleArchived: shows the archived session.
-        isA<SessionListLoaded>()
-            .having((s) => s.filter, "filter after toggle", SessionListFilter.all)
-            .having((s) => s.sessions.length, "visible sessions after toggle", 1),
-        // refreshSessions: re-emits with showArchived still true and new data.
-        isA<SessionListLoaded>()
-            .having((s) => s.filter, "filter after refresh", SessionListFilter.all)
-            .having((s) => s.sessions.first.title, "refreshed title", "Refreshed"),
-      ],
     );
 
     // -------------------------------------------------------------------------
@@ -804,12 +486,11 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: [existing])),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -838,7 +519,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.sessions.map((session) => session.id).toList(),
           "session order",
           ["s2", "s1"],
@@ -852,7 +533,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -863,7 +543,7 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -878,7 +558,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>()
+        isA<SessionListState>()
             .having((s) => s.sessions.length, "sessions count", 1)
             .having((s) => s.sessions.first.title, "updated title", "Updated"),
       ],
@@ -902,35 +582,32 @@ void main() {
         SessionListResponse(items: [withPullRequest]),
         SessionListResponse(items: [withoutPullRequest]),
       ];
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(responses.removeAt(0)));
       final cubit = buildCubit();
       addTearDown(cubit.close);
 
-      await cubit.stream.firstWhere(
-        (state) => state is SessionListLoaded && state.sessions.single.pullRequest == mergedPullRequest,
-      );
+      await cubit.refreshSessions();
+      expect(cubit.state.sessions.single.pullRequest, mergedPullRequest);
       eventController.add(
         SseEvent(
           data: SesoriSseEvent.sessionUpdated(info: withoutPullRequest),
         ),
       );
       final afterSessionUpdate = await cubit.stream.firstWhere(
-        (state) => state is SessionListLoaded && state.sessions.single.title == "Updated",
-      ) as SessionListLoaded;
+        (state) => state.sessions.single.title == "Updated",
+      );
       expect(afterSessionUpdate.sessions.single.pullRequest, mergedPullRequest);
 
       eventController.add(
         SseEvent(data: const SesoriSessionsUpdated(projectID: projectId)),
       );
       final afterAuthoritativeRefresh = await cubit.stream.firstWhere(
-        (state) => state is SessionListLoaded && state.sessions.single.pullRequest == null,
-      ) as SessionListLoaded;
+        (state) => state.sessions.single.pullRequest == null,
+      );
       expect(afterAuthoritativeRefresh.sessions.single.pullRequest, isNull);
     });
 
@@ -940,7 +617,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -956,7 +632,7 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -973,7 +649,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>()
+        isA<SessionListState>()
             .having(
               (state) => state.sessions.map((session) => session.id).toList(),
               "session order",
@@ -993,7 +669,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1005,7 +680,7 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -1020,7 +695,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>()
+        isA<SessionListState>()
             .having((s) => s.sessions.length, "sessions count", 1)
             .having((s) => s.sessions.first.id, "remaining session", "s2"),
       ],
@@ -1032,7 +707,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1043,7 +717,7 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -1075,52 +749,11 @@ void main() {
     );
 
     blocTest<SessionListCubit, SessionListState>(
-      "retryLoadSessions reconnects before loading",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-        when(
-          () => mockConnectionService.reconnectAndAwaitOutcome(
-            timeout: any(named: "timeout"),
-          ),
-        ).thenAnswer((_) async {});
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
-        await cubit.retryLoadSessions();
-      },
-      skip: 1,
-      expect: () => [
-        isA<SessionListLoading>(),
-        isA<SessionListLoaded>().having((state) => state.sessions.length, "sessions count after retry", 1),
-      ],
-      verify: (_) {
-        verify(
-          () => mockConnectionService.reconnectAndAwaitOutcome(
-            timeout: const Duration(seconds: 15),
-          ),
-        ).called(1);
-      },
-    );
-
-    blocTest<SessionListCubit, SessionListState>(
       "connection reconnect triggers silent refresh",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1131,14 +764,13 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1164,53 +796,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count after reconnect", 2),
-      ],
-    );
-
-    blocTest<SessionListCubit, SessionListState>(
-      "connection reconnect triggers loadSessions when state is SessionListFailed",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.error(ApiError.generic()),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        // Switch mock to succeed so the reconnect-triggered load works.
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
-        );
-        const config = ServerConnectionConfig(
-          relayHost: "relay.example.com",
-          authToken: "test-token",
-          bridgeId: null,
-        );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
-        statusController.add(
-          const ConnectionStatus.connected(config: config, health: health),
-        );
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1, // Skip the initial SessionListFailed from constructor.
-      expect: () => [
-        isA<SessionListLoading>(),
-        isA<SessionListLoaded>().having(
-          (s) => s.sessions.length,
-          "sessions count after reconnect retry",
-          1,
-        ),
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions count after reconnect", 2),
       ],
     );
 
@@ -1220,17 +806,16 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
-        // Wait for initial load to complete.
+        // Wait for the first refresh to complete.
         await Future<void>.delayed(Duration.zero);
-        // Reset interaction count after initial load.
+        // Reset interaction count after the first refresh.
         reset(mockProjectRepository);
 
         // Use a Completer so the first refresh stays in-flight while the
@@ -1239,14 +824,8 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => completer.future);
-        when(() => mockProjectRepository.getGitContext(projectId: projectId)).thenAnswer(
-          (_) async => ApiResponse.success(
-            const ProjectGitContext(baseBranch: "main", repoSlug: null, repoProvider: RepoProvider.other),
-          ),
-        );
 
         const config = ServerConnectionConfig(
           relayHost: "relay.example.com",
@@ -1266,60 +845,38 @@ void main() {
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
-      expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count after refresh", 1),
-      ],
+      expect: () => <SessionListState>[],
       verify: (_) {
         // Should have been called only once despite two ConnectionConnected events.
         verify(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).called(1);
       },
     );
 
-    blocTest<SessionListCubit, SessionListState>(
-      "ConnectionConnected while state is loading does not trigger refresh",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
-        );
+    test("constructor does not fetch, even when the connection is already connected", () async {
+      // The cubit receives this replayed status immediately on subscribe.
+      const config = ServerConnectionConfig(
+        relayHost: "relay.example.com",
+        authToken: "test-token",
+        bridgeId: null,
+      );
+      const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
+      statusController.add(
+        const ConnectionStatus.connected(config: config, health: health),
+      );
+      final cubit = buildCubit();
+      addTearDown(cubit.close);
+      await Future<void>.delayed(Duration.zero);
 
-        // Seed the status controller as Connected BEFORE building the cubit,
-        // so the cubit receives ConnectionConnected immediately on subscribe.
-        const config = ServerConnectionConfig(
-          relayHost: "relay.example.com",
-          authToken: "test-token",
-          bridgeId: null,
-        );
-        const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
-        statusController.add(
-          const ConnectionStatus.connected(config: config, health: health),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      verify: (_) {
-        // Only 1 call from the constructor's loadSessions().
-        // The ConnectionConnected should NOT trigger a second fetch.
-        verify(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).called(1);
-      },
-    );
+      verifyNever(
+        () => mockProjectRepository.listSessions(
+          projectId: any(named: "projectId"),
+        ),
+      );
+    });
 
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.created for a different project is ignored",
@@ -1327,10 +884,9 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -1359,7 +915,7 @@ void main() {
         // Give the event time to be processed.
         await Future<void>.delayed(Duration.zero);
       },
-      skip: 1, // skip constructor's initial loaded emission
+      skip: 1, // skip the first refresh's emission
       // No state changes — the foreign session must be ignored.
       expect: () => <SessionListState>[],
     );
@@ -1370,10 +926,9 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -1411,10 +966,9 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])));
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
@@ -1488,29 +1042,27 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: "global",
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
-        return SessionListCubit(
-          mode: const SessionListMode.view(),
+        final cubit = SessionListCubit(
+          sessions: const [],
           sessionRepository: mockSessionService,
           sessionCleanupService: SessionCleanupService(repository: mockSessionService),
           sessionListService: sessionListService,
-          projectRepository: mockProjectRepository,
           connectionService: mockConnectionService,
           sseEventTracker: mockSseEventTracker,
           sessionUnseenTracker: fakeSessionUnseenTracker,
-          projectViewingService: mockProjectViewingService,
-          routeSource: mockRouteSource,
           projectId: "global",
           failureReporter: mockFailureReporter,
           catalogRescanService: fakeCatalogRescanService,
         );
+        unawaited(cubit.refreshSessions());
+        return cubit;
       },
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (s) => s.sessions.length,
           "all sessions under root",
           2,
@@ -1519,7 +1071,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 19. activeSessionIds from SseEventTracker
+    // activeSessionIds from SseEventTracker
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -1528,7 +1080,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1547,10 +1098,10 @@ void main() {
             "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.activeSessionIds,
           "activeSessionIds",
           {
@@ -1562,7 +1113,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 20. activeSessionIds updates when activity changes
+    // activeSessionIds updates when activity changes
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -1571,7 +1122,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1583,10 +1133,10 @@ void main() {
             ),
           ),
         );
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
-        // Wait for initial load
+        // Wait for the first refresh
         await Future<void>.delayed(Duration.zero);
         // Emit initial activity
         mockSseEventTracker.emitSessionActivity({
@@ -1596,11 +1146,8 @@ void main() {
         });
         await awaitState(
           cubit: cubit,
-          predicate: (state) =>
-              state is SessionListLoaded &&
-              state.activeSessionIds.length == 1 &&
-              state.activeSessionIds.containsKey("s1"),
-          description: "SessionListLoaded with s1 active",
+          predicate: (state) => state.activeSessionIds.length == 1 && state.activeSessionIds.containsKey("s1"),
+          description: "SessionListState with s1 active",
         );
         // Emit updated activity
         mockSseEventTracker.emitSessionActivity({
@@ -1610,10 +1157,10 @@ void main() {
           },
         });
       },
-      skip: 1, // skip initial load
+      skip: 1, // skip the first refresh's emission
       expect: () => [
         // First activity update: only s1 is active
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.activeSessionIds,
           "activeSessionIds after first update",
           {
@@ -1621,7 +1168,7 @@ void main() {
           },
         ),
         // Second activity update: both s1 and s2 are active
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 2).having(
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions count", 2).having(
           (s) => s.activeSessionIds,
           "activeSessionIds after second update",
           {
@@ -1633,7 +1180,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 21. activeSessionIds excludes sessions from other projects
+    // activeSessionIds excludes sessions from other projects
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -1642,7 +1189,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1663,10 +1209,10 @@ void main() {
             "s3": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 1).having(
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions count", 1).having(
           (s) => s.activeSessionIds,
           "activeSessionIds for this project only",
           {
@@ -1688,7 +1234,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1700,14 +1245,13 @@ void main() {
         when(
           () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
         ).thenAnswer((_) => renameSessionCompleter.future);
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1718,7 +1262,7 @@ void main() {
         );
 
         final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
-        expect((cubit.state as SessionListLoaded).sessions.first.title, "New Title");
+        expect(cubit.state.sessions.first.title, "New Title");
 
         renameSessionCompleter.complete(ApiResponse.success(testSession(id: "s1", title: "New Title")));
         expect(await rename, isTrue);
@@ -1726,7 +1270,7 @@ void main() {
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (s) => s.sessions.first.title,
           "optimistic session title",
           "New Title",
@@ -1737,13 +1281,12 @@ void main() {
       },
     );
 
-    test("renameSession replaces an active PR-data refresh with an equivalent post-write read", () async {
+    test("renameSession replaces an active refresh with a post-write read", () async {
       final original = testSession(id: "s1", title: "Original");
       final renamed = testSession(id: "s1", title: "New Title");
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final renameCompleter = Completer<ApiResponse<Session>>();
@@ -1753,36 +1296,30 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
+      await cubit.refreshSessions();
 
       final staleRefreshCompleter = Completer<ApiResponse<SessionListResponse>>();
       final postRenameRefreshCompleter = Completer<ApiResponse<SessionListResponse>>();
-      final waitsForPrData = <bool>[];
       var refreshRequestCount = 0;
       when(
-        () => mockProjectRepository.listSessions(
-          projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
-        ),
-      ).thenAnswer((invocation) {
-        waitsForPrData.add(invocation.namedArguments[#waitForPrData] as bool);
+        () => mockProjectRepository.listSessions(projectId: projectId),
+      ).thenAnswer((_) {
         refreshRequestCount++;
         return refreshRequestCount == 1 ? staleRefreshCompleter.future : postRenameRefreshCompleter.future;
       });
 
-      final staleRefresh = cubit.refreshSessions(waitForPrData: true);
+      final staleRefresh = cubit.refreshSessions();
       final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
+      expect(cubit.state.sessions.single.title, "New Title");
 
       renameCompleter.complete(ApiResponse.success(renamed));
       expect(await rename, isTrue);
       expect(refreshRequestCount, 2);
-      expect(waitsForPrData, [isTrue, isTrue]);
 
       staleRefreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [original])));
       postRenameRefreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [renamed])));
       expect(await staleRefresh, isTrue);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
+      expect(cubit.state.sessions.single.title, "New Title");
     });
 
     test("renameSession keeps a pending refresh successful and restores the pre-rename title", () async {
@@ -1791,7 +1328,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final renameCompleter = Completer<ApiResponse<Session>>();
@@ -1801,13 +1337,12 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
+      await cubit.refreshSessions();
 
       final refreshCompleter = Completer<ApiResponse<SessionListResponse>>();
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) => refreshCompleter.future);
 
@@ -1816,11 +1351,11 @@ void main() {
       refreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [stale])));
 
       expect(await refresh, isTrue);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "New Title");
+      expect(cubit.state.sessions.single.title, "New Title");
 
       renameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await rename, isFalse);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "Original");
+      expect(cubit.state.sessions.single.title, "Original");
     });
 
     test("renameSession restores a null committed title after two overlapping failures", () async {
@@ -1828,7 +1363,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final firstRenameCompleter = Completer<ApiResponse<Session>>();
@@ -1842,19 +1376,19 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
+      await cubit.refreshSessions();
 
       final firstRename = cubit.renameSession(sessionId: "s1", title: "First title");
       final secondRename = cubit.renameSession(sessionId: "s1", title: "Second title");
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "Second title");
+      expect(cubit.state.sessions.single.title, "Second title");
 
       firstRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await firstRename, isFalse);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "Second title");
+      expect(cubit.state.sessions.single.title, "Second title");
 
       secondRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await secondRename, isFalse);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, isNull);
+      expect(cubit.state.sessions.single.title, isNull);
     });
 
     test("renameSession restores an older in-flight success after newer renames fail", () async {
@@ -1862,7 +1396,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final firstRenameCompleter = Completer<ApiResponse<Session>>();
@@ -1880,22 +1413,22 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
+      await cubit.refreshSessions();
 
       final firstRename = cubit.renameSession(sessionId: "s1", title: "First title");
       final secondRename = cubit.renameSession(sessionId: "s1", title: "Second title");
       secondRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await secondRename, isFalse);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "First title");
+      expect(cubit.state.sessions.single.title, "First title");
 
       final thirdRename = cubit.renameSession(sessionId: "s1", title: "Third title");
       firstRenameCompleter.complete(ApiResponse.success(original.copyWith(title: "First title")));
       expect(await firstRename, isTrue);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "Third title");
+      expect(cubit.state.sessions.single.title, "Third title");
 
       thirdRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await thirdRename, isFalse);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "First title");
+      expect(cubit.state.sessions.single.title, "First title");
     });
 
     test("renameSession restores the latest confirmed title when a newer rename fails", () async {
@@ -1903,7 +1436,6 @@ void main() {
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [original])));
       final firstRenameCompleter = Completer<ApiResponse<Session>>();
@@ -1917,18 +1449,18 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
+      await cubit.refreshSessions();
 
       final firstRename = cubit.renameSession(sessionId: "s1", title: "First title");
       final secondRename = cubit.renameSession(sessionId: "s1", title: "Second title");
 
       firstRenameCompleter.complete(ApiResponse.success(original.copyWith(title: "First title")));
       expect(await firstRename, isTrue);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "Second title");
+      expect(cubit.state.sessions.single.title, "Second title");
 
       secondRenameCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
       expect(await secondRename, isFalse);
-      expect((cubit.state as SessionListLoaded).sessions.single.title, "First title");
+      expect(cubit.state.sessions.single.title, "First title");
     });
 
     // -------------------------------------------------------------------------
@@ -1942,7 +1474,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -1954,24 +1485,24 @@ void main() {
         when(
           () => mockSessionService.renameSession(sessionId: "s1", title: "New Title"),
         ).thenAnswer((_) => renameSessionCompleter.future);
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
-        expect((cubit.state as SessionListLoaded).sessions.first.title, "New Title");
+        expect(cubit.state.sessions.first.title, "New Title");
 
         renameSessionCompleter.complete(ApiResponse<Session>.error(ApiError.generic()));
         expect(await rename, isFalse);
       },
       skip: 1,
       expect: () => [
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (s) => s.sessions.first.title,
           "optimistic session title",
           "New Title",
         ),
-        isA<SessionListLoaded>().having(
+        isA<SessionListState>().having(
           (s) => s.sessions.first.title,
           "restored session title",
           "Original",
@@ -1980,7 +1511,7 @@ void main() {
     );
 
     // -------------------------------------------------------------------------
-    // 22. activeSessionIds is empty when no activity for this project
+    // activeSessionIds is empty when no activity for this project
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -1989,7 +1520,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -2006,17 +1536,17 @@ void main() {
             "s2": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
         });
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       expect: () => [
-        isA<SessionListLoaded>()
+        isA<SessionListState>()
             .having((s) => s.sessions.length, "sessions count", 1)
             .having((s) => s.activeSessionIds, "activeSessionIds empty", isEmpty),
       ],
     );
 
     // -------------------------------------------------------------------------
-    // 23. activeSessionIds propagates awaitingInput from SessionActivityInfo
+    // activeSessionIds propagates awaitingInput from SessionActivityInfo
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
@@ -2025,7 +1555,6 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer(
           (_) async => ApiResponse.success(
@@ -2046,10 +1575,10 @@ void main() {
             ),
           },
         });
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       expect: () => [
-        isA<SessionListLoaded>().having((s) => s.sessions.length, "sessions count", 1).having(
+        isA<SessionListState>().having((s) => s.sessions.length, "sessions count", 1).having(
           (s) => s.activeSessionIds,
           "activeSessionIds with awaitingInput",
           {
@@ -2069,49 +1598,28 @@ void main() {
     // -------------------------------------------------------------------------
 
     blocTest<SessionListCubit, SessionListState>(
-      "stale signal triggers refresh with isRefreshing indicator",
+      "stale signal triggers a silent refresh",
       build: () {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
-        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession()])));
-        return buildCubit();
+        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(title: "Original")])));
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
-        await Future<void>.delayed(Duration.zero); // let initial load complete
+        await Future<void>.delayed(Duration.zero); // let the first refresh complete
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [testSession(title: "Refreshed")])));
         mockConnectionService.emitDataMayBeStale();
-        await Future<void>.delayed(Duration.zero); // let refresh start
+        await Future<void>.delayed(Duration.zero); // let the stale refresh complete
       },
       expect: () => [
-        isA<SessionListLoaded>(), // initial load
-        isA<SessionListLoaded>().having((s) => s.isRefreshing, "isRefreshing", true), // stale signal
-        isA<SessionListLoaded>().having((s) => s.isRefreshing, "isRefreshing", false), // refresh complete
-      ],
-    );
-
-    final loadingResponse = Completer<ApiResponse<SessionListResponse>>();
-    blocTest<SessionListCubit, SessionListState>(
-      "stale signal is ignored when state is not SessionListLoaded",
-      build: () {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) => loadingResponse.future);
-        return buildCubit();
-      },
-      act: (cubit) async {
-        // Emit stale while still loading
-        mockConnectionService.emitDataMayBeStale();
-        await Future<void>.delayed(Duration.zero);
-        loadingResponse.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
-      },
-      skip: 1, // Skip the initial loading state
-      expect: () => <SessionListState>[
-        // No additional states from stale signal since state is not loaded
+        isA<SessionListState>().having((s) => s.sessions.single.title, "first refresh title", "Original"),
+        isA<SessionListState>().having((s) => s.sessions.single.title, "stale refresh title", "Refreshed"),
       ],
     );
 
@@ -2122,21 +1630,20 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) {
           final response = Completer<ApiResponse<SessionListResponse>>();
           reconnectResponses.add(response);
           return response.future;
         });
-        return buildCubit();
+        return buildRefreshingCubit();
       },
       act: (cubit) async {
         reconnectResponses.single.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
         await awaitState(
           cubit: cubit,
-          predicate: (state) => state is SessionListLoaded,
-          description: "initial SessionListLoaded",
+          predicate: (state) => state.sessions.isNotEmpty,
+          description: "first refreshed SessionListState",
         );
         // Emit both stale and ConnectionConnected simultaneously
         mockConnectionService.emitDataMayBeStale();
@@ -2146,34 +1653,30 @@ void main() {
             health: HealthResponse(healthy: true, version: "0.1.0", filesystemAccessDegraded: false),
           ),
         );
-        await awaitState(
-          cubit: cubit,
-          predicate: (state) => state is SessionListLoaded && state.isRefreshing,
-          description: "refreshing SessionListLoaded",
+        await Future<void>.delayed(Duration.zero);
+        expect(reconnectResponses, hasLength(2));
+        reconnectResponses.last.complete(
+          ApiResponse.success(SessionListResponse(items: [testSession(title: "Refreshed")])),
         );
-        reconnectResponses.last.complete(ApiResponse.success(SessionListResponse(items: [testSession()])));
         await awaitState(
           cubit: cubit,
-          predicate: (state) => state is SessionListLoaded && !state.isRefreshing,
-          description: "completed SessionListLoaded refresh",
+          predicate: (state) => state.sessions.single.title == "Refreshed",
+          description: "coalesced refresh applied",
         );
       },
       verify: (cubit) {
         verify(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).called(2);
       },
     );
 
     test("fetch seeds the tracker with the REST unseen flags", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -2188,7 +1691,7 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
+      await cubit.refreshSessions();
 
       expect(
         fakeSessionUnseenTracker.seededSessions.single.stateBySessionId,
@@ -2197,15 +1700,13 @@ void main() {
           "s2": (unseen: false, lastUserActivityAt: null),
         }),
       );
-      expect((cubit.state as SessionListLoaded).unseenBySessionId, equals({"s1": true, "s2": false}));
+      expect(cubit.state.unseenBySessionId, equals({"s1": true, "s2": false}));
     });
 
     test("live tracker marker reorders running sessions and advances displayed recency", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(
@@ -2230,8 +1731,8 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-      expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["newer", "older"]);
+      await cubit.refreshSessions();
+      expect(cubit.state.sessions.map((session) => session.id), ["newer", "older"]);
 
       fakeSessionUnseenTracker.emitSessionUnseen({
         projectId: {
@@ -2241,19 +1742,17 @@ void main() {
       });
       await Future<void>.delayed(Duration.zero);
 
-      final loaded = cubit.state as SessionListLoaded;
-      expect(loaded.sessions.map((session) => session.id), ["older", "newer"]);
-      expect(loaded.sessions.first.time?.updated, 30);
-      expect(loaded.sessions.first.lastUserActivityAt, 30);
+      final state = cubit.state;
+      expect(state.sessions.map((session) => session.id), ["older", "newer"]);
+      expect(state.sessions.first.time?.updated, 30);
+      expect(state.sessions.first.lastUserActivityAt, 30);
     });
 
     test("live marker received during REST fetch wins over the stale seed", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       final response = Completer<ApiResponse<SessionListResponse>>();
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer((_) => response.future);
       mockSseEventTracker.emitSessionActivity({
@@ -2265,6 +1764,7 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
+      final refresh = cubit.refreshSessions();
       fakeSessionUnseenTracker.emitSessionUnseen({
         projectId: {
           "s1": (unseen: true, lastUserActivityAt: 30),
@@ -2281,18 +1781,16 @@ void main() {
           ),
         ),
       );
-      await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+      expect(await refresh, isTrue);
 
-      expect((cubit.state as SessionListLoaded).sessions.map((session) => session.id), ["s1", "s2"]);
+      expect(cubit.state.sessions.map((session) => session.id), ["s1", "s2"]);
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.lastUserActivityAt, 30);
     });
 
     test("live tracker updates re-emit the merged unseen map", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1")])),
@@ -2300,23 +1798,21 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
+      await cubit.refreshSessions();
+      expect(cubit.state.unseenBySessionId["s1"], isFalse);
 
       fakeSessionUnseenTracker.emitSessionUnseen({
         projectId: {"s1": (unseen: true, lastUserActivityAt: null)},
       });
       await Future<void>.delayed(Duration.zero);
 
-      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+      expect(cubit.state.unseenBySessionId["s1"], isTrue);
     });
 
     test("markSessionSeen applies the change to the tracker optimistically", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1", unseen: true)])),
@@ -2327,23 +1823,21 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+      await cubit.refreshSessions();
+      expect(cubit.state.unseenBySessionId["s1"], isTrue);
 
       await cubit.markSessionSeen(sessionId: "s1", read: true);
       await Future<void>.delayed(Duration.zero);
 
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isFalse);
-      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isFalse);
+      expect(cubit.state.unseenBySessionId["s1"], isFalse);
       verify(() => mockSessionService.markSessionSeen(sessionId: "s1", read: true)).called(1);
     });
 
     test("markSessionSeen failure refetches the authoritative list", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).thenAnswer(
         (_) async => ApiResponse.success(SessionListResponse(items: [testSession(id: "s1", unseen: true)])),
@@ -2354,7 +1848,7 @@ void main() {
 
       final cubit = buildCubit();
       addTearDown(cubit.close);
-      await Future<void>.delayed(Duration.zero);
+      await cubit.refreshSessions();
       clearInteractions(mockProjectRepository);
 
       await cubit.markSessionSeen(sessionId: "s1", read: true);
@@ -2365,15 +1859,13 @@ void main() {
       verify(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
         ),
       ).called(1);
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?["s1"]?.unseen, isTrue);
-      expect((cubit.state as SessionListLoaded).unseenBySessionId["s1"], isTrue);
+      expect(cubit.state.unseenBySessionId["s1"], isTrue);
     });
 
     test("action scope close retains a dialog through rename, mark recovery and delete", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.home);
       final session = testSession(id: "s1", unseen: true);
       final renameReply = Completer<ApiResponse<Session>>();
       final markReply = Completer<ApiResponse<void>>();
@@ -2388,23 +1880,9 @@ void main() {
         () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
       ).thenAnswer((_) => deleteReply.future);
       when(
-        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+        () => mockProjectRepository.listSessions(projectId: projectId),
       ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
-      final cubit = SessionListCubit(
-        mode: SessionListMode.actions(sessions: [session]),
-        sessionRepository: mockSessionService,
-        sessionCleanupService: SessionCleanupService(repository: mockSessionService),
-        sessionListService: sessionListService,
-        projectRepository: mockProjectRepository,
-        connectionService: mockConnectionService,
-        sseEventTracker: mockSseEventTracker,
-        sessionUnseenTracker: fakeSessionUnseenTracker,
-        projectViewingService: mockProjectViewingService,
-        routeSource: mockRouteSource,
-        projectId: projectId,
-        failureReporter: mockFailureReporter,
-        catalogRescanService: fakeCatalogRescanService,
-      );
+      final cubit = buildCubit(sessions: [session]);
 
       final releaseDialog = cubit.retainActionScope();
       final close = cubit.close();
@@ -2428,57 +1906,27 @@ void main() {
 
       expect(cubit.isClosed, isTrue);
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
-      verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
+      verify(() => mockProjectRepository.listSessions(projectId: projectId)).called(1);
       verify(
         () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
       ).called(1);
     });
 
-    group("catalog scan", () {
-      void stubSessions() {
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
-      }
-
+    group("catalog change refresh", () {
       Future<ApiResponse<SessionListResponse>> successfulResponse({required List<Session> sessions}) {
         return Future<ApiResponse<SessionListResponse>>.value(
           ApiResponse.success(SessionListResponse(items: sessions)),
         );
       }
 
-      test("projects the scan onto the loaded state", () async {
-        stubSessions();
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-
-        fakeCatalogRescanService.emit(
-          const CatalogRescanState.reading(
-            activePluginName: "Codex",
-            sessionsSeen: 148,
-            finishedHarnessCount: 0,
-            pluginIds: {"codex"},
-          ),
-        );
-        await Future<void>.delayed(Duration.zero);
-
-        expect(
-          (cubit.state as SessionListLoaded).catalogScan,
-          isA<CatalogRescanReading>().having((s) => s.activePluginName, "activePluginName", "Codex"),
-        );
-      });
-
       test("refreshes after a committed catalog change", () async {
-        stubSessions();
+        when(
+          () => mockProjectRepository.listSessions(
+            projectId: projectId,
+          ),
+        ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
         final cubit = buildCubit();
         addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-        clearInteractions(mockProjectRepository);
-        stubSessions();
 
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
@@ -2486,113 +1934,51 @@ void main() {
         verify(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).called(1);
       });
 
-      test("keeps a terminal scan through an unrelated list rebuild", () async {
-        stubSessions();
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-
-        fakeCatalogRescanService.emit(
-          const CatalogRescanState.failed(failedPluginIds: {"codex", "claude"}),
-        );
-        await Future<void>.delayed(Duration.zero);
-        expect((cubit.state as SessionListLoaded).catalogScan, isA<CatalogRescanFailed>());
-
-        // Any list rebuild — a session event, a toggle, the refresh the scan
-        // itself triggers — must not reset a row that persists until dismissed.
-        cubit.toggleArchived();
-        await Future<void>.delayed(Duration.zero);
-
-        expect(
-          (cubit.state as SessionListLoaded).catalogScan,
-          isA<CatalogRescanFailed>(),
-          reason: "a failure the user has not read must survive a rebuild",
-        );
-      });
-
-      test("post-commit data wins over overlapping earlier reads", () async {
+      test("post-commit data wins over an overlapping earlier read", () async {
         final olderRefresh = Completer<ApiResponse<SessionListResponse>>();
-        final olderFullLoad = Completer<ApiResponse<SessionListResponse>>();
         final postCommit = Completer<ApiResponse<SessionListResponse>>();
         final catalogSession = testSession(id: "catalog", title: "Imported after scan");
         var requestCount = 0;
         Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
           0 => successfulResponse(sessions: const []),
           1 => olderRefresh.future,
-          2 => olderFullLoad.future,
-          3 => postCommit.future,
+          2 => postCommit.future,
           _ => throw StateError("unexpected session list request"),
         };
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => nextResponse());
 
         final cubit = buildCubit();
         addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+        expect(await cubit.refreshSessions(), isTrue);
 
         unawaited(cubit.refreshSessions());
         await Future<void>.delayed(Duration.zero);
-        unawaited(cubit.loadSessions());
-        await Future<void>.delayed(Duration.zero);
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
-        expect(requestCount, 4, reason: "the catalog refresh must not coalesce onto the older refresh");
+        expect(requestCount, 3, reason: "the catalog refresh must not coalesce onto the older refresh");
 
         postCommit.complete(ApiResponse.success(SessionListResponse(items: [catalogSession])));
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
-        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
+        expect(cubit.state.sessions, [catalogSession]);
 
-        olderFullLoad.complete(ApiResponse.success(const SessionListResponse(items: [])));
         olderRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
 
-        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
-      });
-
-      test("a catalog failure that supersedes a full load exits loading", () async {
-        final fullLoad = Completer<ApiResponse<SessionListResponse>>();
-        var requestCount = 0;
-        Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
-          0 => successfulResponse(sessions: const []),
-          1 => fullLoad.future,
-          2 => Future<ApiResponse<SessionListResponse>>.value(ApiResponse.error(ApiError.generic())),
-          _ => successfulResponse(sessions: const []),
-        };
-        when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((_) => nextResponse());
-
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-
-        final load = cubit.loadSessions();
-        await Future<void>.delayed(Duration.zero);
-        final failure = cubit.stream.firstWhere((state) => state is SessionListFailed);
-        fakeCatalogRescanService.emitCatalogChanged();
-
-        expect(await failure, isA<SessionListFailed>());
-        fullLoad.complete(ApiResponse.success(const SessionListResponse(items: [])));
-        await load;
+        expect(cubit.state.sessions, [catalogSession]);
       });
 
       test("a superseded explicit refresh reports the catalog refresh failure", () async {
         final explicitRefresh = Completer<ApiResponse<SessionListResponse>>();
-        final waitForPrDataCalls = <bool>[];
         var requestCount = 0;
         Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
           0 => successfulResponse(sessions: const []),
@@ -2601,25 +1987,18 @@ void main() {
           _ => successfulResponse(sessions: const []),
         };
         when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((invocation) {
-          waitForPrDataCalls.add(invocation.namedArguments[#waitForPrData] as bool);
-          return nextResponse();
-        });
+          () => mockProjectRepository.listSessions(projectId: projectId),
+        ).thenAnswer((_) => nextResponse());
 
         final cubit = buildCubit();
         addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+        expect(await cubit.refreshSessions(), isTrue);
 
-        final refresh = cubit.refreshSessions(waitForPrData: true);
+        final refresh = cubit.refreshSessions();
         await Future<void>.delayed(Duration.zero);
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
         expect(requestCount, 3);
-        expect(waitForPrDataCalls, [false, true, true]);
 
         explicitRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
         expect(await refresh, isFalse);
@@ -2641,13 +2020,12 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => nextResponse());
 
         final cubit = buildCubit();
         addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+        expect(await cubit.refreshSessions(), isTrue);
 
         fakeCatalogRescanService
           ..emitCatalogChanged()
@@ -2663,7 +2041,7 @@ void main() {
         secondPostCommit.complete(ApiResponse.success(SessionListResponse(items: [secondSession])));
         await Future<void>.delayed(Duration.zero);
         await Future<void>.delayed(Duration.zero);
-        expect((cubit.state as SessionListLoaded).sessions, [secondSession]);
+        expect(cubit.state.sessions, [secondSession]);
       });
 
       test("preserves a failed catalog refresh for the next ordinary refresh", () async {
@@ -2678,13 +2056,12 @@ void main() {
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
           ),
         ).thenAnswer((_) => nextResponse());
 
         final cubit = buildCubit();
         addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+        expect(await cubit.refreshSessions(), isTrue);
 
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
@@ -2693,19 +2070,7 @@ void main() {
 
         expect(await cubit.refreshSessions(), isTrue);
         expect(requestCount, 3);
-        expect((cubit.state as SessionListLoaded).sessions, [catalogSession]);
-      });
-
-      test("refreshAndImport reloads with PR data and starts an import", () async {
-        stubSessions();
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
-
-        expect(await cubit.refreshAndImport(), isTrue);
-
-        expect(fakeCatalogRescanService.startAllCalls, 1);
-        verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: true)).called(1);
+        expect(cubit.state.sessions, [catalogSession]);
       });
     });
   });

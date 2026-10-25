@@ -71,7 +71,7 @@ class const _HomeView({
     createActionCubit: ({required projectId, required session}) => createSessionListCubit(
       locator: getIt,
       projectId: projectId,
-      mode: SessionListMode.actions(sessions: [session]),
+      sessions: [session],
     ),
     onNewSession: onNewSession,
     disconnectedBuilder: ({required context, required state}) => DisconnectedComputerSlivers(state: state),

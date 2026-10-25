@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -37,7 +36,7 @@ void main() {
       () => filesystemApi.getSuggestions(prefix: "/projects"),
     ).thenAnswer((_) async => ApiResponse.success(suggestions));
     when(
-      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+      () => api.listSessions(projectId: "project-1"),
     ).thenAnswer((_) async => ApiResponse.success(sessions));
     when(
       () => api.renameProject(projectId: "project-1", name: "Renamed"),
@@ -61,7 +60,7 @@ void main() {
       ApiResponse<FilesystemSuggestions>.success(suggestions),
     );
     expect(
-      await repository.listSessions(projectId: "project-1", waitForPrData: false),
+      await repository.listSessions(projectId: "project-1"),
       ApiResponse<SessionListResponse>.success(sessions),
     );
     expect(
@@ -79,7 +78,7 @@ void main() {
     verify(() => api.getProject(projectId: "project-1")).called(1);
     verify(() => api.hideProject(projectId: "project-1")).called(1);
     verify(() => filesystemApi.getSuggestions(prefix: "/projects")).called(1);
-    verify(() => api.listSessions(projectId: "project-1", waitForPrData: false)).called(1);
+    verify(() => api.listSessions(projectId: "project-1")).called(1);
     verify(() => api.renameProject(projectId: "project-1", name: "Renamed")).called(1);
   });
 
@@ -98,59 +97,6 @@ void main() {
     });
   });
 
-  group("getGitContext", () {
-    late MockProjectApi api;
-    late ProjectRepository repository;
-
-    setUp(() {
-      api = MockProjectApi();
-      repository = ProjectRepository(
-        api: api,
-        filesystemApi: MockFilesystemApi(),
-        sessionApi: MockSessionApi(),
-      );
-    });
-
-    void stubBaseBranch(BaseBranchResponse response) {
-      when(
-        () => api.getBaseBranch(projectId: "project-1"),
-      ).thenAnswer((_) async => ApiResponse.success(response));
-    }
-
-    test("maps the wire response into a git context with a classified provider", () async {
-      stubBaseBranch(
-        const BaseBranchResponse(baseBranch: "main", repoSlug: "org/repo", repoHost: "gitlab.company.com"),
-      );
-
-      final response = await repository.getGitContext(projectId: "project-1");
-
-      final context = (response as SuccessResponse<ProjectGitContext>).data;
-      expect(context.baseBranch, equals("main"));
-      expect(context.repoSlug, equals("org/repo"));
-      expect(context.repoProvider, equals(RepoProvider.gitlab));
-    });
-
-    test("classifies a missing host as RepoProvider.other", () async {
-      stubBaseBranch(const BaseBranchResponse(baseBranch: null, repoSlug: "org/repo", repoHost: null));
-
-      final response = await repository.getGitContext(projectId: "project-1");
-
-      final context = (response as SuccessResponse<ProjectGitContext>).data;
-      expect(context.repoProvider, equals(RepoProvider.other));
-    });
-
-    test("passes errors through", () async {
-      final error = ApiError.generic();
-      when(
-        () => api.getBaseBranch(projectId: "project-1"),
-      ).thenAnswer((_) async => ApiResponse.error(error));
-
-      final response = await repository.getGitContext(projectId: "project-1");
-
-      expect(response, ApiResponse<ProjectGitContext>.error(error));
-    });
-  });
-
   test("findSessionContext retains the catalog session plugin identity", () async {
     final api = MockProjectApi();
     final repository = ProjectRepository(
@@ -162,7 +108,7 @@ void main() {
     final session = testSession(id: "session-1", pluginId: "plugin-b", title: "Session");
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
     when(
-      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+      () => api.listSessions(projectId: "project-1"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [session])));
 
     final context = await repository.findSessionContext(sessionId: "session-1");
@@ -186,7 +132,6 @@ void main() {
     verifyNever(
       () => api.listSessions(
         projectId: any(named: "projectId"),
-        waitForPrData: any(named: "waitForPrData"),
       ),
     );
   });
@@ -204,7 +149,7 @@ void main() {
     final child = testSession(id: "child", pluginId: "plugin-b", title: "Child").copyWith(parentID: "root");
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
     when(
-      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+      () => api.listSessions(projectId: "project-1"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [root])));
     when(
       () => sessionApi.getChildren(sessionId: "root"),
@@ -235,7 +180,7 @@ void main() {
     ).copyWith(parentID: "child");
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
     when(
-      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+      () => api.listSessions(projectId: "project-1"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [root])));
     when(
       () => sessionApi.getChildren(sessionId: "root"),
@@ -266,7 +211,7 @@ void main() {
     final error = ApiError.generic();
     when(api.listProjects).thenAnswer((_) async => ApiResponse.success(const Projects(data: [project])));
     when(
-      () => api.listSessions(projectId: "project-1", waitForPrData: false),
+      () => api.listSessions(projectId: "project-1"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [root])));
     when(() => sessionApi.getChildren(sessionId: "root")).thenAnswer((_) async => ApiResponse.error(error));
 
@@ -296,10 +241,10 @@ void main() {
       api.listProjects,
     ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [failedProject, matchingProject])));
     when(
-      () => api.listSessions(projectId: "failed-project", waitForPrData: false),
+      () => api.listSessions(projectId: "failed-project"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [failedRoot])));
     when(
-      () => api.listSessions(projectId: "matching-project", waitForPrData: false),
+      () => api.listSessions(projectId: "matching-project"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [matchingRoot])));
     when(() => sessionApi.getChildren(sessionId: "failed-root")).thenAnswer((_) {
       failedChildrenRequested.complete();
@@ -341,10 +286,10 @@ void main() {
       api.listProjects,
     ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [failedProject, matchingProject])));
     when(
-      () => api.listSessions(projectId: "failed-project", waitForPrData: false),
+      () => api.listSessions(projectId: "failed-project"),
     ).thenAnswer((_) async => ApiResponse.error(error));
     when(
-      () => api.listSessions(projectId: "matching-project", waitForPrData: false),
+      () => api.listSessions(projectId: "matching-project"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [target])));
 
     final context = await runZoned(
@@ -379,10 +324,10 @@ void main() {
       api.listProjects,
     ).thenAnswer((_) async => ApiResponse.success(const Projects(data: [blockedProject, matchingProject])));
     when(
-      () => api.listSessions(projectId: "blocked-project", waitForPrData: false),
+      () => api.listSessions(projectId: "blocked-project"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [blockedRoot])));
     when(
-      () => api.listSessions(projectId: "matching-project", waitForPrData: false),
+      () => api.listSessions(projectId: "matching-project"),
     ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [matchingRoot])));
     when(() => sessionApi.getChildren(sessionId: "blocked-root")).thenAnswer((_) => blockedChildren.future);
     when(() => sessionApi.getChildren(sessionId: "matching-root")).thenAnswer((_) async {

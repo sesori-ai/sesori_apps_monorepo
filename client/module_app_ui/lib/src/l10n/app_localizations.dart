@@ -2365,12 +2365,6 @@ abstract class AppLocalizations {
   /// **'Could not refresh sessions'**
   String get sessionListRefreshFailed;
 
-  /// No description provided for @sessionListErrorTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Failed to load sessions'**
-  String get sessionListErrorTitle;
-
   /// No description provided for @sessionListRetry.
   ///
   /// In en, this message translates to:

@@ -30,7 +30,7 @@ void main() {
   /// Renders the real list with the real action dispatcher behind the row.
   Future<void> pumpRow(WidgetTester tester, {required Session session}) async {
     when(() => cubit.state).thenReturn(
-      SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
+      SessionListState(sessions: [session], activeSessionIds: const {}, unseenBySessionId: const {}),
     );
     await tester.pumpWidget(
       sessionRowApp(
