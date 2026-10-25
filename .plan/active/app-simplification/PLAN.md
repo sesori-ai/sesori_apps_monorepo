@@ -116,8 +116,8 @@ belongs to session detail, so neither is affected.
     list, detail and wide-pane claims.
   - Visibility is decided per route. `sessions` shows the list claim; `newSession` and `sessionDiffs` show it only
     while the wide pane is visible.
-  - There is one list-claim slot: the last writer wins, and a claim is released by identity. Archived-mode cubits
-    never claim.
+  - The newest list claim still held wins, and a claim is released by identity. Since step 10.a.ii, releasing it
+    hands the list back to the claim it replaced. Archived-mode cubits never claim.
   - `SessionSplitShell` calls the service for its pane claim directly.
   - The bridge's `ViewedProjectPrRefreshListener` refreshes PRs on an interval for that project. Every
     `POST /sessions` also triggers a debounced background PR refresh, and PR changes reach clients as events.

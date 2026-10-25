@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/di/injection.dart";
 import "../../core/widgets/desktop_composer_presentation_scope.dart";
 import "../../core/widgets/desktop_sidebar.dart";
+import "../../core/widgets/desktop_sidebar_expansion.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
 import "desktop_file_access_card.dart";
 
@@ -150,18 +151,20 @@ class const _DesktopComputerHeader({
           ? const SizedBox(width: double.infinity)
           : Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, PregoSpacing.md, PregoSpacing.lg, 0),
-              child: Align(
-                alignment: AlignmentDirectional.centerStart,
-                child: ComputerMenu(
-                  onSelect: ({required bridgeId}) =>
-                      onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
-                  onManageComputers: onManageComputers,
-                  triggerBuilder: (context, toggle) => _ViewingButton(
-                    label: remote
-                        ? context.loc.desktopViewingComputer(current.name)
-                        : context.loc.desktopViewingThisComputer,
-                    icon: ComputerMenu.platformIcon(platform: current.platform),
-                    onPressed: toggle,
+              child: DesktopSidebarRestoreInset(
+                child: Align(
+                  alignment: AlignmentDirectional.centerStart,
+                  child: ComputerMenu(
+                    onSelect: ({required bridgeId}) =>
+                        onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
+                    onManageComputers: onManageComputers,
+                    triggerBuilder: (context, toggle) => _ViewingButton(
+                      label: remote
+                          ? context.loc.desktopViewingComputer(current.name)
+                          : context.loc.desktopViewingThisComputer,
+                      icon: ComputerMenu.platformIcon(platform: current.platform),
+                      onPressed: toggle,
+                    ),
                   ),
                 ),
               ),

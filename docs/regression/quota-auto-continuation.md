@@ -102,12 +102,11 @@ provider and platform verification remains in the
   preference. An already-submitted prompt cannot be retracted by disabling.
 - An older bridge without the view exposes a menu entry with an update explanation
   that opens the shared bridge update steps. Read-only and archived chats do not expose mutation controls.
-- Session rows (the shared `SessionTile` on phone and desktop project lists, and
-  both desktop sidebar rows) replace their relative time with a clock and
-  "Resumes <time>" (the narrow sidebar shows only the clock and time) while the
+- Session rows (the shared `SessionTile` on the phone and desktop lists, including the
+  desktop sidebar's list) replace their relative time with a clock and "Resumes <time>" while the
   view is enabled, its availability is `conditional` (an unknown value does
   not count) and its status is a known reset. The time is local, with the date
-  only when it is not today; the row's assistive label and sidebar tooltip say
+  only when it is not today; the row's assistive label says
   "Resumes at <date and time>". Awaiting input and running keep their
   precedence. Paused, unknown-reset and failed states stay inside the session.
   The row follows `session.updated`; it runs no timer. An older bridge's `null`
@@ -142,10 +141,9 @@ provider and platform verification remains in the
   The notice visibility table per status and preference, the chip menu's
   Disable and subtitles, and the phone body test's chip-to-card handoff.
   Phone and desktop screen tests exercise their actual top-right menu wiring.
-- **L1:** `SessionTile` states and desktop cockpit shell tests: a scheduled row
+- **L1:** `SessionTile` states: a scheduled row
   shows the resume time and full label; running, waiting, disabled, unavailable,
-  unknown-availability and `null` views keep the relative time, on both the
-  sidebar's project and Activity rows.
+  unknown-availability and `null` views keep the relative time.
 - **L3 — live plugin:** For each advertised harness/provider case, use a naturally
   observed terminal quota and usable reset to verify opt-in → post-reset ordinary
   `Continue.` acceptance. Never deliberately exhaust an account. Synthetic

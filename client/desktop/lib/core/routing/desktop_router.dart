@@ -86,7 +86,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               route: AppRoute.projectSessions(projectId: project.id, projectName: displayName),
             ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
-            onOpenProjects: () => _goRoute(context: context, route: const AppRoute.home()),
             // Pushed over the page it opened from, which its close returns to.
             onOpenArchived: () {
               if (state.uri.path == AppRouteDef.archivedSessions.path) return;

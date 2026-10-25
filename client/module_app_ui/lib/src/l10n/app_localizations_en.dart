@@ -59,39 +59,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopHomeRecent => 'Recent';
 
   @override
-  String get desktopSidebarNewProject => 'New project';
-
-  @override
-  String desktopSidebarShowMore(int count) {
-    return 'Show $count more';
-  }
-
-  @override
-  String desktopSidebarActivity(int count) {
-    return 'Activity · $count';
-  }
-
-  @override
-  String desktopSidebarActivitySession(String sessionTitle, String projectName) {
-    return '$sessionTitle in $projectName';
-  }
-
-  @override
-  String desktopSidebarNewSession(String projectName) {
-    return 'New session in $projectName';
-  }
-
-  @override
-  String desktopSidebarCollapseProject(String projectName) {
-    return 'Collapse $projectName';
-  }
-
-  @override
-  String desktopSidebarExpandProject(String projectName) {
-    return 'Expand $projectName';
-  }
-
-  @override
   String desktopShortcutHint(String label, String shortcut) {
     return '$label ($shortcut)';
   }

@@ -2,36 +2,34 @@
 
 ## Capability
 
-Desktop project navigation in a resizable sidebar that floats as a panel over
-the page, with a compact initials rail and desktop-owned layout preferences. The sidebar and home pane share one
-signed-in project inventory; one shared recent-session cache feeds the tree.
+Desktop navigation in a resizable sidebar that floats as a panel over the page and hides completely when
+collapsed, with desktop-owned layout preferences. The sidebar shows the shared all-projects session list under
+its project filter; it and the home pane share one signed-in project inventory and one recent-session cache.
 The main pane hosts one full-width routed page.
 
 ## Required Behavior
 
-- The sidebar and its rail float as a panel over the base surface the pages
+- The sidebar floats as a panel over the base surface the pages
   paint: inset 8 pixels from the window's top, bottom and start edges, with
   14-pixel corners, a hairline border and a soft shadow, and no divider. The
   panel clips its footer. An 8-pixel gap separates it from the main pane, which
-  therefore starts 16 pixels past the panel's width. While the sidebar is
-  expanded that gap is the resize handle, with a resize cursor and no visible
-  line; the fixed-width rail has none. Width bounds and the rail's 56 pixels
-  measure the panel itself.
+  therefore starts 16 pixels past the panel's width. That gap is the resize handle, with a resize cursor and no
+  visible line. Width bounds measure the panel itself.
 - macOS hides the native title bar and keeps its traffic lights; Windows and Linux keep their native chrome.
   The macOS runner gives the window an empty unified toolbar, so AppKit itself sets the lights lower and
   further in: the expanded panel keeps its 8 pixel inset and carries them above its first control, which
-  starts 42 pixels from the window's top. The lights are wider than the rail, so the rail itself starts 42
-  pixels from the top, below them. The room the panel leaves for the lights, and the strip above the rail,
-  drag the window and zoom it on a double click. In full screen the runner hides that toolbar, which AppKit
+  starts 42 pixels from the window's top. The room the panel leaves for the lights drags the window and zooms
+  it on a double click. With the sidebar hidden the lights sit over the page's toolbar band, and the restore
+  button starts 80 pixels in, past them. In full screen the runner hides that toolbar, which AppKit
   would otherwise draw as a bar over the content's top, and restores it on exit. The window's top 54 pixels,
   the band a page toolbar fills, drag it on every screen, the signed-out login included: a press becomes a
   drag only after it travels further than a click tolerates, so toolbar controls keep their clicks,
   undelayed, and a text selection or a scrollbar still wins its own press. Where the band and a zooming
   region overlap, one press still reaches the host once.
-- Open, the sidebar's footer is one 44-point row: This computer, then Archived, Settings and collapse. Refresh
-  sits on the Projects header beside New project. The rail stacks the footer: This computer, then refresh and
-  Archived, then Settings and collapse, since it fits two controls a line. The session list clips its rows' highlights, so a
-  highlighted row scrolled under the section above never shows through it.
+- The sidebar's footer is one 44-point row: This computer, then Archived, Settings and collapse, with the
+  bridge recovery card above it when one applies. Refresh sits beside the project filter at the head of the
+  list. The session list clips its rows' highlights, so a highlighted row scrolled under the section above
+  never shows through it.
 - The native window chrome is forced to the app's effective brightness (the in-app mode, or the system's
   while the app follows it) and again on every change, because a host can only be forced light or dark.
   Chrome and content therefore never disagree, including after the system switches appearance while the
@@ -40,24 +38,27 @@ The main pane hosts one full-width routed page.
   uses the starting width plus global pointer displacement, preserving overshoot
   when reversing beyond either bound. Changes are immediate; an admitted drag
   saves once on completion/cancellation, and double-click reset saves once.
-  Idle gesture cancellation does not write; explicit sidebar/project collapse toggles do.
-- Expanded project controls have a 16-pixel directional scrollbar gutter.
-  Trailing expand/collapse buttons remain clickable while the scrollbar is visible;
-  thumb dragging still scrolls. The gutter shrinks with expansion to zero in the compact rail.
-- Collapse uses a 56-pixel rail with deterministic two-grapheme project avatars
-  and full-name tooltips. Expanding restores the user's width. Width and label
-  transitions animate together; reduced motion disables the transition without
-  delaying drag feedback.
-- Windows narrower than 760 pixels temporarily collapse the sidebar without
-  changing saved preferences. Widening restores the user's expanded/collapsed
-  choice. The native minimum window remains 560 × 480.
-- Project shortcuts open the existing sessions route. New session is a quiet row at the top of the sidebar,
-  with its shortcut at the row's end; with no projects it reads Add project. The small New project button on the Projects section header uses the shared folder dialog and project-list
-  cubit, and hides with the collapsed sidebar, where the home pane still offers it. The collapse control owns
-  sidebar presentation. The compact Projects shortcut opens home, including empty/recovery states when the window is
-  too narrow to expand. The separated footer groups This computer with the Archived, Settings and collapse
-  controls.
-  Icon/status hints and truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
+  Idle gesture cancellation does not write; explicit sidebar collapse toggles do.
+- Collapse hides the sidebar completely: the panel and its resize gap slide out past the window's start edge
+  in 220 ms while the page widens into their room, and the panel never squeezes its rows on the way. A restore
+  button fades in at the page's top-left, centred in the 54-pixel toolbar band; page toolbars and the home's
+  Viewing header move their content past it while it shows, and it slides just ahead of that content, never
+  over it. The button and Cmd/Ctrl+B bring the sidebar back
+  at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
+  screen reader. Reduced motion removes the slide without delaying drag feedback.
+- Windows narrower than 760 pixels temporarily hide the sidebar without changing saved preferences; the
+  restore button shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
+  restores the user's choice. The native minimum window remains 560 × 480.
+- New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects it
+  reads Add project and opens the shared folder dialog. Search under it opens the command palette. Below them
+  the project filter, "All projects ▾" or the chosen project's name, heads the shared all-projects session list
+  beside Refresh: it opens the shared project picker, and its pick is the shared filter that lasts for the app's
+  run. The list is the phone's (see `projects-and-sessions.md`): its search field, All, Running and Unread
+  chips, date headings with running sessions leading Today, launching rows, the catalog scan row and
+  project-local retry. Each row names its project while the filter shows all of them, and opens its session in
+  that project; the open session is highlighted. Adding a project otherwise lives on home and in Settings ›
+  Projects. Icon/status hints and truncated-label hints remain useful, while fully visible labels need no
+  duplicate tooltip.
 - Explicit sidebar refresh runs through `SessionListRefreshCubit` and the shared `SessionListRefreshService` over the
   same scoped project and recent inventory services, and starts the all-harness import beside the reload. The cockpit
   shows no import progress row; a failed import raises the shared alert naming its harnesses. It awaits the project
@@ -70,104 +71,43 @@ The main pane hosts one full-width routed page.
   removal or disposal retires pending receipts without waiting for obsolete I/O; late successes/errors cannot restore
   entries, reseed unseen state or complete a receipt twice. A batch does not wait for future catalog activity or a
   globally quiet inventory.
-- Running projects show the shared rotating outline sparkle; unread projects
-  show its static filled state. On macOS, preserve Prego's native platform-view
-  path so spinning does not schedule recurring Flutter frames. Verify its
-  scrolling, clipping, and collapse/expand hierarchy natively. Compact avatars
-  retain the indicator. The open sidebar also writes the count beside it ("Running", "2 running"). Only
-  sessions an agent is working in count; a session only waiting for input does not. Tooltips
-  and accessibility descriptions include running counts and unread status;
-  live state updates also clear stale unread marks.
-- Recent-session rows remain non-archived even when pinning the selected session.
-  A live archive update removes that row without a refetch or navigation change;
-  selected non-archived sessions outside the visible recent rows remain pinned.
-- A selected project follows route identity, not the displayed name. Each
-  signed-in cockpit owns one project-list cubit, including the home pane;
+- Each signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
-- Activity appears before projects, under an “Activity · N” header that counts its sessions, and lists only what is
-  in motion: non-archived sessions that are running, or that wait on the user or are live-unseen, unless set aside. It
-  spans every current project, including collapsed/offscreen projects, preserves project/session source order and
-  identifies each session's project. Sessions never leave their project: an Activity session also keeps its place in
-  the project's ordinary rows.
-- Marking a session unread on this desktop (sidebar or sessions-page menu) sets it aside: the desktop layout file
-  records its `time.updated`, and it stays out of Activity, in primary text under its project, until the agent moves that
-  stamp or it runs again. Marking read records nothing. The record is per desktop and holds the newest 200.
-- The Activity session the user opens stays listed after opening marks it seen, until the selection
-  changes or the user sets it aside by marking it unread. The keyed header remains structurally stable at zero
-  height when Activity is empty, and keyed Prego reconciliation honors reduced motion as rows enter, leave or
-  reorder.
-- A session being created shows as a launching row at the head of its project's Activity rows and of its project's
-  rows: the AI sparkle, the first line of its first message (or "Untitled session") and, in Activity, "Creating… ·
-  `<harness>` · `<project>`", with no time. It counts in "Activity · N" and the rail button, so a launch alone still
-  shows the header, the rail button and its popout, which stays open while the launch runs; a popout opened after the
-  create reply still shows the row while its session has not reached Activity. Clicking it explains that the
-  session is still being created and opens nothing; it is never selected, never the sticky Activity row and has no
-  menu. When its session reaches the head of the rows the launching row leads, the session row swaps in without
-  moving anything (it keeps the launching row's key); a session
-  that reaches its project before it runs stays out of the project's other rows and Recent, and the launching row
-  keeps its Activity place until the session runs or the next sessions update places it as an ordinary change. A
-  session that first waits on the user gives way at once to its Needs you row, and marking a session unread or
-  setting it aside re-resolves the rows without waiting for a sessions update.
-- Expanded projects show every running session (the same running rule as the project's running count) and the first
-  two other active visible sessions, plus the open session when present outside them, all in the shared list's order.
-  While the project has more, "Show N more" (12 pt tertiary) reveals up to ten more in place; it is absent when nothing
-  is hidden, and folding the project starts over at two. The project name is the one door to the sessions page. Compact/project collapse
-  hides ordinary rows without clearing cached data or hiding that project's Activity rows; per-project collapse
-  preferences survive layout restore.
-- “Activity · N” and “Projects” are labelled section headers. Clicking one folds its rows; both choices
-  persist in the desktop layout file, and a file without them reads as unfolded. The collapsed rail has no
-  headers, so folding never hides anything there.
-- Every rail button means one thing. While anything is in motion the rail leads with one Activity button:
-  the sparkle, turning while a session runs, with a count pill that grows with the system text size, and a
-  tooltip naming the count and only what its rows' flags say (running, awaiting input, new activity); a
-  seen, idle row kept only because it is selected adds nothing. It opens the same Activity rows in a
-  popout beside the rail, never over the project chips. The popout follows live state while open, keeps
-  the rows' menus, and closes when a row opens its session or when its last row leaves. Below it the rail
-  shows one chip per project with its sparkle badge; no session stands in as its project's initials.
-- Hierarchy: project names are 14 pt medium primary; session titles are 14 pt regular secondary, and an
-  unread one is primary with the sparkle. A project's add and fold controls appear only on hover or keyboard
-  focus. The open session is highlighted once, on its row under its project, never in Activity or on the
-  project; the project row is highlighted only on its own page. The highlight fills the row's full width.
-- A project whose folder is missing shows an amber folder icon in its sidebar status slot, ahead of running and
-  unread. Its tooltip and screen-reader label say "Folder not found", and its menu offers Remove instead of Hide.
-- Every session row leads with a fixed status column (awaiting-input and sparkle signals) aligned under the project
-  avatar and ends with a compact last-activity time; its tooltip and screen-reader label say that time in full.
-  Activity rows add the project name under the title. A running session shows no time, and a row drops the time
-  before its title as it narrows or as the system text size grows. A session waiting on a scheduled
-  auto-continuation shows its resume time in place of the last-activity time while it is neither running
-  nor waiting for the user; running and waiting keep the last-activity time (see quota-auto-continuation.md).
 - Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session row open New Session for the open project, else the
-  most recently active one; with no project yet they open the New project dialog. They do nothing until the project
+  sidebar's filtered project, else the most recently active one; with no project yet they open the New project
+  dialog. They do nothing until the project
   inventory has loaded, and never substitute another project for an open one that is missing from the inventory.
   Cmd/Ctrl+B toggles the saved sidebar choice except during automatic narrow-window collapse, where it does nothing
   like the disabled control. Cmd/Ctrl+, opens Settings. Held-key repeats do not repeat these commands; text-field
   focus remains usable and root popups own their focus. Hints use the platform modifier; the sidebar's New session row
   shows the shortcut. Windows and Linux retain native window chrome.
-- Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command
-  palette: a search field over Commands (New session once projects load, reading Add project while there
-  are none; Toggle sidebar while the window is wide enough to expand it; Settings; Go back; each with its
-  shortcut), the recent Sessions newest first with their project and without archived ones, and Projects.
-  Typing narrows all three by title words (an untitled session by "Untitled session"), bolding the matched
-  letters; signing out closes the palette with the cockpit; nothing
-  matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette
-  and runs the pick, and Esc closes it. The highlighted row is plainly visible in both themes: a clear
-  grey in light, the sidebar's selected tint in dark. Hovering a row moves the same highlight. The palette
-  shows the lists as they stood when it opened. One command list in the shell drives both the palette and
-  the shortcuts; page-only commands such as Mark as unread stay on their page.
-- Project hover/keyboard focus reveals New session. Right-click project and
-  session menus reuse the shared rename/hide and session action flows.
-  Session title tooltips, selection, running/awaiting/unread signals and
-  screen-reader actions remain usable at minimum width; collapsing the rail clips
-  them with the row instead of overflowing it.
+- Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command palette: a
+  search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
+  while the window is wide enough to expand it; Settings; Go back; each with its shortcut), the recent Sessions newest
+  first with their project and without archived ones, and Projects. Typing narrows all three by title words (an untitled
+  session by "Untitled session"), bolding the matched letters; signing out closes the palette with the cockpit; nothing
+  matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette and runs
+  the pick, and Esc closes it. A session pick opens it; a project pick filters the sidebar's list to that project and
+  brings a collapsed sidebar back to show it. The highlighted row is plainly visible in both themes: a clear grey in
+  light, the sidebar's selected tint in dark. Hovering a row moves the same highlight. The palette shows the lists as
+  they stood when it opened. One command list in the shell drives both the palette and the shortcuts; page-only commands
+  such as Mark as unread stay on their page.
+- Right-click session menus on the sidebar's rows reuse the shared session action flows, and session title
+  tooltips, selection, running/awaiting/unread signals and screen-reader actions remain usable at the
+  sidebar's minimum width.
 - Every anchored menu in the desktop app is a pointer menu, because the app installs the design system's
   pointer scope at its root: a tight rounded panel of 30-pixel rows, no dimmed window and no lifted row. A
   right-click drops the panel's top-left corner on the pointer and flips it above only when it does not fit
   below; a button press or the keyboard hangs the menu off its trigger as before. A row shows a shortcut only
   where the desktop registers a real binding for the same action. The phone installs no scope and keeps its
   long-press presentation.
-- Opening the sidebar or its session action menu never claims project viewing.
-  The main list/detail routes retain viewing ownership. Session mutations use
-  the existing action controller and a stable sidebar presentation context. Opening a session menu first retains its
+- Filtered to one project, the sidebar's list claims that project's viewing once its sessions load, as the
+  phone's list does; All projects claims nothing, since the bridge is told one project. The cockpit reports the
+  open sidebar as the visible list pane, so the new session and Changes pages keep that claim only while the
+  sidebar shows. While a project's sessions page is open its own list's claim replaces the sidebar's, and
+  closing the page hands viewing back to the sidebar's filtered project. A session action menu never claims
+  project viewing. Session mutations use the existing action controller and a stable sidebar presentation
+  context. Opening a session menu first retains its
   action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
   confirmation or admitted operation lease. Mark-read, rename, archive and delete finish handling before disposal.
 - `ProjectInventoryService` owns project loading, refresh, mutations, live projection and catalog/reconnect handling
@@ -194,10 +134,9 @@ The main pane hosts one full-width routed page.
   or root lifecycle event rearms the authoritative read. Initial failures still require explicit retry.
   Closed or superseded reads cannot seed shared unseen state, and an older
   completion cannot release a newer pending read.
-- The sidebar is the only navigation pane, including at minimum window width.
-  All sessions, archived sessions, new session, detail, and diffs are sibling main-pane routes.
-  Only the all-sessions page creates a full list owner; recent-session menus
-  remain non-viewing action scopes.
+- The sidebar is the only navigation pane. All sessions, archived sessions, new session, detail, and diffs
+  are sibling main-pane routes. The sidebar's shared list and the all-sessions page are the full list owners;
+  session action menus remain non-viewing action scopes.
 - The footer's Archived opens the Archived sessions page over the current page: the shared archived list across
   projects, read through the sidebar's shared project filter, with each row naming its project. It never claims
   project viewing. A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
@@ -233,7 +172,7 @@ The main pane hosts one full-width routed page.
   is still changed.
 - A project page with no active sessions shows the new-session composer for that project in place of the
   timeline, under the same toolbar; Archived still shows archived sessions. A session started there opens.
-- A session being archived is hidden from the sidebar, the Activity popout, the project page and its chip
+- A session being archived is hidden from the sidebar, the project page and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
@@ -307,7 +246,7 @@ The main pane hosts one full-width routed page.
   visibility without replacing the session controller, element or composer.
   Notification activation dismisses root popups before revealing its session:
   the same session retains its page and Back stack; another gets the typed stack.
-- This computer opens a flat, screen-clamped popover in expanded and compact modes
+- This computer opens a flat, screen-clamped popover from the sidebar's footer
   without replacing the main pane. A Local bridge heading and the sidebar's
   status dot with the process status precede the actions. Start, Retry and Take
   Over are one solid button; Stop is a quiet row beside logs and configuration. A crashed helper offers Retry despite retained On intent. A
@@ -368,7 +307,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 
 - Optional file-access card/dismissal, narrow layout, local Settings statuses and unsupported omission.
 - Project/no-project keyboard entry, nullable route-name propagation, platform modifiers, held-key repeat suppression,
-  text-field/popup precedence, layout persistence, narrow-window no-op and truthful per-project hints.
+  text-field/popup precedence, layout persistence, narrow-window no-op, and New session following the open
+  project, else the sidebar's filter, else the most recent one.
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
@@ -378,22 +318,22 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   sign-in; header and body agreeing on "this computer" before the supervised id is known.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
-- Popover scope/contextual actions, locks/live updates, explicit Stop intent, expanded/compact anchoring,
+- Popover scope/contextual actions, locks/live updates, explicit Stop intent, footer anchoring,
   outside/Escape dismissal, preserved main pane.
-- Floating panel geometry expanded and collapsed: window inset, main-pane offset, the resize gap and its absence
-  beside the rail, no divider.
+- Floating panel geometry open and hidden: window inset, main-pane offset, the resize gap and its absence while
+  hidden, no divider; the restore button's place in the toolbar band and the room a page toolbar leaves it.
 - Unified macOS title bar: the title bar style per platform, the panel's top edge and its first control
-  expanded and as a rail on macOS, drag and double-click zoom on the room above that control and on the
-  strip above the rail, the top band's drag that leaves a jiggling click alone and fires once under a
+  on macOS, drag and double-click zoom on the room above that control, the restore button past the
+  lights while the sidebar is hidden, the top band's drag that leaves a jiggling click alone and fires once under a
   zooming region, the signed-out window moved from the app's root, logged host failures, the list's clipped
   highlights, and the native brightness pushed once per effective change, including a system switch.
 - Pointer menus: no spotlight, the panel's corner on the pointer and its flip above it, 30-pixel rows with the
   shortcut label, a button-opened menu still hung off its trigger, the touch presentation where no scope
   exists, and the desktop app installing the pointer scope.
-- Rail Activity button count and tooltip (including a sticky-only count that claims nothing new, and its
-  pill under larger text), one chip per project, popout placement beside the rail, rows that stay live
-  with the cockpit's cubits mounted below the root navigator, and dismissal when a row opens its session
-  or the last row leaves.
+- The sidebar's shared list across projects, a row opening its session in its own project, the filter
+  narrowing the list and returning to All projects, project-local retry, the list hearing whether the sidebar
+  shows it through collapse, restore and narrow windows, and a filtered sidebar declaring its project again
+  once a project page's list claim is released (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
 - The session page toolbar above a centred transcript column wider than the centred composer's: the breadcrumb, status slot and title styles
@@ -403,7 +343,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
   Shift+Cmd/Ctrl+U, and a menu without Mark as read.
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, filtering
-  with No matches, Enter opening a session or project, Down skipping a heading, Esc, and a command run from
+  with No matches, Enter opening a session or filtering the sidebar to a project and bringing it back,
+  Down skipping a heading, Esc, and a command run from
   the palette and by its shortcut (`desktop_cockpit_shell_test`).
 - Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; the new session and session
   breadcrumbs opening the project's sessions.
@@ -422,12 +363,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The footer's Archived control (`desktop_cockpit_shell_test`); the Archived page pushed once over its opener, its
   rows opening read-only over it, and its close returning to the opener or, reached directly, home
   (`desktop_router_test`).
-- Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
-  project-collapse and section-fold persistence, every running row beside two others, Show more paging and its
-  reset, a row's compact time with its spoken form and its drop under larger text, shared menu/route callbacks. All-project admission happens once per
-  entering ID, including collapsed/offscreen projects; Activity keeps project context, selection/navigation/actions,
-  leaves project rows in place, honors set-aside and just-opened sessions, and reconciles keyed entry/exit under
-  reduced motion. Empty/loading/failed entries preserve the stable header and project-local retry. Keep loaded rows
+- Live inventory mutations, action-scope viewing isolation, invalidation/disposal. All-project admission happens
+  once per entering ID, including offscreen projects. Empty/loading/failed entries keep project-local retry. Keep
+  loaded rows
   through catalog/reconnect refreshes and failures, including live unread false, lifecycle patches, failed-reread
   rearming and superseded-read completion. Execute those inventory cases without a mounted Cubit. Verify adapter
   replay/retry, independent consumer close, one eager factory instance per signed-in scope, and disposal before a
@@ -436,13 +374,12 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   later owning reads, partial failure, removal/disposal and useful diagnostic causes. Presentation covers keyboard
   activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
-  visible-scrollbar edge hit tests and thumb dragging, intermediate collapse/expand frames with cramped
-  session-row signals, both reduced-motion signals, temporary narrow-window mode, running/unread updates
-  in both widths, Unicode initials, JSON round-trip, storage failure fallback.
+  intermediate collapse/restore frames with the panel sliding whole, both reduced-motion signals, temporary
+  narrow-window mode, JSON round-trip, storage failure fallback.
 
 ### Live macOS checks (L3)
 
-- Right-click menus on sidebar projects and sessions and on list rows: they open at the pointer without
+- Right-click menus on sidebar sessions and on list rows: they open at the pointer without
   dimming the window, flip near the window's bottom edge, highlight the hovered row, and close on an outside
   click or Escape.
 - Fresh-account autostart, login-item registration, optional Full Disk Access grant/deny/focus-return
@@ -455,31 +392,32 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Archived from the footer: the page fades in over the open page, a row opens read-only, Cmd/Ctrl+[ comes back,
   and the close returns to the opener.
 - The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
-- The unified macOS title bar: the traffic lights on the expanded panel above New session and above the
-  rail, dragging by the room beside the lights, by a page toolbar and by the top of the login screen,
-  double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under
-  the panel's top, and the chrome's brightness under light, dark and System, including a system appearance
-  switch after a forced value. Windows and Linux keep native chrome.
+- Collapse and restore by the footer button, the restore button and Cmd/Ctrl+B: the panel slides whole while
+  the page widens or narrows with no jump in what it shows, and the restore button fades in past the traffic
+  lights. The filter popover narrowing the list and back, and a project picked in the palette.
+- The unified macOS title bar: the traffic lights on the open panel above New session and beside the restore button
+  while it is hidden, dragging by the room beside the lights, by a page toolbar and by the top of the login screen,
+  double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under the panel's
+  top, and the chrome's brightness under light, dark and System, including a system appearance switch after a forced
+  value. Windows and Linux keep native chrome.
 - Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
   recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping
-  through the tree and menus.
+  through the list and menus.
 
 ## Failure Signals And Exploration
 
 Audit rendered content as well as action availability: purpose, concise labels, grouping, scope and state-correct
-primary actions. Inspect light/dark, compact/expanded and minimum-window output with the actual packaged fonts.
+primary actions. Inspect light/dark, open/hidden sidebar and minimum-window output with the actual packaged fonts.
 Keep app preferences and updates in General, local supervision in This computer, and remote configuration distinct.
 Synthetic rendering does not qualify native accessibility, compositing, keyboard handling or live bridge operations.
 
 Look for overflow at minimum width, drag updates that stall or write per frame,
-width jumping on reversal beyond a bound, scrollbars intercepting project toggles,
-automatic collapse overwriting user preferences, missing/stale activity marks,
-duplicate project inventories, a session leaving its project's rows for Activity, a deliberately unread session
-returning to Activity without new agent output, an opened Activity session vanishing under the pointer, repeated
-admission on rebuild/expansion, a folded section hiding its rows in the collapsed rail, session chips posing as
-projects in the rail, a rail Activity popout that is empty, stale, over the rail or throws for a missing provider, a
-divider or square corners on the sidebar panel, a resize handle beside the fixed rail, lost project
-context, a shifting empty Activity header, a second session-list pane, sidebar browsing clearing unread state,
+width jumping on reversal beyond a bound, automatic collapse overwriting user preferences, missing/stale
+activity marks, duplicate project inventories, repeated admission on rebuild, a page that jumps while the
+sidebar slides, a panel that squeezes its rows, a restore button under the traffic lights or over a toolbar's
+content, a divider or square corners on the sidebar panel, lost project context, a filtered sidebar that stops
+declaring its project after a project page closes, a second session-list pane, sidebar browsing clearing unread
+state,
 stale/missing recent rows, a refresh reporting success from old retained data, an indicator settling before its
 owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,
 notification opens stranded behind a popup,
@@ -496,6 +434,13 @@ after the user picked another one.
 
 - `client/desktop/lib/core/widgets/desktop_cockpit_shell.dart`
 - `client/desktop/lib/core/widgets/desktop_sidebar.dart`
+- `client/desktop/lib/core/widgets/desktop_sidebar_expansion.dart`
+- `client/desktop/lib/core/widgets/desktop_page_toolbar.dart`
+- `client/desktop/lib/core/widgets/desktop_command_palette.dart`
+- `client/module_app_ui/lib/src/features/session_list/all_sessions_list.dart`
+- `client/module_app_ui/lib/src/features/project_picker/project_picker.dart`
+- `client/module_core/lib/src/cubits/all_sessions/all_sessions_cubit.dart`
+- `client/module_core/lib/src/services/project_viewing_service.dart`
 - `client/desktop/lib/core/widgets/desktop_window_drag_area.dart`
 - `client/desktop/lib/core/widgets/desktop_window_brightness.dart`
 - `client/desktop/lib/core/platform/flutter_window_host.dart`
