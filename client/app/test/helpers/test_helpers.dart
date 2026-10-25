@@ -226,7 +226,7 @@ Widget testHome() {
           ),
         ),
       ],
-      child: const HomeScreen(selectedSessionId: null),
+      child: const HomeScreen(),
     ),
   );
 }
@@ -295,6 +295,7 @@ Widget sessionRowApp({
                 selectedSessionId: null,
                 disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
                 emptyState: const SizedBox.shrink(),
+                header: null,
               ),
             ],
           ),

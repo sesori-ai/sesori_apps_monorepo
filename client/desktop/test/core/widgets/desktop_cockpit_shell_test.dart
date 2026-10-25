@@ -343,7 +343,7 @@ void main() {
       final mainPane = find.byKey(const Key("cockpit-content"));
       // The panel keeps a margin at its start and the resize gap at its end.
       expect(tester.getSize(mainPane).width, width - tester.getSize(rail).width - 2 * DesktopSidebar.panelMargin);
-      expect(find.byType(SessionSplitShell), findsNothing);
+      expect(find.byType(SessionSidebarShell), findsNothing);
     }
   });
 

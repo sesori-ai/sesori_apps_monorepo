@@ -59,6 +59,10 @@ class const AllSessionsList({
 
   /// Shown once the projects have loaded, when there are no sessions.
   required final Widget emptyState,
+
+  /// Heads the list under its search field, such as the sidebar's project
+  /// switcher (D4), whether or not there are sessions.
+  required final Widget? header,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (context.watch<ProjectListCubit>().state) {
@@ -196,6 +200,7 @@ class const _Sessions({
               onChanged: (query) => cubit.setQuery(query: query),
             ),
           ),
+        if (list.header case final header?) SliverToBoxAdapter(child: header),
         if (cubit.mode == AllSessionsMode.active && hasSessions)
           SliverToBoxAdapter(
             child: Padding(

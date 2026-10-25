@@ -45,7 +45,7 @@ void main() {
 
     expect(harness.router.canPop(), isTrue);
     expect(find.byKey(const ValueKey("session-diffs-session-1")), findsOneWidget);
-    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+    expect(find.byKey(const Key("session-sidebar")), findsNothing);
   });
 
   testWidgets("diff button pushes diffs in the right pane on wide layouts", (tester) async {
@@ -72,8 +72,8 @@ void main() {
 
     expect(harness.router.state.uri.toString(), "/sessions/p1/session-1/diffs");
     expect(harness.router.canPop(), isTrue);
-    final rightPane = find.byKey(const Key("session-split-right-pane"));
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    final rightPane = find.byKey(const Key("session-sidebar-content"));
+    expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
     expect(rightPane, findsOneWidget);
     expect(
       find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-diffs-session-1"))),
@@ -94,7 +94,7 @@ void main() {
       find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-session-1"))),
       findsOneWidget,
     );
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
   });
 
   testWidgets("child-session push from wide detail returns to parent detail on back", (tester) async {
@@ -123,7 +123,7 @@ void main() {
     await tester.tap(find.text("Child Session").last);
     await tester.pumpAndSettle();
 
-    final rightPane = find.byKey(const Key("session-split-right-pane"));
+    final rightPane = find.byKey(const Key("session-sidebar-content"));
     expect(
       find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-child-1"))),
       findsOneWidget,
@@ -150,7 +150,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey("session-detail-parent-1")), findsOneWidget);
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
   });
 
   testWidgets("covered session does not present an incoming question over new session", (tester) async {
