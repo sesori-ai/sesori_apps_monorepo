@@ -5,7 +5,7 @@ import "package:sesori_desktop_core/sesori_desktop_core.dart";
 void main() {
   test("source builds have no guessed download destination", () {
     expect(
-      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable"),
+      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable", isAppImage: false),
       isA<DesktopDevelopmentUpdate>(),
     );
   });
@@ -22,6 +22,7 @@ void main() {
               architecture: architecture,
             ).encode(),
             encodedChannel: channel.name,
+            isAppImage: false,
           );
           if (os == DesktopBundleOs.linux) {
             expect(destination, isA<DesktopPackageManagerUpdate>());
@@ -36,5 +37,22 @@ void main() {
         });
       }
     }
+  }
+  for (final architecture in DesktopBundleArchitecture.values) {
+    test("Linux ${architecture.name} AppImage selects its manual-download section", () {
+      final destination = resolveDesktopUpdateDestination(
+        encodedIdentity: DesktopBundleIdentity(
+          version: "1.8.4",
+          buildNumber: 24,
+          sourceSha: "source",
+          os: DesktopBundleOs.linux,
+          architecture: architecture,
+        ).encode(),
+        encodedChannel: "stable",
+        isAppImage: true,
+      );
+      expect(destination, isA<DesktopManualDownload>());
+      expect((destination as DesktopManualDownload).uri.fragment, "stable-linux-${architecture.name}-appimage");
+    });
   }
 }

@@ -51,12 +51,12 @@ class PublishLinuxTest(unittest.TestCase):
                 f"SESORI_DESKTOP_BUNDLE_IDENTITY={json.dumps(identity)}\nSESORI_DESKTOP_RELEASE_CHANNEL=internal\n")
             (bundle / "build-source-changes.patch").touch()
             artifacts = []
-            for kind in ("deb", "rpm"):
-                name = f"Sesori-linux-{arch}-1.9.1-1016.{kind}"
+            for kind, extension in publisher.PACKAGE_EXTENSIONS.items():
+                name = f"Sesori-linux-{arch}-1.9.1-1016.{extension}"
                 data = f"inert {name}".encode()
                 (packages / name).write_bytes(data)
                 digest = hashlib.sha256(data).hexdigest()
-                unsigned = digest if kind == "deb" else "0" * 64
+                unsigned = "0" * 64 if kind == "rpm" else digest
                 artifacts.append({"name": name, "bytes": len(data), "sha256": digest, "unsignedSha256": unsigned})
                 save(path=packaging / kind / "packaging.json", value={
                     "packagerSourceSha": SOURCE, "bundle": {"identity": identity},
@@ -108,14 +108,15 @@ class PublishLinuxTest(unittest.TestCase):
         verified = self.publish()
         self.assertEqual(verified.call_count, 2)
         self.assertEqual(self.uploads[-1], publisher.MANIFEST)
-        self.assertEqual(len(self.uploads), 10)
+        self.assertEqual(len(self.uploads), 12)
         metadata = json.loads(self.public[publisher.MANIFEST])
         self.assertEqual(metadata["sourceSha"], SOURCE)
         self.assertEqual(metadata["producerWorkflowSha"], TOOLING)
         self.assertEqual(metadata["channel"], "internal")
         self.assertEqual(metadata["signerFingerprint"], FINGERPRINT)
         self.assertTrue(all(call.kwargs["fingerprint"] == FINGERPRINT for call in verified.call_args_list))
-        self.assertEqual(len(metadata["artifacts"]), 4)
+        self.assertEqual({row["format"] for row in metadata["artifacts"]}, {"deb", "rpm", "appimage"})
+        self.assertEqual(len(metadata["artifacts"]), 6)
         self.assertEqual(len(metadata["verificationFiles"]), 5)
         self.assertEqual({name: self.public[name] for name in original}, original)
         for arch in publisher.ARCHITECTURES:

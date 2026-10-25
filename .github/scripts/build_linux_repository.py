@@ -43,7 +43,8 @@ def verify_release(*, root: Path, channel: Channel, fingerprint: str) -> dict:
             "Expected clean release version")
     require(type(number) is int and number > 0, "Expected positive shared build number")
     expected = {f"Sesori-linux-{arch}-{version}-{number}.{kind}" for arch in ARCHITECTURES for kind in ("deb", "rpm")}
-    rows = metadata["artifacts"]
+    # Repositories serve only DEB/RPM; the portable AppImage is a direct download.
+    rows = [row for row in metadata["artifacts"] if row["format"] in ("deb", "rpm")]
     require(len(rows) == 4 and {row["name"] for row in rows} == expected, "Expected both CPUs and package formats")
     for row in rows:
         path = root / row["name"]
@@ -59,7 +60,8 @@ def verify_release(*, root: Path, channel: Channel, fingerprint: str) -> dict:
                 shutil.copyfile(root / f"desktop-linux-{arch}-checksums.txt{suffix}", packages / (CHECKSUMS + suffix))
             verify_checksums(packages=packages, fingerprint=fingerprint)
             checksums = dict((name, digest) for digest, name in
-                             (line.split() for line in (packages / CHECKSUMS).read_text().splitlines()))
+                             (line.split() for line in (packages / CHECKSUMS).read_text().splitlines())
+                             if not name.endswith(".AppImage"))
             wanted = {row["name"]: row["sha256"] for row in rows if row["name"].startswith(f"Sesori-linux-{arch}-")}
             require(checksums == wanted, f"Signed checksums differ from prepared packages: {arch}")
     return metadata

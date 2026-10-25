@@ -1,4 +1,4 @@
-"""Build private native Linux DEB/RPM packages; never signs, publishes, or runs payloads."""
+"""Build private native Linux DEB/RPM packages and AppImages; never signs, publishes, or runs payloads."""
 
 import argparse
 import hashlib
@@ -10,6 +10,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.request
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
@@ -29,6 +30,15 @@ SYSTEM_PARENT_PATHS = {
     Path("usr/share/icons/hicolor/512x512"), Path("usr/share/icons/hicolor/512x512/apps"),
 }
 DYNAMIC_LOAD_PATTERN = re.compile(rb"\b(?:dlopen|DynamicLibrary\.open)\s*\(")
+DESKTOP_ENTRY_TEXT = ("[Desktop Entry]\nType=Application\nName=Sesori\nComment=AI coding cockpit\n"
+                      "Exec={exec}\nIcon=sesori-desktop\nTerminal=false\nCategories=Development;Utility;\n")
+# Static type2 runtime; release assets are signed by the AppImage type 2 runtime key 570C77ACEA40C0F1B758902CBF96CCA56490F695.
+APPIMAGE_RUNTIME_URL = "https://github.com/AppImage/type2-runtime/releases/download/20251108/{name}"
+APPIMAGE_HOST_REQUIREMENTS = ["glibc >= 2.39", "GTK 3", "libsecret", "libEGL.so.1", "libGLESv2.so.2", "FUSE"]
+APPIMAGE_RUNTIMES = {
+    "x64": ("runtime-x86_64", "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"),
+    "arm64": ("runtime-aarch64", "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444"),
+}
 
 
 def run(*, command: list[str], cwd: Path, env: dict[str, str] | None = None) -> str:
@@ -153,15 +163,21 @@ def assemble_payload(*, bundle: Path, root: Path) -> None:
     launcher.symlink_to("/opt/sesori-desktop/sesori_desktop")
     desktop = root / DESKTOP_ENTRY
     desktop.parent.mkdir(parents=True)
-    desktop.write_text(
-        "[Desktop Entry]\nType=Application\nName=Sesori\nComment=AI coding cockpit\n"
-        "Exec=/usr/bin/sesori-desktop\nIcon=sesori-desktop\nTerminal=false\nCategories=Development;Utility;\n",
-        encoding="utf-8",
-    )
+    desktop.write_text(DESKTOP_ENTRY_TEXT.format(exec="/usr/bin/sesori-desktop"), encoding="utf-8")
     verify_icon(path=ICON_SOURCE)
     icon = root / ICON
     icon.parent.mkdir(parents=True)
     shutil.copy2(ICON_SOURCE, icon)
+
+
+def assemble_appdir(*, bundle: Path, root: Path) -> None:
+    shutil.copytree(bundle, root, symlinks=True)
+    # The runtime executes AppRun; the kernel resolves the symlink, so /proc/self/exe still finds lib/ and data/.
+    (root / "AppRun").symlink_to("sesori_desktop")
+    (root / "sesori-desktop.desktop").write_text(DESKTOP_ENTRY_TEXT.format(exec="sesori_desktop"), encoding="utf-8")
+    verify_icon(path=ICON_SOURCE)
+    shutil.copy2(ICON_SOURCE, root / "sesori-desktop.png")
+    (root / ".DirIcon").symlink_to("sesori-desktop.png")
 
 
 def elf_files(*, root: Path) -> list[Path]:
@@ -251,6 +267,39 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
                      "packageFiles": run(command=["rpm", "-qlp", str(package)], cwd=work).splitlines()}
 
 
+def appimage_runtime(*, arch: str, work: Path) -> Path:
+    name, digest = APPIMAGE_RUNTIMES[arch]
+    runtime = work / name
+    with urllib.request.urlopen(APPIMAGE_RUNTIME_URL.format(name=name), timeout=60) as response:
+        runtime.write_bytes(response.read())
+    if sha256(runtime) != digest:
+        raise ValueError(f"AppImage runtime digest mismatch: {name}: {sha256(runtime)}; expected {digest}")
+    return runtime
+
+
+def build_appimage(*, root: Path, work: Path, output: Path, arch: str, identity: dict) -> tuple[Path, dict]:
+    runtime = appimage_runtime(arch=arch, work=work)
+    squashfs = work / "payload.squashfs"
+    command = ["mksquashfs", str(root), str(squashfs), "-root-owned", "-noappend", "-comp", "zstd", "-no-progress"]
+    run(command=command, cwd=work)
+    package = output / f"Sesori-linux-{arch}-{identity['version']}-{identity['buildNumber']}.AppImage"
+    with package.open("wb") as stream:
+        stream.write(runtime.read_bytes())
+        stream.write(squashfs.read_bytes())
+    package.chmod(0o755)
+    # Read the embedded image back without executing the runtime and require the exact AppDir.
+    offset = str(runtime.stat().st_size)
+    extracted = work / "extracted"
+    run(command=["unsquashfs", "-offset", offset, "-no-progress", "-d", str(extracted), str(package)], cwd=work)
+    if payload_inventory(root=extracted) != payload_inventory(root=root):
+        raise ValueError("AppImage squashfs does not match the assembled AppDir")
+    # A portable image has no package-manager dependencies; record what the host must provide.
+    return package, {"dependencies": [], "dependencyCommand": command, "hostRequirements": APPIMAGE_HOST_REQUIREMENTS,
+                     "runtime": {"name": runtime.name, "sha256": sha256(runtime), "bytes": runtime.stat().st_size},
+                     "packageFiles": run(command=["unsquashfs", "-offset", offset, "-lls", str(package)],
+                                         cwd=work).splitlines()}
+
+
 def verify_installed(*, bundle: Path, installed_root: Path, arch: str) -> dict:
     evidence = verify_bundle(bundle=bundle, arch=arch)
     with tempfile.TemporaryDirectory(prefix="sesori-linux-expected-") as temporary:
@@ -298,14 +347,14 @@ def package(*, bundle: Path, output: Path, arch: str, package_format: str, packa
     with tempfile.TemporaryDirectory(prefix="sesori-linux-package-") as temporary:
         work = Path(temporary)
         root = work / "root"
-        assemble_payload(bundle=bundle, root=root)
-        payload = payload_inventory(root=root)
-        if package_format == "deb":
-            artifact, package_evidence = build_deb(root=root, work=work, output=output, arch=arch,
-                                                   identity=evidence["identity"])
+        if package_format == "appimage":
+            assemble_appdir(bundle=bundle, root=root)
         else:
-            artifact, package_evidence = build_rpm(root=root, work=work, output=output, arch=arch,
-                                                   identity=evidence["identity"])
+            assemble_payload(bundle=bundle, root=root)
+        payload = payload_inventory(root=root)
+        builder = {"deb": build_deb, "rpm": build_rpm, "appimage": build_appimage}[package_format]
+        artifact, package_evidence = builder(root=root, work=work, output=output, arch=arch,
+                                             identity=evidence["identity"])
     report = {
         "packagerSourceSha": run(command=["git", "rev-parse", "HEAD"], cwd=ROOT).strip(),
         "format": package_format,
@@ -328,7 +377,7 @@ def main() -> None:
     parser.add_argument("operation", choices=("verify", "verify-installed", "verify-owned-paths", "package"))
     parser.add_argument("--bundle", type=Path)
     parser.add_argument("--arch", choices=("x64", "arm64"))
-    parser.add_argument("--format", choices=("deb", "rpm"))
+    parser.add_argument("--format", choices=("deb", "rpm", "appimage"))
     parser.add_argument("--output", type=Path)
     parser.add_argument("--package-config", type=Path)
     parser.add_argument("--installed-root", type=Path, default=Path("/"))

@@ -10,21 +10,23 @@ from pathlib import Path
 from linux_signing import PUBLIC_KEY, run, sha256, signing_key
 
 CHECKSUMS = "desktop-linux-checksums.txt"
+# Package format -> filename extension. Only RPM embeds a signature; DEB and AppImage rely on the signed checksums.
+PACKAGE_EXTENSIONS = {"deb": "deb", "rpm": "rpm", "appimage": "AppImage"}
 
 
 def load_packages(*, root: Path) -> tuple[dict, list[tuple[Path, str]]]:
     identity = None
     packages = []
-    for package_format in ("deb", "rpm"):
+    for package_format, extension in PACKAGE_EXTENSIONS.items():
         report = json.loads((root / package_format / "packaging.json").read_text(encoding="utf-8"))
         current = report["bundle"]["identity"]
         if current["os"] != "linux" or report["format"] != package_format:
             raise ValueError("Expected Linux package evidence for the selected format")
         if identity is not None and current != identity:
-            raise ValueError("DEB and RPM must have identical bundle identity")
+            raise ValueError("Every Linux package format must have identical bundle identity")
         identity = current
         expected_name = (f"Sesori-linux-{current['architecture']}-{current['version']}-"
-                         f"{current['buildNumber']}.{package_format}")
+                         f"{current['buildNumber']}.{extension}")
         if report["package"]["name"] != expected_name:
             raise ValueError("Package filename does not match its bundle identity")
         path = root / package_format / expected_name
@@ -76,7 +78,7 @@ def sign_packages(*, root: Path, output: Path, fingerprint: str) -> dict:
         key.sign_detached(source=checksums, signature=output / f"{CHECKSUMS}.asc")
     report = {"schemaVersion": 1, "identity": identity, "signerFingerprint": key.fingerprint,
               "artifacts": artifacts, "checksumFile": CHECKSUMS, "publicKeyFile": PUBLIC_KEY,
-              "proofBoundary": "RPM OpenPGP signature and detached signed checksums for DEB/RPM; "
+              "proofBoundary": "RPM OpenPGP signature and detached signed checksums for DEB/RPM/AppImage; "
                                "not APT/RPM repository publication, desktop-session or upgrade qualification"}
     (output / "signing.json").write_text(json.dumps(report, indent=2) + "\n", encoding="utf-8")
     return report
