@@ -29,11 +29,8 @@ void main() {
   final earlier = testSession(id: "earlier", title: "Earlier work", updatedAt: now - 60000);
   final created = testSession(id: "created", title: "Fix the bug", updatedAt: now);
 
-  AllSessionsState list({required List<Session> sessions}) => AllSessionsState(
-    projectId: null,
-    query: "",
-    quickFilter: SessionListQuickFilter.all,
-    rows: [
+  AllSessionsState list({required List<Session> sessions}) {
+    final rows = [
       for (final session in sessions)
         AllSessionsRow(
           session: session,
@@ -44,12 +41,19 @@ void main() {
           isRetrying: false,
           backgroundTaskCount: 0,
         ),
-    ],
-    counts: SessionListChipCounts(all: sessions.length, running: 0, unread: 0),
-    failures: const [],
-    isLoading: false,
-    defaultProjectId: project.id,
-  );
+    ];
+    return AllSessionsState(
+      projectId: null,
+      query: "",
+      quickFilter: SessionListQuickFilter.all,
+      everyProjectRows: rows,
+      rows: rows,
+      counts: SessionListChipCounts(all: sessions.length, running: 0, unread: 0),
+      failures: const [],
+      isLoading: false,
+      defaultProjectId: project.id,
+    );
+  }
 
   RecentSessionsEntry loaded({required List<Session> sessions}) => RecentSessionsLoaded(
     sourceSessions: sessions,

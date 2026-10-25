@@ -240,7 +240,9 @@ state.
   list shows its error with Retry, a computer with no projects shows the add-project call to action, and the
   disconnected pages below replace the list.
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
-  over the home. The sidebar leads with New session, then search, then the project switcher heading the list, and
+  over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
+  divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.
+  The sidebar leads with New session, then search, then the project switcher heading the list, and
   its footer holds the computer switcher, Archived, Settings and collapse. With no session open the pane is a new
   session in the list's default project, which holds once chosen so another session turning newest never moves
   the draft; with no default yet it asks for a project with nothing selected, and its picker opens on a tap
@@ -340,21 +342,29 @@ state.
   Remove when the folder is gone. Offline, one line says "Connect to a bridge to manage projects.", the rows dim
   to the bridge rows' opacity and stop acting, and the Projects row in the phone's Settings dims and stops
   acting too. The line and the dimming ease in and out, so nothing jumps when the bridge drops or returns.
-- A session row leads with a 16-point status slot: a turning sparkle while
-  running, an amber dot while waiting for the user (which wins over running),
-  a resting sparkle when unread, or nothing, so titles line up. The harness
-  logo follows the slot, ahead of the title, in a square of the same size for
-  every harness, and screen readers hear the harness name from it. The time sits
+- A session row leads with the harness logo, in a square of the same size for
+  every harness, so titles line up; screen readers hear the harness name from
+  it. Right after the title's text comes its status mark: a turning sparkle
+  while running, an amber dot while waiting for the user (which wins over
+  running), a resting sparkle when unread. A quiet session shows no mark and
+  keeps no space for one. A long title fades out before the mark, so the mark
+  stays in view just ahead of the time. The time sits
   at the right in secondary and shows whenever the session has an updated
   time, except that a scheduled auto-continuation shows "Resumes <time>" in
   its place while the session is neither running nor waiting for the user;
-  running and waiting keep the time (see quota-auto-continuation.md). Under the title, one tertiary meta line holds any state that needs
+  running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, retrying, background tasks), then the project
-  when the list gives one, the branch shortened in the middle and the pull
-  request; it no longer names the harness. The home and Archived while
-  filtered to one project give no project; across
+  when the list gives one and the pull request; it names neither the harness
+  nor the branch, which session detail still shows. The pull request is its
+  number after an icon whose glyph and colour alone give its state, with no
+  state word: a green pull-request glyph while open, a purple merge glyph once
+  merged, a red closed-pull-request glyph when closed. Screen readers hear
+  "Pull request open", "merged" or "closed" from it. An open pull request with
+  merge conflicts adds a red warning mark, and its review and check marks
+  follow. The home and Archived while filtered to one project give no
+  project; across
   every project the home and Archived name each row's. Screen
-  readers hear the waiting state once, from the status slot. The meta line
+  readers hear the waiting state once, from the status mark. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
   text size, and they grow with
   accessibility text rather than clipping or overflowing. In a narrow pane
@@ -374,8 +384,8 @@ state.
   launching row.
 - A session being created leads Today on the phone home and in the desktop
   sidebar, as a launching row of the same height as a session
-  row: the first line of its first message (or "Untitled session"), the AI
-  sparkle in the status slot, the harness logo before the title and
+  row: the harness logo, the first line of its first message (or "Untitled
+  session") with the AI sparkle right after it, and
   "Creating… · `<harness>`" with no time.
   Tapping it explains that the session is still being created and opens
   nothing; it has no menu or swipe actions. It is left out of the chip counts,
@@ -579,8 +589,9 @@ disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
-For session rows, check idle, running, unread and waiting rows and a long
-branch on both apps, with preserved swipe/menu actions and enlarged text.
+For session rows, check idle, running, unread and waiting rows, a long title
+beside each mark, and open, merged and closed pull requests on both apps, with
+preserved swipe/menu actions and enlarged text.
 Verify running rows leading Today, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
@@ -683,6 +694,8 @@ started one. Restore harness eligibility afterwards.
   voice/attachment controls instead of honoring declared capabilities.
 - A session row hides its time, loses the harness logo or its spoken harness
   name, misaligns titles between quiet and busy rows or between harnesses,
+  pushes its status mark off the line behind a long title, tells pull request
+  states apart only by colour or leaves the pull request icon unspoken,
   shows a project in a list filtered to one project, changes height when its
   meta line is empty, or clips its meta line under enlarged text.
 - Running rows leave the top of Today or open a Running section, awaiting-only

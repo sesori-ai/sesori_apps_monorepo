@@ -17,6 +17,10 @@ import "../../routing/adaptive_session_router_test_harness.dart";
 const _sidebar = Key("session-sidebar");
 const _content = Key("session-sidebar-content");
 const _detail = ValueKey("session-detail-session-1");
+const _margin = FloatingSidebarPanel.margin;
+
+/// The open panel's width plus its margins on either side.
+const _sidebarExtent = 320 + 2 * _margin;
 
 void main() {
   setUpAll(registerAllFallbackValues);
@@ -142,10 +146,12 @@ void main() {
       await tester.tap(find.byKey(const Key("session-sidebar-collapse")));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 130));
-      // Mid-motion the sidebar is narrowing while the pane widens.
+      // Mid-motion the panel slides out at its full width while the pane widens.
       final midPane = tester.getSize(find.byKey(_content)).width;
-      expect(midPane, greaterThan(1024 - 320));
+      expect(midPane, greaterThan(1024 - _sidebarExtent));
       expect(midPane, lessThan(1024));
+      expect(tester.getSize(find.byKey(_sidebar)).width, 320);
+      expect(tester.getTopRight(find.byKey(_sidebar)).dx, 1024 - midPane - _margin);
       await tester.pumpAndSettle();
 
       expect(find.byKey(_sidebar), findsNothing);
@@ -158,8 +164,57 @@ void main() {
 
       expect(find.byKey(_sidebar), findsOneWidget);
       expect(find.byKey(const Key("session-sidebar-restore")), findsNothing);
-      expect(tester.getSize(find.byKey(_content)).width, 1024 - 320);
+      expect(tester.getSize(find.byKey(_content)).width, 1024 - _sidebarExtent);
       verifyPaneVisible(harness, isVisible: true, times: 1);
+    });
+
+    testWidgets("the sidebar floats inside the safe area, and the pane keeps the edge's inset only once collapsed", (
+      tester,
+    ) async {
+      // iPhone landscape: the notch side and the home indicator.
+      const safeArea = EdgeInsets.fromLTRB(62, 0, 62, 21);
+      tester.view.padding = FakeViewPadding(
+        left: safeArea.left * tester.view.devicePixelRatio,
+        right: safeArea.right * tester.view.devicePixelRatio,
+        bottom: safeArea.bottom * tester.view.devicePixelRatio,
+      );
+      addTearDown(tester.view.resetPadding);
+      await pumpShell(
+        tester,
+        size: const Size(874, 402),
+        initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
+        currentRouteDef: AppRouteDef.sessionDetail,
+      );
+
+      expect(tester.widget(find.byKey(_sidebar)), isA<FloatingSidebarPanel>());
+      expect(
+        tester.getRect(find.byKey(_sidebar)),
+        Rect.fromLTRB(
+          safeArea.left + _margin,
+          safeArea.top + _margin,
+          safeArea.left + _margin + 320,
+          402 - safeArea.bottom - _margin,
+        ),
+      );
+      expect(tester.getTopLeft(find.byKey(_content)).dx, safeArea.left + _sidebarExtent);
+      // The panel's rows and the pane beside it are clear of the notch's inset.
+      expect(
+        MediaQuery.paddingOf(tester.element(inSidebar(find.byKey(const Key("home-new-session"))))),
+        EdgeInsets.zero,
+      );
+      expect(MediaQuery.paddingOf(tester.element(find.byKey(_detail))), safeArea.copyWith(left: 0));
+      // A row's ink highlight is clipped with the list, not painted over the footer.
+      final rowMaterial = find.ancestor(of: find.byKey(const Key("home-new-session")), matching: find.byType(Material));
+      expect(
+        tester.widgetList<Material>(rowMaterial).map((material) => material.clipBehavior),
+        contains(Clip.hardEdge),
+      );
+
+      await tester.tap(find.byKey(const Key("session-sidebar-collapse")));
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.byKey(_content)).dx, 0);
+      expect(MediaQuery.paddingOf(tester.element(find.byKey(_detail))), safeArea);
     });
 
     testWidgets("presents snackbars on the shell scaffold across the sidebar and the pane", (tester) async {

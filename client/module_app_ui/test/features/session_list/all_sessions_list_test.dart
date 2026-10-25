@@ -28,6 +28,7 @@ void main() {
     projectId: null,
     query: query,
     quickFilter: SessionListQuickFilter.all,
+    everyProjectRows: rows,
     rows: rows,
     counts: counts,
     failures: failures,

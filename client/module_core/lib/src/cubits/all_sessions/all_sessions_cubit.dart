@@ -170,16 +170,17 @@ class AllSessionsCubit({
     required Set<String> hiddenSessionIds,
     required SessionListService sessionListService,
   }) {
-    final listed = switch (projects) {
-      ProjectListLoaded(:final projects) => [
-        for (final project in projects)
-          if (projectId == null || project.id == projectId) project,
-      ],
+    final known = switch (projects) {
+      ProjectListLoaded(:final projects) => projects,
       ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <ProjectSummary>[],
     };
-    final merged =
+    final listed = [
+      for (final project in known)
+        if (projectId == null || project.id == projectId) project,
+    ];
+    final everyProject =
         <AllSessionsRow>[
-          for (final project in listed)
+          for (final project in known)
             if (entries[project.id] case final RecentSessionsLoaded entry)
               for (final session in switch (mode) {
                 AllSessionsMode.active => entry.visibleSessions,
@@ -200,16 +201,19 @@ class AllSessionsCubit({
             AllSessionsMode.archived => sessionListService.compareByArchive(a: a.session, b: b.session),
           },
         );
+    final merged = projectId == null ? everyProject : everyProject.where((row) => row.project.id == projectId).toList();
     // Only a still-unarchived session hides, as on every list.
+    bool shown(AllSessionsRow row) => row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id);
     final counted = matchTitles(
       items: merged,
       titleOf: (row) => row.session.title,
       query: query,
-    ).where((row) => row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id)).toList();
+    ).where(shown).toList();
     return AllSessionsState(
       projectId: projectId,
       query: query,
       quickFilter: quickFilter,
+      everyProjectRows: List.unmodifiable(everyProject.where(shown)),
       rows: List.unmodifiable(
         counted.where(
           (row) => switch (quickFilter) {

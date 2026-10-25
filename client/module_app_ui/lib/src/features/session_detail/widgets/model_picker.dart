@@ -66,7 +66,6 @@ class _ModelPickerState() extends State<ModelPicker> {
       rows: _rows,
       emptyText: null,
       onClose: widget.onClose,
-      focusesUnderTouch: false,
     );
   }
 }

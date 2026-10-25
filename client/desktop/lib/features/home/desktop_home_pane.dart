@@ -16,7 +16,8 @@ import "../../core/widgets/desktop_sidebar_expansion.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
 import "desktop_file_access_card.dart";
 
-/// Home presentation consumes the cockpit's project inventory, never another list.
+/// The desktop home: the cockpit's project list states, and otherwise a new
+/// session in the sidebar list's default project from [AllSessionsCubit].
 class const DesktopHomePane({
   super.key,
 

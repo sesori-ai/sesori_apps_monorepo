@@ -79,7 +79,11 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
         body: CustomScrollView(
           slivers: [
             SliverToBoxAdapter(
-              child: Column(mainAxisSize: MainAxisSize.min, children: [?widget.banner, topBar]),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [?widget.banner, topBar],
+              ),
             ),
             SliverFillRemaining(
               hasScrollBody: false,
