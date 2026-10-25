@@ -2,6 +2,7 @@ import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "desktop_session_signals.dart";
+import "desktop_sidebar_expansion.dart";
 
 /// The page a toolbar's title sits under, such as the project that holds a
 /// session. Pressing it opens that page.
@@ -52,60 +53,62 @@ class const DesktopPageToolbar({
         color: prego.colors.bgSurface1,
         border: Border(bottom: BorderSide(color: prego.colors.borderSecondary)),
       ),
-      child: Row(
-        spacing: PregoSpacing.md,
-        children: [
-          Expanded(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Row(
-                  children: [
-                    if (breadcrumb != null) ...[
-                      // A long project name gives way to the title rather than sharing the row with it,
-                      // and shrinks with it when the actions leave the row little room.
-                      Flexible(
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 200),
-                          child: InkWell(
-                            mouseCursor: WidgetStateMouseCursor.clickable,
-                            key: const Key("desktop-page-breadcrumb"),
-                            onTap: breadcrumb.onPressed,
-                            borderRadius: BorderRadius.circular(PregoRadius.sm),
-                            child: Text(
-                              breadcrumb.label,
-                              style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+      child: DesktopSidebarRestoreInset(
+        child: Row(
+          spacing: PregoSpacing.md,
+          children: [
+            Expanded(
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      if (breadcrumb != null) ...[
+                        // A long project name gives way to the title rather than sharing the row with it,
+                        // and shrinks with it when the actions leave the row little room.
+                        Flexible(
+                          child: ConstrainedBox(
+                            constraints: const BoxConstraints(maxWidth: 200),
+                            child: InkWell(
+                              mouseCursor: WidgetStateMouseCursor.clickable,
+                              key: const Key("desktop-page-breadcrumb"),
+                              onTap: breadcrumb.onPressed,
+                              borderRadius: BorderRadius.circular(PregoRadius.sm),
+                              child: Text(
+                                breadcrumb.label,
+                                style: prego.textTheme.textMd.medium.copyWith(color: prego.colors.textSecondary),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
                             ),
                           ),
                         ),
-                      ),
-                      // One size and baseline with the title, so a text slash lines up where an icon would not.
-                      ExcludeSemantics(
-                        child: Padding(
-                          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
-                          child: Text("/", style: prego.textTheme.textMd.regular.copyWith(color: tertiary)),
+                        // One size and baseline with the title, so a text slash lines up where an icon would not.
+                        ExcludeSemantics(
+                          child: Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm),
+                            child: Text("/", style: prego.textTheme.textMd.regular.copyWith(color: tertiary)),
+                          ),
                         ),
+                      ],
+                      if (status != null)
+                        SizedBox(
+                          width: DesktopSessionSignals.width,
+                          child: Center(child: status),
+                        ),
+                      Flexible(
+                        child: Semantics(header: true, label: title, excludeSemantics: true, child: titleText),
                       ),
                     ],
-                    if (status != null)
-                      SizedBox(
-                        width: DesktopSessionSignals.width,
-                        child: Center(child: status),
-                      ),
-                    Flexible(
-                      child: Semantics(header: true, label: title, excludeSemantics: true, child: titleText),
-                    ),
-                  ],
-                ),
-                ?subtitle,
-              ],
+                  ),
+                  ?subtitle,
+                ],
+              ),
             ),
-          ),
-          ...actions,
-        ],
+            ...actions,
+          ],
+        ),
       ),
     );
   }

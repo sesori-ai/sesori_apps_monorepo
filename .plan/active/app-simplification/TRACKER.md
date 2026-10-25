@@ -23,7 +23,7 @@
 | 8/13 | Projects screen removed | Done | `sesori/app-simplification-step-8` |
 | 9/13 | Wide phone and tablet sidebar | Not started | — |
 | 10.a.i/13 | Desktop Archived page and footer entry | Done | `sesori/app-simplification-step-10a-i` |
-| 10.a.ii/13 | Desktop sidebar on the shared list | Not started | — |
+| 10.a.ii/13 | Desktop sidebar on the shared list | Done | `sesori/app-simplification-step-10a-ii` |
 | 10.b/13 | Desktop Activity and rail removed | Not started | — |
 | 11/13 | Desktop composer home; project page removed | Not started | — |
 | 12/13 | Regression documents reconciled | Not started | — |
@@ -53,6 +53,9 @@
   widgets and their tests, which the analyzer makes it delete at once, so 10.a.i lands the desktop Archived page and
   its footer entry alone, and 10.a.ii swaps the body, collapse, claim and palette. The Archived page shows nothing
   extra while the computer is disconnected: the connection pill and the footer recovery card already say so.
+- 2026-10-25: step 10.a.ii keeps the sidebar's filtered claim through a project page in `ProjectViewingService`:
+  list claims form a stack, so releasing the page's claim hands the list back to the sidebar's, with no cubit
+  depending on another.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

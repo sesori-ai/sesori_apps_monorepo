@@ -76,7 +76,6 @@ class const DesktopCockpitShell({
   required final SessionListActionDispatcher sessionActions,
   required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenBridgeSettings,
-  required final VoidCallback onOpenProjects,
   required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 
@@ -85,45 +84,29 @@ class const DesktopCockpitShell({
   required final VoidCallback onGoBack,
   required final Widget child,
 }) extends StatelessWidget {
-  static const double compactWidth = 56;
   static const double autoCollapseBreakpoint = 760;
   static const double _panelRadius = 14;
-
-  /// Where the panel starts as a rail on macOS: level with the page toolbar's
-  /// separator, below the traffic lights, which are wider than it. Expanded,
-  /// the panel runs to the top and carries them.
-  static const double _railTop = DesktopPageToolbar.height;
 
   @override
   Widget build(BuildContext context) {
     final sidebar = context.read<DesktopSidebarCubit>();
+    final sessions = context.read<AllSessionsCubit>();
     // macOS only: the window has no title bar of its own (see `FlutterWindowHost`).
     final windowHost = defaultTargetPlatform == TargetPlatform.macOS ? getIt<WindowHost>() : null;
-    final content = Stack(
-      fit: StackFit.expand,
-      children: [
-        child,
-        const PositionedDirectional(
-          top: PregoSpacing.lg,
-          start: PregoSpacing.lg,
-          end: PregoSpacing.lg,
-          child: Align(alignment: Alignment.topCenter, child: DesktopConnectionPill()),
-        ),
-      ],
-    );
     void addProject() => unawaited(
       showAddProjectDialog(context: context, onProjectAdded: onOpenProject),
     );
-    // The open project, else the most recently active one (the inventory's
-    // order); with no project yet, adding one is the only useful next step.
-    // An open project missing from the inventory (hidden meanwhile) is never
-    // swapped for another one.
+    // The open project, else the sidebar's filter, else the most recently
+    // active one (the inventory's order); with no project yet, adding one is
+    // the only useful next step. A chosen project missing from the inventory
+    // (hidden meanwhile) is never swapped for another one.
     void startNewSession() {
       final projects = context.read<ProjectListCubit>().state;
       if (projects is! ProjectListLoaded) return;
-      final project = selectedProjectId == null
+      final projectId = selectedProjectId ?? sessions.state.projectId;
+      final project = projectId == null
           ? projects.projects.firstOrNull
-          : projects.projects.where((project) => project.id == selectedProjectId).firstOrNull;
+          : projects.projects.where((project) => project.id == projectId).firstOrNull;
       if (project == null) {
         if (projects.projects.isEmpty) addProject();
         return;
@@ -181,41 +164,50 @@ class const DesktopCockpitShell({
             context: context,
             commands: commands,
             onOpenSession: onOpenSession,
-            onOpenProject: onOpenProject,
+            // The sidebar opens to show the list it filtered.
+            onSelectProject: ({required projectId}) {
+              sessions.selectProject(projectId: projectId);
+              if (sidebar.state.collapsed) unawaited(sidebar.toggleCollapsed());
+            },
           ),
         );
         bool collapsed(BuildContext context) =>
             context.select((DesktopSidebarCubit cubit) => cubit.state.collapsed) || autoCollapsed;
+        final content = Stack(
+          fit: StackFit.expand,
+          children: [
+            child,
+            _SidebarRestoreButton(autoCollapsed: autoCollapsed, onPressed: () => unawaited(sidebar.toggleCollapsed())),
+            const PositionedDirectional(
+              top: PregoSpacing.lg,
+              start: PregoSpacing.lg,
+              end: PregoSpacing.lg,
+              child: Align(alignment: Alignment.topCenter, child: DesktopConnectionPill()),
+            ),
+          ],
+        );
         // Depth delimits: the sidebar floats as a panel over the base surface
         // the pages paint, so no divider separates them.
         final row = Row(
           children: [
             _SidebarPanel(
               windowHost: windowHost,
+              // The gap beside the panel is the resize handle.
+              resizeHandle: Builder(
+                builder: (context) =>
+                    collapsed(context) ? const SizedBox.expand() : _SidebarResizeHandle(sidebar: sidebar),
+              ),
               child: DesktopSidebar(
                 windowHost: windowHost,
-                autoCollapsed: autoCollapsed,
-                selectedProjectId: selectedProjectId,
                 selectedSessionId: selectedSessionId,
                 onOpenSession: onOpenSession,
-                onNewSession: onNewSession,
                 onStartNewSession: startNewSession,
                 onOpenSearch: openPalette,
                 sessionActions: sessionActions,
                 onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
-                onOpenProjects: onOpenProjects,
-                onAddProject: addProject,
-                onOpenProject: onOpenProject,
                 onOpenBridgeSettings: onOpenBridgeSettings,
                 onOpenArchived: onOpenArchived,
                 onOpenSettings: onOpenSettings,
-              ),
-            ),
-            // The gap beside the panel is the resize handle.
-            Builder(
-              builder: (context) => SizedBox(
-                width: DesktopSidebar.panelMargin,
-                child: collapsed(context) ? null : _SidebarResizeHandle(sidebar: sidebar),
               ),
             ),
             Expanded(child: content),
@@ -225,12 +217,18 @@ class const DesktopCockpitShell({
         // from it, so the panel's rows are not rebuilt to start one.
         final scaffold = Scaffold(
           body: Builder(
-            builder: (context) => _SidebarExpansionAnimator(
-              target: collapsed(context) ? 0 : 1,
-              duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
-              curve: Curves.easeOutCubic,
-              child: row,
-            ),
+            builder: (context) {
+              final isCollapsed = collapsed(context);
+              return _ListPaneReporter(
+                visible: !isCollapsed,
+                child: _SidebarExpansionAnimator(
+                  target: isCollapsed ? 0 : 1,
+                  duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
+                  curve: Curves.easeOutCubic,
+                  child: row,
+                ),
+              );
+            },
           ),
         );
         return CallbackShortcuts(
@@ -243,6 +241,29 @@ class const DesktopCockpitShell({
       },
     );
   }
+}
+
+/// Tells the shared list whether the open sidebar shows it beside the page.
+class const _ListPaneReporter({required final bool visible, required final Widget child}) extends StatefulWidget {
+  @override
+  State<_ListPaneReporter> createState() => _ListPaneReporterState();
+}
+
+class _ListPaneReporterState() extends State<_ListPaneReporter> {
+  @override
+  void initState() {
+    super.initState();
+    context.read<AllSessionsCubit>().setPaneVisible(isVisible: widget.visible);
+  }
+
+  @override
+  void didUpdateWidget(_ListPaneReporter oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.visible != widget.visible) context.read<AllSessionsCubit>().setPaneVisible(isVisible: widget.visible);
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
 }
 
 /// Animates the sidebar's expansion like a [TweenAnimationBuilder], but hands
@@ -285,59 +306,119 @@ class _SidebarExpansionAnimatorState() extends ImplicitlyAnimatedWidgetState<_Si
   );
 }
 
-/// The floating panel, as wide as the sidebar's width and expansion make it.
-class const _SidebarPanel({required final WindowHost? windowHost, required final Widget child})
-    extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    final width = context.select((DesktopSidebarCubit cubit) => cubit.state.width);
-    const compactWidth = DesktopCockpitShell.compactWidth;
-    const radius = DesktopCockpitShell._panelRadius;
-    return DesktopSidebarExpansionBuilder(
-      expansion: DesktopSidebarExpansion.of(context),
-      builder: (expansion, panel) => _TitleBarStrip(
-        windowHost: windowHost,
-        expansion: expansion,
-        // The width bounds and the rail measure the panel itself.
-        child: Container(
-          key: const Key("desktop-cockpit-sidebar"),
-          width: compactWidth + (width - compactWidth) * expansion,
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius),
-            boxShadow: context.prego.shadows.lg,
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(color: context.prego.colors.borderSecondary),
-          ),
-          child: panel,
-        ),
-      ),
-      child: ClipRRect(borderRadius: BorderRadius.circular(radius), child: child),
-    );
-  }
-}
-
-/// The panel's margins. On macOS the rail makes room for the traffic lights
-/// above it, and whatever is left above the panel drags and zooms the window.
-class const _TitleBarStrip({
+/// The floating panel and the resize gap beside it. Collapsing slides both out
+/// past the window's edge (D9) while the page widens into their room.
+class const _SidebarPanel({
   required final WindowHost? windowHost,
-  required final double expansion,
+  required final Widget resizeHandle,
   required final Widget child,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final width = context.select((DesktopSidebarCubit cubit) => cubit.state.width);
+    final expansion = DesktopSidebarExpansion.of(context);
+    const radius = DesktopCockpitShell._panelRadius;
+    final panel = Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        _TitleBarStrip(
+          windowHost: windowHost,
+          child: Container(
+            key: const Key("desktop-cockpit-sidebar"),
+            width: width,
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              boxShadow: context.prego.shadows.lg,
+            ),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(color: context.prego.colors.borderSecondary),
+            ),
+            child: ClipRRect(borderRadius: BorderRadius.circular(radius), child: child),
+          ),
+        ),
+        SizedBox(width: DesktopSidebar.panelMargin, child: resizeHandle),
+      ],
+    );
+    return DesktopSidebarPhaseBuilder(
+      expansion: expansion,
+      // Hidden, it keeps its list and scroll offset but leaves the focus order
+      // and the screen reader.
+      builder: (context, phase) => Visibility(
+        visible: phase != DesktopSidebarPhase.rail,
+        maintainState: true,
+        child: DesktopSidebarExpansionBuilder(
+          expansion: expansion,
+          builder: (expansion, panel) => Align(
+            alignment: AlignmentDirectional.centerEnd,
+            widthFactor: expansion,
+            child: panel,
+          ),
+          child: panel,
+        ),
+      ),
+    );
+  }
+}
+
+/// The panel's margins. On macOS the strip above the panel drags and zooms
+/// the window.
+class const _TitleBarStrip({required final WindowHost? windowHost, required final Widget child})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
     final windowHost = this.windowHost;
     const margin = DesktopSidebar.panelMargin;
-    final top = windowHost == null
-        ? margin
-        : DesktopCockpitShell._railTop + (margin - DesktopCockpitShell._railTop) * expansion;
     final panel = Padding(
-      padding: EdgeInsetsDirectional.fromSTEB(margin, top, 0, margin),
+      padding: const EdgeInsetsDirectional.fromSTEB(margin, margin, 0, margin),
       child: child,
     );
     if (windowHost == null) return panel;
-    return DesktopWindowDragArea(windowHost: windowHost, height: top, zoomOnDoubleClick: true, child: panel);
+    return DesktopWindowDragArea(windowHost: windowHost, height: margin, zoomOnDoubleClick: true, child: panel);
+  }
+}
+
+/// Brings a hidden sidebar back (D9) from the page's top-left corner, past
+/// the traffic lights on macOS. It fades in as the sidebar slides away.
+class const _SidebarRestoreButton({required final bool autoCollapsed, required final VoidCallback onPressed})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final expansion = DesktopSidebarExpansion.of(context);
+    final loc = context.loc;
+    const size = DesktopSidebarRestoreInset.buttonSize;
+    return PositionedDirectional(
+      top: (DesktopPageToolbar.height - size) / 2,
+      start: DesktopSidebarRestoreInset.buttonStart,
+      child: DesktopSidebarPhaseBuilder(
+        expansion: expansion,
+        builder: (context, phase) => phase == DesktopSidebarPhase.open
+            ? const SizedBox.shrink()
+            : FadeTransition(
+                opacity: ReverseAnimation(expansion),
+                child: SizedBox.square(
+                  dimension: size,
+                  child: IconButton(
+                    key: const Key("desktop-sidebar-restore"),
+                    // A window too narrow for the sidebar keeps it hidden.
+                    tooltip: autoCollapsed
+                        ? loc.desktopSidebarExpand
+                        : loc.desktopShortcutHint(
+                            loc.desktopSidebarExpand,
+                            defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
+                          ),
+                    padding: const EdgeInsets.all(PregoSpacing.sm),
+                    onPressed: autoCollapsed ? null : onPressed,
+                    icon: Icon(
+                      TablerRegular.layout_sidebar_left_expand,
+                      size: PregoIconSize.md,
+                      color: autoCollapsed ? context.prego.colors.textDisabled : null,
+                    ),
+                  ),
+                ),
+              ),
+      ),
+    );
   }
 }
 

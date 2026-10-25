@@ -20,41 +20,6 @@
   "@desktopHomeNeedsYou": {"description": "Desktop home section heading for sessions waiting on the user's answer."},
   "desktopHomeRecent": "Recent",
   "@desktopHomeRecent": {"description": "Desktop home section heading for the latest sessions across projects that are neither running nor waiting."},
-  "desktopSidebarNewProject": "New project",
-  "@desktopSidebarNewProject": {"description": "Tooltip and label for the small desktop sidebar action that opens the add-project dialog."},
-  "desktopSidebarShowMore": "Show {count} more",
-  "@desktopSidebarShowMore": {
-    "description": "Sidebar button that reveals up to {count} more of a project's sessions in place.",
-    "placeholders": {"count": {"type": "int"}}
-  },
-  "desktopSidebarActivity": "Activity · {count}",
-  "@desktopSidebarActivity": {
-    "description": "Collapsible desktop sidebar section of sessions in motion across every project, with how many.",
-    "placeholders": {"count": {"type": "int"}}
-  },
-  "desktopSidebarActivitySession": "{sessionTitle} in {projectName}",
-  "@desktopSidebarActivitySession": {
-    "description": "Accessible identity of a priority sidebar session with its project context.",
-    "placeholders": {
-      "sessionTitle": {"type": "String"},
-      "projectName": {"type": "String"}
-    }
-  },
-  "desktopSidebarNewSession": "New session in {projectName}",
-  "@desktopSidebarNewSession": {
-    "description": "Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.",
-    "placeholders": {"projectName": {"type": "String"}}
-  },
-  "desktopSidebarCollapseProject": "Collapse {projectName}",
-  "@desktopSidebarCollapseProject": {
-    "description": "Tooltip for hiding a project's recent-session rows in the desktop sidebar.",
-    "placeholders": {"projectName": {"type": "String"}}
-  },
-  "desktopSidebarExpandProject": "Expand {projectName}",
-  "@desktopSidebarExpandProject": {
-    "description": "Tooltip for showing a project's recent-session rows in the desktop sidebar.",
-    "placeholders": {"projectName": {"type": "String"}}
-  },
   "desktopShortcutHint": "{label} ({shortcut})",
   "@desktopShortcutHint": {
     "description": "Desktop control tooltip with its available platform-specific keyboard shortcut.",

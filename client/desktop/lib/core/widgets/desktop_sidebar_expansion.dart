@@ -1,4 +1,6 @@
+import "package:flutter/foundation.dart";
 import "package:material_ui/material_ui.dart";
+import "package:theme_prego/module_prego.dart";
 
 /// How far open the sidebar is, as far as its structure cares. Rows add or
 /// drop parts only when this changes; everything that moves in between reads
@@ -110,17 +112,26 @@ class const DesktopSidebarExpansionBuilder({
   );
 }
 
-/// Clips [child] to [heightFactor] of its height, centred, and fades it with the
-/// same animation: a part that folds away as the sidebar closes.
-class const DesktopSidebarFold({
-  super.key,
-  required final Animation<double> heightFactor,
-  required final Widget child,
-}) extends StatelessWidget {
+/// Keeps a page's top-left corner clear for what a hidden sidebar leaves
+/// there: its restore button, after the traffic lights on macOS. The room opens
+/// as the sidebar slides away; outside the cockpit there is none.
+class const DesktopSidebarRestoreInset({super.key, required final Widget child}) extends StatelessWidget {
+  static const double buttonSize = 36;
+
+  /// Where the restore button starts: past the traffic lights on macOS.
+  static double get buttonStart => defaultTargetPlatform == TargetPlatform.macOS ? 80 : PregoSpacing.md;
+
   @override
-  Widget build(BuildContext context) => SizeTransition(
-    sizeFactor: heightFactor,
-    alignment: Alignment.center,
-    child: FadeTransition(opacity: heightFactor, child: child),
-  );
+  Widget build(BuildContext context) {
+    final expansion = context.dependOnInheritedWidgetOfExactType<DesktopSidebarExpansion>()?.expansion;
+    if (expansion == null) return child;
+    return DesktopSidebarExpansionBuilder(
+      expansion: expansion,
+      builder: (expansion, child) => Padding(
+        padding: EdgeInsetsDirectional.only(start: (buttonStart + buttonSize) * (1 - expansion)),
+        child: child,
+      ),
+      child: child,
+    );
+  }
 }

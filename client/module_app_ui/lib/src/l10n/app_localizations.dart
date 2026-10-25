@@ -187,48 +187,6 @@ abstract class AppLocalizations {
   /// **'Recent'**
   String get desktopHomeRecent;
 
-  /// Tooltip and label for the small desktop sidebar action that opens the add-project dialog.
-  ///
-  /// In en, this message translates to:
-  /// **'New project'**
-  String get desktopSidebarNewProject;
-
-  /// Sidebar button that reveals up to {count} more of a project's sessions in place.
-  ///
-  /// In en, this message translates to:
-  /// **'Show {count} more'**
-  String desktopSidebarShowMore(int count);
-
-  /// Collapsible desktop sidebar section of sessions in motion across every project, with how many.
-  ///
-  /// In en, this message translates to:
-  /// **'Activity · {count}'**
-  String desktopSidebarActivity(int count);
-
-  /// Accessible identity of a priority sidebar session with its project context.
-  ///
-  /// In en, this message translates to:
-  /// **'{sessionTitle} in {projectName}'**
-  String desktopSidebarActivitySession(String sessionTitle, String projectName);
-
-  /// Tooltip for the sidebar project's new-session button, revealed on hover or keyboard focus.
-  ///
-  /// In en, this message translates to:
-  /// **'New session in {projectName}'**
-  String desktopSidebarNewSession(String projectName);
-
-  /// Tooltip for hiding a project's recent-session rows in the desktop sidebar.
-  ///
-  /// In en, this message translates to:
-  /// **'Collapse {projectName}'**
-  String desktopSidebarCollapseProject(String projectName);
-
-  /// Tooltip for showing a project's recent-session rows in the desktop sidebar.
-  ///
-  /// In en, this message translates to:
-  /// **'Expand {projectName}'**
-  String desktopSidebarExpandProject(String projectName);
-
   /// Desktop control tooltip with its available platform-specific keyboard shortcut.
   ///
   /// In en, this message translates to:

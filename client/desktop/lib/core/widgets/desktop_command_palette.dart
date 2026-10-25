@@ -36,12 +36,13 @@ typedef _PaletteSession = ({ProjectSummary project, String projectName, Session 
 
 /// Opens the palette over [commands] and the cockpit's projects and recent
 /// sessions, as they stand now: rows that moved under the highlight would
-/// make Enter pick something else. A pick closes the palette, then acts.
+/// make Enter pick something else. A pick closes the palette, then acts; a
+/// project pick filters the sidebar's list to it.
 Future<void> showDesktopCommandPalette({
   required BuildContext context,
   required List<DesktopCommand> commands,
   required SidebarSessionOpenedCallback onOpenSession,
-  required ProjectOpenedCallback onOpenProject,
+  required void Function({required String projectId}) onSelectProject,
 }) {
   final projectState = context.read<ProjectListCubit>().state;
   final projects = projectState is ProjectListLoaded ? projectState.projects : const <ProjectSummary>[];
@@ -88,9 +89,7 @@ Future<void> showDesktopCommandPalette({
               session: item.session,
             ),
           ),
-          onPickProject: (project) => pick(
-            () => onOpenProject(context: context, project: project.project, displayName: project.name),
-          ),
+          onPickProject: (project) => pick(() => onSelectProject(projectId: project.project.id)),
         ),
       );
     },

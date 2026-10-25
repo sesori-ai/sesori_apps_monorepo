@@ -107,7 +107,7 @@ and keep native close/quit behavior safe.
   diagnostics. Take Over is an explicit action for contention/displacement; it
   persists On, performs one stop-and-respawn, and accepts only replacement
   prompts from the fresh helper. A persistent desktop sidebar reaches bridge
-  controls, projects, and settings, while exceptional login-required, crash-give-up, and
+  controls, sessions, and settings, while exceptional login-required, crash-give-up, and
   takeover recovery appears in the sidebar footer across cockpit destinations. Recovery starts or retries the supervised helper or
   opens its logs and never offers mobile CLI-install instructions.
 - The window keeps its project/session route mounted beneath the root Settings modal. Account and harness
