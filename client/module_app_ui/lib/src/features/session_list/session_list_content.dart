@@ -35,8 +35,9 @@ List<SessionListEntry<_SessionListItem>> _sessionListRows({
   ],
   headingOf: (item) => switch (item) {
     _LaunchRow() => sessionDateLabel(date: now, now: now, loc: loc),
+    // Even with archived rows shown, the list sorts by the last update.
     _SessionRow(:final session) => sessionListHeading(
-      session: session,
+      timestamp: session.time?.updated,
       isRunning: loaded.isSessionRunning(session: session),
       now: now,
       loc: loc,

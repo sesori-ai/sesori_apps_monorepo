@@ -91,8 +91,8 @@ void main() {
     });
 
     /// Convenience factory — stubs must be set up before calling this.
-    SessionListCubit buildCubit({SessionListFilter filter = SessionListFilter.active}) => SessionListCubit(
-      mode: SessionListMode.view(filter: filter),
+    SessionListCubit buildCubit() => SessionListCubit(
+      mode: const SessionListMode.view(),
       sessionRepository: mockSessionService,
       sessionCleanupService: SessionCleanupService(repository: mockSessionService),
       sessionListService: sessionListService,
@@ -166,22 +166,6 @@ void main() {
       verifyNever(() => mockProjectViewingService.beginListClaim(projectId: any(named: "projectId")));
       verifyNever(() => mockProjectViewingService.releaseClaim(claim: any(named: "claim")));
       verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false)).called(2);
-    });
-
-    test("archive inventory never acquires or releases the live opener claim", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.archivedSessions);
-      when(
-        () => mockProjectRepository.listSessions(
-          projectId: any(named: "projectId"),
-          waitForPrData: any(named: "waitForPrData"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
-      final cubit = buildCubit(filter: SessionListFilter.archived);
-      await Future<void>.delayed(Duration.zero);
-      expect((cubit.state as SessionListLoaded).filter, SessionListFilter.archived);
-      await cubit.close();
-      verifyNever(() => mockProjectViewingService.beginListClaim(projectId: any(named: "projectId")));
-      verifyNever(() => mockProjectViewingService.releaseClaim(claim: any(named: "claim")));
     });
 
     test("successful list render readies its project claim and close releases it", () async {
@@ -1510,7 +1494,7 @@ void main() {
           (_) async => ApiResponse.success(const SessionListResponse(items: sessions)),
         );
         return SessionListCubit(
-          mode: const SessionListMode.view(filter: SessionListFilter.active),
+          mode: const SessionListMode.view(),
           sessionRepository: mockSessionService,
           sessionCleanupService: SessionCleanupService(repository: mockSessionService),
           sessionListService: sessionListService,

@@ -57,7 +57,7 @@ class SessionListCubit({
   Completer<void>? _actionOperationsDrained;
 
   final bool _waitForActionOperationsOnClose = mode is SessionListActionsMode;
-  final ProjectViewClaim? _projectViewClaim = mode is SessionListViewMode && mode.filter != SessionListFilter.archived
+  final ProjectViewClaim? _projectViewClaim = mode is SessionListViewMode
       ? _projectViewingService.beginListClaim(projectId: _projectId)
       : null;
   SessionCleanupRejection? _lastCleanupRejection;
@@ -575,10 +575,7 @@ class SessionListCubit({
   /// mutation is still pending.
   final Map<String, OptimisticRenameTracker> _renameStateBySessionId = {};
   int _nextRenameToken = 0;
-  SessionListFilter _filter = switch (mode) {
-    SessionListViewMode(:final filter) => filter,
-    SessionListActionsMode() => SessionListFilter.active,
-  };
+  SessionListFilter _filter = SessionListFilter.active;
 
   void toggleArchived() {
     if (state is! SessionListLoaded) return;

@@ -23,7 +23,7 @@ class const DesktopSessionListCubitProvider({
   Widget build(BuildContext context) {
     return BlocProvider(
       create: (_) => createSessionListCubit(
-        mode: const SessionListMode.view(filter: SessionListFilter.active),
+        mode: const SessionListMode.view(),
         locator: getIt,
         projectId: projectId,
       ),

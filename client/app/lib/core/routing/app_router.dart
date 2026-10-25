@@ -316,7 +316,6 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
             return _shellBackHandler(
               navigatorKey: sessionShellNavigatorKey,
               child: SessionListCubitProvider(
-                filter: SessionListFilter.active,
                 key: ValueKey("session-list-cubit-$projectId"),
                 projectId: projectId,
                 child: SessionSplitShell(

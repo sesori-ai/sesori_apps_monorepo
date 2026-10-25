@@ -359,7 +359,9 @@ state.
   the pull request's indicators clip instead of overflowing. Regular rows form
   one timeline with no Running section: running rows lead Today whatever their
   stored time, then idle rows follow in updated-time date buckets;
-  archived rows retain archive-time date buckets. Awaiting-input-only rows stay
+  the Archived list uses archive-time date buckets, while archived rows a
+  project page shows beside active ones stay in updated-time buckets, as that
+  list sorts. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date
   heading rather than an invented epoch. Archiving, deleting or restoring a
   row animates only that row: its date heading stays in place and leaves or

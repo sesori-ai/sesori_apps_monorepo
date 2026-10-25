@@ -5,6 +5,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -13,11 +14,15 @@ class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements All
 void main() {
   const project = ProjectSummary(id: "p1", name: "Project One", path: "/p1", time: null);
 
-  AllSessionsState state({required String query, required List<AllSessionsFailure> failures}) => AllSessionsState(
+  AllSessionsState state({
+    required String query,
+    required List<AllSessionsFailure> failures,
+    required List<AllSessionsRow> rows,
+  }) => AllSessionsState(
     projectId: null,
     query: query,
     quickFilter: SessionListQuickFilter.all,
-    rows: const [],
+    rows: rows,
     counts: const SessionListChipCounts(all: 0, running: 0, unread: 0),
     failures: failures,
     isLoading: false,
@@ -65,6 +70,7 @@ void main() {
       initial: state(
         query: "",
         failures: const [AllSessionsFailure(project: project, reason: RemoteFailureReason.networkDown)],
+        rows: const [],
       ),
     );
     expect(find.text("Couldn’t load Project One"), findsOneWidget);
@@ -76,16 +82,55 @@ void main() {
   testWidgets("a query that matches nothing says so instead of the empty state", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "zzz", failures: const []),
+      initial: state(query: "zzz", failures: const [], rows: const []),
     );
     expect(find.text("Nothing here"), findsNothing);
     expect(find.text("No matches"), findsOneWidget);
   });
 
+  testWidgets("archived rows sit under their archive date, as the archived mode sorts", (tester) async {
+    final today = DateTime.now();
+    final yesterday = today.subtract(const Duration(days: 1));
+    AllSessionsRow row({required String title, required DateTime archivedAt, required DateTime updatedAt}) =>
+        AllSessionsRow(
+          session: testSession(
+            id: title,
+            title: title,
+            updatedAt: updatedAt.millisecondsSinceEpoch,
+            archivedAt: archivedAt,
+          ),
+          project: project,
+          isRunning: false,
+          isUnseen: false,
+          isAwaitingInput: false,
+          isRetrying: false,
+          backgroundTaskCount: 0,
+        );
+
+    await pumpList(
+      tester,
+      initial: state(
+        query: "",
+        failures: const [],
+        rows: [
+          row(title: "Archived today", archivedAt: today, updatedAt: yesterday),
+          row(title: "Archived yesterday", archivedAt: yesterday, updatedAt: today),
+        ],
+      ),
+    );
+
+    double topOf(String text) => tester.getTopLeft(find.text(text)).dy;
+    expect(find.text("Today"), findsOneWidget);
+    expect(find.text("Yesterday"), findsOneWidget);
+    expect(topOf("Today"), lessThan(topOf("Archived today")));
+    expect(topOf("Archived today"), lessThan(topOf("Yesterday")));
+    expect(topOf("Yesterday"), lessThan(topOf("Archived yesterday")));
+  });
+
   testWidgets("with nothing to show the empty state fills the list", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "", failures: const []),
+      initial: state(query: "", failures: const [], rows: const []),
     );
     expect(find.text("Nothing here"), findsOneWidget);
   });

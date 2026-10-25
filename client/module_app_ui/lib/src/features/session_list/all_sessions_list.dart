@@ -47,7 +47,13 @@ class const AllSessionsList({
     final now = DateTime.now();
     final entries = groupUnderHeadings(
       items: state.rows,
-      headingOf: (row) => sessionListHeading(session: row.session, isRunning: row.isRunning, now: now, loc: loc),
+      // Only the archived mode lists archived rows, and it sorts by archive time.
+      headingOf: (row) => sessionListHeading(
+        timestamp: row.session.time?.archived ?? row.session.time?.updated,
+        isRunning: row.isRunning,
+        now: now,
+        loc: loc,
+      ),
     );
     final searching = state.query.trim().isNotEmpty;
     final settled = !state.isLoading && state.rows.isEmpty && state.failures.isEmpty;

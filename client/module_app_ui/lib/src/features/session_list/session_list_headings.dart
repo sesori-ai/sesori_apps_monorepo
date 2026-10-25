@@ -1,24 +1,22 @@
 import "package:material_ui/material_ui.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../l10n/app_localizations.dart";
 import "session_date_label.dart";
 
-/// The date heading [session] sits under, without changing the list's order:
-/// its archive date once archived, otherwise its last update. A running
-/// session is a row of Today, whatever its stored time, and the row itself
-/// says it is running.
+/// The date heading a row sits under, without changing the list's order.
+/// [timestamp] must be the time the list sorts by (an archive list's archive
+/// time, otherwise the last update), or headings would repeat out of order. A
+/// running session is a row of Today, whatever its stored time, and the row
+/// itself says it is running.
 String sessionListHeading({
-  required Session session,
+  required int? timestamp,
   required bool isRunning,
   required DateTime now,
   required AppLocalizations loc,
 }) {
-  final archived = session.time?.archived;
-  if (archived == null && isRunning) return sessionDateLabel(date: now, now: now, loc: loc);
+  if (isRunning) return sessionDateLabel(date: now, now: now, loc: loc);
 
-  final timestamp = archived ?? session.time?.updated;
   return sessionDateLabel(
     date: timestamp == null ? null : DateTime.fromMillisecondsSinceEpoch(timestamp),
     now: now,
