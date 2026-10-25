@@ -22,10 +22,6 @@ class const DesktopSessionDetailScreen({
   required final String sessionId,
   required final String? sessionTitle,
   required final bool readOnly,
-  required final String? projectName,
-
-  /// Opens the project's session list from the toolbar breadcrumb.
-  required final VoidCallback onOpenProject,
 
   /// Returns a subtask to the session that started it, from the toolbar breadcrumb.
   required final void Function({required String parentSessionId}) onOpenParentSession,
@@ -81,8 +77,6 @@ class const DesktopSessionDetailScreen({
             sessionId: sessionId,
             sessionTitle: sessionTitle,
             readOnly: readOnly,
-            projectName: projectName,
-            onOpenProject: onOpenProject,
             onOpenParentSession: onOpenParentSession,
             onShowDiffs: onShowDiffs,
             onOpenSession: onOpenSession,
@@ -122,10 +116,6 @@ class const DesktopSessionDetailView({
   required final String sessionId,
   required final String? sessionTitle,
   required final bool readOnly,
-  required final String? projectName,
-
-  /// Opens the project's session list from the toolbar breadcrumb.
-  required final VoidCallback onOpenProject,
 
   /// Returns a subtask to the session that started it, from the toolbar breadcrumb.
   required final void Function({required String parentSessionId}) onOpenParentSession,
@@ -235,7 +225,7 @@ class const DesktopSessionDetailView({
           label: loc.desktopSessionParentBreadcrumb,
           onPressed: () => onOpenParentSession(parentSessionId: parentSessionId),
         ),
-        null => (label: projectName ?? loc.sessionListTitle, onPressed: onOpenProject),
+        null => null,
       },
       // The turning sparkle leads the title while the session works; a waiting question takes its place.
       status: isAwaitingInput || isBusy

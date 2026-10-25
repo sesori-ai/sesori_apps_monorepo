@@ -85,7 +85,6 @@ void main() {
             projectId: "project-1",
             projectName: "Sesori",
             onBack: () {},
-            onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
             onProjectSelected: ({required projectId, required projectName}) {},
@@ -150,7 +149,6 @@ void main() {
             // The route can lack the name; the loaded list supplies it.
             projectName: null,
             onBack: () {},
-            onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
             onProjectSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
@@ -177,10 +175,8 @@ void main() {
       find.descendant(of: find.byKey(const Key("new_session_project")), matching: find.text("Sesori")),
       findsOneWidget,
     );
-    expect(
-      find.descendant(of: find.byKey(const Key("desktop-page-breadcrumb")), matching: find.text("Sesori")),
-      findsOneWidget,
-    );
+    // The picker names the project; the toolbar carries no crumb.
+    expect(find.byKey(const Key("desktop-page-breadcrumb")), findsNothing);
 
     await tester.tap(find.byKey(const Key("new_session_project")));
     await tester.pumpAndSettle();
@@ -234,7 +230,6 @@ void main() {
             projectId: "project-1",
             projectName: "Sesori",
             onBack: () {},
-            onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
             onProjectSelected: ({required projectId, required projectName}) {},
@@ -360,7 +355,6 @@ void main() {
                 projectId: "p",
                 projectName: "Project",
                 onBack: () {},
-                onOpenProject: () {},
                 onOpenHarnessSettings: screen.onOpenHarnessSettings,
                 onSessionCreated: ({required session}) {},
                 onProjectSelected: ({required projectId, required projectName}) {},

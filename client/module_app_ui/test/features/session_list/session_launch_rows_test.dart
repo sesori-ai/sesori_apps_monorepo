@@ -6,24 +6,65 @@ import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
-import "package:sesori_shared/sesori_shared.dart" show Session;
+import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
+class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements AllSessionsCubit;
+
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+
+class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
 
 void main() {
-  late StreamController<SessionListState> sessionStates;
+  const project = ProjectSummary(id: "project-1", name: "Sesori", path: "/sesori", time: null);
+  late StreamController<AllSessionsState> listStates;
+  late BehaviorSubject<Map<String, RecentSessionsEntry>> entries;
   late SessionLaunchRepository launches;
   late int opened;
   final now = DateTime.now().millisecondsSinceEpoch;
   final earlier = testSession(id: "earlier", title: "Earlier work", updatedAt: now - 60000);
   final created = testSession(id: "created", title: "Fix the bug", updatedAt: now);
 
-  SessionListState loaded({required List<Session> sessions}) =>
-      SessionListState.loaded(sessions: sessions, baseBranch: null, repoSlug: null);
+  AllSessionsState list({required List<Session> sessions}) => AllSessionsState(
+    projectId: null,
+    query: "",
+    quickFilter: SessionListQuickFilter.all,
+    rows: [
+      for (final session in sessions)
+        AllSessionsRow(
+          session: session,
+          project: project,
+          isRunning: false,
+          isUnseen: false,
+          isAwaitingInput: false,
+          isRetrying: false,
+          backgroundTaskCount: 0,
+        ),
+    ],
+    counts: SessionListChipCounts(all: sessions.length, running: 0, unread: 0),
+    failures: const [],
+    isLoading: false,
+    defaultProjectId: project.id,
+  );
+
+  RecentSessionsEntry loaded({required List<Session> sessions}) => RecentSessionsLoaded(
+    sourceSessions: sessions,
+    visibleSessions: sessions,
+    archivedSessions: const [],
+    activityBySessionId: const {},
+    listStateBySessionId: const {},
+  );
+
+  /// The project's sessions reach the inventory the launching rows read and the
+  /// list's rows together, as one scope's inventory feeds both.
+  void showSessions({required List<Session> sessions}) {
+    entries.add({project.id: loaded(sessions: sessions)});
+    listStates.add(list(sessions: sessions));
+  }
 
   Future<void> pumpList(
     WidgetTester tester, {
@@ -32,11 +73,22 @@ void main() {
     double textScale = 1,
     bool reduceMotion = false,
   }) async {
-    sessionStates = StreamController<SessionListState>();
-    addTearDown(sessionStates.close);
-    final cubit = _MockSessionListCubit();
-    whenListen(cubit, sessionStates.stream, initialState: loaded(sessions: sessions));
-    when(() => cubit.projectId).thenReturn("project-1");
+    listStates = StreamController<AllSessionsState>();
+    addTearDown(listStates.close);
+    entries = BehaviorSubject.seeded({project.id: loaded(sessions: sessions)});
+    addTearDown(entries.close);
+    final cubit = _MockAllSessionsCubit();
+    whenListen(cubit, listStates.stream, initialState: list(sessions: sessions));
+    when(() => cubit.mode).thenReturn(AllSessionsMode.active);
+    when(() => cubit.setHiddenSessionIds(sessionIds: any(named: "sessionIds"))).thenReturn(null);
+    final projects = _MockProjectListCubit();
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.loaded(projects: [project]),
+    );
+    final inventory = _MockRecentSessionInventoryService();
+    when(() => inventory.state).thenAnswer((_) => entries);
     launches = inMemorySessionLaunchRepository();
     opened = 0;
     await tester.pumpWidget(
@@ -56,12 +108,14 @@ void main() {
                   mode: mode,
                   child: MultiBlocProvider(
                     providers: [
-                      BlocProvider<SessionListCubit>.value(value: cubit),
+                      BlocProvider<AllSessionsCubit>.value(value: cubit),
+                      BlocProvider<ProjectListCubit>.value(value: projects),
                       BlocProvider(
                         create: (_) => PendingSessionArchiveCubit(
                           cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                         ),
                       ),
+                      RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
                       RepositoryProvider(
                         create: (_) => inMemorySessionLaunchService(launchRepository: launches),
                       ),
@@ -69,19 +123,21 @@ void main() {
                     child: Scaffold(
                       body: CustomScrollView(
                         slivers: [
-                          SessionListFilteredContent(
-                            projectName: "Sesori",
-                            selectedSessionId: null,
-                            onSessionTap: ({required session}) => opened++,
+                          AllSessionsList(
+                            onSessionTap: ({required row}) => opened++,
                             actionDispatcher: const SessionListActionDispatcher(
                               deleteConfirmation: SessionDeleteConfirmation.sheet,
                               onSessionArchived: null,
                               onSessionDeleted: null,
                               onSessionMarkedUnread: null,
                             ),
-                            archivedEmptyState: const SizedBox.shrink(),
-                            searchable: true,
-                            onShowsLaunchRowsChanged: null,
+                            createActionCubit: ({required projectId, required session}) =>
+                                throw StateError("no row to act on"),
+                            selectedSessionId: null,
+                            disconnectedBuilder: ({required context, required state}) =>
+                                const SliverToBoxAdapter(child: Text("Computer offline")),
+                            emptyState: const Text("Nothing here"),
+                            header: null,
                           ),
                         ],
                       ),
@@ -109,7 +165,7 @@ void main() {
   Future<void> startLaunch(WidgetTester tester) async {
     launches.start(
       launchId: "launch-1",
-      projectId: "project-1",
+      projectId: project.id,
       pluginId: "claude",
       startedAt: DateTime.now(),
       projectName: "Sesori",
@@ -124,9 +180,7 @@ void main() {
   final launchRow = find.byType(PendingSessionLaunchTile);
   double rowBelowTop(WidgetTester tester) => tester.getTopLeft(find.text("Earlier work")).dy;
 
-  testWidgets("a launch leads the list as one row outside the counts, then settles in place into its session", (
-    tester,
-  ) async {
+  testWidgets("a launch leads the list as one row, then settles in place into its session", (tester) async {
     await pumpList(tester, sessions: [earlier]);
     final belowBefore = rowBelowTop(tester);
 
@@ -135,8 +189,6 @@ void main() {
     expect(find.text("Fix the bug"), findsOneWidget);
     expect(find.textContaining("Creating…"), findsOneWidget);
     expect(find.descendant(of: launchRow, matching: find.byType(PregoBrandLogo)), findsOneWidget);
-    final titleStart = tester.getTopLeft(find.text("Fix the bug")).dx;
-    expect(find.text("All · 1"), findsOneWidget, reason: "a launch is not a session yet");
     final below = rowBelowTop(tester);
     expect(below, greaterThan(tester.getBottomLeft(launchRow).dy - 1), reason: "the launch row leads");
     expect(below, greaterThan(belowBefore));
@@ -146,97 +198,28 @@ void main() {
     await tester.pump();
     expect(launchRow, findsOneWidget);
 
-    sessionStates.add(loaded(sessions: [created, earlier]));
+    showSessions(sessions: [created, earlier]);
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(rowBelowTop(tester), below, reason: "the row below never moves while the row swaps");
 
     await settle(tester);
     expect(launchRow, findsNothing);
-    expect(find.text("Fix the bug"), findsOneWidget);
-    expect(tester.getTopLeft(find.text("Fix the bug")).dx, titleStart, reason: "the title keeps its place too");
-    expect(find.text("All · 2"), findsOneWidget);
+    expect(find.text("Fix the bug"), findsOneWidget, reason: "only its session, not the launching row too");
     expect(rowBelowTop(tester), below);
-  });
-
-  testWidgets("a session out of the row's slot waits for the next sessions update, not a status one", (tester) async {
-    await pumpList(tester, sessions: [earlier]);
-    await startLaunch(tester);
-    launches.promote(launchId: "launch-1", session: created);
-    final outOfSlot = [earlier, created];
-    sessionStates.add(loaded(sessions: outOfSlot));
-    await settle(tester);
-    expect(launchRow, findsOneWidget, reason: "the session is not at the head of Today yet");
-
-    // The cubit rebuilds the list for activity and progress emissions.
-    sessionStates.add(
-      SessionListState.loaded(sessions: [...outOfSlot], baseBranch: null, repoSlug: null, isRefreshing: true),
-    );
-    await settle(tester);
-    expect(launchRow, findsOneWidget, reason: "a status update keeps the same sessions");
-
-    sessionStates.add(loaded(sessions: [created, earlier]));
-    await settle(tester);
-    expect(launchRow, findsNothing);
-    expect(find.text("Fix the bug"), findsOneWidget);
-  });
-
-  testWidgets("a session that arrives while Archived shows is still held on the way back", (tester) async {
-    await pumpList(tester, sessions: [earlier]);
-    await startLaunch(tester);
-
-    sessionStates.add(
-      const SessionListState.loaded(sessions: [], baseBranch: null, repoSlug: null, filter: SessionListFilter.archived),
-    );
-    await settle(tester);
-    expect(launchRow, findsNothing, reason: "Archived draws no launching rows");
-
-    sessionStates.add(loaded(sessions: [created, earlier]));
-    await settle(tester);
-    expect(launchRow, findsOneWidget);
-    expect(find.text("Fix the bug"), findsOneWidget, reason: "only the launching row, not its session too (#1822)");
   });
 
   testWidgets("with reduced motion the launching row becomes its session at once", (tester) async {
     await pumpList(tester, sessions: [earlier], reduceMotion: true);
     await startLaunch(tester);
     launches.promote(launchId: "launch-1", session: created);
-    sessionStates.add(loaded(sessions: [created, earlier]));
+    showSessions(sessions: [created, earlier]);
     await tester.pump();
     await tester.pump();
 
     expect(launchRow, findsNothing);
     expect(find.text("Fix the bug"), findsOneWidget);
   });
-
-  testWidgets(
-    "a project's first launch shows its row instead of the empty state; search and chips hide it as no match",
-    (
-      tester,
-    ) async {
-      await pumpList(tester, sessions: const []);
-      expect(find.byType(SessionEmptyState), findsOneWidget);
-
-      await startLaunch(tester);
-      expect(launchRow, findsOneWidget);
-      expect(find.byType(SessionEmptyState), findsNothing);
-      expect(find.text("All · 0"), findsOneWidget, reason: "the chips are in place for the session it becomes");
-
-      await tester.tap(find.byKey(const Key("session-list-filter-running")));
-      await settle(tester);
-      expect(launchRow, findsNothing);
-      expect(find.text("No sessions match this filter"), findsOneWidget);
-      expect(find.byType(SessionEmptyState), findsNothing);
-
-      await tester.tap(find.byKey(const Key("session-list-filter-all")));
-      await settle(tester);
-      await tester.enterText(find.byType(TextField), "parser");
-      await settle(tester);
-      expect(launchRow, findsNothing);
-      expect(find.text("No matches"), findsOneWidget);
-      expect(find.byType(SessionEmptyState), findsNothing);
-    },
-  );
 
   testWidgets("tapping a launching row explains it is not ready and opens nothing", (tester) async {
     await pumpList(tester, sessions: [earlier]);

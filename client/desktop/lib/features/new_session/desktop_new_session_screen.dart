@@ -14,9 +14,6 @@ class const DesktopNewSessionScreen({
   required final String projectId,
   required final String? projectName,
   required final VoidCallback onBack,
-
-  /// Opens the project's session list from the toolbar breadcrumb.
-  required final VoidCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
 
@@ -32,7 +29,6 @@ class const DesktopNewSessionScreen({
         projectId: projectId,
         projectName: projectName,
         onBack: onBack,
-        onOpenProject: onOpenProject,
         onOpenHarnessSettings: onOpenHarnessSettings,
         onSessionCreated: onSessionCreated,
         onProjectSelected: onProjectSelected,
@@ -47,9 +43,6 @@ class const DesktopNewSessionView({
   required final String projectId,
   required final String? projectName,
   required final VoidCallback onBack,
-
-  /// Opens the project's session list from the toolbar breadcrumb.
-  required final VoidCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
   required final NewSessionProjectSelected onProjectSelected,
@@ -73,11 +66,9 @@ class const DesktopNewSessionView({
       pageChrome: NewSessionPageChrome(
         maxContentWidth: maxContentWidth,
         transcriptWidth: desktopTranscriptWidth,
+        // The header's project picker names the project.
         topBar: DesktopPageToolbar(
-          breadcrumb: (
-            label: liveProjectName(context: context, projectId: projectId, projectName: projectName),
-            onPressed: onOpenProject,
-          ),
+          breadcrumb: null,
           status: null,
           title: context.loc.sessionListNewSession,
           subtitle: null,

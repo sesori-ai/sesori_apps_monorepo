@@ -83,8 +83,8 @@ state.
   line.
 - A user rescans the catalog by refreshing. Every manual refresh also imports
   from every routable harness: a pull on the phone home, full screen or in the
-  wide sidebar, however far it travels, the desktop
-  sidebar's Refresh and the desktop project page's Refresh button all start the
+  wide sidebar, however far it travels, and the desktop
+  sidebar's Refresh all start the
   same all-harness import beside their reload, once the pull is let go, reported
   by the same scan row. Routable is not the same as enabled: a blocked or failed
   harness is refused by the bridge and is left out. Automatic reloads
@@ -200,8 +200,7 @@ state.
   fences late state application/unseen seeding. Onboarding and loaded-inventory analytics retain their existing policy.
   Explicit refresh follows the latest owning read after each result, even when an awaited successor applied before
   another read started. `SessionListRefreshService` coordinates project and recent services for the phone home's
-  pull and the desktop sidebar's Refresh without presentation dependencies (the desktop project page reloads itself
-  through `SessionListCubit.refreshAndImport`); recent
+  pull and the desktop sidebar's Refresh without presentation dependencies; recent
   refresh joins pending admission reads, waits for its admitted cohort and reports failures despite retained rows.
   Removal retires an entry's refresh obligation; disposal prevents further reads or late unseen seeding.
 - Project and session inventory presentation is shared by the mobile and
@@ -223,9 +222,8 @@ state.
   picker and text-first composer policy without constructing voice capture. Its
   persistent sidebar lists every project's active sessions, filterable to one
   project, and keeps This computer, Archived and Settings reachable. One main pane
-  hosts home, a project's sessions, new session, detail, or diffs at every desktop
-  width. The sidebar's list declares the project it is filtered to while it shows;
-  a project page's own list replaces that and hands it back when it closes.
+  hosts home, Archived, new session, detail, or diffs at every desktop
+  width. The sidebar's list declares the project it is filtered to while it shows.
   Archived rows open read-only. Mobile retains its adaptive session sidebar.
   Desktop contextual shortcuts and local controls follow the
   [cockpit contract](desktop-cockpit-shell.md).
@@ -284,8 +282,6 @@ state.
 - File Changes with more than one file opens with a list of every file: its A, D or M status, name, folder and
   nonzero +/− counts. A tap scrolls that file's diff to the top, reopening it if it was collapsed, however far
   down the file is. A single-file change shows no list.
-- The desktop project page shows its repository slug as that subtitle, with no chevron or popover. A slug too long for
-  the bar shortens in the middle, keeping owner and repository ends, and a long press or hover shows it whole.
 - A session page has no subtitle; the composer's model pill already names the model.
 - Blue means selected, on or actionable (toggles, picker checks, the selected sidebar row, links, focus rings).
   Primary buttons are the inverse pill on both apps; the desktop Archived toggle turns blue while on. The
@@ -355,8 +351,8 @@ state.
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, retrying, background tasks), then the project
   when the list gives one, the branch shortened in the middle and the pull
-  request; it no longer names the harness. The desktop project page, and the
-  home and Archived while filtered to one project, give no project; across
+  request; it no longer names the harness. The home and Archived while
+  filtered to one project give no project; across
   every project the home and Archived name each row's. Screen
   readers hear the waiting state once, from the status slot. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
@@ -364,10 +360,9 @@ state.
   accessibility text rather than clipping or overflowing. In a narrow pane
   the pull request's indicators clip instead of overflowing. Regular rows form
   one timeline with no Running section: running rows lead Today whatever their
-  stored time, then idle rows follow in updated-time date buckets. Archived
-  rows shown beside active rows on a project page use those updated-time
-  buckets too. The shared Archived list instead groups every row, running or
-  not, under its archive date. Awaiting-input-only rows stay
+  stored time, then idle rows follow in updated-time date buckets. The shared
+  Archived list instead groups every row, running or not, under its archive
+  date. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date
   heading rather than an invented epoch. Archiving, deleting or restoring a
   row animates only that row: its date heading stays in place and leaves or
@@ -377,8 +372,8 @@ state.
   it locally without a request. A filter that leaves nothing says so. The chips
   hide in the archived list and while the list has neither sessions nor a
   launching row.
-- A session being created leads Today on the phone home and on its project's
-  desktop page, as a launching row of the same height as a session
+- A session being created leads Today on the phone home and in the desktop
+  sidebar, as a launching row of the same height as a session
   row: the first line of its first message (or "Untitled session"), the AI
   sparkle in the status slot, the harness logo before the title and
   "Creating… · `<harness>`" with no time.
@@ -386,8 +381,7 @@ state.
   nothing; it has no menu or swipe actions. It is left out of the chip counts,
   hidden under Running and Unread, while searching and in Archived, and a
   list whose only row is a launch shows that row rather than the empty
-  state (on the desktop project page, rather than the empty project's composer), including
-  when the launch came from the desktop home or the page is reopened while it creates. When the session exists the row cross-fades in place into the real
+  state, including when the launch came from the desktop home. When the session exists the row cross-fades in place into the real
   session row (instantly under reduced motion) without moving the rows below,
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,
@@ -601,8 +595,8 @@ row state and meaningful count variant in light/dark themes, iPhone/Android
 viewports, and reduced motion, and watch a settled row fade and fold away
 without the content below jumping. Then vary the number of enabled harnesses,
 whether any is blocked or failed, and which surface starts the run — the phone
-home, full screen and in the sidebar, Archived, the desktop sidebar's Refresh,
-and the desktop project page's Refresh. Vary a first import against a
+home, full screen and in the sidebar, Archived, and the desktop sidebar's
+Refresh. Vary a first import against a
 re-import of an unchanged catalog, newly discovered versus already-hidden projects, and a bridge
 that reports its delta against one that omits it. Refresh while
 fully disconnected, reconnecting, connection-lost, and bridge-offline, and

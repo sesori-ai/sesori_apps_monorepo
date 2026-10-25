@@ -50,7 +50,7 @@ The main pane hosts one full-width routed page.
   restore button shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
   restores the user's choice. The native minimum window remains 560 × 480.
 - New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects it
-  reads Add project and opens the shared folder dialog. Search under it opens the command palette. Below them
+  reads Add project and opens the shared folder dialog, and the project it adds opens in New session. Search under it opens the command palette. Below them
   the project filter, "All projects ▾" or the chosen project's name, heads the shared all-projects session list
   beside Refresh: it opens the shared project picker, and its pick is the shared filter that lasts for the app's
   run. The list is the phone's (see `projects-and-sessions.md`): its search field, All, Running and Unread
@@ -104,8 +104,7 @@ The main pane hosts one full-width routed page.
 - Filtered to one project, the sidebar's list claims that project's viewing once its sessions load, as the
   phone's list does; All projects claims nothing, since the bridge is told one project. The cockpit reports the
   open sidebar as the visible list pane, so the new session and Changes pages keep that claim only while the
-  sidebar shows. While a project's sessions page is open its own list's claim replaces the sidebar's, and
-  closing the page hands viewing back to the sidebar's filtered project. A session action menu never claims
+  sidebar shows. A session action menu never claims
   project viewing. Session mutations use the existing action controller and a stable sidebar presentation
   context. Opening a session menu first retains its
   action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
@@ -134,67 +133,52 @@ The main pane hosts one full-width routed page.
   or root lifecycle event rearms the authoritative read. Initial failures still require explicit retry.
   Closed or superseded reads cannot seed shared unseen state, and an older
   completion cannot release a newer pending read.
-- The sidebar is the only navigation pane. All sessions, archived sessions, new session, detail, and diffs
-  are sibling main-pane routes. The sidebar's shared list and the all-sessions page are the full list owners;
-  session action menus remain non-viewing action scopes.
+- The sidebar is the only navigation pane. The home, archived sessions, new session, detail, and diffs
+  are sibling main-pane routes. The sidebar's shared list is the only full list owner; session action menus
+  remain non-viewing action scopes.
 - The footer's Archived opens the Archived sessions page over the current page: the shared archived list across
   projects, read through the sidebar's shared project filter, with each row naming its project. It never claims
   project viewing. A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
   returns to the page it opened over, or home when there is none, and pressing Archived while it is the top page
   does nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
   card say why.
-- The all-sessions page is a toolbar over one timeline. The toolbar names the project and its repository,
-  starts a New session in that project (hidden while an empty project shows the composer, and folded to its
-  icon on a narrow pane or under large text), toggles Archived, and has a Refresh button; nothing floats
-  over the list and there is no back arrow. The shared list sits in a centred column about 760 pt wide
-  while the whole pane scrolls. It has no Running section: running sessions lead Today. Rows are about
-  46 pt, use the shared row anatomy in a denser size, and highlight under the pointer. The phone list is the
-  same one timeline.
-- Above the active list, chips read All, Running and Unread with exact counts from the loaded list and
-  narrow it locally without a request; a filter that leaves nothing says so. The chips hide while Archived
-  is on, which shows every archived session, and while the project has no sessions. Hovering a row, or
-  moving keyboard focus into it, swaps its time for Mark read/unread and Archive without changing the row's
-  height; an archived row offers no Archive. The phone list shows the same shared chips.
+- Hovering a list row, or moving keyboard focus into it, swaps its time for Mark read/unread and Archive
+  without changing the row's height; an archived row offers no Archive.
 - Every enabled control that acts on a click shows the hand cursor on hover: buttons, menu items, list
   rows, tiles, switches, image previews and expand toggles. A disabled control keeps the arrow. Material
   defaults to the arrow on desktop, so the Prego theme and each custom tap target opt in.
 - No page toolbar has a back arrow, so every toolbar starts its content at the same left edge.
   Cmd/Ctrl+[ returns a pushed page to its opener, including child-to-parent navigation, and does nothing
-  on a page reached from the sidebar. The new session and session pages lead their title with the
-  project as a breadcrumb that opens the project's all-sessions page; a subtask's breadcrumb is "Main
-  session" instead. Archived rows open
-  read-only. New-session creation replaces its page with detail. Deleting the open session returns to
-  all sessions.
-- The Changes page uses the same toolbar: the project breadcrumb, the File changes title, and the file
+  on a page reached from the sidebar; New session reached directly goes back to the home. No page title
+  carries a project crumb; a subtask's title leads with a "Main session" crumb instead. Archived rows open
+  read-only. New-session creation replaces its page with detail. Deleting or archiving the open session
+  returns to the home.
+- The Changes page uses the same toolbar: the File changes title and the file
   count with total +/− under it; Cmd/Ctrl+[ goes back to the session. Below it the changed files are a
   list on the left and the selected file's full path and diff on the right; the first file opens
   selected, choosing another shows it from its top, and a refresh stays on the selected file while it
   is still changed.
-- A project page with no active sessions shows the new-session composer for that project in place of the
-  timeline, under the same toolbar; Archived still shows archived sessions. A session started there opens.
-- A session being archived is hidden from the sidebar, the project page and its chip
+- A session being archived is hidden from the sidebar and its chip
   counts for as long as its Undo window or its archive request is open, and returns if the archive is
   undone, refused or fails. Archiving the open session leaves its page. See
   `session-archiving-and-deletion.md`.
-- The new session page uses the same toolbar, titled New session under the project breadcrumb, above one
+- The new session page uses the same toolbar, titled New session, above one
   centred column no wider than the session page's composer: the shared heading and project selector (see
   session-creation-and-options.md), the harness chooser, the input, then Dedicated workspace and
   Refresh options. The column is centred in the pane, not anchored to the bottom, and scrolls as a whole when the pane is too short.
   Choosing another project builds a fresh cubit for it.
-- The session page uses the same toolbar anatomy above the transcript, never over it: the breadcrumb
-  and the title share one 16 pt line and baseline, the breadcrumb medium and secondary, a slash between
-  them, the title bold. The amber awaiting glyph leads the title when a question or permission waits; a
-  running session instead leads it with the turning sparkle, still under reduced motion. The title
-  itself never shimmers. A root session's breadcrumb is its project; a
-  subtask's is "Main session", which returns to the session that started it (back to the kept parent
-  page when it was opened from there). No harness or model line sits under the title. The Changes button shows
+- The session page uses the same toolbar anatomy above the transcript, never over it. A subtask's "Main
+  session" crumb and the title share one 16 pt line and baseline, the crumb medium and secondary, a slash
+  between them, the title bold; the crumb returns to the session that started it (back to the kept parent
+  page when it was opened from there). A root session's title stands alone. The amber awaiting glyph leads
+  the title when a question or permission waits; a running session instead leads it with the turning
+  sparkle, still under reduced motion. The title itself never shimmers. No harness or model line sits under the title. The Changes button shows
   on a root unarchived session; and a menu with
   Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
   session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
   directly. Mark unread always sends unread,
-  whatever local state says, and returns to the project's
-  all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
+  whatever local state says, and returns to the home; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
   elsewhere. The transcript and the composer sit in two separately sized centred columns, the transcript
   about 960 pt wide and the composer, its pills and the needs-you cards about 760 pt, both centred in the
   same pane while the wheel and scrollbar keep the whole pane. A window too narrow for a column collapses
@@ -338,8 +322,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   once a project page's list claim is released (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
-- The session page toolbar above a centred transcript column wider than the centred composer's: the breadcrumb, status slot and title styles
-  and order, the breadcrumb opening the project or, for a subtask, "Main session" returning to its parent
+- The session page toolbar above a centred transcript column wider than the centred composer's: a subtask's crumb,
+  status slot and title styles and order, its "Main session" crumb returning to its parent
   (popping to the kept parent when opened from it, opening the parent otherwise), the sparkle leading
   the title only while the session runs, session actions disabled until the session is hydrated,
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
@@ -348,20 +332,14 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   with No matches, Enter opening a session or filtering the sidebar to a project and bringing it back,
   Down skipping a heading, Esc, and a command run from
   the palette and by its shortcut (`desktop_cockpit_shell_test`).
-- Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; the new session and session
-  breadcrumbs opening the project's sessions.
-- Filter chip counts, local narrowing, the filtered-empty message and chips hidden under Archived; hover and
-  focus revealing row actions that call the row's handlers at a stable height, with no Archive on an
-  archived row.
-- The new session page: toolbar above a centred, width-capped column with room left below it, and the
-  project selector reporting the chosen project (`desktop_new_session_screen_test`).
-- The all-sessions page: toolbar title and New session button (hidden beside the empty-project composer,
-  icon-only on a narrow pane under large text, without overflow), Archived toggle state, no floating button, the
-  timeline grouping with running sessions first under Today, and pointer-mode row height. With no active sessions
-  it shows the composer and the catalog scan row instead, keeps the composer until a started session opens even
-  when the list shows it first, and shows no composer under Archived (`desktop_session_list_screen_test`).
-- Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
-  new-session replacement, Changes breadcrumb and file selection, home states, package-font resolution.
+- Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; New session reached directly, Mark unread,
+  and deleting or archiving the open session all returning to the home (`desktop_router_test`).
+- The new session page: toolbar above a centred, width-capped column with room left below it, no project crumb,
+  and the project selector reporting the chosen project (`desktop_new_session_screen_test`).
+- Flat typed route registration, archived read-only navigation,
+  new-session replacement, Changes file selection, home states, package-font resolution.
+- Add project from the sidebar's empty New session row opening New session in the added project
+  (`desktop_cockpit_shell_test`).
 - The footer's Archived control (`desktop_cockpit_shell_test`); the Archived page pushed once over its opener, its
   rows opening read-only over it, and its close returning to the opener or, reached directly, home
   (`desktop_router_test`).
@@ -417,8 +395,8 @@ Look for overflow at minimum width, drag updates that stall or write per frame,
 width jumping on reversal beyond a bound, automatic collapse overwriting user preferences, missing/stale
 activity marks, duplicate project inventories, repeated admission on rebuild, a page that jumps while the
 sidebar slides, a panel that squeezes its rows, a restore button under the traffic lights or over a toolbar's
-content, a divider or square corners on the sidebar panel, lost project context, a filtered sidebar that stops
-declaring its project after a project page closes, a second session-list pane, sidebar browsing clearing unread
+content, a divider or square corners on the sidebar panel, lost project context, a second session-list pane,
+sidebar browsing clearing unread
 state,
 stale/missing recent rows, a refresh reporting success from old retained data, an indicator settling before its
 owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,
@@ -469,8 +447,6 @@ after the user picked another one.
 - `client/module_prego/test/components/prego_anchor_menu_test.dart`
 - `client/module_prego/lib/components/navigation/prego_nav_title.dart`
 - `client/module_prego/test/components/prego_nav_title_test.dart`
-- `client/desktop/lib/features/sessions/desktop_session_list_screen.dart`
-- `client/desktop/test/features/sessions/desktop_session_list_screen_test.dart`
 - `client/module_core/lib/src/cubits/recent_sessions/`
 - `client/module_core/lib/src/cubits/session_list/session_list_mode.dart`
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart`

@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 11.ii/13 follows 11.i/13.
+- Current step: 11.iii/13 follows 11.ii/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -26,7 +26,7 @@
 | 10.a.ii/13 | Desktop sidebar on the shared list | Done | #2047 |
 | 10.b/13 | Desktop Activity and rail removed | Done | #2048 |
 | 11.i/13 | Desktop composer home; palette on the shared list; Recent sessions removed | Done | `sesori/app-simplification-step-11-i` |
-| 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Not started | — |
+| 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Done | `sesori/app-simplification-step-11-ii` |
 | 11.iii/13 | Session list view mode, project-sessions route and claim stack removed | Not started | — |
 | 12/13 | Regression documents reconciled | Not started | — |
 | 13/13 | L3 matrix run; plan retired | Not started | — |
@@ -68,6 +68,10 @@
   list loads, shows the shared prompt with no default (with no projects its picker offers only Open another
   folder…, replacing the old empty home), and crossfades between them. The palette's sessions now follow the
   sidebar list's filter, search and chip; its projects still list every project.
+- 2026-10-25: step 11.ii sends every exit that opened the project page to the home instead: Mark unread,
+  archiving or deleting the open session, and New session's back from a direct open. Pages lose their project
+  crumb (the new-session picker already names the project); a subtask keeps its Main session crumb. The sidebar's
+  Add project opens New session in the added project, as the phone's picker does.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record
