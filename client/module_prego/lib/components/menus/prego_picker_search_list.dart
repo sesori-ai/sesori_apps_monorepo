@@ -229,10 +229,6 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
     return CallbackShortcuts(
       bindings: pointer
           ? {
-              const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(step: 1),
-              const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(step: -1),
-              const SingleActivator(LogicalKeyboardKey.enter): _pickHighlighted,
-              const SingleActivator(LogicalKeyboardKey.numpadEnter): _pickHighlighted,
               // Wins over the desktop's own Esc, which would only leave the field.
               const SingleActivator(LogicalKeyboardKey.escape): widget.onClose,
             }
@@ -261,22 +257,34 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
                   padding: pointer
                       ? const EdgeInsetsDirectional.fromSTEB(4, 4, 4, 0)
                       : const EdgeInsetsDirectional.fromSTEB(12, 12, 12, 0),
-                  child: TextField(
-                    autofocus: pointer,
-                    autocorrect: false,
-                    decoration: InputDecoration(
-                      hintText: widget.searchHint,
-                      prefixIcon: const Icon(TablerRegular.search, size: PregoIconSize.md),
-                      isDense: true,
-                      contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(pointer ? PregoRadius.sm : PregoRadius.x4l),
-                        borderSide: BorderSide.none,
+                  // Only around the field: a button Tab focuses takes its own
+                  // Enter rather than picking the highlight.
+                  child: CallbackShortcuts(
+                    bindings: pointer
+                        ? {
+                            const SingleActivator(LogicalKeyboardKey.arrowDown): () => _move(step: 1),
+                            const SingleActivator(LogicalKeyboardKey.arrowUp): () => _move(step: -1),
+                            const SingleActivator(LogicalKeyboardKey.enter): _pickHighlighted,
+                            const SingleActivator(LogicalKeyboardKey.numpadEnter): _pickHighlighted,
+                          }
+                        : const {},
+                    child: TextField(
+                      autofocus: pointer,
+                      autocorrect: false,
+                      decoration: InputDecoration(
+                        hintText: widget.searchHint,
+                        prefixIcon: const Icon(TablerRegular.search, size: PregoIconSize.md),
+                        isDense: true,
+                        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(pointer ? PregoRadius.sm : PregoRadius.x4l),
+                          borderSide: BorderSide.none,
+                        ),
+                        filled: true,
+                        fillColor: prego.colors.bgSurface1,
                       ),
-                      filled: true,
-                      fillColor: prego.colors.bgSurface1,
+                      onChanged: _setQuery,
                     ),
-                    onChanged: _setQuery,
                   ),
                 ),
                 Flexible(child: list),

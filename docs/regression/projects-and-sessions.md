@@ -232,9 +232,10 @@ state.
   project. The large title reads "All projects" with a chevron, and a tap opens the project picker in filter mode:
   the known projects, with a "Show all projects" button pinned below them. Picking a project narrows the list to
   it: the title takes its name, rows stop naming the project, and an empty result names the project. "Show all
-  projects" restores the whole list; while it is already shown, the button carries the check and only closes. This is the filter Archived shares; it resets on restart, on a computer switch, and when its project
-  leaves the list. The header holds New session, the computer button, Archived and Settings. New session opens in the filtered
-  project, else the project of the newest session, else asks for a project
+  projects" restores the whole list; while it is already shown, the button carries the check and only closes.
+  This is the filter Archived shares; it resets on restart, on a computer switch, and when its project leaves the
+  list. The header holds New session, the computer button, Archived and Settings. New session opens in the
+  filtered project, else the project of the newest session, else asks for a project
   ([session creation](session-creation-and-options.md)); Archived opens under the current filter. A pull refreshes
   every project and imports, as above. Until the project list loads the home shows a skeleton, a failed project
   list shows its error with Retry, a computer with no projects shows the add-project call to action, and the

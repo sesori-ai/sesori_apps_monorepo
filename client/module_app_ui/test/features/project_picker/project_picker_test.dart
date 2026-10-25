@@ -382,4 +382,28 @@ void main() {
     expect(selected, ["api demo-api"]);
     expect(allProjectsPicks, 0);
   });
+
+  testWidgets("under a pointer Enter on the footer Tab focused presses it, not the highlighted project", (
+    tester,
+  ) async {
+    await pumpPicker(
+      tester: tester,
+      projects: [_demoApp, _demoApi],
+      selectedProjectId: "api",
+      filters: true,
+      mode: PregoInteractionMode.pointer,
+    );
+
+    bool footerFocused() =>
+        FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<PregoButtonsSolid>() != null;
+    for (var i = 0; i < 5 && !footerFocused(); i++) {
+      await press(tester: tester, key: LogicalKeyboardKey.tab);
+    }
+    expect(footerFocused(), isTrue);
+
+    // demo-app still holds the highlight.
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(allProjectsPicks, 1);
+    expect(selected, isEmpty);
+  });
 }
