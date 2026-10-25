@@ -260,9 +260,12 @@ The bridge CLI updater stays: it serves CLI installs.
   Updater prompt. We document this honestly and do not add a root helper.
 - **Key rotation and compromise:** installed builds trust exactly one compiled
   public key.
-  - *Rotation:* a release signed with the current key ships the new public key. Every
-    later release signs with the new key. Sparkle supports changing `SUPublicEDKey` this
-    way. For Velopack the compiled constant changes the same way.
+  - *Rotation:* feed URLs include a key ID (for example `.../k1/<channel>/...`), and each
+    build fetches the path for its own key. A release signed with k1 ships the k2 public
+    key and the k2 feed path. After that, the k1 feeds stay frozen at that transition
+    release. An install that was offline or had updates off during the transition still
+    finds a k1-verifiable update, then continues on k2. Sparkle allows `SUPublicEDKey` to
+    change through an update signed with the old key.
   - *Compromise:* stop publishing feeds, which removes the write path. Then rotate as
     above, and publish an advisory directing affected users to a manual reinstall from
     GitHub Releases. We don't add a multi-key trust list or revocation machinery up

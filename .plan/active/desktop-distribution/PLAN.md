@@ -78,15 +78,17 @@ require the recorded final matrix or an explicit end-of-plan acceptance of its l
 | D10 | User-directed order: Linux before Windows; private signing now, public repositories separately. |
 | D11 | Public Linux internal previews approved with stated desktop QA gaps; stable/repository gates stay closed. |
 | D12 | Sign Linux Bridge CLI archives with OpenPGP too; keep CLI and desktop artifacts distinct. |
+| D13 | 2026-10-14: finish Linux, including stable publication, before Windows. GCS package hosting and narrowly scoped GitHub publishing IAM in `sesori-ai` are approved with ordinary storage/download costs. Preserve signing, repository trust, native QA and production approvals; no new release backend. |
+| D14 | 2026-10-18: manual, ephemeral private Linux runner diagnostics through restricted Tailscale GitHub OIDC. Admin-to-runner SSH only; VNC through SSH forwarding. No signing/account credentials, public desktop, runner access into other tailnet devices or replacement of automated qualification. |
 
 U1: on 2026-10-25 the update policy in D4–D6 was superseded by
 [desktop-auto-update](../desktop-auto-update/PLAN.md). macOS updates through Sparkle,
 Windows and AppImage through Velopack (its `Setup.exe` replaces Inno), and DEB/RPM through
-the system updater. Steps 7–8 below keep signing, publication and winget. Their packaging
+the system updater. The manual macOS updates delivered in step 5 are replaced by
+desktop-auto-update step 4. Steps 7–8 below keep signing, publication and winget. Their packaging
 and update scope comes from desktop-auto-update steps 5–6, which replace Inno, manual
 Windows updates and the `AppMutex` marker.
-| D13 | 2026-10-14: finish Linux, including stable publication, before Windows. GCS package hosting and narrowly scoped GitHub publishing IAM in `sesori-ai` are approved with ordinary storage/download costs. Preserve signing, repository trust, native QA and production approvals; no new release backend. |
-| D14 | 2026-10-18: manual, ephemeral private Linux runner diagnostics through restricted Tailscale GitHub OIDC. Admin-to-runner SSH only; VNC through SSH forwarding. No signing/account credentials, public desktop, runner access into other tailnet devices or replacement of automated qualification. |
+
 
 ### User-retired QA gate and macOS admission — 2026-09-26
 
