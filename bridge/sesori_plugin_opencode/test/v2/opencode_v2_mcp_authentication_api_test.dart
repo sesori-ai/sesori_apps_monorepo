@@ -94,6 +94,7 @@ void main() {
       IntegrationOAuthMethod(:final id) => id,
       IntegrationCommandMethod() ||
       IntegrationKeyMethod() ||
+      IntegrationExternalMethod() ||
       IntegrationEnvMethod() ||
       IntegrationMethodUnknown() => null,
     }, "native-method");

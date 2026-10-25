@@ -203,8 +203,8 @@ download, verification, or placement. Use a disposable data directory.
   installation, version, ACP initialize and teardown have not been
   exercised; they remain required coverage rather than inferred from metadata,
   simulated platform tests or macOS/x64 runs.
-- Antigravity's managed manifest uses registry package version `1.3.0` for its version directory and separately
-  validates the exact ACP runtime identity `1.3.0`. The initialize-only validator uses
+- Antigravity's managed manifest uses registry package version `1.4.3` for its version directory and separately
+  validates the exact ACP runtime identity `1.4.3`. The initialize-only validator uses
   disposable managed state, a sanitized false-inheritance environment, and the shared abort signal; it neither
   authenticates nor creates a session. All six archive hashes, layouts and permissions are independently verified;
   hardened macOS arm64 extraction passed. A 2026-10-06 network-denied macOS arm64 run passed the complete managed

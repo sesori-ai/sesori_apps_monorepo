@@ -1,21 +1,21 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 
 @immutable
-class SessionMessageProviderState4 {
-  const SessionMessageProviderState4({required this.json});
-  factory SessionMessageProviderState4.fromJson(Map<String, dynamic> json) {
-    return SessionMessageProviderState4(json: json);
+class SessionMessageNative4 {
+  const SessionMessageNative4({required this.json});
+  factory SessionMessageNative4.fromJson(Map<String, dynamic> json) {
+    return SessionMessageNative4(json: json);
   }
   Map<String, dynamic> toJson() => json;
 
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
-      (other is SessionMessageProviderState4 &&
+      (other is SessionMessageNative4 &&
           const DeepCollectionEquality().equals(other.json, json));
 
   @override

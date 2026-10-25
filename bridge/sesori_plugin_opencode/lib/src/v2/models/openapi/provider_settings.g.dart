@@ -1,9 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'provider_compaction.g.dart';
+import 'provider_encoding.g.dart';
 import 'provider_transport.g.dart';
 
 @immutable
@@ -14,6 +15,7 @@ class ProviderSettings {
     required this.chunkTimeout,
     required this.compaction,
     required this.transport,
+    required this.encoding,
   });
 
   factory ProviderSettings.fromJson(Map<String, dynamic> json) {
@@ -23,6 +25,7 @@ class ProviderSettings {
       chunkTimeout: json["chunkTimeout"] as Object?,
       compaction: json["compaction"] == null ? null : ProviderCompaction.fromJson(json["compaction"] as Object),
       transport: json["transport"] == null ? null : ProviderTransport.fromJson(json["transport"] as String),
+      encoding: json["encoding"] == null ? null : ProviderEncoding.fromJson(json["encoding"] as String),
     );
   }
 
@@ -33,6 +36,7 @@ class ProviderSettings {
       "chunkTimeout": ?chunkTimeout,
       "compaction": ?compaction?.toJson(),
       "transport": ?transport?.toJson(),
+      "encoding": ?encoding?.toJson(),
     };
   }
 
@@ -44,6 +48,7 @@ class ProviderSettings {
     Object? chunkTimeout,
     ProviderCompaction? compaction,
     ProviderTransport? transport,
+    ProviderEncoding? encoding,
   }) {
     return ProviderSettings(
       timeout: timeout ?? this.timeout,
@@ -51,6 +56,7 @@ class ProviderSettings {
       chunkTimeout: chunkTimeout ?? this.chunkTimeout,
       compaction: compaction ?? this.compaction,
       transport: transport ?? this.transport,
+      encoding: encoding ?? this.encoding,
     );
   }
 
@@ -62,14 +68,16 @@ class ProviderSettings {
           const DeepCollectionEquality().equals(other.headerTimeout, headerTimeout) &&
           const DeepCollectionEquality().equals(other.chunkTimeout, chunkTimeout) &&
           other.compaction == compaction &&
-          other.transport == transport);
+          other.transport == transport &&
+          other.encoding == encoding);
 
   @override
-  int get hashCode => Object.hash(const DeepCollectionEquality().hash(timeout), const DeepCollectionEquality().hash(headerTimeout), const DeepCollectionEquality().hash(chunkTimeout), compaction, transport);
+  int get hashCode => Object.hash(const DeepCollectionEquality().hash(timeout), const DeepCollectionEquality().hash(headerTimeout), const DeepCollectionEquality().hash(chunkTimeout), compaction, transport, encoding);
 
   final Object? timeout;
   final Object? headerTimeout;
   final Object? chunkTimeout;
   final ProviderCompaction? compaction;
   final ProviderTransport? transport;
+  final ProviderEncoding? encoding;
 }

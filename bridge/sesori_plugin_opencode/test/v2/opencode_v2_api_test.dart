@@ -465,7 +465,7 @@ void main() {
       "fixture",
     );
     expect(
-      (await api.compact(sessionId: "s", body: const V2CompactBody(id: null, delivery: null))).payload.toJson(),
+      (await api.compact(sessionId: "s", body: const V2CompactBody(id: null, delivery: null))).payload,
       <Object?>[null],
     );
   });

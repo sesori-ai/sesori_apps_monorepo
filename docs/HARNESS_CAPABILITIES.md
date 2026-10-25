@@ -297,7 +297,7 @@ sub-agents finish.
 
 ## OpenCode v2 adapter
 
-Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.0.24.
+Startup selects the v2 adapter for 2.0.11 or newer; the generated surface and managed downloads target 2.1.4.
 V1 PATH behavior is unchanged (minimum 1.14.0). Managed v1 upgrades migrate the native database one-way.
 
 | Capability | Status |
@@ -321,12 +321,12 @@ Antigravity can explicitly download Google's proprietary official runtime pair d
 choosing Install, review [Google's terms](https://antigravity.google/terms) and
 [Antigravity documentation](https://antigravity.google/docs/). Sesori independently pins and verifies six
 archives: macOS x64/arm64, Linux x64/arm64, and Windows x64/arm64. macOS x64 support is **implemented** for
-package `1.3.0`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
+package `1.4.3`, including managed installation and explicit/PATH pair selection. Every archive keeps the server
 and local harness as siblings, uses a conservative two-minute bound for each archive listing/extraction command,
 and must pass the isolated initialize-only
 identity check before placement. A configured `--antigravity-bin` remains authoritative and removes Install.
-Package `1.3.0` macOS arm64 hardened extraction passed, and a 2026-10-06 network-denied macOS arm64 run passed the
-production managed installation, `--version`, initialize and teardown. Other native targets and authenticated behavior
+A 2026-10-25 network-denied macOS arm64 run of package `1.4.3` passed `--version`, initialize and teardown; the
+production managed installation was last run on `1.3.0`. Other native targets and authenticated behavior
 remain unverified. The earlier `1.2.1` initialize/teardown and macOS x64 extraction observations are historical evidence, not
 verification of the current pin.
 Linux requires Info-ZIP `unzip` with ZipInfo support, checked before download.
@@ -366,7 +366,7 @@ Only OMP is assessed here. Other harnesses are not assessed.
 
 | Harness | Status |
 |---|---|
-| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.8.0` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
+| OMP | 🚫 Not supported from `18.6.3` (probed live on `18.6.3`; unchanged in the `18.12.6` source, not probed live there): OMP's ACP `session/load` and `session/resume` refuse a stored session whose saved model can no longer be used ("Could not restore model"), by upstream design. A prompt on such a session fails with an inline error that names the model. Opening its history while the bridge store is stale serves the history the bridge already stores, with a persistent banner saying the session can't be continued. A session the bridge holds no record of still fails to open. Its persisted cleanup is retried at bridge startup. Upstream: https://github.com/can1357/oh-my-pi/issues/14806. |
 
 ## External Codex session activity
 
@@ -406,10 +406,10 @@ variants only when labels carry the matching suffix. Its pre-chat catalog uses
 one retained hidden no-prompt native session because the pinned runtime exposes
 models only from new/resume responses and has no deletion capability.
 
-Antigravity uses the official `1.3.0` pair and a plugin-owned Zed compatibility
+Antigravity uses the official `1.4.3` pair and a plugin-owned Zed compatibility
 identity (`clientInfo.name: zed`, title `Sesori Bridge (Zed compatibility)`) for
 live, replay, personal-login and validation processes. Google's packaged model
-selection filters non-Gemini models in `1.2.1`; `1.3.0` retains them only for
+selection filters non-Gemini models in `1.2.1`; `1.3.0` through `1.4.3` retain them only for
 recognized client identities. Every account-advertised Gemini, Claude or GPT
 model is mapped under the existing Antigravity OAuth provider and dispatched
 with its exact native ID. Synthetic mixed-provider catalogs and initialize
@@ -906,14 +906,14 @@ remain available independently of MCP management.
 
 | Adapter | Repository minimum → target | Structured MCP management in Sesori |
 |---|---|---|
-| Pi | 0.99.0 → 1.0.4 | Not supported by the resident RPC method set; native `/mcp` command remains usable. |
-| Antigravity | Exact official ACP pair 1.3.0 | Not implemented; standard ACP has no management API. |
-| Copilot | 1.0.78 → 1.0.92 | Not implemented; standard ACP has no management API. |
-| Cursor | 2026.09.23 → 2026.10.01-e373342 | Not implemented; standard ACP has no management API. |
+| Pi | 0.99.0 → 1.4.0 | Not supported by the resident RPC method set; native `/mcp` command remains usable. |
+| Antigravity | Exact official ACP pair 1.4.3 | Not implemented; standard ACP has no management API. |
+| Copilot | 1.0.78 → 1.0.103 | Not implemented; standard ACP has no management API. |
+| Cursor | 2026.09.23 → 2026.10.22-27dcf5f | Not implemented; standard ACP has no management API. |
 | DeepSeek | 0.1.5 → 0.2.0 | Not implemented; standard ACP has no management API. |
-| Grok Build | 1.0.5 → 1.0.46 | Not implemented; standard ACP has no management API. |
-| Hermes | 0.20.0 → 0.21.5 | Not implemented; standard ACP has no management API. |
-| Oh My Pi | 17.2.13 → 18.8.0 | Not implemented; standard ACP has no management API. |
+| Grok Build | 1.0.5 → 1.0.70 | Not implemented; standard ACP has no management API. |
+| Hermes | 0.20.0 → 0.22.5 | Not implemented; standard ACP has no management API. |
+| Oh My Pi | 17.2.13 → 18.12.6 | Not implemented; standard ACP has no management API. |
 
 Pi's exact [0.99.0 RPC types][pi-mcp-rpc-min] and
 [1.0.4 RPC types][pi-mcp-rpc-target] expose no structured MCP management methods.
@@ -1013,7 +1013,7 @@ end with `session.prompt-settled` so clients can remove its optimistic row.
 | Claude | ✅ Command dispatch publishes a correlated synthetic user message. |
 | OpenCode v1 | ✅ Correlated backend user echoes cover prompts, commands and manual compaction. |
 | OpenCode v2 prompts / fallback compaction | ✅ Caller-supplied native IDs correlate prompt echoes; completed or failed compaction snapshots emit explicit prompt settlement. |
-| OpenCode v2 native commands | 🚫 The 2.0.24 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
+| OpenCode v2 native commands | 🚫 The 2.1.4 command route exposes neither caller nor result message identity. There is no correlated echo or explicit settlement; an optimistic command row can remain after acceptance. |
 | Codex | ✅ Turn-backed commands correlate their user echo; native `compact` emits explicit prompt settlement because it returns no turn identity. |
 | Pi | ✅ User echoes and agent-running fallback synthesis remain transcript-backed; an accepted slash command with no agent work emits explicit prompt settlement after its state barrier. |
 | Antigravity, Copilot, Cursor, Hermes, OMP, DeepSeek, Grok | ✅ Shared ACP dispatch publishes a correlated user message; no silent accepted-command path is exposed. |
@@ -1079,14 +1079,14 @@ busy for retained descendants. Live matrix is partial: no
 pending-input request surfaced, so that case remains automated rather than
 live-plugin coverage.
 
-⁴ Copilot CLI (plugin targets 1.0.92) runs custom agents as subagents. When
+⁴ Copilot CLI (plugin targets 1.0.103) runs custom agents as subagents. When
 probed on 1.0.80, its Agent Client Protocol server exposed no subagent
 lifecycle, no child session, and only the turn-wide `session/cancel`. Copilot's
 changelog says ACP clients receive subagent IDs since 1.0.81; Sesori has not
 re-probed, so these cells stay 🚫 until a probe confirms usable sub-agent
 identity.
 
-⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.10.01-e373342`;
+⁵ Cursor (PATH minimum `2026.09.23`, managed target `2026.10.22-27dcf5f`;
 shapes derived from the CLI bundle on 2026-10-06 and not yet confirmed on the
 wire) runs each sub-agent as a native child session once the client sends
 `clientCapabilities._meta.subagents: true`, which Sesori always does. A Task

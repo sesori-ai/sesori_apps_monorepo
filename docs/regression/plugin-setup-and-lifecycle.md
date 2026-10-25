@@ -19,36 +19,28 @@ without cross-owner cancellation; exercise both start orders in the
 
 ## Runtime Target Coverage
 
-Targets audited on **2026-09-24**, covering all eleven registered harnesses.
-OpenCode was refreshed on **2026-09-26** with the scoped evidence below.
-Claude, Copilot, Cursor, Grok and Codex targets were refreshed on **2026-10-06**
-(release metadata and managed-asset digests re-audited; native checks on these targets pending).
-Antigravity moved to `1.3.0` and OpenCode to `2.0.24` the same day.
-Pi was refreshed on **2026-10-06** to `1.0.4`, and its approved PATH minimum rose to
-`0.99.0`. Cursor's PATH minimum rose to `2026.09.23` on 2026-10-06 with native sub-agent
-child sessions. Older PATH installs of either get the existing update action.
-Hermes was already on its latest release.
-DeepSeek moved to adapter `0.2.0` and OMP to `18.8.0` on 2026-10-07.
-Managed assets were independently downloaded and hashed: OpenCode 6, Antigravity 6,
-Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6. GitHub digests and available
-checksum lists agree; Cursor/Antigravity hashes are locally computed, not publisher
-attestations. Direct-CLI targets are recommendation metadata, not forced upgrades.
-Compatible PATH binaries remain authoritative. Independent minimums are unchanged except
-Pi's and Cursor's; Antigravity retains its exact-pair policy rather than an independent floor.
+Targets audited on **2026-10-25**, covering all eleven registered harnesses; ten targets moved
+and DeepSeek stayed on its latest adapter release `0.2.0`. Managed assets were independently
+downloaded and hashed: OpenCode 6, Antigravity 6, Codex 6, Copilot 6, Cursor 4, Pi 6 and OMP 8.
+GitHub digests, npm integrity and available checksum lists agree; the Antigravity registry
+now publishes archive hashes that match too. Cursor hashes are locally computed, not publisher
+attestations. Direct-CLI targets (Claude, Hermes, Grok) are recommendation metadata, not forced
+upgrades. Compatible PATH binaries remain authoritative. Independent minimums are unchanged;
+Antigravity retains its exact-pair policy rather than an independent floor.
 
 | Harness | Target | Minimum / exact policy | Current-target native evidence and outstanding coverage |
 |---|---|---|---|
-| OpenCode | `2.0.24` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified. The provider-list decode of `chunkTimeout: false` is covered by a model test only. Current-target native install/version, authenticated provider list and reads, SSE startup and teardown remain unverified; earlier `2.0.18` sandboxed macOS arm64 install and authenticated read observations are historical. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
-| Antigravity | package/server `1.3.0` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified; macOS ARM64 hardened extraction passed. A 2026-10-06 network-denied macOS ARM64 rerun passed managed installation (archive from the verified local copy), `--version`, initialize and teardown after a first probe aborted with SIGABRT. Other native targets and authenticated behavior remain unverified; earlier `1.2.1` observations are historical. |
-| Codex | `0.160.1` | `0.139.0` | Current-target native package/install, stdio and WebSocket app-server checks remain unverified. |
-| GitHub Copilot | `1.0.92` | `1.0.78` | Current-target native install/version, ACP initialize and configured lifecycle remain unverified. |
-| Cursor | `2026.10.01-e373342` | date `2026.09.23` | Current-target native install/initialize, configured load/replay/model/mode and cleanup remain unverified. The floor is the oldest build with evidence for native sub-agent child sessions, which Sesori always enables; an older PATH build is reported outdated and asked to update. Sub-agent frame shapes come from the CLI bundle; the authenticated live checks (spawn/state pair, child streaming, nested and resumed children, root stop cascade, refused child stop, stop-and-send) and the open questions (child-id `session/load` transcript, children in `session/list`, `agentId` in pre-capability transcripts) remain pending. |
-| Claude Code | `2.1.291` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
-| Hermes Agent | `0.21.5` (`v2026.9.24`) | `0.20.0` | Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
-| Pi | `1.0.4` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
-| Oh My Pi | `18.8.0` | `17.2.13` | Eight direct-binary hashes match `SHA256SUMS.txt` and the GitHub digests; the macOS arm64 binary reports `omp/18.8.0`. **Known limitation (accepted):** from `18.6.3`, `session/load` and `session/resume` fail closed with "Could not restore model `<provider/id>`" when the session's saved model is no longer usable (renamed id, removed credentials or local model). Such a session cannot be continued: a prompt fails with an inline error naming the model and stating that the session can't be continued, without dispatching the prompt. Opening its history while the bridge store is stale serves the stored history with a can't-continue banner, and resume-then-delete cleanup cannot remove it, so the bridge logs and retries that cleanup at startup. Current-target native ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
+| OpenCode | `2.1.4` | PATH `1.14.0`; v2 `2.0.11` | Six archive hashes (npm integrity agrees) and layouts verified; v2 models and the event manifest regenerated against `v2.1.4` (the removed `session.compaction.ended` `recent` field is no longer required). The provider-list decode of `chunkTimeout: false` is covered by a model test only. Current-target native install/version, authenticated provider list and reads, SSE startup and teardown remain unverified; earlier `2.0.18` sandboxed macOS arm64 install and authenticated read observations are historical. Provider turns, history/write parity, native reconnect and upgrade from v1 remain unverified. |
+| Antigravity | package/server `1.4.3` | Exact package/server/ACP 1 | Six archive hashes/layouts/permissions independently verified and matching the registry's published hashes. A 2026-10-25 network-denied macOS ARM64 run reported `Build label: 1.4.3` and passed initialize-only ACP (agent `1.4.3`, protocol 1, unchanged capabilities and auth methods) and teardown; that run used plain `unzip`, and the production managed install pipeline was not rerun. Other native targets and authenticated behavior remain unverified; earlier `1.3.0` observations are historical. |
+| Codex | `0.164.0` | `0.139.0` | Six package hashes match `codex-package_SHA256SUMS` and the GitHub digests; the sandboxed macOS arm64 package reports `codex-cli 0.164.0`. Current-target managed install, stdio and WebSocket app-server checks remain unverified. |
+| GitHub Copilot | `1.0.103` | `1.0.78` | Six archive hashes match `SHA256SUMS.txt` and the GitHub digests; the sandboxed macOS arm64 binary reports `GitHub Copilot CLI 1.0.103.`. ACP initialize and configured lifecycle remain unverified. |
+| Cursor | `2026.10.22-27dcf5f` | date `2026.09.23` | Four self-computed package hashes; the sandboxed macOS arm64 package reports `2026.10.22-27dcf5f`. Current-target managed install/initialize, configured load/replay/model/mode and cleanup remain unverified. The floor is the oldest build with evidence for native sub-agent child sessions, which Sesori always enables; an older PATH build is reported outdated and asked to update. Sub-agent frame shapes come from the CLI bundle; the authenticated live checks (spawn/state pair, child streaming, nested and resumed children, root stop cascade, refused child stop, stop-and-send) and the open questions (child-id `session/load` transcript, children in `session/list`, `agentId` in pre-capability transcripts) remain pending. |
+| Claude Code | `2.1.310` | `2.1.221` | Current-target native stream-json/permissions/replay/interrupt and real authentication/provider behavior remain unverified. |
+| Hermes Agent | `0.22.5` | `0.20.0` | Release tags are semantic again from `v0.21.6`; `hermes acp --version` now prints a derived version (`0.22.5`, or `0.22.5+<n>.g<sha>` ahead of a tag), which the existing parser accepts. Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
+| Pi | `1.4.0` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-25 sandboxed macOS arm64 run (no credentials, network denied) reported `1.4.0` and answered RPC `get_state`; managed install and the catalog probe were not rerun. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
+| Oh My Pi | `18.12.6` | `17.2.13` | Eight direct-binary hashes match `SHA256SUMS.txt` and the GitHub digests; the sandboxed macOS arm64 binary reports `omp/18.12.6`. **Known limitation (accepted):** from `18.6.3`, `session/load` and `session/resume` fail closed with "Could not restore model `<provider/id>`" when the session's saved model is no longer usable (renamed id, removed credentials or local model). Such a session cannot be continued: a prompt fails with an inline error naming the model and stating that the session can't be continued, without dispatching the prompt. Opening its history while the bridge store is stale serves the stored history with a can't-continue banner, and resume-then-delete cleanup cannot remove it, so the bridge logs and retries that cleanup at startup. Current-target native ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
 | DeepSeek | `0.2.0` | `0.1.5` | Owned adapter release v0.2.0, embedding DeepSeek Harness `0.2.0-rc.2` (upstream `next`). Six hashes computed from downloads and matched against `checksums.txt`; the macOS arm64 asset reports `sesori-deepseek-acp/0.2.0 deepseek-harness/0.2.0-rc.2 acp/1` and `check` returns ok. The producer's packaged fake-provider smoke passed on all six platforms; no authenticated turn. |
-| Grok Build | `1.0.46` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
+| Grok Build | `1.0.70` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
 behavior. Other-platform native behavior is not inferred from macOS ARM64.
@@ -187,7 +179,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   v2 adapter at 2.0.11 or newer; v1 retains its existing adapter. Below-minimum v2
   fails with an upgrade hint, never a downgrade recommendation. An owned runtime
   is stopped before refusal; an attached server is never stopped. Cancellation
-  during the probe wins over refusal. Managed downloads target `2.0.24` via npm;
+  during the probe wins over refusal. Managed downloads target `2.1.4` via npm;
   first v2 launch migrates the native database one-way, while PATH v1 stays supported.
   Attach mode without a server retains degraded v1 recovery; a later-started v2
   server requires a bridge restart to select its adapter.

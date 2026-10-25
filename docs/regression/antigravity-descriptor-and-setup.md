@@ -20,8 +20,8 @@ contract, see [Google Antigravity in Sesori](../ANTIGRAVITY.md).
   consults ambient working-directory state. Managed selection requires both a missing PATH server candidate and separate
   physical-absence evidence mapped through storage and repository layers. A harness-only directory does not shadow a
   later server pair, but harness-only, incomplete, broken, unreadable or invalid final PATH evidence remains
-  authoritative. The current exact pair is package/server `1.3.0`, ACP 1. Setup recognizes the plain semantic
-  `Build label: 1.3.0` output and older `agy_acp_server_`-prefixed labels without exposing other build diagnostics.
+  authoritative. The current exact pair is package/server `1.4.3`, ACP 1. Setup recognizes the plain semantic
+  `Build label: 1.4.3` output and older `agy_acp_server_`-prefixed labels without exposing other build diagnostics.
   Only the byte-exact current label reports ready; equal-precedence labels remain unknown. Documented pre-semver official
   labels and earlier semantic releases order below that pin, while newer versions remain incompatible/unknown. Outdated PATH
   setup uses the dedicated runtime-outdated state. PATH-authoritative unknown and managed storage, profile or probe
@@ -91,11 +91,12 @@ preserve local diagnostics and settle as `ProvisionFailed`; explicit startup abo
   authority and runtime-service suites cover inert version parsing, domain mapping, physical absence, PATH diagnostics,
   and managed fallback. `antigravity_plugin_test.dart` covers exact
   whitespace-bearing live/replay stamping and cold-reset resume before strict dispatch.
-- **L5 Full:** package `1.3.0` has independently verified hashes, sibling layouts and archived permissions for all
-  six archives. Hardened macOS arm64 extraction passed. A first isolated native probe exited with SIGABRT; a
-  2026-10-06 network-denied macOS arm64 rerun passed the production managed install (`ProvisionReady`, archive
-  served from the verified local copy), `--version` `1.3.0`, initialize (ACP 1, load/list/resume/logout, no
-  close or sub-agent capability) and SIGTERM teardown.
+- **L5 Full:** package `1.4.3` has independently computed hashes (matching the registry's published checksums), sibling
+  layouts and archived permissions for all six archives. A 2026-10-25 macOS arm64 probe of the directly extracted pair
+  (network denied, fresh HOME and `GEMINI_HOME`, no login) returned `--version` `1.4.3` and initialize (ACP 1,
+  `agentInfo.version` `1.4.3`, load/list/resume/logout, the same four auth methods, no close or sub-agent capability),
+  then exited on SIGTERM. The production managed install pipeline was not rerun for `1.4.3`. The 2026-10-06 `1.3.0`
+  rerun passed it on macOS arm64 (`ProvisionReady`, archive served from the verified local copy).
   Earlier `1.2.1` macOS arm64 evidence passed native version/initialize/teardown in isolated, network-denied state;
   that release's x64 archive passed hardened extraction and member/header checks. Those observations do not prove
   current-target native execution. Native Intel/Linux/Windows managed installs, real personal OAuth, cross-target

@@ -220,7 +220,6 @@ sealed class V2EventData {
   const factory V2EventData.sessionCompactionEnded({
     required String sessionID,
     required String text,
-    required String recent,
   }) = V2SessionCompactionEnded;
   const factory V2EventData.sessionCompactionFailed({
     required String sessionID,
@@ -1413,12 +1412,10 @@ class V2SessionCompactionEnded extends V2EventData implements V2SessionEventData
   const V2SessionCompactionEnded({
     required this.sessionID,
     required this.text,
-    required this.recent,
   });
 
   final String sessionID;
   final String text;
-  final String recent;
 
   @override
   String get type => "session.compaction.ended";
@@ -1428,14 +1425,12 @@ class V2SessionCompactionEnded extends V2EventData implements V2SessionEventData
     "type": type,
     "sessionID": sessionID,
     "text": text,
-    "recent": recent,
   };
 
   factory V2SessionCompactionEnded.fromJson(Map<String, dynamic> json) {
     return V2SessionCompactionEnded(
       sessionID: json["sessionID"] as String,
       text: json["text"] as String,
-      recent: json["recent"] as String,
     );
   }
 }

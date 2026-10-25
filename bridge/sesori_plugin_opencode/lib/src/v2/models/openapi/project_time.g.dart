@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:meta/meta.dart';
 
@@ -9,6 +9,7 @@ class ProjectTime {
     required this.created,
     required this.updated,
     required this.active,
+    required this.archived,
   });
 
   factory ProjectTime.fromJson(Map<String, dynamic> json) {
@@ -16,6 +17,7 @@ class ProjectTime {
       created: (json["created"] as num).toInt(),
       updated: (json["updated"] as num).toInt(),
       active: (json["active"] as num).toInt(),
+      archived: (json["archived"] as num?)?.toInt(),
     );
   }
 
@@ -24,6 +26,7 @@ class ProjectTime {
       "created": created,
       "updated": updated,
       "active": active,
+      "archived": ?archived,
     };
   }
 
@@ -33,11 +36,13 @@ class ProjectTime {
     int? created,
     int? updated,
     int? active,
+    int? archived,
   }) {
     return ProjectTime(
       created: created ?? this.created,
       updated: updated ?? this.updated,
       active: active ?? this.active,
+      archived: archived ?? this.archived,
     );
   }
 
@@ -47,12 +52,14 @@ class ProjectTime {
       (other is ProjectTime &&
           other.created == created &&
           other.updated == updated &&
-          other.active == active);
+          other.active == active &&
+          other.archived == archived);
 
   @override
-  int get hashCode => Object.hash(created, updated, active);
+  int get hashCode => Object.hash(created, updated, active, archived);
 
   final int created;
   final int updated;
   final int active;
+  final int? archived;
 }

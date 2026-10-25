@@ -1,10 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
 import 'form_fields_1.g.dart';
 import 'form_fields_2.g.dart';
+import 'form_fields_3.g.dart';
 
 @immutable
 sealed class IntegrationMethod {
@@ -29,6 +30,8 @@ sealed class IntegrationMethod {
         return IntegrationCommandMethod.fromJson(map);
       case "key":
         return IntegrationKeyMethod.fromJson(map);
+      case "external":
+        return IntegrationExternalMethod.fromJson(map);
       case "env":
         return IntegrationEnvMethod.fromJson(map);
       default:
@@ -198,6 +201,63 @@ final class IntegrationKeyMethod implements IntegrationMethod {
 
   final String? label;
   final FormFields2? form;
+}
+
+
+@immutable
+final class IntegrationExternalMethod implements IntegrationMethod {
+  const IntegrationExternalMethod({
+    required this.id,
+    required this.label,
+    required this.form,
+  });
+
+  factory IntegrationExternalMethod.fromJson(Map<String, dynamic> json) {
+    return IntegrationExternalMethod(
+      id: json["id"] as String,
+      label: json["label"] as String,
+      form: json["form"] == null ? null : FormFields3.fromJson(json["form"] as List<dynamic>),
+    );
+  }
+
+  @override
+  Map<String, dynamic> toJson() {
+    return <String, dynamic>{
+      "id": id,
+      "type": "external",
+      "label": label,
+      "form": ?form?.toJson(),
+    };
+  }
+
+  /// Returns a copy with non-null arguments replacing existing values.
+  /// Nullable fields cannot be set to null through this helper; null means keep.
+  IntegrationExternalMethod copyWith({
+    String? id,
+    String? label,
+    FormFields3? form,
+  }) {
+    return IntegrationExternalMethod(
+      id: id ?? this.id,
+      label: label ?? this.label,
+      form: form ?? this.form,
+    );
+  }
+
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is IntegrationExternalMethod &&
+          other.id == id &&
+          other.label == label &&
+          other.form == form);
+
+  @override
+  int get hashCode => Object.hash(id, label, form);
+
+  final String id;
+  final String label;
+  final FormFields3? form;
 }
 
 

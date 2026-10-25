@@ -5,13 +5,13 @@
 Antigravity discovers account models before the first user chat through one retained, hidden, no-prompt native
 session. Model families expose High/Medium/Low through the existing variant picker. No database or wire-schema change
 is required. Authenticated native discovery remains unverified; automated evidence uses composed fake ACP processes.
-The official `1.3.0` runtime enables account-advertised third-party models through the explicitly approved
+The official `1.4.3` runtime (gate unchanged since `1.3.0`) enables account-advertised third-party models through the explicitly approved
 Zed compatibility identity. Native authenticated Claude/GPT discovery and execution remain unverified.
 
 ## Required behavior
 
 - Antigravity live, replay, personal-login and validation connections send `clientInfo.name: zed` with title
-  `Sesori Bridge (Zed compatibility)`. This plugin-owned identity enables Google's `1.3.0` non-Gemini catalog gate;
+  `Sesori Bridge (Zed compatibility)`. This plugin-owned identity enables Google's non-Gemini catalog gate (`1.3.0` through `1.4.3`);
   other ACP harnesses retain their ordinary Sesori identity. Use the exact supported runtime pair rather than
   assuming the older `1.2.1` runtime can advertise third-party models.
 - Cold options reads use standard ACP `session/list` to recover a discovery session whose cwd is the private
