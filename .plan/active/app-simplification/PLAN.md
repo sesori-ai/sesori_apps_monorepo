@@ -549,8 +549,11 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Pane visibility.** The cockpit reports the expanded sidebar as the wide pane.
 - **Collapse** hides the sidebar fully (D9), while resize stays.
 - **Palette.** Its project entries call `AllSessionsCubit.selectProject`.
+- **List claim.** Until step 11, the desktop project page's view-mode `SessionListCubit` replaces the shared
+  cubit's list claim (newest wins), and closing the page empties the slot. Make the sidebar's filtered list
+  declare its project again once the page closes.
 - **Verification:**
-  - Desktop widget tests.
+  - Desktop widget tests, including a filtered sidebar that still declares its project after the project page closes.
   - macOS: list, filter, collapse and restore, resize, Archived, and the palette filter.
 - **Regression docs:** `desktop-cockpit-shell.md`.
 
