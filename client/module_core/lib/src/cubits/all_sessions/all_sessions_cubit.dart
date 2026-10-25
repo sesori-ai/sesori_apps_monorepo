@@ -77,7 +77,7 @@ class AllSessionsCubit({
   /// Sessions the list leaves out while they still read as unarchived: those
   /// inside an archive's Undo window, and those a launching row holds back.
   void setHiddenSessionIds({required Set<String> sessionIds}) {
-    _hiddenSessionIds = sessionIds;
+    _hiddenSessionIds = Set.unmodifiable(sessionIds);
     _emit(query: state.query, quickFilter: state.quickFilter);
   }
 

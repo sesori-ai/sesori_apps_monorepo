@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 2.b/13, 3/13 and 6/13 follow 2.a/13.
+- Current step: 2.b/13 and 3/13 follow 2.a/13; 7.a/13 follows 6/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
