@@ -98,7 +98,11 @@ source, OS and CPU come from the
 staged identity. DEB dependencies come from `dpkg-shlibdeps`; RPM requirements come
 from Fedora's native `rpmbuild` ELF scanning. Current locked Linux plugin sources are
 checked for explicit dynamic loading before packaging; no guessed explicit runtime
-requirement is added when those sources contain none.
+requirement is added when those sources contain none. The one known exception is the
+Flutter GTK embedder itself, which dlopens EGL and GLES through libepoxy: DEBs also
+depend on `libegl1, libgles2`, and RPMs require `libEGL.so.1()(64bit)` and
+`libGLESv2.so.2()(64bit)`. Without them the app aborts at first frame on clean Debian 13
+and Fedora 44 with `Couldn't open libEGL.so.1` / `libGLESv2.so.2`.
 
 Native Ubuntu 24.04 and Debian 13 containers install, same-version reinstall and
 remove the DEB. Their official multi-architecture base-image indexes are pinned, as is
@@ -226,9 +230,35 @@ Separately compiled signed builds from the same source may verify increasing pac
 versions and persistence; report that source did not change and do not claim code/schema
 migration coverage from that case.
 
-Real account restoration, helper On/Off behavior, actual session autostart, unavailable
-Secret Service and remaining distro upgrade rows stay separate gates. This workflow does
-not replace them, publish releases or admit stable Linux.
+Unavailable Secret Service: after the upgrade the job stops its keyring, and a user D-Bus
+service override stops it from being re-activated. The probe's encrypted read must fail
+typed at `readMasterKey`, and the signed app must still render and Quit normally. After the
+same keyring returns, the original value must read back unchanged. Nothing may replace,
+reset or delete the encrypted row or master key while the store is absent.
+
+Debian 13 and Fedora 44 run on the same native CPU in their digest-pinned producer images.
+Each installs the previous signed package, upgrades to the current one with the distro
+package manager, and checks installed identity. An ordinary user then writes encrypted
+probe data through real GNOME Keyring, and the job repeats the absent-store refusal and
+the later read-back. The signed app must render on Xvfb against that distro's libraries
+with the store both absent and present. Removal must leave no package path or process.
+The kernel and display stack are the runner's, so these rows are distro-userspace
+coverage, not distro-kernel or Wayland-compositor coverage.
+
+Login autostart: the job installs the current signed package. It enables linger and a
+pre-unlocked GNOME Keyring on the user bus, because autologin cannot unlock one with a
+password, and writes the exact `IoLaunchAtLogin` registration. Then it starts real
+GDM (GNOME/Wayland, x64) or SDDM (Plasma/X11, ARM64) autologin. The app must start as
+`--hidden` from the session's own autostart (a gnome-session app scope or a
+systemd-xdg-autostart unit), inside an active `user`-class logind session of the
+expected type. GNOME has no tray, so the hidden launch keeps its window visible. KDE must
+register the app's tray item with no window. A session-manager logout must end the app
+with no remaining Sesori process. Authenticated replacement separately proves that
+signed first-run defaults write exactly that registration and that it survives the
+upgrade. Helper-On restoration at OS login is not separately qualified.
+
+Real account restoration and helper On/Off behavior are separate gates. This workflow
+does not publish releases or admit stable Linux.
 
 ### Authenticated Linux replacement
 
@@ -276,7 +306,10 @@ producer that contains it; a newer qualification checkout against unchanged cand
 libraries cannot qualify that fix. Initial email login returns the stable `AuthUser.id`;
 later phases compare that private id, not the opaque provider id or email. Identity
 metadata stays inside the owned home and travels through stdin, never uploaded.
-Login seeds only the older version. Exercise signed
+Login seeds only the older version and leaves bridge intent unset. The old signed GUI's
+genuine first-run defaults must then admit On, serve the relay and write the exact login
+registration that the credential-free login job boots. Every helper-On launch, including
+the one after replacement, rechecks those registration bytes. Exercise signed
 old GUI On then Off, normal close/native tray Quit and no orphan helper; install the
 new package and, on the acceptance path, launch its signed GUI with preserved Off
 **before** the fixture built against that candidate may write anything. Verify local account/Off preservation, set On and exercise

@@ -152,7 +152,7 @@ class LinuxPackagingTests(unittest.TestCase):
                 work=work,
                 identity={"version": self.version, "buildNumber": 42},
             )
-        self.assertEqual(dependencies, "libc6 (>= 2.34), libgtk-3-0")
+        self.assertEqual(dependencies, "libc6 (>= 2.34), libgtk-3-0, libegl1, libgles2")
         invoked = command.call_args.kwargs["command"]
         self.assertEqual(invoked[:2], ["dpkg-shlibdeps", "-O"])
         self.assertNotIn("--ignore-missing-info", invoked)
@@ -211,7 +211,7 @@ class LinuxPackagingTests(unittest.TestCase):
         control = (package_root / "DEBIAN/control").read_text()
         self.assertIn(f"Version: {self.version}-42", control)
         self.assertIn("Architecture: amd64", control)
-        self.assertIn("Depends: libc6 (>= 2.34)", control)
+        self.assertIn("Depends: libc6 (>= 2.34), libegl1, libgles2\n", control)
         self.assertEqual(list((package_root / "DEBIAN").iterdir()), [package_root / "DEBIAN/control"])
         self.assertNotIn("postinst", "\n".join(evidence["packageFiles"]))
 
@@ -244,6 +244,7 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertIn(f"Version: {self.version}", spec)
         self.assertIn("Release: 42%{?dist}", spec)
         self.assertIn("AutoReqProv: yes", spec)
+        self.assertIn("Requires: libEGL.so.1()(64bit)\nRequires: libGLESv2.so.2()(64bit)\n", spec)
         self.assertIn("%global __strip /bin/true", spec)
         self.assertIn("%global debug_package %{nil}", spec)
         self.assertNotIn("__os_install_post", spec)

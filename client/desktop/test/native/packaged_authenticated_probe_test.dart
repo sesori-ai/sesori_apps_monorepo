@@ -88,7 +88,7 @@ void main() {
     expect(accountId, _user.id);
     expect(lines, isEmpty);
     verify(() => auth.loginWithEmail(email: _email, password: "fixture-password")).called(1);
-    verify(() => instance.writeBridgeDesiredState(state: BridgeProcessDesiredState.on)).called(1);
+    verifyNever(() => instance.writeBridgeDesiredState(state: any(named: "state")));
     verifyNever(() => auth.restoreLocalSession());
   });
 

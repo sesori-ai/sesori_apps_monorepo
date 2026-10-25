@@ -37,7 +37,7 @@ jobs:
             architecture: arm64
             desktop: kde-x11
     runs-on: ${{ matrix.runner }}
-    timeout-minutes: 45
+    timeout-minutes: 60
     env:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
@@ -130,10 +130,51 @@ jobs:
           done
       - name: Exercise native desktops, Secret Service and a genuine package replacement
         run: |
+          # The user service directory precedes the system one. Once the driver stops its keyring,
+          # libsecret must meet a genuinely absent Secret Service instead of auto-starting another.
+          mkdir -p "$HOME/.local/share/dbus-1/services"
+          printf '[D-BUS Service]\nName=org.freedesktop.secrets\nExec=/bin/false\n' \
+            > "$HOME/.local/share/dbus-1/services/sesori-qa-absent-secret-service.service"
           dbus-run-session -- /usr/bin/python3 .github/scripts/qualify_desktop_linux_session.py exercise \
             --inputs build/linux-session-inputs --probes build/linux-session-probes \
             --desktop '${{ matrix.desktop }}' --architecture '${{ matrix.architecture }}' \
             --output build/linux-session-evidence
+      # The remaining nominated rows run on this native CPU in their own pinned userspace.
+      # The kernel and display stack are the runner's; packages, libraries and Secret Service are the distro's.
+      - name: Upgrade and exercise Secret Service on native Debian 13 and Fedora 44
+        env:
+          # Same digests as the producer's install fixtures; the tooling test keeps them in step.
+          DEBIAN_IMAGE: docker.io/library/debian@sha256:f324c7ff54321e8d9c588493a20244965938ce0aa50bbd1022d38010e9ffc4b1
+          FEDORA_IMAGE: registry.fedoraproject.org/fedora@sha256:61beafd34111e1cb85fb49377ceadeee0a53622dbc20670ed8ca303f0e17ed9c
+        run: |
+          set -euo pipefail
+          for row in "debian-13|deb|$DEBIAN_IMAGE" "fedora-44|rpm|$FEDORA_IMAGE"; do
+            IFS='|' read -r name format image <<<"$row"
+            docker pull --quiet "$image"
+            [[ "$(docker run --rm "$image" uname -m)" == "$(uname -m)" ]] || {
+              echo "$name container architecture differs from native host"; exit 1;
+            }
+            docker run --rm -v "$GITHUB_WORKSPACE:$GITHUB_WORKSPACE" -w "$GITHUB_WORKSPACE" "$image" \
+              .github/scripts/qualify_desktop_linux_distro.sh "$format" "$PWD/build/linux-session-inputs" \
+                "$PWD/build/linux-session-probes" '${{ matrix.architecture }}' \
+                "$PWD/build/linux-session-evidence/$name" 2>&1 | tee "build/linux-session-evidence/$name.log"
+          done
+      - name: Autostart the signed app through a genuine display-manager login
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          set -euo pipefail
+          # The real login must meet the distro's normal Secret Service activation again.
+          rm "$HOME/.local/share/dbus-1/services/sesori-qa-absent-secret-service.service"
+          if [[ '${{ matrix.desktop }}' == gnome-wayland ]]; then
+            sudo apt-get install --yes --no-install-recommends gdm3 gnome-session dbus-user-session
+          else
+            sudo apt-get install --yes --no-install-recommends sddm dbus-user-session xserver-xorg-core \
+              xserver-xorg-video-fbdev xserver-xorg-video-modesetting xserver-xorg-input-libinput
+          fi
+          /usr/bin/python3 .github/scripts/qualify_desktop_linux_session.py login \
+            --inputs build/linux-session-inputs --desktop '${{ matrix.desktop }}' \
+            --architecture '${{ matrix.architecture }}' --output build/linux-session-evidence/login
       - name: Retain credential-free native evidence
         if: always()
         uses: actions/upload-artifact@v4
