@@ -187,9 +187,10 @@ any code, fixture or comment that the step makes obsolete.
 | 9 | 🌿 [pr-tracking-removal] Remove the PR source lookup [step 9/13] | 1,000 | 8 |
 | 10 | 🌿 [pr-tracking-removal] Remove the pull request repository [step 10/13] | 1,450 | 9 |
 | 11 | 🌿 [pr-tracking-removal] Remove the gh client [step 11/13] | 1,300 | 9 |
-| 12 | ⚙️ [pr-tracking-removal] Drop the stored PR data in schema v21 [step 12/13] | 1,300 + generated | 5, 10, `detached-worktrees` rename removal |
+| 12 | ⚙️ [pr-tracking-removal] Drop the stored PR data in schema v21 [step 12/13] | 1,300 + gen. | 5, 10, DW |
 | 13 | 🌿 [pr-tracking-removal] Remove the PR wire models and retire the plan [step 13/13] | 550 | 2, 3, 4, 11, 12 |
 
+- DW: `detached-worktrees` step 2, which removes the generated-branch rename.
 - Client steps 2, 3 and 4 and bridge step 5 are independent. Bridge steps 5–12 are a chain over shared files.
 - Steps 9–11 follow the imports:
   - `PrSourceRepository` and `PullRequestRepository` share the target, selection and `VerifiedGithubLogin`
@@ -234,12 +235,16 @@ any code, fixture or comment that the step makes obsolete.
   - Delete `ProjectViewingService`, its claim types and its DI registration.
   - Remove the session-detail claim: `claimProjectView` in `SessionDetailCubit`, `cubit_composition.dart`,
     `session_detail_screen.dart` and `desktop_session_detail_screen.dart`.
+  - Remove `AllSessionsCubit`'s list claim and wide-pane claim (`_ListClaim`, `beginListClaim`,
+    `beginWideListPaneClaim`, `setWideListPaneVisible` and their releases), and whatever reports the pane's
+    visibility to it.
   - Remove the `projectViewingService` wiring in `session_scope.dart`, `app_router.dart`, `desktop_router.dart`
     and `desktop_cockpit_shell.dart`.
   - Delete `sendProjectView` from `ViewDeclarationRepository`, its API, `ConnectionService` and `RelayClient`.
     `sendSessionView` stays.
-  - Fixtures: the `claimProjectView` and `projectViewingService` arguments in the session-detail tests, the
-    desktop cockpit shell test and the view-declaration tests.
+  - Fixtures: `MockProjectViewingService`, `stubbedProjectViewingService` and the claim fallback values in
+    `module_core/lib/src/testing/test_helpers.dart`, and the `claimProjectView` and `projectViewingService`
+    arguments in the session-detail, all-sessions, desktop cockpit shell and view-declaration tests.
 - **Tests:** `project_viewing_service_test.dart` goes; the remaining tests compile and pass.
 - **Docs:** remove the active-view trigger from `voice-input.md`, keeping the current-project trigger.
 - No user-visible change, so no screenshots.
@@ -247,8 +252,9 @@ any code, fixture or comment that the step makes obsolete.
 ### Step 5 — Session reads stop carrying PR data (🌿)
 
 - **Changes.**
-  - `get_sessions_handler` stops waiting on `waitForPrData`. The field stays in the shared request until step 13
-    and needs no marker (D2).
+  - `get_sessions_handler` drops its `PrSyncService` dependency: the `verifyGithubIdentity` calls, the
+    `enrichSessions` passes and `triggerRefresh`. It stops waiting on `waitForPrData`; the field stays in the
+    shared request until step 13 and needs no marker (D2).
   - Remove PR enrichment from `get_session_handler` and `SessionRepository`, and the orchestrator wiring for
     those handlers.
   - Delete `pull_request_mapper`, `SessionRepository`'s `pullRequestDao` dependency and the `pullRequest:`
@@ -318,9 +324,10 @@ any code, fixture or comment that the step makes obsolete.
 ### Step 11 — Remove the gh client (🌿)
 
 - **Changes.**
-  - Delete `GhCliApi`, the `gh_*` models and their tests, and the dead `GitCliApi.hasGitHubRemote`.
+  - Delete `GhCliApi`, the `gh_*` models and their tests, and the dead `GitCliApi.hasGitHubRemote` with its test
+    file `test/bridge/api/git_remote_api_test.dart`.
   - Update `docs/SETUP_HEADLESS_VM.md` (D6) and `bridge/ARCHITECTURE.md`.
-  - `bridge/AGENTS.md:104`, `:133` and `:137` use `GhCliApi` as an example. Switch them to `GitCliApi` or
+  - `bridge/AGENTS.md:104` and `:137` use `GhCliApi` as an example. Switch them to `GitCliApi` or
     `SesoriServerApi`.
   - `.agents/skills/architecture-plan-review/SKILL.md` and
     `.agents/skills/architecture-implementation-review/SKILL.md` use `GhCliApi` as an example. Switch them the
@@ -336,7 +343,8 @@ any code, fixture or comment that the step makes obsolete.
       also works, on Drift 2.35.3 with SQLite 3.35 or newer);
     - then `PRAGMA foreign_key_check`.
   - Remove the column references:
-    - `preservePullRequestScope` (`session_repository.dart:367`, `test_database.dart:43`);
+    - `preservePullRequestScope` (`session_repository.dart:260`, `session_dao.dart:188` and `:233-234`,
+      `test_database.dart:43`);
     - `SessionRepository._projectPlaceholder` (`session_repository.dart:1701`);
     - catalog import and project activity.
   - The current-branch guard in `replaceGeneratedBranch` is already gone with the `detached-worktrees` rename

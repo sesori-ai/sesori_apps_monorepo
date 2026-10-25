@@ -4,7 +4,10 @@
 
 - Plan: [PLAN.md](PLAN.md).
 - Current step: 1/13.
-- User decision: remove all PR tracking (round 1, Q1 A, 2026-10-25). D7 (remove project-view presence) is the user's follow-up the same day. D2–D6 follow from compatibility rules.
+- User decisions:
+  - remove all PR tracking (round 1, Q1 A, 2026-10-25);
+  - D7, remove project-view presence (the user's follow-up the same day).
+- D2–D6 are detailed under Decisions in `PLAN.md`. D2 and D5 are the compatibility ones.
 
 ## Delivery
 
@@ -46,5 +49,6 @@
   - Docs: `bridge/AGENTS.md` and the two architecture-review skills drop their `GhCliApi` examples.
   - Settings: the service method, the validation bounds and the l10n regeneration.
   - Migration: the v21 test includes a parent and child session and checks foreign keys.
-- D7 and its steps 4 and 7 were added after that review and have not been reviewed. They only delete code and
-  keep one inert wire variant.
+- D7 and its steps 4 and 7 were added after that review and have not been reviewed. They delete code and keep one
+  inert wire variant. One runtime change is accepted: a recording made right after opening a project's composer
+  may miss the new glossary.
