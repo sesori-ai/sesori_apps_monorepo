@@ -111,7 +111,6 @@ extension on AppRoute {
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
       AppRouteHome() => const HomeScreen(),
-      AppRouteProjectSessions() => throw StateError("The project page is desktop only"),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsDefaultInput() => const DefaultInputSettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),

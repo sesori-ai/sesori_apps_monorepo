@@ -28,10 +28,7 @@ class ProjectViewPaneClaim();
 
 /// Layer-3 owner of this client's single effective viewed project.
 ///
-/// List and detail cubits contribute pending/ready claims. The newest list claim
-/// still held is the list's: releasing it hands the list back to the one it
-/// replaced, such as a sidebar's filtered list once a project page closes over
-/// it. Detail has one claim, the newest. Route and adaptive
+/// List and detail cubits contribute pending/ready claims. Route and adaptive
 /// pane visibility decide which ready claim is actually visible. The resulting
 /// declaration is serialized, cleared while the app is hidden, and reasserted
 /// after resume or relay reconnect. A desktop window that loses focus or is
@@ -46,8 +43,7 @@ class ProjectViewingService({
 }) with Disposable {
   final CompositeSubscription _subscriptions = CompositeSubscription();
 
-  /// Oldest first; the last is the effective one.
-  final List<_ProjectViewClaimState> _listClaims = [];
+  _ProjectViewClaimState? _listClaim;
   _ProjectViewClaimState? _detailClaim;
   AppRouteDef? _route = routeSource.currentRoute;
   String? _detailTransitionProjectId;
@@ -96,7 +92,7 @@ class ProjectViewingService({
     _checkUsable();
     _validateProjectId(projectId: projectId);
     final claim = ProjectViewClaim();
-    _listClaims.add(_ProjectViewClaimPending(claim: claim, projectId: projectId));
+    _listClaim = _ProjectViewClaimPending(claim: claim, projectId: projectId);
     _recomputeDeclaration();
     return claim;
   }
@@ -123,7 +119,7 @@ class ProjectViewingService({
           _detailClaim = ready;
           _detailTransitionProjectId = null;
         } else {
-          _listClaims[_listClaims.indexOf(ownedClaim)] = ready;
+          _listClaim = ready;
         }
       },
     );
@@ -139,7 +135,7 @@ class ProjectViewingService({
           _detailClaim = failed;
           _detailTransitionProjectId = null;
         } else {
-          _listClaims[_listClaims.indexOf(ownedClaim)] = failed;
+          _listClaim = failed;
         }
       },
     );
@@ -154,7 +150,7 @@ class ProjectViewingService({
           _detailClaim = null;
           _detailTransitionProjectId = null;
         } else {
-          _listClaims.remove(ownedClaim);
+          _listClaim = null;
         }
       },
     );
@@ -164,8 +160,8 @@ class ProjectViewingService({
     required ProjectViewClaim claim,
     required void Function({required _ProjectViewClaimState ownedClaim, required bool isDetail}) update,
   }) {
-    final listClaim = _listClaims.where((listClaim) => identical(listClaim.claim, claim)).firstOrNull;
-    if (listClaim != null) {
+    final listClaim = _listClaim;
+    if (listClaim != null && identical(listClaim.claim, claim)) {
       update(ownedClaim: listClaim, isDetail: false);
       _recomputeDeclaration();
       return;
@@ -255,13 +251,13 @@ class ProjectViewingService({
 
   String? _resolveVisibleProjectId() {
     final wideListPaneVisible = _visibleWideListPaneClaim != null;
-    final listProjectId = switch (_listClaims.lastOrNull) {
+    final listProjectId = switch (_listClaim) {
       _ProjectViewClaimReady(:final projectId) => projectId,
       _ProjectViewClaimPending() || _ProjectViewClaimFailed() || null => null,
     };
 
     return switch (_route) {
-      AppRouteDef.home || AppRouteDef.projectSessions => listProjectId,
+      AppRouteDef.home => listProjectId,
       AppRouteDef.newSession || AppRouteDef.sessionDiffs => wideListPaneVisible ? listProjectId : null,
       AppRouteDef.sessionDetail => switch (_detailClaim) {
         _ProjectViewClaimReady(:final projectId) => projectId,
@@ -329,7 +325,7 @@ class ProjectViewingService({
     } on Object catch (error, stackTrace) {
       logw("project view subscription cleanup failed", error, stackTrace);
     }
-    _listClaims.clear();
+    _listClaim = null;
     _detailClaim = null;
     _detailTransitionProjectId = null;
     _route = null;

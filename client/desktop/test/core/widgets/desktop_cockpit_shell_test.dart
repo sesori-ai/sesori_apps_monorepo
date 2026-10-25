@@ -363,7 +363,7 @@ void main() {
     expectPane(visible: false);
   });
 
-  testWidgets("a filtered sidebar declares its project again once the project page closes", (tester) async {
+  testWidgets("a filtered sidebar declares its project as viewed", (tester) async {
     final declarations = _MockViewDeclarationRepository();
     when(() => declarations.sendProjectView(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => declarations.sendSessionView(sessionId: any(named: "sessionId"))).thenAnswer((_) async {});
@@ -387,16 +387,6 @@ void main() {
     seedTwoProjects();
     filter.add("project-1");
     await tester.pumpWidget(app(state: running));
-    await tester.pump();
-    expect(service.declaredProjectId, "project-1");
-    // Until step 11 the project page's own list replaces the sidebar's claim.
-    final pageClaim = service.beginListClaim(projectId: "project-2");
-    service.markClaimReady(claim: pageClaim, projectId: "project-2");
-    routes.emitRoute(AppRouteDef.projectSessions);
-    await tester.pump();
-    expect(service.declaredProjectId, "project-2");
-    service.releaseClaim(claim: pageClaim);
-    routes.emitRoute(AppRouteDef.home);
     await tester.pump();
     expect(service.declaredProjectId, "project-1");
   });
