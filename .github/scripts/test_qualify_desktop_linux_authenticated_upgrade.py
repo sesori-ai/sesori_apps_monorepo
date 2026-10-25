@@ -229,7 +229,9 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
                 events.append(operation)
 
             with self.subTest(failure=type(failure).__name__), \
-                    mock.patch.object(qualification, "stop_process", side_effect=lambda **_: events.append("gui")):
+                    mock.patch.object(qualification, "stop_process", side_effect=lambda **_: events.append("gui")), \
+                    mock.patch.object(qualification, "installed_helper_pid", side_effect=[4242, None]) as helper, \
+                    mock.patch.object(qualification.time, "sleep"):
                 try:
                     with qualification.authenticated_cleanup(processes=[keyring, gui], finish=finish):
                         if failure is not None:
@@ -238,6 +240,7 @@ class AuthenticatedLinuxQualificationTest(unittest.TestCase):
                     self.assertIs(error, failure)
             expected = qualification.ProbePhase.ON_TO_LOGOUT if failure is None else qualification.ProbePhase.CLEANUP
             self.assertEqual(events, ["gui", expected])
+            self.assertEqual(helper.call_count, 2)
 
     def test_main_only_native_workflow_credentials_are_exercise_only_and_artifacts_are_allowlisted(self):
         workflows = Path(__file__).parents[1] / "workflows"

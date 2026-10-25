@@ -112,6 +112,8 @@ def authenticated_cleanup(*, processes: list[subprocess.Popen], finish):
         for process in reversed(processes):
             if process.args[0] == APPLICATION:
                 stop_process(process=process)
+        # The helper shares the GUI's process group but finishes its own shutdown after the GUI exits.
+        wait_for(description="packaged helper exit", check=lambda: installed_helper_pid() is None, timeout=30)
         finish(operation=operation)
 
 

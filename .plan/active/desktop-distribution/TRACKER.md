@@ -52,8 +52,11 @@ is not applicable: the desktop persistence DB is at `schemaVersion` 1 and the bu
 bridge DB at 20, both unchanged from public v1.9.1 through 167 and 194. Details are in [step 9](steps/step-09.md).
 The distro rows found that signed DEB/RPM packages lacked the dlopened EGL/GLES runtime,
 so the app aborted on clean Debian 13 / Fedora 44 (the public `1.9.2-1022` preview has the
-same gap). 11.i.c.b adds those dependencies. After merge, build two increasing fixed main
-producers, rerun `linux-session` on that pair, and rerun the authenticated mode on main.
+same gap). #2031 added those dependencies. On fixed producers 202 → 203, `linux-session`
+run `40150578241` passed every native gate on both CPUs. Authenticated 167 → 203 passed
+ARM64 with signed first-run registration. x64 is still owed: cleanup raced helper shutdown
+and hid the original failure. Cleanup now waits for the helper; rerun the authenticated
+mode on main for x64.
 Stable remains closed; AppImage, website and stable publication follow these gates.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing

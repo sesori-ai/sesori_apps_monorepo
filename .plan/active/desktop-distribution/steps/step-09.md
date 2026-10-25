@@ -185,8 +185,21 @@ helper On/Off restoration, completed temporary-bridge cleanup and
   `dpkg-shlibdeps` nor rpm AutoReq sees. The signed 194 app aborted on clean Debian 13.
   A local digest-pinned arm64 repro aborted bare on both distros, and rendered with
   `libegl1 libgles2` (Debian) or `libglvnd-egl libglvnd-gles` (Fedora). Packaging now
-  declares those dependencies. Previous 167 has the same gap, so the upgrade rows need
-  two fixed, increasing main producers built after this merges.
+  declares those dependencies (#2031).
+- **Accepted native gates.** Fixed main producers `40148340296` (202) and `40149048111`
+  (203), both from `7294cb52dd`. `linux-session` run `40150578241` passed on both CPUs
+  (x64 job `121041346210`, ARM64 job `121041346284`). It covered the Ubuntu upgrade,
+  unavailable Secret Service with a clean signed-out screen, Debian 13 / Fedora 44
+  upgrade, absent/present store and render rows, and genuine login autostart. GDM showed
+  `windowWithoutTray` and SDDM `trayWithoutWindow`; logout ended the app on both. Main run
+  `40149750907` had already passed ARM64. Its x64 login step raced the forked keyring's
+  bus-name claim, which is now awaited.
+- Authenticated run `40151374077` (167 → 203) passed ARM64 with `signedLoginRegistration`
+  on both helper-On launches and completed temporary-bridge cleanup. x64 failed in its
+  first launch. Cleanup then raced the helper's SIGTERM shutdown, so its probe saw a live
+  helper; the receipt reported `current-cleanup`/`ValueError` and hid the original
+  phase. Cleanup now waits for the helper to exit. That x64 run's temporary bridge was not
+  unregistered. Rerun the authenticated mode on main to qualify x64.
 - Authenticated first-run registration: the fixture now leaves bridge intent unset, so
   the signed GUI's own first-run defaults admit On and write the login registration.
   Every helper-On launch checks those bytes. The next main-only authenticated run
