@@ -29,6 +29,7 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
         getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
     sessionCleanupService: getIt<SessionCleanupService>(),
     sessionLaunchService: getIt<SessionLaunchService>(),
+    connectionService: getIt<ConnectionService>(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [
@@ -107,12 +108,7 @@ class const DesktopCockpitShell({
       ],
     );
     void addProject() => unawaited(
-      showAddProjectDialog(
-        context: context,
-        cubit: context.read<ProjectListCubit>(),
-        connectionService: getIt<ConnectionService>(),
-        onProjectAdded: onOpenProject,
-      ),
+      showAddProjectDialog(context: context, onProjectAdded: onOpenProject),
     );
     // The open project, else the most recently active one (the inventory's
     // order); with no project yet, adding one is the only useful next step.

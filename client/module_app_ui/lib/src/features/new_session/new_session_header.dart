@@ -5,16 +5,8 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
-import "../project_list/add_project_dialog.dart";
 import "../project_list/widgets/project_tile.dart";
 import "../project_picker/project_picker.dart";
-
-/// How the new session page changes its project: a pick from the live list,
-/// or a folder the browser adds.
-class const NewSessionProjectChoice({
-  required final NewSessionProjectSelected onProjectSelected,
-  required final ProjectFolderOpener openFolder,
-});
 
 /// [projectId]'s name in the live project list, which knows a rename the
 /// route's [projectName] can miss.
@@ -30,21 +22,21 @@ String liveProjectName({required BuildContext context, required String projectId
 }
 
 /// The new session page's opening: what the page is for, and which project the
-/// session starts in. With a [projectChoice] the project opens the picker;
-/// without one it only names the project.
+/// session starts in. With [onProjectSelected] the project opens the picker;
+/// without it the header only names the project.
 class const NewSessionHeader({
   super.key,
   required final String projectId,
   required final String? projectName,
-  required final NewSessionProjectChoice? projectChoice,
+  required final NewSessionProjectSelected? onProjectSelected,
   required final Widget? harness,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final projectChoice = this.projectChoice;
-    final label = projectChoice == null
+    final onProjectSelected = this.onProjectSelected;
+    final label = onProjectSelected == null
         ? projectName ?? loc.projectListDefaultName
         : liveProjectName(context: context, projectId: projectId, projectName: projectName);
     Widget pill({required VoidCallback? onPressed}) => PregoButtonsSolid(
@@ -69,13 +61,12 @@ class const NewSessionHeader({
           spacing: PregoSpacing.md,
           runSpacing: PregoSpacing.md,
           children: [
-            if (projectChoice == null)
+            if (onProjectSelected == null)
               pill(onPressed: null)
             else
               ProjectPicker(
                 selectedProjectId: projectId,
-                onSelected: projectChoice.onProjectSelected,
-                openFolder: projectChoice.openFolder,
+                onSelected: onProjectSelected,
                 triggerBuilder: (_, open) => pill(onPressed: open),
               ),
             ?harness,

@@ -2,6 +2,8 @@ import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
@@ -17,14 +19,8 @@ final _serverWeb = testProjectSummary(id: "server-web", name: "web", path: "/wor
 
 void main() {
   late List<String> selected;
-  late List<BuildContext> openedFrom;
-  late ProjectOpenedCallback? addedCallback;
 
-  setUp(() {
-    selected = [];
-    openedFrom = [];
-    addedCallback = null;
-  });
+  setUp(() => selected = []);
 
   Future<void> pumpPicker({
     required WidgetTester tester,
@@ -40,9 +36,23 @@ void main() {
       const Stream<ProjectListState>.empty(),
       initialState: ProjectListState.loaded(projects: projects),
     );
+    // What the folder browser reads once it opens.
+    when(() => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
+      (_) async => const FilesystemSuggestionsSuccess(
+        suggestions: FilesystemSuggestions(data: [], path: "/work"),
+      ),
+    );
+    when(() => cubit.parentHostPath(path: any(named: "path"))).thenReturn(null);
+    final connectionService = MockConnectionService();
+    when(() => connectionService.status)
+        .thenAnswer((_) => BehaviorSubject.seeded(const ConnectionStatus.disconnected()));
+    when(() => connectionService.currentStatus).thenReturn(const ConnectionStatus.disconnected());
     await tester.pumpWidget(
-      BlocProvider<ProjectListCubit>.value(
-        value: cubit,
+      MultiBlocProvider(
+        providers: [
+          BlocProvider<ProjectListCubit>.value(value: cubit),
+          RepositoryProvider<ConnectionService>.value(value: connectionService),
+        ],
         child: MaterialApp(
           theme: buildPregoThemeData(brightness: Brightness.light),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
@@ -52,10 +62,6 @@ void main() {
               child: ProjectPicker(
                 selectedProjectId: "app",
                 onSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
-                openFolder: ({required context, required onProjectAdded}) {
-                  openedFrom.add(context);
-                  addedCallback = onProjectAdded;
-                },
                 triggerBuilder: (_, open) => TextButton(onPressed: open, child: const Text("Choose project")),
               ),
             ),
@@ -142,9 +148,12 @@ void main() {
     await tester.tap(find.text("Open another folder…"));
     await tester.pumpAndSettle();
     expect(find.text("Search projects"), findsNothing);
-    expect(openedFrom.single.mounted, isTrue);
+    final browser = find.byType(AddProjectDialog);
+    expect(browser, findsOneWidget);
 
-    addedCallback?.call(context: openedFrom.single, project: _demoApi, displayName: "demo-api");
+    tester
+        .widget<AddProjectDialog>(browser)
+        .onProjectAdded(context: tester.element(browser), project: _demoApi, displayName: "demo-api");
     expect(selected, ["api demo-api"]);
   });
 

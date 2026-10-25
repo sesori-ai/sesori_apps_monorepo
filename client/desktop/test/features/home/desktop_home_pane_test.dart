@@ -375,7 +375,6 @@ void main() {
               onOpenSession: ({required context, required project, required displayName, required session}) =>
                   opened.add((projectId: project.id, sessionId: session.id)),
               onOpenHarnessSettings: () {},
-              openFolder: ({required context, required onProjectAdded}) {},
             ),
           ),
         ),
@@ -532,8 +531,8 @@ void main() {
 
       tester
           .widget<NewSessionView>(find.byType(NewSessionView))
-          .projectChoice
-          ?.onProjectSelected(projectId: "two", projectName: "Two");
+          .onProjectSelected
+          ?.call(projectId: "two", projectName: "Two");
       await tester.pump();
 
       expect(createdFor, ["one", "two"]);

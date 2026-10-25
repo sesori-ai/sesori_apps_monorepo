@@ -26,6 +26,7 @@ class const SessionScope({
   createRefreshService,
   required final SessionCleanupService sessionCleanupService,
   required final SessionLaunchService sessionLaunchService,
+  required final ConnectionService connectionService,
 
   /// The navigator whose overlay shows the scope's alerts, so they share one
   /// alert slot with the pages' own alerts when the scope sits above that
@@ -58,6 +59,8 @@ class const SessionScope({
           BlocProvider(create: (_) => SessionLaunchCubit(launchService: sessionLaunchService)),
           // For each list's own launching rows.
           RepositoryProvider<SessionLaunchService>.value(value: sessionLaunchService),
+          // For the folder browser, which every signed-in surface can open.
+          RepositoryProvider<ConnectionService>.value(value: connectionService),
         ],
         child: PendingArchiveAlerts(
           navigatorKey: alertNavigatorKey,

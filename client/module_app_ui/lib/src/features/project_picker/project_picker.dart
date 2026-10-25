@@ -26,7 +26,6 @@ class const ProjectPicker({
   super.key,
   required final String selectedProjectId,
   required final NewSessionProjectSelected onSelected,
-  required final ProjectFolderOpener openFolder,
 
   /// Builds the trigger; the callback opens the picker.
   required final PregoPopoverTriggerBuilder triggerBuilder,
@@ -46,10 +45,12 @@ class const ProjectPicker({
         onSelected: onSelected,
         // Runs once the picker has closed. The folder browser opens over this
         // widget's context, which outlives the picker.
-        onOpenFolder: () => openFolder(
-          context: context,
-          onProjectAdded: ({required context, required project, required displayName}) =>
-              onSelected(projectId: project.id, projectName: displayName),
+        onOpenFolder: () => unawaited(
+          showAddProjectDialog(
+            context: context,
+            onProjectAdded: ({required context, required project, required displayName}) =>
+                onSelected(projectId: project.id, projectName: displayName),
+          ),
         ),
         onClose: close,
         focusesUnderTouch: focusesUnderTouch,
