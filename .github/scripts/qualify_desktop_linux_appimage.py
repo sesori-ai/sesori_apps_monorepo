@@ -38,6 +38,7 @@ def menu_items(*, layout) -> dict[str, int]:
     pending = [layout]
     while pending:
         identifier, properties, children = pending.pop()
+        # Disabled text rows carry the status the driver asserts, so every labelled row is kept.
         if properties.get("label"):
             items[str(properties["label"])] = int(identifier)
         pending.extend(children)

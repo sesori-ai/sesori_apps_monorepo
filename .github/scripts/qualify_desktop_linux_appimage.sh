@@ -33,6 +33,6 @@ cp -a "$probes" /tmp/qa-probes
 chmod -R a+rX /tmp/qa-inputs /tmp/qa-probes
 trap 'mkdir -p "$evidence" && cp -a /tmp/qa-evidence/. "$evidence/"' EXIT
 
-runuser -u qa -- env -i PATH=/usr/bin HOME=/home/qa LC_ALL=C.UTF-8 \
+runuser -u qa -- env -i PATH=/usr/bin HOME=/home/qa LC_ALL=C.UTF-8 GITHUB_ACTIONS=true \
   dbus-run-session -- python3 "$(dirname "$0")/qualify_desktop_linux_appimage.py" \
     --inputs /tmp/qa-inputs --probes /tmp/qa-probes --architecture "$arch" --output /tmp/qa-evidence

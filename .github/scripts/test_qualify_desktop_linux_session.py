@@ -201,8 +201,10 @@ class LinuxSessionQualificationTest(unittest.TestCase):
 
     def test_appimage_menu_items_cover_nested_rows_and_skip_separators(self):
         layout = (0, {}, [(7, {"label": "Open Sesori"}, []), (8, {}, []),
-                          (9, {"label": "More"}, [(11, {"label": "Quit Sesori"}, [])])])
-        self.assertEqual(appimage.menu_items(layout=layout), {"Open Sesori": 7, "More": 9, "Quit Sesori": 11})
+                          (9, {"label": "More"}, [(11, {"label": "Quit Sesori", "enabled": True}, []),
+                                                     (12, {"label": "Bridge: Off", "enabled": False}, [])])])
+        self.assertEqual(appimage.menu_items(layout=layout), {"Open Sesori": 7, "More": 9, "Quit Sesori": 11,
+                                                                "Bridge: Off": 12})
 
 
 if __name__ == "__main__":
