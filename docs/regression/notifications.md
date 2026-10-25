@@ -56,8 +56,8 @@ external.
   mismatched bindings and every open after an account-ending transition are discarded rather than inherited by a later
   login.
 - A mobile session push carries the id of the computer it came from. Tapping one for another computer switches to it
-  (the computer switch, reported with source `notification`), lands on the home, and then opens the session over it, which loads
-  once the new computer's connection is up. A push for the current computer, or one without a computer id (from a
+  (the computer switch, reported with source `notification`), lands on the home, and then opens the session over it,
+  which loads once the new computer's connection is up. A push for the current computer, or one without a computer id (from a
   v1.9.1 bridge, or sent while the bridge was not registered, such as between a revocation and its re-registration),
   opens on the current computer as before. A foreground push keeps its computer id in the local
   notification it renders.
