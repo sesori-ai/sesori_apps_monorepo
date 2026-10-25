@@ -1,4 +1,5 @@
 import "package:get_it/get_it.dart";
+import "package:http/http.dart" as http;
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart"
     show
@@ -43,6 +44,7 @@ import "injection.config.dart";
     RouteSource,
     SelectedComputerService,
     SessionRepository,
+    http.Client,
     BridgeExecutablePathResolver,
     BridgeProcessEnvironment,
     BridgeRepository,

@@ -7,6 +7,7 @@ import zipfile
 from pathlib import Path
 from unittest import mock
 
+import package_desktop_linux as packaging_linux
 import package_desktop_windows as packaging
 
 
@@ -41,7 +42,8 @@ class WindowsPackagingTests(unittest.TestCase):
 
     def package(self, *, output: Path, packed_bundle: Path | None = None, nupkg: bytes = b"vpk package",
                 setup_machine: int = 0x8664, embed_package: bool = True):
-        """Run package() with a fake vpk whose Setup embeds a full package of `packed_bundle`."""
+        """Run package() with a fake vpk whose Setup embeds a full package of `packed_bundle`, or of the
+        directory it was asked to pack."""
         commands = []
 
         def fake_run(*, command, cwd=packaging.ROOT, merge_stderr=True):
@@ -60,7 +62,7 @@ class WindowsPackagingTests(unittest.TestCase):
             channel, version = options["--channel"], options["--packVersion"]
             full = releases / f"sesori-desktop-{version}-{channel}-full.nupkg"
             with zipfile.ZipFile(full, "w") as archive:
-                source = packed_bundle or self.bundle
+                source = packed_bundle or Path(options["--packDir"])
                 for path in sorted(source.rglob("*")):
                     if path.is_file():
                         archive.write(path, f"lib/app/{path.relative_to(source).as_posix()}")
@@ -73,10 +75,20 @@ class WindowsPackagingTests(unittest.TestCase):
             (releases / f"assets.{channel}.json").write_text("[]")
             return "Setup bundle created\n"
 
-        response = mock.MagicMock()
-        response.__enter__.return_value = io.BytesIO(nupkg)
+        libraries = io.BytesIO()
+        with zipfile.ZipFile(libraries, "w") as archive:
+            archive.writestr("lib/velopack_libc_win_x64_msvc.dll", pe(machine=0x8664))
+        downloads = {packaging.VPK_PACKAGE_URL: nupkg, packaging_linux.VELOPACK_LIBRARY_URL: libraries.getvalue()}
+
+        def fake_urlopen(url, timeout):
+            response = mock.MagicMock()
+            response.__enter__.return_value = io.BytesIO(downloads[url])
+            return response
+
         with mock.patch.object(packaging, "VPK_PACKAGE_SHA256", packaging.hashlib.sha256(b"vpk package").hexdigest()), \
-                mock.patch.object(packaging.urllib.request, "urlopen", return_value=response), \
+                mock.patch.object(packaging_linux, "VELOPACK_LIBRARY_SHA256",
+                                  packaging.hashlib.sha256(libraries.getvalue()).hexdigest()), \
+                mock.patch.object(packaging.urllib.request, "urlopen", side_effect=fake_urlopen), \
                 mock.patch.object(packaging, "run", side_effect=fake_run):
             installer = packaging.package(bundle=self.bundle, output=output, arch="x64", version=self.version)
         return installer, commands
@@ -142,7 +154,7 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertEqual([pack[1], pack[-1]], ["pack", "--noPortable"])
         self.assertEqual({key: value for key, value in options.items() if key != "--outputDir"}, {
             "--packId": "sesori-desktop", "--packVersion": f"{self.version}-internal.42",
-            "--packDir": str(self.bundle.resolve()), "--mainExe": "sesori_desktop.exe", "--packTitle": "Sesori",
+            "--packDir": str(feed.parent / "pack"), "--mainExe": "sesori_desktop.exe", "--packTitle": "Sesori",
             "--packAuthors": "Sesori", "--icon": str(packaging.ICON_SOURCE), "--runtime": "win-x64",
             "--channel": "internal", "--shortcuts": "StartMenu",
         })
@@ -153,6 +165,10 @@ class WindowsPackagingTests(unittest.TestCase):
                          ["releases.internal.json", f"sesori-desktop-{self.version}-internal.42-internal-full.nupkg"])
         report = json.loads((output / "packaging.json").read_text(encoding="utf-8"))
         self.assertEqual(report["velopack"]["vpkVersion"], "1.2.161")
+        # The app loads the pinned Velopack library from beside its executable; the staged bundle stays unchanged.
+        with zipfile.ZipFile(velopack / f"sesori-desktop-{self.version}-internal.42-internal-full.nupkg") as archive:
+            self.assertEqual(archive.read("lib/app/velopack_libc.dll"), pe(machine=0x8664))
+        self.assertFalse((self.bundle / "velopack_libc.dll").exists())
         self.assertEqual([row["name"] for row in report["velopack"]["releaseFiles"]],
                          sorted(path.name for path in velopack.iterdir()))
         self.assertEqual(len(report["installer"]["sha256"]), 64)

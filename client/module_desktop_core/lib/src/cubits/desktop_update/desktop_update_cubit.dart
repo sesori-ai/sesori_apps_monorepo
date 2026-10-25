@@ -4,6 +4,7 @@ import "package:bloc/bloc.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../foundation/desktop_automatic_updates.dart";
+import "../../foundation/models/desktop_install_kind.dart";
 import "../../foundation/models/desktop_update_state.dart";
 import "../../services/desktop_update_service.dart";
 
@@ -48,7 +49,10 @@ class DesktopUpdateCubit({required final DesktopUpdateService service}) extends 
     }
   }
 
-  void checkForUpdates() => _service.check();
+  /// Decides which engine the Settings rows describe; it never changes.
+  DesktopInstallKind get installKind => _service.installKind;
+
+  void checkForUpdates() => unawaited(_service.check());
 
   void _emit({required DesktopUpdateState update, required DesktopAutomaticUpdates automaticUpdates}) {
     if (!isClosed) {

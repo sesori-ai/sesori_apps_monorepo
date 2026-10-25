@@ -34,6 +34,9 @@ class DesktopUpdateService._create({
     DesktopAutomaticUpdates.enabled,
   );
   Timer? _checkTimer;
+  Future<void>? _runningCheck;
+
+  DesktopInstallKind get installKind => _updateRepository.installKind;
 
   ValueStream<DesktopUpdateState> get states => _states.stream;
 
@@ -43,8 +46,11 @@ class DesktopUpdateService._create({
 
   DesktopAutomaticUpdates get currentAutomaticUpdates => _automaticUpdates.value;
 
-  /// Only Linux packages have an engine that can check so far.
-  bool get _canCheck => _updateRepository.installKind == DesktopInstallKind.linuxPackage;
+  /// macOS has no engine that can check until Sparkle lands.
+  bool get _canCheck => switch (_updateRepository.installKind) {
+    DesktopInstallKind.linuxPackage || DesktopInstallKind.velopack => true,
+    DesktopInstallKind.macosSparkle || DesktopInstallKind.development => false,
+  };
 
   Future<void> start() async {
     try {
@@ -64,15 +70,21 @@ class DesktopUpdateService._create({
     _scheduleBackgroundChecks();
   }
 
-  /// The single check: the background trigger and "Check for updates" share it.
-  void check() {
+  /// The single check: the background trigger and "Check for updates" share
+  /// it, and a check that starts while one runs (a Velopack download can take
+  /// minutes) joins it. A failure keeps the current state and is only logged.
+  Future<void> check() {
     if (!_canCheck) {
-      return;
+      return Future<void>.value();
     }
+    return _runningCheck ??= _check().whenComplete(() => _runningCheck = null);
+  }
+
+  Future<void> _check() async {
     try {
-      _states.add(_updateRepository.readInstalledPackageState());
+      _states.add(await _updateRepository.check());
     } on Object catch (error, stackTrace) {
-      logw("Failed to read the installed desktop bundle while checking for updates", error, stackTrace);
+      logw("Failed to check for desktop updates", error, stackTrace);
     }
   }
 
@@ -83,18 +95,28 @@ class DesktopUpdateService._create({
     if (!_canCheck || !_automaticUpdates.value.isEnabled) {
       return;
     }
-    check();
-    _checkTimer = Timer.periodic(checkInterval, (_) => check());
+    unawaited(check());
+    _checkTimer = Timer.periodic(checkInterval, (_) => unawaited(check()));
   }
 
   /// Runs the install kind's restart-to-update step before the helper stops.
   Future<void> prepareRestartToUpdate() => switch (_updateRepository.installKind) {
     DesktopInstallKind.linuxPackage => _updateRepository.relaunchInstalledPackage(),
-    // Their engines arrive in later steps; until then they are never Ready.
+    // Velopack applies after the helper stops, in applyDownloadedUpdate. The
+    // macOS engine arrives in a later step; until then it is never Ready.
     DesktopInstallKind.macosSparkle ||
     DesktopInstallKind.velopack ||
     DesktopInstallKind.development => Future<void>.value(),
   };
+
+  /// Runs after the helper stopped. A Ready Velopack install starts the
+  /// updater, which installs the downloaded package silently once this process
+  /// exits and, with [restart], opens the new version.
+  Future<void> applyDownloadedUpdate({required bool restart}) async {
+    if (_updateRepository.installKind == DesktopInstallKind.velopack && _states.value is DesktopUpdateReady) {
+      await _updateRepository.applyDownloadedUpdate(restart: restart);
+    }
+  }
 
   @disposeMethod
   Future<void> dispose() async {

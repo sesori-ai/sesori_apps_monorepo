@@ -878,9 +878,10 @@ jobs:
             [StringComparer]::OrdinalIgnoreCase
           )
           # Velopack adds only its manifest to current\; its updater, launcher and package sit in the install root.
+          # Packaging adds the app's Velopack library, which the packaged-bundle check pinned to its archive digest.
           $unexpectedInstalled = Get-ChildItem $current -File -Recurse | Where-Object {
             $relative = [IO.Path]::GetRelativePath($current, $_.FullName)
-            -not $recordedPaths.Contains($relative) -and $relative -ne 'sq.version'
+            -not $recordedPaths.Contains($relative) -and $relative -notin @('sq.version', 'velopack_libc.dll')
           }
           if ($unexpectedInstalled) {
             throw "Unexpected installed payload: $($unexpectedInstalled.FullName -join ', ')"

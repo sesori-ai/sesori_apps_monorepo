@@ -9,10 +9,12 @@ import "package:theme_prego/module_prego.dart";
 import "app.dart";
 import "core/di/injection.dart";
 import "core/platform/desktop_launch_arguments.dart";
+import "core/platform/io_installed_desktop_bundle_source.dart";
 import "core/routing/desktop_router.dart";
 
 Future<void> main(List<String> arguments) async {
   logi("Desktop startup: entered Dart main");
+  _runVelopackStartupHooks();
   final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
   configureDesktopDependencies(
@@ -87,6 +89,26 @@ Future<void> main(List<String> arguments) async {
     ),
   );
   unawaited(startupOrchestrator.restoreBridgeDesiredState());
+}
+
+/// Velopack needs its app startup before anything else. The Windows runner
+/// already answered every `--veloapp-*` hook launch, so this only cleans up
+/// old packages and sets the Windows app identity. It runs synchronously on the
+/// root isolate, before DI and the first frame, and does only local file work.
+void _runVelopackStartupHooks() {
+  final InstalledDesktopBundleSource bundleSource = IoInstalledDesktopBundleSource();
+  final DesktopInstallKind installKind = DesktopInstallKind.resolve(
+    compiledIdentity: bundleSource.compiledIdentity,
+    isAppImage: bundleSource.isAppImage,
+  );
+  if (installKind != DesktopInstallKind.velopack) {
+    return;
+  }
+  try {
+    VelopackBindings.open(libraryPath: bundleSource.velopackLibraryPath).runStartupHooks();
+  } on Object catch (error, stackTrace) {
+    loge("Failed to run the Velopack startup hooks; updates will fail too", error, stackTrace);
+  }
 }
 
 Future<void> _markProductAnalyticsReady({required ProductAnalyticsService service}) async {

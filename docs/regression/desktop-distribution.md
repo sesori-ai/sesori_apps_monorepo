@@ -40,12 +40,12 @@ Staging accepts `--channel stable|internal` (default stable) and emits
 build metadata, not helper identity, persisted state or a client/bridge contract.
 Malformed present metadata does not select a guessed download destination.
 
-macOS and Windows use manual signed packages. Users Quit normally before replacing
-or installing, then reopen manually. Closing a tray-backed window is not Quit.
+macOS uses manual signed packages. Users Quit normally before replacing or installing,
+then reopen manually. Closing a tray-backed window is not Quit.
 Failed helper stop retains the existing refusal to Quit. Nothing in the download
 action stops a helper, installs, changes bridge intent or automatically relaunches.
-Linux DEB/RPM upgrades remain package-manager-owned; AppImages are replaced manually like
-macOS and Windows packages. Shared CLI data is not update cleanup.
+Linux DEB/RPM upgrades remain package-manager-owned; Windows and AppImage installs update
+through Velopack (below). Shared CLI data is not update cleanup.
 
 ## Linux package restart to update
 
@@ -55,6 +55,24 @@ After the package manager installs a new DEB/RPM bundle, the running app shows
 new process waits up to 90 s for the primary lock instead of activating the old instance.
 If the relaunch fails, the app keeps running with its helper untouched. Failure signals:
 the helper is left stopped, two primaries run, or no new instance starts.
+
+## Velopack updates (Windows and AppImage)
+
+Velopack installs check at startup and every 6 hours while Automatic updates is on, and on
+**Check for updates**. The app fetches `releases.<channel>.json` and its `.sig` from
+`https://storage.googleapis.com/sesori-ai-linux-packages/desktop-updates/k1/<channel>/<os>-<arch>/`
+and verifies the Ed25519 signature over the exact feed bytes against the compiled update key.
+Only a verified feed is staged, in `velopack-feed/` under the app's support directory, as
+Velopack's file source. Only when Velopack finds a newer full package does the app download it
+there; Velopack then copies it into its own packages directory and refuses it unless size and
+SHA-256 match the feed. The app then shows **Restart to update** in Settings and the tray.
+Quit stops the helper, then starts Velopack's updater silently without relaunch; Restart to
+update does the same and relaunches. The updater waits for the app to exit. A failed updater
+start keeps the app running on restart, restores a helper that was on, and still quits on Quit.
+An unreachable, unsigned or tampered feed, or a package with a wrong SHA-256, leaves the state
+idle and is only logged locally. Velopack never applies an update at app startup.
+Failure signals: an unsigned feed or wrong package is applied, a feed failure shows an error,
+the helper outlives the updater, or the update applies with the app still running.
 
 ## Client storage boundary
 
@@ -77,7 +95,8 @@ internal). The `vpk` 1.2.161 tool package is pinned by SHA-256 and installed onl
 verified file. vpk's `sesori-desktop-<channel>-Setup.exe` is renamed to
 `Sesori-windows-<arch>-<version>.exe`. Its full `.nupkg` and `releases.<channel>.json` are kept
 as the unpublished `desktop-velopack-windows-<arch>` artifact. The package must contain the exact
-staged bundle plus Velopack's updater, launcher stub and `sq.version`, every binary native to the
+staged bundle plus Velopack's updater, launcher stub, `sq.version` and the app's
+`velopack_libc.dll` (from the SHA-256-pinned `velopack_libc_1.2.161.zip`), every binary native to the
 target CPU (the Setup and updater included), and the Setup must embed that package.
 
 Setup installs into `%LOCALAPPDATA%\sesori-desktop`: the bundle in `current\`, beside
@@ -93,7 +112,7 @@ projects outside it remain.
 
 Isolated runner probes install silently into a temporary folder, reinstall the same version,
 verify the `current\` inventory, and compare every staged relative file path and SHA-256
-with it; only `sq.version` is allowed as an extra file. After silent uninstall no recorded
+with it; only `sq.version` and `velopack_libc.dll` are allowed as extra files. After silent uninstall no recorded
 payload, uninstall entry or login value remains, and a pre-existing login value survives
 install and reinstall. They do not start the product and prove silent fixture behavior only.
 Output remains private, unsigned CI evidence:
@@ -136,7 +155,7 @@ refuses. vpk generates the AppDir: the bundle in `usr/bin` beside `UpdateNix` an
 a shell `AppRun`, the `sesori-desktop` desktop entry (`Exec=sesori_desktop`,
 `Categories=Development;Utility;`) and the existing icon, packed as a root-owned gzip squashfs.
 The image is read back with `unsquashfs` at the runtime's ELF offset; its `usr/bin` must match
-the staged bundle exactly and its icon the application icon. Packaging never executes it. vpk's
+the staged bundle plus `lib/libvelopack_libc.so` (from the pinned library archive) exactly and its icon the application icon. Packaging never executes it. vpk's
 full `.nupkg` and `releases.<channel>.json` are kept as the unpublished
 `desktop-velopack-linux-<arch>` artifact.
 The AppImage is unchanged by signing and covered only by the signed checksums. It needs
