@@ -77,6 +77,7 @@ class const DesktopCockpitShell({
   required final ProjectOpenedCallback onOpenProject,
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenProjects,
+  required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 
   /// Closes what the page has open, such as its Prompts screen, else leaves a
@@ -206,6 +207,7 @@ class const DesktopCockpitShell({
                 onAddProject: addProject,
                 onOpenProject: onOpenProject,
                 onOpenBridgeSettings: onOpenBridgeSettings,
+                onOpenArchived: onOpenArchived,
                 onOpenSettings: onOpenSettings,
               ),
             ),

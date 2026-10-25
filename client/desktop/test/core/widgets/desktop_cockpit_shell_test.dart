@@ -118,6 +118,7 @@ void main() {
                 onOpenProject: _openProject,
                 onOpenBridgeSettings: _noOp,
                 onOpenProjects: _noOp,
+                onOpenArchived: _noOp,
                 onOpenSettings: _noOp,
                 onGoBack: _noOp,
                 child: GestureDetector(
@@ -156,6 +157,7 @@ void main() {
           onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
+          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: TextField(focusNode: focus),
@@ -253,6 +255,7 @@ void main() {
             onOpenProject: _openProject,
             onOpenBridgeSettings: () => opens++,
             onOpenProjects: () => opens++,
+            onOpenArchived: _noOp,
             onOpenSettings: () => opens++,
             onGoBack: _noOp,
             child: const SizedBox.shrink(),
@@ -274,6 +277,35 @@ void main() {
     } finally {
       semantics.dispose();
     }
+  });
+
+  testWidgets("the footer's Archived opens the archived page", (tester) async {
+    var opens = 0;
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: null,
+          selectedSessionId: null,
+          onOpenSession: _openSession,
+          onNewSession: _openProject,
+          sessionActions: _sessionActions,
+          onOpenProject: _openProject,
+          onOpenBridgeSettings: _noOp,
+          onOpenProjects: _noOp,
+          onOpenArchived: () => opens++,
+          onOpenSettings: _noOp,
+          onGoBack: _noOp,
+          child: const SizedBox.shrink(),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+    final archived = find.byKey(const Key("desktop-sidebar-archived"));
+    expect(find.descendant(of: find.byKey(const Key("desktop-sidebar-footer")), matching: archived), findsOneWidget);
+    expect(find.byTooltip("Archived sessions"), findsOneWidget);
+    await tester.tap(archived);
+    expect(opens, 1);
   });
 
   testWidgets("Bridge opens in expanded and compact mode without replacing the main pane", (tester) async {
@@ -565,6 +597,7 @@ void main() {
           onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
+          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
@@ -629,6 +662,7 @@ void main() {
         onOpenProject: _openProject,
         onOpenBridgeSettings: _noOp,
         onOpenProjects: _noOp,
+        onOpenArchived: _noOp,
         onOpenSettings: _noOp,
         onGoBack: _noOp,
         child: const SizedBox.shrink(),
@@ -731,6 +765,7 @@ void main() {
         onOpenProject: _openProject,
         onOpenBridgeSettings: _noOp,
         onOpenProjects: _noOp,
+        onOpenArchived: _noOp,
         onOpenSettings: _noOp,
         onGoBack: _noOp,
         child: const SizedBox.shrink(),
@@ -876,6 +911,7 @@ void main() {
           onOpenProject: ({required context, required project, required displayName}) => openedProject = project.id,
           onOpenBridgeSettings: () => bridgeOpens++,
           onOpenProjects: () => projectOpens++,
+          onOpenArchived: _noOp,
           onOpenSettings: () => settingsOpens++,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
@@ -925,6 +961,7 @@ void main() {
           onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
+          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
@@ -1075,6 +1112,7 @@ void main() {
           onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
+          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: SizedBox.shrink(),
@@ -1212,6 +1250,7 @@ void main() {
           onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
+          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
@@ -1277,6 +1316,7 @@ void main() {
         onOpenProject: _openProject,
         onOpenBridgeSettings: _noOp,
         onOpenProjects: _noOp,
+        onOpenArchived: _noOp,
         onOpenSettings: _noOp,
         onGoBack: _noOp,
         child: const SizedBox.shrink(),
@@ -1690,6 +1730,7 @@ void main() {
               onOpenProject: _openProject,
               onOpenBridgeSettings: _noOp,
               onOpenProjects: () => opens++,
+              onOpenArchived: _noOp,
               onOpenSettings: _noOp,
               onGoBack: _noOp,
               child: const SizedBox.shrink(),
@@ -1782,6 +1823,7 @@ void main() {
           onOpenProject: _openProject,
           onOpenBridgeSettings: _noOp,
           onOpenProjects: _noOp,
+          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: const TextField(autofocus: true),
@@ -2164,6 +2206,7 @@ void main() {
             onOpenProject: ({required context, required project, required displayName}) => opened.add(project.id),
             onOpenBridgeSettings: _noOp,
             onOpenProjects: _noOp,
+            onOpenArchived: _noOp,
             onOpenSettings: _noOp,
             onGoBack: () => backs++,
             child: const SizedBox.expand(),

@@ -22,7 +22,8 @@
 | 7.b.ii/13 | All-projects home and route tree | Done | #2043 |
 | 8/13 | Projects screen removed | Done | `sesori/app-simplification-step-8` |
 | 9/13 | Wide phone and tablet sidebar | Not started | — |
-| 10.a/13 | Desktop sidebar on the shared list | Not started | — |
+| 10.a.i/13 | Desktop Archived page and footer entry | Done | `sesori/app-simplification-step-10a-i` |
+| 10.a.ii/13 | Desktop sidebar on the shared list | Not started | — |
 | 10.b/13 | Desktop Activity and rail removed | Not started | — |
 | 11/13 | Desktop composer home; project page removed | Not started | — |
 | 12/13 | Regression documents reconciled | Not started | — |
@@ -48,6 +49,10 @@
   “No archived sessions” while the project list was loading, had failed or the computer was disconnected. The
   `PLAN.md` *Cleanup* list was corrected: 7.b.ii removes the router's `_SessionListPane`, and `activity_tile.dart`
   stays for the desktop home until step 11.
+- 2026-10-24: step 10.a split in two. Swapping the sidebar body orphans about 1,100 lines of private sidebar
+  widgets and their tests, which the analyzer makes it delete at once, so 10.a.i lands the desktop Archived page and
+  its footer entry alone, and 10.a.ii swaps the body, collapse, claim and palette. The Archived page shows nothing
+  extra while the computer is disconnected: the connection pill and the footer recovery card already say so.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record
