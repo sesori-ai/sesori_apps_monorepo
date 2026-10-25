@@ -83,15 +83,15 @@ The main pane hosts one full-width routed page.
   shows the shortcut. Windows and Linux retain native window chrome.
 - Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command palette: a
   search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
-  while the window is wide enough to expand it; Settings; Go back; each with its shortcut), the Sessions the sidebar's
-  list shows (under its filter, search and chip) newest first with their project, and every Project. Typing narrows all three by title words (an untitled
-  session by "Untitled session"), bolding the matched letters; signing out closes the palette with the cockpit; nothing
-  matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette and runs
-  the pick, and Esc closes it. A session pick opens it; a project pick filters the sidebar's list to that project and
-  brings a collapsed sidebar back to show it. The highlighted row is plainly visible in both themes: a clear grey in
-  light, the sidebar's selected tint in dark. Hovering a row moves the same highlight. The palette shows the lists as
-  they stood when it opened. One command list in the shell drives both the palette and the shortcuts; page-only commands
-  such as Mark as unread stay on their page.
+  while the window is wide enough to expand it; Settings; Go back; each with its shortcut), every project's Sessions
+  newest first with their project and without archived ones, whatever the sidebar list's filter, search and chip, and
+  every Project. Typing narrows all three by title words (an untitled session by "Untitled session"), bolding the
+  matched letters; signing out closes the palette with the cockpit; nothing matching reads "No matches". Up/Down move
+  the highlight past headings, Enter or a click closes the palette and runs the pick, and Esc closes it. A session pick
+  opens it; a project pick filters the sidebar's list to that project and brings a collapsed sidebar back to show it.
+  The highlighted row is plainly visible in both themes: a clear grey in light, the sidebar's selected tint in dark.
+  Hovering a row moves the same highlight. The palette shows the lists as they stood when it opened. One command list
+  in the shell drives both the palette and the shortcuts; page-only commands such as Mark as unread stay on their page.
 - Right-click session menus on the sidebar's rows reuse the shared session action flows, and session title
   tooltips, selection, running/awaiting/unread signals and screen-reader actions remain usable at the
   sidebar's minimum width.
@@ -328,10 +328,10 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   the title only while the session runs, session actions disabled until the session is hydrated,
   Mark unread sending unread and leaving the page from the menu (which shows its shortcut) and from
   Shift+Cmd/Ctrl+U, and a menu without Mark as read.
-- The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, filtering
-  with No matches, Enter opening a session or filtering the sidebar to a project and bringing it back,
-  Down skipping a heading, Esc, and a command run from
-  the palette and by its shortcut (`desktop_cockpit_shell_test`).
+- The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, every
+  project's sessions whatever the sidebar's filter, search and chip, filtering with No matches, Enter
+  opening a session or filtering the sidebar to a project and bringing it back, Down skipping a heading,
+  Esc, and a command run from the palette and by its shortcut (`desktop_cockpit_shell_test`).
 - Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; New session reached directly, Mark unread,
   and deleting or archiving the open session all returning to the home (`desktop_router_test`).
 - The new session page: toolbar above a centred, width-capped column with room left below it, no project crumb,

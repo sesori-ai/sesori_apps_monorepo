@@ -34,10 +34,11 @@ String desktopShortcutLabel({required SingleActivator shortcut}) {
 
 typedef _PaletteSession = ({ProjectSummary project, String projectName, Session session});
 
-/// Opens the palette over [commands], the cockpit's projects and the sessions
-/// the sidebar's list shows, newest first, as they stand now: rows that moved
-/// under the highlight would make Enter pick something else. A pick closes the
-/// palette, then acts; a project pick filters the sidebar's list to it.
+/// Opens the palette over [commands], the cockpit's projects and every
+/// project's sessions, newest first, whatever the sidebar list's filter,
+/// search and chip, as they stand now: rows that moved under the highlight
+/// would make Enter pick something else. A pick closes the palette, then acts;
+/// a project pick filters the sidebar's list to it.
 Future<void> showDesktopCommandPalette({
   required BuildContext context,
   required List<DesktopCommand> commands,
@@ -47,7 +48,7 @@ Future<void> showDesktopCommandPalette({
   final projectState = context.read<ProjectListCubit>().state;
   final projects = projectState is ProjectListLoaded ? projectState.projects : const <ProjectSummary>[];
   final sessions = <_PaletteSession>[
-    for (final AllSessionsRow(:project, :session) in context.read<AllSessionsCubit>().state.rows)
+    for (final AllSessionsRow(:project, :session) in context.read<AllSessionsCubit>().state.everyProjectRows)
       (project: project, projectName: desktopProjectDisplayName(context: context, project: project), session: session),
   ];
   final authGate = context.read<AuthGateCubit>();
@@ -186,7 +187,6 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                 rows: rows,
                 emptyText: loc.listSearchNoMatches,
                 onClose: widget.onClose,
-                focusesUnderTouch: false,
               ),
             ),
           ),

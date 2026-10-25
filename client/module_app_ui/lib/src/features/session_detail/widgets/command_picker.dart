@@ -97,7 +97,6 @@ class _CommandPickerState() extends State<CommandPicker> {
       rows: _rows,
       emptyText: loc.sessionDetailNoCommands,
       onClose: widget.onClose,
-      focusesUnderTouch: false,
     );
   }
 }

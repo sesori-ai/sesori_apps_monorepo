@@ -175,18 +175,6 @@ abstract class AppLocalizations {
   /// **'Access could not be confirmed'**
   String get desktopFileAccessUnknown;
 
-  /// Desktop home section heading for sessions waiting on the user's answer.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs you'**
-  String get desktopHomeNeedsYou;
-
-  /// Desktop home section heading for the latest sessions across projects that are neither running nor waiting.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent'**
-  String get desktopHomeRecent;
-
   /// Desktop control tooltip with its available platform-specific keyboard shortcut.
   ///
   /// In en, this message translates to:
@@ -4438,20 +4426,26 @@ abstract class AppLocalizations {
   /// No description provided for @prStateOpen.
   ///
   /// In en, this message translates to:
-  /// **'Open'**
+  /// **'Pull request open'**
   String get prStateOpen;
 
   /// No description provided for @prStateMerged.
   ///
   /// In en, this message translates to:
-  /// **'Merged'**
+  /// **'Pull request merged'**
   String get prStateMerged;
 
   /// No description provided for @prStateClosed.
   ///
   /// In en, this message translates to:
-  /// **'Closed'**
+  /// **'Pull request closed'**
   String get prStateClosed;
+
+  /// No description provided for @prStateUnknown.
+  ///
+  /// In en, this message translates to:
+  /// **'Pull request'**
+  String get prStateUnknown;
 
   /// No description provided for @prReviewApproved.
   ///
@@ -4488,12 +4482,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Checks pending'**
   String get prChecksPending;
-
-  /// No description provided for @prMergeable.
-  ///
-  /// In en, this message translates to:
-  /// **'Ready to merge'**
-  String get prMergeable;
 
   /// No description provided for @prConflicting.
   ///

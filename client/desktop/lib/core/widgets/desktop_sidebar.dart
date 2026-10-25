@@ -39,9 +39,6 @@ class const DesktopSidebar({
   required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 }) extends StatelessWidget {
-  /// The gap the shell keeps around this floating panel.
-  static const double panelMargin = PregoSpacing.md;
-
   @override
   Widget build(BuildContext context) {
     final state = context.watch<ProjectListCubit>().state;
@@ -58,8 +55,9 @@ class const DesktopSidebar({
     final prego = context.prego;
     final bridge = context.watch<BridgeControlCubit>().state;
     final bridgeColor = desktopBridgeStatusColor(colors: prego.colors, state: bridge);
+    // The shell's floating panel paints the surface.
     return Material(
-      color: prego.colors.bgSecondary,
+      type: MaterialType.transparency,
       child: SafeArea(
         right: false,
         child: Column(

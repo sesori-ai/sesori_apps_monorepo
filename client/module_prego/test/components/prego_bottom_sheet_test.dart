@@ -211,6 +211,42 @@ void main() {
       );
     });
 
+    testWidgets("a seventy-percent sheet keeps its header still as the keyboard rises", (tester) async {
+      final devicePixelRatio = tester.view.devicePixelRatio;
+      tester.view.viewPadding = FakeViewPadding(bottom: 34 * devicePixelRatio);
+      tester.view.padding = FakeViewPadding(bottom: 34 * devicePixelRatio);
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          home: Scaffold(
+            body: Builder(
+              builder: (context) => TextButton(
+                onPressed: () => showPregoBottomSheet<void>(
+                  context: context,
+                  title: "Sized",
+                  bodySize: PregoBottomSheetBodySize.seventyPercent,
+                  builder: (_) => const ColoredBox(key: Key("body"), color: Colors.red),
+                ),
+                child: const Text("Open"),
+              ),
+            ),
+          ),
+        ),
+      );
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+      final restingTop = tester.getTopLeft(find.text("Sized")).dy;
+
+      // As the engine reports it: the keyboard covers the home indicator's inset.
+      tester.view.viewInsets = FakeViewPadding(bottom: 200 * devicePixelRatio);
+      tester.view.padding = FakeViewPadding.zero;
+      await tester.pumpAndSettle();
+
+      expect(tester.getTopLeft(find.text("Sized")).dy, closeTo(restingTop, 0.5));
+      expect(tester.getSize(find.byKey(const Key("body"))).height, closeTo(420 - (200 - 34), 0.5));
+    });
+
     testWidgets("bounded body never exceeds space left above the keyboard", (tester) async {
       final devicePixelRatio = tester.view.devicePixelRatio;
       tester.view.viewInsets = FakeViewPadding(bottom: 500 * devicePixelRatio);
