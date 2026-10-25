@@ -119,11 +119,18 @@ depend on `libegl1, libgles2`, and RPMs require `libEGL.so.1()(64bit)` and
 and Fedora 44 with `Couldn't open libEGL.so.1` / `libGLESv2.so.2`.
 
 The same job also builds a portable `Sesori-linux-<arch>-<version>-<build>.AppImage` from the
-unchanged bundle: an AppDir whose `AppRun` symlinks the GUI binary, plus a desktop entry and
-icon, packed as a root-owned zstd squashfs behind the static AppImage type2 runtime `20251108`.
-Each CPU's runtime is pinned by SHA-256; a mismatched download refuses. The image is read back
-with `unsquashfs -offset` and must match the assembled AppDir exactly; packaging never executes
-it. The AppImage is unchanged by signing and covered only by the signed checksums. It needs
+unchanged bundle with Velopack's `vpk pack` (`--packId sesori-desktop`, the compiled channel,
+pack version `<version>` for stable and `<version>-internal.<build>` for internal). The
+`vpk` 1.2.161 tool package is pinned by SHA-256 and installed only from that verified file; it
+carries the static type2 AppImage runtime and Velopack's `UpdateNix`. A mismatched download
+refuses. vpk generates the AppDir: the bundle in `usr/bin` beside `UpdateNix` and `sq.version`,
+a shell `AppRun`, the `sesori-desktop` desktop entry (`Exec=sesori_desktop`,
+`Categories=Development;Utility;`) and the existing icon, packed as a root-owned gzip squashfs.
+The image is read back with `unsquashfs` at the runtime's ELF offset; its `usr/bin` must match
+the staged bundle exactly and its icon the application icon. Packaging never executes it. vpk's
+full `.nupkg` and `releases.<channel>.json` are kept as the unpublished
+`desktop-velopack-linux-<arch>` artifact.
+The AppImage is unchanged by signing and covered only by the signed checksums. It needs
 host GTK 3, libsecret, EGL/GLES and glibc 2.39 or newer (the Ubuntu 24.04 build host), plus FUSE.
 It installs no menu entry, and launch at login autostarts the
 image file named by `APPIMAGE`, not its transient mount. Repositories serve only the DEB/RPM rows.

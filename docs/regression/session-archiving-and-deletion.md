@@ -28,7 +28,7 @@ entirely along with its transcript and its dedicated worktree.
   at once, the desktop sidebar included, and an Archived alert offers Undo for five seconds. Nothing reaches
   the bridge until that window closes, so Undo simply brings the session back. Archiving another session, or
   the window ending, sends the archive; quitting inside the window sends nothing. The window belongs to the
-  app shell, not to a page, so leaving the project or the session list neither cancels nor loses the
+  app shell, not to a page, so leaving the page it started on neither cancels nor loses the
   archive. Only a running session is confirmed first. The phone's swipe pill, full swipe and row menu all
   archive this way.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
@@ -105,9 +105,10 @@ entirely along with its transcript and its dedicated worktree.
 - Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
-  narrows the list to one project. The home's Archived button, full screen or in
-  the split's list pane, opens the modal under the home's filter through the
-  same filter the all-projects lists share; it adds no second filter. The live
+  narrows the list to one project. The home's Archived button, in its bar or in
+  the sidebar footer from 700 pt, opens the modal under the home's filter
+  through the same filter the all-projects lists share; it adds no second
+  filter. The live
   list remains active-only. The modal has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
@@ -154,10 +155,10 @@ entirely along with its transcript and its dedicated worktree.
   loss only when a dedicated worktree exists, and keeps its confirm action
   visually destructive. Cancelling deletes nothing.
 - After successful deletion, mobile and desktop leave the deleted session's
-  current detail or diffs route for its project list, preserving the project
-  name. Deleting another session, or completing deletion after navigation to
-  another session, does not change the current route. The callback also works
-  from list contexts without a route-local `GoRouterState`.
+  current detail or diffs route for the home. Deleting another session, or
+  completing deletion after navigation to another session, does not change the
+  current route. The callback also works from list contexts without a
+  route-local `GoRouterState`.
 
 ## Regression Levels
 

@@ -1,6 +1,6 @@
 ---
 name: release-notes
-description: Generate a polished, user-facing release-notes markdown file for a requested release (e.g. "do this for v1.1.0"). By default it starts from the existing auto-generated GitHub release notes and post-processes them (re-orders by importance, merges multi-PR efforts, highlights the big items, drops noise) while preserving the "All PRs merged" and "New Contributors" sections verbatim. Alternatively, when the user explicitly says NOT to use the existing notes, it analyzes all commits/PRs merged since the previous release tag and builds the notes from scratch. Writes a RELEASE_NOTES_<version>.md file only — never edits the live GitHub release.
+description: Generate polished, user-facing release notes in Markdown for a requested release (e.g. "do this for v1.1.0"). By default it starts from the existing auto-generated GitHub release notes and post-processes them (re-orders by importance, merges multi-PR efforts, highlights the big items, drops noise) while preserving the "All PRs merged" and "New Contributors" sections verbatim. Alternatively, when the user explicitly says NOT to use the existing notes, it analyzes all commits/PRs merged since the previous release tag and builds the notes from scratch. Returns the notes as a Markdown code block in the session — never writes a file and never edits the live GitHub release.
 compatibility: opencode
 metadata:
   audience: maintainers
@@ -9,9 +9,9 @@ metadata:
 
 # Release Notes Skill
 
-Generates a curated, user-facing release-notes markdown file for a given release version. The output mirrors the hand-edited style the maintainer prefers: a top **Highlights** block, then per-target **App** / **Bridge** sections (subdivided into New / Improved / Fixed / Other), then the original **All PRs merged** list kept verbatim, then the **New Contributors** section (also verbatim) when the source has one.
+Generates curated, user-facing release notes in Markdown for a given release version. The output mirrors the hand-edited style the maintainer prefers: a top **Highlights** block, then per-target **App** / **Bridge** sections (subdivided into New / Improved / Fixed / Other), then the original **All PRs merged** list kept verbatim, then the **New Contributors** section (also verbatim) when the source has one.
 
-This skill **only writes a file** (`RELEASE_NOTES_<version>.md` in the repo root). The maintainer manually pastes the result into the GitHub release once happy. **Never edit, publish, or otherwise mutate the live GitHub release.**
+This skill **only returns the notes in the session**, as one fenced `markdown` code block in its final reply. Do not write a release-notes file to the repository or anywhere else. The maintainer copies the block and manually pastes the result into the GitHub release once happy. **Never edit, publish, or otherwise mutate the live GitHub release.**
 
 ## Inputs
 
@@ -58,9 +58,9 @@ From the fetched body, extract:
 
 Apply all rules in the **Post-Processing Rules** section below to the App and Bridge entries.
 
-### Step A4: Write the file
+### Step A4: Return the notes
 
-Write `RELEASE_NOTES_<version>.md` using the **Output Format** below. The **All PRs merged** and **New Contributors** sections are copied verbatim from the source.
+Return the notes using the **Output Format** below. The **All PRs merged** and **New Contributors** sections are copied verbatim from the source.
 
 ---
 
@@ -96,13 +96,13 @@ GITHUB_TOKEN="$(gh auth token)" dart tool/generate_release_notes.dart \
 
 This produces the same structure Mode A consumes: `### App`, `### Bridge`, `### All PRs merged`, an optional `## New Contributors` section (plus a `**Full Changelog**` link).
 
-### Step B2: Parse, post-process, and write the file
+### Step B2: Parse, post-process, and return the notes
 
 From here the flow is identical to Mode A:
 
 1. Parse the generated `### App`, `### Bridge`, `### All PRs merged`, and `## New Contributors` sections (same as Step A2).
 2. Apply the **Post-Processing Rules** to the App/Bridge entries (same as Step A3).
-3. Write `RELEASE_NOTES_<version>.md` using the **Output Format**, copying the **All PRs merged** and **New Contributors** sections verbatim from the generated output.
+3. Return the notes using the **Output Format**, copying the **All PRs merged** and **New Contributors** sections verbatim from the generated output.
 
 This guarantees Mode B's range, exclusions, and classification exactly match what GitHub would have shown — the only difference from Mode A is that the raw notes come from the generator instead of an already-published release.
 
@@ -138,7 +138,7 @@ Apply these to produce the App and Bridge narrative sections. The **All PRs merg
 
 ## Output Format
 
-Write to `RELEASE_NOTES_<version>.md` in the repo root:
+Return the notes as a single fenced `markdown` code block in the session, so the raw Markdown can be copied as-is:
 
 ```markdown
 # <version> (build <N if known>)
@@ -201,11 +201,11 @@ Omit any subsection (New/Improved/Fixed/Other) that has no entries. If a target 
 2. **Mode A:** `gh release view <version>` → parse App/Bridge/All-PRs/New-Contributors. **Mode B:** run `dart tool/generate_release_notes.dart` (with `GITHUB_TOKEN`) to produce the same raw sections, then parse them the same way as Mode A. Do not re-derive the range, exclusions, or classification by hand.
 3. Apply the **Post-Processing Rules** (merge clusters into final outcomes, drop noise, collapse fixes to unreleased code, omit disabled work, reframe perf/UX, order by impact, build Highlights).
 4. For unclear-benefit or unclear-shipping PRs, inspect the diff (`gh pr diff <n>`) before asking the user. Do not ask about clearly same-release repairs or availability decisions the user already supplied; apply the defaults above.
-5. Write `RELEASE_NOTES_<version>.md`. Report the path and a short summary of editorial decisions made (what was merged, dropped, flagged).
+5. Return the notes as one `markdown` code block, followed by a short summary of editorial decisions made (what was merged, dropped, flagged).
 
 ## Important Notes
 
-- This skill writes a **file only** — it never edits or publishes the GitHub release.
+- This skill returns the notes **in the session only** — it never writes a release-notes file and never edits or publishes the GitHub release.
 - Default behavior is **always Mode A** (start from existing GitHub release notes). Only switch to Mode B on an explicit instruction to ignore the existing notes.
 - The **All PRs merged** and **New Contributors** sections are never trimmed or curated.
 - Confirm the resolved previous tag in Mode B. Surface an omission candidate only when shipping history remains ambiguous after inspection; collapse clear same-release repair clusters automatically.

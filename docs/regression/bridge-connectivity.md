@@ -298,9 +298,6 @@ an id, and whether restart is explicit.
 - The real supervised helper E2E suite uses fake loopback auth/relay/control services;
   it validates outbound relay authentication and local control sequencing, but does
   not claim production-service or server-side JWT coverage.
-- The desktop route source identifies project and session-list routes, but no
-  desktop session-detail route exists yet. Session-attributed toast events are
-  therefore withheld, and the desktop notification-open stack remains unbound.
 - Relay capacity and provider outages are out of scope.
 
 ## Sources

@@ -953,6 +953,8 @@ jobs:
     env:
       CI: 'true'
       FLUTTER_SUPPRESS_ANALYTICS: 'true'
+      DOTNET_CLI_TELEMETRY_OPTOUT: '1'
+      DOTNET_NOLOGO: '1'
       PUB_CACHE: ${{ github.workspace }}/../desktop-qualification-pub-cache
       # Base filesystem indexes are pinned for both native CPUs. apt/dnf repositories remain rolling.
       UBUNTU_IMAGE: docker.io/library/ubuntu@sha256:69cecf4bbf72d2d44a9eef1b71fb98c7fb973d78af11399deccef19beb008ad9
@@ -987,6 +989,10 @@ jobs:
         with:
           python-version: '3.13'
           architecture: ${{ matrix.arch }}
+      # Runs Velopack's vpk, which the AppImage packager installs from its pinned, checksum-verified package.
+      - uses: actions/setup-dotnet@v5
+        with:
+          dotnet-version: '10.0.x'
       - name: Refuse emulated host and install native build dependencies
         run: |
           set -euo pipefail
@@ -1027,7 +1033,7 @@ jobs:
             --package-config client/.dart_tool/package_config.json \
             --output build/desktop-linux-packaging/deb \
             2>&1 | tee build/desktop-linux-packaging/deb-packaging.log
-      - name: Build portable AppImage with the pinned static runtime
+      - name: Build portable AppImage and its Velopack release with pinned vpk
         run: |
           set -euo pipefail
           python .github/scripts/package_desktop_linux.py package \
@@ -1122,6 +1128,15 @@ jobs:
             build/desktop-linux-packaging/signed/*.asc
             build/desktop-linux-packaging/signed/desktop-linux-checksums.txt
           if-no-files-found: error
+          retention-days: 14
+      - name: Upload the unpublished Velopack release package and feed
+        uses: actions/upload-artifact@v4
+        with:
+          # Outside the desktop-linux-* pattern, so release and session consumers never download it.
+          name: desktop-velopack-linux-${{ matrix.arch }}
+          path: build/desktop-linux-packaging/appimage/velopack/
+          # Product sources from before Velopack packaging produce none.
+          if-no-files-found: warn
           retention-days: 14
       - name: Upload qualification evidence, including partial failures
         if: always()
