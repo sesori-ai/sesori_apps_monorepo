@@ -17,21 +17,87 @@ import "../../helpers/test_helpers.dart";
 void main() {
   setUpAll(registerAllFallbackValues);
 
+  const projects = [
+    ProjectSummary(
+      id: "p1",
+      name: "Project One",
+      path: "/projects/p1",
+      time: ProjectTime(created: 1700000000000, updated: 1700000000000),
+    ),
+    ProjectSummary(
+      id: "p2",
+      name: "Project Two",
+      path: "/projects/p2",
+      time: ProjectTime(created: 1700000000000, updated: 1700000000000),
+    ),
+  ];
+  final now = DateTime.now();
+  final live = adaptiveTestSession(projectId: "p1", id: "live", title: "Live record");
+  final audit = adaptiveTestSession(projectId: "p1", id: "audit", title: "Archived record").copyWith(
+    time: SessionTime(created: 1, updated: 2, archived: now.millisecondsSinceEpoch),
+  );
+  final other = adaptiveTestSession(projectId: "p2", id: "other", title: "Other archive").copyWith(
+    time: SessionTime(
+      created: 1,
+      updated: 2,
+      archived: now.subtract(const Duration(minutes: 1)).millisecondsSinceEpoch,
+    ),
+  );
+
+  /// The router over both projects, read through the real scoped inventories.
+  Future<AdaptiveSessionRouterTestHarness> setUpArchive({
+    required WidgetTester tester,
+    required Size size,
+    required String initialLocation,
+    required AppRouteDef currentRouteDef,
+    required Map<String, List<Session>> sessionsByProject,
+  }) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(size);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: initialLocation,
+      currentRouteDef: currentRouteDef,
+      sessionsByProject: sessionsByProject,
+    );
+    when(() => harness.projectRepository.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(const Projects(data: projects)),
+    );
+    final getIt = GetIt.instance;
+    await getIt.unregister<RecentSessionInventoryService>();
+    getIt.registerFactory<RecentSessionInventoryService>(
+      () => RecentSessionInventoryService(
+        sessionListService: getIt<SessionListService>(),
+        projectListService: getIt<ProjectListService>(),
+        connectionService: getIt<ConnectionService>(),
+        sseEventTracker: getIt<SseEventTracker>(),
+        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+        catalogRescanService: getIt<CatalogRescanService>(),
+      ),
+    );
+    return harness;
+  }
+
+  Finder tile({required String title}) => find.widgetWithText(SessionTile, title);
+  Finder labelOf({required String title, required String project}) => find.descendant(
+    of: tile(title: title),
+    matching: find.text(project),
+  );
+
   for (final size in [const Size(440, 956), const Size(956, 440)]) {
-    testWidgets("archive modal retains opener and list through Back and X at $size", (tester) async {
-      final harness = AdaptiveSessionRouterTestHarness();
-      await tester.binding.setSurfaceSize(size);
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-      addTearDown(harness.tearDown);
+    testWidgets("a project's Archived opens filtered to it and keeps its opener through Back and X at $size", (
+      tester,
+    ) async {
       const opener = "/projects/p1/sessions?name=Project+One";
-      final archived = adaptiveTestSession(projectId: "p1", id: "audit", title: "Archived record").copyWith(
-        time: SessionTime(created: 1, updated: 2, archived: DateTime.now().millisecondsSinceEpoch),
-      );
-      await harness.setUp(
+      final harness = await setUpArchive(
+        tester: tester,
+        size: size,
         initialLocation: opener,
         currentRouteDef: AppRouteDef.sessions,
         sessionsByProject: {
-          "p1": [adaptiveTestSession(projectId: "p1", id: "live", title: "Live record"), archived],
+          "p1": [live, audit],
+          "p2": [other],
         },
       );
       await tester.pumpWidget(harness.buildApp());
@@ -43,15 +109,21 @@ void main() {
           : find.bySemanticsLabel("Show archived");
       await tester.tap(entry);
       await tester.pumpAndSettle();
+      expect(harness.router.state.uri.toString(), "/archived-sessions?project=p1");
+      expect(GetIt.instance<SessionListFilterTracker>().projectId.value, "p1");
       expect(find.text("Archived sessions"), findsOneWidget);
       expect(find.text("Live record"), findsNothing);
-      expect(find.text("Archived record"), findsOneWidget);
+      expect(find.text("Other archive"), findsNothing);
+      expect(tile(title: "Archived record"), findsOneWidget);
+      // Filtered to one project, its rows don't repeat it (D3).
+      expect(labelOf(title: "Archived record", project: "Project One"), findsNothing);
       expect(find.text("Today"), findsOneWidget);
       expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
       expect(find.byIcon(TablerRegular.plus), findsNothing);
       final listElement = tester.element(find.byType(ArchivedSessionsView));
       await tester.tap(find.text("Archived record"));
       await tester.pumpAndSettle();
+      expect(harness.router.state.uri.path, "/archived-sessions/p1/audit");
       expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
       expect(find.byIcon(TablerRegular.git_compare), findsNothing);
       // The audit page carries Back only; closing the flow belongs to the list.
@@ -69,22 +141,115 @@ void main() {
     });
   }
 
+  testWidgets("unfiltered, Archived lists every project's archives newest first, each naming its project", (
+    tester,
+  ) async {
+    final harness = await setUpArchive(
+      tester: tester,
+      size: const Size(440, 956),
+      initialLocation: const AppRoute.archivedSessions(projectId: null).buildPath(),
+      currentRouteDef: AppRouteDef.archivedSessions,
+      sessionsByProject: {
+        "p1": [live, audit],
+        "p2": [other],
+      },
+    );
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+    expect(find.text("Live record"), findsNothing);
+    expect(labelOf(title: "Archived record", project: "Project One"), findsOneWidget);
+    expect(labelOf(title: "Other archive", project: "Project Two"), findsOneWidget);
+    expect(
+      tester.getTopLeft(tile(title: "Archived record")).dy,
+      lessThan(tester.getTopLeft(tile(title: "Other archive")).dy),
+    );
+    // Archived mode never claims a viewed project.
+    verifyNever(() => harness.projectViewingService.beginListClaim(projectId: any(named: "projectId")));
+
+    // A row opens its own project's audit record.
+    await tester.tap(find.text("Other archive"));
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, "/archived-sessions/p2/other");
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
+    await tester.pumpAndSettle();
+    await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.toString(), "/projects");
+  });
+
+  testWidgets("an archived row is marked unread and deleted from the list", (tester) async {
+    final harness = await setUpArchive(
+      tester: tester,
+      size: const Size(440, 956),
+      initialLocation: const AppRoute.archivedSessions(projectId: null).buildPath(),
+      currentRouteDef: AppRouteDef.archivedSessions,
+      sessionsByProject: {
+        "p1": [audit],
+        "p2": [other],
+      },
+    );
+    final events = StreamController<SseEvent>.broadcast();
+    addTearDown(events.close);
+    when(() => harness.connectionService.events).thenAnswer((_) => events.stream);
+    when(
+      () => harness.sessionRepository.markSessionSeen(
+        sessionId: any(named: "sessionId"),
+        read: any(named: "read"),
+      ),
+    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+    when(
+      () => harness.sessionRepository.deleteSession(
+        sessionId: any(named: "sessionId"),
+        deleteWorktree: any(named: "deleteWorktree"),
+        force: any(named: "force"),
+      ),
+    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.longPress(tile(title: "Other archive"));
+    await tester.pumpAndSettle();
+    // Archiving is permanent, so an archived row offers neither Rename nor Archive.
+    expect(find.text("Rename").hitTestable(), findsNothing);
+    expect(find.text("Archive").hitTestable(), findsNothing);
+    await tester.tap(find.text("Mark as unread").hitTestable());
+    await tester.pumpAndSettle();
+    verify(() => harness.sessionRepository.markSessionSeen(sessionId: "other", read: false)).called(1);
+
+    await tester.longPress(tile(title: "Other archive"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Delete").hitTestable());
+    await tester.pumpAndSettle();
+    await tester.tap(find.widgetWithText(FilledButton, "Delete"));
+    await tester.pumpAndSettle();
+    verify(
+      () => harness.sessionRepository.deleteSession(
+        sessionId: "other",
+        deleteWorktree: any(named: "deleteWorktree"),
+        force: any(named: "force"),
+      ),
+    ).called(1);
+
+    // The row leaves with the bridge's deletion event, as in every list.
+    events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: other)));
+    await tester.pumpAndSettle();
+    expect(find.text("Other archive"), findsNothing);
+    expect(tile(title: "Archived record"), findsOneWidget);
+
+    // Let the deletion alert expire so no timers outlive the test.
+    await tester.pump(const Duration(seconds: 5));
+    await tester.pumpAndSettle();
+  });
+
   testWidgets("leaving the archive retains the live detail cubit and its unsent draft", (tester) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(956, 440));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
     const opener = "/projects/p1/sessions/live?name=Project+One";
-    final archived = adaptiveTestSession(
-      projectId: "p1",
-      id: "audit",
-      title: "Archived record",
-    ).copyWith(time: const SessionTime(created: 1, updated: 2, archived: 3));
-    await harness.setUp(
+    final harness = await setUpArchive(
+      tester: tester,
+      size: const Size(956, 440),
       initialLocation: opener,
       currentRouteDef: AppRouteDef.sessionDetail,
       sessionsByProject: {
-        "p1": [archived],
+        "p1": [live, audit],
       },
     );
     await tester.pumpWidget(harness.buildApp());
@@ -118,14 +283,14 @@ void main() {
     verify(() => harness.projectViewingService.beginDetailClaim(projectId: "p1")).called(1);
   });
 
-  testWidgets("active-only project has an empty archive; direct detail has only Back", (tester) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: "/projects/p1/archived-sessions/audit",
+  testWidgets("with nothing archived the archive is empty; direct detail has only Back", (tester) async {
+    final harness = await setUpArchive(
+      tester: tester,
+      size: const Size(440, 956),
+      initialLocation: "/archived-sessions/p1/audit",
       currentRouteDef: AppRouteDef.archivedSessionDetail,
       sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "live", title: "Live record")],
+        "p1": [live],
       },
     );
     await tester.pumpWidget(harness.buildApp());
@@ -143,23 +308,17 @@ void main() {
   });
 
   testWidgets("archive deletion unwinds only the matching audit navigator", (tester) async {
-    await tester.binding.setSurfaceSize(const Size(440, 956));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    final harness = AdaptiveSessionRouterTestHarness();
-    addTearDown(harness.tearDown);
     const opener = "/projects/p1/sessions?name=Project+One";
-    await harness.setUp(
+    final harness = await setUpArchive(
+      tester: tester,
+      size: const Size(440, 956),
       initialLocation: opener,
       currentRouteDef: AppRouteDef.sessions,
       sessionsByProject: const {"p1": []},
     );
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
-    unawaited(
-      harness.router.push<void>(
-        const AppRoute.archivedSessions(projectId: "p1", projectName: "Project One").buildPath(),
-      ),
-    );
+    unawaited(harness.router.push<void>(const AppRoute.archivedSessions(projectId: "p1").buildPath()));
     await tester.pumpAndSettle();
     final listContext = tester.element(find.byType(ArchivedSessionsView));
     unawaited(
@@ -173,12 +332,11 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    closeDeletedArchivedSessionRoute(context: listContext, projectId: "other", sessionId: "audit");
-    closeDeletedArchivedSessionRoute(context: listContext, projectId: "p1", sessionId: "other");
+    closeDeletedArchivedSessionRoute(context: listContext, sessionId: "other");
     expect(harness.router.state.uri.toString(), contains("/audit"));
-    closeDeletedArchivedSessionRoute(context: listContext, projectId: "p1", sessionId: "audit");
+    closeDeletedArchivedSessionRoute(context: listContext, sessionId: "audit");
     await tester.pumpAndSettle();
-    expect(Uri.parse(harness.router.state.uri.toString()).path, "/projects/p1/archived-sessions");
+    expect(harness.router.state.uri.path, "/archived-sessions");
     await tester.tap(find.bySemanticsLabel("Close archived sessions"));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), opener);

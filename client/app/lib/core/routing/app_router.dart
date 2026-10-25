@@ -1,4 +1,5 @@
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -315,7 +316,6 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
             return _shellBackHandler(
               navigatorKey: sessionShellNavigatorKey,
               child: SessionListCubitProvider(
-                filter: SessionListFilter.active,
                 key: ValueKey("session-list-cubit-$projectId"),
                 projectId: projectId,
                 child: SessionSplitShell(
@@ -490,8 +490,7 @@ class const _SessionListPane({
     return KeyedSubtree(
       key: ValueKey("session-list-$projectId"),
       child: SessionListPanel(
-        onOpenArchived: () =>
-            context.pushRoute(AppRoute.archivedSessions(projectId: projectId, projectName: projectName)),
+        onOpenArchived: () => context.pushRoute(AppRoute.archivedSessions(projectId: projectId)),
         projectName: projectName,
         selectedSessionId: selectedSessionId,
         // Use the signed-in navigator from shell chrome; GoRouter pop would
@@ -630,11 +629,22 @@ ShellRoute buildArchivedSessionsRoute() {
       fullscreenDialog: true,
       child: _shellBackHandler(
         navigatorKey: navigatorKey,
-        child: SessionListCubitProvider(
-          key: ValueKey("archive-list-${state.pathParameters[projectIdPathParam]}"),
-          projectId:
-              state.pathParameters[projectIdPathParam] ?? (throw StateError("Archive flow requires project identity")),
-          filter: SessionListFilter.archived,
+        child: BlocProvider(
+          create: (context) {
+            final cubit = AllSessionsCubit(
+              mode: AllSessionsMode.archived,
+              recentInventory: context.read<RecentSessionInventoryService>(),
+              projectInventory: context.read<ProjectInventoryService>(),
+              filterTracker: getIt<SessionListFilterTracker>(),
+              sessionListService: getIt<SessionListService>(),
+              projectViewingService: getIt<ProjectViewingService>(),
+            );
+            // A filtered entry narrows the shared filter (D6); only the list
+            // route names a project, so a direct detail entry keeps it as is.
+            final projectId = AppRouteArchivedSessions.fromParams(queryParams: state.uri.queryParameters).projectId;
+            if (projectId != null) cubit.selectProject(projectId: projectId);
+            return cubit;
+          },
           child: child,
         ),
       ),
@@ -642,34 +652,32 @@ ShellRoute buildArchivedSessionsRoute() {
     routes: [
       GoRoute(
         path: AppRouteDef.archivedSessions.path,
-        builder: (context, state) {
-          final route = AppRouteArchivedSessions.fromParams(
-            pathParams: state.pathParameters,
-            queryParams: state.uri.queryParameters,
-          );
-          return ArchivedSessionsView(
-            emptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
-            onClose: () => close(context: context),
-            onSessionTap: ({required session}) => context.pushRoute(
-              AppRoute.archivedSessionDetail(
-                projectId: route.projectId,
-                projectName: route.projectName,
-                sessionId: session.id,
-                sessionTitle: session.title,
-              ),
+        builder: (context, state) => ArchivedSessionsView(
+          emptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
+          onClose: () => close(context: context),
+          onSessionTap: ({required row}) => context.pushRoute(
+            AppRoute.archivedSessionDetail(
+              projectId: row.project.id,
+              projectName: projectDisplayName(loc: context.loc, project: row.project),
+              sessionId: row.session.id,
+              sessionTitle: row.session.title,
             ),
-            actionDispatcher: SessionListActionDispatcher(
-              deleteConfirmation: SessionDeleteConfirmation.sheet,
-              onSessionArchived: null,
-              onSessionDeleted: ({required context, required sessionId}) =>
-                  closeDeletedArchivedSessionRoute(context: context, projectId: route.projectId, sessionId: sessionId),
-              onSessionMarkedUnread: null,
-            ),
-          );
-        },
+          ),
+          actionDispatcher: const SessionListActionDispatcher(
+            deleteConfirmation: SessionDeleteConfirmation.sheet,
+            onSessionArchived: null,
+            onSessionDeleted: closeDeletedArchivedSessionRoute,
+            onSessionMarkedUnread: null,
+          ),
+          createActionCubit: ({required projectId, required session}) => createSessionListCubit(
+            locator: getIt,
+            projectId: projectId,
+            mode: SessionListMode.actions(sessions: [session]),
+          ),
+        ),
         routes: [
           GoRoute(
-            path: ":$sessionIdPathParam",
+            path: ":$projectIdPathParam/:$sessionIdPathParam",
             builder: (context, state) {
               final route = AppRouteArchivedSessionDetail.fromParams(
                 pathParams: state.pathParameters,
@@ -716,11 +724,7 @@ void closeDeletedSessionRoute({required BuildContext context, required String se
 }
 
 /// A stale deletion must not move a different audit record or the live opener.
-void closeDeletedArchivedSessionRoute({
-  required BuildContext context,
-  required String projectId,
-  required String sessionId,
-}) {
+void closeDeletedArchivedSessionRoute({required BuildContext context, required String sessionId}) {
   // ignore: no_slop_linter/avoid_raw_go_router, current location identity check before typed navigation
   final state = GoRouter.of(context).state;
   if (state.fullPath != AppRouteDef.archivedSessionDetail.path) return;
@@ -728,7 +732,7 @@ void closeDeletedArchivedSessionRoute({
     pathParams: state.pathParameters,
     queryParams: state.uri.queryParameters,
   );
-  if (route.projectId != projectId || route.sessionId != sessionId) return;
+  if (route.sessionId != sessionId) return;
   // Pop only the archive navigator; go() would discard the modal's opener.
   // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
   Navigator.of(context).popUntil((route) => route.isFirst);

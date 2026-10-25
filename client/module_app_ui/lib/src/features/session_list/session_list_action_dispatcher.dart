@@ -136,16 +136,20 @@ class const SessionListActionDispatcher({
   }
 
   /// Archives [session], from the row's trailing swipe pill or its full-swipe
-  /// commit.
-  void handleSessionArchive({required BuildContext context, required Session session}) {
-    _archive(context: context, cubit: context.read<SessionListCubit>(), session: session);
-  }
+  /// commit. [context] and [cubit] are as for [sessionMenuEntries].
+  void handleSessionArchive({
+    required BuildContext context,
+    required SessionListCubit cubit,
+    required Session session,
+  }) => _archive(context: context, cubit: cubit, session: session);
 
   /// Deletes [session] behind the same confirmation flow as the menu entry,
   /// from the row's trailing swipe pill.
-  void handleSessionDelete({required BuildContext context, required Session session}) {
-    _delete(context: context, cubit: context.read<SessionListCubit>(), session: session);
-  }
+  void handleSessionDelete({
+    required BuildContext context,
+    required SessionListCubit cubit,
+    required Session session,
+  }) => _delete(context: context, cubit: cubit, session: session);
 
   /// Archiving always asks the bridge to remove a dedicated worktree. The user
   /// never chooses otherwise: the bridge's cleanup refusal is what protects
@@ -183,8 +187,11 @@ class const SessionListActionDispatcher({
   }
 
   /// Flips [session]'s read state, from the row's leading swipe.
-  void handleSessionToggleUnread({required BuildContext context, required Session session}) {
-    final cubit = context.read<SessionListCubit>();
+  void handleSessionToggleUnread({
+    required BuildContext context,
+    required SessionListCubit cubit,
+    required Session session,
+  }) {
     _setRead(
       context: context,
       cubit: cubit,

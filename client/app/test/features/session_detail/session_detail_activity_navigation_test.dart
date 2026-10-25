@@ -44,9 +44,9 @@ void main() {
   SessionDetailCubit detailCubit({required WidgetTester tester}) =>
       tester.element(find.byType(SessionDetailBody)).read<SessionDetailCubit>();
 
-  for (final detailPath in ["sessions", "archived-sessions"]) {
-    testWidgets("$detailPath same-kind child suppresses parent and pop retains loaded draft", (tester) async {
-      final harness = await setUpRouter(tester: tester, location: "/projects/p1/$detailPath/parent");
+  for (final detailBase in ["/projects/p1/sessions", "/archived-sessions/p1"]) {
+    testWidgets("$detailBase same-kind child suppresses parent and pop retains loaded draft", (tester) async {
+      final harness = await setUpRouter(tester: tester, location: "$detailBase/parent");
       await tester.pumpWidget(harness.buildApp());
       await tester.pumpAndSettle();
       final parent = detailCubit(tester: tester);
@@ -58,7 +58,7 @@ void main() {
       final viewing = GetIt.instance<SessionViewingService>() as MockSessionViewingService;
       clearInteractions(viewing);
 
-      unawaited(harness.router.push<void>("/projects/p1/$detailPath/child"));
+      unawaited(harness.router.push<void>("$detailBase/child"));
       await tester.pumpAndSettle();
       final child = detailCubit(tester: tester);
       expect(child, isNot(same(parent)));
@@ -81,8 +81,8 @@ void main() {
   for (final cover in [
     "/settings",
     "/settings/harnesses",
-    "/projects/p1/archived-sessions",
-    "/projects/p1/archived-sessions/audit",
+    "/archived-sessions",
+    "/archived-sessions/p1/audit",
     "/projects/p1/sessions/parent/diffs",
   ]) {
     testWidgets("$cover suppresses refresh declarations and restores retained detail", (tester) async {

@@ -49,8 +49,8 @@ enum AppRouteDef(final String path) {
   settingsHarnessDetail("/settings/harnesses/:$pluginIdPathParam"),
   settingsProfile("/settings/profile"),
   sessions("/projects/:$projectIdPathParam/sessions"),
-  archivedSessions("/projects/:$projectIdPathParam/archived-sessions"),
-  archivedSessionDetail("/projects/:$projectIdPathParam/archived-sessions/:$sessionIdPathParam"),
+  archivedSessions("/archived-sessions"),
+  archivedSessionDetail("/archived-sessions/:$projectIdPathParam/:$sessionIdPathParam"),
   newSession("/projects/:$projectIdPathParam/sessions/new"),
   sessionDetail("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam"),
   sessionDiffs("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam/diffs"),
@@ -100,7 +100,7 @@ sealed class const AppRoute() {
     required String projectId,
     required String? projectName,
   }) = AppRouteSessions;
-  const factory archivedSessions({required String projectId, required String? projectName}) = AppRouteArchivedSessions;
+  const factory archivedSessions({required String? projectId}) = AppRouteArchivedSessions;
   const factory archivedSessionDetail({
     required String projectId,
     required String? projectName,
@@ -150,10 +150,7 @@ sealed class const AppRoute() {
       ),
       AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
       AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
-      AppRouteDef.archivedSessions => AppRouteArchivedSessions.fromParams(
-        pathParams: pathParams,
-        queryParams: queryParams,
-      ),
+      AppRouteDef.archivedSessions => AppRouteArchivedSessions.fromParams(queryParams: queryParams),
       AppRouteDef.archivedSessionDetail => AppRouteArchivedSessionDetail.fromParams(
         pathParams: pathParams,
         queryParams: queryParams,
@@ -452,35 +449,21 @@ class const AppRouteSessionDiffs({
   }
 }
 
-class const AppRouteArchivedSessions({
-  required final String projectId,
-  required final String? projectName,
-}) extends AppRoute {
-  static const _projectIdPathParam = projectIdPathParam;
-  static const _nameQueryParam = projectNameQueryParam;
+/// Archived sessions across every project. [projectId] narrows the shared
+/// project filter on entry; null opens with the filter as it is.
+class const AppRouteArchivedSessions({required final String? projectId}) extends AppRoute {
+  static const _projectQueryParam = "project";
 
-  /// Decodes from path/query parameter maps (inverse of [buildPath]).
-  factory fromParams({
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-  }) {
-    return AppRouteArchivedSessions(
-      projectId: pathParams[_projectIdPathParam] ?? (throw ArgumentError("Missing project identity")),
-      projectName: queryParams[_nameQueryParam],
-    );
+  /// Decodes from query parameter maps (inverse of [buildPath]).
+  factory fromParams({required Map<String, String> queryParams}) {
+    return AppRouteArchivedSessions(projectId: queryParams[_projectQueryParam]);
   }
 
   @override
   AppRouteDef get def => AppRouteDef.archivedSessions;
 
   @override
-  String buildPath() {
-    final base = "/projects/${Uri.encodeComponent(projectId)}/archived-sessions";
-    final queryParams = <String, String>{
-      _nameQueryParam: ?projectName,
-    };
-    return _appendQuery(path: base, queryParameters: queryParams);
-  }
+  String buildPath() => _appendQuery(path: def.path, queryParameters: {_projectQueryParam: ?projectId});
 }
 
 class const AppRouteArchivedSessionDetail({
@@ -512,7 +495,7 @@ class const AppRouteArchivedSessionDetail({
 
   @override
   String buildPath() {
-    final base = "/projects/${Uri.encodeComponent(projectId)}/archived-sessions/${Uri.encodeComponent(sessionId)}";
+    final base = "/archived-sessions/${Uri.encodeComponent(projectId)}/${Uri.encodeComponent(sessionId)}";
     final queryParams = <String, String>{
       _nameQueryParam: ?projectName,
       _titleQueryParam: ?sessionTitle,

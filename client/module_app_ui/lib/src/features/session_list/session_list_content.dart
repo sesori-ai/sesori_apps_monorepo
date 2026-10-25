@@ -10,86 +10,40 @@ import "../../widgets/remote_failure_view.dart";
 import "session_date_label.dart";
 import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
+import "session_list_headings.dart";
 import "session_tile.dart";
 
-/// Chooses one stable heading for a session without changing the service-owned
-/// ordering of [SessionListLoaded.sessions]. The loaded-state resolver supplies
-/// running classification; presentation only chooses the localized heading.
-String _sessionListHeading({
-  required Session session,
-  required SessionListFilter filter,
-  required bool isRunning,
-  required DateTime now,
-  required AppLocalizations loc,
-}) {
-  final isArchivedList = filter == SessionListFilter.archived;
-  // One timeline: a running session is a row of Today, whatever its stored
-  // time, and the row itself says it is running.
-  if (!isArchivedList && isRunning) return sessionDateLabel(date: now, now: now, loc: loc);
+/// One item of the list: a session, or a launch leading Today.
+sealed class const _SessionListItem();
 
-  final timestamp = isArchivedList ? session.time?.archived : session.time?.updated;
-  return sessionDateLabel(
-    date: timestamp == null ? null : DateTime.fromMillisecondsSinceEpoch(timestamp),
-    now: now,
-    loc: loc,
-  );
-}
+final class const _SessionRow({required final Session session}) extends _SessionListItem;
 
-/// One entry of the animated list: a date heading or a session under it.
-///
-/// Headings are entries of their own, so archiving the first session of a
-/// group animates only that row; the heading leaves only with its last session.
-sealed class const _SessionListRow();
+final class const _LaunchRow({required final LaunchingSession launch}) extends _SessionListItem;
 
-final class const _SessionHeadingRow({
-  required final String heading,
-
-  /// How many earlier groups share [heading]. Only a running session placed
-  /// out of date order repeats a heading, and it must not repeat the key.
-  required final int occurrence,
-}) extends _SessionListRow;
-
-final class const _SessionRow({required final Session session}) extends _SessionListRow;
-
-final class const _LaunchRow({required final LaunchingSession launch}) extends _SessionListRow;
-
-final class const _SessionHeadingKey(super.value) extends ValueKey<(String, int)>;
-
-List<_SessionListRow> _sessionListRows({
+List<SessionListEntry<_SessionListItem>> _sessionListRows({
   required List<LaunchingSession> launches,
   required List<Session> sessions,
   required SessionListLoaded loaded,
   required DateTime now,
   required AppLocalizations loc,
-}) {
-  final rows = <_SessionListRow>[];
-  final occurrences = <String, int>{};
-  String? previousHeading;
-  // A launch is the newest running thing, so it leads Today, where its
-  // session will run.
-  if (launches.isNotEmpty) {
-    previousHeading = sessionDateLabel(date: now, now: now, loc: loc);
-    occurrences[previousHeading] = 0;
-    rows.add(_SessionHeadingRow(heading: previousHeading, occurrence: 0));
-    rows.addAll([for (final launch in launches) _LaunchRow(launch: launch)]);
-  }
-  for (final session in sessions) {
-    final heading = _sessionListHeading(
-      session: session,
-      filter: loaded.filter,
+}) => groupUnderHeadings<_SessionListItem>(
+  items: [
+    // A launch is the newest running thing, so it leads Today, where its
+    // session will run.
+    for (final launch in launches) _LaunchRow(launch: launch),
+    for (final session in sessions) _SessionRow(session: session),
+  ],
+  headingOf: (item) => switch (item) {
+    _LaunchRow() => sessionDateLabel(date: now, now: now, loc: loc),
+    // Even with archived rows shown, the list sorts by the last update.
+    _SessionRow(:final session) => sessionListHeading(
+      timestamp: session.time?.updated,
       isRunning: loaded.isSessionRunning(session: session),
       now: now,
       loc: loc,
-    );
-    if (heading != previousHeading) {
-      final occurrence = occurrences.update(heading, (count) => count + 1, ifAbsent: () => 0);
-      rows.add(_SessionHeadingRow(heading: heading, occurrence: occurrence));
-      previousHeading = heading;
-    }
-    rows.add(_SessionRow(session: session));
-  }
-  return rows;
-}
+    ),
+  },
+);
 
 /// Pull-to-refresh handler shared by every per-project session list: re-fetches
 /// the list, imports from every harness, and reports the reload's outcome via a
@@ -155,7 +109,7 @@ class const SessionListContent({
         ? launchRows.placeholders
         : const <LaunchingSession>[];
     final rows = state is! SessionListLoaded
-        ? const <_SessionListRow>[]
+        ? const <SessionListEntry<_SessionListItem>>[]
         : _sessionListRows(launches: launches, sessions: sessions, loaded: state, now: now, loc: loc);
 
     return switch (state) {
@@ -166,28 +120,20 @@ class const SessionListContent({
         slivers: [
           // This sliver stays mounted when the list becomes empty, giving the
           // final removed row time to close before the empty state settles in.
-          PregoAnimatedSliverList<_SessionListRow>(
+          PregoAnimatedSliverList<SessionListEntry<_SessionListItem>>(
             items: rows,
             itemKey: (row) => switch (row) {
-              _SessionHeadingRow(:final heading, :final occurrence) => _SessionHeadingKey((heading, occurrence)),
-              _SessionRow(:final session) => ValueKey(launchRows.rowKeys[session.id] ?? session.id),
-              _LaunchRow(:final launch) => ValueKey(launch.launchId),
+              final SessionListHeadingEntry<_SessionListItem> heading => heading.key,
+              SessionListItemEntry(item: _SessionRow(:final session)) => ValueKey(
+                launchRows.rowKeys[session.id] ?? session.id,
+              ),
+              SessionListItemEntry(item: _LaunchRow(:final launch)) => ValueKey(launch.launchId),
             },
             itemBuilder: (_, index, row) {
               switch (row) {
-                case _SessionHeadingRow(:final heading):
-                  return Padding(
-                    // The first heading carries the list's top breathing room, so
-                    // archiving the row below it leaves the heading where it is.
-                    padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, index == 0 ? 20 : 12),
-                    child: Text(
-                      heading,
-                      style: context.prego.textTheme.textSm.medium.copyWith(
-                        color: context.prego.colors.textTertiary,
-                      ),
-                    ),
-                  );
-                case _LaunchRow(:final launch):
+                case SessionListHeadingEntry(:final heading):
+                  return SessionListHeading(heading: heading, isFirst: index == 0);
+                case SessionListItemEntry(item: _LaunchRow(:final launch)):
                   return _settling(
                     context: context,
                     launching: true,
@@ -196,7 +142,7 @@ class const SessionListContent({
                       child: PendingSessionLaunchTile(launch: launch),
                     ),
                   );
-                case _SessionRow(:final session):
+                case SessionListItemEntry(item: _SessionRow(:final session)):
                   final activityInfo = loaded.activeSessionIds[session.id];
                   final row = Padding(
                     // Keep the list's bottom breathing room attached to its last
@@ -222,10 +168,19 @@ class const SessionListContent({
                         session: session,
                         readEntry: SessionReadMenuEntry.toggle,
                       ),
-                      onArchive: () => actionDispatcher.handleSessionArchive(context: context, session: session),
-                      onDelete: () => actionDispatcher.handleSessionDelete(context: context, session: session),
+                      onArchive: () => actionDispatcher.handleSessionArchive(
+                        context: context,
+                        cubit: context.read<SessionListCubit>(),
+                        session: session,
+                      ),
+                      onDelete: () => actionDispatcher.handleSessionDelete(
+                        context: context,
+                        cubit: context.read<SessionListCubit>(),
+                        session: session,
+                      ),
                       onToggleUnread: () => actionDispatcher.handleSessionToggleUnread(
                         context: context,
+                        cubit: context.read<SessionListCubit>(),
                         session: session,
                       ),
                     ),

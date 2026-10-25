@@ -25,8 +25,7 @@ class const SessionListScreen({
     final signedInNavigator = Navigator.of(context).context.findAncestorStateOfType<NavigatorState>();
 
     return SessionListScaffold(
-      onOpenArchived: () =>
-          context.pushRoute(AppRoute.archivedSessions(projectId: projectId, projectName: projectName)),
+      onOpenArchived: () => context.pushRoute(AppRoute.archivedSessions(projectId: projectId)),
       projectName: projectName,
       // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
       onBack: signedInNavigator != null && signedInNavigator.canPop() ? () => signedInNavigator.pop() : null,

@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 2.b/13 and 3/13 follow 2.a/13; 7.a/13 follows 6/13.
+- Current step: 7.b/13 follows 7.a/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -12,12 +12,12 @@
 |---|---|---|---|
 | 1/13 | Publish the plan | Done | #2027 |
 | 2.a/13 | One session scope; every refresh imports | Done | #2032 |
-| 2.b/13 | Scan cancel, dismiss, deep pull and per-harness scan removed | Done | `sesori/app-simplification-step-2b` |
+| 2.b/13 | Scan cancel, dismiss, deep pull and per-harness scan removed | Done | #2035 |
 | 3/13 | Searchable picker with Open another folder | Done | #2034 |
-| 4/13 | Settings › Projects | Done | `sesori/app-simplification-step-4` |
+| 4/13 | Settings › Projects | Done | #2037 |
 | 5/13 | Row logo and project label | Done | #2030 |
-| 6/13 | All-projects list model | Done | `sesori/app-simplification-step-6` |
-| 7.a/13 | Archived across projects | Not started | — |
+| 6/13 | All-projects list model | Done | #2033 |
+| 7.a/13 | Archived across projects | Done | `sesori/app-simplification-step-7a` |
 | 7.b/13 | All-projects home and route tree | Not started | — |
 | 8/13 | Projects screen removed | Not started | — |
 | 9/13 | Wide phone and tablet sidebar | Not started | — |

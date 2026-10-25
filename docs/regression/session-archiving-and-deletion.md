@@ -102,19 +102,31 @@ entirely along with its transcript and its dedicated worktree.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions. Archived row menus omit Rename and Archive but retain
   permanent Delete and read-state actions.
-- Mobile opens archived sessions in a full-screen modal from both portrait and
-  split-pane session lists. The live list remains active-only. The modal contains
-  only archived rows, grouped by their actual archive date, newest first; an
-  active-only project shows the archive artwork and “No archived sessions”. It
-  has no new-session button or bottom floating navigation.
-- Archived detail is read-only from its first frame. In the composer's place it
+- Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
+  that lists every listed project's archives, newest first by archive time, under
+  date headings. Each row names its project unless the shared project filter
+  narrows the list to one project. A project's Archived button, in both portrait
+  and split-pane session lists, opens the modal filtered to that project
+  (`?project=<id>`) through the same filter the all-projects lists share; it adds
+  no second filter. The live list remains active-only. The modal has a search
+  field, no new-session button and no bottom floating navigation. With nothing
+  archived it shows the archive artwork and “No archived sessions”; a project
+  whose sessions failed to load gets its own Retry row instead. The modal reloads
+  the session inventory when it opens, because the bridge publishes no event on
+  archive, and pull-to-refresh runs the scope's shared refresh with a success or
+  failure alert. Archived lists never claim a viewed project. Swipe and menu
+  actions run on a per-row action cubit; a deleted row leaves when the bridge's
+  `session.deleted` event arrives.
+- Archived detail (`/archived-sessions/<projectId>/<sessionId>`) is read-only
+  from its first frame. In the composer's place it
   shows what the newest agent reply ran with as read-only pills (see
   [Session creation and options](session-creation-and-options.md)), from options
   read from the bridge's cache only, never discovered. Back returns to the retained
   archive list; X closes the entire modal to its original opener, preserving its
   list/scroll and draft. Both controls remain available during loading and errors,
   including related-session audit navigation. Direct archive entry has a safe X
-  exit to projects. Audit cubits never replace the opener's live-project claims;
+  exit to projects and leaves the project filter as it was. Audit cubits never
+  replace the opener's live-project claims;
   the covered project's declaration is suspended until the opener is visible.
   A covered live detail also stops declaring its session viewed, so new output
   stays unread; closing the modal reasserts the retained loaded detail. Incoming
@@ -129,7 +141,7 @@ entirely along with its transcript and its dedicated worktree.
   app background/resume handling remains owned by the existing cubit and analytics
   listener. Disposing the detail releases the owner's route and analytics listeners.
 - Deletion completed in the archive flow returns to its archive list only when
-  the currently open audit record matches both project and session. Stale or
+  the currently open audit record is the deleted session. Stale or
   unrelated completions leave navigation unchanged; X still restores the opener.
 - The phone's delete confirmation sheet identifies the action, names the worktree
   loss only when a dedicated worktree exists, and keeps its confirm action
@@ -169,6 +181,9 @@ restart before explicit re-import.
 
 - Mobile mixes active rows into archives, shows a new-session floating button in
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
+- A project's Archived button opens other projects' archives, filtered rows
+  repeat the project name, an unfiltered row omits it, or a newly archived
+  session is missing until a manual refresh.
 - Opening or closing an audit record consumes the underlying live project's
   claim, preventing its declaration from returning when the opener is visible.
 - A covered detail marks late output seen, reports activity, or presents a
@@ -251,7 +266,9 @@ worktree service; shared cleanup rejection model; OMP cleanup service; shared
 ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity composed deletion tests; Grok package deletion
 tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
 mobile `session_detail_activity_navigation_test` and
-`archived_sessions_navigation_test`, desktop `desktop_session_detail_screen_test`, shared
+`archived_sessions_navigation_test` (filtered entry, every project's archives,
+delete and read state from a row, detail and unwinding), shared `all_sessions_list_test`
+and `all_sessions_cubit_test`, desktop `desktop_session_detail_screen_test`, shared
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
 confirmations, the forced refusal and the kept-worktree notice; and

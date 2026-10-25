@@ -141,52 +141,36 @@ void main() {
     expect(topOf(tester: tester, text: "Running task"), lessThan(topOf(tester: tester, text: "Today task")));
   });
 
-  testWidgets("archived sessions keep archive-time buckets", (tester) async {
+  testWidgets("shown archived rows sit under their update date, as the list sorts", (tester) async {
     final now = DateTime.now();
     final today = atStartOfDay(date: now).add(const Duration(hours: 12));
     final yesterday = atStartOfDay(date: now).subtract(const Duration(days: 1)).add(const Duration(hours: 12));
-    final archivedToday = testSession(
-      id: "archived-today",
-      title: "Archived today",
+    final activeToday = testSession(id: "active-today", title: "Active today", updatedAt: today.millisecondsSinceEpoch);
+    final activeYesterday = testSession(
+      id: "active-yesterday",
+      title: "Active yesterday",
       updatedAt: yesterday.millisecondsSinceEpoch,
-      archivedAt: today,
     );
-    final archivedTodayAgain = testSession(
-      id: "archived-today-again",
-      title: "Archived today again",
-      updatedAt: yesterday.millisecondsSinceEpoch,
+    // Archived today, but last updated before the active row above it.
+    final archived = testSession(
+      id: "archived",
+      title: "Archived",
+      updatedAt: yesterday.subtract(const Duration(hours: 1)).millisecondsSinceEpoch,
       archivedAt: today,
-    );
-    final archivedYesterday = testSession(
-      id: "archived-yesterday",
-      title: "Archived yesterday",
-      updatedAt: today.millisecondsSinceEpoch,
-      archivedAt: yesterday,
     );
 
     await pumpList(
       tester: tester,
-      sessions: [archivedToday, archivedTodayAgain, archivedYesterday],
-      filter: SessionListFilter.archived,
-      activityBySessionId: {
-        "archived-today": const SessionActivityInfo(
-          mainAgentRunning: true,
-          lastUserActivityAt: null,
-          updatedAt: null,
-        ),
-      },
+      sessions: [activeToday, activeYesterday, archived],
+      filter: SessionListFilter.all,
     );
 
-    expect(find.text("Running"), findsNothing);
     expect(find.text("Today"), findsOneWidget);
     expect(find.text("Yesterday"), findsOneWidget);
-    expect(topOf(tester: tester, text: "Today"), lessThan(topOf(tester: tester, text: "Archived today")));
-    expect(
-      topOf(tester: tester, text: "Archived today"),
-      lessThan(topOf(tester: tester, text: "Archived today again")),
-    );
-    expect(topOf(tester: tester, text: "Archived today again"), lessThan(topOf(tester: tester, text: "Yesterday")));
-    expect(topOf(tester: tester, text: "Yesterday"), lessThan(topOf(tester: tester, text: "Archived yesterday")));
+    expect(topOf(tester: tester, text: "Today"), lessThan(topOf(tester: tester, text: "Active today")));
+    expect(topOf(tester: tester, text: "Active today"), lessThan(topOf(tester: tester, text: "Yesterday")));
+    expect(topOf(tester: tester, text: "Yesterday"), lessThan(topOf(tester: tester, text: "Active yesterday")));
+    expect(topOf(tester: tester, text: "Active yesterday"), lessThan(topOf(tester: tester, text: "Archived")));
   });
 
   testWidgets("archiving the first session of a group keeps its heading in place", (tester) async {

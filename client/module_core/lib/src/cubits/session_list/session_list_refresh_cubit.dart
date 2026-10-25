@@ -18,8 +18,8 @@ final class const SessionListRefreshState({
   required final CatalogRescanState scan,
 });
 
-/// The manual refresh of the inventories: the Projects pull and the desktop
-/// sidebar's Refresh. A per-project list reloads itself through
+/// The manual refresh of the inventories: the Projects and Archived pulls and
+/// the desktop sidebar's Refresh. A per-project list reloads itself through
 /// `SessionListCubit.refreshAndImport` instead.
 class SessionListRefreshCubit({required final SessionListRefreshService _service})
     extends Cubit<SessionListRefreshState> {

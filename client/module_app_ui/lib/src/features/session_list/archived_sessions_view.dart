@@ -4,48 +4,50 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
+import "all_sessions_list.dart";
 import "session_list_action_dispatcher.dart";
-import "session_list_content.dart";
-import "session_tile.dart";
 
-/// Archive presentation. The product shell owns its provider, assets and routes.
+/// Archived sessions across projects, from an archived-mode
+/// [AllSessionsCubit]. The product shell owns its provider, assets and routes.
 class const ArchivedSessionsView({
   super.key,
   required final Widget emptyState,
   required final VoidCallback onClose,
-  required final SessionOpenedCallback onSessionTap,
+  required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
+  required final ActionSessionListCubitFactory createActionCubit,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) {
-    final state = context.watch<SessionListCubit>().state;
-    return PregoGlassScaffold(
-      title: context.loc.archivedSessionsTitle,
-      titleMode: PregoTopNavigationTitleMode.inline,
-      onBack: null,
-      automaticallyImplyLeading: false,
-      actions: [
-        PregoButtonsIconGlass(
-          icon: TablerRegular.x,
-          semanticLabel: context.loc.archivedSessionsClose,
-          onPressed: onClose,
-        ),
-      ],
-      onRefresh: state is SessionListLoaded ? () => refreshSessionList(context) : null,
-      slivers: [
-        if (state is SessionListLoaded && state.isRefreshing)
-          const SliverToBoxAdapter(child: LinearProgressIndicator()),
-        SessionListContent(
-          quickFilter: SessionListQuickFilter.all,
-          query: "",
-          hiddenSessionIds: const {},
-          launchRows: LaunchRows.none,
-          projectName: null,
-          onSessionTap: onSessionTap,
-          actionDispatcher: actionDispatcher,
-          archivedEmptyState: emptyState,
-        ),
-      ],
+  Widget build(BuildContext context) => PregoGlassScaffold(
+    title: context.loc.archivedSessionsTitle,
+    titleMode: PregoTopNavigationTitleMode.inline,
+    onBack: null,
+    automaticallyImplyLeading: false,
+    actions: [
+      PregoButtonsIconGlass(
+        icon: TablerRegular.x,
+        semanticLabel: context.loc.archivedSessionsClose,
+        onPressed: onClose,
+      ),
+    ],
+    onRefresh: () => _refresh(context: context),
+    slivers: [
+      AllSessionsList(
+        onSessionTap: onSessionTap,
+        actionDispatcher: actionDispatcher,
+        createActionCubit: createActionCubit,
+        emptyState: emptyState,
+      ),
+    ],
+  );
+
+  static Future<void> _refresh({required BuildContext context}) async {
+    final loc = context.loc;
+    final success = await context.read<SessionListRefreshCubit>().refresh();
+    if (!context.mounted) return;
+    PregoPopupAlertPresenter.of(context).show(
+      title: success ? loc.sessionListRefreshSuccess : loc.sessionListRefreshFailed,
+      variant: success ? PregoPopupAlertsNotificationsVariant.success : PregoPopupAlertsNotificationsVariant.error,
     );
   }
 }

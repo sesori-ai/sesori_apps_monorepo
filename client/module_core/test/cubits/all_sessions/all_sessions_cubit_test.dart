@@ -45,6 +45,7 @@ void main() {
     recentInventory = _MockRecentInventory();
     when(() => recentInventory.state).thenAnswer((_) => entries.stream);
     when(() => recentInventory.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
+    when(recentInventory.refresh).thenAnswer((_) async => true);
     projectInventory = _MockProjectInventory();
     when(() => projectInventory.state).thenAnswer((_) => projects.value);
     when(() => projectInventory.stateStream).thenAnswer((_) => projects.stream);
@@ -206,7 +207,7 @@ void main() {
       ),
     });
     final cubit = create(mode: AllSessionsMode.active)..selectProject(projectId: two.id);
-    await settle();
+    // At once, so a list opened filtered never draws the previous filter.
     expect(cubit.state.projectId, two.id);
     expect(ids(cubit: cubit), ["b"]);
 
@@ -222,6 +223,22 @@ void main() {
     status.add(connected(bridgeId: "b"));
     await settle();
     expect(cubit.state.projectId, isNull);
+  });
+
+  test("a selection emits once, and another list's selection still reaches this one", () async {
+    final cubit = create(mode: AllSessionsMode.active);
+    final other = create(mode: AllSessionsMode.archived);
+    final emitted = <String?>[];
+    final subscription = cubit.stream.listen((state) => emitted.add(state.projectId));
+    addTearDown(subscription.cancel);
+
+    cubit.selectProject(projectId: one.id);
+    await settle();
+    expect(emitted, [one.id]);
+
+    other.selectProject(projectId: two.id);
+    await settle();
+    expect(emitted, [one.id, two.id]);
   });
 
   test("archived mode lists every project's archived sessions, most recently archived first", () async {
@@ -241,9 +258,10 @@ void main() {
     });
     final cubit = create(mode: AllSessionsMode.archived);
     expect(ids(cubit: cubit), ["newest", "middle", "oldest"]);
+    // The bridge publishes no event on archive, so opening reloads.
+    verify(recentInventory.refresh).called(1);
 
     cubit.selectProject(projectId: one.id);
-    await settle();
     expect(ids(cubit: cubit), ["newest", "oldest"]);
     cubit.setPaneVisible(isVisible: true);
     await cubit.close();
@@ -253,6 +271,7 @@ void main() {
 
   test("the default project is the filter, otherwise the newest session's, otherwise none", () async {
     final cubit = create(mode: AllSessionsMode.active);
+    verifyNever(recentInventory.refresh);
     expect(cubit.state.defaultProjectId, isNull);
 
     entries.add({
