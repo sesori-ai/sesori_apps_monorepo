@@ -1847,8 +1847,13 @@ void main() {
           suggestions: FilesystemSuggestions(data: [], path: "/home"),
         ),
       );
-      GetIt.instance.registerSingleton<ConnectionService>(connection);
-      await tester.pumpWidget(shell(selectedProjectId: null, available: const []));
+      // The session scope provides it above the shell.
+      await tester.pumpWidget(
+        RepositoryProvider<ConnectionService>.value(
+          value: connection,
+          child: shell(selectedProjectId: null, available: const []),
+        ),
+      );
       await tester.pumpAndSettle();
       expect(find.text("Add project"), findsOneWidget);
       await tester.tap(find.byKey(const Key("desktop-sidebar-new-session")));

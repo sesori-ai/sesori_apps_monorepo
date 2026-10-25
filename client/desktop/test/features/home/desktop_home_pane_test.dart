@@ -375,7 +375,6 @@ void main() {
               onOpenSession: ({required context, required project, required displayName, required session}) =>
                   opened.add((projectId: project.id, sessionId: session.id)),
               onOpenHarnessSettings: () {},
-              openFolder: ({required context, required onProjectAdded}) {},
             ),
           ),
         ),
