@@ -148,20 +148,17 @@ void main() {
       expect(find.text("readOnly=true"), findsOneWidget);
     });
 
-    testWidgets("tapping child session pushes route with readOnly=true from split context", (tester) async {
+    testWidgets("tapping child session pushes route with readOnly=true from an open session", (tester) async {
       final child = _childSession(id: "child-1", title: "Child Session");
       await tester.pumpWidget(
         _buildApp(
           initialLocation: "/sessions/project-1/session-parent?name=Project+One&readOnly=false",
           child: Scaffold(
-            body: SessionSplitScope(
-              isSplit: true,
-              child: SubtaskPartWidget(
-                projectId: "project-1",
-                part: _subtaskPart(description: "Child Session"),
-                childSession: child,
-                status: TranscriptStepStatus.finished,
-              ),
+            body: SubtaskPartWidget(
+              projectId: "project-1",
+              part: _subtaskPart(description: "Child Session"),
+              childSession: child,
+              status: TranscriptStepStatus.finished,
             ),
           ),
         ),
@@ -355,22 +352,19 @@ void main() {
       expect(find.text("readOnly=true"), findsOneWidget);
     });
 
-    testWidgets("tapping task row pushes route with readOnly=true from split context", (tester) async {
+    testWidgets("tapping task row pushes route with readOnly=true from an open session", (tester) async {
       final child = _childSession(id: "task-1", title: "Task One");
       await tester.pumpWidget(
         _buildApp(
           initialLocation: "/sessions/project-1/session-parent?name=Project+One&readOnly=false",
           child: Scaffold(
-            body: SessionSplitScope(
-              isSplit: true,
-              child: Align(
-                alignment: Alignment.bottomRight,
-                child: BackgroundTasksBar(
-                  surfaceStyle: PregoComposerSurfaceStyle.subtle,
-                  projectId: "project-1",
-                  children: [child],
-                  childStatuses: const {},
-                ),
+            body: Align(
+              alignment: Alignment.bottomRight,
+              child: BackgroundTasksBar(
+                surfaceStyle: PregoComposerSurfaceStyle.subtle,
+                projectId: "project-1",
+                children: [child],
+                childStatuses: const {},
               ),
             ),
           ),

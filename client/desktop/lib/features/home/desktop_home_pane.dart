@@ -395,7 +395,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
         projectName: displayName,
         onProjectSelected: ({required projectId, required projectName}) => setState(() => _pickedProjectId = projectId),
         // The home is where Back would lead; there is nothing to leave.
-        onBack: () {},
+        onBack: null,
         onOpenHarnessSettings: widget.onOpenHarnessSettings,
         onSessionCreated: ({required session}) =>
             widget.onOpenSession(context: context, project: picked, displayName: displayName, session: session),

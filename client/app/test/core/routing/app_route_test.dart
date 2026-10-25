@@ -283,9 +283,10 @@ void main() {
 
       // System back reaches the shell's own navigator before the shell page.
       expect(widget, isA<NavigatorPopHandler<void>>());
-      final split = (widget as NavigatorPopHandler<void>).child as SessionSplitShell;
-      expect(split.list, isA<HomeScreen>());
-      expect((split.list as HomeScreen).selectedSessionId, "ses-99");
+      final sidebarShell = (widget as NavigatorPopHandler<void>).child as SessionSidebarShell;
+      final sidebar = sidebarShell.sidebar as HomeScreen;
+      expect(sidebar.presentation, SessionsHomePresentation.sidebar);
+      expect(sidebar.selectedSessionId, "ses-99");
     });
 
     test("detail route preserves typed route decoding and stable key", () {

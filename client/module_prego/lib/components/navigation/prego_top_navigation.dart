@@ -64,7 +64,8 @@ enum PregoTopNavigationTitleMode() {
 ///
 /// The bar never falls back to Flutter's stock Material [BackButton]: it renders
 /// the glass button itself so the back affordance looks identical on every
-/// screen.
+/// screen. A [PregoTopNavigationShellLeading] above the bar puts a shell's own
+/// button before that leading.
 ///
 /// Usage (standalone, fixed title):
 /// ```dart
@@ -147,6 +148,7 @@ class const PregoTopNavigation({
   @override
   Widget build(BuildContext context) {
     final leading = _resolveLeading(context);
+    final shellLeading = context.dependOnInheritedWidgetOfExactType<PregoTopNavigationShellLeading>()?.leading;
     return GlassAppBar(
       toolbarHeight: barHeight,
       // Override GlassAppBar's default 8px inset so the leading and trailing
@@ -155,9 +157,12 @@ class const PregoTopNavigation({
       // the edge.
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
       title: switch (titleMode) {
-        PregoTopNavigationTitleMode.collapsing ||
-        PregoTopNavigationTitleMode.inline => _buildCentredToolbar(leading: leading),
-        PregoTopNavigationTitleMode.backLeading => _buildBackLeadingRow(leading: leading),
+        PregoTopNavigationTitleMode.collapsing || PregoTopNavigationTitleMode.inline => _buildCentredToolbar(
+          leading: shellLeading == null
+              ? leading
+              : Row(mainAxisSize: MainAxisSize.min, children: [shellLeading, ?leading]),
+        ),
+        PregoTopNavigationTitleMode.backLeading => _buildBackLeadingRow(shellLeading: shellLeading, leading: leading),
       },
     );
   }
@@ -199,10 +204,11 @@ class const PregoTopNavigation({
   /// title/subtitle block filling the remaining width (bounding it so long
   /// titles ellipsise instead of overflowing, including narrow split-pane
   /// widths), then the trailing actions.
-  Widget _buildBackLeadingRow({required Widget? leading}) {
+  Widget _buildBackLeadingRow({required Widget? shellLeading, required Widget? leading}) {
     final actions = this.actions;
     return Row(
       children: [
+        ?shellLeading,
         if (leading != null) ...[
           leading,
           const SizedBox(width: PregoSpacing.lg),
@@ -272,4 +278,18 @@ class const PregoTopNavigation({
       semanticLabel: MaterialLocalizations.of(context).backButtonTooltip,
     );
   }
+}
+
+/// A shell's own bar button, such as a sidebar toggle, that every
+/// [PregoTopNavigation] below shows before its leading.
+///
+/// [leading] owns its spacing to what follows it, so it can grow in and out
+/// with the shell's motion instead of moving the bar's title in a jump.
+class const PregoTopNavigationShellLeading({
+  super.key,
+  required final Widget leading,
+  required super.child,
+}) extends InheritedWidget {
+  @override
+  bool updateShouldNotify(PregoTopNavigationShellLeading oldWidget) => leading != oldWidget.leading;
 }

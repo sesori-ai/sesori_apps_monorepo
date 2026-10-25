@@ -19,7 +19,7 @@ Future<void> _pumpRouteFrames(WidgetTester tester) async {
 void main() {
   setUpAll(registerAllFallbackValues);
 
-  final leftPane = find.byKey(const Key("session-split-left-pane"));
+  final leftPane = find.byKey(const Key("session-sidebar"));
 
   Future<AdaptiveSessionRouterTestHarness> setUpHome({
     required WidgetTester tester,
@@ -78,7 +78,7 @@ void main() {
 
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
-    expect(find.byType(EmptySessionDetailPanel), findsOneWidget);
+    expect(find.byType(NewSessionView), findsOneWidget);
 
     await tester.tap(find.text("Session One"));
     await tester.pumpAndSettle();
@@ -89,7 +89,7 @@ void main() {
     expect(uri.queryParameters["title"], "Session One");
     expect(uri.queryParameters["readOnly"], "false");
     expect(leftPane, findsOneWidget);
-    expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
+    expect(find.byKey(const Key("session-sidebar-content")), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
     final tile = tester.widget<SessionTile>(find.widgetWithText(SessionTile, "Session One"));
     expect(tile.selected, isTrue);
@@ -98,7 +98,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(Uri.parse(harness.currentLocation).path, "/sessions");
-    expect(find.byType(EmptySessionDetailPanel), findsOneWidget);
+    expect(find.byType(NewSessionView), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsNothing);
   });
 
@@ -181,7 +181,7 @@ void main() {
     await deleteFromList(tester: tester, title: "Session One");
 
     expect(Uri.parse(harness.currentLocation).path, "/sessions");
-    expect(find.byKey(const Key("empty-session-detail-panel")), findsOneWidget);
+    expect(find.byType(NewSessionView), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsNothing);
 
     // Let the deletion alert expire so no timers outlive the test.
@@ -213,7 +213,7 @@ void main() {
 
     expect(Uri.parse(harness.currentLocation).path, "/sessions/p1/session-1");
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-    expect(find.byKey(const Key("empty-session-detail-panel")), findsNothing);
+    expect(find.byType(NewSessionView), findsNothing);
 
     // Let the deletion alert expire so no timers outlive the test.
     await tester.pump(const Duration(seconds: 5));

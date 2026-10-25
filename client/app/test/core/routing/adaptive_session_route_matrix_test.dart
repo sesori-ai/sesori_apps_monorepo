@@ -40,13 +40,13 @@ void main() {
           expect(find.text("Session One"), findsOneWidget);
 
           if (width == 390) {
-            expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-            expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
-            expect(find.byType(EmptySessionDetailPanel), findsNothing);
+            expect(find.byKey(const Key("session-sidebar")), findsNothing);
+            expect(find.byKey(const Key("session-sidebar-content")), findsNothing);
+            expect(find.byType(NewSessionView), findsNothing);
           } else {
-            expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-            expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
-            expect(find.byType(EmptySessionDetailPanel), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar-content")), findsOneWidget);
+            expect(find.byType(NewSessionView), findsOneWidget);
           }
         } finally {
           await harness.tearDown();
@@ -78,11 +78,11 @@ void main() {
           expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
 
           if (width == 390) {
-            expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-            expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
+            expect(find.byKey(const Key("session-sidebar")), findsNothing);
+            expect(find.byKey(const Key("session-sidebar-content")), findsNothing);
           } else {
-            expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-            expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar-content")), findsOneWidget);
           }
         } finally {
           await harness.tearDown();
@@ -118,11 +118,11 @@ void main() {
           expect(find.text("File changes"), findsOneWidget);
 
           if (width == 390) {
-            expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-            expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
+            expect(find.byKey(const Key("session-sidebar")), findsNothing);
+            expect(find.byKey(const Key("session-sidebar-content")), findsNothing);
           } else {
-            expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-            expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar-content")), findsOneWidget);
             expect(find.text("Session One"), findsOneWidget);
           }
         } finally {
@@ -154,13 +154,13 @@ void main() {
 
           expect(find.byType(NewSessionScreen), findsOneWidget);
           expect(find.byKey(const ValueKey("session-detail-new")), findsNothing);
-          expect(find.byType(EmptySessionDetailPanel), findsNothing);
+          expect(find.byType(NewSessionView), findsOneWidget);
           if (width == 390) {
-            expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-            expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
+            expect(find.byKey(const Key("session-sidebar")), findsNothing);
+            expect(find.byKey(const Key("session-sidebar-content")), findsNothing);
           } else {
-            expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-            expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
+            expect(find.byKey(const Key("session-sidebar-content")), findsOneWidget);
             final tile = tester.widget<SessionTile>(find.widgetWithText(SessionTile, "Session One"));
             expect(tile.selected, isFalse);
           }
@@ -221,16 +221,16 @@ void main() {
       await tester.pumpWidget(harness.buildApp());
       await _pumpDiffFrames(tester);
 
-      expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-      expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
+      expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
+      expect(find.byKey(const Key("session-sidebar-content")), findsOneWidget);
 
       await tester.binding.setSurfaceSize(const Size(390, 800));
       await tester.pumpAndSettle();
 
       expect(harness.currentLocation, location);
       expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-      expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-      expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
+      expect(find.byKey(const Key("session-sidebar")), findsNothing);
+      expect(find.byKey(const Key("session-sidebar-content")), findsNothing);
     });
 
     testWidgets("expanding from narrow diffs to 1024 keeps the same route and shows split list plus diffs", (
@@ -256,15 +256,15 @@ void main() {
       await _pumpDiffFrames(tester);
 
       expect(find.byKey(const ValueKey("session-diffs-session-1")), findsOneWidget);
-      expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+      expect(find.byKey(const Key("session-sidebar")), findsNothing);
 
       await tester.binding.setSurfaceSize(const Size(1024, 800));
       await _pumpDiffFrames(tester);
 
       expect(harness.currentLocation, location);
       expect(find.byKey(const ValueKey("session-diffs-session-1")), findsOneWidget);
-      expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-      expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
+      expect(find.byKey(const Key("session-sidebar")), findsOneWidget);
+      expect(find.byKey(const Key("session-sidebar-content")), findsOneWidget);
       expect(find.text("Session One"), findsOneWidget);
     });
   });
