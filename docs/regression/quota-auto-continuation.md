@@ -102,8 +102,8 @@ provider and platform verification remains in the
   preference. An already-submitted prompt cannot be retracted by disabling.
 - An older bridge without the view exposes a menu entry with an update explanation
   that opens the shared bridge update steps. Read-only and archived chats do not expose mutation controls.
-- Session rows (the shared `SessionTile` on phone and desktop lists, the desktop
-  sidebar's included) replace their relative time with a clock and "Resumes <time>" while the
+- Session rows (the shared `SessionTile` on the phone and desktop lists, including the
+  desktop sidebar's list) replace their relative time with a clock and "Resumes <time>" while the
   view is enabled, its availability is `conditional` (an unknown value does
   not count) and its status is a known reset. The time is local, with the date
   only when it is not today; the row's assistive label says

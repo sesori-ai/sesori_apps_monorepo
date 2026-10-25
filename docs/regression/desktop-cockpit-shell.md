@@ -81,18 +81,17 @@ The main pane hosts one full-width routed page.
   like the disabled control. Cmd/Ctrl+, opens Settings. Held-key repeats do not repeat these commands; text-field
   focus remains usable and root popups own their focus. Hints use the platform modifier; the sidebar's New session row
   shows the shortcut. Windows and Linux retain native window chrome.
-- Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command
-  palette: a search field over Commands (New session once projects load, reading Add project while there
-  are none; Toggle sidebar while the window is wide enough to expand it; Settings; Go back; each with its
-  shortcut), the recent Sessions newest first with their project and without archived ones, and Projects.
-  Typing narrows all three by title words (an untitled session by "Untitled session"), bolding the matched
-  letters; signing out closes the palette with the cockpit; nothing
-  matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette
-  and runs the pick, and Esc closes it. A session pick opens it; a project pick filters the sidebar's list to
-  that project and brings a collapsed sidebar back to show it. The highlighted row is plainly visible in both themes: a clear
-  grey in light, the sidebar's selected tint in dark. Hovering a row moves the same highlight. The palette
-  shows the lists as they stood when it opened. One command list in the shell drives both the palette and
-  the shortcuts; page-only commands such as Mark as unread stay on their page.
+- Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command palette: a
+  search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
+  while the window is wide enough to expand it; Settings; Go back; each with its shortcut), the recent Sessions newest
+  first with their project and without archived ones, and Projects. Typing narrows all three by title words (an untitled
+  session by "Untitled session"), bolding the matched letters; signing out closes the palette with the cockpit; nothing
+  matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette and runs
+  the pick, and Esc closes it. A session pick opens it; a project pick filters the sidebar's list to that project and
+  brings a collapsed sidebar back to show it. The highlighted row is plainly visible in both themes: a clear grey in
+  light, the sidebar's selected tint in dark. Hovering a row moves the same highlight. The palette shows the lists as
+  they stood when it opened. One command list in the shell drives both the palette and the shortcuts; page-only commands
+  such as Mark as unread stay on their page.
 - Right-click session menus on the sidebar's rows reuse the shared session action flows, and session title
   tooltips, selection, running/awaiting/unread signals and screen-reader actions remain usable at the
   sidebar's minimum width.
@@ -397,11 +396,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Collapse and restore by the footer button, the restore button and Cmd/Ctrl+B: the panel slides whole while
   the page widens or narrows with no jump in what it shows, and the restore button fades in past the traffic
   lights. The filter popover narrowing the list and back, and a project picked in the palette.
-- The unified macOS title bar: the traffic lights on the open panel above New session and beside the
-  restore button while it is hidden, dragging by the room beside the lights, by a page toolbar and by the top of the login screen,
-  double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under
-  the panel's top, and the chrome's brightness under light, dark and System, including a system appearance
-  switch after a forced value. Windows and Linux keep native chrome.
+- The unified macOS title bar: the traffic lights on the open panel above New session and beside the restore button
+  while it is hidden, dragging by the room beside the lights, by a page toolbar and by the top of the login screen,
+  double-click zoom, full screen in and out with no bar over the content, a highlighted row scrolled under the panel's
+  top, and the chrome's brightness under light, dark and System, including a system appearance switch after a forced
+  value. Windows and Linux keep native chrome.
 - Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
   recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping
   through the list and menus.
