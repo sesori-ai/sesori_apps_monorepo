@@ -18,7 +18,8 @@ enum DesktopExitIntent() {
 /// leaves the running helper untouched; once a package upgrade replaced the
 /// bundle, this process could not start its helper again. The helper is stopped
 /// last; when that fails, a helper that was on is restored. Failures are
-/// rethrown, so the app keeps running.
+/// rethrown, so the app keeps running. A relaunch already started then times
+/// out waiting for the lock and activates this window instead.
 @lazySingleton
 class DesktopExitOrchestrator({
   required final BridgeProcessService _processService,
