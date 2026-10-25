@@ -12,14 +12,6 @@ import "session_empty_state.dart";
 import "session_list_action_dispatcher.dart";
 import "session_tile.dart";
 
-/// A widget-local narrowing of the active list. The list is fully loaded, so
-/// this filters what is shown and never asks the cubit for anything.
-enum SessionListQuickFilter() {
-  all,
-  running,
-  unread,
-}
-
 /// Chooses one stable heading for a session without changing the service-owned
 /// ordering of [SessionListLoaded.sessions]. The loaded-state resolver supplies
 /// running classification; presentation only chooses the localized heading.

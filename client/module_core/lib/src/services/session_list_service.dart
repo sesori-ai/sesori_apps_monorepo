@@ -49,12 +49,7 @@ class SessionListService({
       },
     );
     if (filter == SessionListFilter.archived) {
-      return visible.toList()..sort((a, b) {
-        final order = (b.time?.archived ?? (throw StateError("Archived projection requires archive time"))).compareTo(
-          a.time?.archived ?? (throw StateError("Archived projection requires archive time")),
-        );
-        return order != 0 ? order : a.id.compareTo(b.id);
-      });
+      return visible.toList()..sort((a, b) => compareByArchive(a: a, b: b));
     }
     final running = <Session>[];
     final remaining = <Session>[];
@@ -137,11 +132,23 @@ class SessionListService({
     );
   }
 
+  /// Newest update first, then by id: every list's order apart from the active
+  /// list's running head. A list that merges projects sorts with it too.
+  int compareByUpdate({required Session a, required Session b}) {
+    final updatedCompare = (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0);
+    return updatedCompare != 0 ? updatedCompare : a.id.compareTo(b.id);
+  }
+
+  /// Newest archive first, then by id: the archived list's order.
+  int compareByArchive({required Session a, required Session b}) {
+    final order = (b.time?.archived ?? (throw StateError("Archived projection requires archive time"))).compareTo(
+      a.time?.archived ?? (throw StateError("Archived projection requires archive time")),
+    );
+    return order != 0 ? order : a.id.compareTo(b.id);
+  }
+
   List<Session> _sortSessions(Iterable<Session> sessions) {
-    return sessions.toList()..sort((a, b) {
-      final updatedCompare = (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0);
-      return updatedCompare != 0 ? updatedCompare : a.id.compareTo(b.id);
-    });
+    return sessions.toList()..sort((a, b) => compareByUpdate(a: a, b: b));
   }
 
   int _compareRunningSessions({

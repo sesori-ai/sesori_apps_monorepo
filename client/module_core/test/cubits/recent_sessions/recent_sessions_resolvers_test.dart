@@ -11,6 +11,7 @@ void main() {
     return RecentSessionsLoaded(
       sourceSessions: sessions,
       visibleSessions: sessions,
+      archivedSessions: const [],
       activityBySessionId: activity,
       listStateBySessionId: const {},
     );

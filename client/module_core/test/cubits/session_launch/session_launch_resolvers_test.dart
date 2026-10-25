@@ -290,6 +290,7 @@ void main() {
     RecentSessionsEntry loaded(List<Session> sessions) => RecentSessionsLoaded(
       sourceSessions: sessions,
       visibleSessions: sessions,
+      archivedSessions: const [],
       activityBySessionId: const {},
       listStateBySessionId: const {},
     );

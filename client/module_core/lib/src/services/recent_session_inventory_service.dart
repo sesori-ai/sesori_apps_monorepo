@@ -270,16 +270,18 @@ class RecentSessionInventoryService({
   RecentSessionsLoaded _project({required String projectId, required List<Session> sessions}) {
     final activity = _sseEventTracker.currentSessionActivity[projectId] ?? const {};
     final listState = _sessionUnseenTracker.currentSessionUnseen[projectId] ?? const {};
+    List<Session> projected({required SessionListFilter filter}) => List.unmodifiable(
+      _sessionListService.visibleSessions(
+        sessions: sessions,
+        filter: filter,
+        activityBySessionId: activity,
+        listStateBySessionId: listState,
+      ),
+    );
     return RecentSessionsLoaded(
       sourceSessions: List.unmodifiable(sessions),
-      visibleSessions: List.unmodifiable(
-        _sessionListService.visibleSessions(
-          sessions: sessions,
-          filter: SessionListFilter.active,
-          activityBySessionId: activity,
-          listStateBySessionId: listState,
-        ),
-      ),
+      visibleSessions: projected(filter: SessionListFilter.active),
+      archivedSessions: projected(filter: SessionListFilter.archived),
       activityBySessionId: Map.unmodifiable(activity),
       listStateBySessionId: Map.unmodifiable(listState),
     );
