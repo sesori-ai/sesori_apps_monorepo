@@ -156,9 +156,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get listSearchClear => 'Clear search';
 
   @override
-  String get projectListSearchHint => 'Search projects and sessions';
-
-  @override
   String get sessionListSearchHint => 'Search sessions';
 
   @override
@@ -241,19 +238,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectListTitle => 'Projects';
 
   @override
-  String get projectListActivity => 'Activity';
-
-  @override
   String get projectListLoadingSemantics => 'Loading projects';
 
   @override
   String get projectListDefaultName => 'Default project';
-
-  @override
-  String get projectListRefreshSuccess => 'Projects updated';
-
-  @override
-  String get projectListRefreshFailed => 'Could not refresh projects';
 
   @override
   String get projectListErrorTitle => 'Failed to load projects';
@@ -1274,11 +1262,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListTitle => 'Sessions';
 
   @override
-  String sessionListTitleWithName(String name) {
-    return '$name — Sessions';
-  }
-
-  @override
   String get sessionListLoadingSemantics => 'Loading sessions';
 
   @override
@@ -1914,9 +1897,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get backgroundTaskStatusRetry => 'Retrying';
-
-  @override
-  String get sessionListToggleArchived => 'Show archived';
 
   @override
   String get sessionListEmptyArchived => 'No archived sessions';

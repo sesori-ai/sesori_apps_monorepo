@@ -87,9 +87,7 @@ Widget _buildApp({required ProjectListCubit cubit, required Widget child}) {
 }
 
 /// A minimal host for the add-project entry points — the FAB and the
-/// empty-state call to action. It deliberately does not stand in for
-/// [ProjectListScreen]: tests that exercise the real list (tiles, their
-/// long-press menu) pump the screen itself.
+/// empty-state call to action.
 Widget _buildProjectListShell({required ProjectListCubit cubit}) {
   return _buildApp(
     cubit: cubit,

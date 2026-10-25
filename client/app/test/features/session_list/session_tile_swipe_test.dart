@@ -1,7 +1,6 @@
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
-import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -35,64 +34,23 @@ void main() {
     when(() => cubit.projectId).thenReturn("project-1");
   });
 
-  /// Renders the real panel. [SessionListContent] wires the swipe actions to
-  /// the real [SessionListActionDispatcher] itself, using its own context
-  /// above the rows, so they keep working after an action unmounts its row.
-  Future<void> pumpPanel(WidgetTester tester, {required Session session}) async {
+  /// Renders the real list. [AllSessionsList] wires the swipe actions to the
+  /// real [SessionListActionDispatcher] itself, using its own context above
+  /// the rows, so they keep working after an action unmounts its row.
+  Future<void> pumpRow(WidgetTester tester, {required Session session}) async {
     when(() => cubit.state).thenReturn(
       SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
     );
-
-    final dispatcher = SessionListActionDispatcher(
-      deleteConfirmation: SessionDeleteConfirmation.sheet,
-      onSessionArchived: null,
-      onSessionDeleted: null,
-      onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session.id),
-    );
-
-    // A router, not a plain MaterialApp: the archive confirmation sheet closes
-    // itself through GoRouter, which the lint requires over direct Navigator.
-    final router = GoRouter(
-      routes: [
-        GoRoute(
-          path: "/",
-          builder: (context, state) => Scaffold(
-            body: BlocProvider<SessionListCubit>.value(
-              value: cubit,
-              child: SessionListPanel(
-                onOpenArchived: cubit.toggleArchived,
-                projectName: "Project One",
-                onNewSession: () {},
-                onSessionTap: ({required session}) {},
-                actionDispatcher: dispatcher,
-                archivedEmptyState: const SessionArchivedEmptyState(artwork: null),
-                onBack: null,
-              ),
-            ),
-          ),
-        ),
-      ],
-    );
-
     await tester.pumpWidget(
-      BlocProvider<ConnectionOverlayCubit>(
-        create: (_) => StubConnectionOverlayCubit(),
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (_) => PendingSessionArchiveCubit(
-                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
-              ),
-            ),
-            RepositoryProvider(create: (_) => idleSessionLaunchService()),
-          ],
-          child: MaterialApp.router(
-            routerConfig: router,
-            theme: ThemeData(extensions: [PregoDesignSystem.light]),
-            localizationsDelegates: AppLocalizations.localizationsDelegates,
-            supportedLocales: AppLocalizations.supportedLocales,
-          ),
+      sessionRowApp(
+        actions: cubit,
+        dispatcher: SessionListActionDispatcher(
+          deleteConfirmation: SessionDeleteConfirmation.sheet,
+          onSessionArchived: null,
+          onSessionDeleted: null,
+          onSessionMarkedUnread: ({required context, required session}) => markedUnread.add(session.id),
         ),
+        session: session,
       ),
     );
     await tester.pumpAndSettle();
@@ -110,7 +68,7 @@ void main() {
   testWidgets("swiping toward the start edge reveals Delete and Archive without acting", (tester) async {
     final session = testSession(title: "My Session");
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
 
     // A row at rest builds no pills.
     expect(find.text("Archive"), findsNothing);
@@ -127,7 +85,7 @@ void main() {
     // Still the list — the swipe is not a tap — and nothing was acted on.
     expect(tile("My Session"), findsOneWidget);
     expect(
-      tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>().state.hiddenIds,
+      tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>().state.hiddenIds,
       isEmpty,
     );
     verifyNever(
@@ -141,7 +99,7 @@ void main() {
 
   testWidgets("the revealed Archive pill hides the row inside the Undo window without asking", (tester) async {
     final session = testSession(title: "My Session");
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await swipeOpen(tester, title: "My Session", dx: -220);
 
     await tester.tap(find.text("Archive"));
@@ -149,7 +107,7 @@ void main() {
 
     expect(find.widgetWithText(FilledButton, "Archive"), findsNothing);
     expect(tile("My Session"), findsNothing);
-    final archives = tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>();
+    final archives = tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>();
     expect(archives.state.hiddenIds, {session.id});
     // Closing inside the window cancels its timer and sends nothing.
     await archives.close();
@@ -157,13 +115,13 @@ void main() {
 
   testWidgets("a full swipe archives the same way", (tester) async {
     final session = testSession(title: "My Session");
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
 
     await tester.drag(tile("My Session"), const Offset(-520, 0));
     await tester.pumpAndSettle();
 
     expect(tile("My Session"), findsNothing);
-    final archives = tester.element(find.byType(SessionListPanel)).read<PendingSessionArchiveCubit>();
+    final archives = tester.element(find.byType(AllSessionsList)).read<PendingSessionArchiveCubit>();
     expect(archives.state.hiddenIds, {session.id});
     await archives.close();
   });
@@ -173,7 +131,7 @@ void main() {
       time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: 1700000001000),
     );
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await swipeOpen(tester, title: "Old Session", dx: -220);
 
     expect(find.text("Archive"), findsNothing);
@@ -188,7 +146,7 @@ void main() {
       time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: 1700000001000),
     );
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await tester.drag(tile("Old Session"), const Offset(-520, 0));
     await tester.pumpAndSettle();
 
@@ -205,7 +163,7 @@ void main() {
   testWidgets("the Delete pill opens the confirmation sheet for a worktree session without acting", (tester) async {
     final session = testSession(title: "My Session").copyWith(hasWorktree: true);
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await swipeOpen(tester, title: "My Session", dx: -220);
 
     await tester.tap(find.text("Delete"));
@@ -232,7 +190,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
 
     // A row at rest builds no toggle.
     expect(find.text("Mark as unread"), findsNothing);
@@ -256,7 +214,7 @@ void main() {
       ),
     ).thenAnswer((_) async {});
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
 
     // The unseen row offers the other direction of the toggle.
     await tester.drag(tile("My Session"), const Offset(520, 0));
@@ -269,7 +227,7 @@ void main() {
   testWidgets("the long-press menu still works after a swipe-open-close cycle", (tester) async {
     final session = testSession(title: "My Session");
 
-    await pumpPanel(tester, session: session);
+    await pumpRow(tester, session: session);
     await swipeOpen(tester, title: "My Session", dx: -220);
 
     // The tap lands on the row's close-catcher, not the content underneath.

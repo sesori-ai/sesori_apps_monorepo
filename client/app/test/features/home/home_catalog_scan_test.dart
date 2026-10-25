@@ -6,14 +6,13 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
-import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
-/// The project list is one of the three surfaces that host a catalog scan:
-/// every pull imports, and the scan reports in a row above the list.
+/// The home is one of the surfaces that host a catalog scan: every pull
+/// imports, and the scan reports in a row above the list.
 ///
 /// A live scan row spins forever, so these pump a fixed duration rather than
 /// settling.
@@ -49,6 +48,14 @@ void main() {
     );
 
     getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
+    // A row under the project, which names it.
+    getIt.registerFactory<RecentSessionInventoryService>(
+      () => stubRecentSessionInventory(
+        entries: {
+          "project-1": loadedRecentSessions(sessions: [testSession(title: "Fix the parser")]),
+        },
+      ),
+    );
     registerListServices(projectRepository: mockProjectRepository);
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);
     getIt.registerLazySingleton<SseEventTracker>(MockSseEventTracker.new);
@@ -75,7 +82,7 @@ void main() {
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
+        home: testHome(),
       ),
     );
   }
@@ -106,7 +113,7 @@ void main() {
     await tester.drag(find.text("My Project"), const Offset(0, 120));
     await tester.pumpAndSettle();
 
-    expect(find.text(loc.projectListRefreshSuccess), findsOneWidget);
+    expect(find.text(loc.sessionListRefreshSuccess), findsOneWidget);
     expect(rescanService.startAllCalls, 1, reason: "every pull imports");
   });
 
@@ -117,7 +124,7 @@ void main() {
     await tester.drag(find.text("My Project"), const Offset(0, 600));
     await tester.pumpAndSettle();
 
-    expect(find.text(loc.projectListRefreshSuccess), findsOneWidget);
+    expect(find.text(loc.sessionListRefreshSuccess), findsOneWidget);
     expect(rescanService.startAllCalls, 1);
   });
 

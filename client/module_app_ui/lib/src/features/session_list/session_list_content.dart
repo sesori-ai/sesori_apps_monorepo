@@ -85,8 +85,8 @@ class const SessionListContent({
 }) extends StatelessWidget {
   /// Returns the page content as a single sliver per state, so it slots
   /// directly into [PregoGlassScaffold]'s scroll view. Pull-to-refresh and the
-  /// `isRefreshing` progress bar are owned by [SessionListScaffold]; this only
-  /// renders the list/empty/error content.
+  /// `isRefreshing` progress bar are owned by the page; this only renders the
+  /// list/empty/error content.
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;

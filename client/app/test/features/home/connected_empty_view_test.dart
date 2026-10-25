@@ -6,17 +6,16 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
-import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../helpers/test_helpers.dart";
 
 // ---------------------------------------------------------------------------
-// Guards the connected-but-empty Projects body: the centred no-projects
+// Guards the home's connected-but-empty body: the centred no-projects
 // message with the add-project call to action that opens the Add Project
 // sheet, and the connection reporting this surface deliberately leaves to the
-// top navigation. Pumps the real [ProjectListScreen] driven into the
+// top navigation. Pumps the real home driven into the
 // loaded-empty state through getIt-registered mocks.
 // ---------------------------------------------------------------------------
 
@@ -100,7 +99,7 @@ void main() {
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
+          home: testHome(),
         ),
       ),
     );

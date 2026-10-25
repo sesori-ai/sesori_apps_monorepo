@@ -106,9 +106,8 @@ entirely along with its transcript and its dedicated worktree.
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
   narrows the list to one project. The home's Archived button, full screen or in
-  the split's list pane, opens the modal under the home's filter
-  (`?project=<id>` while it shows one project) through the same filter the
-  all-projects lists share; it adds no second filter. The live list remains active-only. The modal has a search
+  the split's list pane, opens the modal under the home's filter through the
+  same filter the all-projects lists share; it adds no second filter. The live list remains active-only. The modal has a search
   field, no new-session button and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
   the project list has loaded: while it loads the modal shows a skeleton, a failed

@@ -1,20 +1,26 @@
+import "package:bloc_test/bloc_test.dart";
 import "package:firebase_analytics/firebase_analytics.dart";
 import "package:firebase_crashlytics/firebase_crashlytics.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
+import "package:go_router/go_router.dart";
 import "package:http/http.dart" as http;
-import "package:material_ui/material_ui.dart" show Widget;
+import "package:material_ui/material_ui.dart"
+    show CustomScrollView, MaterialApp, Scaffold, SizedBox, SliverToBoxAdapter, ThemeData, Widget;
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
-import "package:sesori_app_ui/sesori_app_ui.dart" show SessionScope;
+import "package:sesori_app_ui/sesori_app_ui.dart"
+    show AllSessionsList, AppLocalizations, SessionListActionDispatcher, SessionScope;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/testing.dart";
 
 import "package:sesori_mobile/core/di/injection.dart";
-import "package:sesori_shared/sesori_shared.dart" show FailureReporter;
+import "package:sesori_mobile/features/home/home_screen.dart";
+import "package:sesori_shared/sesori_shared.dart" show FailureReporter, ProjectSummary, Session;
+import "package:theme_prego/module_prego.dart" show PregoDesignSystem;
 export "package:sesori_dart_core/testing.dart";
 
 // ---------------------------------------------------------------------------
@@ -172,8 +178,8 @@ void _registerListServices({
       catalogRescanService: getIt<CatalogRescanService>(),
     ),
   );
-  // Projects reads every project's recent sessions for its Activity group.
-  // Screens under test see none unless a test registers its own inventory.
+  // The home lists every project's recent sessions. Screens under test see
+  // none unless a test registers its own inventory.
   if (!getIt.isRegistered<RecentSessionInventoryService>()) {
     getIt.registerFactory<RecentSessionInventoryService>(() => stubRecentSessionInventory(entries: const {}));
   }
@@ -183,22 +189,146 @@ class MockRecentSessionInventoryService() extends Mock implements RecentSessionI
 
 class _MockSessionListFilterTracker() extends Mock implements SessionListFilterTracker;
 
-/// The signed-in scope the router mounts around [child], built from the
-/// services [registerListServices] registers.
-Widget testSessionScope({required SessionLaunchService sessionLaunchService, required Widget child}) => SessionScope(
-  createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
-  createProjectInventory: getIt.call<ProjectInventoryService>,
-  createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
-      getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
-  sessionCleanupService: SessionCleanupService(repository: MockSessionRepository()),
-  sessionLaunchService: sessionLaunchService,
-  connectionService: getIt<ConnectionService>(),
-  // Only the all-projects list reads these, and the Projects screen has none.
-  filterTracker: _MockSessionListFilterTracker(),
-  sessionListService: getIt<SessionListService>(),
-  projectViewingService: stubbedProjectViewingService(),
-  alertNavigatorKey: null,
-  child: child,
+/// The phone home as the router mounts it: in the signed-in scope, under the
+/// computer cubits the signed-in shell provides, built from the services
+/// [registerListServices] registers.
+Widget testHome() {
+  // Every project listed, as the home starts.
+  final filterTracker = _MockSessionListFilterTracker();
+  when(() => filterTracker.projectId).thenAnswer((_) => BehaviorSubject<String?>.seeded(null).stream);
+  return SessionScope(
+    createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
+    createProjectInventory: getIt.call<ProjectInventoryService>,
+    createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
+        getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
+    sessionCleanupService: SessionCleanupService(repository: MockSessionRepository()),
+    sessionLaunchService: idleSessionLaunchService(),
+    connectionService: getIt<ConnectionService>(),
+    filterTracker: filterTracker,
+    sessionListService: getIt<SessionListService>(),
+    projectViewingService: stubbedProjectViewingService(),
+    alertNavigatorKey: null,
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (_) => BridgeIdentityCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => ComputerSwitcherCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+          ),
+        ),
+      ],
+      child: const HomeScreen(selectedSessionId: null),
+    ),
+  );
+}
+
+class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements AllSessionsCubit;
+
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+
+/// The home's list with [session] as its only row, acting through [actions]
+/// and the real [dispatcher]. An archived session lists as Archived does.
+///
+/// Under a router, not a plain MaterialApp: action sheets close through
+/// GoRouter, which the lint requires over direct Navigator.
+Widget sessionRowApp({
+  required SessionListCubit actions,
+  required SessionListActionDispatcher dispatcher,
+  required Session session,
+}) {
+  const project = ProjectSummary(id: "project-1", name: "Project One", path: "/project-1", time: null);
+  final sessions = _MockAllSessionsCubit();
+  whenListen(
+    sessions,
+    const Stream<AllSessionsState>.empty(),
+    initialState: AllSessionsState(
+      projectId: null,
+      query: "",
+      quickFilter: SessionListQuickFilter.all,
+      rows: [
+        AllSessionsRow(
+          session: session,
+          project: project,
+          isRunning: false,
+          isUnseen: session.unseen,
+          isAwaitingInput: false,
+          isRetrying: false,
+          backgroundTaskCount: 0,
+        ),
+      ],
+      counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
+      failures: const [],
+      isLoading: false,
+      defaultProjectId: null,
+    ),
+  );
+  when(() => sessions.mode).thenReturn(
+    session.time?.archived == null ? AllSessionsMode.active : AllSessionsMode.archived,
+  );
+  when(() => sessions.setHiddenSessionIds(sessionIds: any(named: "sessionIds"))).thenReturn(null);
+  final projects = _MockProjectListCubit();
+  whenListen(
+    projects,
+    const Stream<ProjectListState>.empty(),
+    initialState: const ProjectListState.loaded(projects: [project]),
+  );
+  final router = GoRouter(
+    routes: [
+      GoRoute(
+        path: "/",
+        builder: (context, state) => Scaffold(
+          body: CustomScrollView(
+            slivers: [
+              AllSessionsList(
+                onSessionTap: ({required row}) {},
+                actionDispatcher: dispatcher,
+                createActionCubit: ({required projectId, required session}) => actions,
+                selectedSessionId: null,
+                disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
+                emptyState: const SizedBox.shrink(),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ],
+  );
+  return MultiBlocProvider(
+    providers: [
+      BlocProvider<AllSessionsCubit>.value(value: sessions),
+      BlocProvider<ProjectListCubit>.value(value: projects),
+      BlocProvider(
+        create: (_) =>
+            PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
+      ),
+      RepositoryProvider<RecentSessionInventoryService>.value(value: stubRecentSessionInventory(entries: const {})),
+      RepositoryProvider(create: (_) => idleSessionLaunchService()),
+    ],
+    child: MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
+    ),
+  );
+}
+
+/// A project's loaded recent sessions: [sessions], none running or archived.
+RecentSessionsLoaded loadedRecentSessions({required List<Session> sessions}) => RecentSessionsLoaded(
+  sourceSessions: sessions,
+  visibleSessions: sessions,
+  archivedSessions: const [],
+  activityBySessionId: const {},
+  listStateBySessionId: const {},
 );
 
 /// A recent-session inventory that holds [entries] and never reads.

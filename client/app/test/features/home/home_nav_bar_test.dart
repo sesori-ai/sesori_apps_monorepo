@@ -8,7 +8,6 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/di/injection.dart";
-import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -16,7 +15,7 @@ import "../../helpers/test_helpers.dart";
 
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
 
-/// The Projects title, which is the same large title on every state: the page
+/// The home's title, which is the same large title on every state: the page
 /// title over a subtitle row naming the machine this account is paired with.
 /// The bodies join the scaffold's page scroll rather than nesting one of their
 /// own.
@@ -76,7 +75,7 @@ void main() {
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
+      home: testHome(),
     ),
   );
 
@@ -137,7 +136,7 @@ void main() {
 
     // A top-level page: the large title carries the machine the body is trying
     // to reach as its second line.
-    expect(largeTitle("Projects"), findsOneWidget);
+    expect(largeTitle("All projects"), findsOneWidget);
     expect(find.byType(PregoNavLeadingTitle), findsNothing);
     // The bridge line is the only place that names the machine.
     expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
@@ -149,7 +148,7 @@ void main() {
     expect(tester.getTopLeft(find.text("Make sure the Bridge is running")).dy, lessThan(bodyBefore));
   });
 
-  testWidgets("the title and the machine row open the computer menu, which switches computers", (tester) async {
+  testWidgets("the machine row opens the computer menu, which switches computers", (tester) async {
     final dispatcher = _MockComputerSwitchDispatcher();
     when(
       () => dispatcher.switchTo(
@@ -185,15 +184,15 @@ void main() {
       findsOneWidget,
     );
 
-    // The title opens the menu; picking the current computer only closes it.
-    await tester.tap(largeTitle("Projects"));
+    // Picking the current computer only closes the menu.
+    await tester.tap(find.text("Macbook-Pro.local"));
     await tester.pumpAndSettle();
     expect(find.text("Online"), findsOneWidget);
     await tester.tap(find.text("Online"));
     await tester.pumpAndSettle();
     expect(find.text("Online"), findsNothing);
 
-    // So does the machine row; picking another computer switches to it.
+    // Picking another computer switches to it.
     await tester.tap(find.text("Macbook-Pro.local"));
     await tester.pumpAndSettle();
     await tester.tap(find.text("work-desktop"));
@@ -210,7 +209,7 @@ void main() {
 
     // The status row under the large title reports what the body is waiting
     // for, and the body's own caption is the only other copy of the text.
-    expect(largeTitle("Projects"), findsOneWidget);
+    expect(largeTitle("All projects"), findsOneWidget);
     expect(find.byType(PregoNavLeadingTitle), findsNothing);
     expect(find.byIcon(TablerRegular.broadcast_off), findsOneWidget);
     expect(find.text("Waiting for the bridge..."), findsNWidgets(2));
@@ -303,7 +302,7 @@ void main() {
     testWidgets("the loaded list carries the large title over the machine name", (tester) async {
       await pumpConnected(tester, list: Future.value(oneProject()), lookup: Future.value([macbook]));
 
-      expect(largeTitle("Projects"), findsOneWidget);
+      expect(largeTitle("All projects"), findsOneWidget);
       expect(find.byType(PregoNavLeadingTitle), findsNothing);
       expect(find.text("Macbook-Pro.local"), findsOneWidget);
       expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
@@ -324,7 +323,7 @@ void main() {
         lookup: Completer<List<BridgeSummary>>().future,
       );
 
-      expect(largeTitle("Projects"), findsOneWidget);
+      expect(largeTitle("All projects"), findsOneWidget);
       // The row is held by its skeleton rather than left out, so the block keeps
       // the height it will have once the name lands.
       expect(find.byType(PregoNavSubtitleSkeleton), findsOneWidget);
@@ -336,7 +335,7 @@ void main() {
 
       await pumpConnected(tester, list: Future.value(oneProject()), lookup: lookupGate.future);
       expect(find.byType(PregoNavSubtitleSkeleton), findsOneWidget);
-      final titleWhileShimmering = tester.getTopLeft(find.text("Projects"));
+      final titleWhileShimmering = tester.getTopLeft(find.text("All projects"));
 
       lookupGate.complete([macbook]);
       await drainFrames(tester);
@@ -345,7 +344,7 @@ void main() {
       expect(find.text("Macbook-Pro.local"), findsOneWidget);
       // The point of the skeleton: the title above it does not move when the
       // real row replaces it.
-      expect(tester.getTopLeft(find.text("Projects")), titleWhileShimmering);
+      expect(tester.getTopLeft(find.text("All projects")), titleWhileShimmering);
     });
 
     testWidgets("a lookup with no machine to name drops the row for good", (tester) async {
@@ -354,7 +353,7 @@ void main() {
 
       expect(find.byType(PregoNavSubtitleSkeleton), findsNothing);
       expect(find.byType(PregoNavSubtitle), findsNothing);
-      expect(find.text("Projects"), findsOneWidget);
+      expect(find.text("All projects"), findsOneWidget);
     });
   });
 }

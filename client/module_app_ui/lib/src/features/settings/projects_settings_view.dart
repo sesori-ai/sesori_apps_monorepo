@@ -9,8 +9,8 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../project_list/add_project_dialog.dart";
+import "../project_list/project_menu_entries.dart";
 import "../project_list/project_path_labels.dart";
-import "../project_list/widgets/project_tile.dart";
 import "widgets/settings_window_page.dart";
 
 /// Vertical inset between the nav bar and the list.
@@ -169,7 +169,7 @@ class const _ProjectRow({
       flat: true,
       acquireOpenLease: null,
       menuWidth: _menuWidth,
-      entriesBuilder: () => ProjectTile.menuEntries(context: context, project: project),
+      entriesBuilder: () => projectMenuEntries(context: context, project: project),
       triggerBuilder: (context, openMenu) => GestureDetector(
         onSecondaryTap: online ? openMenu : null,
         child: PregoGroupedRow(

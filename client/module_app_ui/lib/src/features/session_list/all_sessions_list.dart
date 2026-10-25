@@ -12,7 +12,7 @@ import "../../extensions/build_context_x.dart";
 import "../../widgets/list_search_field.dart";
 import "../../widgets/project_launch_rows_builder.dart";
 import "../../widgets/remote_failure_view.dart";
-import "../project_list/widgets/project_tile.dart";
+import "../project_list/project_path_labels.dart";
 import "session_date_label.dart";
 import "session_list_action_dispatcher.dart";
 import "session_list_content.dart";

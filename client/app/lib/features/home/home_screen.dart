@@ -43,8 +43,7 @@ class const HomeScreen({
     ),
     onNewSession: ({required context, required projectId, required projectName}) =>
         context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
-    onOpenArchived: ({required context, required projectId}) =>
-        context.pushRoute(AppRoute.archivedSessions(projectId: projectId)),
+    onOpenArchived: ({required context}) => context.pushRoute(const AppRoute.archivedSessions()),
     onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
     // Settings goes under the page so Back from Computers lands there.
     onManageComputers: ({required context}) {

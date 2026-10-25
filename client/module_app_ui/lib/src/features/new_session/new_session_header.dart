@@ -5,7 +5,7 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
-import "../project_list/widgets/project_tile.dart";
+import "../project_list/project_path_labels.dart";
 import "../project_picker/project_picker.dart";
 
 /// [projectId]'s name in the live project list, which knows a rename the

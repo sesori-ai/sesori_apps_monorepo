@@ -1,4 +1,20 @@
+import "package:path/path.dart" as p;
 import "package:sesori_shared/sesori_shared.dart";
+
+import "../../l10n/app_localizations.dart";
+
+/// The name shown for [project]: its stored name, else its directory.
+String projectDisplayName({required AppLocalizations loc, required ProjectSummary project}) {
+  final basename = hostPathBasename(path: project.path);
+  return project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
+}
+
+/// The last segment of a bridge host [path], whichever separator it uses. A
+/// Windows drive root such as `C:\` keeps its full path, not a bare `C:`.
+String hostPathBasename({required String path}) {
+  final basename = p.posix.basename(_toPosix(path: path));
+  return basename.endsWith(":") ? path : basename;
+}
 
 /// Each project's path by id, shortened to the trailing folders that tell it
 /// apart from projects sharing its [nameOf].

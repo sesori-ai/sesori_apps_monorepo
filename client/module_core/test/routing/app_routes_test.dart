@@ -14,16 +14,6 @@ void main() {
       );
     });
 
-    test("archived list carries an optional project filter", () {
-      for (final projectId in [null, "project/1"]) {
-        final route = AppRoute.archivedSessions(projectId: projectId);
-        final uri = Uri.parse(route.buildPath());
-        expect(uri.path, "/archived-sessions");
-        final decoded = AppRoute.fromDef(def: route.def, pathParams: const {}, queryParams: uri.queryParameters);
-        expect(decoded, isA<AppRouteArchivedSessions>().having((route) => route.projectId, "projectId", projectId));
-      }
-    });
-
     test("archived detail round-trips encoded identity and never carries editable intent", () {
       const route = AppRoute.archivedSessionDetail(
         projectId: "project/1",

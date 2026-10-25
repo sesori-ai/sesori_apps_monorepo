@@ -105,6 +105,15 @@ Widget _app({required AppearanceCubit appearance, ChatInputModeCubit? chatInputM
       else
         BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
       BlocProvider(create: (_) => testBridgeKindCubit(kind: null)),
+      // The signed-in shell provides the computer switcher above Settings.
+      BlocProvider(
+        create: (_) => ComputerSwitcherCubit(
+          registeredBridgesService: GetIt.instance<RegisteredBridgesService>(),
+          connectionService: GetIt.instance<ConnectionService>(),
+          selectedComputerService: GetIt.instance<SelectedComputerService>(),
+          activeBridgeLocality: GetIt.instance<ActiveBridgeLocality>(),
+        ),
+      ),
     ],
     child: MaterialApp.router(
       routerConfig: router,

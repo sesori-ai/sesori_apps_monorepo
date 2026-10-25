@@ -6,7 +6,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../widgets/catalog_scan_row.dart";
 import "../../widgets/computer_menu.dart";
-import "../project_list/widgets/project_tile.dart";
+import "../project_list/project_path_labels.dart";
 import "../project_picker/project_picker.dart";
 import "../session_list/all_sessions_list.dart";
 import "../session_list/session_empty_state.dart";
@@ -19,8 +19,6 @@ typedef HomeNewSessionCallback = void Function({
   required String? projectId,
   required String? projectName,
 });
-
-typedef HomeArchivedCallback = void Function({required BuildContext context, required String? projectId});
 
 typedef HomeDisconnectedRefresh = Future<void> Function({
   required BuildContext context,
@@ -45,8 +43,8 @@ class const SessionsHomeView({
   /// Opens a new session in the list's default project, or with none chosen.
   required final HomeNewSessionCallback onNewSession,
 
-  /// Opens Archived under the list's filter (D6).
-  required final HomeArchivedCallback onOpenArchived,
+  /// Opens Archived, which shares the list's filter (D6).
+  required final HomeAction onOpenArchived,
   required final HomeAction onOpenSettings,
   required final AllSessionsDisconnectedBuilder disconnectedBuilder,
 
@@ -108,7 +106,7 @@ class const SessionsHomeView({
           key: const Key("home-archived"),
           icon: TablerRegular.archive,
           semanticLabel: loc.archivedSessionsTitle,
-          onPressed: () => onOpenArchived(context: context, projectId: projectId),
+          onPressed: () => onOpenArchived(context: context),
         ),
         PregoButtonsIconGlass(
           icon: VESPRSolid.gear,
