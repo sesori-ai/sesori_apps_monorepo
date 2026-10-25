@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -125,7 +126,10 @@ void main() {
         unseenCalculator: const SessionUnseenCalculator(),
         filesystemApi: FakeFilesystemApi(),
         gitCliApi: FakeGitCliApi(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
 
       final projects = await zeroPluginRepository.getProjects();
@@ -228,7 +232,7 @@ void main() {
       await projectsDao.snapshotTaken.future;
       final catalogImport = db.transaction(() async {
         final storedProjects = await db.projectsDao.getAllProjects();
-        final existing = const ProjectCatalogIdentityCalculator().calculate(
+        final existing = ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context).calculate(
           projectsById: {
             for (final project in storedProjects) project.projectId: project,
           },
@@ -273,7 +277,10 @@ void main() {
         runtime: runtime,
         projectsDao: projectsDao,
         sessionDao: db.sessionDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
 
@@ -306,7 +313,10 @@ void main() {
         runtime: runtime,
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
       runtime.generationCurrent = false;

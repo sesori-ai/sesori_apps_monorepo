@@ -281,7 +281,7 @@ variant, and worktree mode, and creating the session with its first input.
 - Dedicated mode creates a branch and worktree from the resolved base branch
   using a bridge-generated lowercase `color-animal` name; the branch is
   `sesori/color-animal` and the worktree directory is the bare slug, created at
-  `~/.sesori-worktrees/<project folder>-<8-hex path hash>/<slug>`, outside the
+  `~/.sesori/worktrees/<project folder>-<8-hex path hash>/<slug>`, outside the
   project. History import hides sessions found there, and worktrees that older
   bridges created in `<project>/.worktrees/` stay removable. Generated
   branch refinement keeps the `sesori/` prefix. It checks both branch
@@ -290,6 +290,14 @@ variant, and worktree mode, and creating the session with its first input.
   directory when the repository is absent, commitless, or creation fails, and
   records worktree, branch, base branch, and base commit; in-place mode records
   the HEAD commit as baseline.
+- A session created for the bridge's scratch project, whose id is the scratch
+  root `~/.sesori/scratch`, runs in its own new folder
+  `~/.sesori/scratch/<YYYY-MM-DD>-<random>`; the bridge creates the root when it
+  is missing. That folder is stored as the session directory. There is no
+  repository to branch from, so a dedicated-worktree request is ignored: no
+  worktree, branch, or base commit is recorded, and the backend receives no
+  worktree system context. The bridge does not register the scratch project
+  yet, so no client can reach this path.
 - Base-branch refresh skips fetching when the repository has no `origin`, so
   local-only Git projects can create dedicated worktrees without a fetch warning.
   A configured origin that cannot be fetched still logs the failure and uses

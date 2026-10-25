@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:convert";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/new_session_defaults_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart" show SessionDto;
@@ -8,6 +9,7 @@ import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/new_session_defaults_repository.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/create_session_handler.dart";
@@ -107,6 +109,11 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: sessionMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       handler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -525,6 +532,11 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -1042,6 +1054,11 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: orderedMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -1230,6 +1247,11 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: throwingDispatcher,
         sessionOptionsService: sessionOptionsService,
+        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final localHandler = CreateSessionHandler(
         sessionViews: const PassThroughSessionViews(),

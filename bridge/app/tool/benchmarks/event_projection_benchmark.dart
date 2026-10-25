@@ -85,7 +85,10 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
       final failureReporter = _BenchmarkFailureReporter();
