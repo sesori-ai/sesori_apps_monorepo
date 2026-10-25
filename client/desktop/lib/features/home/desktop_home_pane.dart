@@ -73,7 +73,6 @@ class const DesktopHomePane({
             createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
         onOpenSession: onOpenSession,
         onOpenHarnessSettings: onOpenHarnessSettings,
-        openFolder: _showAddProject,
       );
     }
     return ColoredBox(
@@ -99,7 +98,7 @@ class const DesktopHomePane({
                 ),
                 ProjectListBridgeDisconnected() => _disconnectedView(context: context),
                 ProjectListLoaded() => _DesktopHomeEmptyView(
-                  onAddProject: () => _showAddProject(context: context, onProjectAdded: onOpenProject),
+                  onAddProject: () => unawaited(showAddProjectDialog(context: context, onProjectAdded: onOpenProject)),
                 ),
               },
             ),
@@ -128,17 +127,6 @@ class const DesktopHomePane({
 
   static void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
       unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
-
-  static void _showAddProject({required BuildContext context, required ProjectOpenedCallback onProjectAdded}) {
-    unawaited(
-      showAddProjectDialog(
-        context: context,
-        cubit: context.read<ProjectListCubit>(),
-        connectionService: getIt<ConnectionService>(),
-        onProjectAdded: onProjectAdded,
-      ),
-    );
-  }
 }
 
 /// "Viewing: …" above the home: which computer's projects the desktop shows,
@@ -380,7 +368,6 @@ class const DesktopHomeStart({
   createNewSessionCubit,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
-  required final ProjectFolderOpener openFolder,
 }) extends StatefulWidget {
   @override
   State<DesktopHomeStart> createState() => _DesktopHomeStartState();
@@ -406,11 +393,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
       child: NewSessionView(
         projectId: picked.id,
         projectName: displayName,
-        projectChoice: NewSessionProjectChoice(
-          onProjectSelected: ({required projectId, required projectName}) =>
-              setState(() => _pickedProjectId = projectId),
-          openFolder: widget.openFolder,
-        ),
+        onProjectSelected: ({required projectId, required projectName}) => setState(() => _pickedProjectId = projectId),
         // The home is where Back would lead; there is nothing to leave.
         onBack: () {},
         onOpenHarnessSettings: widget.onOpenHarnessSettings,

@@ -182,7 +182,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                         projectId: cubit.projectId,
                         projectName: projectName,
                         // The page names its project; the header shows it without a picker.
-                        projectChoice: null,
+                        onProjectSelected: null,
                         onBack: () {},
                         onOpenHarnessSettings: widget.onOpenHarnessSettings,
                         onSessionCreated: onSessionTap,

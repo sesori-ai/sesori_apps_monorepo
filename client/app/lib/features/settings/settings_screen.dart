@@ -67,6 +67,7 @@ class const _MobileSettingsView() extends StatelessWidget {
       onOpenHarnesses: () => context.pushRoute(
         const AppRoute.settingsHarnesses(presentation: HarnessSettingsPresentation.pushed),
       ),
+      onOpenProjects: () => context.pushRoute(const AppRoute.settingsProjects()),
       onOpenDefaultInput: () => context.pushRoute(const AppRoute.settingsDefaultInput()),
       onOpenRateSesori: () => unawaited(_openRateSesori(context: context)),
       // The dispatcher lands on the new computer's Projects root, which

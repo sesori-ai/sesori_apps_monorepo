@@ -56,10 +56,11 @@ final GoRouter desktopRouter = GoRouter(
 List<RouteBase> buildDesktopRoutes() => <RouteBase>[
   ShellRoute(
     builder: (BuildContext context, GoRouterState state, Widget child) => AuthGate(
-      child: Builder(
-        // Root overlays must capture AuthGate from inside its provider.
-        builder: (context) => DesktopCockpitCubitProvider(
-          child: DesktopCockpitShell(
+      child: DesktopCockpitCubitProvider(
+        child: Builder(
+          // Root overlays must capture AuthGate and the cockpit's session
+          // scope from inside their providers.
+          builder: (context) => DesktopCockpitShell(
             selectedProjectId: state.pathParameters[projectIdPathParam],
             selectedSessionId: state.pathParameters[sessionIdPathParam],
             sessionActions: _desktopSessionActions,

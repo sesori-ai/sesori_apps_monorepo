@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -37,17 +35,7 @@ class const DesktopNewSessionScreen({
         onOpenProject: onOpenProject,
         onOpenHarnessSettings: onOpenHarnessSettings,
         onSessionCreated: onSessionCreated,
-        projectChoice: NewSessionProjectChoice(
-          onProjectSelected: onProjectSelected,
-          openFolder: ({required context, required onProjectAdded}) => unawaited(
-            showAddProjectDialog(
-              context: context,
-              cubit: context.read<ProjectListCubit>(),
-              connectionService: getIt<ConnectionService>(),
-              onProjectAdded: onProjectAdded,
-            ),
-          ),
-        ),
+        onProjectSelected: onProjectSelected,
       ),
     );
   }
@@ -64,7 +52,7 @@ class const DesktopNewSessionView({
   required final VoidCallback onOpenProject,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
-  required final NewSessionProjectChoice projectChoice,
+  required final NewSessionProjectSelected onProjectSelected,
 }) extends StatelessWidget {
   static const double maxContentWidth = 760;
 
@@ -73,7 +61,7 @@ class const DesktopNewSessionView({
     return NewSessionView(
       projectId: projectId,
       projectName: projectName,
-      projectChoice: projectChoice,
+      onProjectSelected: onProjectSelected,
       onBack: onBack,
       onOpenHarnessSettings: onOpenHarnessSettings,
       onSessionCreated: onSessionCreated,

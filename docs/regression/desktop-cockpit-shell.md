@@ -326,6 +326,9 @@ The main pane hosts one full-width routed page.
   advertise an ineffective Voice/Text preference.
   Bridge distinguishes connected-bridge configuration from local
   status/logs. Notifications exposes desktop attention, not mobile push options.
+  Projects, after Harnesses, lists the cockpit's own project list with the shared Settings › Projects page
+  (see `projects-and-sessions.md`); its folder browser opens over the settings window, which stays open. The
+  Bridge tab has no Projects row, since the tab rail already names the page.
   Account owns supervised logout; failed logout stays open, and delayed success
   cannot pop the opener. External auth rejection also dismisses the root modal.
 - One harness controller spans its modal overview/detail navigator. Back stays

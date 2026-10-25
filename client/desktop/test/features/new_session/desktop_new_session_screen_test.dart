@@ -30,11 +30,6 @@ BlocProvider<ProjectListCubit> _projectList({required List<ProjectSummary> proje
   return BlocProvider<ProjectListCubit>.value(value: cubit);
 }
 
-final _ignoredChoice = NewSessionProjectChoice(
-  onProjectSelected: ({required projectId, required projectName}) {},
-  openFolder: ({required context, required onProjectAdded}) {},
-);
-
 class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
 
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
@@ -93,7 +88,7 @@ void main() {
             onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
-            projectChoice: _ignoredChoice,
+            onProjectSelected: ({required projectId, required projectName}) {},
           ),
         ),
       ),
@@ -158,11 +153,7 @@ void main() {
             onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
-            projectChoice: NewSessionProjectChoice(
-              onProjectSelected: ({required projectId, required projectName}) =>
-                  selected.add("$projectId $projectName"),
-              openFolder: ({required context, required onProjectAdded}) {},
-            ),
+            onProjectSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
           ),
         ),
       ),
@@ -246,7 +237,7 @@ void main() {
             onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
-            projectChoice: _ignoredChoice,
+            onProjectSelected: ({required projectId, required projectName}) {},
           ),
         ),
       ),
@@ -372,7 +363,7 @@ void main() {
                 onOpenProject: () {},
                 onOpenHarnessSettings: screen.onOpenHarnessSettings,
                 onSessionCreated: ({required session}) {},
-                projectChoice: _ignoredChoice,
+                onProjectSelected: ({required projectId, required projectName}) {},
               );
             },
           ),
@@ -386,6 +377,7 @@ void main() {
             BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
             BlocProvider<AuthGateCubit>.value(value: authGateCubit),
             _projectList(projects: const []),
+            RepositoryProvider<ConnectionService>.value(value: MockConnectionService()),
           ],
           child: MaterialApp.router(
             routerConfig: router,

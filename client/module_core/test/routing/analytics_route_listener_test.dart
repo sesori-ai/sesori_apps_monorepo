@@ -112,6 +112,7 @@ void main() {
       AppRouteDef.settingsHarnessDetail,
       AppRouteDef.settingsProfile,
       AppRouteDef.settingsComputers,
+      AppRouteDef.settingsProjects,
       AppRouteDef.sessions,
       AppRouteDef.archivedSessions,
       AppRouteDef.newSession,

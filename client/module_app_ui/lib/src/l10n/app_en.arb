@@ -90,7 +90,7 @@
   "projectPickerSearchHint": "Search projects",
   "@projectPickerSearchHint": {"description": "Placeholder of the project picker's search field, which matches project names and paths."},
   "projectPickerOpenFolder": "Open another folder…",
-  "@projectPickerOpenFolder": {"description": "First entry of the new-session project picker. Opens the folder browser and selects the folder it adds as the project."},
+  "@projectPickerOpenFolder": {"description": "First entry of the new-session project picker and of Settings › Projects. Opens the folder browser; the picker then selects the folder it adds as the project."},
   "projectPickerNoMatches": "No projects match",
   "@projectPickerNoMatches": {"description": "Shown under the project picker's first entry when no project name or path matches the search."},
   "sessionChangesLabel": "Changes",
@@ -515,6 +515,20 @@
   "settingsSectionAccount": "Account",
   "settingsNotificationsTitle": "Notifications",
   "settingsHarnessesTitle": "Harnesses",
+  "settingsProjectsTitle": "Projects",
+  "@settingsProjectsTitle": {"description": "Title of the Settings page that lists the connected computer's projects, and of the Settings row and desktop tab that open it."},
+  "settingsProjectsOffline": "Connect to a bridge to manage projects.",
+  "@settingsProjectsOffline": {"description": "One line above the Settings › Projects rows while no bridge is connected; the rows below it are dimmed."},
+  "settingsProjectActions": "Actions for {name}",
+  "@settingsProjectActions": {
+    "description": "Accessibility label of the '⋯' button on a row of Settings › Projects, which opens that project's actions. The name is the project's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "demo-app"
+      }
+    }
+  },
   "settingsSectionBridge": "Bridge",
   "settingsYoloTitle": "YOLO mode",
   "settingsYoloDescription": "Sesori approves every permission request for you, so the agent never stops to ask.",

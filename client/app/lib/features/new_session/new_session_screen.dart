@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
@@ -30,20 +28,10 @@ class const NewSessionScreen({
     return NewSessionView(
       projectId: projectId,
       projectName: projectName,
-      projectChoice: NewSessionProjectChoice(
-        // A different project is a different page: the route builds a fresh
-        // cubit for it.
-        onProjectSelected: ({required projectId, required projectName}) => context.replaceRoute(
-          AppRoute.newSession(projectId: projectId, projectName: projectName),
-        ),
-        openFolder: ({required context, required onProjectAdded}) => unawaited(
-          showAddProjectDialog(
-            context: context,
-            cubit: context.read<ProjectListCubit>(),
-            connectionService: getIt<ConnectionService>(),
-            onProjectAdded: onProjectAdded,
-          ),
-        ),
+      // A different project is a different page: the route builds a fresh
+      // cubit for it.
+      onProjectSelected: ({required projectId, required projectName}) => context.replaceRoute(
+        AppRoute.newSession(projectId: projectId, projectName: projectName),
       ),
       onBack: context.pop,
       onOpenHarnessSettings: () => context.pushRoute(

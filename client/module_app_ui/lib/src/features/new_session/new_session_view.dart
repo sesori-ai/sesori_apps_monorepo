@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../../extensions/remote_failure_x.dart";
 import "../../widgets/harness_blocked_notice.dart";
+import "../project_picker/project_picker.dart";
 import "../session_detail/composer_presentation_scope.dart";
 import "../session_detail/widgets/agent_model_buttons.dart";
 import "../session_detail/widgets/composer_surface_style.dart";
@@ -47,7 +48,7 @@ class const NewSessionView({
 
   /// Null names the project without a picker, for a page that is the
   /// project's own.
-  required final NewSessionProjectChoice? projectChoice,
+  required final NewSessionProjectSelected? onProjectSelected,
   required final VoidCallback onBack,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
@@ -626,7 +627,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     final header = NewSessionHeader(
       projectId: widget.projectId,
       projectName: widget.projectName,
-      projectChoice: widget.projectChoice,
+      onProjectSelected: widget.onProjectSelected,
       harness: _buildHarnessPill(cubit: cubit, data: composerData),
     );
     final chromePage = switch (widget.pageChrome) {

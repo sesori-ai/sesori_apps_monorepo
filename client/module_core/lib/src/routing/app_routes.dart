@@ -44,6 +44,7 @@ enum AppRouteDef(final String path) {
   settingsNotifications("/settings/notifications"),
   settingsDefaultInput("/settings/default-input"),
   settingsComputers("/settings/computers"),
+  settingsProjects("/settings/projects"),
   settingsHarnesses("/settings/harnesses"),
   settingsHarnessDetail("/settings/harnesses/:$pluginIdPathParam"),
   settingsProfile("/settings/profile"),
@@ -88,6 +89,7 @@ sealed class const AppRoute() {
   const factory settingsNotifications() = AppRouteSettingsNotifications;
   const factory settingsDefaultInput() = AppRouteSettingsDefaultInput;
   const factory settingsComputers() = AppRouteSettingsComputers;
+  const factory settingsProjects() = AppRouteSettingsProjects;
   const factory settingsHarnesses({
     required HarnessSettingsPresentation presentation,
   }) = AppRouteSettingsHarnesses;
@@ -140,6 +142,7 @@ sealed class const AppRoute() {
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
       AppRouteDef.settingsDefaultInput => const AppRoute.settingsDefaultInput(),
       AppRouteDef.settingsComputers => const AppRoute.settingsComputers(),
+      AppRouteDef.settingsProjects => const AppRoute.settingsProjects(),
       AppRouteDef.settingsHarnesses => AppRouteSettingsHarnesses.fromParams(queryParams: queryParams),
       AppRouteDef.settingsHarnessDetail => AppRouteSettingsHarnessDetail.fromParams(
         pathParams: pathParams,
@@ -211,6 +214,14 @@ class const AppRouteSettingsDefaultInput() extends AppRoute {
 class const AppRouteSettingsComputers() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.settingsComputers;
+
+  @override
+  String buildPath() => def.path;
+}
+
+class const AppRouteSettingsProjects() extends AppRoute {
+  @override
+  AppRouteDef get def => AppRouteDef.settingsProjects;
 
   @override
   String buildPath() => def.path;

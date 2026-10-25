@@ -313,7 +313,7 @@ abstract class AppLocalizations {
   /// **'Search projects'**
   String get projectPickerSearchHint;
 
-  /// First entry of the new-session project picker. Opens the folder browser and selects the folder it adds as the project.
+  /// First entry of the new-session project picker and of Settings › Projects. Opens the folder browser; the picker then selects the folder it adds as the project.
   ///
   /// In en, this message translates to:
   /// **'Open another folder…'**
@@ -1032,6 +1032,24 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Harnesses'**
   String get settingsHarnessesTitle;
+
+  /// Title of the Settings page that lists the connected computer's projects, and of the Settings row and desktop tab that open it.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get settingsProjectsTitle;
+
+  /// One line above the Settings › Projects rows while no bridge is connected; the rows below it are dimmed.
+  ///
+  /// In en, this message translates to:
+  /// **'Connect to a bridge to manage projects.'**
+  String get settingsProjectsOffline;
+
+  /// Accessibility label of the '⋯' button on a row of Settings › Projects, which opens that project's actions. The name is the project's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Actions for {name}'**
+  String settingsProjectActions(String name);
 
   /// No description provided for @settingsSectionBridge.
   ///

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -13,30 +14,22 @@ import "../../widgets/bridge_update_sheet.dart";
 import "new_folder_dialog.dart";
 import "widgets/project_tile.dart";
 
-/// Opens the folder browser over [context]: the shell calls
-/// [showAddProjectDialog] with the services it injects, and [onProjectAdded]
-/// receives the project the browser added.
-typedef ProjectFolderOpener = void Function({
-  required BuildContext context,
-  required ProjectOpenedCallback onProjectAdded,
-});
-
 /// Shows the Add Project modal: a bottom sheet on touch, a dialog on pointer.
 ///
 /// Presented through [showPregoModalRoute] rather than [showPregoModal]
 /// because the browser body carries its own navigation header.
 ///
-/// The [cubit] is passed explicitly so the dialog can call `discoverProject` /
-/// `createDirectory` without relying on the widget tree's BlocProvider (which
-/// lives in the parent screen). [onProjectAdded] opens the project once added.
+/// The modal route sits outside [context]'s providers, so the
+/// [ProjectListCubit] and [ConnectionService] the session scope provides are
+/// read here and handed over. [onProjectAdded] receives the project once added.
 Future<void> showAddProjectDialog({
   required BuildContext context,
-  required ProjectListCubit cubit,
-  required ConnectionService connectionService,
   required ProjectOpenedCallback onProjectAdded,
 }) {
   // Capture before presenting: inside the route the top inset reads as 0.
   final topInset = MediaQuery.paddingOf(context).top;
+  final cubit = context.read<ProjectListCubit>();
+  final connectionService = context.read<ConnectionService>();
   return showPregoModalRoute<void>(
     context: context,
     builder: (_) => AddProjectDialog(
