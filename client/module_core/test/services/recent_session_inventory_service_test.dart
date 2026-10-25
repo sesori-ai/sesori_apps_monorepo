@@ -177,7 +177,7 @@ void main() {
     verify(() => repository.listSessions(projectId: hidden.id, waitForPrData: false)).called(1);
   });
 
-  test("lazy reads deduplicate, use active ordering, and pin the open row only once", () async {
+  test("lazy reads deduplicate and use active ordering", () async {
     expect(inventory.state.value, isEmpty);
     final reply = Completer<ApiResponse<SessionListResponse>>();
     when(() => repository.listSessions(projectId: projectId, waitForPrData: false)).thenAnswer((_) => reply.future);
@@ -200,17 +200,6 @@ void main() {
     await inventory.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
     expect(loaded().archivedSessions.map((session) => session.id), ["archived"]);
-    expect(
-      loaded().rows(selectedSessionId: "1", idleLimit: 3).map((session) => session.id),
-      ["4", "3", "2", "1"],
-    );
-    expect(loaded().rows(selectedSessionId: "4", idleLimit: 3).length, 3);
-    expect(loaded().rows(selectedSessionId: "1", idleLimit: 1).map((session) => session.id), ["4", "1"]);
-    expect(loaded().rows(selectedSessionId: null, idleLimit: 13).length, 4);
-    expect(
-      loaded().rows(selectedSessionId: "archived", idleLimit: 3).map((session) => session.id),
-      ["4", "3", "2"],
-    );
     expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().visibleSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().archivedSessions.clear(), throwsUnsupportedError);
@@ -273,7 +262,6 @@ void main() {
     );
     expect(loaded().visibleSessions, isEmpty);
     expect(loaded().archivedSessions.single.id, "created");
-    expect(loaded().rows(selectedSessionId: "created", idleLimit: 3), isEmpty);
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));
     expect(loaded().sourceSessions, isEmpty);
@@ -410,7 +398,6 @@ void main() {
     events.add(SseEvent(data: SesoriSseEvent.sessionUpdated(info: archivedUpdate)));
     expect(inventory.state.value[projectId], isA<RecentSessionsLoaded>());
     expect(loaded().visibleSessions.single, renamed);
-    expect(loaded().rows(selectedSessionId: "archived", idleLimit: 3), [renamed]);
     stubSessions(sessions: [renamed, archivedUpdate]);
     reply.complete(ApiResponse.success(SessionListResponse(items: [deleted, archived])));
     expect(await pending, isTrue);

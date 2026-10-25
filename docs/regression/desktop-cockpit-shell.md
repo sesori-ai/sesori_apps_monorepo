@@ -193,7 +193,7 @@ The main pane hosts one full-width routed page.
   session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened
   directly. Mark unread always sends unread,
-  whatever local state says, defers the session like a row's Mark unread, and returns to the project's
+  whatever local state says, and returns to the project's
   all-sessions page; Shift+Cmd/Ctrl+U does the same while focus is in the session page and is inert
   elsewhere. The transcript and the composer sit in two separately sized centred columns, the transcript
   about 960 pt wide and the composer, its pills and the needs-you cards about 760 pt, both centred in the
@@ -287,7 +287,8 @@ The main pane hosts one full-width routed page.
   dismisses for this run without blocking project navigation. Bridge Settings
   retains an independently reachable This computer permission row. Focus updates
   its status; unsupported systems hide these controls and unknown is not denial.
-- Missing layout uses defaults. Failed reads/writes are logged; unavailable
+- The saved layout is the sidebar's width and its collapse choice; a stored key the build does not know is
+  ignored. Missing layout uses defaults. Failed reads/writes are logged; unavailable
   storage does not prevent navigation or in-memory layout changes.
 
 ## Coverage
@@ -375,7 +376,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
   intermediate collapse/restore frames with the panel sliding whole, both reduced-motion signals, temporary
-  narrow-window mode, JSON round-trip, storage failure fallback.
+  narrow-window mode, JSON round-trip with an unknown key ignored, storage failure fallback.
 
 ### Live macOS checks (L3)
 

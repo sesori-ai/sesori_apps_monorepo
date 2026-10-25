@@ -2,22 +2,6 @@ import "package:flutter/foundation.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// How far open the sidebar is, as far as its structure cares. Rows add or
-/// drop parts only when this changes; everything that moves in between reads
-/// the expansion animation directly, so a frame of the animation rebuilds
-/// only those few leaves instead of every row.
-enum DesktopSidebarPhase() {
-  rail,
-  moving,
-  open;
-
-  static DesktopSidebarPhase of({required double expansion}) => switch (expansion) {
-    <= 0 => rail,
-    >= 1 => open,
-    _ => moving,
-  };
-}
-
 /// Hands the sidebar's expansion animation to the panel. The animation object
 /// never changes, so reading it does not rebuild anything per frame; only the
 /// parts listening to the animation itself do.
@@ -80,20 +64,6 @@ class _DesktopSidebarExpansionSelectorState<T>() extends State<DesktopSidebarExp
 
   @override
   Widget build(BuildContext context) => widget.builder(context, _value);
-}
-
-/// [DesktopSidebarExpansionSelector] over [DesktopSidebarPhase].
-class const DesktopSidebarPhaseBuilder({
-  super.key,
-  required final Animation<double> expansion,
-  required final Widget Function(BuildContext context, DesktopSidebarPhase phase) builder,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) => DesktopSidebarExpansionSelector(
-    expansion: expansion,
-    select: (expansion) => DesktopSidebarPhase.of(expansion: expansion),
-    builder: builder,
-  );
 }
 
 /// Rebuilds [builder] with the current expansion every frame, around a [child]

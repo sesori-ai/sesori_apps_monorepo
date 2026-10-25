@@ -333,13 +333,16 @@ All of it is caused by this change, and each step removes what it obsoletes:
   - Archived's `?project=` query, since the shared filter carries the home's project.
 - **Step 9:** `SessionSplitShell`, `EmptySessionDetailPanel` and `session_split_scope.dart`.
 - **Step 10.b:**
-  - the activity projection (`session_activity_projection.dart`);
+  - the activity projection's sidebar-only inputs (set-aside and sticky sessions), since the home sections still
+    read the projection until step 11;
   - `RecentSessionsResolvers.rows` limits and “show more”;
-  - the sidebar rail, popout and count pill;
+  - the sidebar rail, popout and count pill, with the sidebar phase model and the dead branches of its rows;
   - section headers and fold state;
-  - the four layout fields.
+  - the four layout fields, with the cubit methods that wrote them and the mark-unread deferral.
 - **Step 11:**
   - `DesktopSessionListScreen`, the `projectSessions` def, and the desktop home sections with `activity_tile.dart`;
+  - the activity projection (`session_activity_projection.dart`) and the home's Activity helpers in
+    `project_launch_rows_builder.dart`;
   - the view mode of `SessionListCubit` and `DesktopSessionListCubitProvider`;
   - `SessionListFilteredContent` and `SessionListLaunchRowsCubit`;
   - `RecentSessionsCubit`, once the palette reads `AllSessionsCubit`.
@@ -392,8 +395,8 @@ Step 10.a is split in two:
 - **10.a.i** adds the desktop Archived route and the sidebar footer's Archived entry, with no sidebar body change.
 - **10.a.ii** swaps the sidebar body for the shared list, with full-hide collapse, pane visibility, the palette's
   project filter and the list-claim restore. The analyzer makes it delete the private sidebar widgets the old body
-  used, so it stays above the soft cap; the public layout fields, cubit methods and the activity projection stay for
-  10.b.
+  used, so it stays above the soft cap; the public layout fields and cubit methods stay for 10.b, and the activity
+  projection, which the home sections read, for 11.
 
 ### Step 1 — Publish the plan (🌱)
 

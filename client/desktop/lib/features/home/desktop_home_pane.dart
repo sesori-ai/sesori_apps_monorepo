@@ -426,9 +426,7 @@ class const _DesktopHomeSections({
   Widget build(BuildContext context) {
     final ActivitySlotInputs inputs = (
       projects: projects,
-      deferredSessions: const {},
       hiddenSessionIds: context.select((PendingSessionArchiveCubit cubit) => cubit.state.hiddenIds),
-      stickySessionId: null,
     );
     return ProjectLaunchRowsBuilder(
       initialRows: const {},

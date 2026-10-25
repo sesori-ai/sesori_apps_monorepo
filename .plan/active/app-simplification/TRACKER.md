@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 10.b/13 follows 10.a.ii/13.
+- Current step: 11/13 follows 10.b/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -23,8 +23,8 @@
 | 8/13 | Projects screen removed | Done | #2044 |
 | 9/13 | Wide phone and tablet sidebar | Done | #2045 |
 | 10.a.i/13 | Desktop Archived page and footer entry | Done | #2046 |
-| 10.a.ii/13 | Desktop sidebar on the shared list | Done | `sesori/app-simplification-step-10a-ii` |
-| 10.b/13 | Desktop Activity and rail removed | Not started | — |
+| 10.a.ii/13 | Desktop sidebar on the shared list | Done | #2047 |
+| 10.b/13 | Desktop Activity and rail removed | Done | `sesori/app-simplification-step-10b` |
 | 11/13 | Desktop composer home; project page removed | Not started | — |
 | 12/13 | Regression documents reconciled | Not started | — |
 | 13/13 | L3 matrix run; plan retired | Not started | — |
@@ -56,6 +56,9 @@
 - 2026-10-25: step 10.a.ii keeps the sidebar's filtered claim through a project page in `ProjectViewingService`:
   list claims form a stack, so releasing the page's claim hands the list back to the sidebar's, with no cubit
   depending on another.
+- 2026-10-25: step 10.b keeps the activity projection, because the desktop home's Needs you, Running and Recent
+  sections read it until step 11. It drops only the projection's sidebar inputs (set-aside and sticky sessions);
+  step 11 removes the rest with the home sections.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record
