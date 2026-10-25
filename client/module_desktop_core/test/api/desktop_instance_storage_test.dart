@@ -113,6 +113,15 @@ void main() {
 
     expect(await storage.readAttentionPreference(), DesktopAttentionPreference.enabled);
   });
+
+  test("automatic updates default to enabled and persist when turned off", () async {
+    expect(await storage.readAutomaticUpdates(), DesktopAutomaticUpdates.enabled);
+
+    await storage.writeAutomaticUpdates(preference: DesktopAutomaticUpdates.disabled);
+
+    expect(await storage.readAutomaticUpdates(), DesktopAutomaticUpdates.disabled);
+    expect(File(path.join(root.path, "desktop-instance", "automatic-updates")).readAsStringSync(), "disabled");
+  });
 }
 
 class _FixedApplicationSupportDirectory({required final Directory directory})

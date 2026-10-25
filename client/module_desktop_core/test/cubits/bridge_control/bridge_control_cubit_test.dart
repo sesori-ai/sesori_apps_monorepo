@@ -26,6 +26,9 @@ void main() {
     late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
     late _FakeLaunchAtLogin launchAtLogin;
+    late _FakeInstalledDesktopBundleSource bundleSource;
+    late _FakeDesktopRelaunchApi relaunchApi;
+    late DesktopUpdateService updateService;
     late BridgeControlCubit cubit;
 
     setUp(() {
@@ -42,6 +45,13 @@ void main() {
       logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
       launchAtLogin = _FakeLaunchAtLogin();
+      bundleSource = _FakeInstalledDesktopBundleSource();
+      relaunchApi = _FakeDesktopRelaunchApi();
+      updateService = DesktopUpdateService(
+        updateRepository: DesktopUpdateRepository(bundleSource: bundleSource, relaunchApi: relaunchApi),
+        instanceRepository: _RecordingDesktopInstanceRepository(),
+        processService: processService,
+      );
       cubit = BridgeControlCubit(
         processService: processService,
         statusTracker: statusTracker,
@@ -56,6 +66,7 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
         hiddenLaunch: false,
       );
     });
@@ -69,6 +80,7 @@ void main() {
       await windowHost.disposeFake();
       await instanceService.disposeFake();
       await logoutTracker.dispose();
+      await updateService.dispose();
     });
 
     test("a live helper waiting for the server stays starting until readiness", () async {
@@ -272,6 +284,7 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
         hiddenLaunch: true,
       );
       addTearDown(hiddenCubit.close);
@@ -298,6 +311,7 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
         hiddenLaunch: true,
       );
       addTearDown(hiddenCubit.close);
@@ -632,6 +646,7 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
         hiddenLaunch: false,
       );
       addTearDown(quittingCubit.close);
@@ -690,6 +705,64 @@ void main() {
       await cubit.initialize();
       await cubit.quit();
       expect(applicationTerminator.exitCodes, [0]);
+    });
+
+    test("Restart to Update appears in the tray only once an update is installed", () async {
+      await cubit.initialize();
+      expect(
+        systemTray.menus.last.entries.whereType<SystemTrayCommandItem>().map((item) => item.command),
+        isNot(contains(SystemTrayCommand.restartToUpdate)),
+      );
+
+      bundleSource.installed = _installedUpdate;
+      updateService.check();
+      await pumpEventQueue();
+
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.restartToUpdate).label,
+        "Restart to Update",
+      );
+    });
+
+    test("tray Restart to Update relaunches the package only after the helper stopped", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopGate = Completer<void>();
+      bundleSource.installed = _installedUpdate;
+      updateService.check();
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.restartToUpdate);
+      await pumpEventQueue(times: 2);
+      expect(processService.stopCalls, 1);
+      expect(relaunchApi.relaunches, 0);
+
+      processService.stopGate!.complete();
+      await pumpEventQueue(times: 3);
+
+      expect(relaunchApi.relaunches, 1);
+      expect(instanceService.writes, isEmpty);
+      expect(applicationTerminator.exitCodes, <int>[0]);
+    });
+
+    test("a failed relaunch keeps the app running with its helper restored", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      relaunchApi.error = const ProcessException("/usr/bin/sesori-desktop", <String>[]);
+      bundleSource.installed = _installedUpdate;
+      updateService.check();
+      await cubit.initialize();
+
+      await cubit.restartToUpdate();
+
+      expect(processService.startCalls, 1);
+      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(systemTray.disposeCalls, 0);
+      expect(cubit.state.activity, BridgeControlActivity.idle);
     });
 
     test("Quit leaves the app alive when expected bridge stop fails", () async {
@@ -892,6 +965,52 @@ class _FakeWindowBoundsService() implements WindowBoundsService {
   @override
   Future<void> dispose() async {
     disposeCalls++;
+  }
+}
+
+const DesktopBundleIdentity _runningIdentity = DesktopBundleIdentity(
+  version: "1.8.4",
+  buildNumber: 24,
+  sourceSha: "running",
+  os: DesktopBundleOs.linux,
+  architecture: DesktopBundleArchitecture.x64,
+);
+
+const DesktopBundleIdentity _installedUpdate = DesktopBundleIdentity(
+  version: "1.8.5",
+  buildNumber: 25,
+  sourceSha: "installed",
+  os: DesktopBundleOs.linux,
+  architecture: DesktopBundleArchitecture.x64,
+);
+
+class _FakeInstalledDesktopBundleSource() implements InstalledDesktopBundleSource {
+  DesktopBundleIdentity installed = _runningIdentity;
+
+  @override
+  DesktopBundleIdentity? get compiledIdentity => _runningIdentity;
+
+  @override
+  DesktopReleaseChannel get channel => DesktopReleaseChannel.stable;
+
+  @override
+  bool get isAppImage => false;
+
+  @override
+  DesktopBundleIdentity readInstalledIdentity() => installed;
+}
+
+class _FakeDesktopRelaunchApi() implements DesktopRelaunchApi {
+  int relaunches = 0;
+  Object? error;
+
+  @override
+  Future<void> relaunchInstalledPackage() async {
+    relaunches++;
+    final Object? failure = error;
+    if (failure != null) {
+      throw failure;
+    }
   }
 }
 

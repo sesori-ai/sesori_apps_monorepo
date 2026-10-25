@@ -21,7 +21,9 @@ Future<void> main(List<String> arguments) async {
   );
   final DesktopStartupOrchestrator startupOrchestrator = getIt();
   logi("Desktop startup: claiming primary process");
-  if (!await startupOrchestrator.preparePrimaryLaunch()) {
+  if (!await startupOrchestrator.preparePrimaryLaunch(
+    afterUpdate: isDesktopAfterUpdateLaunch(arguments: arguments),
+  )) {
     return;
   }
   logi("Desktop startup: primary process claimed");
@@ -64,6 +66,9 @@ Future<void> main(List<String> arguments) async {
   // listening before a restored session can receive its first user prompt.
   logi("Desktop startup: starting desktop attention");
   await getIt<DesktopAttentionService>().start();
+  // The tray and Settings read the update state from the first frame.
+  logi("Desktop startup: starting desktop updates");
+  await getIt<DesktopUpdateService>().start();
   // Start local analytics state before building. Authenticated reconciliation
   // waits until after the first frame so a slow server cannot blank startup;
   // Account reflects the service's synchronization state until it settles.

@@ -14,8 +14,7 @@ void main() {
         os: DesktopBundleOs.macos,
         architecture: DesktopBundleArchitecture.arm64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableExists,
       );
 
@@ -31,8 +30,7 @@ void main() {
         os: DesktopBundleOs.macos,
         architecture: DesktopBundleArchitecture.arm64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableExists,
       );
 
@@ -48,8 +46,7 @@ void main() {
         os: DesktopBundleOs.macos,
         architecture: DesktopBundleArchitecture.arm64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableExists,
       );
 
@@ -83,8 +80,7 @@ void main() {
         os: DesktopBundleOs.macos,
         architecture: DesktopBundleArchitecture.arm64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableExists,
       );
 
@@ -106,8 +102,7 @@ void main() {
         os: DesktopBundleOs.macos,
         architecture: DesktopBundleArchitecture.arm64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableExists,
       );
 
@@ -131,8 +126,7 @@ void main() {
         os: DesktopBundleOs.macos,
         architecture: DesktopBundleArchitecture.arm64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableMissing,
       );
 
@@ -156,8 +150,7 @@ void main() {
         os: DesktopBundleOs.macos,
         architecture: DesktopBundleArchitecture.arm64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableMissing,
       );
 
@@ -185,8 +178,7 @@ void main() {
         os: DesktopBundleOs.windows,
         architecture: DesktopBundleArchitecture.x64,
         isReleaseMode: false,
-        compiledIdentityJson: null,
-        readManifest: _unexpectedManifestRead,
+        bundleSource: const _DevelopmentBundleSource(),
         executableExists: _executableExists,
       );
 
@@ -195,7 +187,19 @@ void main() {
   });
 }
 
-String _unexpectedManifestRead({required String manifestPath}) => throw StateError("Development read $manifestPath");
+class const _DevelopmentBundleSource() implements InstalledDesktopBundleSource {
+  @override
+  DesktopBundleIdentity? get compiledIdentity => null;
+
+  @override
+  DesktopReleaseChannel get channel => DesktopReleaseChannel.stable;
+
+  @override
+  bool get isAppImage => false;
+
+  @override
+  DesktopBundleIdentity readInstalledIdentity() => throw StateError("Development builds read no manifest");
+}
 
 bool _executableExists({required String executablePath}) => executablePath.isNotEmpty;
 

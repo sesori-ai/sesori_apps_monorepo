@@ -186,6 +186,44 @@ class AppLocalizationsEn extends AppLocalizations {
       'Start Sesori in the background when you sign in to this computer.';
 
   @override
+  String get desktopUpdatesTitle => 'Desktop updates';
+
+  @override
+  String get desktopUpdatesViewDownloads => 'View downloads';
+
+  @override
+  String get desktopUpdatesViewDownloadsDescription =>
+      'See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.';
+
+  @override
+  String get desktopUpdatesDevelopmentBuild => 'Development build';
+
+  @override
+  String get desktopUpdatesDevelopmentBuildDescription =>
+      'Update from your source checkout. Automatic updates are unavailable for this build.';
+
+  @override
+  String get desktopUpdatesAutomatic => 'Automatic updates';
+
+  @override
+  String get desktopUpdatesAutomaticDescription => 'Look for new versions in the background.';
+
+  @override
+  String get desktopUpdatesCheck => 'Check for updates';
+
+  @override
+  String get desktopUpdatesCheckPackageDescription =>
+      'Your system\'s software updater installs new versions from Sesori\'s signed repository.';
+
+  @override
+  String get desktopUpdatesRestart => 'Restart to update';
+
+  @override
+  String desktopUpdatesRestartDescription(String version) {
+    return 'Version $version is installed. Restart Sesori to start using it.';
+  }
+
+  @override
   String get desktopSettingsConnectedBridge => 'Connected bridge';
 
   @override

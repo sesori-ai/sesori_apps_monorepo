@@ -1,6 +1,7 @@
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/bridge_process_desired_state.dart";
+import "../../foundation/models/desktop_update_state.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../services/bridge_process_state.dart";
 import "../../trackers/bridge_control_status.dart";
@@ -27,6 +28,7 @@ class const BridgeControlState({
   required final BridgeProcessDesiredState toggleTarget,
   required final bool launchAtLoginEnabled,
   required final BridgeControlStatus controlStatus,
+  required final DesktopUpdateState updateState,
 }) {
   /// Whether an explicit user action can reclaim local or relay ownership.
   bool get canTakeOver =>
@@ -66,6 +68,12 @@ class const BridgeControlState({
         enabled: !activity.locksCommands,
       ),
       const SystemTraySeparator(),
+      if (updateState is DesktopUpdateReady)
+        SystemTrayCommandItem(
+          command: SystemTrayCommand.restartToUpdate,
+          label: "Restart to Update",
+          enabled: !activity.locksCommands,
+        ),
       SystemTrayCommandItem(
         command: SystemTrayCommand.quit,
         label: "Quit Sesori",
