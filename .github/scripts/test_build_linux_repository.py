@@ -258,7 +258,8 @@ class LinuxRepositoryTests(unittest.TestCase):
                 if failure == "channel":
                     metadata["channel"] = "stable"
                 elif failure == "missing":
-                    metadata["artifacts"].pop()
+                    # Drop a repository package; the ignored AppImage row cannot stand in for it.
+                    metadata["artifacts"].remove(next(row for row in metadata["artifacts"] if row["format"] == "deb"))
                 elif failure == "signer":
                     metadata["signerFingerprint"] = "A" * 40
                 elif failure == "package":
