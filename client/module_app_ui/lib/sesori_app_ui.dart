@@ -19,6 +19,7 @@ export "src/features/project_list/project_list_view.dart";
 export "src/features/project_list/rename_project_dialog.dart";
 export "src/features/project_list/widgets/activity_tile.dart";
 export "src/features/project_list/widgets/project_tile.dart";
+export "src/features/project_picker/project_picker.dart";
 export "src/features/session_detail/composer_presentation_scope.dart";
 export "src/features/session_detail/session_auto_continuation_menu.dart";
 export "src/features/session_detail/session_detail_activity_owner.dart";

@@ -20,6 +20,20 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
 class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateCubit;
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+
+/// The live project list the page names its project from.
+BlocProvider<ProjectListCubit> _projectList({required List<ProjectSummary> projects}) {
+  final cubit = _MockProjectListCubit();
+  final state = ProjectListState.loaded(projects: projects);
+  whenListen(cubit, const Stream<ProjectListState>.empty(), initialState: state);
+  return BlocProvider<ProjectListCubit>.value(value: cubit);
+}
+
+final _ignoredChoice = NewSessionProjectChoice(
+  onProjectSelected: ({required projectId, required projectName}) {},
+  openFolder: ({required context, required onProjectAdded}) {},
+);
 
 class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
 
@@ -66,6 +80,7 @@ void main() {
         providers: [
           BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
           BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+          _projectList(projects: const []),
         ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -78,8 +93,7 @@ void main() {
             onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
-            onProjectSelected: ({required projectId, required projectName}) {},
-            projects: const [],
+            projectChoice: _ignoredChoice,
           ),
         ),
       ),
@@ -125,6 +139,12 @@ void main() {
         providers: [
           BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
           BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+          _projectList(
+            projects: [
+              testProjectSummary(id: "project-1", name: "Sesori"),
+              testProjectSummary(id: "project-2", name: "Landing"),
+            ],
+          ),
         ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -138,11 +158,11 @@ void main() {
             onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
-            onProjectSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
-            projects: [
-              testProjectSummary(id: "project-1", name: "Sesori"),
-              testProjectSummary(id: "project-2", name: "Landing"),
-            ],
+            projectChoice: NewSessionProjectChoice(
+              onProjectSelected: ({required projectId, required projectName}) =>
+                  selected.add("$projectId $projectName"),
+              openFolder: ({required context, required onProjectAdded}) {},
+            ),
           ),
         ),
       ),
@@ -213,6 +233,7 @@ void main() {
         providers: [
           BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
           BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+          _projectList(projects: const []),
         ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -225,8 +246,7 @@ void main() {
             onOpenProject: () {},
             onOpenHarnessSettings: () {},
             onSessionCreated: ({required session}) {},
-            onProjectSelected: ({required projectId, required projectName}) {},
-            projects: const [],
+            projectChoice: _ignoredChoice,
           ),
         ),
       ),
@@ -352,8 +372,7 @@ void main() {
                 onOpenProject: () {},
                 onOpenHarnessSettings: screen.onOpenHarnessSettings,
                 onSessionCreated: ({required session}) {},
-                onProjectSelected: ({required projectId, required projectName}) {},
-                projects: const [],
+                projectChoice: _ignoredChoice,
               );
             },
           ),
@@ -366,6 +385,7 @@ void main() {
             BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
             BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
             BlocProvider<AuthGateCubit>.value(value: authGateCubit),
+            _projectList(projects: const []),
           ],
           child: MaterialApp.router(
             routerConfig: router,

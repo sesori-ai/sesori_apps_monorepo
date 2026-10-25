@@ -49,51 +49,6 @@ void main() {
     });
   });
 
-  group("createProject", () {
-    test("posts the project path and returns the project", () async {
-      const project = Project(
-        id: "project-1",
-        name: "Project 1",
-        path: "/project-1",
-        time: null,
-        voiceGlossaryKey: null,
-      );
-      when(
-        () => client.post<Project>(
-          "/project/create",
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(project));
-
-      final response = await api.createProject(path: "/project-1");
-
-      expect(response, ApiResponse<Project>.success(project));
-      verify(
-        () => client.post<Project>(
-          "/project/create",
-          fromJson: any(named: "fromJson"),
-          body: const ProjectPathRequest(path: "/project-1"),
-        ),
-      ).called(1);
-    });
-
-    test("propagates errors", () async {
-      final error = ApiError.generic();
-      when(
-        () => client.post<Project>(
-          "/project/create",
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.error(error));
-
-      final response = await api.createProject(path: "/project-1");
-
-      expect(response, ApiResponse<Project>.error(error));
-    });
-  });
-
   group("discoverProject", () {
     test("posts the project path and returns the project", () async {
       const project = Project(

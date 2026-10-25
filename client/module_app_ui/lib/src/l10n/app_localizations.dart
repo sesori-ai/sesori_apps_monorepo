@@ -301,6 +301,30 @@ abstract class AppLocalizations {
   /// **'What should we work on?'**
   String get newSessionHeading;
 
+  /// Title of the phone's project picker sheet, opened from the new session page's project button.
+  ///
+  /// In en, this message translates to:
+  /// **'Projects'**
+  String get projectPickerTitle;
+
+  /// Placeholder of the project picker's search field, which matches project names and paths.
+  ///
+  /// In en, this message translates to:
+  /// **'Search projects'**
+  String get projectPickerSearchHint;
+
+  /// First entry of the new-session project picker. Opens the folder browser and selects the folder it adds as the project.
+  ///
+  /// In en, this message translates to:
+  /// **'Open another folder…'**
+  String get projectPickerOpenFolder;
+
+  /// Shown under the project picker's first entry when no project name or path matches the search.
+  ///
+  /// In en, this message translates to:
+  /// **'No projects match'**
+  String get projectPickerNoMatches;
+
   /// Control that opens the session's file changes: the desktop toolbar button and the phone's menu row.
   ///
   /// In en, this message translates to:

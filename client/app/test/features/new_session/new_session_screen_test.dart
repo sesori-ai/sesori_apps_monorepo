@@ -38,7 +38,7 @@ class MockPluginRepository() extends Mock implements PluginRepository;
 
 class MockPluginPreferenceRepository() extends Mock implements PluginPreferenceRepository;
 
-class _MockProjectListService() extends Mock implements ProjectListService;
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
 
@@ -212,10 +212,23 @@ Widget _buildApp({
     ],
   );
 
+  final projectList = _MockProjectListCubit();
+  whenListen(
+    projectList,
+    const Stream<ProjectListState>.empty(),
+    initialState: ProjectListState.loaded(
+      projects: [
+        testProjectSummary(id: "project-1", name: "Project One"),
+        testProjectSummary(id: "project-2", name: "Project Two"),
+      ],
+    ),
+  );
   return MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
       BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
+      // The session scope's live project list, above every signed-in route.
+      BlocProvider<ProjectListCubit>.value(value: projectList),
     ],
     child: MaterialApp.router(
       routerConfig: router,
@@ -459,18 +472,6 @@ void main() {
     GetIt.instance.registerSingleton<ConnectionService>(connectionService);
     GetIt.instance.registerSingleton<CatalogRescanService>(FakeCatalogRescanService());
     GetIt.instance.registerSingleton<ProjectRepository>(projectRepository);
-    final projectListService = _MockProjectListService();
-    when(projectListService.listProjects).thenAnswer(
-      (_) async => ApiResponse.success(
-        Projects(
-          data: [
-            testProjectSummary(id: "project-1", name: "Project One"),
-            testProjectSummary(id: "project-2", name: "Project Two"),
-          ],
-        ),
-      ),
-    );
-    GetIt.instance.registerSingleton<ProjectListService>(projectListService);
     GetIt.instance.registerSingleton<VoiceTranscriptionService>(voiceTranscriptionService);
     GetIt.instance.registerSingleton<ComposerAttachmentDispatcher>(attachmentDispatcher);
     GetIt.instance.registerSingleton<ImageClipboard>(imageClipboard);
@@ -524,6 +525,22 @@ void main() {
     expect(router.state.uri.path, "/projects/project-2/sessions/new");
     // The replaced route keeps its page; the new project still gets its own cubit.
     verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
+  });
+
+  testWidgets("the header hides only while the composer holds the keyboard", (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.reset);
+
+    // A keyboard the composer does not hold, such as the picker's search,
+    // keeps the project button under it.
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("new_session_project")), findsOneWidget);
+
+    await enterTypingMode(tester);
+    expect(find.byKey(const Key("new_session_project")), findsNothing);
   });
 
   testWidgets("hides the worktree toggle while project capability loads", (tester) async {
