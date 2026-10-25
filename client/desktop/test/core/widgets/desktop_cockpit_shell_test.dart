@@ -402,7 +402,6 @@ void main() {
     expect(find.byKey(const Key("desktop-sidebar-refresh")), findsNothing);
     await tester.tap(find.text("Retry"));
     verify(projects.retryLoadProjects).called(1);
-    verifyNever(projects.refreshProjects);
   });
 
   for (final succeeded in [true, false]) {
@@ -429,7 +428,6 @@ void main() {
         expect(find.text("Sesori Desktop"), findsOneWidget);
         expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-settings"))).onPressed, isNotNull);
         verify(refreshService.refresh).called(1);
-        verifyNever(projects.refreshProjects);
         reply.complete(succeeded);
         await tester.pumpAndSettle();
         expect(tester.widget<IconButton>(refresh).onPressed, isNotNull);

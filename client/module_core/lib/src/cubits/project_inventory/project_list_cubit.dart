@@ -19,7 +19,6 @@ class ProjectListCubit({required final ProjectInventoryService _inventoryService
   Future<void> loadProjects() => _inventoryService.loadProjects();
   Future<void> retryLoadProjects() => _inventoryService.retryLoadProjects();
   Future<void> reconnectBridge() => _inventoryService.reconnectBridge();
-  Future<bool> refreshProjects() => _inventoryService.refreshProjects();
 
   Future<bool> hideProject({required String projectId}) => _inventoryService.hideProject(projectId: projectId);
 

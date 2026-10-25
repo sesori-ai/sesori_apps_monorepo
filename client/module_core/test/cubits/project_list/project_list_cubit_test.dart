@@ -146,7 +146,12 @@ void main() {
       return inventory;
     }
 
-    ProjectListCubit buildCubit() => ProjectListCubit(inventoryService: buildInventory());
+    // The inventory behind the latest cubit, for driving refreshes the cubit doesn't expose.
+    late ProjectInventoryService cubitInventory;
+    ProjectListCubit buildCubit() {
+      cubitInventory = buildInventory();
+      return ProjectListCubit(inventoryService: cubitInventory);
+    }
 
     test("inventory loads headlessly and outlives replacement presentation consumers", () async {
       when(mockProjectRepository.listProjects).thenAnswer((_) async => ApiResponse.success(Projects(data: [projectA])));
@@ -328,8 +333,8 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       projects = [projectA];
-      await cubit.refreshProjects();
-      await cubit.refreshProjects();
+      await cubitInventory.refreshProjects();
+      await cubitInventory.refreshProjects();
       await Future<void>.delayed(Duration.zero);
 
       final events = verify(
@@ -362,7 +367,7 @@ void main() {
       addTearDown(cubit.close);
       await Future<void>.delayed(Duration.zero);
 
-      await cubit.refreshProjects();
+      await cubitInventory.refreshProjects();
       await Future<void>.delayed(Duration.zero);
 
       verify(
@@ -1035,7 +1040,7 @@ void main() {
       hideResponse.complete(ApiResponse.success(null));
       expect(await hide, isTrue);
       expect(projectRead, 3);
-      final refresh = cubit.refreshProjects();
+      final refresh = cubitInventory.refreshProjects();
       expect(projectRead, 3);
 
       staleLoadResponse.complete(ApiResponse.success(Projects(data: [projectA, projectB])));
@@ -1544,7 +1549,7 @@ void main() {
         return refreshRequestCount == 1 ? staleRefreshCompleter.future : postRenameRefreshCompleter.future;
       });
 
-      final staleRefresh = cubit.refreshProjects();
+      final staleRefresh = cubitInventory.refreshProjects();
       final rename = cubit.renameProject(projectId: "A", name: "New Name");
       expect((cubit.state as ProjectListLoaded).projects.single.name, "New Name");
 
@@ -1747,7 +1752,7 @@ void main() {
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [testProjectSummary(name: "Refreshed")])),
         );
-        final result = await cubit.refreshProjects();
+        final result = await cubitInventory.refreshProjects();
         expect(result, isTrue);
       },
       skip: 1,
@@ -1775,7 +1780,7 @@ void main() {
       act: (cubit) async {
         await Future<void>.delayed(Duration.zero);
         when(() => mockProjectRepository.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
-        final result = await cubit.refreshProjects();
+        final result = await cubitInventory.refreshProjects();
         expect(result, isFalse);
       },
       skip: 1,
@@ -2663,7 +2668,7 @@ void main() {
         addTearDown(cubit.close);
         await Future<void>.delayed(Duration.zero);
 
-        unawaited(cubit.refreshProjects());
+        unawaited(cubitInventory.refreshProjects());
         await Future<void>.delayed(Duration.zero);
         unawaited(cubit.loadProjects());
         await Future<void>.delayed(Duration.zero);
@@ -2724,7 +2729,7 @@ void main() {
         addTearDown(cubit.close);
         await Future<void>.delayed(Duration.zero);
 
-        final refresh = cubit.refreshProjects();
+        final refresh = cubitInventory.refreshProjects();
         await Future<void>.delayed(Duration.zero);
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
@@ -2787,7 +2792,7 @@ void main() {
         await Future<void>.delayed(Duration.zero);
         expect(requestCount, 2, reason: "a failed catalog refresh must not retry in a loop");
 
-        expect(await cubit.refreshProjects(), isTrue);
+        expect(await cubitInventory.refreshProjects(), isTrue);
         expect(requestCount, 3);
         expect((cubit.state as ProjectListLoaded).projects, [projectC]);
       });
