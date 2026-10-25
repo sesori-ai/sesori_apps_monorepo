@@ -6,7 +6,9 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../features/home/home_composer_pane.dart";
 import "../../features/home/home_screen.dart";
+import "../../features/home/home_sidebar_footer.dart";
 import "../../features/home/onboarding/bridge_onboarding.dart";
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
@@ -108,7 +110,7 @@ extension on AppRoute {
       AppRouteArchivedSessionDetail() => throw StateError("Archive pages belong to their flow shell"),
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
-      AppRouteHome() => const HomeScreen(selectedSessionId: null),
+      AppRouteHome() => const HomeScreen(),
       AppRouteProjectSessions() => throw StateError("The project page is desktop only"),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsDefaultInput() => const DefaultInputSettingsScreen(),
@@ -163,8 +165,7 @@ Page<void> buildSessionPaneTransitionPage({
     transitionDuration: skipsEntryTransition ? Duration.zero : duration,
     reverseTransitionDuration: duration,
     transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      final isSplit = SessionSplitScope.maybeOf(context)?.isSplit ?? false;
-      if (isSplit) {
+      if (SessionSidebarShell.layoutOf(context) == SessionShellLayout.pane) {
         return FadeTransition(
           opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
           child: child,
@@ -323,11 +324,13 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
   return [
     ShellRoute(
       navigatorKey: sessionShellNavigatorKey,
-      // From 700 pt the home lists beside the open page; below it is the page.
+      // From 700 pt the home is the sidebar beside the open page; below it is
+      // the first page.
       builder: (context, state, child) => _shellBackHandler(
         navigatorKey: sessionShellNavigatorKey,
-        child: SessionSplitShell(
-          list: HomeScreen(selectedSessionId: state.pathParameters[sessionIdPathParam]),
+        child: SessionSidebarShell(
+          sidebar: HomeSidebar(selectedSessionId: state.pathParameters[sessionIdPathParam]),
+          footer: ({required onCollapse}) => HomeSidebarFooter(onCollapse: onCollapse),
           child: child,
         ),
       ),
@@ -340,12 +343,10 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
             pageKey: state.pageKey,
             skipsEntryTransition: false,
             child: Builder(
-              builder: (context) => SessionSplitScope.of(context).isSplit
-                  ? EmptySessionDetailPanel(
-                      background: const SesoriBackgroundWidget(),
-                      connectionBanner: ConnectionBanner.maybeFor(context),
-                    )
-                  : const HomeScreen(selectedSessionId: null),
+              builder: (context) => switch (SessionSidebarShell.layoutOf(context)) {
+                SessionShellLayout.pane => const HomeComposerPane(),
+                SessionShellLayout.pages => const HomeScreen(),
+              },
             ),
           ),
           routes: [

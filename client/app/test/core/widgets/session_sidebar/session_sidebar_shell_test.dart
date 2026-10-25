@@ -1,0 +1,312 @@
+import "dart:async";
+
+import "package:flutter_bloc/flutter_bloc.dart";
+import "package:flutter_test/flutter_test.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
+import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/new_session/new_session_screen.dart";
+import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/module_prego.dart";
+
+import "../../../helpers/test_helpers.dart";
+import "../../routing/adaptive_session_router_test_harness.dart";
+
+const _sidebar = Key("session-sidebar");
+const _content = Key("session-sidebar-content");
+const _detail = ValueKey("session-detail-session-1");
+
+void main() {
+  setUpAll(registerAllFallbackValues);
+
+  Future<AdaptiveSessionRouterTestHarness> pumpShell(
+    WidgetTester tester, {
+    required Size size,
+    required String initialLocation,
+    required AppRouteDef currentRouteDef,
+    List<Session>? sessions,
+    Map<String, List<FileDiff>> diffsBySession = const {},
+  }) async {
+    final harness = AdaptiveSessionRouterTestHarness();
+    await tester.binding.setSurfaceSize(size);
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    addTearDown(harness.tearDown);
+    await harness.setUp(
+      initialLocation: initialLocation,
+      currentRouteDef: currentRouteDef,
+      sessionsByProject: {
+        "p1": sessions ?? [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+      },
+      diffsBySession: diffsBySession,
+    );
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+    return harness;
+  }
+
+  void verifyPaneVisible(AdaptiveSessionRouterTestHarness harness, {required bool isVisible, required int times}) {
+    verify(
+      () => harness.projectViewingService.setWideListPaneVisible(
+        claim: any(named: "claim"),
+        isVisible: isVisible,
+      ),
+    ).called(times);
+  }
+
+  Finder inSidebar(Finder finder) => find.descendant(of: find.byKey(_sidebar), matching: finder);
+  Finder inContent(Finder finder) => find.descendant(of: find.byKey(_content), matching: finder);
+
+  group("SessionSidebarShell", () {
+    testWidgets("below 700 pt the home fills the screen without a sidebar", (tester) async {
+      final harness = await pumpShell(
+        tester,
+        size: const Size(699, 800),
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
+      );
+
+      expect(find.byKey(_sidebar), findsNothing);
+      expect(find.text("Session One"), findsOneWidget);
+      expect(SessionSidebarShell.layoutOf(tester.element(find.text("Session One"))), SessionShellLayout.pages);
+      verifyNever(
+        () => harness.projectViewingService.setWideListPaneVisible(claim: any(named: "claim"), isVisible: true),
+      );
+    });
+
+    testWidgets("from 700 pt the open session shows beside the sidebar, highlighted", (tester) async {
+      final harness = await pumpShell(
+        tester,
+        size: const Size(700, 800),
+        initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
+        currentRouteDef: AppRouteDef.sessionDetail,
+      );
+
+      expect(inContent(find.byKey(_detail)), findsOneWidget);
+      expect(SessionSidebarShell.layoutOf(tester.element(find.byKey(_detail))), SessionShellLayout.pane);
+      final tile = tester.widget<SessionTile>(inSidebar(find.byType(SessionTile)));
+      expect(tile.selected, isTrue);
+      verifyPaneVisible(harness, isVisible: true, times: 1);
+    });
+
+    testWidgets("with no session open the pane is a new session in the default project", (tester) async {
+      await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
+      );
+
+      expect(inSidebar(find.text("Session One")), findsOneWidget);
+      expect(inSidebar(find.byKey(const Key("home-new-session"))), findsOneWidget);
+      expect(inContent(find.byType(NewSessionView)), findsOneWidget);
+      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "p1");
+      expect(tester.widget<SessionTile>(inSidebar(find.byType(SessionTile))).selected, isFalse);
+    });
+
+    testWidgets("with no default project the pane asks for one, with nothing selected", (tester) async {
+      await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
+        sessions: const [],
+      );
+
+      expect(inContent(find.byType(NewSessionProjectPrompt)), findsOneWidget);
+      expect(find.byType(NewSessionView), findsNothing);
+      // At rest the pane waits for a tap rather than opening the picker.
+      expect(find.text("Open another folder…"), findsNothing);
+
+      await tester.tap(inContent(find.byKey(const Key("new_session_project"))));
+      await tester.pumpAndSettle();
+      expect(find.text("Open another folder…"), findsOneWidget);
+      await tester.tap(find.text("Project One").last);
+      await tester.pumpAndSettle();
+
+      expect(find.byType(NewSessionProjectPrompt), findsNothing);
+      expect(tester.widget<NewSessionView>(inContent(find.byType(NewSessionView))).projectId, "p1");
+    });
+
+    testWidgets("collapse slides the sidebar out and the pane's restore button brings it back", (tester) async {
+      final harness = await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
+        currentRouteDef: AppRouteDef.sessionDetail,
+      );
+      verifyPaneVisible(harness, isVisible: true, times: 1);
+      expect(find.byKey(const Key("session-sidebar-restore")), findsNothing);
+
+      await tester.tap(find.byKey(const Key("session-sidebar-collapse")));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 130));
+      // Mid-motion the sidebar is narrowing while the pane widens.
+      final midPane = tester.getSize(find.byKey(_content)).width;
+      expect(midPane, greaterThan(1024 - 320));
+      expect(midPane, lessThan(1024));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(_sidebar), findsNothing);
+      expect(tester.getSize(find.byKey(_content)).width, 1024);
+      expect(inContent(find.byKey(_detail)), findsOneWidget);
+      verifyPaneVisible(harness, isVisible: false, times: 1);
+
+      await tester.tap(find.byKey(const Key("session-sidebar-restore")));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(_sidebar), findsOneWidget);
+      expect(find.byKey(const Key("session-sidebar-restore")), findsNothing);
+      expect(tester.getSize(find.byKey(_content)).width, 1024 - 320);
+      verifyPaneVisible(harness, isVisible: true, times: 1);
+    });
+
+    testWidgets("presents snackbars on the shell scaffold across the sidebar and the pane", (tester) async {
+      await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
+      );
+
+      // Like the "session deleted" snackbar after a delete from the list.
+      ScaffoldMessenger.of(tester.element(inSidebar(find.text("Session One")))).showSnackBar(
+        const SnackBar(content: Text("Session deleted")),
+      );
+      await tester.pumpAndSettle();
+
+      expect(find.byType(SnackBar), findsOneWidget);
+      expect(
+        find.ancestor(of: find.byType(SnackBar), matching: find.byKey(const Key("session-sidebar-scaffold"))),
+        findsOneWidget,
+      );
+      expect(tester.getSize(find.byType(SnackBar)).width, 1024);
+    });
+
+    testWidgets("rotating keeps the open session open and the same list cubit", (tester) async {
+      final harness = await pumpShell(
+        tester,
+        size: const Size(1024, 768),
+        initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
+        currentRouteDef: AppRouteDef.sessionDetail,
+      );
+      final before = BlocProvider.of<AllSessionsCubit>(tester.element(inSidebar(find.text("Session One"))));
+      final detail = tester.element(find.byKey(_detail));
+
+      await tester.binding.setSurfaceSize(const Size(390, 844));
+      await tester.pumpAndSettle();
+
+      expect(find.byKey(_sidebar), findsNothing);
+      expect(find.byKey(_detail), findsOneWidget);
+      expect(tester.element(find.byKey(_detail)), same(detail));
+      // Full screen, the session leads back to the home.
+      expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
+      verifyPaneVisible(harness, isVisible: false, times: 1);
+
+      await tester.binding.setSurfaceSize(const Size(1024, 768));
+      await tester.pumpAndSettle();
+
+      expect(inContent(find.byKey(_detail)), findsOneWidget);
+      expect(tester.element(find.byKey(_detail)), same(detail));
+      expect(BlocProvider.of<AllSessionsCubit>(tester.element(inSidebar(find.text("Session One")))), same(before));
+    });
+
+    testWidgets("the open session's pane has one bar and no back button", (tester) async {
+      await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
+        currentRouteDef: AppRouteDef.sessionDetail,
+      );
+
+      expect(inContent(find.byType(GlassAppBar)), findsOneWidget);
+      expect(inContent(find.byType(BackButton)), findsNothing);
+      expect(inContent(find.byIcon(TablerRegular.chevron_left)), findsNothing);
+    });
+
+    testWidgets("a page pushed in the pane has one bar with back and an inline title", (tester) async {
+      await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions/p1/session-1/diffs",
+        currentRouteDef: AppRouteDef.sessionDiffs,
+        diffsBySession: {
+          "session-1": [adaptiveTestDiff()],
+        },
+      );
+
+      final bar = inContent(find.byType(GlassAppBar));
+      expect(bar, findsOneWidget);
+      expect(inContent(find.byIcon(TablerRegular.chevron_left)), findsOneWidget);
+      expect(find.descendant(of: bar, matching: find.text("File changes")), findsOneWidget);
+    });
+
+    testWidgets("opening another session while a pushed new session is sending does not crash", (tester) async {
+      // From an open session: the detail page swaps s1 -> s2 in place while the
+      // pushed new-session page is the exiting route Flutter pops during build.
+      final harness = await pumpShell(
+        tester,
+        size: const Size(1024, 800),
+        initialLocation: "/sessions/p1/s1?title=Session+One&readOnly=false&name=Project+One",
+        currentRouteDef: AppRouteDef.sessionDetail,
+        sessions: [
+          adaptiveTestSession(projectId: "p1", id: "s1", title: "Session One"),
+          adaptiveTestSession(projectId: "p1", id: "s2", title: "Session Two"),
+        ],
+      );
+
+      // Creation stays in flight: the user navigates away before it resolves.
+      final createCompleter = Completer<ApiResponse<Session>>();
+      addTearDown(() {
+        if (!createCompleter.isCompleted) createCompleter.complete(ApiResponse.error(ApiError.generic()));
+      });
+      when(
+        () => harness.sessionRepository.createSessionWithMessage(
+          attachments: const [],
+          projectId: any(named: "projectId"),
+          pluginId: any(named: "pluginId"),
+          text: any(named: "text"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+          dedicatedWorktree: any(named: "dedicatedWorktree"),
+        ),
+      ).thenAnswer((_) => createCompleter.future);
+      final loc = AppLocalizations.of(tester.element(inSidebar(find.text("Session Two"))))!;
+
+      // A new session pushed over the open one, as from a first project.
+      unawaited(
+        harness.router.push(const AppRoute.newSession(projectId: "p1", projectName: "Project One").buildPath()),
+      );
+      await tester.pumpAndSettle();
+      final newSession = find.byType(NewSessionScreen);
+      expect(newSession, findsOneWidget);
+
+      // The fresh composer rests in its hold-to-talk pill; type instead.
+      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.keyboard)));
+      await tester.pumpAndSettle();
+      await tester.enterText(find.descendant(of: newSession, matching: find.byType(EditableText)), "do the thing");
+      // Send only accepts taps once the composer has rebuilt around its text.
+      await tester.pump();
+      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)));
+      await tester.pump();
+      expect(find.byType(QueuedMessageBubble), findsOneWidget);
+
+      // go_router pops the pushed page during the Navigator's build, so its
+      // PopScope callback runs mid-build, where showing a snackbar throws.
+      await tester.tap(inSidebar(find.text("Session Two")));
+      await tester.pump();
+      expect(tester.takeException(), isNull);
+
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+
+      expect(find.byType(NewSessionScreen), findsNothing);
+      expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
+    });
+  });
+}

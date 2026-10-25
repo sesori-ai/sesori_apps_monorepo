@@ -12,6 +12,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../core/di/injection.dart";
 import "../../../core/external_link.dart";
+import "../../../core/routing/app_router.dart";
 import "../../../core/widgets/connection_graphic.dart";
 
 part "bridge_offline_view.dart";

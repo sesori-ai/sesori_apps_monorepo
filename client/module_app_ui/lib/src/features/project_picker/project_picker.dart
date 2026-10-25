@@ -7,7 +7,7 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
-import "../../widgets/session_split/session_split_breakpoints.dart";
+import "../../widgets/session_sidebar/session_sidebar_shell.dart";
 import "../project_list/add_project_dialog.dart";
 import "../project_list/project_path_labels.dart";
 
@@ -63,7 +63,7 @@ class const ProjectPicker({
         focusesUnderTouch: focusesUnderTouch,
       ),
     );
-    if (pointer || MediaQuery.sizeOf(context).width >= splitBreakpoint) {
+    if (pointer || MediaQuery.sizeOf(context).width >= wideLayoutBreakpoint) {
       return PregoPopover(
         popoverWidth: _popoverWidth,
         popoverMaxHeight: PregoPickerPopover.maxHeight,

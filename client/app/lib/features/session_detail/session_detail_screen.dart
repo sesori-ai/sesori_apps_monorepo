@@ -95,9 +95,9 @@ class const _MobileSessionDetailBody({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final isSplit = SessionSplitScope.maybeOf(context)?.isSplit ?? false;
+    final isPane = SessionSidebarShell.layoutOf(context) == SessionShellLayout.pane;
     final isImperative = isImperativePaneRoute(context);
-    final showLeading = !isSplit || isImperative;
+    final showLeading = !isPane || isImperative;
     return SessionDetailPresentationScope(
       messageImageRepository: getIt.get<MessageImageRepository>,
       imageSaver: getIt.get<ImageSaver>,

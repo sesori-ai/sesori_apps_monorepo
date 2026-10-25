@@ -49,7 +49,9 @@ class const NewSessionView({
   /// Null names the project without a picker, for a page that is the
   /// project's own.
   required final NewSessionProjectSelected? onProjectSelected,
-  required final VoidCallback onBack,
+
+  /// Null where nothing lies behind the page, such as the home's content pane.
+  required final VoidCallback? onBack,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
   required final NewSessionComposerScopeBuilder composerScopeBuilder,
@@ -140,7 +142,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   }
 
   void _dismissScreen() {
-    widget.onBack();
+    widget.onBack?.call();
   }
 
   Widget? _buildErrorBanner(NewSessionState state) {
@@ -691,7 +693,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         title: loc.sessionListNewSession,
         // Toolbar navigation is explicit: unlike Android system back, it must
         // not be vetoed by the composer's keyboard-dismissal PopScope.
-        onBack: _dismissScreen,
+        onBack: widget.onBack == null ? null : _dismissScreen,
         // The header's project selector names the project, so the bar carries
         // no subtitle.
         titleMode: isSending ? PregoTopNavigationTitleMode.inline : PregoTopNavigationTitleMode.backLeading,

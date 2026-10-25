@@ -183,7 +183,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                         projectName: projectName,
                         // The page names its project; the header shows it without a picker.
                         onProjectSelected: null,
-                        onBack: () {},
+                        onBack: null,
                         onOpenHarnessSettings: widget.onOpenHarnessSettings,
                         onSessionCreated: onSessionTap,
                         composerScopeBuilder: ({required child}) => DesktopComposerPresentationScope(

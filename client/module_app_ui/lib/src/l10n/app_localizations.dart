@@ -4813,17 +4813,17 @@ abstract class AppLocalizations {
   /// **'Copy'**
   String get sessionDetailCopy;
 
-  /// No description provided for @emptySessionDetailTitle.
+  /// Label of the phone and tablet sidebar footer button that hides the sidebar beside the open page.
   ///
   /// In en, this message translates to:
-  /// **'Select a session'**
-  String get emptySessionDetailTitle;
+  /// **'Collapse sidebar'**
+  String get sessionSidebarCollapse;
 
-  /// No description provided for @emptySessionDetailSubtitle.
+  /// Label of the toolbar button that brings the collapsed phone and tablet sidebar back.
   ///
   /// In en, this message translates to:
-  /// **'Choose a session from the list to view details'**
-  String get emptySessionDetailSubtitle;
+  /// **'Expand sidebar'**
+  String get sessionSidebarExpand;
 
   /// Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine.
   ///

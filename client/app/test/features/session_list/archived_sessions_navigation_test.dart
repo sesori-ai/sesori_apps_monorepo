@@ -106,7 +106,7 @@ void main() {
       // Filtered to one project, its rows don't repeat it (D3).
       expect(labelOf(title: "Archived record", project: "Project One"), findsNothing);
       expect(find.text("Today"), findsOneWidget);
-      expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+      expect(find.byKey(const Key("session-sidebar")), findsNothing);
       expect(find.byIcon(TablerRegular.plus), findsNothing);
       final listElement = tester.element(find.byType(ArchivedSessionsView));
       await tester.tap(find.text("Archived record"));

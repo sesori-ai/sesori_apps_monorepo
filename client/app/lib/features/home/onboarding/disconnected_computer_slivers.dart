@@ -3,6 +3,13 @@ part of "bridge_onboarding.dart";
 void switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
     unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
 
+/// Opens the Computers page from a computer menu. Settings goes under it so
+/// Back from Computers lands there.
+void manageComputers({required BuildContext context}) {
+  context.pushRoute(const AppRoute.settings());
+  context.pushRoute(const AppRoute.settingsComputers());
+}
+
 /// The page for a computer that is not connected, on the home and in
 /// Archived: setup onboarding before any bridge is registered, otherwise the
 /// offline flow. "Need help?" closes it in the space left below: pinned to the

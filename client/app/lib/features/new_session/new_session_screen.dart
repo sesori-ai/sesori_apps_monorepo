@@ -24,6 +24,7 @@ class const NewSessionScreen({
             context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
         onBack: context.pop,
         banner: ConnectionBanner.maybeFor(context),
+        opensPicker: true,
       );
     }
     return BlocProvider(

@@ -106,6 +106,7 @@ void main() {
                   disconnectedBuilder: ({required context, required state}) =>
                       const SliverToBoxAdapter(child: Text("Computer offline")),
                   emptyState: const Text("Nothing here"),
+                  header: null,
                 ),
               ],
             ),
