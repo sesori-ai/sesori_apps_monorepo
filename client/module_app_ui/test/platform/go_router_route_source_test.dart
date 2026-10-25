@@ -13,20 +13,17 @@ GoRouter _router() {
     initialLocation: AppRouteDef.splash.path,
     routes: [
       GoRoute(path: AppRouteDef.splash.path, builder: (_, _) => const Text("splash")),
-      GoRoute(
-        path: AppRouteDef.projects.path,
-        builder: (_, _) => const Text("projects"),
+      ShellRoute(
+        builder: (_, _, child) => child,
         routes: [
-          ShellRoute(
-            builder: (_, _, child) => child,
+          GoRoute(
+            path: AppRouteDef.home.path,
+            builder: (_, _) => const Text("home"),
             routes: [
+              GoRoute(path: "new", builder: (_, _) => const Text("new session")),
               GoRoute(
-                path: ":$projectIdPathParam/sessions",
-                builder: (_, _) => const Text("sessions"),
-                routes: [
-                  GoRoute(path: "new", builder: (_, _) => const Text("new session")),
-                  GoRoute(path: ":$sessionIdPathParam", builder: (_, _) => const Text("session detail")),
-                ],
+                path: ":$projectIdPathParam/:$sessionIdPathParam",
+                builder: (_, _) => const Text("session detail"),
               ),
             ],
           ),
@@ -65,24 +62,24 @@ void main() {
   testWidgets("reports declaratively navigated screens", (tester) async {
     await pumpRouter(tester);
 
-    router.go(const AppRoute.projects().buildPath());
+    router.go(const AppRoute.home().buildPath());
     await tester.pumpAndSettle();
 
-    expect(routeSource.currentRouteStream.value, AppRouteDef.projects);
+    expect(routeSource.currentRouteStream.value, AppRouteDef.home);
   });
 
-  testWidgets("replays project-page visibility and follows topmost navigation", (tester) async {
+  testWidgets("replays home visibility and follows topmost navigation", (tester) async {
     await pumpRouter(tester);
     final initialVisibility = <bool>[];
-    final initialSubscription = routeSource.projectPageVisibility.listen(initialVisibility.add);
+    final initialSubscription = routeSource.homeVisibility.listen(initialVisibility.add);
     addTearDown(initialSubscription.cancel);
     await tester.pump();
     expect(initialVisibility, [false]);
 
-    router.go(const AppRoute.projects().buildPath());
+    router.go(const AppRoute.home().buildPath());
     await tester.pumpAndSettle();
     final lateVisibility = <bool>[];
-    final lateSubscription = routeSource.projectPageVisibility.listen(lateVisibility.add);
+    final lateSubscription = routeSource.homeVisibility.listen(lateVisibility.add);
     addTearDown(lateSubscription.cancel);
     await tester.pump();
     expect(lateVisibility, [true]);
@@ -92,7 +89,7 @@ void main() {
     router.pop<void>();
     await tester.pumpAndSettle();
 
-    unawaited(router.push<void>(const AppRoute.sessions(projectId: "p1", projectName: null).buildPath()));
+    unawaited(router.push<void>(const AppRoute.newSession(projectId: null, projectName: null).buildPath()));
     await tester.pumpAndSettle();
     router.pop<void>();
     await tester.pumpAndSettle();
@@ -103,10 +100,10 @@ void main() {
 
   testWidgets("reports imperatively pushed screens", (tester) async {
     await pumpRouter(tester);
-    router.go(const AppRoute.projects().buildPath());
+    router.go(const AppRoute.home().buildPath());
     await tester.pumpAndSettle();
 
-    // A push leaves RouteMatchList.uri on /projects, so only walking the match
+    // A push leaves RouteMatchList.uri on /sessions, so only walking the match
     // tree reveals settings as the screen the user is actually on.
     unawaited(router.push<void>(const AppRoute.settings().buildPath()));
     await tester.pumpAndSettle();
@@ -116,7 +113,7 @@ void main() {
 
   testWidgets("currentLocation keeps the query of a pushed route", (tester) async {
     await pumpRouter(tester);
-    router.go(const AppRoute.projects().buildPath());
+    router.go(const AppRoute.home().buildPath());
     await tester.pumpAndSettle();
 
     unawaited(
@@ -137,32 +134,39 @@ void main() {
     // read-only session screen from the editable one, so a location that drops
     // the query cannot tell them apart.
     final location = Uri.parse(routeSource.currentLocation!);
-    expect(location.path, "/projects/p1/sessions/s1");
+    expect(location.path, "/sessions/p1/s1");
     expect(location.queryParameters["readOnly"], "true");
   });
 
   testWidgets("reports pushed screens nested in the session shell", (tester) async {
     await pumpRouter(tester);
-    router.go(const AppRoute.projects().buildPath());
+    router.go(const AppRoute.home().buildPath());
     await tester.pumpAndSettle();
-
-    unawaited(
-      router.push<void>(
-        const AppRoute.sessions(projectId: "p1", projectName: null).buildPath(),
-      ),
-    );
-    await tester.pumpAndSettle();
-    expect(routeSource.currentRouteStream.value, AppRouteDef.sessions);
 
     unawaited(router.push<void>(const AppRoute.newSession(projectId: "p1", projectName: null).buildPath()));
     await tester.pumpAndSettle();
-
     expect(routeSource.currentRouteStream.value, AppRouteDef.newSession);
+
+    unawaited(
+      router.push<void>(
+        const AppRoute.sessionDetail(
+          projectId: "p1",
+          projectName: null,
+          sessionId: "s1",
+          sessionTitle: null,
+          readOnly: false,
+          fromLaunch: false,
+        ).buildPath(),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    expect(routeSource.currentRouteStream.value, AppRouteDef.sessionDetail);
   });
 
   testWidgets("reports the revealed screen after popping a pushed screen", (tester) async {
     await pumpRouter(tester);
-    router.go(const AppRoute.projects().buildPath());
+    router.go(const AppRoute.home().buildPath());
     await tester.pumpAndSettle();
     unawaited(router.push<void>(const AppRoute.settings().buildPath()));
     await tester.pumpAndSettle();
@@ -182,7 +186,7 @@ void main() {
     const locations = {
       AppRouteDef.splash: "/splash",
       AppRouteDef.login: "/login",
-      AppRouteDef.projects: "/projects",
+      AppRouteDef.home: "/sessions",
       AppRouteDef.settings: "/settings",
       AppRouteDef.settingsDefaultInput: "/settings/default-input",
       AppRouteDef.settingsNotifications: "/settings/notifications",
@@ -191,12 +195,12 @@ void main() {
       AppRouteDef.settingsProfile: "/settings/profile",
       AppRouteDef.settingsComputers: "/settings/computers",
       AppRouteDef.settingsProjects: "/settings/projects",
-      AppRouteDef.sessions: "/projects/p1/sessions",
+      AppRouteDef.projectSessions: "/projects/p1/sessions",
       AppRouteDef.archivedSessions: "/archived-sessions",
       AppRouteDef.archivedSessionDetail: "/archived-sessions/p1/s1",
-      AppRouteDef.newSession: "/projects/p1/sessions/new",
-      AppRouteDef.sessionDetail: "/projects/p1/sessions/s1",
-      AppRouteDef.sessionDiffs: "/projects/p1/sessions/s1/diffs",
+      AppRouteDef.newSession: "/sessions/new",
+      AppRouteDef.sessionDetail: "/sessions/p1/s1",
+      AppRouteDef.sessionDiffs: "/sessions/p1/s1/diffs",
     };
     expect(locations.keys, unorderedEquals(AppRouteDef.values));
 

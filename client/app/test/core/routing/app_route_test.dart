@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
 import "package:flutter_test/flutter_test.dart";
-import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -10,12 +9,11 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/core/routing/imperative_pane_route.dart";
+import "package:sesori_mobile/features/home/home_screen.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
 import "package:sesori_mobile/features/new_session/new_session_screen.dart";
-import "package:sesori_mobile/features/project_list/project_list_screen.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_mobile/features/session_diffs/session_diffs_screen.dart";
-import "package:sesori_mobile/features/session_list/session_list_cubit_provider.dart";
 import "package:sesori_mobile/features/settings/harnesses_settings_screen.dart";
 import "package:sesori_mobile/features/settings/settings_screen.dart";
 import "package:sesori_mobile/features/splash/splash_screen.dart";
@@ -64,7 +62,7 @@ void main() {
     test("returns raw path for parameterless routes", () {
       expect(const AppRoute.splash().buildPath(), "/splash");
       expect(const AppRoute.login().buildPath(), "/login");
-      expect(const AppRoute.projects().buildPath(), "/projects");
+      expect(const AppRoute.home().buildPath(), "/sessions");
       expect(const AppRoute.settings().buildPath(), "/settings");
     });
 
@@ -79,14 +77,6 @@ void main() {
       );
     });
 
-    test("substitutes projectId for sessions", () {
-      final result = const AppRoute.sessions(
-        projectId: "proj-123",
-        projectName: null,
-      ).buildPath();
-      expect(result, "/projects/proj-123/sessions");
-    });
-
     test("substitutes path params for sessionDetail", () {
       final result = const AppRoute.sessionDetail(
         projectId: "proj-123",
@@ -96,25 +86,7 @@ void main() {
         readOnly: false,
         fromLaunch: false,
       ).buildPath();
-      expect(result, "/projects/proj-123/sessions/ses-456?readOnly=false");
-    });
-
-    test("includes projectName as query param for sessions", () {
-      final result = const AppRoute.sessions(
-        projectId: "proj-123",
-        projectName: "My Project",
-      ).buildPath();
-      expect(result, contains("/projects/proj-123/sessions?"));
-      expect(result, contains("name=My+Project"));
-    });
-
-    test("omits query string when no query params set", () {
-      final result = const AppRoute.sessions(
-        projectId: "proj-123",
-        projectName: null,
-      ).buildPath();
-      expect(result, "/projects/proj-123/sessions");
-      expect(result, isNot(contains("?")));
+      expect(result, "/sessions/proj-123/ses-456?readOnly=false");
     });
 
     test("includes title and readOnly as query params for sessionDetail", () {
@@ -126,7 +98,7 @@ void main() {
         readOnly: true,
         fromLaunch: false,
       ).buildPath();
-      expect(result, contains("/projects/proj-1/sessions/ses-1?"));
+      expect(result, contains("/sessions/proj-1/ses-1?"));
       expect(result, isNot(contains("& more")));
       expect(result, contains("name=Project+One"));
       expect(result, contains("readOnly=true"));
@@ -141,7 +113,7 @@ void main() {
         readOnly: false,
         fromLaunch: false,
       ).buildPath();
-      expect(result, "/projects/proj-1/sessions/ses-1?readOnly=false");
+      expect(result, "/sessions/proj-1/ses-1?readOnly=false");
     });
 
     test("encodes path params with special characters", () {
@@ -155,18 +127,15 @@ void main() {
       ).buildPath();
       expect(
         result,
-        "/projects/project%2Fwith%3Fspecial%26chars/sessions/id%2Fwith%3Fspecial%26chars?readOnly=false",
+        "/sessions/project%2Fwith%3Fspecial%26chars/id%2Fwith%3Fspecial%26chars?readOnly=false",
       );
     });
 
-    test("substitutes projectId for newSession", () {
-      final result = const AppRoute.newSession(projectId: "proj-42", projectName: null).buildPath();
-      expect(result, "/projects/proj-42/sessions/new");
-    });
-
-    test("includes projectName as query param for newSession", () {
-      final result = const AppRoute.newSession(projectId: "proj-42", projectName: "Project One").buildPath();
-      expect(result, "/projects/proj-42/sessions/new?name=Project+One");
+    test("carries an optional project for newSession", () {
+      expect(const AppRoute.newSession(projectId: null, projectName: null).buildPath(), "/sessions/new");
+      final named = const AppRoute.newSession(projectId: "proj-42", projectName: "Project One").buildPath();
+      expect(named, startsWith("/sessions/new?"));
+      expect(Uri.parse(named).queryParameters, {"project": "proj-42", "name": "Project One"});
     });
   });
 
@@ -186,9 +155,9 @@ void main() {
       expect((page as CustomTransitionPage<void>).child, isA<LoginScreen>());
     });
 
-    test("projects route builds ProjectListScreen", () {
-      final widget = AppRouteDef.projects.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
-      expect(widget, isA<ProjectListScreen>());
+    test("home route builds HomeScreen", () {
+      final widget = AppRouteDef.home.toGoRoute().builder!(_FakeBuildContext(), _FakeGoRouterState());
+      expect(widget, isA<HomeScreen>());
     });
 
     // A CupertinoPage, so the bottom-up modal slide is the same on Android,
@@ -238,7 +207,7 @@ void main() {
     test("newSession route builds NewSessionScreen", () {
       final widget = AppRouteDef.newSession.toGoRoute().builder!(
         _FakeBuildContext(),
-        _FakeGoRouterState(pathParameters: {"projectId": "proj-42"}, queryParameters: {"name": "Project One"}),
+        _FakeGoRouterState(queryParameters: {"project": "proj-42", "name": "Project One"}),
       );
       expect(widget, isA<NewSessionScreen>());
       expect((widget as NewSessionScreen).projectId, "proj-42");
@@ -247,21 +216,19 @@ void main() {
   });
 
   group("buildAppRoutes", () {
-    test("explicit route table covers every AppRouteDef exactly once", () {
+    test("explicit route table covers every phone AppRouteDef exactly once", () {
       final routes = buildAppRoutes();
       final registeredPaths = _collectAbsoluteRoutePaths(routes: routes);
+      // The project page is the desktop's alone.
+      final phoneDefs = AppRouteDef.values.where((def) => def != AppRouteDef.projectSessions);
 
-      expect(registeredPaths, hasLength(AppRouteDef.values.length));
-      expect(
-        registeredPaths.toSet(),
-        equals(AppRouteDef.values.map((def) => def.path).toSet()),
-      );
+      expect(registeredPaths, hasLength(phoneDefs.length));
+      expect(registeredPaths.toSet(), equals(phoneDefs.map((def) => def.path).toSet()));
     });
 
     test("nested session route segments compose to AppRouteDef templates", () {
-      expect("${AppRouteDef.projects.path}/:projectId/sessions", AppRouteDef.sessions.path);
-      expect("${AppRouteDef.sessions.path}/new", AppRouteDef.newSession.path);
-      expect("${AppRouteDef.sessions.path}/:sessionId", AppRouteDef.sessionDetail.path);
+      expect("${AppRouteDef.home.path}/new", AppRouteDef.newSession.path);
+      expect("${AppRouteDef.home.path}/:projectId/:sessionId", AppRouteDef.sessionDetail.path);
       expect("${AppRouteDef.sessionDetail.path}/diffs", AppRouteDef.sessionDiffs.path);
     });
 
@@ -273,15 +240,14 @@ void main() {
       final allPaths = _collectAbsoluteRoutePaths(routes: routes);
 
       expect(flatPaths, equals([AppRouteDef.splash.path, AppRouteDef.login.path]));
-      expect(signedInPaths, equals([AppRouteDef.projects.path, AppRouteDef.settings.path]));
+      expect(signedInPaths, equals([AppRouteDef.settings.path]));
       expect(shell.routes, hasLength(1));
       expect(
         allPaths,
         equals([
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
-          AppRouteDef.projects.path,
-          AppRouteDef.sessions.path,
+          AppRouteDef.home.path,
           AppRouteDef.newSession.path,
           AppRouteDef.sessionDetail.path,
           AppRouteDef.sessionDiffs.path,
@@ -304,30 +270,22 @@ void main() {
       final sessionsRoute = shell.routes.whereType<GoRoute>().single;
       final childPaths = sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path).toList();
 
-      expect(childPaths, equals(["new", ":sessionId"]));
+      expect(childPaths, equals(["new", ":projectId/:sessionId"]));
     });
 
-    test("session shell page hoists cubit provider above split shell", () {
-      final getIt = GetIt.instance;
-      getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
-      addTearDown(() => getIt.unregister<ProjectViewingService>());
-
+    test("session shell lists the home beside the open session", () {
       final shell = _sessionShellRoute();
       final widget = shell.builder!(
         _FakeBuildContext(),
-        _FakeGoRouterState(
-          pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"},
-          queryParameters: {"name": "My Project"},
-        ),
+        _FakeGoRouterState(pathParameters: {"projectId": "proj-42", "sessionId": "ses-99"}),
         const SizedBox(),
       );
 
       // System back reaches the shell's own navigator before the shell page.
       expect(widget, isA<NavigatorPopHandler<void>>());
-      final provider = (widget as NavigatorPopHandler<void>).child as SessionListCubitProvider;
-      expect(provider.key, const ValueKey("session-list-cubit-proj-42"));
-      expect(provider.projectId, "proj-42");
-      expect(provider.child, isA<SessionSplitShell>());
+      final split = (widget as NavigatorPopHandler<void>).child as SessionSplitShell;
+      expect(split.list, isA<HomeScreen>());
+      expect((split.list as HomeScreen).selectedSessionId, "ses-99");
     });
 
     test("detail route preserves typed route decoding and stable key", () {
@@ -388,14 +346,9 @@ void main() {
         expect(shell.routes.whereType<GoRoute>(), hasLength(1));
       });
 
-      test("first-level shell route is the relative sessions segment", () {
+      test("first-level shell route is the home", () {
         final shell = _sessionShellRoute();
-        final sessionsRoute = shell.routes.whereType<GoRoute>().single;
-        expect(sessionsRoute.path, ":projectId/sessions");
-        expect(
-          _composeRoutePath(parentPath: AppRouteDef.projects.path, path: sessionsRoute.path),
-          AppRouteDef.sessions.path,
-        );
+        expect(shell.routes.whereType<GoRoute>().single.path, AppRouteDef.home.path);
       });
 
       test("new-session child uses a relative segment", () {
@@ -405,7 +358,7 @@ void main() {
 
       test("detail child uses a relative dynamic segment", () {
         final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
-        expect(sessionsRoute.routes.whereType<GoRoute>().last.path, ":sessionId");
+        expect(sessionsRoute.routes.whereType<GoRoute>().last.path, ":projectId/:sessionId");
       });
 
       test("diffs child uses a relative segment under detail", () {
@@ -414,7 +367,10 @@ void main() {
 
       test("new-session child is declared before dynamic detail", () {
         final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
-        expect(sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path), equals(["new", ":sessionId"]));
+        expect(
+          sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path),
+          equals(["new", ":projectId/:sessionId"]),
+        );
       });
 
       test("only splash and login sit outside the signed-in shell", () {
@@ -422,10 +378,7 @@ void main() {
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
         ]);
-        expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [
-          AppRouteDef.projects.path,
-          AppRouteDef.settings.path,
-        ]);
+        expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [AppRouteDef.settings.path]);
       });
 
       test("detail route has exactly one nested child", () {
@@ -436,7 +389,7 @@ void main() {
         final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
         final newRoute = sessionsRoute.routes.whereType<GoRoute>().first;
         expect(
-          _composeRoutePath(parentPath: AppRouteDef.sessions.path, path: newRoute.path),
+          _composeRoutePath(parentPath: AppRouteDef.home.path, path: newRoute.path),
           AppRouteDef.newSession.path,
         );
       });
@@ -467,11 +420,7 @@ void main() {
       dispatcher.replaceStack(
         stack: RouteStack(
           paths: [
-            const AppRoute.projects().buildPath(),
-            const AppRoute.sessions(
-              projectId: "proj_1",
-              projectName: null,
-            ).buildPath(),
+            const AppRoute.home().buildPath(),
             const AppRoute.sessionDetail(
               projectId: "proj_1",
               projectName: null,
@@ -485,14 +434,10 @@ void main() {
       );
       await dispatcher.flushPendingForTesting();
 
-      expect(goCalls, equals(["dismiss", const AppRoute.projects().buildPath()]));
+      expect(goCalls, equals(["dismiss", const AppRoute.home().buildPath()]));
       expect(
         pushCalls,
         equals([
-          const AppRoute.sessions(
-            projectId: "proj_1",
-            projectName: null,
-          ).buildPath(),
           const AppRoute.sessionDetail(
             projectId: "proj_1",
             projectName: null,
@@ -568,7 +513,7 @@ List<RouteBase> _signedInRoutes() => buildAppRoutes().whereType<ShellRoute>().si
 
 ShellRoute _sessionShellRoute() =>
     _collectShellRoutes(routes: buildAppRoutes())
-        .singleWhere((shell) => (shell.routes.first as GoRoute).path == ":$projectIdPathParam/sessions");
+        .singleWhere((shell) => shell.routes.whereType<GoRoute>().firstOrNull?.path == AppRouteDef.home.path);
 
 String _composeRoutePath({required String parentPath, required String path}) {
   if (path.startsWith("/")) return path;
@@ -579,7 +524,9 @@ String _composeRoutePath({required String parentPath, required String path}) {
 GoRoute _sessionDetailRoute() {
   final shell = _sessionShellRoute();
   final sessionsRoute = shell.routes.whereType<GoRoute>().single;
-  return sessionsRoute.routes.whereType<GoRoute>().singleWhere((route) => route.path == ":sessionId");
+  return sessionsRoute.routes.whereType<GoRoute>().singleWhere(
+    (route) => route.path == ":$projectIdPathParam/:$sessionIdPathParam",
+  );
 }
 
 GoRoute _sessionDiffsRoute() {

@@ -99,7 +99,22 @@ class AdaptiveSessionRouterTestHarness() {
     when(() => connectionService.currentStatus).thenReturn(_connectedStatus);
     when(() => connectionService.sessionEvents(any())).thenAnswer((_) => sessionEventsController.stream);
 
-    when(() => projectRepository.listProjects()).thenAnswer((_) async => ApiResponse.success(const Projects(data: [])));
+    // The home lists every project's sessions.
+    when(() => projectRepository.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(
+        Projects(
+          data: [
+            for (final projectId in sessionsByProject.keys)
+              ProjectSummary(
+                id: projectId,
+                name: "Project One",
+                path: "/$projectId",
+                time: const ProjectTime(created: 1700000000000, updated: 1700000000000),
+              ),
+          ],
+        ),
+      ),
+    );
     when(
       () => projectRepository.getProject(projectId: any(named: "projectId")),
     ).thenAnswer((invocation) async {
@@ -255,6 +270,18 @@ class AdaptiveSessionRouterTestHarness() {
     registerListServicesWithProductAnalytics(
       projectRepository: projectRepository,
       productAnalyticsService: productAnalyticsService,
+    );
+    // The real inventory, so the home reads each project's sessions.
+    await getIt.unregister<RecentSessionInventoryService>();
+    getIt.registerFactory<RecentSessionInventoryService>(
+      () => RecentSessionInventoryService(
+        sessionListService: getIt<SessionListService>(),
+        projectListService: getIt<ProjectListService>(),
+        connectionService: connectionService,
+        sseEventTracker: sseEventTracker,
+        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
+        catalogRescanService: getIt<CatalogRescanService>(),
+      ),
     );
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);

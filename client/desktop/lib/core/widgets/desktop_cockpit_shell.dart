@@ -30,6 +30,9 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     sessionCleanupService: getIt<SessionCleanupService>(),
     sessionLaunchService: getIt<SessionLaunchService>(),
     connectionService: getIt<ConnectionService>(),
+    filterTracker: getIt<SessionListFilterTracker>(),
+    sessionListService: getIt<SessionListService>(),
+    projectViewingService: getIt<ProjectViewingService>(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [

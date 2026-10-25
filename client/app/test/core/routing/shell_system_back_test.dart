@@ -10,7 +10,7 @@ import "../../helpers/test_helpers.dart";
 import "adaptive_session_router_test_harness.dart";
 
 const _detailKey = ValueKey("session-detail-session-1");
-const _detailLocation = "/projects/p1/sessions/session-1?title=Session+One&readOnly=false";
+const _detailLocation = "/sessions/p1/session-1?title=Session+One&readOnly=false";
 
 /// Android back as the platform sends it: a predictive edge swipe, or the
 /// back button, which arrives as a plain route pop.
@@ -19,10 +19,13 @@ enum _Back() {
   button,
 }
 
-/// How the phone reaches a session from Projects.
+/// How the phone reaches a session from the home.
 enum _Entry() {
-  activity,
-  sessionList,
+  /// Pushed over the home, as a notification or a launch opens it.
+  pushed,
+
+  /// A row tapped in the home's list, which stays under it.
+  homeRow,
 }
 
 Future<void> _systemBack({required WidgetTester tester, required _Back back}) async {
@@ -85,7 +88,7 @@ void main() {
         addTearDown(() => tester.binding.setSurfaceSize(null));
         try {
           await harness.setUp(
-            initialLocation: "/projects",
+            initialLocation: "/sessions",
             currentRouteDef: AppRouteDef.sessionDetail,
             sessionsByProject: {
               "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
@@ -95,15 +98,9 @@ void main() {
           await _settle(tester);
 
           switch (entry) {
-            case _Entry.activity:
-              // Projects' Activity pushes the session on its own, so it is the
-              // only page on the session shell's navigator.
+            case _Entry.pushed:
               unawaited(harness.router.push<void>(_detailLocation));
-            case _Entry.sessionList:
-              // Opening the project pushes its session list; a tap then goes to
-              // the session, leaving the list under it on the shell's navigator.
-              unawaited(harness.router.push<void>("/projects/p1/sessions"));
-              await _settle(tester);
+            case _Entry.homeRow:
               harness.router.go(_detailLocation);
           }
           await _settle(tester);
@@ -124,6 +121,7 @@ void main() {
 
           await _systemBack(tester: tester, back: back);
           expect(find.byKey(_detailKey), findsNothing);
+          expect(find.byKey(const Key("home-archived")), findsOneWidget);
         } finally {
           await harness.tearDown();
         }

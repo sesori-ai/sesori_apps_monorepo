@@ -44,7 +44,7 @@ void main() {
   SessionDetailCubit detailCubit({required WidgetTester tester}) =>
       tester.element(find.byType(SessionDetailBody)).read<SessionDetailCubit>();
 
-  for (final detailBase in ["/projects/p1/sessions", "/archived-sessions/p1"]) {
+  for (final detailBase in ["/sessions/p1", "/archived-sessions/p1"]) {
     testWidgets("$detailBase same-kind child suppresses parent and pop retains loaded draft", (tester) async {
       final harness = await setUpRouter(tester: tester, location: "$detailBase/parent");
       await tester.pumpWidget(harness.buildApp());
@@ -83,10 +83,10 @@ void main() {
     "/settings/harnesses",
     "/archived-sessions",
     "/archived-sessions/p1/audit",
-    "/projects/p1/sessions/parent/diffs",
+    "/sessions/p1/parent/diffs",
   ]) {
     testWidgets("$cover suppresses refresh declarations and restores retained detail", (tester) async {
-      final harness = await setUpRouter(tester: tester, location: "/projects/p1/sessions/parent");
+      final harness = await setUpRouter(tester: tester, location: "/sessions/p1/parent");
       await tester.pumpWidget(harness.buildApp());
       await tester.pumpAndSettle();
       final parent = detailCubit(tester: tester);
@@ -115,7 +115,7 @@ void main() {
   }
 
   testWidgets("load completing under root Settings waits for return before viewed or analytics", (tester) async {
-    final harness = await setUpRouter(tester: tester, location: "/projects/p1/sessions/parent");
+    final harness = await setUpRouter(tester: tester, location: "/sessions/p1/parent");
     final result = Completer<SessionDetailMetadataLoadResult>();
     when(() => harness.sessionDetailLoadService.loadMetadata(sessionId: "parent")).thenAnswer((_) => result.future);
     await tester.pumpWidget(harness.buildApp());

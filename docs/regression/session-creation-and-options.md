@@ -12,6 +12,11 @@ variant, and worktree mode, and creating the session with its first input.
   open the same typed setup route. The button and shortcut use the open project, else the most recently active
   one; with no project yet they open the New project dialog.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
+- The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
+  project: the filtered project, else the project of the newest session. With no default it opens a "New
+  session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
+  selected and lists the known projects under "Open another folder…"; with no projects it offers only that
+  entry. Choosing one replaces the page with that project's setup page.
 - On phone and desktop the setup page opens with the heading "What should we work on?" and a project
   selector naming the session's project from the live project list (the route's name until it loads). The
   selector always opens a searchable project picker: a bottom sheet on a phone below 700 pt, whose search
@@ -295,7 +300,7 @@ variant, and worktree mode, and creating the session with its first input.
 - Send immediately cross-fades the options into the submitted message, shown as
   the session transcript's sending bubble (text, `/command args`, and local image
   previews) at the transcript's newest-row position above the composer, while the
-  unresolved URI remains `/projects/<projectId>/sessions/new`. It never shows a
+  unresolved URI remains `/sessions/new?project=<projectId>`. It never shows a
   spinner page. After about two seconds the bubble reads "Sending to
   `<harness>`…". The composer stays mounted with its text, staged images, voice
   and focus; on a pointer surface it moves once from the centred column to the
@@ -499,6 +504,9 @@ startup-extension file failure, retry once the filesystem is usable.
 
 ## Failure Signals
 
+- The phone home's New session opens a project other than the filtered one or the newest session's, or, with no
+  default, preselects a project, creates a session before one is chosen, or hides the known projects behind the
+  zero-project state.
 - Pi exits or hangs on an extension's startup question, a catalog refresh leaves
   newly available models missing for that reason, or an early command is lost,
   duplicated, or corrupted when native RPC starts reading input; startup

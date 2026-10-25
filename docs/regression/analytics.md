@@ -34,7 +34,8 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
   events, or older installed binaries.
 - Screens use the pinned route mapping with vendor automatic reporting disabled. Events fire at authoritative
   outcomes, not taps, capture occurrence time at their seam, and deferred candidates emit at most once, dropping on
-  disable, logout, or account switch. Results state SDK acceptance, not delivery.
+  disable, logout, or account switch. Results state SDK acceptance, not delivery. On the phone, the home (`/sessions`)
+  and Archived both report the `sessions` screen. The desktop reports no screens.
 - Switching computers reports `computer_switched` with a pinned `source` (`menu`, `offline_screen`, `settings`,
   `alert`, `notification`, `computers_page`) and `target_online`, never a computer name or identifier. It fires when
   the switch is made, before the new connection's outcome is known.
@@ -120,7 +121,7 @@ account against a real property.
 - Disable is delayed, reported saved while sync failed, or lost across restart, logout or successful native-storage upgrade;
   consent reads precede import completion; enable activates before server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
-  carries a route path instead of a pinned screen.
+  carries a route path instead of a pinned screen, or the home reports a screen other than `sessions`.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is
   observed; an analytics failure blocks a product outcome; or copy overclaims.
 - Singular starts in debug/profile/unsupported builds or before successful interactive authentication while an

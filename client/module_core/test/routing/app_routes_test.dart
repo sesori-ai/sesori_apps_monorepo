@@ -118,12 +118,34 @@ void main() {
       expect(AppRouteDef.values.map((def) => def.path), isNot(contains("/settings/harnesses/manage")));
     });
 
-    test("sessions ignores legacy worktree capability query parameters", () {
+    test("the home and its new session sit under /sessions, the project optional", () {
+      expect(const AppRoute.home().buildPath(), "/sessions");
+      expect(const AppRoute.newSession(projectId: null, projectName: null).buildPath(), "/sessions/new");
+
+      const chosen = AppRoute.newSession(projectId: "project/1", projectName: "One");
+      final uri = Uri.parse(chosen.buildPath());
+      expect(uri.path, "/sessions/new");
       final decoded = AppRoute.fromDef(
-        def: AppRouteDef.sessions,
+        def: AppRouteDef.newSession,
+        pathParams: const {},
+        queryParams: uri.queryParameters,
+      ) as AppRouteNewSession;
+      expect((decoded.projectId, decoded.projectName), ("project/1", "One"));
+
+      final unchosen = AppRoute.fromDef(
+        def: AppRouteDef.newSession,
+        pathParams: const {},
+        queryParams: const {},
+      ) as AppRouteNewSession;
+      expect((unchosen.projectId, unchosen.projectName), (null, null));
+    });
+
+    test("project sessions ignores legacy worktree capability query parameters", () {
+      final decoded = AppRoute.fromDef(
+        def: AppRouteDef.projectSessions,
         pathParams: const {"projectId": "project-1"},
         queryParams: const {"name": "Project One", "supportsDedicatedWorktrees": "false"},
-      ) as AppRouteSessions;
+      ) as AppRouteProjectSessions;
 
       expect(decoded.projectId, "project-1");
       expect(decoded.projectName, "Project One");
@@ -146,12 +168,12 @@ void main() {
         def: AppRouteDef.sessionDetail,
         pathParams: {
           "projectId": uri.pathSegments[1],
-          "sessionId": uri.pathSegments[3],
+          "sessionId": uri.pathSegments[2],
         },
         queryParams: uri.queryParameters,
       );
 
-      expect(path, startsWith("/projects/project%2Fwith%3Fspecial%26chars/sessions/session%2Fwith%3Fspecial%26chars?"));
+      expect(path, startsWith("/sessions/project%2Fwith%3Fspecial%26chars/session%2Fwith%3Fspecial%26chars?"));
       expect(path, isNot(contains("%252F")));
       expect(decoded, isA<AppRouteSessionDetail>());
       final detail = decoded as AppRouteSessionDetail;
@@ -176,7 +198,7 @@ void main() {
         );
         return AppRoute.fromDef(
           def: AppRouteDef.sessionDetail,
-          pathParams: {"projectId": uri.pathSegments[1], "sessionId": uri.pathSegments[3]},
+          pathParams: {"projectId": uri.pathSegments[1], "sessionId": uri.pathSegments[2]},
           queryParams: uri.queryParameters,
         ) as AppRouteSessionDetail;
       }
@@ -209,14 +231,14 @@ void main() {
         def: AppRouteDef.sessionDiffs,
         pathParams: {
           "projectId": uri.pathSegments[1],
-          "sessionId": uri.pathSegments[3],
+          "sessionId": uri.pathSegments[2],
         },
         queryParams: uri.queryParameters,
       );
 
       expect(
         path,
-        startsWith("/projects/project%2Fwith%3Fspecial%26chars/sessions/session%2Fwith%3Fspecial%26chars/diffs?"),
+        startsWith("/sessions/project%2Fwith%3Fspecial%26chars/session%2Fwith%3Fspecial%26chars/diffs?"),
       );
       expect(path, isNot(contains("%252F")));
       expect(decoded, isA<AppRouteSessionDiffs>());

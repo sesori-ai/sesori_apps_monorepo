@@ -65,18 +65,6 @@ void main() {
     when(() => harness.projectRepository.listProjects()).thenAnswer(
       (_) async => ApiResponse.success(const Projects(data: projects)),
     );
-    final getIt = GetIt.instance;
-    await getIt.unregister<RecentSessionInventoryService>();
-    getIt.registerFactory<RecentSessionInventoryService>(
-      () => RecentSessionInventoryService(
-        sessionListService: getIt<SessionListService>(),
-        projectListService: getIt<ProjectListService>(),
-        connectionService: getIt<ConnectionService>(),
-        sseEventTracker: getIt<SseEventTracker>(),
-        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
-        catalogRescanService: getIt<CatalogRescanService>(),
-      ),
-    );
     return harness;
   }
 
@@ -87,15 +75,15 @@ void main() {
   );
 
   for (final size in [const Size(440, 956), const Size(956, 440)]) {
-    testWidgets("a project's Archived opens filtered to it and keeps its opener through Back and X at $size", (
+    testWidgets("the home's Archived opens under its filter and keeps the home through Back and X at $size", (
       tester,
     ) async {
-      const opener = "/projects/p1/sessions?name=Project+One";
+      const opener = "/sessions";
       final harness = await setUpArchive(
         tester: tester,
         size: size,
         initialLocation: opener,
-        currentRouteDef: AppRouteDef.sessions,
+        currentRouteDef: AppRouteDef.home,
         sessionsByProject: {
           "p1": [live, audit],
           "p2": [other],
@@ -103,12 +91,11 @@ void main() {
       );
       await tester.pumpWidget(harness.buildApp());
       await tester.pumpAndSettle();
+      GetIt.instance<SessionListFilterTracker>().select(projectId: "p1");
+      await tester.pumpAndSettle();
       expect(find.text("Live record"), findsOneWidget);
       expect(find.text("Archived record"), findsNothing);
-      final entry = size.width > size.height
-          ? find.byIcon(TablerRegular.archive)
-          : find.bySemanticsLabel("Show archived");
-      await tester.tap(entry);
+      await tester.tap(find.byKey(const Key("home-archived")));
       await tester.pumpAndSettle();
       expect(harness.router.state.uri.toString(), "/archived-sessions?project=p1");
       expect(GetIt.instance<SessionListFilterTracker>().projectId.value, "p1");
@@ -175,7 +162,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.bySemanticsLabel("Close archived sessions"));
     await tester.pumpAndSettle();
-    expect(harness.router.state.uri.toString(), "/projects");
+    expect(harness.router.state.uri.toString(), "/sessions");
   });
 
   testWidgets("Archived shows the computer's offline page when the relay drops", (tester) async {
@@ -268,7 +255,7 @@ void main() {
   });
 
   testWidgets("leaving the archive retains the live detail cubit and its unsent draft", (tester) async {
-    const opener = "/projects/p1/sessions/live?name=Project+One";
+    const opener = "/sessions/p1/live?name=Project+One";
     final harness = await setUpArchive(
       tester: tester,
       size: const Size(956, 440),
@@ -286,7 +273,7 @@ void main() {
     openerCubit.saveComposerDraft(draft: draft);
     final viewingService = GetIt.instance<SessionViewingService>() as MockSessionViewingService;
     clearInteractions(viewingService);
-    await tester.tap(find.byIcon(TablerRegular.archive));
+    await tester.tap(find.byKey(const Key("home-archived")));
     harness.routeSource.emitRoute(AppRouteDef.archivedSessions);
     await tester.pumpAndSettle();
     verify(() => viewingService.clearViewingSession("live")).called(1);
@@ -330,16 +317,16 @@ void main() {
     expect(find.byIcon(TablerRegular.chevron_left), findsNothing);
     await tester.tap(find.bySemanticsLabel("Close archived sessions"));
     await tester.pumpAndSettle();
-    expect(harness.router.state.uri.toString(), "/projects");
+    expect(harness.router.state.uri.toString(), "/sessions");
   });
 
   testWidgets("archive deletion unwinds only the matching audit navigator", (tester) async {
-    const opener = "/projects/p1/sessions?name=Project+One";
+    const opener = "/sessions";
     final harness = await setUpArchive(
       tester: tester,
       size: const Size(440, 956),
       initialLocation: opener,
-      currentRouteDef: AppRouteDef.sessions,
+      currentRouteDef: AppRouteDef.home,
       sessionsByProject: const {"p1": []},
     );
     await tester.pumpWidget(harness.buildApp());

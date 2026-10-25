@@ -113,7 +113,6 @@ class AnalyticsRouteListener {
   AnalyticsScreen _screenFor({required AppRouteDef route}) => switch (route) {
     AppRouteDef.splash => throw StateError("Splash is a readiness route, not an analytics screen"),
     AppRouteDef.login => AnalyticsScreen.login,
-    AppRouteDef.projects => AnalyticsScreen.projects,
     AppRouteDef.settings ||
     AppRouteDef.settingsComputers ||
     AppRouteDef.settingsProjects ||
@@ -122,7 +121,7 @@ class AnalyticsRouteListener {
     AppRouteDef.settingsDefaultInput => AnalyticsScreen.settingsDefaultInput,
     AppRouteDef.settingsNotifications => AnalyticsScreen.settingsNotifications,
     AppRouteDef.settingsProfile => AnalyticsScreen.settingsProfile,
-    AppRouteDef.sessions || AppRouteDef.archivedSessions => AnalyticsScreen.sessions,
+    AppRouteDef.home || AppRouteDef.projectSessions || AppRouteDef.archivedSessions => AnalyticsScreen.sessions,
     AppRouteDef.newSession => AnalyticsScreen.newSession,
     AppRouteDef.sessionDetail || AppRouteDef.archivedSessionDetail => AnalyticsScreen.sessionDetail,
     AppRouteDef.sessionDiffs => AnalyticsScreen.sessionDiffs,

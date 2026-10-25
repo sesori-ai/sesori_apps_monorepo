@@ -44,6 +44,14 @@ class const SessionDetailScreen({
             refreshInterval: const Duration(seconds: 2),
           ),
         ),
+        // Lazy: only the live page's menu actions run on it.
+        BlocProvider(
+          create: (_) => createSessionListCubit(
+            locator: getIt,
+            projectId: projectId,
+            mode: const SessionListMode.actions(sessions: []),
+          ),
+        ),
       ],
       child: SessionDetailActivityOwner(
         routeSource: getIt<RouteSource>(),
@@ -146,16 +154,7 @@ class const _MobileSessionDetailBody({
         banner: ConnectionBanner.maybeFor(context),
         onBack:
             onBack ??
-            (showLeading
-                ? () => isImperative
-                      ? context.pop()
-                      : context.goRoute(
-                          AppRoute.sessions(
-                            projectId: projectId,
-                            projectName: projectName,
-                          ),
-                        )
-                : null),
+            (showLeading ? () => isImperative ? context.pop() : context.goRoute(const AppRoute.home()) : null),
         onShowDiffs: auditView
             ? null
             : () => context.pushRoute(

@@ -9,7 +9,8 @@ import "pending_archive_alerts.dart";
 import "session_launch_failure_alerts.dart";
 
 /// The signed-in session scope: one pair of inventories, the cubits every
-/// signed-in surface shares, and the alerts they raise.
+/// signed-in surface shares, and the alerts they raise. Its [AllSessionsCubit]
+/// is the active list every all-projects surface shares, created once read.
 ///
 /// Product shells mount it under auth, above every route that lists or
 /// launches sessions, so no route creates its own inventory. It outlives each
@@ -27,6 +28,9 @@ class const SessionScope({
   required final SessionCleanupService sessionCleanupService,
   required final SessionLaunchService sessionLaunchService,
   required final ConnectionService connectionService,
+  required final SessionListFilterTracker filterTracker,
+  required final SessionListService sessionListService,
+  required final ProjectViewingService projectViewingService,
 
   /// The navigator whose overlay shows the scope's alerts, so they share one
   /// alert slot with the pages' own alerts when the scope sits above that
@@ -57,6 +61,15 @@ class const SessionScope({
           ),
           BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: sessionCleanupService)),
           BlocProvider(create: (_) => SessionLaunchCubit(launchService: sessionLaunchService)),
+          BlocProvider(
+            create: (context) => createAllSessionsCubit(
+              context: context,
+              mode: AllSessionsMode.active,
+              filterTracker: filterTracker,
+              sessionListService: sessionListService,
+              projectViewingService: projectViewingService,
+            ),
+          ),
           // For each list's own launching rows.
           RepositoryProvider<SessionLaunchService>.value(value: sessionLaunchService),
           // For the folder browser, which every signed-in surface can open.
@@ -74,8 +87,8 @@ class const SessionScope({
   );
 }
 
-/// An all-projects list over the enclosing [SessionScope]'s inventories, such
-/// as a route's archived one.
+/// An all-projects list over the enclosing [SessionScope]'s inventories: the
+/// scope's own active list, or a route's archived one.
 AllSessionsCubit createAllSessionsCubit({
   required BuildContext context,
   required AllSessionsMode mode,

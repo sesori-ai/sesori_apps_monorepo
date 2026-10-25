@@ -57,7 +57,7 @@ Widget _buildApp({
         builder: (context, state) => _presentationScope(context: context, child: child),
       ),
       GoRoute(
-        path: "/projects/:projectId/sessions/:sessionId",
+        path: "/sessions/:projectId/:sessionId",
         builder: (context, state) {
           if (state.pathParameters["sessionId"] == "session-parent") {
             return _presentationScope(context: context, child: child);
@@ -152,7 +152,7 @@ void main() {
       final child = _childSession(id: "child-1", title: "Child Session");
       await tester.pumpWidget(
         _buildApp(
-          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false",
+          initialLocation: "/sessions/project-1/session-parent?name=Project+One&readOnly=false",
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,
@@ -359,7 +359,7 @@ void main() {
       final child = _childSession(id: "task-1", title: "Task One");
       await tester.pumpWidget(
         _buildApp(
-          initialLocation: "/projects/project-1/sessions/session-parent?name=Project+One&readOnly=false",
+          initialLocation: "/sessions/project-1/session-parent?name=Project+One&readOnly=false",
           child: Scaffold(
             body: SessionSplitScope(
               isSplit: true,

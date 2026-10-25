@@ -97,10 +97,10 @@ class ProjectInventoryService({
     );
 
     // 2. Auto-refresh: throttled project data fetch, active only while the
-    //    projects page is visible. switchMap cancels the inner subscription
-    //    when the route leaves projects and restarts it when coming back.
+    //    home is visible. switchMap cancels the inner subscription when the
+    //    route leaves the home and restarts it when coming back.
     _subscriptions.add(
-      routeSource.projectPageVisibility
+      routeSource.homeVisibility
           .switchMap((isVisible) {
             if (!isVisible) return const Stream<void>.empty();
             return _sseEventTracker.projectActivity.throttleTime(
@@ -116,10 +116,10 @@ class ProjectInventoryService({
     );
 
     // 3. Navigate-back refresh: one immediate fetch when the user returns to
-    //    the projects page. pairwise() ensures this doesn't fire on the
-    //    initial route emission (needs two values before it emits).
+    //    the home. pairwise() ensures this doesn't fire on the initial route
+    //    emission (needs two values before it emits).
     _subscriptions.add(
-      routeSource.projectPageVisibility.distinct().pairwise().where((pair) => !pair.first && pair.last).listen((_) {
+      routeSource.homeVisibility.distinct().pairwise().where((pair) => !pair.first && pair.last).listen((_) {
         if (_state.isClosed) return;
         unawaited(refreshProjects());
       }),

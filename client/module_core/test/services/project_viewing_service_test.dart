@@ -30,7 +30,7 @@ class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSou
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
 
   @override
-  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+  Stream<bool> get homeVisibility => currentRouteStream.map((route) => route == AppRouteDef.home);
 
   @override
   String? currentLocation;
@@ -54,7 +54,7 @@ void main() {
       repository = _MockViewDeclarationRepository();
       connectionService = _MockConnectionService();
       lifecycleSource = _FakeLifecycleSource();
-      routeSource = _FakeRouteSource(initialRoute: AppRouteDef.sessions);
+      routeSource = _FakeRouteSource(initialRoute: AppRouteDef.home);
       statuses = BehaviorSubject.seeded(_connected);
       sent = <String?>[];
       when(() => connectionService.status).thenAnswer((_) => statuses.stream);
@@ -105,7 +105,7 @@ void main() {
         await drain();
         expect(service.declaredProjectId, isNull);
       }
-      routeSource.routes.add(AppRouteDef.sessions);
+      routeSource.routes.add(AppRouteDef.home);
       await drain();
       expect(sent, ["project-1", null, "project-1"]);
       final detail = service.beginDetailClaim(projectId: "project-1");
@@ -160,7 +160,19 @@ void main() {
 
       routeSource.routes.add(AppRouteDef.newSession);
       await drain();
-      routeSource.routes.add(AppRouteDef.sessions);
+      routeSource.routes.add(AppRouteDef.home);
+      await drain();
+
+      expect(sent, ["project-1", null, "project-1"]);
+    });
+
+    test("the home and the desktop project page show the list claim; settings shows none", () async {
+      readyList("project-1");
+      await drain();
+
+      routeSource.routes.add(AppRouteDef.settings);
+      await drain();
+      routeSource.routes.add(AppRouteDef.projectSessions);
       await drain();
 
       expect(sent, ["project-1", null, "project-1"]);
@@ -348,7 +360,7 @@ void main() {
       routeSource.routes.add(AppRouteDef.settingsHarnessDetail);
       await drain();
       expect(sent.last, isNull);
-      routeSource.routes.add(AppRouteDef.sessions);
+      routeSource.routes.add(AppRouteDef.home);
       await drain();
       expect(sent.last, "project-1");
     });

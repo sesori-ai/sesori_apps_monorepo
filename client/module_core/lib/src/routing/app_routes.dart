@@ -39,7 +39,7 @@ String _appendQuery({required String path, required Map<String, String> queryPar
 enum AppRouteDef(final String path) {
   splash("/splash"),
   login("/login"),
-  projects("/projects"),
+  home("/sessions"),
   settings("/settings"),
   settingsNotifications("/settings/notifications"),
   settingsDefaultInput("/settings/default-input"),
@@ -48,12 +48,14 @@ enum AppRouteDef(final String path) {
   settingsHarnesses("/settings/harnesses"),
   settingsHarnessDetail("/settings/harnesses/:$pluginIdPathParam"),
   settingsProfile("/settings/profile"),
-  sessions("/projects/:$projectIdPathParam/sessions"),
+
+  /// The desktop project page, until the desktop composer home replaces it.
+  projectSessions("/projects/:$projectIdPathParam/sessions"),
   archivedSessions("/archived-sessions"),
   archivedSessionDetail("/archived-sessions/:$projectIdPathParam/:$sessionIdPathParam"),
-  newSession("/projects/:$projectIdPathParam/sessions/new"),
-  sessionDetail("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam"),
-  sessionDiffs("/projects/:$projectIdPathParam/sessions/:$sessionIdPathParam/diffs"),
+  newSession("/sessions/new"),
+  sessionDetail("/sessions/:$projectIdPathParam/:$sessionIdPathParam"),
+  sessionDiffs("/sessions/:$projectIdPathParam/:$sessionIdPathParam/diffs"),
 }
 
 /// Type-safe route definitions for navigation.
@@ -84,7 +86,7 @@ sealed class const AppRoute() {
 
   const factory splash() = AppRouteSplash;
   const factory login() = AppRouteLogin;
-  const factory projects() = AppRouteProjects;
+  const factory home() = AppRouteHome;
   const factory settings() = AppRouteSettings;
   const factory settingsNotifications() = AppRouteSettingsNotifications;
   const factory settingsDefaultInput() = AppRouteSettingsDefaultInput;
@@ -96,10 +98,10 @@ sealed class const AppRoute() {
   const factory settingsHarnessDetail({required String pluginId, required HarnessSettingsPresentation presentation}) =
       AppRouteSettingsHarnessDetail;
   const factory settingsProfile() = AppRouteSettingsProfile;
-  const factory sessions({
+  const factory projectSessions({
     required String projectId,
     required String? projectName,
-  }) = AppRouteSessions;
+  }) = AppRouteProjectSessions;
   const factory archivedSessions({required String? projectId}) = AppRouteArchivedSessions;
   const factory archivedSessionDetail({
     required String projectId,
@@ -108,7 +110,7 @@ sealed class const AppRoute() {
     required String? sessionTitle,
   }) = AppRouteArchivedSessionDetail;
   const factory newSession({
-    required String projectId,
+    required String? projectId,
     required String? projectName,
   }) = AppRouteNewSession;
   const factory sessionDetail({
@@ -137,7 +139,7 @@ sealed class const AppRoute() {
     return switch (def) {
       AppRouteDef.splash => const AppRoute.splash(),
       AppRouteDef.login => const AppRoute.login(),
-      AppRouteDef.projects => const AppRoute.projects(),
+      AppRouteDef.home => const AppRoute.home(),
       AppRouteDef.settings => const AppRoute.settings(),
       AppRouteDef.settingsNotifications => const AppRoute.settingsNotifications(),
       AppRouteDef.settingsDefaultInput => const AppRoute.settingsDefaultInput(),
@@ -149,13 +151,16 @@ sealed class const AppRoute() {
         queryParams: queryParams,
       ),
       AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
-      AppRouteDef.sessions => AppRouteSessions.fromParams(pathParams: pathParams, queryParams: queryParams),
+      AppRouteDef.projectSessions => AppRouteProjectSessions.fromParams(
+        pathParams: pathParams,
+        queryParams: queryParams,
+      ),
       AppRouteDef.archivedSessions => AppRouteArchivedSessions.fromParams(queryParams: queryParams),
       AppRouteDef.archivedSessionDetail => AppRouteArchivedSessionDetail.fromParams(
         pathParams: pathParams,
         queryParams: queryParams,
       ),
-      AppRouteDef.newSession => AppRouteNewSession.fromParams(pathParams: pathParams, queryParams: queryParams),
+      AppRouteDef.newSession => AppRouteNewSession.fromParams(queryParams: queryParams),
       AppRouteDef.sessionDetail => AppRouteSessionDetail.fromParams(
         pathParams: pathParams,
         queryParams: queryParams,
@@ -184,9 +189,10 @@ class const AppRouteLogin() extends AppRoute {
   String buildPath() => def.path;
 }
 
-class const AppRouteProjects() extends AppRoute {
+/// Every active session across projects: the signed-in home.
+class const AppRouteHome() extends AppRoute {
   @override
-  AppRouteDef get def => AppRouteDef.projects;
+  AppRouteDef get def => AppRouteDef.home;
 
   @override
   String buildPath() => def.path;
@@ -289,7 +295,7 @@ class const AppRouteSettingsProfile() extends AppRoute {
   String buildPath() => def.path;
 }
 
-class const AppRouteSessions({
+class const AppRouteProjectSessions({
   required final String projectId,
   required final String? projectName,
 }) extends AppRoute {
@@ -301,14 +307,14 @@ class const AppRouteSessions({
     required Map<String, String> pathParams,
     required Map<String, String> queryParams,
   }) {
-    return AppRouteSessions(
+    return AppRouteProjectSessions(
       projectId: pathParams[_projectIdPathParam] ?? "",
       projectName: queryParams[_nameQueryParam],
     );
   }
 
   @override
-  AppRouteDef get def => AppRouteDef.sessions;
+  AppRouteDef get def => AppRouteDef.projectSessions;
 
   @override
   String buildPath() {
@@ -320,17 +326,17 @@ class const AppRouteSessions({
   }
 }
 
-class const AppRouteNewSession({required final String projectId, required final String? projectName}) extends AppRoute {
-  static const _projectIdPathParam = projectIdPathParam;
+/// The new-session composer. A null [projectId] opens it with no project
+/// chosen yet.
+class const AppRouteNewSession({required final String? projectId, required final String? projectName})
+    extends AppRoute {
+  static const _projectQueryParam = "project";
   static const _nameQueryParam = projectNameQueryParam;
 
-  /// Decodes from path/query parameter maps (inverse of [buildPath]).
-  factory fromParams({
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-  }) {
+  /// Decodes from query parameter maps (inverse of [buildPath]).
+  factory fromParams({required Map<String, String> queryParams}) {
     return AppRouteNewSession(
-      projectId: pathParams[_projectIdPathParam] ?? "",
+      projectId: queryParams[_projectQueryParam],
       projectName: queryParams[_nameQueryParam],
     );
   }
@@ -339,13 +345,10 @@ class const AppRouteNewSession({required final String projectId, required final 
   AppRouteDef get def => AppRouteDef.newSession;
 
   @override
-  String buildPath() {
-    final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/new";
-    final queryParams = <String, String>{
-      _nameQueryParam: ?projectName,
-    };
-    return _appendQuery(path: base, queryParameters: queryParams);
-  }
+  String buildPath() => _appendQuery(
+    path: def.path,
+    queryParameters: {_projectQueryParam: ?projectId, _nameQueryParam: ?projectName},
+  );
 }
 
 class const AppRouteSessionDetail({
@@ -387,7 +390,7 @@ class const AppRouteSessionDetail({
 
   @override
   String buildPath() {
-    final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}";
+    final base = "/sessions/${Uri.encodeComponent(projectId)}/${Uri.encodeComponent(sessionId)}";
     final queryParams = <String, String>{
       _readOnlyQueryParam: readOnly.toString(),
       _nameQueryParam: ?projectName,
@@ -441,7 +444,7 @@ class const AppRouteSessionDiffs({
 
   @override
   String buildPath() {
-    final base = "/projects/${Uri.encodeComponent(projectId)}/sessions/${Uri.encodeComponent(sessionId)}/diffs";
+    final base = "/sessions/${Uri.encodeComponent(projectId)}/${Uri.encodeComponent(sessionId)}/diffs";
     final queryParams = <String, String>{
       _nameQueryParam: ?projectName,
     };

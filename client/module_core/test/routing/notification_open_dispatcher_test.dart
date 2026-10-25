@@ -57,7 +57,7 @@ void main() {
       await localNotificationClient.dispose();
     });
 
-    test("rebuilds projects -> sessions -> detail stack through route dispatcher", () async {
+    test("rebuilds the home -> detail stack through route dispatcher", () async {
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -73,11 +73,7 @@ void main() {
       expect(
         stack.paths,
         equals([
-          const AppRoute.projects().buildPath(),
-          const AppRoute.sessions(
-            projectId: "project-1",
-            projectName: null,
-          ).buildPath(),
+          const AppRoute.home().buildPath(),
           const AppRoute.sessionDetail(
             projectId: "project-1",
             projectName: null,
@@ -109,7 +105,7 @@ void main() {
     test("a push for another computer switches to it, then opens the session", () async {
       // The session on top has the same id on the previous computer; it must
       // not keep the app there.
-      routeSource.currentLocation = "/projects/project-1/sessions/session-1";
+      routeSource.currentLocation = "/sessions/project-1/session-1";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -122,11 +118,11 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(selectedComputerService.selections, [(bridgeId: "br_other", source: ComputerSwitchSource.notification)]);
-      // The switch lands on Projects before it retargets, and the session
+      // The switch lands on the home before it retargets, and the session
       // stack is built only after the retarget.
       expect(selectedComputerService.stacksBeforeSelect, [1]);
       expect(routeDispatcher.replacedStacks, hasLength(2));
-      expect(routeDispatcher.replacedStacks.first.paths, [const AppRoute.projects().buildPath()]);
+      expect(routeDispatcher.replacedStacks.first.paths, [const AppRoute.home().buildPath()]);
       expect(
         routeDispatcher.replacedStacks.last.paths.last,
         const AppRoute.sessionDetail(
@@ -158,7 +154,7 @@ void main() {
     test("leaves the stack alone when that session detail is already on top", () async {
       // Display-only query parameters differ from what the notification would
       // build; they must not defeat the match.
-      routeSource.currentLocation = "/projects/project-1/sessions/session-1?readOnly=false&title=Renamed";
+      routeSource.currentLocation = "/sessions/project-1/session-1?readOnly=false&title=Renamed";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -178,7 +174,7 @@ void main() {
       // Background tasks and subtasks open the same session on the read-only
       // route, which renders without the composer. The notification wants the
       // editable screen, so it must still navigate.
-      routeSource.currentLocation = "/projects/project-1/sessions/session-1?readOnly=true";
+      routeSource.currentLocation = "/sessions/project-1/session-1?readOnly=true";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -193,7 +189,7 @@ void main() {
     });
 
     test("rebuilds the stack when a different session is on top", () async {
-      routeSource.currentLocation = "/projects/project-1/sessions/session-2";
+      routeSource.currentLocation = "/sessions/project-1/session-2";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -208,7 +204,7 @@ void main() {
     });
 
     test("rebuilds the stack when a pushed screen sits above that session", () async {
-      routeSource.currentLocation = "/projects/project-1/sessions/session-1/diffs";
+      routeSource.currentLocation = "/sessions/project-1/session-1/diffs";
       pushMessagingSource.initialOpenRequest = const NotificationOpenRequest(
         projectId: "project-1",
         sessionId: "session-1",
@@ -459,7 +455,7 @@ class FakeRouteSource() implements RouteSource {
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 
   @override
-  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+  Stream<bool> get homeVisibility => currentRouteStream.map((route) => route == AppRouteDef.home);
 }
 
 AuthState _authenticatedState() {

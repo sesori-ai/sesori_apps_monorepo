@@ -84,7 +84,7 @@ void main() {
     when(() => authSession.currentState).thenAnswer((_) => authStates.value);
     when(() => authSession.authStateStream).thenAnswer((_) => authStates.stream);
     when(authSession.hasLocallyValidSession).thenAnswer((_) async => false);
-    when(() => routeSource.currentLocation).thenReturn("/projects");
+    when(() => routeSource.currentLocation).thenReturn("/sessions");
     when(() => routeDispatcher.replaceStack(stack: any(named: "stack"))).thenReturn(null);
     when(() => windowHost.show()).thenAnswer((_) async {});
     when(
@@ -1102,8 +1102,7 @@ void main() {
     expect(
       captured.paths,
       <String>[
-        const AppRoute.projects().buildPath(),
-        const AppRoute.sessions(projectId: "project-1", projectName: null).buildPath(),
+        const AppRoute.home().buildPath(),
         const AppRoute.sessionDetail(
           projectId: "project-1",
           projectName: null,

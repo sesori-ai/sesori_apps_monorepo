@@ -1,5 +1,3 @@
-import "dart:async";
-
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -21,183 +19,96 @@ Future<void> _pumpRouteFrames(WidgetTester tester) async {
 void main() {
   setUpAll(registerAllFallbackValues);
 
-  testWidgets("list tile tap navigates to detail on narrow layouts", (tester) async {
-    const location = "/projects/p1/sessions?name=Project+One";
+  final leftPane = find.byKey(const Key("session-split-left-pane"));
+
+  Future<AdaptiveSessionRouterTestHarness> setUpHome({
+    required WidgetTester tester,
+    required Size size,
+    required String initialLocation,
+    required AppRouteDef currentRouteDef,
+    required Map<String, List<Session>> sessionsByProject,
+  }) async {
     final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(390, 800));
+    await tester.binding.setSurfaceSize(size);
     addTearDown(() => tester.binding.setSurfaceSize(null));
     addTearDown(harness.tearDown);
     await harness.setUp(
-      initialLocation: location,
-      currentRouteDef: AppRouteDef.sessions,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
+      initialLocation: initialLocation,
+      currentRouteDef: currentRouteDef,
+      sessionsByProject: sessionsByProject,
+    );
+    return harness;
+  }
+
+  final oneSession = {
+    "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+  };
+
+  testWidgets("the narrow home is the root, and a row opens its detail", (tester) async {
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(390, 800),
+      initialLocation: "/sessions",
+      currentRouteDef: AppRouteDef.home,
+      sessionsByProject: oneSession,
     );
 
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
+
+    expect(find.byIcon(TablerRegular.chevron_left), findsNothing);
+    expect(harness.router.canPop(), isFalse);
 
     await tester.tap(find.text("Session One"));
     await _pumpRouteFrames(tester);
 
-    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
+    expect(Uri.parse(harness.currentLocation).path, "/sessions/p1/session-1");
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
+    expect(leftPane, findsNothing);
   });
 
-  testWidgets("narrow /projects/p1/sessions entry shows BackButton to projects", (tester) async {
-    const location = "/projects/p1/sessions?name=Project+One";
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(390, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: location,
-      currentRouteDef: AppRouteDef.sessions,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
+  testWidgets("a row opens its detail beside the wide home, selected", (tester) async {
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(1024, 800),
+      initialLocation: "/sessions",
+      currentRouteDef: AppRouteDef.home,
+      sessionsByProject: oneSession,
     );
 
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-    // The narrow session list (SessionListScaffold → PregoGlassScaffold) renders
-    // the back affordance as the glass bar button, not a stock BackButton.
-    final backButton = find.byIcon(TablerRegular.chevron_left);
-    expect(backButton, findsOneWidget);
-    expect(harness.router.canPop(), isTrue);
-
-    await tester.tap(backButton);
-    await tester.pumpAndSettle();
-
-    expect(Uri.parse(harness.currentLocation).path, "/projects");
-  });
-
-  testWidgets("narrow sessions pushed from /projects pops back to the project list", (tester) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(390, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: "/projects",
-      currentRouteDef: AppRouteDef.projects,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
-    );
-
-    when(() => harness.projectRepository.listProjects()).thenAnswer(
-      (_) async => ApiResponse.success(
-        const Projects(
-          data: [
-            ProjectSummary(
-              id: "p1",
-              name: "Project One",
-              path: "/projects/p1",
-              time: ProjectTime(created: 1700000000000, updated: 1700000000000),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    await tester.pumpWidget(harness.buildApp());
-    await tester.pumpAndSettle();
-
-    unawaited(harness.router.push("/projects/p1/sessions?name=Project+One"));
-    await tester.pumpAndSettle();
-
-    // Narrow session list renders the glass bar back button (see above).
-    final backButton = find.byIcon(TablerRegular.chevron_left);
-    expect(backButton, findsOneWidget);
-
-    await tester.tap(backButton);
-    await tester.pumpAndSettle();
-
-    expect(harness.router.canPop(), isFalse);
-    expect(Uri.parse(harness.currentLocation).path, "/projects");
-    expect(find.text("Project One"), findsOneWidget);
-  });
-
-  testWidgets("list tile tap opens detail in the wide split shell", (tester) async {
-    const location = "/projects/p1/sessions?name=Project+One";
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: location,
-      currentRouteDef: AppRouteDef.sessions,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
-    );
-
-    await tester.pumpWidget(harness.buildApp());
-    await tester.pumpAndSettle();
+    expect(find.byType(EmptySessionDetailPanel), findsOneWidget);
 
     await tester.tap(find.text("Session One"));
     await tester.pumpAndSettle();
 
     final uri = Uri.parse(harness.currentLocation);
-    expect(uri.path, "/projects/p1/sessions/session-1");
+    expect(uri.path, "/sessions/p1/session-1");
     expect(uri.queryParameters["name"], "Project One");
     expect(uri.queryParameters["title"], "Session One");
     expect(uri.queryParameters["readOnly"], "false");
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(leftPane, findsOneWidget);
     expect(find.byKey(const Key("session-split-right-pane")), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-    expect(find.text("Project One — Sessions"), findsOneWidget);
-
     final tile = tester.widget<SessionTile>(find.widgetWithText(SessionTile, "Session One"));
     expect(tile.selected, isTrue);
-  });
-
-  testWidgets("wide detail back returns to a sessions route with legacy query parameters", (tester) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: "/projects/p1/sessions?supportsDedicatedWorktrees=false",
-      currentRouteDef: AppRouteDef.sessions,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
-    );
-
-    await tester.pumpWidget(harness.buildApp());
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text("Session One"));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-    expect(harness.router.canPop(), isTrue);
 
     harness.router.pop();
     await tester.pumpAndSettle();
 
-    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions");
-    expect(find.byType(SessionListPanel), findsOneWidget);
+    expect(Uri.parse(harness.currentLocation).path, "/sessions");
+    expect(find.byType(EmptySessionDetailPanel), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsNothing);
   });
 
   testWidgets("wide detail navigation crossfades inside the right pane", (tester) async {
-    const location = "/projects/p1/sessions";
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: location,
-      currentRouteDef: AppRouteDef.sessions,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(1024, 800),
+      initialLocation: "/sessions",
+      currentRouteDef: AppRouteDef.home,
+      sessionsByProject: oneSession,
     );
 
     await tester.pumpWidget(harness.buildApp());
@@ -209,259 +120,81 @@ void main() {
 
     final detail = find.byKey(const ValueKey("session-detail-session-1"));
     expect(detail, findsOneWidget);
-    expect(
-      find.ancestor(of: detail, matching: find.byType(FadeTransition)),
-      findsWidgets,
-    );
+    expect(find.ancestor(of: detail, matching: find.byType(FadeTransition)), findsWidgets);
 
     await tester.pumpAndSettle();
-    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
+    expect(Uri.parse(harness.currentLocation).path, "/sessions/p1/session-1");
   });
 
-  testWidgets("direct wide /projects/p1/sessions entry shows BackButton to projects", (tester) async {
-    const location = "/projects/p1/sessions";
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: location,
-      currentRouteDef: AppRouteDef.sessions,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
-    );
-
-    await tester.pumpWidget(harness.buildApp());
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(find.byType(BackButton), findsOneWidget);
-    expect(harness.router.canPop(), isTrue);
-
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-
-    expect(Uri.parse(harness.currentLocation).path, "/projects");
-    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-  });
-
-  testWidgets("pushed wide /projects/p1/sessions from /projects shows BackButton in left pane", (tester) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: "/projects",
-      currentRouteDef: AppRouteDef.projects,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
-    );
-
-    when(() => harness.projectRepository.listProjects()).thenAnswer(
-      (_) async => ApiResponse.success(
-        const Projects(
-          data: [
-            ProjectSummary(
-              id: "p1",
-              name: "Project One",
-              path: "/projects/p1",
-              time: ProjectTime(created: 1700000000000, updated: 1700000000000),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    await tester.pumpWidget(harness.buildApp());
-    await tester.pumpAndSettle();
-
-    // Push the sessions route on top of /projects.
-    unawaited(harness.router.push("/projects/p1/sessions"));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("session-split-left-pane")),
-        matching: find.byType(BackButton),
-      ),
-      findsOneWidget,
-    );
-
-    // Tapping BackButton should pop back to /projects and remove split panes.
-    await tester.tap(find.byType(BackButton));
-    await tester.pumpAndSettle();
-
-    expect(harness.router.canPop(), isFalse);
-    expect(Uri.parse(harness.currentLocation).path, "/projects");
-    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-    expect(find.byKey(const Key("session-split-right-pane")), findsNothing);
-  });
-
-  testWidgets("pushed wide list then selected detail keeps projects underneath", (tester) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: "/projects",
-      currentRouteDef: AppRouteDef.projects,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
-    );
-
-    when(() => harness.projectRepository.listProjects()).thenAnswer(
-      (_) async => ApiResponse.success(
-        const Projects(
-          data: [
-            ProjectSummary(
-              id: "p1",
-              name: "Project One",
-              path: "/projects/p1",
-              time: ProjectTime(created: 1700000000000, updated: 1700000000000),
-            ),
-          ],
-        ),
-      ),
-    );
-
-    await tester.pumpWidget(harness.buildApp());
-    await tester.pumpAndSettle();
-
-    // Push the sessions route on top of /projects.
-    unawaited(harness.router.push("/projects/p1/sessions"));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("session-split-left-pane")),
-        matching: find.byType(BackButton),
-      ),
-      findsOneWidget,
-    );
-
-    // Select a session through the nested shell route.
-    await tester.tap(find.text("Session One"));
-    await tester.pumpAndSettle();
-
-    // goRoute to the detail URL preserves /projects underneath because the shell is nested there.
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("session-split-left-pane")),
-        matching: find.byType(BackButton),
-      ),
-      findsOneWidget,
-    );
-    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const Key("session-split-left-pane")),
-        matching: find.byType(BackButton),
-      ),
-    );
-    await tester.pumpAndSettle();
-
-    expect(Uri.parse(harness.currentLocation).path, "/projects");
-    expect(find.byKey(const Key("session-split-left-pane")), findsNothing);
-  });
-
-  testWidgets("cold-start wide detail has projects underneath", (tester) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+  testWidgets("a cold-start wide detail has the home underneath, with no Back of its own", (tester) async {
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(1024, 800),
+      initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
       currentRouteDef: AppRouteDef.sessionDetail,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
+      sessionsByProject: oneSession,
     );
 
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-    expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
+    expect(find.descendant(of: leftPane, matching: find.byKey(const Key("home-archived"))), findsOneWidget);
     expect(harness.router.canPop(), isTrue);
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("session-split-left-pane")),
-        matching: find.byType(BackButton),
-      ),
-      findsOneWidget,
-    );
+    expect(find.descendant(of: leftPane, matching: find.byType(BackButton)), findsNothing);
   });
 
-  testWidgets("deleting the selected session returns the wide detail pane to the empty state", (tester) async {
-    const location = "/projects/p1/sessions?name=Project+One";
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: location,
-      currentRouteDef: AppRouteDef.sessions,
-      sessionsByProject: {
-        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
-      },
-    );
-    when(
-      () => harness.sessionRepository.deleteSession(
-        sessionId: any(named: "sessionId"),
-        deleteWorktree: any(named: "deleteWorktree"),
-        force: any(named: "force"),
-      ),
-    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+  void stubDelete(AdaptiveSessionRouterTestHarness harness) => when(
+    () => harness.sessionRepository.deleteSession(
+      sessionId: any(named: "sessionId"),
+      deleteWorktree: any(named: "deleteWorktree"),
+      force: any(named: "force"),
+    ),
+  ).thenAnswer((_) async => ApiResponse<void>.success(null));
 
-    await tester.pumpWidget(harness.buildApp());
+  Future<void> deleteFromList({required WidgetTester tester, required String title}) async {
+    await tester.longPress(find.descendant(of: leftPane, matching: find.text(title)));
     await tester.pumpAndSettle();
-
-    await tester.tap(find.text("Session One"));
-    await tester.pumpAndSettle();
-
-    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-
-    await tester.longPress(
-      find.descendant(
-        of: find.byKey(const Key("session-split-left-pane")),
-        matching: find.text("Session One"),
-      ),
-    );
-    await tester.pumpAndSettle();
-
     await tester.tap(find.text("Delete").hitTestable());
     await tester.pumpAndSettle();
-    // Deleting always confirms now, so the menu entry only raises the sheet.
+    // Deleting always confirms, so the menu entry only raises the sheet.
     await tester.tap(find.widgetWithText(FilledButton, "Delete"));
     await tester.pumpAndSettle();
+  }
 
-    final uri = Uri.parse(harness.currentLocation);
-    expect(uri.path, "/projects/p1/sessions");
-    expect(uri.queryParameters["name"], "Project One");
+  testWidgets("deleting the selected session returns the wide detail pane to the empty state", (tester) async {
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(1024, 800),
+      initialLocation: "/sessions",
+      currentRouteDef: AppRouteDef.home,
+      sessionsByProject: oneSession,
+    );
+    stubDelete(harness);
+
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Session One"));
+    await tester.pumpAndSettle();
+    expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
+
+    await deleteFromList(tester: tester, title: "Session One");
+
+    expect(Uri.parse(harness.currentLocation).path, "/sessions");
     expect(find.byKey(const Key("empty-session-detail-panel")), findsOneWidget);
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsNothing);
 
-    // Let the deletion snackbar expire so no timers outlive the test.
+    // Let the deletion alert expire so no timers outlive the test.
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
   });
 
   testWidgets("deleting an unselected session keeps the open wide detail pane", (tester) async {
-    const location = "/projects/p1/sessions?name=Project+One";
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: location,
-      currentRouteDef: AppRouteDef.sessions,
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(1024, 800),
+      initialLocation: "/sessions",
+      currentRouteDef: AppRouteDef.home,
       sessionsByProject: {
         "p1": [
           adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One"),
@@ -469,103 +202,130 @@ void main() {
         ],
       },
     );
-    when(
-      () => harness.sessionRepository.deleteSession(
-        sessionId: any(named: "sessionId"),
-        deleteWorktree: any(named: "deleteWorktree"),
-        force: any(named: "force"),
-      ),
-    ).thenAnswer((_) async => ApiResponse<void>.success(null));
+    stubDelete(harness);
 
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
-
     await tester.tap(find.text("Session One"));
     await tester.pumpAndSettle();
 
-    await tester.longPress(
-      find.descendant(
-        of: find.byKey(const Key("session-split-left-pane")),
-        matching: find.text("Session Two"),
-      ),
-    );
-    await tester.pumpAndSettle();
+    await deleteFromList(tester: tester, title: "Session Two");
 
-    await tester.tap(find.text("Delete").hitTestable());
-    await tester.pumpAndSettle();
-    await tester.tap(find.widgetWithText(FilledButton, "Delete"));
-    await tester.pumpAndSettle();
-
-    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
+    expect(Uri.parse(harness.currentLocation).path, "/sessions/p1/session-1");
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
     expect(find.byKey(const Key("empty-session-detail-panel")), findsNothing);
 
-    // Let the deletion snackbar expire so no timers outlive the test.
+    // Let the deletion alert expire so no timers outlive the test.
     await tester.pump(const Duration(seconds: 5));
     await tester.pumpAndSettle();
   });
 
-  testWidgets("wide shell preserves the left-list cubit for same-project routes and resets it for a new project", (
-    tester,
-  ) async {
-    final harness = AdaptiveSessionRouterTestHarness();
-    await tester.binding.setSurfaceSize(const Size(1024, 800));
-    addTearDown(() => tester.binding.setSurfaceSize(null));
-    addTearDown(harness.tearDown);
-    await harness.setUp(
-      initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+  Future<AdaptiveSessionRouterTestHarness> setUpTwoProjects({
+    required WidgetTester tester,
+    required Map<String, List<Session>> sessionsByProject,
+  }) async {
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(390, 800),
+      initialLocation: "/sessions",
+      currentRouteDef: AppRouteDef.home,
+      sessionsByProject: sessionsByProject,
+    );
+    when(() => harness.projectRepository.listProjects()).thenAnswer(
+      (_) async => ApiResponse.success(
+        const Projects(
+          data: [
+            ProjectSummary(id: "p1", name: "Project One", path: "/p1", time: null),
+            ProjectSummary(id: "p2", name: "Project Two", path: "/p2", time: null),
+          ],
+        ),
+      ),
+    );
+    return harness;
+  }
+
+  testWidgets("the title filters the home to one project, and New session starts there", (tester) async {
+    final harness = await setUpTwoProjects(
+      tester: tester,
+      sessionsByProject: {
+        "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
+        "p2": [adaptiveTestSession(projectId: "p2", id: "session-2", title: "Session Two")],
+      },
+    );
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+    expect(find.text("Session One"), findsOneWidget);
+    expect(find.text("Session Two"), findsOneWidget);
+
+    await tester.tap(find.text("All projects"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("Project Two").last);
+    await tester.pumpAndSettle();
+    expect(find.text("Session One"), findsNothing);
+    expect(find.text("Session Two"), findsOneWidget);
+    verify(() => harness.projectViewingService.beginListClaim(projectId: "p2")).called(1);
+
+    await tester.tap(find.byKey(const Key("home-new-session")));
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.toString(), "/sessions/new?project=p2&name=Project+Two");
+    harness.router.pop();
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.text("Project Two"));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text("All projects").last);
+    await tester.pumpAndSettle();
+    expect(find.text("Session One"), findsOneWidget);
+    expect(find.text("Session Two"), findsOneWidget);
+  });
+
+  testWidgets("with no session yet, New session asks for a project and lists the known ones", (tester) async {
+    final harness = await setUpTwoProjects(tester: tester, sessionsByProject: const {"p1": [], "p2": []});
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("home-new-session")));
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.toString(), "/sessions/new");
+    // The picker opens by itself, with nothing chosen.
+    expect(find.text("Project One"), findsOneWidget);
+    expect(find.text("Project Two"), findsOneWidget);
+    expect(find.text("Open another folder…"), findsOneWidget);
+
+    await tester.tap(find.text("Project Two"));
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.toString(), "/sessions/new?project=p2&name=Project+Two");
+  });
+
+  testWidgets("the wide home keeps one list across every project's routes", (tester) async {
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(1024, 800),
+      initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
       currentRouteDef: AppRouteDef.sessionDetail,
       sessionsByProject: {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
         "p2": [adaptiveTestSession(projectId: "p2", id: "session-2", title: "Session Two")],
       },
-      diffsBySession: {
-        "session-1": [adaptiveTestDiff()],
-        "session-2": [adaptiveTestDiff(file: "lib/src/other.dart")],
-      },
     );
 
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
-
-    final firstListElement = tester.element(
-      find.descendant(
-        of: find.byKey(const ValueKey("session-list-p1")).first,
-        matching: find.byType(SessionListPanel),
-      ),
+    AllSessionsCubit listCubit() => BlocProvider.of<AllSessionsCubit>(
+      tester.element(find.descendant(of: leftPane, matching: find.byType(AllSessionsList))),
     );
-    final firstCubit = BlocProvider.of<SessionListCubit>(firstListElement);
+    final first = listCubit();
+    expect(find.descendant(of: leftPane, matching: find.text("Session Two")), findsOneWidget);
 
-    verify(() => harness.projectRepository.listSessions(projectId: "p1", waitForPrData: false)).called(1);
-    verify(() => harness.projectRepository.getGitContext(projectId: "p1")).called(1);
-
-    harness.router.go("/projects/p1/sessions/session-1/diffs");
+    harness.router.go("/sessions/p1/session-1/diffs");
     await _pumpRouteFrames(tester);
+    expect(identical(listCubit(), first), isTrue);
 
-    final sameProjectCubit = BlocProvider.of<SessionListCubit>(
-      tester.element(
-        find.descendant(
-          of: find.byKey(const ValueKey("session-list-p1")).first,
-          matching: find.byType(SessionListPanel),
-        ),
-      ),
-    );
-    expect(identical(sameProjectCubit, firstCubit), isTrue);
-    verifyNever(() => harness.projectRepository.listSessions(projectId: "p1", waitForPrData: true));
-
-    harness.router.go("/projects/p2/sessions/session-2?title=Session+Two&readOnly=false");
+    harness.router.go("/sessions/p2/session-2?title=Session+Two&readOnly=false");
     await _pumpRouteFrames(tester);
-
-    final secondProjectCubit = BlocProvider.of<SessionListCubit>(
-      tester.element(
-        find.descendant(
-          of: find.byKey(const ValueKey("session-list-p2")).first,
-          matching: find.byType(SessionListPanel),
-        ),
-      ),
-    );
-    expect(identical(secondProjectCubit, firstCubit), isFalse);
+    expect(identical(listCubit(), first), isTrue);
+    expect(find.byKey(const ValueKey("session-detail-session-2")), findsOneWidget);
+    // Each project's sessions are read once, not again per route.
     verify(() => harness.projectRepository.listSessions(projectId: "p2", waitForPrData: false)).called(1);
-    verify(() => harness.projectRepository.getGitContext(projectId: "p2")).called(1);
   });
 }

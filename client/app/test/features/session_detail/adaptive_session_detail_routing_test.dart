@@ -26,7 +26,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     addTearDown(harness.tearDown);
     await harness.setUp(
-      initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+      initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
       currentRouteDef: AppRouteDef.sessionDetail,
       sessionsByProject: {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
@@ -54,7 +54,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     addTearDown(harness.tearDown);
     await harness.setUp(
-      initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+      initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
       currentRouteDef: AppRouteDef.sessionDetail,
       sessionsByProject: {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
@@ -70,7 +70,7 @@ void main() {
     await _openChanges(tester);
     await tester.pumpAndSettle();
 
-    expect(harness.router.state.uri.toString(), "/projects/p1/sessions/session-1/diffs");
+    expect(harness.router.state.uri.toString(), "/sessions/p1/session-1/diffs");
     expect(harness.router.canPop(), isTrue);
     final rightPane = find.byKey(const Key("session-split-right-pane"));
     expect(find.byKey(const Key("session-split-left-pane")), findsOneWidget);
@@ -81,12 +81,15 @@ void main() {
     );
     // The session route is retained under the pushed diffs route, so its title
     // is still in the tree — offstage, as any covered route's is.
-    expect(find.text("Session One", skipOffstage: false), findsOneWidget);
+    expect(
+      find.descendant(of: rightPane, matching: find.text("Session One", skipOffstage: false), skipOffstage: false),
+      findsOneWidget,
+    );
 
     harness.router.pop();
     await tester.pumpAndSettle();
 
-    expect(Uri.parse(harness.currentLocation).path, "/projects/p1/sessions/session-1");
+    expect(Uri.parse(harness.currentLocation).path, "/sessions/p1/session-1");
     expect(
       find.descendant(of: rightPane, matching: find.byKey(const ValueKey("session-detail-session-1"))),
       findsOneWidget,
@@ -102,7 +105,7 @@ void main() {
     final parent = adaptiveTestSession(projectId: "p1", id: "parent-1", title: "Parent Session");
     final child = adaptiveTestSession(projectId: "p1", id: "child-1", title: "Child Session");
     await harness.setUp(
-      initialLocation: "/projects/p1/sessions/parent-1?title=Parent+Session&readOnly=false",
+      initialLocation: "/sessions/p1/parent-1?title=Parent+Session&readOnly=false",
       currentRouteDef: AppRouteDef.sessionDetail,
       sessionsByProject: {
         "p1": [parent, child],
@@ -156,7 +159,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     addTearDown(harness.tearDown);
     await harness.setUp(
-      initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+      initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
       currentRouteDef: AppRouteDef.sessionDetail,
       sessionsByProject: {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
@@ -166,7 +169,7 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
-    unawaited(harness.router.push<void>("/projects/p1/sessions/new"));
+    unawaited(harness.router.push<void>("/sessions/new?project=p1"));
     await tester.pumpAndSettle();
     harness.emitSessionEvent(
       event: const SesoriQuestionAsked(
@@ -184,7 +187,7 @@ void main() {
     );
     await tester.pumpAndSettle();
 
-    expect(harness.router.state.uri.path, "/projects/p1/sessions/new");
+    expect(harness.router.state.uri.toString(), "/sessions/new?project=p1");
     expect(find.text("Choose a release channel"), findsNothing);
   });
 
@@ -194,7 +197,7 @@ void main() {
     addTearDown(() => tester.binding.setSurfaceSize(null));
     addTearDown(harness.tearDown);
     await harness.setUp(
-      initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+      initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
       currentRouteDef: AppRouteDef.sessionDetail,
       sessionsByProject: {
         "p1": [
@@ -219,7 +222,7 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("write_file"), findsOneWidget);
 
-    harness.router.go("/projects/p1/sessions/session-2?title=Session+Two&readOnly=false");
+    harness.router.go("/sessions/p1/session-2?title=Session+Two&readOnly=false");
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey("session-detail-session-2")), findsOneWidget);

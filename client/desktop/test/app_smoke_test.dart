@@ -78,7 +78,7 @@ void main() {
 
     expect(find.text("Continue with GitHub"), findsOneWidget);
     expect(find.text("Continue with Google"), findsOneWidget);
-    expect(getIt<RouteSource>().currentRoute, AppRouteDef.projects);
+    expect(getIt<RouteSource>().currentRoute, AppRouteDef.home);
     expect(systemTray.initializeCalls, 1);
 
     final scope = tester.widget<GlassAdaptiveScope>(find.byType(GlassAdaptiveScope));
