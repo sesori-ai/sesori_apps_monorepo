@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:io";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -88,6 +89,7 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                       DesktopReleaseChannel.defineName,
                       defaultValue: "stable",
                     ),
+                    isAppImage: Platform.isLinux && (Platform.environment["APPIMAGE"]?.isNotEmpty ?? false),
                   ),
                 ),
                 SettingsAppInfo(
