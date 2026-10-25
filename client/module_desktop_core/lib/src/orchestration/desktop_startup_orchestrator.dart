@@ -82,8 +82,9 @@ class DesktopStartupOrchestrator._create({
   ///
   /// The shell only needs to know whether it should continue constructing UI;
   /// instance-arbitration outcomes and exit policy stay owned here.
-  Future<bool> preparePrimaryLaunch() async {
-    final DesktopInstanceLaunchDisposition disposition = await _instanceService.claimLaunch();
+  /// A relaunch [afterUpdate] first waits for the exiting desktop to release the lock.
+  Future<bool> preparePrimaryLaunch({required bool afterUpdate}) async {
+    final DesktopInstanceLaunchDisposition disposition = await _instanceService.claimLaunch(afterUpdate: afterUpdate);
     if (disposition == DesktopInstanceLaunchDisposition.primary) {
       return true;
     }

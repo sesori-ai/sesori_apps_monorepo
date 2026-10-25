@@ -1,5 +1,4 @@
 import "dart:async";
-import "dart:io";
 
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
@@ -9,7 +8,6 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
-import "../../core/desktop_update_configuration.dart";
 import "../../core/external_link.dart";
 import "desktop_update_section.dart";
 
@@ -80,18 +78,7 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                     ),
                   ],
                 ),
-                DesktopUpdateSection(
-                  destination: resolveDesktopUpdateDestination(
-                    encodedIdentity: const bool.hasEnvironment(DesktopBundleIdentity.defineName)
-                        ? const String.fromEnvironment(DesktopBundleIdentity.defineName)
-                        : null,
-                    encodedChannel: const String.fromEnvironment(
-                      DesktopReleaseChannel.defineName,
-                      defaultValue: "stable",
-                    ),
-                    isAppImage: Platform.isLinux && (Platform.environment["APPIMAGE"]?.isNotEmpty ?? false),
-                  ),
-                ),
+                const DesktopUpdateSection(),
                 SettingsAppInfo(
                   openSupportLink: ({required url}) =>
                       openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp),

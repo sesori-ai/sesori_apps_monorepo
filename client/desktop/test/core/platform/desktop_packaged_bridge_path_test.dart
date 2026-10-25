@@ -3,6 +3,7 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart";
+import "package:sesori_desktop/core/platform/io_installed_desktop_bundle_source.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 const DesktopBundleIdentity _identity = DesktopBundleIdentity(
@@ -159,18 +160,27 @@ void main() {
 DesktopBridgeExecutablePathResolver _resolver({
   required DesktopBundleIdentity host,
   required String? compiledIdentity,
-  required DesktopBridgeManifestReader readManifest,
+  required DesktopBundleManifestReader readManifest,
   required bool helperExists,
-}) => DesktopBridgeExecutablePathResolver.forTesting(
-  environment: const {DesktopBridgeExecutablePathResolver.environmentVariable: "/arbitrary/development/bridge"},
-  workingDirectory: path.absolute("different repo", "client", "desktop"),
-  resolvedExecutable: host.os == DesktopBundleOs.macos
+}) {
+  final String resolvedExecutable = host.os == DesktopBundleOs.macos
       ? path.absolute("Installed App", "Contents", "MacOS", "Sesori")
-      : path.absolute("Installed App", "sesori_desktop${host.os == DesktopBundleOs.windows ? '.exe' : ''}"),
-  os: host.os,
-  architecture: host.architecture,
-  isReleaseMode: true,
-  compiledIdentityJson: compiledIdentity,
-  executableExists: ({required String executablePath}) => helperExists,
-  readManifest: readManifest,
-);
+      : path.absolute("Installed App", "sesori_desktop${host.os == DesktopBundleOs.windows ? '.exe' : ''}");
+  return DesktopBridgeExecutablePathResolver.forTesting(
+    environment: const {DesktopBridgeExecutablePathResolver.environmentVariable: "/arbitrary/development/bridge"},
+    workingDirectory: path.absolute("different repo", "client", "desktop"),
+    resolvedExecutable: resolvedExecutable,
+    os: host.os,
+    architecture: host.architecture,
+    isReleaseMode: true,
+    bundleSource: IoInstalledDesktopBundleSource.forTesting(
+      compiledIdentityJson: compiledIdentity,
+      channel: DesktopReleaseChannel.stable,
+      isAppImage: false,
+      resolvedExecutable: resolvedExecutable,
+      os: host.os,
+      readManifest: readManifest,
+    ),
+    executableExists: ({required String executablePath}) => helperExists,
+  );
+}

@@ -47,6 +47,15 @@ action stops a helper, installs, changes bridge intent or automatically relaunch
 Linux DEB/RPM upgrades remain package-manager-owned; AppImages are replaced manually like
 macOS and Windows packages. Shared CLI data is not update cleanup.
 
+## Linux package restart to update
+
+After the package manager installs a new DEB/RPM bundle, the running app shows
+**Restart to update** in Settings and in the tray. Restarting starts
+`/usr/bin/sesori-desktop --after-update` detached, then stops the helper and quits; the
+new process waits up to 90 s for the primary lock instead of activating the old instance.
+If the relaunch fails, the app keeps running with its helper untouched. Failure signals:
+the helper is left stopped, two primaries run, or no new instance starts.
+
 ## Client storage boundary
 
 Desktop uses the shared SQLite preferences/encrypted-value store and one native

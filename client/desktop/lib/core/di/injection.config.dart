@@ -62,6 +62,8 @@ import 'package:sesori_desktop/core/platform/io_desktop_application_terminator.d
     as _i665;
 import 'package:sesori_desktop/core/platform/io_file_access_permission.dart'
     as _i300;
+import 'package:sesori_desktop/core/platform/io_installed_desktop_bundle_source.dart'
+    as _i696;
 import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
@@ -119,9 +121,6 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
       () => _i191.NoOpFeedbackPromptConfigSource(),
     );
-    gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
-      () => _i964.DesktopBridgeExecutablePathResolver(),
-    );
     gh.lazySingleton<_i316.LaunchAtLogin>(() => _i122.IoLaunchAtLogin());
     gh.lazySingleton<_i948.TemporaryDirectoryProvider>(
       () => _i393.PathProviderTemporaryDirectoryProvider(),
@@ -169,6 +168,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i789.FlutterWindowHost(),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i316.InstalledDesktopBundleSource>(
+      () => _i696.IoInstalledDesktopBundleSource(),
+    );
     gh.singleton<_i948.RouteSource>(() => _i911.DesktopRouteSource());
     gh.lazySingleton<_i948.AttributionClaimStorage>(
       () => _i804.NoOpAttributionClaimStorage(),
@@ -192,6 +194,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.ImageSharer>(
       () =>
           _i501.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
+    );
+    gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
+      () => _i964.DesktopBridgeExecutablePathResolver(
+        bundleSource: gh<_i316.InstalledDesktopBundleSource>(),
+      ),
     );
     gh.lazySingleton<_i948.NotificationCanceller>(
       () => registerModule.notificationCanceller(
