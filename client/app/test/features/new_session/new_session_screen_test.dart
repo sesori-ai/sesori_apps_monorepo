@@ -527,6 +527,22 @@ void main() {
     verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
   });
 
+  testWidgets("the header hides only while the composer holds the keyboard", (tester) async {
+    tester.view.physicalSize = const Size(390, 844);
+    tester.view.devicePixelRatio = 1;
+    tester.view.viewInsets = const FakeViewPadding(bottom: 300);
+    addTearDown(tester.view.reset);
+
+    // A keyboard the composer does not hold, such as the picker's search,
+    // keeps the project button under it.
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("new_session_project")), findsOneWidget);
+
+    await enterTypingMode(tester);
+    expect(find.byKey(const Key("new_session_project")), findsNothing);
+  });
+
   testWidgets("hides the worktree toggle while project capability loads", (tester) async {
     final projectResponse = Completer<ApiResponse<Project>>();
     when(
