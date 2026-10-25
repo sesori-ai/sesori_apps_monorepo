@@ -495,9 +495,13 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Screen.** Add `AllSessionsList`. The Archived screen becomes an archived-mode `AllSessionsCubit` at
   `/archived-sessions` with archived detail under it. Rows show the project.
 - **Entry.** The per-project list's Archived button opens it filtered to that project (D6), through
-  `selectProject` on the shared filter.
+  `selectProject` on the shared filter. Until 7.b adds the home's Archived button, the unfiltered list has
+  no phone entry of its own.
+- **Freshness.** The bridge publishes no event on archive, so archived mode reloads the inventory when it
+  opens. Deleted rows leave on the `session.deleted` event.
 - **Verification:**
-  - Widget and router tests: archived across projects, filtered entry, restore, and archived detail.
+  - Widget and router tests: archived across projects, filtered entry, delete and read state from a row,
+    and archived detail. Archiving is final, so there is no restore to test.
   - A simulator check.
 - **Regression docs:** `session-archiving-and-deletion.md`.
 
