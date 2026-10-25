@@ -96,14 +96,15 @@ class const DesktopCockpitShell({
     void addProject() => unawaited(
       showAddProjectDialog(context: context, onProjectAdded: onOpenProject),
     );
-    // The open project, else the sidebar's filter, else the most recently
-    // active one (the inventory's order); with no project yet, adding one is
-    // the only useful next step. A chosen project missing from the inventory
-    // (hidden meanwhile) is never swapped for another one.
+    // The open project, else the list's new-session default (the filter, else
+    // the newest session's project), else the first listed one; with no
+    // project yet, adding one is the only useful next step. A chosen project
+    // missing from the inventory (hidden meanwhile) is never swapped for
+    // another one.
     void startNewSession() {
       final projects = context.read<ProjectListCubit>().state;
       if (projects is! ProjectListLoaded) return;
-      final projectId = selectedProjectId ?? sessions.state.projectId;
+      final projectId = selectedProjectId ?? sessions.state.defaultProjectId;
       final project = projectId == null
           ? projects.projects.firstOrNull
           : projects.projects.where((project) => project.id == projectId).firstOrNull;
