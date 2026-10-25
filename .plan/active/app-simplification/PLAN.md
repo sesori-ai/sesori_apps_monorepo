@@ -446,9 +446,12 @@ This document and `TRACKER.md`. Verification: Markdown only.
   - `ProjectsSettingsView` reuses `ProjectTile`'s `menuEntries` (rename, hide, remove-missing) and adds “Open
     another folder…”.
   - Offline, it dims like the other bridge rows.
+- **Folder browser.** `SessionScope` provides `ConnectionService`, so the picker and this page open the browser
+  themselves. The `ProjectFolderOpener` typedef and the shells' `openFolder` copies go.
 - **Routes.**
   - Phone: route `settingsProjects("/settings/projects")`.
-  - Desktop: `DesktopSettingsTab.projects`, with the cockpit's `ProjectListCubit` re-provided by value.
+  - Desktop: `DesktopSettingsTab.projects`, with the cockpit's `ProjectListCubit` and `ConnectionService`
+    re-provided by value. The sidebar's settings opener reads them from inside `DesktopCockpitCubitProvider`.
 - **Verification:**
   - Widget tests: rows, menu actions and the offline state.
   - A simulator screenshot and a macOS screenshot.
