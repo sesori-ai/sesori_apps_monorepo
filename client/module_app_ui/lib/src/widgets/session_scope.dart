@@ -73,3 +73,20 @@ class const SessionScope({
     ),
   );
 }
+
+/// An all-projects list over the enclosing [SessionScope]'s inventories, such
+/// as a route's archived one.
+AllSessionsCubit createAllSessionsCubit({
+  required BuildContext context,
+  required AllSessionsMode mode,
+  required SessionListFilterTracker filterTracker,
+  required SessionListService sessionListService,
+  required ProjectViewingService projectViewingService,
+}) => AllSessionsCubit(
+  mode: mode,
+  recentInventory: context.read<RecentSessionInventoryService>(),
+  projectInventory: context.read<ProjectInventoryService>(),
+  filterTracker: filterTracker,
+  sessionListService: sessionListService,
+  projectViewingService: projectViewingService,
+);

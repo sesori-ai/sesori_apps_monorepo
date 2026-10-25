@@ -19,13 +19,19 @@ final _serverWeb = testProjectSummary(id: "server-web", name: "web", path: "/wor
 
 void main() {
   late List<String> selected;
+  late int allProjectsPicks;
 
-  setUp(() => selected = []);
+  setUp(() {
+    selected = [];
+    allProjectsPicks = 0;
+  });
 
   Future<void> pumpPicker({
     required WidgetTester tester,
     required List<ProjectSummary> projects,
     Size size = const Size(1200, 800),
+    String? selectedProjectId = "app",
+    bool filters = false,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -60,8 +66,9 @@ void main() {
           home: Scaffold(
             body: Center(
               child: ProjectPicker(
-                selectedProjectId: "app",
+                selectedProjectId: selectedProjectId,
                 onSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
+                onAllProjects: filters ? () => allProjectsPicks++ : null,
                 triggerBuilder: (_, open) => TextButton(onPressed: open, child: const Text("Choose project")),
               ),
             ),
@@ -155,6 +162,26 @@ void main() {
         .widget<AddProjectDialog>(browser)
         .onProjectAdded(context: tester.element(browser), project: _demoApi, displayName: "demo-api");
     expect(selected, ["api demo-api"]);
+  });
+
+  testWidgets("filtering, All projects leads in place of the add entry and clears the filter", (tester) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true);
+    expect(find.text("All projects"), findsOneWidget);
+    expect(find.text("Open another folder…"), findsNothing);
+
+    await tester.tap(find.text("All projects"));
+    await tester.pumpAndSettle();
+    expect(allProjectsPicks, 1);
+    expect(find.text("Search projects"), findsNothing);
+  });
+
+  testWidgets("filtering nothing yet, All projects is selected and picking it changes nothing", (tester) async {
+    await pumpPicker(tester: tester, projects: [_demoApp], selectedProjectId: null, filters: true);
+
+    await tester.tap(find.text("All projects"));
+    await tester.pumpAndSettle();
+    expect(allProjectsPicks, 0);
+    expect(find.text("Search projects"), findsNothing);
   });
 
   testWidgets("a phone opens a sheet whose search takes the keyboard", (tester) async {

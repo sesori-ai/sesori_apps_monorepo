@@ -3024,6 +3024,12 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
+  String get projectPickerAllProjects => 'All projects';
+
+  @override
+  String get projectPickerChooseProject => 'Choose a project';
+
+  @override
   String get archivedSessionsToday => 'Today';
 
   @override

@@ -11,7 +11,11 @@ See [`../AGENTS.md`](../AGENTS.md) for shared conventions (architecture layering
 ## Flutter-Specific Conventions
 
 - `flutter_bloc` for widget integration (`BlocProvider`, `context.watch`, `context.read`)
-- Services: resolve via `getIt<Type>()`, NOT `context.read<Service>()`
+- Services: resolve via `getIt<Type>()`, NOT `context.read<Service>()`. The
+  exception is what `SessionScope` provides (its inventories and the services
+  it re-provides): read those from context so every route shares the scope's
+  instance, preferably through module_app_ui helpers such as
+  `createAllSessionsCubit`
 - Cubits: `BlocProvider(create: (_) => MyCubit(getIt<MyService>()))`, then `context.watch`/`context.read`
 - Do NOT use `BlocBuilder` — prefer `context.watch<MyCubit>().state`
 - Do not reduce visible animation cadence as a battery optimization without explicit design approval. For long-lived busy indicators, first isolate repaint damage and profile the smooth animation; use a static indicator when continuous frames are unacceptable.

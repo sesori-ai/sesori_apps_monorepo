@@ -110,8 +110,11 @@ entirely along with its transcript and its dedicated worktree.
   (`?project=<id>`) through the same filter the all-projects lists share; it adds
   no second filter. The live list remains active-only. The modal has a search
   field, no new-session button and no bottom floating navigation. With nothing
-  archived it shows the archive artwork and “No archived sessions”; a project
-  whose sessions failed to load gets its own Retry row instead. The modal reloads
+  archived it shows the archive artwork and “No archived sessions”, but only once
+  the project list has loaded: while it loads the modal shows a skeleton, a failed
+  project list shows its error with Retry, and a disconnected computer shows the
+  same setup or offline page as the home. A project whose sessions failed to load
+  gets its own Retry row instead of the empty state. The modal reloads
   the session inventory when it opens, because the bridge publishes no event on
   archive, and pull-to-refresh runs the scope's shared refresh with a success or
   failure alert. Archived lists never claim a viewed project. Swipe and menu
@@ -184,6 +187,8 @@ restart before explicit re-import.
 - A project's Archived button opens other projects' archives, filtered rows
   repeat the project name, an unfiltered row omits it, or a newly archived
   session is missing until a manual refresh.
+- Archived says “No archived sessions” while the project list is loading, has
+  failed, or the computer is disconnected.
 - Opening or closing an audit record consumes the underlying live project's
   claim, preventing its declaration from returning when the opener is visible.
 - A covered detail marks late output seen, reports activity, or presents a
@@ -267,8 +272,9 @@ ACP tombstone behavior used by Antigravity, Copilot and Grok; Antigravity compos
 tests; client list/detail surfaces; shared `session_detail_activity_owner_test`,
 mobile `session_detail_activity_navigation_test` and
 `archived_sessions_navigation_test` (filtered entry, every project's archives,
-delete and read state from a row, detail and unwinding), shared `all_sessions_list_test`
-and `all_sessions_cubit_test`, desktop `desktop_session_detail_screen_test`, shared
+delete and read state from a row, detail and unwinding, the offline page), shared
+`all_sessions_list_test` (including the failed and disconnected project list) and
+`all_sessions_cubit_test`, desktop `desktop_session_detail_screen_test`, shared
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
 confirmations, the forced refusal and the kept-worktree notice; and

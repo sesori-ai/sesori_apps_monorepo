@@ -245,7 +245,8 @@ belongs to session detail, so neither is affected.
 ### `app`
 
 - The route tree.
-- The home screen, which hosts onboarding, offline and disconnected, moved from `project_list_screen.dart`.
+- The onboarding, offline and disconnected views, moved from `project_list_screen.dart` to
+  `features/home/onboarding`.
 - The mobile sidebar footer.
 
 ### `desktop`
@@ -323,11 +324,11 @@ All of it is caused by this change, and each step removes what it obsoletes:
 - **Step 3:** `NewSessionProjectsCubit`, the plain anchor menu, and the dead `ProjectListCubit.createProject` with
   `ProjectInventoryService.createProject`.
 - **Step 7.a:** the per-project Archived screen wiring.
-- **Step 7.b:** phone registrations of the per-project list route.
+- **Step 7.b.ii:** phone registrations of the per-project list route, and the router's `_SessionListPane`.
 - **Step 8:** whatever 7.b left unreferenced:
-  - the Projects screen (`project_list_screen.dart`, `project_list_view.dart`, `activity_tile.dart`);
-  - the phone `_SessionListPane`, `SessionListScaffold` and `SessionListPanel`;
-  - phone `SessionListCubitProvider` wiring;
+  - the Projects screen (`project_list_screen.dart`, `project_list_view.dart`);
+  - the phone per-project list (`session_list_screen.dart`, `session_list_cubit_provider.dart`), with
+    `SessionListScaffold` and `SessionListPanel`;
   - duplicated label logic, folded into `project_path_labels.dart`.
 - **Step 9:** `SessionSplitShell`, `EmptySessionDetailPanel` and `session_split_scope.dart`.
 - **Step 10.b:**
@@ -337,7 +338,7 @@ All of it is caused by this change, and each step removes what it obsoletes:
   - section headers and fold state;
   - the four layout fields.
 - **Step 11:**
-  - `DesktopSessionListScreen`, the `projectSessions` def, and the desktop home sections;
+  - `DesktopSessionListScreen`, the `projectSessions` def, and the desktop home sections with `activity_tile.dart`;
   - the view mode of `SessionListCubit` and `SessionListCubitProvider`;
   - `SessionListFilteredContent` and `SessionListLaunchRowsCubit`;
   - `RecentSessionsCubit`, once the palette reads `AllSessionsCubit`.
@@ -357,7 +358,8 @@ Series total: 13. Titles are exact. Each implementation step updates the regress
 | 5 | 🌿 [app-simplification] Lead session rows with the harness logo and show the project [step 5/13] | 400 |
 | 6 | 🚧 [app-simplification] Add the all-projects session list model [step 6/13] | 1,000 |
 | 7.a | ⚙️ [app-simplification] Show archived sessions from every project [step 7.a/13] | 900 |
-| 7.b | 🚧 [app-simplification] Make the all-projects list the home [step 7.b/13] | 1,500 |
+| 7.b.i | ⚙️ [app-simplification] Add the home's building blocks and Archived's project-list states [step 7.b.i/13] | 1,100 |
+| 7.b.ii | 🚧 [app-simplification] Make the all-projects list the home [step 7.b.ii/13] | 2,100 |
 | 8 | 🌿 [app-simplification] Remove the Projects screen and per-project phone list [step 8/13] | 1,500 (deletions) |
 | 9 | 🚧 [app-simplification] Show the sidebar on wide phones and tablets [step 9/13] | 1,200 |
 | 10.a | ⚙️ [app-simplification] Put the shared list in the desktop sidebar [step 10.a/13] | 900 |
@@ -370,12 +372,18 @@ Dependencies:
 
 - **2.a and 5** are independent; 2.b follows 2.a.
 - **3 follows 2.a** (`SessionScope`), 4 follows 3, and 6 follows 2.a and 5.
-- **7.a follows 6**; 7.b follows 3, 4 and 7.a; 8 follows 7.b.
+- **7.a follows 6**; 7.b.i follows 3, 4 and 7.a; 7.b.ii follows 7.b.i; 8 follows 7.b.ii.
 - **9 follows 8**; 10.a follows 9; 10.b follows 10.a; 11 follows 10.b.
 - **12 follows every implementation step**, and 13 comes last.
 
-Step 7.b is not split further. The route tree and the phone home must switch together, because the per-project
-pages cannot sit inside the new tree. A route-only step would change every path twice.
+Step 7.b is split in two:
+
+- **7.b.i** adds the building blocks and changes no route: the list's project-list states (Archived uses them at
+  once), the picker's filter mode, the home view, the new-session project prompt, the scaffold's title slot, the
+  onboarding moved to `features/home/onboarding`, and `createAllSessionsCubit`.
+- **7.b.ii** switches the route tree and the phone home together, because the per-project pages cannot sit inside
+  the new tree. A route-only step would change every path twice. It stays above the soft cap because the def rename
+  moves every consumer, desktop included, in lockstep.
 
 ### Step 1 — Publish the plan (🌱)
 
@@ -507,6 +515,10 @@ This document and `TRACKER.md`. Verification: Markdown only.
 
 ### Step 7.b — The all-projects home (🚧)
 
+- **Split.** 7.b.i holds the components, Archived's project-list states, the onboarding move and
+  `createAllSessionsCubit`; 7.b.ii holds the rest (see *Steps*).
+- **Project-list states.** `AllSessionsList` shows the project list's loading, failure (with Retry) and
+  disconnected states before its empty state, so Archived gets them too.
 - **Routes.** Install the route tree above. Every `projects` consumer moves to `home`, `homeVisibility` replaces
   `projectPageVisibility`, and `ProjectViewingService` gets its new mapping.
 - **Phone home.**
@@ -538,8 +550,9 @@ This document and `TRACKER.md`. Verification: Markdown only.
     - cold start, onboarding with no projects, and offline;
     - a filter round trip, a notification open, and a computer switch that resets the filter.
   - macOS smoke run of the moved routes.
-- **Regression docs:** `projects-and-sessions.md`, `navigation-transitions.md`, `account-and-onboarding.md`,
-  `multi-computer.md`, `analytics.md` and `session-creation-and-options.md`.
+- **Regression docs:** `session-archiving-and-deletion.md` (7.b.i); `projects-and-sessions.md`,
+  `navigation-transitions.md`, `account-and-onboarding.md`, `multi-computer.md`, `analytics.md` and
+  `session-creation-and-options.md` (7.b.ii).
 
 ### Step 8 — Remove the Projects screen (🌿)
 

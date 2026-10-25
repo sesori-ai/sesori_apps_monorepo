@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 7.b/13 follows 7.a/13.
+- Current step: 7.b.ii/13 follows 7.b.i/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -17,8 +17,9 @@
 | 4/13 | Settings › Projects | Done | #2037 |
 | 5/13 | Row logo and project label | Done | #2030 |
 | 6/13 | All-projects list model | Done | #2033 |
-| 7.a/13 | Archived across projects | Done | `sesori/app-simplification-step-7a` |
-| 7.b/13 | All-projects home and route tree | Not started | — |
+| 7.a/13 | Archived across projects | Done | #2038 |
+| 7.b.i/13 | Home building blocks; Archived's project-list states | Done | `sesori/app-simplification-step-7b-i` |
+| 7.b.ii/13 | All-projects home and route tree | Not started | — |
 | 8/13 | Projects screen removed | Not started | — |
 | 9/13 | Wide phone and tablet sidebar | Not started | — |
 | 10.a/13 | Desktop sidebar on the shared list | Not started | — |
@@ -42,6 +43,11 @@
 - 2026-10-24: step 6 filled four gaps in `PLAN.md` *Ownership*: `setHiddenSessionIds` (so chip counts skip
   rows held by an Undo window or a launch row), one shared filter for both modes (D6 enters through
   `selectProject`), the `SessionListService` comparators as the single ordering owner, and `retry` plus `isLoading`.
+- 2026-10-24: step 7.b measured about 3,100 changed lines in one branch, so it split into 7.b.i (building blocks,
+  no route change) and 7.b.ii (route tree and home). 7.b.i also closes a #2038 review thread: Archived showed
+  “No archived sessions” while the project list was loading, had failed or the computer was disconnected. The
+  `PLAN.md` *Cleanup* list was corrected: 7.b.ii removes the router's `_SessionListPane`, and `activity_tile.dart`
+  stays for the desktop home until step 11.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

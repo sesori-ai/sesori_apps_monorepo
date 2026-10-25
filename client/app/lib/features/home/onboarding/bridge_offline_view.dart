@@ -1,4 +1,4 @@
-part of "../project_list_screen.dart";
+part of "bridge_onboarding.dart";
 
 /// Shown when the account has a bridge registered but none is connected — the
 /// user already completed setup, so instead of the install onboarding they are
@@ -8,18 +8,20 @@ part of "../project_list_screen.dart";
 /// ([OtherComputersCard]), then the always-visible start-the-bridge command,
 /// and quiet "Why is this needed?" and "Install commands" links, the latter a
 /// disclosure for when the bridge needs to be (re)installed. The quiet
-/// "Need help?" support menu ([_NeedHelpMenu]) closes the page below this body
-/// (see [ProjectListView]).
+/// "Need help?" support menu ([NeedHelpMenu]) closes the page below this body
+/// (see [DisconnectedComputerSlivers]).
 ///
 /// There is no reconnect button: reconnecting is what the page already does on
 /// its own and on pull-to-refresh, so the design spends the space on the
 /// command the user actually has to run.
 ///
-/// A body, not a page: it is hosted in the project list's own page scroll (see
-/// [ProjectListScreen]) so the expanded install commands scroll under a fixed
+/// A body, not a page: it is hosted in its page's own scroll (see
+/// [DisconnectedComputerSlivers]) so the expanded install commands scroll under a fixed
 /// bar. Anchored to the top of that page at the design's offset; the enclosing
 /// sliver grows past the viewport once the body outgrows it.
-class const _BridgeOfflineView({
+class const BridgeOfflineView({
+  super.key,
+
   /// The computer the app is trying to reach. Null while the lookup has no
   /// answer, or when it failed (e.g. the phone itself is offline); the heading
   /// then says "Bridge offline" and the last-seen line is hidden.
@@ -27,10 +29,10 @@ class const _BridgeOfflineView({
   required final ComputerSwitchCallback onSwitchComputer,
 }) extends StatefulWidget {
   @override
-  State<_BridgeOfflineView> createState() => _BridgeOfflineViewState();
+  State<BridgeOfflineView> createState() => _BridgeOfflineViewState();
 }
 
-class _BridgeOfflineViewState() extends State<_BridgeOfflineView> {
+class _BridgeOfflineViewState() extends State<BridgeOfflineView> {
   /// Whether the "Install commands" disclosure is expanded.
   bool _showInstallCommands = false;
 

@@ -8,6 +8,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
+import "package:sesori_mobile/features/home/onboarding/bridge_onboarding.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -175,6 +176,31 @@ void main() {
     await tester.tap(find.bySemanticsLabel("Close archived sessions"));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), "/projects");
+  });
+
+  testWidgets("Archived shows the computer's offline page when the relay drops", (tester) async {
+    final harness = await setUpArchive(
+      tester: tester,
+      size: const Size(440, 956),
+      initialLocation: const AppRoute.archivedSessions(projectId: null).buildPath(),
+      currentRouteDef: AppRouteDef.archivedSessions,
+      sessionsByProject: {
+        "p1": [live, audit],
+        "p2": [other],
+      },
+    );
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+    expect(tile(title: "Archived record"), findsOneWidget);
+
+    // A torn-down relay leaves nothing reachable, so the project list goes offline.
+    when(() => harness.connectionService.currentStatus).thenReturn(const ConnectionStatus.disconnected());
+    harness.statusController.add(const ConnectionStatus.disconnected());
+    await tester.pumpAndSettle();
+
+    expect(tester.takeException(), isNull);
+    expect(find.byType(DisconnectedComputerSlivers), findsOneWidget);
+    expect(tile(title: "Archived record"), findsNothing);
   });
 
   testWidgets("an archived row is marked unread and deleted from the list", (tester) async {

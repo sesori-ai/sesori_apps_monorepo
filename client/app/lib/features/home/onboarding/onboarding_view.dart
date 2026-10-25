@@ -1,15 +1,15 @@
-part of "../project_list_screen.dart";
+part of "bridge_onboarding.dart";
 
 // ===========================================================================
 // Bridge onboarding
 //
-// The two empty Projects states have their own bodies now that they diverge:
+// The two empty home states have their own bodies now that they diverge:
 // * disconnected — the connect-your-computer onboarding (connection graphic in
-//   its "off" state): install + start the bridge. See [_ConnectBridgeChecklist].
+//   its "off" state): install + start the bridge. See [ConnectBridgeChecklist].
 // * connected, no projects — the stacked-folders graphic over an add-project
-//   call to action. See [_ConnectedEmptyView].
+//   call to action. See [ConnectedEmptyView].
 //
-// Both are bodies, not pages: [ProjectListScreen] hosts them in its own page
+// Both are bodies, not pages: the home hosts them in its own page
 // scroll — with the pull-to-refresh that comes with it — rather than each
 // nesting a scroll view of its own.
 // ===========================================================================
@@ -20,8 +20,8 @@ part of "../project_list_screen.dart";
 ///
 /// The connection itself is not restated here — the design puts the machine
 /// identity in the top navigation, and this screen only reports it when the
-/// bridge is *not* connected ([_BridgeOfflineView]).
-class const _ConnectedEmptyView({required final VoidCallback onAddProject}) extends StatelessWidget {
+/// bridge is *not* connected ([BridgeOfflineView]).
+class const ConnectedEmptyView({super.key, required final VoidCallback onAddProject}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -101,9 +101,9 @@ class const _EmptyProjectsGraphic() extends StatelessWidget {
 /// connection graphic in its "off" state with a "Waiting for bridge" caption,
 /// then two numbered command steps — install the bridge, then start it — each
 /// introduced by a label carrying an "ⓘ" info popover, and a "Why is this
-/// needed?" explainer button. The "Need help?" support menu ([_NeedHelpMenu])
-/// closes the page below this body (see [ProjectListView]).
-class const _ConnectBridgeChecklist() extends StatelessWidget {
+/// needed?" explainer button. The "Need help?" support menu ([NeedHelpMenu])
+/// closes the page below this body (see [DisconnectedComputerSlivers]).
+class const ConnectBridgeChecklist({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -262,7 +262,9 @@ class const _InfoLabel({
 /// X), each launching an external link. Forced flat on every platform
 /// ([PregoAnchorMenu.flat]) so the popup matches its flat trigger instead of
 /// morphing in as glass.
-class const _NeedHelpMenu({
+class const NeedHelpMenu({
+  super.key,
+
   /// The onboarding surface hosting the pill, reported with every event so
   /// help-seeking is attributable to the funnel step the user was on.
   required final OnboardingSurface surface,
@@ -356,8 +358,8 @@ class const _NeedHelpMenu({
 /// The per-platform install commands: a flat iOS-style segmented control that
 /// switches between the Unix (macOS/Linux/WSL) and Windows install groups, and
 /// a single [_InstallCommandBox] showing the selected group's methods. Shared
-/// by the connect-setup onboarding ([_ConnectBridgeChecklist]) and the
-/// bridge-offline reconnect disclosure ([_BridgeOfflineView]) so both stay in
+/// by the connect-setup onboarding ([ConnectBridgeChecklist]) and the
+/// bridge-offline reconnect disclosure ([BridgeOfflineView]) so both stay in
 /// sync; callers supply their own surrounding padding.
 class const _InstallCommandBoxes({
   /// The surface hosting the boxes, stamped on the copy/share analytics of
