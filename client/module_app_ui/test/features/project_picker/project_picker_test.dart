@@ -26,19 +26,9 @@ void main() {
     addedCallback = null;
   });
 
-  ProjectPickerMode newSessionMode() => ProjectPickerNewSessionMode(
-    selectedProjectId: "app",
-    onSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
-    openFolder: ({required context, required onProjectAdded}) {
-      openedFrom.add(context);
-      addedCallback = onProjectAdded;
-    },
-  );
-
   Future<void> pumpPicker({
     required WidgetTester tester,
     required List<ProjectSummary> projects,
-    required ProjectPickerMode mode,
     Size size = const Size(1200, 800),
   }) async {
     tester.view.physicalSize = size;
@@ -60,7 +50,12 @@ void main() {
           home: Scaffold(
             body: Center(
               child: ProjectPicker(
-                mode: mode,
+                selectedProjectId: "app",
+                onSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
+                openFolder: ({required context, required onProjectAdded}) {
+                  openedFrom.add(context);
+                  addedCallback = onProjectAdded;
+                },
                 triggerBuilder: (_, open) => TextButton(onPressed: open, child: const Text("Choose project")),
               ),
             ),
@@ -78,7 +73,7 @@ void main() {
   }
 
   testWidgets("search narrows the projects by name and path, under the add entry", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi, _clientWeb], mode: newSessionMode());
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi, _clientWeb]);
     expect(find.text("Search projects"), findsOneWidget);
     expect(find.text("demo-app"), findsOneWidget);
     expect(find.text("demo-api"), findsOneWidget);
@@ -97,7 +92,7 @@ void main() {
   });
 
   testWidgets("a search with no match keeps the add entry and says nothing matches", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], mode: newSessionMode());
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi]);
 
     await search(tester: tester, query: "zzz");
     expect(find.text("Open another folder…"), findsOneWidget);
@@ -106,7 +101,7 @@ void main() {
   });
 
   testWidgets("only projects sharing a name show their paths", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp, _clientWeb, _serverWeb], mode: newSessionMode());
+    await pumpPicker(tester: tester, projects: [_demoApp, _clientWeb, _serverWeb]);
 
     expect(find.text("web"), findsNWidgets(2));
     expect(find.text("…/client/web"), findsOneWidget);
@@ -116,14 +111,14 @@ void main() {
   });
 
   testWidgets("with no project the add entry is the whole list", (tester) async {
-    await pumpPicker(tester: tester, projects: const [], mode: newSessionMode());
+    await pumpPicker(tester: tester, projects: const []);
 
     expect(find.text("Open another folder…"), findsOneWidget);
     expect(find.text("No projects match"), findsNothing);
   });
 
   testWidgets("with one project, picking it again changes nothing and closes", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp], mode: newSessionMode());
+    await pumpPicker(tester: tester, projects: [_demoApp]);
     expect(find.text("Open another folder…"), findsOneWidget);
 
     await tester.tap(find.text("demo-app"));
@@ -133,7 +128,7 @@ void main() {
   });
 
   testWidgets("picking another project closes the picker and selects it", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], mode: newSessionMode());
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi]);
 
     await tester.tap(find.text("demo-api"));
     await tester.pumpAndSettle();
@@ -142,7 +137,7 @@ void main() {
   });
 
   testWidgets("Open another folder opens the browser and selects the project it adds", (tester) async {
-    await pumpPicker(tester: tester, projects: [_demoApp], mode: newSessionMode());
+    await pumpPicker(tester: tester, projects: [_demoApp]);
 
     await tester.tap(find.text("Open another folder…"));
     await tester.pumpAndSettle();
@@ -157,7 +152,6 @@ void main() {
     await pumpPicker(
       tester: tester,
       projects: [_demoApp, _demoApi],
-      mode: newSessionMode(),
       size: const Size(390, 844),
     );
 
@@ -171,28 +165,5 @@ void main() {
     await tester.tap(find.text("demo-app"));
     await tester.pumpAndSettle();
     expect(find.text("Projects"), findsNothing);
-  });
-
-  testWidgets("the filter is led by All projects, which clears it", (tester) async {
-    final filtered = <String?>[];
-    await pumpPicker(
-      tester: tester,
-      projects: [_demoApp, _demoApi],
-      mode: ProjectPickerFilterMode(
-        selectedProjectId: "app",
-        onSelected: ({required projectId}) => filtered.add(projectId),
-      ),
-    );
-    expect(find.text("Open another folder…"), findsNothing);
-
-    await tester.tap(find.text("All projects"));
-    await tester.pumpAndSettle();
-    expect(filtered, [null]);
-
-    await tester.tap(find.text("Choose project"));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text("demo-api"));
-    await tester.pumpAndSettle();
-    expect(filtered, [null, "api"]);
   });
 }

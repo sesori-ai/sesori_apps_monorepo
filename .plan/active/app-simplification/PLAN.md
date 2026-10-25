@@ -413,7 +413,8 @@ This document and `TRACKER.md`. Verification: Markdown only.
 ### Step 3 — Searchable picker with Open another folder (⚙️)
 
 - **`ProjectPicker`.**
-  - Both modes (D14), backed by `ProjectListCubit` from `SessionScope`.
+  - New-session mode only, backed by `ProjectListCubit` from `SessionScope`. The filter mode waits for its first
+    consumer in step 7.b; D14 holds because it extends this same component.
   - A bottom sheet on the phone, lifted by `viewInsets`, and a popover on wide layouts and desktop.
   - Paths shown only on name collisions, via `project_path_labels.dart`.
 - **Open another folder.** “Open another folder…” calls `showAddProjectDialog`, and its `onProjectAdded` selects
@@ -486,7 +487,8 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Routes.** Install the route tree above. Every `projects` consumer moves to `home`, `homeVisibility` replaces
   `projectPageVisibility`, and `ProjectViewingService` gets its new mapping.
 - **Phone home.**
-  - `AllSessionsList` with the title `ProjectPicker` (filter mode) and the computer switcher under it.
+  - `AllSessionsList` with the title `ProjectPicker` and the computer switcher under it. This step adds the
+    picker's filter mode, led by “All projects”, for that title switcher.
   - Header buttons for new session, Archived and Settings.
   - The onboarding, offline and disconnected states.
   - At ≥700 pt the new routes sit in a ShellRoute that still uses `SessionSplitShell`, with `AllSessionsList` as its

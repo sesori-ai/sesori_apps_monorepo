@@ -73,11 +73,9 @@ class const NewSessionHeader({
               pill(onPressed: null)
             else
               ProjectPicker(
-                mode: ProjectPickerNewSessionMode(
-                  selectedProjectId: projectId,
-                  onSelected: projectChoice.onProjectSelected,
-                  openFolder: projectChoice.openFolder,
-                ),
+                selectedProjectId: projectId,
+                onSelected: projectChoice.onProjectSelected,
+                openFolder: projectChoice.openFolder,
                 triggerBuilder: (_, open) => pill(onPressed: open),
               ),
             ?harness,

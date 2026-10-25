@@ -91,8 +91,6 @@
   "@projectPickerSearchHint": {"description": "Placeholder of the project picker's search field, which matches project names and paths."},
   "projectPickerOpenFolder": "Open another folder…",
   "@projectPickerOpenFolder": {"description": "First entry of the new-session project picker. Opens the folder browser and starts the session in the folder it adds."},
-  "projectPickerAllProjects": "All projects",
-  "@projectPickerAllProjects": {"description": "First entry of the session list's project picker. Shows sessions from every project."},
   "projectPickerNoMatches": "No projects match",
   "@projectPickerNoMatches": {"description": "Shown under the project picker's first entry when no project name or path matches the search."},
   "sessionChangesLabel": "Changes",

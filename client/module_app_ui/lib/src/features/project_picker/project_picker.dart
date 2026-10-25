@@ -14,54 +14,24 @@ import "../project_list/widgets/project_tile.dart";
 
 typedef NewSessionProjectSelected = void Function({required String projectId, required String projectName});
 
-/// What a [ProjectPicker] chooses, which also decides the entry that leads it.
-sealed class const ProjectPickerMode();
-
-/// The session list's project filter, led by "All projects", which clears it.
-class const ProjectPickerFilterMode({
-  /// Null while every project's sessions show.
-  required final String? selectedProjectId,
-  required final void Function({required String? projectId}) onSelected,
-}) extends ProjectPickerMode;
-
-/// The project a new session starts in, led by "Open another folder…", which
-/// opens the folder browser and then selects the project it adds.
-class const ProjectPickerNewSessionMode({
+/// Chooses the project a new session starts in from the live list, searchable
+/// by name and path: a bottom sheet that rises with the keyboard on a phone,
+/// and a popover anchored to the trigger on wide layouts and under a pointer.
+///
+/// "Open another folder…" leads whatever the search, so it is there with one
+/// project, with none, and when nothing matches. It opens the folder browser
+/// and then selects the project that adds. A path shows only under a name
+/// another project shares.
+class const ProjectPicker({
+  super.key,
   required final String selectedProjectId,
   required final NewSessionProjectSelected onSelected,
   required final ProjectFolderOpener openFolder,
-}) extends ProjectPickerMode;
-
-/// Chooses a project from the live list, searchable by name and path: a
-/// bottom sheet that rises with the keyboard on a phone, and a popover
-/// anchored to the trigger on wide layouts and under a pointer.
-///
-/// The leading entry stays whatever the search, so it is there with one
-/// project, with none, and when nothing matches. A path shows only under a
-/// name another project shares.
-class const ProjectPicker({
-  super.key,
-  required final ProjectPickerMode mode,
 
   /// Builds the trigger; the callback opens the picker.
   required final PregoPopoverTriggerBuilder triggerBuilder,
 }) extends StatelessWidget {
   static const double _popoverWidth = 320;
-
-  /// Runs the leading entry once the picker has closed. The folder browser
-  /// opens over this widget's context, which outlives the picker.
-  void _pickLead({required BuildContext context}) {
-    switch (mode) {
-      case ProjectPickerFilterMode(:final onSelected):
-        onSelected(projectId: null);
-      case ProjectPickerNewSessionMode(:final onSelected, :final openFolder):
-        openFolder(
-          context: context,
-          onProjectAdded: ({required context, required project, required displayName}) =>
-              onSelected(projectId: project.id, projectName: displayName),
-        );
-    }
-  }
 
   @override
   Widget build(BuildContext context) {
@@ -72,8 +42,15 @@ class const ProjectPicker({
     Widget list({required VoidCallback close, required bool focusesUnderTouch}) => BlocProvider.value(
       value: cubit,
       child: _ProjectPickerList(
-        mode: mode,
-        onPickLead: () => _pickLead(context: context),
+        selectedProjectId: selectedProjectId,
+        onSelected: onSelected,
+        // Runs once the picker has closed. The folder browser opens over this
+        // widget's context, which outlives the picker.
+        onOpenFolder: () => openFolder(
+          context: context,
+          onProjectAdded: ({required context, required project, required displayName}) =>
+              onSelected(projectId: project.id, projectName: displayName),
+        ),
         onClose: close,
         focusesUnderTouch: focusesUnderTouch,
       ),
@@ -110,8 +87,9 @@ class const ProjectPicker({
 }
 
 class const _ProjectPickerList({
-  required final ProjectPickerMode mode,
-  required final VoidCallback onPickLead,
+  required final String selectedProjectId,
+  required final NewSessionProjectSelected onSelected,
+  required final VoidCallback onOpenFolder,
   required final VoidCallback onClose,
   required final bool focusesUnderTouch,
 }) extends StatefulWidget {
@@ -129,12 +107,7 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
 
   void _pickProject({required ProjectSummary project, required String name}) {
     widget.onClose();
-    switch (widget.mode) {
-      case ProjectPickerFilterMode(:final selectedProjectId, :final onSelected):
-        if (project.id != selectedProjectId) onSelected(projectId: project.id);
-      case ProjectPickerNewSessionMode(:final selectedProjectId, :final onSelected):
-        if (project.id != selectedProjectId) onSelected(projectId: project.id, projectName: name);
-    }
+    if (project.id != widget.selectedProjectId) widget.onSelected(projectId: project.id, projectName: name);
   }
 
   List<PregoPickerSearchRow> _buildRows() {
@@ -154,36 +127,19 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
             project.path.toLowerCase().contains(query))
           project,
     ];
-    final (selectedProjectId, lead) = switch (widget.mode) {
-      ProjectPickerFilterMode(:final selectedProjectId) => (
-        selectedProjectId,
-        PregoPickerSearchOption(
-          isSelected: selectedProjectId == null,
-          onPick: () {
-            widget.onClose();
-            if (selectedProjectId != null) widget.onPickLead();
-          },
-          child: _PickerRow(icon: TablerRegular.folders, title: loc.projectPickerAllProjects, detail: null),
-        ),
-      ),
-      ProjectPickerNewSessionMode(:final selectedProjectId) => (
-        selectedProjectId,
-        PregoPickerSearchOption(
-          isSelected: false,
-          onPick: () {
-            widget.onClose();
-            widget.onPickLead();
-          },
-          child: _PickerRow(icon: TablerRegular.folder_plus, title: loc.projectPickerOpenFolder, detail: null),
-        ),
-      ),
-    };
     return [
-      lead,
+      PregoPickerSearchOption(
+        isSelected: false,
+        onPick: () {
+          widget.onClose();
+          widget.onOpenFolder();
+        },
+        child: _PickerRow(icon: TablerRegular.folder_plus, title: loc.projectPickerOpenFolder, detail: null),
+      ),
       if (matches.isEmpty && query.isNotEmpty) PregoPickerSearchNote(text: loc.projectPickerNoMatches),
       for (final project in matches)
         PregoPickerSearchOption(
-          isSelected: project.id == selectedProjectId,
+          isSelected: project.id == widget.selectedProjectId,
           onPick: () => _pickProject(project: project, name: nameOf(project)),
           child: _PickerRow(
             icon: TablerRegular.folder,

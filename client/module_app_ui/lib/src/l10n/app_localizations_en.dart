@@ -141,9 +141,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectPickerOpenFolder => 'Open another folder…';
 
   @override
-  String get projectPickerAllProjects => 'All projects';
-
-  @override
   String get projectPickerNoMatches => 'No projects match';
 
   @override

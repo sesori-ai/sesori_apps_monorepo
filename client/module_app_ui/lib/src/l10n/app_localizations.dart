@@ -319,12 +319,6 @@ abstract class AppLocalizations {
   /// **'Open another folder…'**
   String get projectPickerOpenFolder;
 
-  /// First entry of the session list's project picker. Shows sessions from every project.
-  ///
-  /// In en, this message translates to:
-  /// **'All projects'**
-  String get projectPickerAllProjects;
-
   /// Shown under the project picker's first entry when no project name or path matches the search.
   ///
   /// In en, this message translates to:
