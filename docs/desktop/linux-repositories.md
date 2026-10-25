@@ -31,6 +31,9 @@ The registration is ordinary package-owned files, which removal deletes:
   These are the website's manual-setup paths and line, so an earlier manual setup
   is replaced in place rather than duplicated (a duplicate with a different
   `signed-by` path would make APT reject both).
+  `/etc/apt/apt.conf.d/52sesori-unattended-upgrades` adds `origin=Sesori` to
+  unattended-upgrades' allowed origins, so where it is enabled (Ubuntu's default)
+  updates install silently; the running app then offers "Restart to update".
 - RPM: `/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori` and `/etc/yum.repos.d/sesori.repo`,
   with `skip_if_unavailable=1` so an unreachable Sesori repository never blocks
   the system's other updates. The repo file is `%config(noreplace)`, so a user's

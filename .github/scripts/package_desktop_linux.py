@@ -28,7 +28,7 @@ SYSTEM_PARENT_PATHS = {
     Path("."), Path("opt"), Path("usr"), Path("usr/bin"), Path("usr/share"),
     Path("usr/share/applications"), Path("usr/share/icons"), Path("usr/share/icons/hicolor"),
     Path("usr/share/icons/hicolor/512x512"), Path("usr/share/icons/hicolor/512x512/apps"),
-    Path("etc"), Path("etc/apt"), Path("etc/apt/keyrings"), Path("etc/apt/sources.list.d"),
+    Path("etc"), Path("etc/apt"), Path("etc/apt/apt.conf.d"), Path("etc/apt/keyrings"), Path("etc/apt/sources.list.d"),
     Path("etc/pki"), Path("etc/pki/rpm-gpg"), Path("etc/yum.repos.d"),
 }
 # Installing a package registers its channel's signed repository, so the system updater delivers new versions.
@@ -37,9 +37,11 @@ LINUX_REPOSITORY = "https://storage.googleapis.com/sesori-ai-linux-packages"
 REPOSITORY_KEY_SOURCE = ROOT / "client/desktop/linux/packaging/sesori-linux-public.asc"
 APT_KEY = Path("etc/apt/keyrings/sesori.asc")
 APT_SOURCE = Path("etc/apt/sources.list.d/sesori.list")
+# unattended-upgrades installs only allowed origins; this list entry adds Sesori to the system defaults.
+APT_UNATTENDED = Path("etc/apt/apt.conf.d/52sesori-unattended-upgrades")
 RPM_KEY = Path("etc/pki/rpm-gpg/RPM-GPG-KEY-sesori")
 RPM_REPOSITORY = Path("etc/yum.repos.d/sesori.repo")
-REPOSITORY_PATHS = {"deb": {APT_KEY, APT_SOURCE}, "rpm": {RPM_KEY, RPM_REPOSITORY}}
+REPOSITORY_PATHS = {"deb": {APT_KEY, APT_SOURCE, APT_UNATTENDED}, "rpm": {RPM_KEY, RPM_REPOSITORY}}
 CHANNELS = ("stable", "internal")
 DYNAMIC_LOAD_PATTERN = re.compile(rb"\b(?:dlopen|DynamicLibrary\.open)\s*\(")
 DESKTOP_ENTRY_TEXT = ("[Desktop Entry]\nType=Application\nName=Sesori\nComment=AI coding cockpit\n"
@@ -118,7 +120,8 @@ def compiled_channel(*, bundle: Path) -> str:
 def repository_files(*, package_format: str, channel: str) -> dict[Path, str]:
     key = REPOSITORY_KEY_SOURCE.read_text(encoding="utf-8")
     if package_format == "deb":
-        return {APT_KEY: key, APT_SOURCE: f"deb [signed-by=/{APT_KEY}] {LINUX_REPOSITORY}/apt {channel} main\n"}
+        return {APT_KEY: key, APT_SOURCE: f"deb [signed-by=/{APT_KEY}] {LINUX_REPOSITORY}/apt {channel} main\n",
+                APT_UNATTENDED: 'Unattended-Upgrade::Origins-Pattern { "origin=Sesori"; };\n'}
     name = "Sesori internal previews" if channel == "internal" else "Sesori"
     return {RPM_KEY: key, RPM_REPOSITORY: (
         f"[sesori-{channel}]\nname={name}\nbaseurl={LINUX_REPOSITORY}/rpm/{channel}/$basearch\n"

@@ -126,7 +126,7 @@ class LinuxPackagingTests(unittest.TestCase):
         package_paths = ["/", "/opt", "/opt/sesori-desktop", "/usr", "/usr/bin", "/usr/share",
                          "/usr/share/applications", "/usr/share/icons", "/usr/share/icons/hicolor",
                          "/usr/share/icons/hicolor/512x512", "/usr/share/icons/hicolor/512x512/apps",
-                         "/etc", "/etc/apt", "/etc/apt/keyrings", "/etc/apt/sources.list.d"]
+                         "/etc", "/etc/apt", "/etc/apt/apt.conf.d", "/etc/apt/keyrings", "/etc/apt/sources.list.d"]
         package_paths.extend("/" + item["path"] for item in packaging.payload_inventory(root=package_root))
         self.assertTrue(packaging.verify_owned_paths(paths=package_paths, package_format="deb")["boundedSystemOwnership"])
         with self.assertRaisesRegex(ValueError, "unexpected=.*usr/bin/sesori-bridge"):
@@ -148,6 +148,8 @@ class LinuxPackagingTests(unittest.TestCase):
                                  "deb [signed-by=/etc/apt/keyrings/sesori.asc] "
                                  f"https://storage.googleapis.com/sesori-ai-linux-packages/apt {channel} main\n")
                 self.assertEqual((deb_root / packaging.APT_KEY).read_text(), key)
+                self.assertEqual((deb_root / packaging.APT_UNATTENDED).read_text(),
+                                 'Unattended-Upgrade::Origins-Pattern { "origin=Sesori"; };\n')
                 self.assertFalse((deb_root / "etc/yum.repos.d").exists())
                 repository = (rpm_root / packaging.RPM_REPOSITORY).read_text()
                 self.assertTrue(repository.startswith(f"[sesori-{channel}]\n"))
