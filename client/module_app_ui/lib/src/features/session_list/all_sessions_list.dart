@@ -47,10 +47,11 @@ class const AllSessionsList({
     final now = DateTime.now();
     final entries = groupUnderHeadings(
       items: state.rows,
-      // Only the archived mode lists archived rows, and it sorts by archive time.
+      // Only the archived mode lists archived rows, and it sorts them by archive
+      // time alone, running or not.
       headingOf: (row) => sessionListHeading(
         timestamp: row.session.time?.archived ?? row.session.time?.updated,
-        isRunning: row.isRunning,
+        isRunning: row.isRunning && row.session.time?.archived == null,
         now: now,
         loc: loc,
       ),

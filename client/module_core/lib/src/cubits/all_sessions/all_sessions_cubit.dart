@@ -66,7 +66,10 @@ class AllSessionsCubit({
     _subscriptions
       ..add(_recentInventory.state.skip(1).listen((_) => _update()))
       ..add(_projectInventory.stateStream.skip(1).listen((_) => _update()))
-      ..add(_filterTracker.projectId.skip(1).listen((_) => _update()));
+      // [selectProject] already shows its own selection.
+      ..add(
+        _filterTracker.projectId.skip(1).where((projectId) => projectId != state.projectId).listen((_) => _update()),
+      );
     if (_mode == AllSessionsMode.archived) unawaited(_recentInventory.refresh());
   }
 

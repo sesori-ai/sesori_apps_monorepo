@@ -350,18 +350,19 @@ state.
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, retrying, background tasks), then the project
   when the list gives one, the branch shortened in the middle and the pull
-  request; it no longer names the harness. A list filtered to one project,
-  which is every session list today, gives no project. Screen
+  request; it no longer names the harness. A project's own session list, and
+  the shared Archived list while it is filtered to one project, give no
+  project; the Archived list across every project names each row's. Screen
   readers hear the waiting state once, from the status slot. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
   text size, and they grow with
   accessibility text rather than clipping or overflowing. In a narrow pane
   the pull request's indicators clip instead of overflowing. Regular rows form
   one timeline with no Running section: running rows lead Today whatever their
-  stored time, then idle rows follow in updated-time date buckets;
-  the Archived list uses archive-time date buckets, while archived rows a
-  project page shows beside active ones stay in updated-time buckets, as that
-  list sorts. Awaiting-input-only rows stay
+  stored time, then idle rows follow in updated-time date buckets. Archived
+  rows shown beside active rows on a project page use those updated-time
+  buckets too. The shared Archived list instead groups every row, running or
+  not, under its archive date. Awaiting-input-only rows stay
   in their updated-time bucket, and missing timestamps use an Unknown date
   heading rather than an invented epoch. Archiving, deleting or restoring a
   row animates only that row: its date heading stays in place and leaves or

@@ -60,7 +60,8 @@ void main() {
         ),
       ),
     );
-    await tester.pumpAndSettle();
+    // A running row's loader never settles.
+    await tester.pump();
     return cubit;
   }
 
@@ -91,21 +92,25 @@ void main() {
   testWidgets("archived rows sit under their archive date, as the archived mode sorts", (tester) async {
     final today = DateTime.now();
     final yesterday = today.subtract(const Duration(days: 1));
-    AllSessionsRow row({required String title, required DateTime archivedAt, required DateTime updatedAt}) =>
-        AllSessionsRow(
-          session: testSession(
-            id: title,
-            title: title,
-            updatedAt: updatedAt.millisecondsSinceEpoch,
-            archivedAt: archivedAt,
-          ),
-          project: project,
-          isRunning: false,
-          isUnseen: false,
-          isAwaitingInput: false,
-          isRetrying: false,
-          backgroundTaskCount: 0,
-        );
+    AllSessionsRow row({
+      required String title,
+      required DateTime archivedAt,
+      required DateTime updatedAt,
+      required bool isRunning,
+    }) => AllSessionsRow(
+      session: testSession(
+        id: title,
+        title: title,
+        updatedAt: updatedAt.millisecondsSinceEpoch,
+        archivedAt: archivedAt,
+      ),
+      project: project,
+      isRunning: isRunning,
+      isUnseen: false,
+      isAwaitingInput: false,
+      isRetrying: false,
+      backgroundTaskCount: 0,
+    );
 
     await pumpList(
       tester,
@@ -113,8 +118,9 @@ void main() {
         query: "",
         failures: const [],
         rows: [
-          row(title: "Archived today", archivedAt: today, updatedAt: yesterday),
-          row(title: "Archived yesterday", archivedAt: yesterday, updatedAt: today),
+          row(title: "Archived today", archivedAt: today, updatedAt: yesterday, isRunning: false),
+          // Still running, but an archive lists it by its archive date.
+          row(title: "Archived yesterday", archivedAt: yesterday, updatedAt: today, isRunning: true),
         ],
       ),
     );

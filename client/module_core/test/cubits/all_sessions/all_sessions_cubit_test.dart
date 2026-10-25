@@ -225,6 +225,22 @@ void main() {
     expect(cubit.state.projectId, isNull);
   });
 
+  test("a selection emits once, and another list's selection still reaches this one", () async {
+    final cubit = create(mode: AllSessionsMode.active);
+    final other = create(mode: AllSessionsMode.archived);
+    final emitted = <String?>[];
+    final subscription = cubit.stream.listen((state) => emitted.add(state.projectId));
+    addTearDown(subscription.cancel);
+
+    cubit.selectProject(projectId: one.id);
+    await settle();
+    expect(emitted, [one.id]);
+
+    other.selectProject(projectId: two.id);
+    await settle();
+    expect(emitted, [one.id, two.id]);
+  });
+
   test("archived mode lists every project's archived sessions, most recently archived first", () async {
     entries.add({
       one.id: loaded(
