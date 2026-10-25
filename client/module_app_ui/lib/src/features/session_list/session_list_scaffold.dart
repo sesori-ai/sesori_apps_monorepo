@@ -83,21 +83,9 @@ class const SessionListScaffold({
             ),
       // Pull-to-refresh only makes sense once the list has loaded.
       onRefresh: state is SessionListLoaded ? () => refreshSessionList(context) : null,
-      deepRefresh: state is SessionListLoaded
-          ? CatalogScanRow.deepRefresh(
-              context: context,
-              onStart: () => context.read<SessionListCubit>().startCatalogScan(),
-            )
-          : null,
       slivers: [
         if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
-        SliverToBoxAdapter(
-          child: CatalogScanRow(
-            scan: catalogScan,
-            onCancel: () => context.read<SessionListCubit>().cancelCatalogScan(),
-            onDismiss: () => context.read<SessionListCubit>().dismissCatalogScan(),
-          ),
-        ),
+        SliverToBoxAdapter(child: CatalogScanRow(scan: catalogScan)),
         SessionListFilteredContent(
           projectName: projectName,
           selectedSessionId: selectedSessionId,

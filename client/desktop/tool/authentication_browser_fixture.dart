@@ -10,7 +10,6 @@ import "package:material_ui/material_ui.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -40,11 +39,9 @@ class const _Fixture() extends StatefulWidget {
 
 class _FixtureState() extends State<_Fixture> {
   final _service = _FixtureService();
-  final _scan = FakeCatalogRescanService();
   late final _cubit = PluginManagementCubit(
     service: _service,
     urlLauncher: _FixtureLauncher(),
-    catalogRescanService: _scan,
   );
 
   late final _router = GoRouter(
@@ -56,7 +53,6 @@ class _FixtureState() extends State<_Fixture> {
     _router.dispose();
     unawaited(_cubit.close());
     unawaited(_service.onDispose());
-    unawaited(_scan.onDispose());
     super.dispose();
   }
 

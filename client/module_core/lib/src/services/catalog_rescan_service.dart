@@ -15,8 +15,8 @@ import "../repositories/plugin_repository.dart";
 import "models/catalog_rescan_state.dart";
 import "plugin_management_service.dart";
 
-/// How long a successful rescan row stays before clearing itself.
-const _successVisibleFor = Duration(seconds: 4);
+/// How long a settled rescan row stays before clearing itself.
+const _settledVisibleFor = Duration(seconds: 4);
 
 /// Drives catalog rescans and publishes them as one aggregate row.
 ///
@@ -28,9 +28,9 @@ const _successVisibleFor = Duration(seconds: 4);
 /// summary; an observed one settles quietly, because the client cannot know
 /// what happened to members it never saw.
 ///
-/// Naming the operation is what keeps membership, settlement, cancellation and
-/// the post-run refresh consistent with one another instead of being four
-/// independent rules.
+/// Naming the operation is what keeps membership, settlement and the post-run
+/// refresh consistent with one another instead of being three independent
+/// rules.
 @lazySingleton
 class CatalogRescanService({
   required final PluginRepository _pluginRepository,
@@ -73,24 +73,6 @@ class CatalogRescanService({
   /// True when the live operation was discovered rather than started here.
   bool _observed = false;
 
-  /// Start requests still awaiting a response, so a cancel can order itself
-  /// after them rather than racing its own POST.
-  final Set<Future<void>> _pendingStarts = {};
-
-  /// A cancellation that has not finished dispatching its DELETEs.
-  ///
-  /// A cancel has to wait for any start still in flight, or its DELETE can
-  /// overtake the POST and cancel nothing. That wait would otherwise leave a
-  /// window where a new rescan could begin and inherit those DELETEs, so a
-  /// start waits for the cancel to finish owning its plugin ids first.
-  Future<void>? _cancelling;
-
-  /// The harness ids a cancellation currently owns. Progress for these is not
-  /// adopted: a delayed event from the run being cancelled would otherwise
-  /// reopen it as an observed operation, and the next rescan would join that
-  /// stale member and lose its own summary.
-  final Set<String> _cancellingPluginIds = {};
-
   Timer? _clearTimer;
   bool _connected = _connectionService.currentStatus is ConnectionConnected;
   String? _activeBridgeId;
@@ -101,129 +83,49 @@ class CatalogRescanService({
   /// Fires after an observed import publishes list-visible catalog rows.
   ///
   /// List cubits use this durable-data signal rather than the progress row's
-  /// lifecycle, because cancelling a row does not prove an import that already
-  /// entered its atomic commit did not finish. Automatic hydration markers
-  /// complete with zero published rows and do not invalidate the lists.
+  /// lifecycle, because an observed run settles without a summary and a
+  /// completion can arrive for a harness outside the live operation. Automatic
+  /// hydration markers complete with zero published rows and do not invalidate
+  /// the lists.
   Stream<void> get catalogChanged => _catalogChanged.stream;
 
   /// Rescans every harness this bridge can import from.
+  ///
+  /// Every manual refresh calls this, so a bridge with nothing to import from
+  /// settles silently and the refresh is only a reload, which reports its own
+  /// outcome: no connection, a bridge older than v1.7.0 without a harness list,
+  /// a failed harness list, or no routable harness.
   Future<void> startAll() async {
     if (_disposed) return;
     // Management snapshots can outlive the connection that produced them.
-    // Check connectivity first so stale or cleared metadata cannot masquerade
-    // as a connected bridge with no harnesses.
-    if (_connectionService.currentStatus is! ConnectionConnected) {
-      if (_members.isEmpty) _publish(const CatalogRescanState.notConnected());
-      return;
-    }
-    // CatalogRescanService is lazy and can first exist at the pull gesture.
+    // Check connectivity first so stale metadata cannot start a rescan on a
+    // bridge that is no longer connected.
+    if (_connectionService.currentStatus is! ConnectionConnected) return;
+    // CatalogRescanService is lazy and can first exist at the refresh.
     // Bootstrap one authoritative management read before deciding there is no
     // harness; PluginManagementService fences this refresh to its connection
-    // and bridge identity. A current terminal snapshot needs no async gap, so
-    // an immediate cancel can still see the operation before this call returns.
+    // and bridge identity.
     if (_managementService.snapshots.valueOrNull
         case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null) {
       await _managementService.refresh();
       if (_disposed) return;
       // The connection can drop while the authoritative refresh is in flight.
-      if (_connectionService.currentStatus is! ConnectionConnected) {
-        if (_members.isEmpty) _publish(const CatalogRescanState.notConnected());
-        return;
-      }
+      if (_connectionService.currentStatus is! ConnectionConnected) return;
     }
     switch (_managementService.snapshots.valueOrNull) {
-      // Without a management snapshot there are no harness ids to fan out to,
-      // so no request is made. Every refresh imports, so this settles silently
-      // and the refresh is only a reload: an older bridge has nothing to fix.
-      case PluginManagementLoadResultUnsupported():
-        return;
       case PluginManagementLoadResultSupported(:final response):
         final pluginIds = [
           for (final plugin in response.plugins)
             if (plugin.runtimeState.isRoutable) plugin.setup.id,
         ];
-        if (pluginIds.isEmpty) {
-          if (_members.isEmpty) _publish(const CatalogRescanState.noHarness());
-          return;
-        }
+        if (pluginIds.isEmpty) return;
         await _start(pluginIds: pluginIds, operationBridgeId: response.bridgeId);
-      // No snapshot to fan out over. Reported rather than returned silently,
-      // because the caller is a gesture that has already told the user a scan
-      // started, and a failed snapshot keeps answering this way until it is
-      // reloaded.
-      case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null:
-        if (_members.isEmpty) _publish(const CatalogRescanState.noHarness());
+      case PluginManagementLoadResultFailure(:final error):
+        // The refresh carries on as a reload, so keep why it did not import.
+        logw("Catalog rescan skipped because the harness list could not be read", error);
+      case PluginManagementLoadResultUnsupported() || PluginManagementLoadResultLoading() || null:
+        return;
     }
-  }
-
-  /// Rescans one named harness, joining the live operation when there is one.
-  ///
-  /// Unlike [startAll], the outcome is returned so the surface that named the
-  /// harness can report a rejection instead of silently skipping it.
-  Future<CatalogRescanStartResult> start({required String pluginId}) async {
-    if (_disposed) return const CatalogRescanStartResult.notImportable();
-    if (_managementService.snapshots.valueOrNull
-        case PluginManagementLoadResultLoading() || PluginManagementLoadResultFailure() || null) {
-      await _managementService.refresh();
-      if (_disposed) return const CatalogRescanStartResult.notImportable();
-    }
-    if (_managementService.snapshots.valueOrNull is PluginManagementLoadResultUnsupported) {
-      // Tell the caller either way, but never overwrite a run in flight with a
-      // state that reads as terminal.
-      if (_members.isEmpty) _publish(const CatalogRescanState.unsupported());
-      return const CatalogRescanStartResult.unsupported();
-    }
-    final operationBridgeId = switch (_managementService.snapshots.valueOrNull) {
-      PluginManagementLoadResultSupported(:final response) => response.bridgeId,
-      PluginManagementLoadResultLoading() ||
-      PluginManagementLoadResultUnsupported() ||
-      PluginManagementLoadResultFailure() ||
-      null => null,
-    };
-    final results = await _start(pluginIds: [pluginId], operationBridgeId: operationBridgeId);
-    return results[pluginId] ?? const CatalogRescanStartResult.notImportable();
-  }
-
-  /// Cancels every member of the live operation, whether or not progress has
-  /// begun. The route cancels one plugin per call, so this fans out.
-  Future<void> cancel() {
-    if (_disposed || _members.isEmpty) return Future<void>.value();
-    final pluginIds = Set<String>.of(_members);
-    _cancellingPluginIds.addAll(pluginIds);
-    return _cancelling = _cancel(pluginIds: pluginIds);
-  }
-
-  Future<void> _cancel({required Set<String> pluginIds}) async {
-    // Close first so the row goes at once, then wait for any start still in
-    // flight: a DELETE that overtakes its POST finds no import to cancel, and
-    // the import the user just cancelled would run anyway.
-    _closeOperation(const CatalogRescanState.idle());
-    try {
-      await Future.wait(_pendingStarts);
-      await Future.wait([
-        for (final pluginId in pluginIds)
-          _pluginRepository.cancelCatalogImport(pluginId: pluginId).then((outcome) {
-            // A refused or unprovable cancel means that import may still be
-            // running, and nothing else records it. The harness id is the only
-            // thing that identifies which one, since every call shares a route.
-            if (outcome
-                case CatalogImportMutationFailure(:final error) || CatalogImportMutationUncertain(:final error)) {
-              logw("Catalog rescan cancellation was not confirmed for $pluginId", error);
-            }
-          }),
-      ]);
-    } finally {
-      _cancellingPluginIds.removeAll(pluginIds);
-      _cancelling = null;
-    }
-  }
-
-  /// Clears a terminal row the user has read.
-  void dismiss() {
-    // Membership, not the published state, decides whether a run is open: an
-    // unsupported answer can be published over a live operation.
-    if (_disposed || _members.isNotEmpty) return;
-    _reset();
   }
 
   @override
@@ -236,58 +138,38 @@ class CatalogRescanService({
     await _catalogChanged.close();
   }
 
-  Future<Map<String, CatalogRescanStartResult>> _start({
+  Future<void> _start({
     required List<String> pluginIds,
     required String? operationBridgeId,
   }) async {
-    // Never begin inside a cancellation's window: its DELETEs are already
-    // aimed at these plugin ids and would cancel this run instead. Guarded
-    // rather than awaited unconditionally, because `await null` still yields,
-    // and the operation must open before this call returns to its caller so an
-    // immediate cancel can see it.
-    if (_cancelling case final cancelling?) {
-      await cancelling;
-      if (_disposed) return {};
-    }
     _openOrJoin(
       pluginIds: pluginIds,
       observed: false,
       operationBridgeId: operationBridgeId,
     );
-    final results = <String, CatalogRescanStartResult>{};
-    final dispatched = [
+    await Future.wait([
       for (final pluginId in pluginIds)
         _pluginRepository.startCatalogImport(pluginId: pluginId).then((outcome) {
-          results[pluginId] = _applyStartOutcome(pluginId: pluginId, outcome: outcome);
+          _applyStartOutcome(pluginId: pluginId, outcome: outcome);
           // A rejected start can change focus/counts while another response
           // is still pending. Do not hold that update behind the batch wait.
           _publishLive();
         }),
-    ];
-    _pendingStarts.addAll(dispatched);
-    try {
-      await Future.wait(dispatched);
-    } finally {
-      _pendingStarts.removeAll(dispatched);
-    }
-    if (_disposed) return results;
+    ]);
+    if (_disposed) return;
     // Two conditions, not one. `_members.isEmpty` alone is also true when the
-    // operation closed while this dispatch was awaiting — settled from SSE,
-    // cancelled, or reset by a disconnect — and closing it again would erase a
-    // failure row that must persist and fire a second refresh. `isLive` is the
-    // cheap way to tell those apart, because _openOrJoin always publishes a
-    // live state before dispatch and an unsupported answer is never published
-    // over a live operation.
+    // operation closed while this dispatch was awaiting — settled from SSE or
+    // reset by a disconnect — and closing it again would erase a settled row
+    // early and fire a second refresh. `isLive` is the cheap way to tell those
+    // apart, because _openOrJoin always publishes a live state before dispatch.
     if (_members.isEmpty && _state.value.isLive) {
-      // Every member was refused, so nothing runs. A refresh that imports
-      // settles silently into its reload; a targeted start reports its own
-      // rejection through the returned result.
+      // Every member was refused, so nothing runs, and the refresh that asked
+      // for this settles silently into its reload.
       _closeOperation(const CatalogRescanState.idle());
-      return results;
+      return;
     }
     _publishLive();
     _settleIfComplete();
-    return results;
   }
 
   /// Applies one dispatch outcome to membership.
@@ -295,24 +177,21 @@ class CatalogRescanService({
   /// A harness joins on dispatch rather than on acknowledgement, so a timeout
   /// or lost response — which the relay can raise *after* the request landed —
   /// keeps it in the operation. Only an answer from the bridge removes it.
-  CatalogRescanStartResult _applyStartOutcome({
+  void _applyStartOutcome({
     required String pluginId,
     required CatalogImportMutationResult outcome,
   }) {
     switch (outcome) {
       case CatalogImportMutationAccepted():
-        return const CatalogRescanStartResult.accepted();
-      case CatalogImportMutationNotFound():
+        return;
+      // The bridge cannot import from this harness right now, so the fan-out
+      // skips it.
+      case CatalogImportMutationNotFound() || CatalogImportMutationUnavailable():
         _members.remove(pluginId);
-        return const CatalogRescanStartResult.unsupported();
-      case CatalogImportMutationUnavailable():
-        _members.remove(pluginId);
-        return const CatalogRescanStartResult.notImportable();
       case CatalogImportMutationUncertain(:final error):
         // The request may well have landed, so the harness stays a member and
         // settles from its own progress event rather than being written off.
         logw("Catalog rescan start could not be confirmed for $pluginId", error);
-        return CatalogRescanStartResult.failed(cause: error);
       case CatalogImportMutationFailure(:final error):
         // The bridge answered and refused, so this harness is settled and
         // counts against the run. Retained locally because the failure may
@@ -322,7 +201,6 @@ class CatalogRescanService({
           pluginId: pluginId,
           message: "start rejected",
         );
-        return CatalogRescanStartResult.failed(cause: error);
     }
   }
 
@@ -358,9 +236,9 @@ class CatalogRescanService({
     // An automatic hydration marker completes without catalog publication and
     // reports zero totals. Imports are non-destructive, so an actual empty
     // publication also leaves every list row unchanged. Announce a committed
-    // snapshot before the operation bookkeeping below: a commit that wins a
-    // user cancellation must still invalidate the lists even though the
-    // progress row remains closed.
+    // snapshot before the operation bookkeeping below, which drops a
+    // completion for a harness outside the live operation: its rows changed
+    // all the same.
     if (progress case CatalogImportCompleted(:final projectsImported, :final sessionsImported)
         when (projectsImported > 0 || sessionsImported > 0) && !_catalogChanged.isClosed) {
       _catalogChanged.add(null);
@@ -374,16 +252,16 @@ class CatalogRescanService({
       // A rescan someone else started, seen live. Adopt it so its imported
       // sessions still reach the lists, but as an observed operation, which
       // claims no summary.
-      if (_isTerminal(progress) || _cancellingPluginIds.contains(pluginId)) return;
+      if (_isTerminal(progress)) return;
       _openOrJoin(
         pluginIds: [pluginId],
         observed: true,
         operationBridgeId: _activeBridgeId,
       );
     }
-    // Someone else cancelled a member of this run. That is intervention, not
+    // Another client cancelled a member of this run. That is intervention, not
     // failure, and it means this client no longer saw the whole operation, so
-    // it settles quietly instead of publishing a persistent failure row.
+    // it settles quietly instead of publishing a failure row.
     if (progress is CatalogImportCancelled) _observed = true;
     // A member that already settled and is reporting progress again was
     // restarted by someone else. Its second run is not this operation's to
@@ -557,9 +435,11 @@ class CatalogRescanService({
     _operationBridgeId = null;
     _observed = false;
     _publish(next);
-    if (next is CatalogRescanSucceeded) {
+    // The row has no Dismiss, so every result clears itself: the row fades out
+    // once read, and a failure has already raised its alert.
+    if (next is! CatalogRescanIdle) {
       _clearTimer?.cancel();
-      _clearTimer = Timer(_successVisibleFor, _reset);
+      _clearTimer = Timer(_settledVisibleFor, _reset);
     }
   }
 

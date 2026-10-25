@@ -199,11 +199,11 @@ The main pane hosts one full-width routed page.
   remain non-viewing action scopes.
 - The all-sessions page is a toolbar over one timeline. The toolbar names the project and its repository,
   starts a New session in that project (hidden while an empty project shows the composer, and folded to its
-  icon on a narrow pane or under large text), toggles Archived, and keeps Refresh and Scan for sessions in its
-  overflow menu; nothing floats over the list and there is no back arrow. The shared list sits in a centred
-  column about 760 pt wide while the whole pane scrolls. It has no Running section: running sessions lead
-  Today. Rows are about 46 pt, use the shared row anatomy in a denser size, and highlight under the pointer.
-  The phone list is the same one timeline.
+  icon on a narrow pane or under large text), toggles Archived, and has a Refresh button; nothing floats
+  over the list and there is no back arrow. The shared list sits in a centred column about 760 pt wide
+  while the whole pane scrolls. It has no Running section: running sessions lead Today. Rows are about
+  46 pt, use the shared row anatomy in a denser size, and highlight under the pointer. The phone list is the
+  same one timeline.
 - Above the active list, chips read All, Running and Unread with exact counts from the loaded list and
   narrow it locally without a request; a filter that leaves nothing says so. The chips hide while Archived
   is on, which shows every archived session, and while the project has no sessions. Hovering a row, or

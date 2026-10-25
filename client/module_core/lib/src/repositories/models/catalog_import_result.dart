@@ -1,7 +1,7 @@
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Outcome of asking the bridge to start or cancel one plugin's catalog import.
+/// Outcome of asking the bridge to start one plugin's catalog import.
 ///
 /// `404` and `503` are separated rather than folded into one "cannot import"
 /// case, because they mean different things to a caller fanning out: `503` is a

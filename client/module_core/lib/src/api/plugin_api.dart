@@ -83,16 +83,6 @@ class PluginApi({required final RelayHttpApiClient _client}) {
     );
   }
 
-  /// Cancels the import for one plugin. The route cancels exactly one plugin
-  /// per call, so a caller cancelling several issues one request each.
-  Future<ApiResponse<SuccessEmptyResponse>> cancelCatalogImport({required String pluginId}) {
-    return _client.delete(
-      "/plugin/import",
-      body: CatalogImportRequest(pluginId: pluginId).toJson(),
-      fromJson: SuccessEmptyResponse.fromJson,
-    );
-  }
-
   Future<ApiResponse<CatalogImportStatusesResponse>> getCatalogImportStatuses() {
     return _client.get("/plugin/import", fromJson: CatalogImportStatusesResponse.fromJson);
   }

@@ -412,6 +412,13 @@ This document and `TRACKER.md`. Verification: Markdown only.
 
 - **Remove** everything listed under *Cleanup* for 2.b.
 - **Row.** The scan row fades out with a size transition when the service self-clears.
+- **Dead states.** Not connected, no harness and unsupported needed Dismiss, so `startAll` no longer produces
+  them: it returns silently and the refresh is a plain reload; an unreadable harness list is logged. Failed and
+  partly failed results self-clear like success; the D12 alert is their lasting report.
+- **Desktop project page.** Its overflow menu held only Refresh once Scan went, so it becomes a Refresh button
+  until step 11 removes the page.
+- **Playbook.** The scan-row widgetbook playbook goes with the states it showed, and `client/app` drops its
+  `widgetbook` dev dependency.
 - **Verification:**
   - Service tests trimmed to `startAll`, settle and self-clear.
   - A widget test for the fade.

@@ -173,15 +173,6 @@ class _ProjectListViewState() extends State<ProjectListView> {
       ],
       floatingActionButton: _floatingAction(context: context, state: state),
       onRefresh: _refreshFor(context: context, state: state),
-      // Only the loaded list can scan: the disconnected states pull to
-      // reconnect, and there is nothing to scan into until the list is there.
-      // Every pull imports; the deep one reports through the scan row alone.
-      deepRefresh: state is ProjectListLoaded
-          ? CatalogScanRow.deepRefresh(
-              context: context,
-              onStart: () => unawaited(context.read<SessionListRefreshCubit>().refresh()),
-            )
-          : null,
       slivers: _buildContentSlivers(
         context: context,
         state: state,
@@ -373,11 +364,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
     return [
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
       SliverToBoxAdapter(
-        child: CatalogScanRow(
-          scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan),
-          onCancel: () => context.read<SessionListRefreshCubit>().cancelImport(),
-          onDismiss: () => context.read<SessionListRefreshCubit>().dismissImport(),
-        ),
+        child: CatalogScanRow(scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan)),
       ),
       if (projects.isNotEmpty)
         SliverToBoxAdapter(

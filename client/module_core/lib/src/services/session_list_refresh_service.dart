@@ -37,9 +37,4 @@ class SessionListRefreshService({
       return false;
     }
   }
-
-  // Transitional: the Projects scan row keeps its Cancel and Dismiss until the
-  // row loses them, and these go with them.
-  void cancelImport() => unawaited(_catalogRescanService.cancel());
-  void dismissImport() => _catalogRescanService.dismiss();
 }

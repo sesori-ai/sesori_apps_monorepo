@@ -3,7 +3,6 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../repositories/models/plugin_management_result.dart";
-import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/plugin_install_state.dart";
 import "../../services/plugin_management_service.dart";
 
@@ -174,23 +173,6 @@ sealed class PluginAuthenticationPresentationState with _$PluginAuthenticationPr
   }) = PluginAuthenticationPresentationFailed;
 }
 
-/// How a catalog scan this screen started actually ended.
-///
-/// Only the three outcomes a *started* scan can reach. A bridge that refused
-/// the start never gets here: that answer is a [CatalogRescanStartResult] and
-/// belongs on the harness card, which is where the user aimed the request.
-@Freezed()
-sealed class CatalogRescanOutcome with _$CatalogRescanOutcome {
-  const factory succeeded({required CatalogRescanCounts counts}) = CatalogRescanOutcomeSucceeded;
-
-  const factory partlyFailed({
-    required int succeededCount,
-    required int failedCount,
-  }) = CatalogRescanOutcomePartlyFailed;
-
-  const factory failed() = CatalogRescanOutcomeFailed;
-}
-
 @Freezed()
 sealed class PluginManagementState with _$PluginManagementState {
   const factory loading() = PluginManagementLoading;
@@ -208,23 +190,6 @@ sealed class PluginManagementState with _$PluginManagementState {
 
     /// In-progress installs and retained terminal failures, keyed by plugin id.
     required Map<String, PluginInstallState> installs,
-
-    /// Harnesses with a catalog scan in flight, whether this screen started it
-    /// or the lists did. Their scan action is not offered again while it runs.
-    required Set<String> scanningPluginIds,
-
-    /// Why a targeted scan was turned down, keyed by the harness the user
-    /// named. An accepted start is never recorded: the card reports it by
-    /// disabling its own action, and the aggregate row reports the run.
-    required Map<String, CatalogRescanStartResult> scanRejections,
-
-    /// How a scan started from this screen ended, held until it is reported.
-    ///
-    /// This screen hosts no progress row, so a scan started here would
-    /// otherwise finish in silence: the spinner simply stops, and the result
-    /// the service published is auto-cleared before the user could reach a
-    /// list to read it.
-    required CatalogRescanOutcome? scanOutcome,
   }) = PluginManagementReady;
 }
 

@@ -29,10 +29,7 @@ class const CatalogScanFailureAlerts({
           CatalogRescanStarting() ||
           CatalogRescanReading() ||
           CatalogRescanSaving() ||
-          CatalogRescanSucceeded() ||
-          CatalogRescanUnsupported() ||
-          CatalogRescanNotConnected() ||
-          CatalogRescanNoHarness() => null,
+          CatalogRescanSucceeded() => null,
         };
         if (failedPluginIds == null) return;
         final names = [for (final pluginId in failedPluginIds) PregoBrandLogo.displayNameFor(pluginId)];
