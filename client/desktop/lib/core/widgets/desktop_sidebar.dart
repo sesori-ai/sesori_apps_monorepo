@@ -194,6 +194,7 @@ class const _SidebarFilter({
                 onAllProjects: () => sessions.selectProject(projectId: null),
                 triggerBuilder: (context, open) => Semantics(
                   button: true,
+                  enabled: projectState is ProjectListLoaded,
                   child: InkWell(
                     key: const Key("desktop-sidebar-filter"),
                     mouseCursor: WidgetStateMouseCursor.clickable,
