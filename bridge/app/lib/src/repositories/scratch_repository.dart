@@ -15,14 +15,14 @@ class ScratchRepository({
   required final FilesystemApi _filesystemApi,
   required final SessionDao _sessionDao,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
-  required final String _scratchRoot,
 }) {
   /// Creates a new `<YYYY-MM-DD>-<random>` folder in the scratch root, and the
   /// root first when it is missing, and returns the new folder's path.
   Future<String> createSessionDirectory() async {
-    await _filesystemApi.createDirectoryRecursively(path: _scratchRoot);
+    final scratchRoot = _projectCatalogIdentityCalculator.scratchRoot;
+    await _filesystemApi.createDirectoryRecursively(path: scratchRoot);
     return await _filesystemApi.createTemporaryDirectory(
-      parent: _scratchRoot,
+      parent: scratchRoot,
       prefix: "${_formatDate(date: clock.now())}-",
     );
   }
@@ -37,7 +37,9 @@ class ScratchRepository({
   /// follows links inside the folder.
   Future<void> deleteSessionDirectoryIfUnused({required String path}) async {
     if (!_projectCatalogIdentityCalculator.isScratchSessionDirectory(path: path)) {
-      Log.w("Kept the folder of a deleted session because it is not a session folder in $_scratchRoot: $path");
+      Log.w(
+        "Kept the folder of a deleted session because it is not a session folder in ${_projectCatalogIdentityCalculator.scratchRoot}: $path",
+      );
       return;
     }
     final folder = normalizeProjectDirectory(directory: path);

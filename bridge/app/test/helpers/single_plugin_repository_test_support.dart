@@ -165,6 +165,5 @@ ScratchRepository testScratchRepository({required SessionDao sessionDao, require
       scratchRoot: scratchRoot,
       pathContext: p.context,
     ),
-    scratchRoot: scratchRoot,
   );
 }

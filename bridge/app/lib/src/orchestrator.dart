@@ -267,9 +267,8 @@ class Orchestrator({
     final pluginComposition = _pluginLifecycleService.compositionView;
     const aggregateSourceDeadline = Duration(seconds: 5);
     const unseenCalculator = SessionUnseenCalculator();
-    final scratchRoot = normalizeProjectDirectory(directory: sesoriScratchDirectory());
     final projectCatalogIdentityCalculator = ProjectCatalogIdentityCalculator(
-      scratchRoot: scratchRoot,
+      scratchRoot: sesoriScratchDirectory(),
       pathContext: p.context,
     );
     final gitCliApi = GitCliApi(
@@ -362,7 +361,6 @@ class Orchestrator({
       filesystemApi: const FilesystemApi(),
       sessionDao: _database.sessionDao,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
-      scratchRoot: scratchRoot,
     );
     final sessionOperationDispatcher = SessionOperationDispatcher(
       sessionRepository: sessionRepository,

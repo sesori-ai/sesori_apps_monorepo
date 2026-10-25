@@ -42,14 +42,18 @@ class ProjectCatalogIdentityCalculator({
         projectsByNormalizedPath[normalizeProjectDirectory(directory: observedPath)];
   }
 
+  /// The normalized scratch root, the one copy every scratch path is built
+  /// from and checked against.
+  String get scratchRoot => _normalize(path: _scratchRoot);
+
   /// Whether [path] names the scratch root itself.
   bool isScratchRoot({required String path}) {
-    return _pathContext.equals(_normalize(path: path), _normalize(path: _scratchRoot));
+    return _pathContext.equals(_normalize(path: path), scratchRoot);
   }
 
   /// Whether [path] is the scratch root or lies anywhere inside it.
   bool isWithinScratch({required String path}) {
-    final root = _normalize(path: _scratchRoot);
+    final root = scratchRoot;
     final normalizedPath = _normalize(path: path);
     return _pathContext.equals(root, normalizedPath) || _pathContext.isWithin(root, normalizedPath);
   }
