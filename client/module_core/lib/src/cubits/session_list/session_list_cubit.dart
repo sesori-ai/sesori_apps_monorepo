@@ -8,27 +8,18 @@ import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
-import "../../errors/api_error_remote_failure_x.dart";
 import "../../logging/logging.dart";
-import "../../platform/route_source.dart";
-import "../../repositories/models/repo_provider.dart";
 import "../../repositories/models/session_cleanup_rejection.dart";
-import "../../repositories/project_repository.dart";
 import "../../repositories/session_repository.dart";
-import "../../routing/app_routes.dart";
 import "../../services/catalog_rescan_service.dart";
-import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/optimistic_rename_tracker.dart";
-import "../../services/models/session_activity_info.dart";
 import "../../services/models/session_cleanup_outcome.dart";
 import "../../services/models/session_list_filter.dart";
 import "../../services/models/session_list_item_state.dart";
-import "../../services/project_viewing_service.dart";
 import "../../services/session_cleanup_service.dart";
 import "../../services/session_list_service.dart";
 import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
-import "session_list_mode.dart";
 import "session_list_state.dart";
 
 enum _SessionFetchOutcome() {
@@ -37,17 +28,17 @@ enum _SessionFetchOutcome() {
   superseded,
 }
 
+/// One project's session actions (rename, delete, mark seen) for the
+/// rows a list already shows. It starts from the caller's [sessions] and keeps
+/// them in step with bridge events and silent refreshes.
 class SessionListCubit({
-  required SessionListMode mode,
+  required List<Session> sessions,
   required final SessionRepository _sessionRepository,
   required final SessionCleanupService _sessionCleanupService,
   required final SessionListService _sessionListService,
-  required final ProjectRepository _projectRepository,
   required final ConnectionService _connectionService,
   required final SseEventTracker _sseEventTracker,
   required final SessionUnseenTracker _sessionUnseenTracker,
-  required final ProjectViewingService _projectViewingService,
-  required final RouteSource _routeSource,
   required final String _projectId,
   required final FailureReporter _failureReporter,
   required final CatalogRescanService _catalogRescanService,
@@ -55,59 +46,22 @@ class SessionListCubit({
   final CompositeSubscription _subscriptions = CompositeSubscription();
   int _pendingActionOperations = 0;
   Completer<void>? _actionOperationsDrained;
-
-  final bool _waitForActionOperationsOnClose = mode is SessionListActionsMode;
-  final ProjectViewClaim? _projectViewClaim = mode is SessionListViewMode
-      ? _projectViewingService.beginListClaim(projectId: _projectId)
-      : null;
   SessionCleanupRejection? _lastCleanupRejection;
 
-  /// Cached git context (base branch + remote repository identity), fetched
-  /// alongside sessions. Only overwritten on success so a failed refresh
-  /// keeps the last-known values.
-  ProjectGitContext? _gitContext;
+  /// The full server response; the state shows only its unarchived sessions.
+  List<Session> _allSessions = sessions;
 
-  this : super(const SessionListState.loading()) {
-    switch (mode) {
-      case SessionListViewMode():
-        loadSessions();
-      case SessionListActionsMode(:final sessions):
-        _allSessions = sessions;
-        _emitFiltered();
-    }
-    // The catalog scan, which any surface can start. Its state is only
-    // projected onto this list; the operation itself is the service's.
-    _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
+  this : super(const SessionListState(sessions: [], activeSessionIds: {}, unseenBySessionId: {})) {
+    _emitFiltered();
     // A committed import raises no list invalidation of its own.
     _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
-    // 1. Navigate-back refresh: one immediate fetch when the user returns to
-    //    the sessions page. pairwise() ensures this doesn't fire on the
-    //    initial route emission (needs two values before it emits).
-    if (mode is SessionListViewMode) {
-      _subscriptions.add(
-        _routeSource.currentRouteStream
-            .distinct()
-            .pairwise()
-            .where((pair) => pair.first != AppRouteDef.projectSessions && pair.last == AppRouteDef.projectSessions)
-            .listen((_) {
-              if (isClosed) return;
-              unawaited(refreshSessions());
-            }),
-      );
-    }
     // skip(1) ignores the BehaviorSubject replay of the current status —
     // we only want to react to actual transitions (e.g. disconnected → connected).
     _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));
-    _subscriptions.add(
-      _sseEventTracker.sessionActivity.listen(_onSessionActivityUpdated),
-    );
-    _subscriptions.add(
-      _sessionUnseenTracker.sessionUnseen.listen((_) => _onUnseenUpdated()),
-    );
-    _subscriptions.add(
-      _connectionService.dataMayBeStale.listen((_) => _onStaleReconnect()),
-    );
+    _subscriptions.add(_sseEventTracker.sessionActivity.listen((_) => _emitFiltered()));
+    _subscriptions.add(_sessionUnseenTracker.sessionUnseen.listen((_) => _emitFiltered()));
+    _subscriptions.add(_connectionService.dataMayBeStale.listen((_) => unawaited(refreshSessions())));
   }
 
   /// An action scope can outlive a failed refresh. Synchronize the named menu
@@ -198,20 +152,6 @@ class SessionListCubit({
     }
   }
 
-  void _onSessionActivityUpdated(Map<String, Map<String, SessionActivityInfo>> activityByProjectId) {
-    if (isClosed) return;
-    final current = state;
-    if (current is! SessionListLoaded) return;
-    _emitFiltered();
-  }
-
-  void _onUnseenUpdated() {
-    if (isClosed) return;
-    final current = state;
-    if (current is! SessionListLoaded) return;
-    _emitFiltered();
-  }
-
   /// Merges the REST-loaded `Session.unseen` with the live tracker map (the
   /// tracker takes precedence once it has an entry).
   Map<String, bool> _unseenBySessionId(List<Session> sessions) {
@@ -236,13 +176,13 @@ class SessionListCubit({
       sessionId: sessionId,
       unseen: !read,
     );
-    _onUnseenUpdated();
+    _emitFiltered();
     try {
       final response = await _sessionRepository.markSessionSeen(sessionId: sessionId, read: read);
       if (response case ErrorResponse(:final error)) {
         loge("Failed to mark session ${read ? "read" : "unread"}", error);
         if (!isClosed) {
-          await _fetchSessions(silent: true, catalogRefresh: false, waitForPrData: false);
+          await _fetchSessions(catalogRefresh: false, waitForPrData: false);
         }
       }
     } catch (e, st) {
@@ -261,14 +201,13 @@ class SessionListCubit({
             }),
       );
       if (!isClosed) {
-        await _fetchSessions(silent: true, catalogRefresh: false, waitForPrData: false);
+        await _fetchSessions(catalogRefresh: false, waitForPrData: false);
       }
     }
   }
 
   /// Keeps an action-only owner usable while its confirmation UI is open.
   void Function() retainActionScope() {
-    if (!_waitForActionOperationsOnClose) return () {};
     var released = false;
     _pendingActionOperations++;
     return () {
@@ -301,11 +240,6 @@ class SessionListCubit({
       return;
     }
 
-    if (state is! SessionListLoaded) {
-      logd("[SessionList] session.created ignored id=${session.id} reason=state_not_loaded");
-      return;
-    }
-
     // Avoid duplicates.
     if (_allSessions.any((s) => s.id == session.id)) {
       logd("[SessionList] session.created ignored id=${session.id} reason=duplicate");
@@ -320,10 +254,6 @@ class SessionListCubit({
   void _onSessionUpdated(Session session) {
     if (session.projectID != _projectId) {
       logt("[SessionList] session.updated ignored id=${session.id} reason=project_mismatch");
-      return;
-    }
-    if (state is! SessionListLoaded) {
-      logt("[SessionList] session.updated ignored id=${session.id} reason=state_not_loaded");
       return;
     }
 
@@ -350,10 +280,6 @@ class SessionListCubit({
       logd("[SessionList] session.deleted ignored id=${session.id} reason=project_mismatch");
       return;
     }
-    if (state is! SessionListLoaded) {
-      logd("[SessionList] session.deleted ignored id=${session.id} reason=state_not_loaded");
-      return;
-    }
 
     final before = _allSessions.length;
     _allSessions = _sessionListService.removeSession(
@@ -372,33 +298,7 @@ class SessionListCubit({
   void _onConnectionStatusChanged(ConnectionStatus status) {
     logd("[SessionList] connection status: ${status.runtimeType}");
     if (isClosed) return;
-    if (status is ConnectionConnected) {
-      switch (state) {
-        case SessionListLoaded():
-          unawaited(refreshSessions());
-        case SessionListFailed():
-          unawaited(loadSessions());
-        case SessionListLoading():
-          break;
-      }
-    }
-  }
-
-  void _onStaleReconnect() {
-    if (isClosed) return;
-    final current = state;
-    if (current is! SessionListLoaded) return;
-    final loaded = current;
-    emit(loaded.copyWith(isRefreshing: true));
-    unawaited(
-      refreshSessions().whenComplete(() {
-        if (isClosed) return;
-        final current = state;
-        if (current is SessionListLoaded) {
-          emit(current.copyWith(isRefreshing: false));
-        }
-      }),
-    );
+    if (status is ConnectionConnected) unawaited(refreshSessions());
   }
 
   // ---------------------------------------------------------------------------
@@ -412,8 +312,6 @@ class SessionListCubit({
   );
 
   Future<bool> _renameSession({required String sessionId, required String title}) async {
-    if (state is! SessionListLoaded) return false;
-
     final index = _allSessions.indexWhere((session) => session.id == sessionId);
     if (index < 0) return false;
 
@@ -481,12 +379,12 @@ class SessionListCubit({
     if (renameState == null) return;
     renameState.complete(token: token, value: title, succeeded: succeeded);
     if (!renameState.isSettled) {
-      if (!isClosed && state is SessionListLoaded) _emitFiltered();
+      _emitFiltered();
       return;
     }
 
     _renameStateBySessionId.remove(sessionId);
-    if (isClosed || state is! SessionListLoaded) return;
+    if (isClosed) return;
     final index = _allSessions.indexWhere((session) => session.id == sessionId);
     if (index >= 0) {
       _allSessions = _sessionListService.upsertSession(
@@ -516,8 +414,6 @@ class SessionListCubit({
     required bool deleteWorktree,
     required bool force,
   }) async {
-    if (state is! SessionListLoaded) return null;
-
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
     if (index < 0) return null;
 
@@ -559,29 +455,16 @@ class SessionListCubit({
   }
 
   void _reinsertSession(Session session) {
-    if (state is! SessionListLoaded) return;
-
     _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
     _emitFiltered();
   }
 
   // ---------------------------------------------------------------------------
 
-  /// Tracks the full unfiltered server response so toggling archived
-  /// doesn't require a network round-trip.
-  List<Session> _allSessions = [];
-
   /// Keeps pre-rename list responses from repainting an old title while the
   /// mutation is still pending.
   final Map<String, OptimisticRenameTracker> _renameStateBySessionId = {};
   int _nextRenameToken = 0;
-  SessionListFilter _filter = SessionListFilter.active;
-
-  void toggleArchived() {
-    if (state is! SessionListLoaded) return;
-    _filter = _filter == SessionListFilter.active ? SessionListFilter.all : SessionListFilter.active;
-    _emitFiltered();
-  }
 
   void _emitFiltered() {
     final visible = _sessionListService.visibleSessions(
@@ -589,53 +472,20 @@ class SessionListCubit({
         final renameState = _renameStateBySessionId[session.id];
         return renameState == null ? session : session.copyWith(title: renameState.visibleValue);
       }),
-      filter: _filter,
+      filter: SessionListFilter.active,
       activityBySessionId: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
       listStateBySessionId:
           _sessionUnseenTracker.currentSessionUnseen[_projectId] ?? const <String, SessionListItemState>{},
     );
 
     if (isClosed) return;
-    final projectActivity = _sseEventTracker.currentSessionActivity[_projectId] ?? <String, SessionActivityInfo>{};
-    final currentState = state;
-    final isRefreshing = currentState is SessionListLoaded ? currentState.isRefreshing : false;
     emit(
-      SessionListState.loaded(
+      SessionListState(
         sessions: visible,
-        filter: _filter,
-        activeSessionIds: projectActivity,
+        activeSessionIds: _sseEventTracker.currentSessionActivity[_projectId] ?? const {},
         unseenBySessionId: _unseenBySessionId(visible),
-        isRefreshing: isRefreshing,
-        // Re-derived from its owner, like the two fields above it. Threading
-        // the previous loaded state forward would not do: the refresh this
-        // scan itself triggers rebuilds from a state that may not exist yet,
-        // and the terminal row it was fired for would be erased.
-        catalogScan: _catalogRescanService.state.value,
-        baseBranch: _gitContext?.baseBranch,
-        repoSlug: _gitContext?.repoSlug,
-        repoProvider: _gitContext?.repoProvider ?? RepoProvider.other,
       ),
     );
-  }
-
-  Future<void> loadSessions() async {
-    emit(const SessionListState.loading());
-    await _fetchSessions(silent: false, catalogRefresh: false, waitForPrData: false);
-  }
-
-  /// Retries loading sessions after a failure.
-  ///
-  /// Unlike [loadSessions], this method triggers a relay reconnection
-  /// when the connection is not active, then waits for the result before
-  /// fetching. This ensures the retry actually reaches the bridge instead
-  /// of failing immediately with a "not connected" error.
-  Future<void> retryLoadSessions() async {
-    emit(const SessionListState.loading());
-    await Future<void>.delayed(Duration.zero);
-    if (isClosed) return;
-    await _connectionService.reconnectAndAwaitOutcome(timeout: const Duration(seconds: 15));
-    if (isClosed) return;
-    await _fetchSessions(silent: false, catalogRefresh: false, waitForPrData: false);
   }
 
   /// In-flight silent refresh, used for coalescing.
@@ -659,13 +509,13 @@ class SessionListCubit({
   bool _catalogRefreshPausedAfterFailure = false;
   Future<void>? _catalogRefresh;
 
-  /// Re-fetches sessions without showing the full-screen loading indicator.
-  /// Concurrent ordinary calls coalesce onto the current silent refresh.
+  /// Re-fetches sessions silently. Concurrent ordinary calls coalesce onto the
+  /// current refresh.
   ///
   /// When [waitForPrData] is true the bridge will wait up to 5 s for
   /// GitHub PR metadata before returning. This is appropriate only for
   /// explicit user-initiated pull-to-refresh; background triggers such as
-  /// reconnects, route navigation, or SSE events should leave it false.
+  /// reconnects or SSE events should leave it false.
   Future<bool> refreshSessions({bool waitForPrData = false}) {
     return _awaitRefreshResult(
       refresh: _refreshSessions(
@@ -705,7 +555,6 @@ class SessionListCubit({
     late final Future<_SessionFetchOutcome> refresh;
     refresh =
         _fetchSessions(
-          silent: true,
           catalogRefresh: catalogRefresh,
           waitForPrData: waitForPrData,
         ).whenComplete(() {
@@ -719,14 +568,12 @@ class SessionListCubit({
   }
 
   Future<_SessionFetchOutcome> _fetchSessions({
-    required bool silent,
     required bool catalogRefresh,
     required bool waitForPrData,
   }) {
     final requestGeneration = ++_fetchGeneration;
     final catalogChangeGeneration = _catalogChangeGeneration;
     final fetch = _runFetchSessions(
-      silent: silent,
       catalogRefresh: catalogRefresh,
       waitForPrData: waitForPrData,
       requestGeneration: requestGeneration,
@@ -737,7 +584,6 @@ class SessionListCubit({
   }
 
   Future<_SessionFetchOutcome> _runFetchSessions({
-    required bool silent,
     required bool catalogRefresh,
     required bool waitForPrData,
     required int requestGeneration,
@@ -748,13 +594,10 @@ class SessionListCubit({
       // Captured BEFORE the fetch so the seed can't overwrite a live update
       // that arrives while the (possibly PR-data-delayed) request is in flight.
       final unseenTick = _sessionUnseenTracker.tick;
-      final (sessionsResponse, gitContextResponse) = await (
-        _sessionListService.listSessions(
-          projectId: _projectId,
-          waitForPrData: waitForPrData,
-        ),
-        _projectRepository.getGitContext(projectId: _projectId),
-      ).wait;
+      final sessionsResponse = await _sessionListService.listSessions(
+        projectId: _projectId,
+        waitForPrData: waitForPrData,
+      );
       if (isClosed) return _SessionFetchOutcome.superseded;
       if (requestGeneration != _fetchGeneration) {
         if (sessionsResponse case ErrorResponse(:final error)) {
@@ -765,12 +608,6 @@ class SessionListCubit({
           );
         }
         return _SessionFetchOutcome.superseded;
-      }
-
-      // Update cached git context on success; silently ignore errors so
-      // the session list still loads even if the endpoint is unavailable.
-      if (gitContextResponse case SuccessResponse(:final data)) {
-        _gitContext = data;
       }
 
       switch (sessionsResponse) {
@@ -791,21 +628,12 @@ class SessionListCubit({
             sinceTick: unseenTick,
           );
           _emitFiltered();
-          if (_projectViewClaim case final claim?) {
-            _projectViewingService.markClaimReady(claim: claim, projectId: _projectId);
-          }
           _consumeCatalogChangesThrough(generation: catalogChangeGeneration);
           didApplySnapshot = true;
           return _SessionFetchOutcome.applied;
 
         case ErrorResponse(:final error):
-          if (silent && state is! SessionListLoading) {
-            logw("Failed to refresh sessions: ${error.toString()}");
-          } else {
-            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
-            loge("Session list load failed", error);
-            emit(SessionListState.failed(reason: error.remoteFailureReason));
-          }
+          logw("Failed to refresh sessions: ${error.toString()}");
           return _SessionFetchOutcome.failed;
       }
     } finally {
@@ -882,33 +710,14 @@ class SessionListCubit({
     _ensureCatalogRefresh();
   }
 
-  /// The pull on this per-project list: its own reload plus an import.
-  ///
-  /// Transitional. This list's rows come from this cubit rather than from the
-  /// inventories `SessionListRefreshCubit` reloads, so it cannot use that
-  /// refresh; both start the same `CatalogRescanService` import. The list goes
-  /// once the all-projects list replaces it.
-  Future<bool> refreshAndImport() {
-    unawaited(_catalogRescanService.startAll());
-    return refreshSessions(waitForPrData: true);
-  }
-
-  void _onCatalogScanState(CatalogRescanState scan) {
-    if (isClosed) return;
-    if (state case final SessionListLoaded loaded) {
-      emit(loaded.copyWith(catalogScan: scan));
-    }
-  }
-
   @override
   Future<void> close() async {
     // A local change or bridge event can remove an action-only sidebar row.
     // Let its admitted operation and response handling finish before closing.
-    if (_waitForActionOperationsOnClose && _pendingActionOperations > 0) {
+    if (_pendingActionOperations > 0) {
       final drained = _actionOperationsDrained ??= Completer<void>();
       await drained.future;
     }
-    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     await _subscriptions.dispose();
     await super.close();
   }

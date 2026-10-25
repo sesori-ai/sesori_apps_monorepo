@@ -39,7 +39,7 @@ void main() {
   /// the rows, so they keep working after an action unmounts its row.
   Future<void> pumpRow(WidgetTester tester, {required Session session}) async {
     when(() => cubit.state).thenReturn(
-      SessionListState.loaded(sessions: [session], baseBranch: null, repoSlug: null),
+      SessionListState(sessions: [session], activeSessionIds: const {}, unseenBySessionId: const {}),
     );
     await tester.pumpWidget(
       sessionRowApp(

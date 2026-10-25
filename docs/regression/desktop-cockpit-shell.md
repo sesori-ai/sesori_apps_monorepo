@@ -448,7 +448,6 @@ after the user picked another one.
 - `client/module_prego/lib/components/navigation/prego_nav_title.dart`
 - `client/module_prego/test/components/prego_nav_title_test.dart`
 - `client/module_core/lib/src/cubits/recent_sessions/`
-- `client/module_core/lib/src/cubits/session_list/session_list_mode.dart`
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart`
 - `client/module_desktop_core/test/cubits/desktop_sidebar_cubit_test.dart`
 - `client/desktop/test/core/widgets/desktop_cockpit_shell_test.dart`

@@ -1,54 +1,24 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../errors/remote_failure_reason.dart";
-import "../../repositories/models/repo_provider.dart";
-import "../../services/models/catalog_rescan_state.dart";
 import "../../services/models/session_activity_info.dart";
-import "../../services/models/session_list_filter.dart";
 
 part "session_list_state.freezed.dart";
 
 @Freezed()
 sealed class SessionListState with _$SessionListState {
-  const factory loading() = SessionListLoading;
-
-  const factory loaded({
+  const factory({
     required List<Session> sessions,
-    @Default(SessionListFilter.active) SessionListFilter filter,
 
     /// Map of active session ID -> activity info.
     ///
     /// A session is "active" when either its main agent or any of its direct
     /// child tasks are running.
-    @Default({}) Map<String, SessionActivityInfo> activeSessionIds,
-    @Default(false) bool isRefreshing,
-
-    /// The catalog scan shown above the list, if any is worth showing.
-    ///
-    /// Carried here beside [isRefreshing] because it is the same kind of thing:
-    /// transient operation status the list renders over its content. The scan
-    /// itself is owned by `CatalogRescanService`; this is only the projection
-    /// the screen watches.
-    @Default(CatalogRescanState.idle()) CatalogRescanState catalogScan,
+    required Map<String, SessionActivityInfo> activeSessionIds,
 
     /// Map of session ID -> whether it has unseen changes (bold title). Merges
     /// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
     /// updates, the latter taking precedence.
-    @Default({}) Map<String, bool> unseenBySessionId,
-
-    /// The base branch of the project (e.g. "main", "develop"), if available.
-    required String? baseBranch,
-
-    /// Repository slug of the project's git remote (e.g. "org/repo"). Null
-    /// when the project has no usable remote or the bridge predates the field.
-    required String? repoSlug,
-
-    /// Hosting provider of the git remote, classified from its host. [RepoProvider.other]
-    /// when the host is unrecognised or unknown; only meaningful alongside a
-    /// non-null [repoSlug].
-    @Default(RepoProvider.other) RepoProvider repoProvider,
-  }) = SessionListLoaded;
-
-  const factory failed({required RemoteFailureReason reason}) = SessionListFailed;
+    required Map<String, bool> unseenBySessionId,
+  }) = _SessionListState;
 }

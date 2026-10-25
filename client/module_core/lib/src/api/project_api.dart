@@ -37,14 +37,6 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
     );
   }
 
-  Future<ApiResponse<BaseBranchResponse>> getBaseBranch({required String projectId}) {
-    return _client.post(
-      "/project/base-branch",
-      body: ProjectIdRequest(projectId: projectId),
-      fromJson: BaseBranchResponse.fromJson,
-    );
-  }
-
   Future<ApiResponse<SessionListResponse>> listSessions({
     required String projectId,
     required bool waitForPrData,

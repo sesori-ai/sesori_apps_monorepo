@@ -61,7 +61,6 @@ class AdaptiveSessionRouterTestHarness() {
     required String initialLocation,
     required AppRouteDef currentRouteDef,
     required Map<String, List<Session>> sessionsByProject,
-    Map<String, String?> baseBranchByProject = const {},
     Map<String, List<FileDiff>> diffsBySession = const {},
     Map<String, List<Session>> childSessionsBySession = const {},
     List<RouteBase> extraRoutes = const [],
@@ -164,18 +163,6 @@ class AdaptiveSessionRouterTestHarness() {
     ).thenAnswer((invocation) async {
       final projectId = invocation.namedArguments[#projectId]! as String;
       return ApiResponse.success(SessionListResponse(items: sessionsByProject[projectId] ?? const []));
-    });
-    when(
-      () => projectRepository.getGitContext(projectId: any(named: "projectId")),
-    ).thenAnswer((invocation) async {
-      final projectId = invocation.namedArguments[#projectId]! as String;
-      return ApiResponse.success(
-        ProjectGitContext(
-          baseBranch: baseBranchByProject[projectId],
-          repoSlug: null,
-          repoProvider: RepoProvider.other,
-        ),
-      );
     });
 
     when(

@@ -15,81 +15,93 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$SessionListState {
 
-
-
-
-
-@override
-bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListState);
-}
-
-
-@override
-int get hashCode => runtimeType.hashCode;
-
-@override
-String toString() {
-    return 'SessionListState()';
-}
-
-
-}
-
-/// @nodoc
-class $SessionListStateCopyWith<$Res>  {
-$SessionListStateCopyWith(SessionListState _, $Res Function(SessionListState) __);
-}
-
-
-
-/// @nodoc
-
-
-class SessionListLoading implements SessionListState {
-  const SessionListLoading();
-  
-
-
-
+ List<Session> get sessions;/// Map of active session ID -> activity info.
+///
+/// A session is "active" when either its main agent or any of its direct
+/// child tasks are running.
+ Map<String, SessionActivityInfo> get activeSessionIds;/// Map of session ID -> whether it has unseen changes (bold title). Merges
+/// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
+/// updates, the latter taking precedence.
+ Map<String, bool> get unseenBySessionId;
+/// Create a copy of SessionListState
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionListStateCopyWith<SessionListState> get copyWith => _$SessionListStateCopyWithImpl<SessionListState>(this as SessionListState, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoading);
+  final _this = this as SessionListState;
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListState&&const DeepCollectionEquality().equals(other.sessions, _this.sessions)&&const DeepCollectionEquality().equals(other.activeSessionIds, _this.activeSessionIds)&&const DeepCollectionEquality().equals(other.unseenBySessionId, _this.unseenBySessionId));
 }
 
 
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode {
+  final _this = this as SessionListState;
+  return Object.hash(runtimeType,const DeepCollectionEquality().hash(_this.sessions),const DeepCollectionEquality().hash(_this.activeSessionIds),const DeepCollectionEquality().hash(_this.unseenBySessionId));
+}
 
 @override
 String toString() {
-    return 'SessionListState.loading()';
+  final _this = this as SessionListState;
+  return 'SessionListState(sessions: ${_this.sessions}, activeSessionIds: ${_this.activeSessionIds}, unseenBySessionId: ${_this.unseenBySessionId})';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $SessionListStateCopyWith<$Res>  {
+  factory $SessionListStateCopyWith(SessionListState value, $Res Function(SessionListState) _then) = _$SessionListStateCopyWithImpl;
+@useResult
+$Res call({
+ List<Session> sessions, Map<String, SessionActivityInfo> activeSessionIds, Map<String, bool> unseenBySessionId
+});
+
+
+
+
+}
+/// @nodoc
+class _$SessionListStateCopyWithImpl<$Res>
+    implements $SessionListStateCopyWith<$Res> {
+  _$SessionListStateCopyWithImpl(this._self, this._then);
+
+  final SessionListState _self;
+  final $Res Function(SessionListState) _then;
+
+/// Create a copy of SessionListState
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') @override $Res call({Object? sessions = null,Object? activeSessionIds = null,Object? unseenBySessionId = null,}) {
+  return _then(SessionListState(
+sessions: null == sessions ? _self.sessions : sessions // ignore: cast_nullable_to_non_nullable
+as List<Session>,activeSessionIds: null == activeSessionIds ? _self.activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
+as Map<String, SessionActivityInfo>,unseenBySessionId: null == unseenBySessionId ? _self.unseenBySessionId : unseenBySessionId // ignore: cast_nullable_to_non_nullable
+as Map<String, bool>,
+  ));
+}
+
+}
 
 
 
 /// @nodoc
 
 
-class SessionListLoaded implements SessionListState {
-  const SessionListLoaded({required  List<Session> sessions, this.filter = SessionListFilter.active,  Map<String, SessionActivityInfo> activeSessionIds = const {}, this.isRefreshing = false, this.catalogScan = const CatalogRescanState.idle(),  Map<String, bool> unseenBySessionId = const {}, required this.baseBranch, required this.repoSlug, this.repoProvider = RepoProvider.other}): _sessions = sessions,_activeSessionIds = activeSessionIds,_unseenBySessionId = unseenBySessionId;
+class _SessionListState implements SessionListState {
+  const _SessionListState({required  List<Session> sessions, required  Map<String, SessionActivityInfo> activeSessionIds, required  Map<String, bool> unseenBySessionId}): _sessions = sessions,_activeSessionIds = activeSessionIds,_unseenBySessionId = unseenBySessionId;
   
 
  final  List<Session> _sessions;
- List<Session> get sessions {
+@override List<Session> get sessions {
   if (_sessions is EqualUnmodifiableListView) return _sessions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_sessions);
 }
 
-@JsonKey() final  SessionListFilter filter;
 /// Map of active session ID -> activity info.
 ///
 /// A session is "active" when either its main agent or any of its direct
@@ -99,20 +111,12 @@ class SessionListLoaded implements SessionListState {
 ///
 /// A session is "active" when either its main agent or any of its direct
 /// child tasks are running.
-@JsonKey() Map<String, SessionActivityInfo> get activeSessionIds {
+@override Map<String, SessionActivityInfo> get activeSessionIds {
   if (_activeSessionIds is EqualUnmodifiableMapView) return _activeSessionIds;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_activeSessionIds);
 }
 
-@JsonKey() final  bool isRefreshing;
-/// The catalog scan shown above the list, if any is worth showing.
-///
-/// Carried here beside [isRefreshing] because it is the same kind of thing:
-/// transient operation status the list renders over its content. The scan
-/// itself is owned by `CatalogRescanService`; this is only the projection
-/// the screen watches.
-@JsonKey() final  CatalogRescanState catalogScan;
 /// Map of session ID -> whether it has unseen changes (bold title). Merges
 /// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
 /// updates, the latter taking precedence.
@@ -120,55 +124,46 @@ class SessionListLoaded implements SessionListState {
 /// Map of session ID -> whether it has unseen changes (bold title). Merges
 /// the REST-seeded `Session.unseen` with live `SesoriSessionUnseenChanged`
 /// updates, the latter taking precedence.
-@JsonKey() Map<String, bool> get unseenBySessionId {
+@override Map<String, bool> get unseenBySessionId {
   if (_unseenBySessionId is EqualUnmodifiableMapView) return _unseenBySessionId;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableMapView(_unseenBySessionId);
 }
 
-/// The base branch of the project (e.g. "main", "develop"), if available.
- final  String? baseBranch;
-/// Repository slug of the project's git remote (e.g. "org/repo"). Null
-/// when the project has no usable remote or the bridge predates the field.
- final  String? repoSlug;
-/// Hosting provider of the git remote, classified from its host. [RepoProvider.other]
-/// when the host is unrecognised or unknown; only meaningful alongside a
-/// non-null [repoSlug].
-@JsonKey() final  RepoProvider repoProvider;
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
+@override @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$SessionListLoadedCopyWith<SessionListLoaded> get copyWith => _$SessionListLoadedCopyWithImpl<SessionListLoaded>(this, _$identity);
+_$SessionListStateCopyWith<_SessionListState> get copyWith => __$SessionListStateCopyWithImpl<_SessionListState>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListLoaded&&const DeepCollectionEquality().equals(other.sessions, _sessions)&&(identical(other.filter, filter) || other.filter == filter)&&const DeepCollectionEquality().equals(other.activeSessionIds, _activeSessionIds)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&(identical(other.catalogScan, catalogScan) || other.catalogScan == catalogScan)&&const DeepCollectionEquality().equals(other.unseenBySessionId, _unseenBySessionId)&&(identical(other.baseBranch, baseBranch) || other.baseBranch == baseBranch)&&(identical(other.repoSlug, repoSlug) || other.repoSlug == repoSlug)&&(identical(other.repoProvider, repoProvider) || other.repoProvider == repoProvider));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _SessionListState&&const DeepCollectionEquality().equals(other.sessions, _sessions)&&const DeepCollectionEquality().equals(other.activeSessionIds, _activeSessionIds)&&const DeepCollectionEquality().equals(other.unseenBySessionId, _unseenBySessionId));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),filter,const DeepCollectionEquality().hash(_activeSessionIds),isRefreshing,catalogScan,const DeepCollectionEquality().hash(_unseenBySessionId),baseBranch,repoSlug,repoProvider);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_sessions),const DeepCollectionEquality().hash(_activeSessionIds),const DeepCollectionEquality().hash(_unseenBySessionId));
 }
 
 @override
 String toString() {
-    return 'SessionListState.loaded(sessions: $sessions, filter: $filter, activeSessionIds: $activeSessionIds, isRefreshing: $isRefreshing, catalogScan: $catalogScan, unseenBySessionId: $unseenBySessionId, baseBranch: $baseBranch, repoSlug: $repoSlug, repoProvider: $repoProvider)';
+    return 'SessionListState(sessions: $sessions, activeSessionIds: $activeSessionIds, unseenBySessionId: $unseenBySessionId)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $SessionListLoadedCopyWith<$Res> implements $SessionListStateCopyWith<$Res> {
-  factory $SessionListLoadedCopyWith(SessionListLoaded value, $Res Function(SessionListLoaded) _then) = _$SessionListLoadedCopyWithImpl;
-@useResult
+abstract mixin class _$SessionListStateCopyWith<$Res> implements $SessionListStateCopyWith<$Res> {
+  factory _$SessionListStateCopyWith(_SessionListState value, $Res Function(_SessionListState) _then) = __$SessionListStateCopyWithImpl;
+@override @useResult
 $Res call({
- List<Session> sessions, SessionListFilter filter, Map<String, SessionActivityInfo> activeSessionIds, bool isRefreshing, CatalogRescanState catalogScan, Map<String, bool> unseenBySessionId, String? baseBranch, String? repoSlug, RepoProvider repoProvider
+ List<Session> sessions, Map<String, SessionActivityInfo> activeSessionIds, Map<String, bool> unseenBySessionId
 });
 
 
@@ -176,95 +171,21 @@ $Res call({
 
 }
 /// @nodoc
-class _$SessionListLoadedCopyWithImpl<$Res>
-    implements $SessionListLoadedCopyWith<$Res> {
-  _$SessionListLoadedCopyWithImpl(this._self, this._then);
+class __$SessionListStateCopyWithImpl<$Res>
+    implements _$SessionListStateCopyWith<$Res> {
+  __$SessionListStateCopyWithImpl(this._self, this._then);
 
-  final SessionListLoaded _self;
-  final $Res Function(SessionListLoaded) _then;
+  final _SessionListState _self;
+  final $Res Function(_SessionListState) _then;
 
 /// Create a copy of SessionListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? filter = null,Object? activeSessionIds = null,Object? isRefreshing = null,Object? catalogScan = null,Object? unseenBySessionId = null,Object? baseBranch = freezed,Object? repoSlug = freezed,Object? repoProvider = null,}) {
-  return _then(SessionListLoaded(
+@override @pragma('vm:prefer-inline') $Res call({Object? sessions = null,Object? activeSessionIds = null,Object? unseenBySessionId = null,}) {
+  return _then(_SessionListState(
 sessions: null == sessions ? _self._sessions : sessions // ignore: cast_nullable_to_non_nullable
-as List<Session>,filter: null == filter ? _self.filter : filter // ignore: cast_nullable_to_non_nullable
-as SessionListFilter,activeSessionIds: null == activeSessionIds ? _self._activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
-as Map<String, SessionActivityInfo>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
-as bool,catalogScan: null == catalogScan ? _self.catalogScan : catalogScan // ignore: cast_nullable_to_non_nullable
-as CatalogRescanState,unseenBySessionId: null == unseenBySessionId ? _self._unseenBySessionId : unseenBySessionId // ignore: cast_nullable_to_non_nullable
-as Map<String, bool>,baseBranch: freezed == baseBranch ? _self.baseBranch : baseBranch // ignore: cast_nullable_to_non_nullable
-as String?,repoSlug: freezed == repoSlug ? _self.repoSlug : repoSlug // ignore: cast_nullable_to_non_nullable
-as String?,repoProvider: null == repoProvider ? _self.repoProvider : repoProvider // ignore: cast_nullable_to_non_nullable
-as RepoProvider,
-  ));
-}
-
-
-}
-
-/// @nodoc
-
-
-class SessionListFailed implements SessionListState {
-  const SessionListFailed({required this.reason});
-  
-
- final  RemoteFailureReason reason;
-
-/// Create a copy of SessionListState
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$SessionListFailedCopyWith<SessionListFailed> get copyWith => _$SessionListFailedCopyWithImpl<SessionListFailed>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionListFailed&&(identical(other.reason, reason) || other.reason == reason));
-}
-
-
-@override
-int get hashCode {
-    return Object.hash(runtimeType,reason);
-}
-
-@override
-String toString() {
-    return 'SessionListState.failed(reason: $reason)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $SessionListFailedCopyWith<$Res> implements $SessionListStateCopyWith<$Res> {
-  factory $SessionListFailedCopyWith(SessionListFailed value, $Res Function(SessionListFailed) _then) = _$SessionListFailedCopyWithImpl;
-@useResult
-$Res call({
- RemoteFailureReason reason
-});
-
-
-
-
-}
-/// @nodoc
-class _$SessionListFailedCopyWithImpl<$Res>
-    implements $SessionListFailedCopyWith<$Res> {
-  _$SessionListFailedCopyWithImpl(this._self, this._then);
-
-  final SessionListFailed _self;
-  final $Res Function(SessionListFailed) _then;
-
-/// Create a copy of SessionListState
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? reason = null,}) {
-  return _then(SessionListFailed(
-reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,
+as List<Session>,activeSessionIds: null == activeSessionIds ? _self._activeSessionIds : activeSessionIds // ignore: cast_nullable_to_non_nullable
+as Map<String, SessionActivityInfo>,unseenBySessionId: null == unseenBySessionId ? _self._unseenBySessionId : unseenBySessionId // ignore: cast_nullable_to_non_nullable
+as Map<String, bool>,
   ));
 }
 

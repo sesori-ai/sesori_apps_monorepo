@@ -1247,9 +1247,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListRefreshFailed => 'Could not refresh sessions';
 
   @override
-  String get sessionListErrorTitle => 'Failed to load sessions';
-
-  @override
   String get sessionListRetry => 'Retry';
 
   @override

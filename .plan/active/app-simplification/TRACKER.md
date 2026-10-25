@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 11.iii/13 follows 11.ii/13.
+- Current step: 11.iv/13 follows 11.iii/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -27,7 +27,8 @@
 | 10.b/13 | Desktop Activity and rail removed | Done | #2048 |
 | 11.i/13 | Desktop composer home; palette on the shared list; Recent sessions removed | Done | `sesori/app-simplification-step-11-i` |
 | 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Done | `sesori/app-simplification-step-11-ii` |
-| 11.iii/13 | Session list view mode, project-sessions route and claim stack removed | Not started | — |
+| 11.iii/13 | Session list view mode removed | Done | `sesori/app-simplification-step-11-iii` |
+| 11.iv/13 | Project-sessions route and claim stack removed | Not started | — |
 | 12/13 | Regression documents reconciled | Not started | — |
 | 13/13 | L3 matrix run; plan retired | Not started | — |
 
@@ -72,6 +73,10 @@
   archiving or deleting the open session, and New session's back from a direct open. Pages lose their project
   crumb (the new-session picker already names the project); a subtask keeps its Main session crumb. The sidebar's
   Add project opens New session in the added project, as the phone's picker does.
+- 2026-10-25: step 11.iii still measured well over the soft cap, so the `projectSessions` route and the claim
+  stack move to 11.iv. Besides the view mode, 11.iii removes `SessionListContent` and the git-context chain it
+  alone read (`getGitContext`, `ProjectGitContext`, `RepoProvider` and the client's `getBaseBranch`). The bridge
+  keeps serving `/project/base-branch` for older apps.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

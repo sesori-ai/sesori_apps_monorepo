@@ -410,7 +410,9 @@ void main() {
       when(cubit.clearNotifications).thenReturn(null);
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
       listCubit = _MockSessionListCubit();
-      when(() => listCubit.state).thenReturn(const SessionListState.loading());
+      when(
+        () => listCubit.state,
+      ).thenReturn(const SessionListState(sessions: [], activeSessionIds: {}, unseenBySessionId: {}));
       when(listCubit.retainActionScope).thenReturn(() {});
       when(
         () => listCubit.markSessionSeen(

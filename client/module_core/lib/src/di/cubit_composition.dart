@@ -5,10 +5,8 @@ import "../capabilities/server_connection/connection_service.dart";
 import "../cubits/new_session/new_session_cubit.dart";
 import "../cubits/session_detail/session_detail_cubit.dart";
 import "../cubits/session_list/session_list_cubit.dart";
-import "../cubits/session_list/session_list_mode.dart";
 import "../platform/lifecycle_source.dart";
 import "../platform/notification_canceller.dart";
-import "../platform/route_source.dart";
 import "../repositories/composer_draft_repository.dart";
 import "../repositories/dedicated_worktree_preference_store.dart";
 import "../repositories/permission_repository.dart";
@@ -78,19 +76,16 @@ SessionDetailCubit createSessionDetailCubit({
 SessionListCubit createSessionListCubit({
   required GetIt locator,
   required String projectId,
-  required SessionListMode mode,
+  required List<Session> sessions,
 }) {
   return SessionListCubit(
-    mode: mode,
+    sessions: sessions,
     sessionRepository: locator<SessionRepository>(),
     sessionCleanupService: locator<SessionCleanupService>(),
     sessionListService: locator<SessionListService>(),
-    projectRepository: locator<ProjectRepository>(),
     connectionService: locator<ConnectionService>(),
     sseEventTracker: locator<SseEventTracker>(),
     sessionUnseenTracker: locator<SessionUnseenTracker>(),
-    projectViewingService: locator<ProjectViewingService>(),
-    routeSource: locator<RouteSource>(),
     projectId: projectId,
     failureReporter: locator<FailureReporter>(),
     catalogRescanService: locator<CatalogRescanService>(),

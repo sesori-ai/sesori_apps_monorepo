@@ -2,7 +2,6 @@ import "dart:async";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
-import "package:sesori_dart_core/src/repositories/models/repo_provider.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -95,59 +94,6 @@ void main() {
       expect(repository.parentHostPath(path: "/"), isNull);
       expect(repository.parentHostPath(path: r"C:\Users\dev\projects"), r"C:\Users\dev");
       expect(repository.parentHostPath(path: r"C:\"), isNull);
-    });
-  });
-
-  group("getGitContext", () {
-    late MockProjectApi api;
-    late ProjectRepository repository;
-
-    setUp(() {
-      api = MockProjectApi();
-      repository = ProjectRepository(
-        api: api,
-        filesystemApi: MockFilesystemApi(),
-        sessionApi: MockSessionApi(),
-      );
-    });
-
-    void stubBaseBranch(BaseBranchResponse response) {
-      when(
-        () => api.getBaseBranch(projectId: "project-1"),
-      ).thenAnswer((_) async => ApiResponse.success(response));
-    }
-
-    test("maps the wire response into a git context with a classified provider", () async {
-      stubBaseBranch(
-        const BaseBranchResponse(baseBranch: "main", repoSlug: "org/repo", repoHost: "gitlab.company.com"),
-      );
-
-      final response = await repository.getGitContext(projectId: "project-1");
-
-      final context = (response as SuccessResponse<ProjectGitContext>).data;
-      expect(context.baseBranch, equals("main"));
-      expect(context.repoSlug, equals("org/repo"));
-      expect(context.repoProvider, equals(RepoProvider.gitlab));
-    });
-
-    test("classifies a missing host as RepoProvider.other", () async {
-      stubBaseBranch(const BaseBranchResponse(baseBranch: null, repoSlug: "org/repo", repoHost: null));
-
-      final response = await repository.getGitContext(projectId: "project-1");
-
-      final context = (response as SuccessResponse<ProjectGitContext>).data;
-      expect(context.repoProvider, equals(RepoProvider.other));
-    });
-
-    test("passes errors through", () async {
-      final error = ApiError.generic();
-      when(
-        () => api.getBaseBranch(projectId: "project-1"),
-      ).thenAnswer((_) async => ApiResponse.error(error));
-
-      final response = await repository.getGitContext(projectId: "project-1");
-
-      expect(response, ApiResponse<ProjectGitContext>.error(error));
     });
   });
 

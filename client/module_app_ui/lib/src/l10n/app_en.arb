@@ -878,7 +878,6 @@
   },
   "sessionListRefreshSuccess": "Sessions updated",
   "sessionListRefreshFailed": "Could not refresh sessions",
-  "sessionListErrorTitle": "Failed to load sessions",
   "sessionListRetry": "Retry",
   "sessionListNewSession": "New session",
   "@sessionListNewSession": {

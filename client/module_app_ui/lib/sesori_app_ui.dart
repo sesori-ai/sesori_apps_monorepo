@@ -76,7 +76,6 @@ export "src/features/session_list/rename_session_dialog.dart";
 export "src/features/session_list/session_archived_empty_state.dart";
 export "src/features/session_list/session_empty_state.dart";
 export "src/features/session_list/session_list_action_dispatcher.dart";
-export "src/features/session_list/session_list_content.dart";
 export "src/features/session_list/session_row_metrics.dart";
 export "src/features/session_list/session_scheduled_resume.dart";
 export "src/features/session_list/session_tile.dart";

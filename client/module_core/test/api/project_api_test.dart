@@ -171,45 +171,6 @@ void main() {
     });
   });
 
-  group("getBaseBranch", () {
-    test("posts the project ID and returns the base branch", () async {
-      const baseBranch = BaseBranchResponse(baseBranch: "main", repoSlug: null, repoHost: null);
-      when(
-        () => client.post<BaseBranchResponse>(
-          "/project/base-branch",
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(baseBranch));
-
-      final response = await api.getBaseBranch(projectId: "project-1");
-
-      expect(response, ApiResponse<BaseBranchResponse>.success(baseBranch));
-      verify(
-        () => client.post<BaseBranchResponse>(
-          "/project/base-branch",
-          fromJson: any(named: "fromJson"),
-          body: const ProjectIdRequest(projectId: "project-1"),
-        ),
-      ).called(1);
-    });
-
-    test("propagates errors", () async {
-      final error = ApiError.generic();
-      when(
-        () => client.post<BaseBranchResponse>(
-          "/project/base-branch",
-          fromJson: any(named: "fromJson"),
-          body: any(named: "body"),
-        ),
-      ).thenAnswer((_) async => ApiResponse.error(error));
-
-      final response = await api.getBaseBranch(projectId: "project-1");
-
-      expect(response, ApiResponse<BaseBranchResponse>.error(error));
-    });
-  });
-
   group("renameProject", () {
     test("patches the project name and returns the project", () async {
       const project = Project(id: "project-1", name: "Renamed", path: "/project-1", time: null, voiceGlossaryKey: null);
