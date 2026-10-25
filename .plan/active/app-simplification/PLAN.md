@@ -171,17 +171,24 @@ belongs to session detail, so neither is affected.
 - **`AllSessionsCubit`** (new, `active` or `archived` mode). It reads:
   - the scoped `RecentSessionInventoryService`, for sessions, activity and list state;
   - the scoped `ProjectInventoryService`, for names and the listed projects;
-  - the filter tracker.
+  - the filter tracker. Both modes read the same filter, so Archived opens with the list's current filter, and a
+    filtered entry (D6) calls `selectProject` rather than passing a second filter.
 
   It also owns:
-  - query and quick-filter inputs (`setQuery`, `setQuickFilter`);
-  - `selectProject`, which is the only write to the filter tracker.
+  - query and quick-filter inputs (`setQuery`, `setQuickFilter`; `SessionListQuickFilter` moves to `module_core`);
+  - `setHiddenSessionIds`, fed by the list widget from `PendingSessionArchiveCubit` and the launch rows, so chip
+    counts exclude sessions an Undo window or a launch row holds back (only unarchived sessions hide);
+  - `selectProject`, which is the only write to the filter tracker;
+  - `retry(projectId)`, for retry rows.
 
   It emits:
-  - a flat, ordered row list (session, project, flags), sorted by last update and never by status;
+  - a flat, ordered row list (session, project, flags), sorted by last update (archived: archive time) and never by
+    status. The comparators are `SessionListService.compareByUpdate` and `compareByArchive`, so one owner orders;
   - chip counts;
   - per-project failures, for retry rows;
-  - `defaultProjectId` (D15): the filter, otherwise the project of the newest session, otherwise `null`.
+  - `isLoading`, while the project list or a listed project under the filter has not loaded yet;
+  - `defaultProjectId` (D15): the filter, otherwise the project of the newest session, otherwise `null`. It ignores
+    the query, chips and hidden sessions.
 
   Date headings stay a `module_app_ui` formatter over that order, as `SessionListContent` does today. That keeps
   one grouping implementation.
@@ -281,7 +288,8 @@ belongs to session detail, so neither is affected.
 
 - **New mutable state:**
   - the tracker's one `String?`;
-  - `AllSessionsCubit`'s query, quick filter, derived rows, one optional list claim and one pane claim;
+  - `AllSessionsCubit`'s query, quick filter, hidden session ids, derived rows, one optional list claim and one
+    pane claim;
   - the touch sidebar's runtime `collapsed` flag.
 - **Removed mutable state:**
   - catalog-scan cancellation (`_pendingStarts`, `_cancelling`, `_cancellingPluginIds`) and dismissal;
@@ -470,7 +478,8 @@ This document and `TRACKER.md`. Verification: Markdown only.
 
 - **Screen.** Add `AllSessionsList`. The Archived screen becomes an archived-mode `AllSessionsCubit` at
   `/archived-sessions` with archived detail under it. Rows show the project.
-- **Entry.** The per-project list's Archived button opens it filtered to that project (D6).
+- **Entry.** The per-project list's Archived button opens it filtered to that project (D6), through
+  `selectProject` on the shared filter.
 - **Verification:**
   - Widget and router tests: archived across projects, filtered entry, restore, and archived detail.
   - A simulator check.
@@ -540,8 +549,11 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Pane visibility.** The cockpit reports the expanded sidebar as the wide pane.
 - **Collapse** hides the sidebar fully (D9), while resize stays.
 - **Palette.** Its project entries call `AllSessionsCubit.selectProject`.
+- **List claim.** Until step 11, the desktop project page's view-mode `SessionListCubit` replaces the shared
+  cubit's list claim (newest wins), and closing the page empties the slot. Make the sidebar's filtered list
+  declare its project again once the page closes.
 - **Verification:**
-  - Desktop widget tests.
+  - Desktop widget tests, including a filtered sidebar that still declares its project after the project page closes.
   - macOS: list, filter, collapse and restore, resize, Archived, and the palette filter.
 - **Regression docs:** `desktop-cockpit-shell.md`.
 

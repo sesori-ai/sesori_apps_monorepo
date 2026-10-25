@@ -537,12 +537,14 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: [priority, ordinary],
           visibleSessions: [priority, ordinary],
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
         "project-2": RecentSessionsLoaded(
           sourceSessions: [runningSession],
           visibleSessions: [runningSession],
+          archivedSessions: const [],
           activityBySessionId: const {
             "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
@@ -611,6 +613,7 @@ void main() {
       "project-1": RecentSessionsLoaded(
         sourceSessions: [session],
         visibleSessions: [session],
+        archivedSessions: const [],
         activityBySessionId: const {},
         listStateBySessionId: {"moving": (unseen: unseen, lastUserActivityAt: null)},
       ),
@@ -687,6 +690,7 @@ void main() {
       "project-1": RecentSessionsLoaded(
         sourceSessions: sessions,
         visibleSessions: sessions,
+        archivedSessions: const [],
         activityBySessionId: {
           if (running)
             "created": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
@@ -901,6 +905,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
@@ -971,6 +976,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
@@ -1018,6 +1024,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: activity,
           listStateBySessionId: const {},
         ),
@@ -1051,6 +1058,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: [quiet, fresh],
           visibleSessions: [quiet, fresh],
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
@@ -1128,6 +1136,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: [session],
           visibleSessions: [session],
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
@@ -1167,12 +1176,14 @@ void main() {
       "project-1": RecentSessionsLoaded(
         sourceSessions: [priority],
         visibleSessions: [priority],
+        archivedSessions: const [],
         activityBySessionId: const {},
         listStateBySessionId: const {},
       ),
       "project-2": RecentSessionsLoaded(
         sourceSessions: [runningSession],
         visibleSessions: [runningSession],
+        archivedSessions: const [],
         activityBySessionId: {
           if (stillRunning)
             "running": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
@@ -1246,6 +1257,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: [session],
           visibleSessions: [session],
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
@@ -1316,6 +1328,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: const {
             "session-1": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
           },
@@ -1346,6 +1359,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: const {
             "session-1": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
           },
@@ -1379,6 +1393,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
@@ -1421,6 +1436,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: const {
             "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
@@ -1468,6 +1484,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: const {
             "running": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
           },
@@ -2120,6 +2137,7 @@ void main() {
         "project-1": RecentSessionsLoaded(
           sourceSessions: [build, docs, untitled],
           visibleSessions: [build, docs, untitled],
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),

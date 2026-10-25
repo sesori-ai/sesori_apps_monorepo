@@ -385,12 +385,14 @@ void main() {
           "one": RecentSessionsLoaded(
             sourceSessions: [running],
             visibleSessions: [running],
+            archivedSessions: const [],
             activityBySessionId: {"running": _activity(awaitingInput: false)},
             listStateBySessionId: const {},
           ),
           "two": RecentSessionsLoaded(
             sourceSessions: [waiting, settled],
             visibleSessions: [waiting, settled],
+            archivedSessions: const [],
             activityBySessionId: {"waiting": _activity(awaitingInput: true)},
             listStateBySessionId: const {},
           ),
@@ -417,6 +419,7 @@ void main() {
         "one": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: {if (running) "created": _activity(awaitingInput: false)},
           listStateBySessionId: const {},
         ),
@@ -475,6 +478,7 @@ void main() {
         "one": RecentSessionsLoaded(
           sourceSessions: sessions,
           visibleSessions: sessions,
+          archivedSessions: const [],
           activityBySessionId: {for (final session in sessions) session.id: _activity(awaitingInput: true)},
           listStateBySessionId: const {},
         ),

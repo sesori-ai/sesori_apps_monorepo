@@ -199,6 +199,7 @@ void main() {
     expect(await refresh, isTrue);
     await inventory.ensureLoaded(projectId: projectId);
     expect(loaded().visibleSessions.map((session) => session.id), ["4", "3", "2", "1"]);
+    expect(loaded().archivedSessions.map((session) => session.id), ["archived"]);
     expect(
       loaded().rows(selectedSessionId: "1", idleLimit: 3).map((session) => session.id),
       ["4", "3", "2", "1"],
@@ -212,6 +213,7 @@ void main() {
     );
     expect(() => loaded().sourceSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().visibleSessions.clear(), throwsUnsupportedError);
+    expect(() => loaded().archivedSessions.clear(), throwsUnsupportedError);
     expect(() => loaded().activityBySessionId.clear(), throwsUnsupportedError);
     expect(() => loaded().listStateBySessionId.clear(), throwsUnsupportedError);
     verify(() => repository.listSessions(projectId: projectId, waitForPrData: false)).called(1);
@@ -270,6 +272,7 @@ void main() {
       ),
     );
     expect(loaded().visibleSessions, isEmpty);
+    expect(loaded().archivedSessions.single.id, "created");
     expect(loaded().rows(selectedSessionId: "created", idleLimit: 3), isEmpty);
     expect(loaded().sourceSessions, hasLength(1));
     events.add(SseEvent(data: SesoriSseEvent.sessionDeleted(info: session)));

@@ -75,6 +75,7 @@ void main() {
           project.id: RecentSessionsLoaded(
             sourceSessions: sessions,
             visibleSessions: sessions,
+            archivedSessions: const [],
             activityBySessionId: activity,
             listStateBySessionId: const {},
           ),
