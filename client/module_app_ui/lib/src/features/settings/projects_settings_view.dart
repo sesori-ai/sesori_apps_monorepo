@@ -105,7 +105,7 @@ class const ProjectsSettingsView({super.key, required final SettingsPageChrome c
                         child: PregoGroupedRow(
                           key: const Key("projects-settings-open-folder"),
                           icon: TablerRegular.folder_plus,
-                          title: Text(loc.projectPickerOpenFolder),
+                          title: Text(loc.settingsProjectsOpenFolder),
                           // The added project's row enters the list below.
                           onTap: online
                               ? () => unawaited(

@@ -121,11 +121,11 @@ void main() {
       expect(inContent(find.byType(NewSessionProjectPrompt)), findsOneWidget);
       expect(find.byType(NewSessionView), findsNothing);
       // At rest the pane waits for a tap rather than opening the picker.
-      expect(find.text("Open another folder…"), findsNothing);
+      expect(find.text("Open folder…"), findsNothing);
 
       await tester.tap(inContent(find.byKey(const Key("new_session_project"))));
       await tester.pumpAndSettle();
-      expect(find.text("Open another folder…"), findsOneWidget);
+      expect(find.text("Open folder…"), findsOneWidget);
       await tester.tap(find.text("Project One").last);
       await tester.pumpAndSettle();
 

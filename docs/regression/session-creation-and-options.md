@@ -15,13 +15,13 @@ variant, and worktree mode, and creating the session with its first input.
 - The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
   project: the filtered project, else the project of the newest session. With no default it opens a "New
   session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
-  selected, with "Open another folder…" above its search and the known projects below; with no projects it
-  offers only that action. Choosing one replaces the page with that project's setup page.
+  selected: its search first, the known projects below and "Open folder…" pinned under them; with no projects
+  it offers only that action. Choosing one replaces the page with that project's setup page.
 - The desktop home shows the setup composer in place, in the same default project: the sidebar list's filter,
   else the newest session's project. The project holds once it lands, so a newer session elsewhere never moves
   a draft; another filter moves it. While the list is still loading the pane waits blank. With no default it
   shows the same "What should we work on?" prompt with nothing selected, its picker waiting for a click; with
-  no projects the picker offers only "Open another folder…". A pick swaps in that project's composer with a
+  no projects the picker offers only "Open folder…". A pick swaps in that project's composer with a
   short crossfade (none under reduced motion).
 - On phone and desktop the setup page opens with the heading "What should we work on?" and a project
   selector naming the session's project from the live project list (the route's name until it loads). The
@@ -29,19 +29,18 @@ variant, and worktree mode, and creating the session with its first input.
   anchored to the selector on wider layouts, the iPad and desktop. Under touch, the sheet and the popover
   open with the keyboard down; tapping the search field raises it, and the sheet and its field stay still
   while the list shortens above the keyboard. Under a pointer the search takes focus as the popover opens, so typing
-  filters at once. The home's title switcher is the same picker. When the picker chooses a project rather than
-  a filter, "Open another folder…" is a brand-coloured action pinned above the search field, set off by a
-  hairline; the search filters only the projects below, so the action is there with one project, with none,
-  and when the search matches nothing ("No projects match"). Under a pointer it has a hover state, the
-  keyboard highlight starts on the first matching project, Up from there reaches the action, and Enter opens
-  it when nothing matches. It closes the picker, opens the folder browser once the picker has closed, and
-  selects the project the browser adds.
-  Filtering a list instead, the picker holds only projects, and a full-width "Show all projects" button is
-  pinned below the list, outside its scroll, set off by a hairline; on a phone it rides above the raised
-  keyboard while the search stays still. The search never hides it. It is always there: while every project is
-  shown it carries a check, no project is checked, and it only closes the picker; otherwise it clears the
-  filter. Under a pointer Down past the last project highlights it and Enter picks it, while typing then Enter
-  picks the first matching project.
+  filters at once. The home's title switcher is the same picker. The search is the first control under the
+  title, and the list holds only projects. A full-width button is pinned below the list, outside its scroll,
+  set off by a hairline. The search never filters or hides it, so it is there with one project, with none, and
+  when the search matches nothing ("No projects match"). On a phone it sits at the sheet's bottom edge and
+  rides above the raised keyboard while the search stays still; in a popover it sits right under the rows.
+  Under a pointer the keyboard highlight starts on the first matching project and never on the button: Down
+  past the last project highlights it and Enter picks it, typing then Enter picks the first matching project,
+  and with nothing matching Enter picks nothing. When the picker chooses a project rather than a filter, the
+  button is "Open folder…": it closes the picker, opens the folder browser once the picker has closed, and
+  selects the project the browser adds. Filtering a list instead, it is "Show all projects": while every
+  project is shown it carries a check, no project is checked, and it only closes the picker; otherwise it
+  clears the filter.
   Search matches project names and paths; a path shows under a name only when another project shares that
   name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
   project's setup page, so a session is never created in the project that was left, and a draft stays with
@@ -478,7 +477,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. Pi startup dialog fixtures: answer questions before initial history, cancel catalog-probe dialogs without granting access, and preserve queued commands and partial UTF-8 bytes when native RPC takes over. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message, and a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open another folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message, and a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, with queued follow-ups and unsent composer content appended in typed order, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -545,14 +544,14 @@ startup-extension file failure, retry once the filesystem is usable.
 - A picker opens as a full-screen sheet, detaches from its button, crosses the
   window edge, or grows past its height cap; on desktop, typing does not reach
   the search, the arrows land on a heading, or Esc applies a choice.
-- The project picker hides "Open another folder…" behind a search or lists it
-  among the projects, lets Enter after a search open it over a match, lists a
-  project the search does not match, shows paths under names nobody shares,
-  raises the keyboard as it opens under touch, leaves its search field behind
-  the phone keyboard once tapped, moves its header or search field as the
-  keyboard rises, moves the header behind
-  its sheet, or leaves the page on the old project after the folder browser
-  adds one.
+- The project picker puts anything between its title and its search, hides
+  "Open folder…" behind a search or a scroll or lists it among the projects,
+  lets Enter after a search open it over a match, lists a project the search
+  does not match, shows paths under names nobody shares, raises the keyboard as
+  it opens under touch, leaves its search field behind the phone keyboard once
+  tapped, moves its search field as the keyboard rises, moves the page's header
+  behind its sheet, or leaves the page on the old project after the folder
+  browser adds one.
 - The filtering picker lists "Show all projects" among the projects, hides it
   behind a search or a scroll, leaves it out or unchecked while every project
   is shown, checks a project then, or lets Enter after a search pick it over a

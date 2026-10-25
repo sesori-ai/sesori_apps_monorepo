@@ -264,7 +264,7 @@ void main() {
     });
   });
 
-  testWidgets("a home without projects asks for one, through the picker's Open another folder", (tester) async {
+  testWidgets("a home without projects asks for one, through the picker's Open folder", (tester) async {
     await pumpHome(
       tester: tester,
       state: const ProjectListState.loaded(projects: []),
