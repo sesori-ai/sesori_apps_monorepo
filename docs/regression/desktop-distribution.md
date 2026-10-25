@@ -159,9 +159,11 @@ install/reinstall/remove flow in an isolated install root, including unsigned-RP
 Installed DEB/RPM packages register their compiled channel's signed repository
 (`sesori.list` with its key, or `sesori.repo` with its key). The native fixtures
 verify those files byte for byte and require that the registered key has the
-fingerprints of the key that signed the package. Removal deletes the files.
-Failure signal: a downloaded package that never receives updates, or a second
-Sesori APT source with a different `signed-by` value.
+fingerprints of the key that signed the package checksums (and, for RPM, the package
+itself). Removal deletes the files. Failure signal: a downloaded package that never
+receives updates, or a second Sesori APT source with a different `signed-by` value.
+Expected, not a failure: `apt update` errors on the stable source only between the
+first stable release going public and its repository publication minutes later.
 Main-only native runs establish production-key access separately. These fixtures do
 not run the real application. Historical unsigned package runs remain unsigned
 proof; new tooling alone does not relabel them. Public repositories and

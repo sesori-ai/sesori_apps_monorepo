@@ -153,8 +153,8 @@ class LinuxPackagingTests(unittest.TestCase):
                 self.assertTrue(repository.startswith(f"[sesori-{channel}]\n"))
                 self.assertIn(f"baseurl=https://storage.googleapis.com/sesori-ai-linux-packages/rpm/{channel}/$basearch\n",
                               repository)
-                self.assertIn("gpgcheck=1\nrepo_gpgcheck=1\ngpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\n",
-                              repository)
+                self.assertIn("enabled=1\ngpgcheck=1\nrepo_gpgcheck=1\n"
+                              "gpgkey=file:///etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\nskip_if_unavailable=1\n", repository)
                 self.assertEqual((rpm_root / packaging.RPM_KEY).read_text(), key)
                 self.assertEqual((rpm_root / packaging.RPM_REPOSITORY).stat().st_mode & 0o777, 0o644)
         (self.root / "dart-defines.env").write_text("SESORI_DESKTOP_RELEASE_CHANNEL=beta\n")
@@ -281,7 +281,7 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertIn("%global debug_package %{nil}", spec)
         self.assertNotIn("__os_install_post", spec)
         self.assertNotRegex(spec, r"(?m)^%(pre|post|preun|postun)\b")
-        self.assertIn("/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\n/etc/yum.repos.d/sesori.repo\n", spec)
+        self.assertIn("/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\n%config(noreplace) /etc/yum.repos.d/sesori.repo\n", spec)
         self.assertEqual(evidence["dependencies"], ["libc.so.6()(64bit)"])
 
     def test_appimage_appends_pinned_runtime_and_verifies_embedded_appdir(self):

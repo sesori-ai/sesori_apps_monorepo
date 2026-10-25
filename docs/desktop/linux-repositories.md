@@ -33,13 +33,18 @@ The registration is ordinary package-owned files, which removal deletes:
   `signed-by` path would make APT reject both).
 - RPM: `/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori` and `/etc/yum.repos.d/sesori.repo`,
   with `skip_if_unavailable=1` so an unreachable Sesori repository never blocks
-  the system's other updates.
+  the system's other updates. The repo file is `%config(noreplace)`, so a user's
+  edit or disable survives upgrades.
+
+APT has no skip setting. A stable DEB installed before the stable repository's
+first publication makes `apt update` report an error for the Sesori source until
+`linux-repository.yml` publishes, a few minutes later in the same release run.
 
 The key comes from `client/desktop/linux/packaging/sesori-linux-public.asc`, a copy
 of the published key. The install fixture fails if its fingerprints differ from
-the key that signed the package. When the signing subkey is extended or rotated,
+the key that signed the package checksums (and, for RPM, the package itself). When the signing subkey is extended or rotated,
 update that file, and ship a release containing it before the old subkey expires
-(currently 2027-10-14). Installs that never receive that release cannot verify
+(currently 2027-10-13 06:51 UTC). Installs that never receive that release cannot verify
 newer repository metadata.
 
 ## Ownership and triggers

@@ -23,7 +23,7 @@ TRUSTED_PRIMARY_FINGERPRINT = "E6BF6EF7B203685F480D4A2E73B86E42F31FDAE7"
 FIXTURES = ("ubuntu-24.04", "debian-13", "fedora-44")
 FIXTURE_CHECKS = (
     "installedPayloadVerified", "signedChecksumsVerified", "boundedSystemOwnershipVerified",
-    "sameVersionReinstallVerified", "removeOwnedPathsVerified", "sharedDataPreserved",
+    "sameVersionReinstallVerified", "removeOwnedPathsVerified", "sharedDataPreserved", "repositoryKeyMatchesSigner",
 )
 
 

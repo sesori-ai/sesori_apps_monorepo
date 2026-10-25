@@ -289,7 +289,8 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
         "%prep\n\n%build\n\n%install\nmkdir -p %{buildroot}\ncp -a %{_sourcedir}/payload/. %{buildroot}/\n\n"
         "%files\n/opt/sesori-desktop\n/usr/bin/sesori-desktop\n"
         "/usr/share/applications/sesori-desktop.desktop\n/usr/share/icons/hicolor/512x512/apps/sesori-desktop.png\n"
-        + "".join(f"/{path}\n" for path in sorted(REPOSITORY_PATHS["rpm"])),
+        # A user who edits or disables the repository keeps that choice; the key always follows releases.
+        + f"/{RPM_KEY}\n%config(noreplace) /{RPM_REPOSITORY}\n",
         encoding="utf-8",
     )
     command = ["rpmbuild", "-bb", "--define", f"_topdir {top}", str(spec)]
