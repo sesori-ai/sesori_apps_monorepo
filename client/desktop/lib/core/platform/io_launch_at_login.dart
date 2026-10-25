@@ -41,7 +41,8 @@ class IoLaunchAtLogin.forTesting({
         isLinux: Platform.isLinux,
         homeDirectory: _resolveUserHomeDirectory(),
         xdgConfigHome: Platform.environment["XDG_CONFIG_HOME"]?.trim(),
-        executablePath: Platform.resolvedExecutable,
+        // An AppImage runs from a transient mount; autostart must relaunch the image file itself.
+        executablePath: Platform.environment["APPIMAGE"] ?? Platform.resolvedExecutable,
         windowsValueReader: _readWindowsRegistryValue,
         runProcess: ({required String executable, required List<String> arguments}) =>
             Process.run(executable, arguments),

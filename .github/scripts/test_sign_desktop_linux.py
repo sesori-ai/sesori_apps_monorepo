@@ -21,10 +21,10 @@ WORKFLOW = Path(__file__).resolve().parents[1] / "workflows/desktop-qualificatio
 
 
 def packages(*, root: Path, rpm: bytes = b"rpm fixture") -> None:
-    for package_format, contents in (("deb", b"deb fixture"), ("rpm", rpm)):
+    for package_format, contents in (("deb", b"deb fixture"), ("rpm", rpm), ("appimage", b"AppImage fixture")):
         directory = root / package_format
         directory.mkdir(parents=True)
-        path = directory / f"Sesori-linux-x64-9.8.7-42.{package_format}"
+        path = directory / f"Sesori-linux-x64-9.8.7-42.{signing.PACKAGE_EXTENSIONS[package_format]}"
         path.write_bytes(contents)
         (directory / "packaging.json").write_text(json.dumps({
             "format": package_format, "bundle": {"identity": IDENTITY},
@@ -44,7 +44,8 @@ class LinuxSigningTests(unittest.TestCase):
     def test_package_bytes_and_matching_identity_required(self):
         identity, paths = signing.load_packages(root=self.root)
         self.assertEqual(identity, IDENTITY)
-        self.assertEqual(len(paths), 2)
+        self.assertEqual([path.name for path, _ in paths], [
+            "Sesori-linux-x64-9.8.7-42.deb", "Sesori-linux-x64-9.8.7-42.rpm", "Sesori-linux-x64-9.8.7-42.AppImage"])
         paths[0][0].write_bytes(b"tampered")
         with self.assertRaisesRegex(ValueError, "differs from qualified evidence"):
             signing.load_packages(root=self.root)
@@ -178,6 +179,7 @@ class LinuxSigningTests(unittest.TestCase):
         upload = linux.split("      - name: Upload private signed packages\n", 1)[1].split("      - name:", 1)[0]
         self.assertIn("/signed/*.rpm", upload)
         self.assertIn("/signed/*.deb", upload)
+        self.assertIn("/signed/*.AppImage", upload)
         self.assertNotIn("packaging/deb/*.deb", upload)
         self.assertNotIn("private", upload.split("          path:", 1)[1])
 
@@ -238,12 +240,12 @@ class LinuxSigningIntegrationTests(unittest.TestCase):
         self.assertEqual(report["identity"], IDENTITY)
         self.assertEqual(report["signerFingerprint"], self.fingerprint)
         self.assertEqual({p.name for p in self.output.iterdir()}, {
-            "Sesori-linux-x64-9.8.7-42.deb", "Sesori-linux-x64-9.8.7-42.rpm",
+            "Sesori-linux-x64-9.8.7-42.deb", "Sesori-linux-x64-9.8.7-42.rpm", "Sesori-linux-x64-9.8.7-42.AppImage",
             signing.PUBLIC_KEY, signing.CHECKSUMS, f"{signing.CHECKSUMS}.asc", "signing.json",
         })
         for artifact in report["artifacts"]:
             self.assertEqual(signing.sha256(path=self.output / artifact["name"]), artifact["sha256"])
-            original = self.input / Path(artifact["name"]).suffix[1:] / artifact["name"]
+            original = self.input / Path(artifact["name"]).suffix[1:].lower() / artifact["name"]
             self.assertEqual(signing.sha256(path=original), artifact["unsignedSha256"])
         deb = self.output / "Sesori-linux-x64-9.8.7-42.deb"
         self.assertEqual(deb.read_bytes(), b"deb fixture")

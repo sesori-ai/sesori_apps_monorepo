@@ -12,8 +12,10 @@ The website preserves all eight macOS/Windows channel/CPU anchors and `linux-pac
 plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors. Every generated app fragment
 lands on its own section; Linux preview navigation opens its channel and platform.
 The repository download document is a content/anchor specification, not an alternate
-user-facing destination. Source builds show development guidance; Linux shows
-package-manager guidance.
+user-facing destination. Source builds show development guidance; Linux packages show
+package-manager guidance. A Linux AppImage (the runtime sets `APPIMAGE`) instead links its
+`<channel>-linux-<x64|arm64>-appimage` manual-download section; website anchors for it land
+with the website step.
 
 The deployed website resolves completed public macOS stable/internal and Linux internal
 releases independently. It follows all release pages on the fixed GitHub repository
@@ -41,7 +43,8 @@ macOS and Windows use manual signed packages. Users Quit normally before replaci
 or installing, then reopen manually. Closing a tray-backed window is not Quit.
 Failed helper stop retains the existing refusal to Quit. Nothing in the download
 action stops a helper, installs, changes bridge intent or automatically relaunches.
-Linux upgrades remain package-manager-owned. Shared CLI data is not update cleanup.
+Linux DEB/RPM upgrades remain package-manager-owned; AppImages are replaced manually like
+macOS and Windows packages. Shared CLI data is not update cleanup.
 
 ## Client storage boundary
 
@@ -103,6 +106,16 @@ Flutter GTK embedder itself, which dlopens EGL and GLES through libepoxy: DEBs a
 depend on `libegl1, libgles2`, and RPMs require `libEGL.so.1()(64bit)` and
 `libGLESv2.so.2()(64bit)`. Without them the app aborts at first frame on clean Debian 13
 and Fedora 44 with `Couldn't open libEGL.so.1` / `libGLESv2.so.2`.
+
+The same job also builds a portable `Sesori-linux-<arch>-<version>-<build>.AppImage` from the
+unchanged bundle: an AppDir whose `AppRun` symlinks the GUI binary, plus a desktop entry and
+icon, packed as a root-owned zstd squashfs behind the static AppImage type2 runtime `20251108`.
+Each CPU's runtime is pinned by SHA-256; a mismatched download refuses. The image is read back
+with `unsquashfs -offset` and must match the assembled AppDir exactly; packaging never executes
+it. The AppImage is unchanged by signing and covered only by the signed checksums. It needs
+host GTK 3, libsecret, EGL/GLES and glibc 2.39 or newer (the Ubuntu 24.04 build host), plus FUSE
+or `--appimage-extract-and-run`. It installs no menu entry, and launch at login autostarts the
+image file named by `APPIMAGE`, not its transient mount. Repositories serve only the DEB/RPM rows.
 
 Native Ubuntu 24.04 and Debian 13 containers install, same-version reinstall and
 remove the DEB. Their official multi-architecture base-image indexes are pinned, as is

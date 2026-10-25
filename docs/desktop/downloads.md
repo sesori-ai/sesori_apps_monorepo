@@ -136,6 +136,13 @@ RPMs have native signatures; DEBs are covered by signed checksums. Package fixtu
 cover Ubuntu 24.04, Debian 13 and Fedora 44, not GUI/login/keyring/tray behavior or a
 real N→N+1 upgrade. Those gaps are accepted only for internal previews.
 
+Each Linux producer also signs a portable `Sesori-linux-<arch>-<version>-<build>.AppImage`,
+covered by the same signed checksums. It needs host GTK 3, libsecret, EGL/GLES and glibc 2.39
+or newer, plus FUSE or `--appimage-extract-and-run`. Mark it executable and run it; replace
+it by downloading the new image after quitting Sesori. Its app destination is
+`<channel>-linux-<x64|arm64>-appimage`; the website adds those anchors before AppImages are
+offered.
+
 Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to the
 unchanged `linux-package-managers` app destination. Each available row links the
 experimental limitations note; direct links must not bypass disclosure.

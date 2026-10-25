@@ -251,6 +251,69 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertNotRegex(spec, r"(?m)^%(pre|post|preun|postun)\b")
         self.assertEqual(evidence["dependencies"], ["libc.so.6()(64bit)"])
 
+    def test_appimage_appends_pinned_runtime_and_verifies_embedded_appdir(self):
+        app_root = self.root / "appdir"
+        packaging.assemble_appdir(bundle=self.bundle, root=app_root)
+        self.assertEqual(packaging.os.readlink(app_root / "AppRun"), "sesori_desktop")
+        self.assertEqual(packaging.os.readlink(app_root / ".DirIcon"), "sesori-desktop.png")
+        self.assertIn("Exec=sesori_desktop\n", (app_root / "sesori-desktop.desktop").read_text())
+        work, output = self.root / "appimage work", self.root / "appimage output"
+        work.mkdir()
+        output.mkdir()
+        runtime = b"\x7fELF runtime"
+        digest = packaging.hashlib.sha256(runtime).hexdigest()
+        commands = []
+
+        def fake_run(*, command, cwd, env=None):
+            commands.append(command)
+            if command[0] == "mksquashfs":
+                Path(command[2]).write_bytes(b"hsqs")
+            elif "-d" in command:
+                self.assertEqual(Path(command[-1]).read_bytes(), runtime + b"hsqs")
+                packaging.shutil.copytree(app_root, command[command.index("-d") + 1], symlinks=True)
+            return "squashfs-root/AppRun\n"
+
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = runtime
+        with mock.patch.dict(packaging.APPIMAGE_RUNTIMES, {"x64": ("runtime-x86_64", digest)}), mock.patch.object(
+            packaging.urllib.request, "urlopen", return_value=response
+        ), mock.patch.object(packaging, "run", side_effect=fake_run):
+            artifact, evidence = packaging.build_appimage(
+                root=app_root, work=work, output=output, arch="x64",
+                identity={"version": self.version, "buildNumber": 42},
+            )
+        self.assertEqual(artifact.name, f"Sesori-linux-x64-{self.version}-42.AppImage")
+        self.assertEqual(artifact.stat().st_mode & 0o777, 0o755)
+        self.assertIn("-root-owned", commands[0])
+        self.assertTrue(all(command[1:3] == ["-offset", str(len(runtime))] for command in commands[1:]))
+        self.assertEqual(evidence["runtime"]["sha256"], digest)
+
+    def test_appimage_runtime_digest_mismatch_refuses(self):
+        response = mock.MagicMock()
+        response.__enter__.return_value.read.return_value = b"tampered"
+        with mock.patch.object(packaging.urllib.request, "urlopen", return_value=response), \
+                self.assertRaisesRegex(ValueError, "digest mismatch"):
+            packaging.appimage_runtime(arch="arm64", work=self.root)
+
+    def test_appimage_squashfs_mismatch_refuses(self):
+        app_root = self.root / "appdir"
+        packaging.assemble_appdir(bundle=self.bundle, root=app_root)
+        runtime = self.root / "runtime"
+        runtime.write_bytes(b"runtime")
+
+        def fake_run(*, command, cwd, env=None):
+            if command[0] == "mksquashfs":
+                Path(command[2]).write_bytes(b"hsqs")
+            elif "-d" in command:
+                Path(command[command.index("-d") + 1]).mkdir()
+            return ""
+
+        with mock.patch.object(packaging, "appimage_runtime", return_value=runtime), mock.patch.object(
+            packaging, "run", side_effect=fake_run
+        ), self.assertRaisesRegex(ValueError, "does not match"):
+            packaging.build_appimage(root=app_root, work=self.root, output=self.root, arch="x64",
+                                     identity={"version": self.version, "buildNumber": 42})
+
     def test_existing_output_refuses_before_tools_or_payload_changes(self):
         output = self.root / "existing"
         output.mkdir()

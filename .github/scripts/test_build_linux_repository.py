@@ -72,9 +72,11 @@ class LinuxRepositoryTests(unittest.TestCase):
             payload = deb_root / "opt/sesori-desktop/fixture.txt"
             payload.parent.mkdir(parents=True)
             payload.write_text(str(number))
-            for kind in ("deb", "rpm"):
+            for kind in signing.PACKAGE_EXTENSIONS:
                 (work / kind).mkdir()
             name = f"Sesori-linux-{arch}-9.8.7-{number}"
+            # Repositories ignore the portable download, but the signed release always carries it.
+            (work / "appimage" / f"{name}.AppImage").write_bytes(b"inert AppImage fixture")
             keys.run(command=["dpkg-deb", "--root-owner-group", "--build", str(deb_root),
                               str(work / "deb" / f"{name}.deb")], env=cls.env)
             spec = work / "fixture.spec"
@@ -93,8 +95,8 @@ class LinuxRepositoryTests(unittest.TestCase):
             shutil.copyfile(next((work / "rpmbuild/RPMS").rglob("*.rpm")), work / "rpm" / f"{name}.rpm")
             identity = {"os": "linux", "architecture": arch, "version": "9.8.7",
                         "buildNumber": number, "sourceSha": "b" * 40}
-            for kind in ("deb", "rpm"):
-                package = work / kind / f"{name}.{kind}"
+            for kind, extension in signing.PACKAGE_EXTENSIONS.items():
+                package = work / kind / f"{name}.{extension}"
                 (work / kind / "packaging.json").write_text(json.dumps({
                     "format": kind, "bundle": {"identity": identity},
                     "package": {"name": package.name, "sha256": keys.sha256(path=package),
@@ -105,7 +107,9 @@ class LinuxRepositoryTests(unittest.TestCase):
                 report = signing.sign_packages(root=work, output=signed, fingerprint=cls.fingerprint)
             for row in report["artifacts"]:
                 shutil.copyfile(signed / row["name"], prepared / row["name"])
-                artifacts.append({**row, "architecture": arch, "format": Path(row["name"]).suffix[1:]})
+                kind = next(kind for kind, extension in signing.PACKAGE_EXTENSIONS.items()
+                            if row["name"].endswith(f".{extension}"))
+                artifacts.append({**row, "architecture": arch, "format": kind})
             for suffix in ("", ".asc"):
                 shutil.copyfile(signed / (signing.CHECKSUMS + suffix),
                                 prepared / f"desktop-linux-{arch}-checksums.txt{suffix}")
