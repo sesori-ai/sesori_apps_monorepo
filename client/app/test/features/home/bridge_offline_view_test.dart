@@ -124,7 +124,7 @@ void main() {
   }
 
   group("the computer's name", () {
-    testWidgets("is in the bridge line and in the heading below it", (tester) async {
+    testWidgets("is in the heading and the bar's computer button", (tester) async {
       when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer(
         (_) async => [_bridge(id: "a", name: "Macbook-Pro.local", lastSeenAt: DateTime.utc(2026, 7, 1))],
       );
@@ -132,9 +132,10 @@ void main() {
       await pumpScreen(tester);
 
       expect(find.text("Bridge offline"), findsNothing);
+      expect(find.text("Macbook-Pro.local is offline"), findsOneWidget);
       expect(
-        tester.getTopLeft(find.text("Macbook-Pro.local")).dy,
-        lessThan(tester.getTopLeft(find.text("Macbook-Pro.local is offline")).dy),
+        tester.widget<PregoButtonsIconGlass>(find.byKey(const Key("home-computer"))).semanticLabel,
+        "Computer: Macbook-Pro.local, offline",
       );
     });
   });

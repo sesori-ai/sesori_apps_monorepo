@@ -15,14 +15,14 @@ import "../../helpers/test_helpers.dart";
 
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
 
-/// The home's title, which is the same large title on every state: the page
-/// title over a subtitle row naming the machine this account is paired with.
-/// The bodies join the scaffold's page scroll rather than nesting one of their
-/// own.
+/// The home's title, which is the same large title on every state, alone under
+/// the bar: the computer this account is paired with is a button in the bar,
+/// between New session and Archived. The bodies join the scaffold's page scroll
+/// rather than nesting one of their own.
 ///
-/// The two disconnected surfaces are the exception in what that subtitle says:
-/// the connect-your-computer onboarding has no machine to name yet, so its row
-/// reports what the setup checklist is waiting for.
+/// The button holds its place in every state. Until the computer is named it
+/// takes no taps; once named, its label names the computer and its state, and
+/// it opens the computer menu.
 void main() {
   const config = ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: null);
   const health = HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false);
@@ -114,7 +114,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets("the bridge-offline page keeps the large title over the machine", (tester) async {
+  final computerButton = find.byKey(const Key("home-computer"));
+
+  /// The bar's computer button, whose callback is null while it takes no taps.
+  PregoButtonsIconGlass computerButtonOf(WidgetTester tester) => tester.widget<PregoButtonsIconGlass>(computerButton);
+
+  /// Nothing sits under the title: no computer line and no skeleton for one.
+  void expectNoComputerLine() {
+    expect(find.byType(PregoNavSubtitle), findsNothing);
+    expect(find.byType(PregoNavSubtitleSkeleton), findsNothing);
+  }
+
+  testWidgets("the bridge-offline page keeps the large title alone, the computer in the bar", (tester) async {
     await pumpScreen(
       tester,
       hasRegisteredBridges: true,
@@ -134,13 +145,16 @@ void main() {
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
-    // A top-level page: the large title carries the machine the body is trying
-    // to reach as its second line.
+    // A top-level page: the large title is the only control under the bar.
     expect(largeTitle("All projects"), findsOneWidget);
     expect(find.byType(PregoNavLeadingTitle), findsNothing);
-    // The bridge line is the only place that names the machine.
-    expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
-    expect(find.text("Macbook-Pro.local"), findsOneWidget);
+    expectNoComputerLine();
+    // The bar's button names the machine the body is trying to reach, with the
+    // disconnected pages' state.
+    final semantics = tester.ensureSemantics();
+    expect(find.bySemanticsLabel("Computer: Macbook-Pro.local, offline"), findsOneWidget);
+    semantics.dispose();
+    expect(computerButtonOf(tester).onPressed, isNotNull);
 
     // The body scrolls up with the title.
     final bodyBefore = tester.getTopLeft(find.text("Make sure the Bridge is running")).dy;
@@ -148,7 +162,9 @@ void main() {
     expect(tester.getTopLeft(find.text("Make sure the Bridge is running")).dy, lessThan(bodyBefore));
   });
 
-  testWidgets("the machine row opens the computer menu, which switches computers", (tester) async {
+  testWidgets("the computer button sits before Archived and opens the computer menu, which switches", (
+    tester,
+  ) async {
     final dispatcher = _MockComputerSwitchDispatcher();
     when(
       () => dispatcher.switchTo(
@@ -179,21 +195,29 @@ void main() {
     ];
     mockRegisteredBridgesService.emitBridges(bridges: bridges);
     await pumpScreen(tester, hasRegisteredBridges: true, bridges: bridges);
-    expect(
-      find.descendant(of: find.byType(PregoNavSubtitle), matching: find.byIcon(TablerRegular.chevron_down)),
-      findsOneWidget,
-    );
+    expectNoComputerLine();
+    // The wide sidebar footer's order: New session, computer, Archived.
+    final buttonX = tester.getCenter(computerButton).dx;
+    expect(buttonX, greaterThan(tester.getCenter(find.byKey(const Key("home-new-session"))).dx));
+    expect(buttonX, lessThan(tester.getCenter(find.byKey(const Key("home-archived"))).dx));
 
-    // Picking the current computer only closes the menu.
-    await tester.tap(find.text("Macbook-Pro.local"));
+    // The menu leads with the current computer, which the button does not name.
+    await tester.tap(computerButton);
     await tester.pumpAndSettle();
     expect(find.text("Online"), findsOneWidget);
+    expect(
+      tester.getTopLeft(find.text("Macbook-Pro.local")).dy,
+      lessThan(tester.getTopLeft(find.text("work-desktop")).dy),
+    );
+    expect(find.text("Manage computers…"), findsOneWidget);
+
+    // Picking the current computer only closes the menu.
     await tester.tap(find.text("Online"));
     await tester.pumpAndSettle();
     expect(find.text("Online"), findsNothing);
 
     // Picking another computer switches to it.
-    await tester.tap(find.text("Macbook-Pro.local"));
+    await tester.tap(computerButton);
     await tester.pumpAndSettle();
     await tester.tap(find.text("work-desktop"));
     await tester.pumpAndSettle();
@@ -201,18 +225,22 @@ void main() {
     verifyNever(() => dispatcher.switchTo(bridgeId: "a", source: ComputerSwitchSource.menu));
   });
 
-  testWidgets("the connect onboarding keeps the large title over what it waits for", (tester) async {
+  testWidgets("the connect onboarding keeps the large title alone, with a computer button that waits", (
+    tester,
+  ) async {
     await pumpScreen(tester, hasRegisteredBridges: false);
     // Still one page scroll owned by the scaffold, as on the offline body.
     expect(find.byType(CustomScrollView), findsOneWidget);
     expect(find.byType(SingleChildScrollView), findsNothing);
 
-    // The status row under the large title reports what the body is waiting
-    // for, and the body's own caption is the only other copy of the text.
+    // The body's own caption is the one place that says what setup waits for.
     expect(largeTitle("All projects"), findsOneWidget);
     expect(find.byType(PregoNavLeadingTitle), findsNothing);
-    expect(find.byIcon(TablerRegular.broadcast_off), findsOneWidget);
-    expect(find.text("Waiting for the bridge..."), findsNWidgets(2));
+    expectNoComputerLine();
+    expect(find.text("Waiting for the bridge..."), findsOneWidget);
+    // No computer to name yet, so the button holds its place without taps.
+    expect(computerButtonOf(tester).onPressed, isNull);
+    expect(computerButtonOf(tester).semanticLabel, "Computer");
   });
 
   testWidgets("pulling the disconnected page down re-attempts the bridge connection", (tester) async {
@@ -269,8 +297,8 @@ void main() {
     /// Frames enough to carry both cubits' await chains — the connection check,
     /// the list fetch, the registered-bridge latch and the bridge lookup —
     /// through to a rebuilt bar. Deliberately not [WidgetTester.pumpAndSettle]:
-    /// the subtitle skeleton's sheen sweeps forever, so a settle would never
-    /// return while the row is still waiting for its name.
+    /// the loading list's skeleton sheen sweeps forever, so a settle would never
+    /// return while the page is still waiting.
     Future<void> drainFrames(WidgetTester tester) async {
       for (var i = 0; i < 6; i++) {
         await tester.pump();
@@ -299,22 +327,20 @@ void main() {
       addTearDown(() => tester.pumpWidget(const SizedBox.shrink()));
     }
 
-    testWidgets("the loaded list carries the large title over the machine name", (tester) async {
+    testWidgets("the loaded list carries the large title alone, the computer online in the bar", (tester) async {
       await pumpConnected(tester, list: Future.value(oneProject()), lookup: Future.value([macbook]));
 
       expect(largeTitle("All projects"), findsOneWidget);
       expect(find.byType(PregoNavLeadingTitle), findsNothing);
-      expect(find.text("Macbook-Pro.local"), findsOneWidget);
-      expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
-      // Reachable, so the row's dot reads as online rather than carrying the
-      // disconnected surfaces' error dot.
-      expect(
-        tester.widget<PregoNavSubtitle>(find.byType(PregoNavSubtitle)).status,
-        PregoNavStatus.online,
-      );
+      expectNoComputerLine();
+      expect(find.text("Macbook-Pro.local"), findsNothing);
+      // Reachable, so the button reads as online rather than carrying the
+      // disconnected surfaces' offline state.
+      expect(computerButtonOf(tester).semanticLabel, "Computer: Macbook-Pro.local, online");
+      expect(computerButtonOf(tester).onPressed, isNotNull);
     });
 
-    testWidgets("the loading page wears the same title, shimmering the machine it cannot name yet", (tester) async {
+    testWidgets("while loading, the computer button holds its place without taps", (tester) async {
       // Neither answer arrives: the page stays on its first load with nothing to
       // name yet.
       await pumpConnected(
@@ -324,35 +350,34 @@ void main() {
       );
 
       expect(largeTitle("All projects"), findsOneWidget);
-      // The row is held by its skeleton rather than left out, so the block keeps
-      // the height it will have once the name lands.
-      expect(find.byType(PregoNavSubtitleSkeleton), findsOneWidget);
-      expect(find.byType(PregoNavSubtitle), findsNothing);
+      expectNoComputerLine();
+      expect(computerButtonOf(tester).onPressed, isNull);
+      expect(computerButtonOf(tester).semanticLabel, "Computer");
     });
 
-    testWidgets("the machine name lands in the space its skeleton was holding", (tester) async {
+    testWidgets("the computer's name lands without moving the title or the bar", (tester) async {
       final lookupGate = Completer<List<BridgeSummary>>();
 
       await pumpConnected(tester, list: Future.value(oneProject()), lookup: lookupGate.future);
-      expect(find.byType(PregoNavSubtitleSkeleton), findsOneWidget);
-      final titleWhileShimmering = tester.getTopLeft(find.text("All projects"));
+      expect(computerButtonOf(tester).onPressed, isNull);
+      final titleWhileWaiting = tester.getTopLeft(find.text("All projects"));
+      final buttonWhileWaiting = tester.getTopLeft(computerButton);
 
       lookupGate.complete([macbook]);
       await drainFrames(tester);
 
-      expect(find.byType(PregoNavSubtitleSkeleton), findsNothing);
-      expect(find.text("Macbook-Pro.local"), findsOneWidget);
-      // The point of the skeleton: the title above it does not move when the
-      // real row replaces it.
-      expect(tester.getTopLeft(find.text("All projects")), titleWhileShimmering);
+      expect(computerButtonOf(tester).onPressed, isNotNull);
+      expect(computerButtonOf(tester).semanticLabel, "Computer: Macbook-Pro.local, online");
+      expect(tester.getTopLeft(find.text("All projects")), titleWhileWaiting);
+      expect(tester.getTopLeft(computerButton), buttonWhileWaiting);
     });
 
-    testWidgets("a lookup with no machine to name drops the row for good", (tester) async {
+    testWidgets("a lookup with no machine to name leaves the button without taps", (tester) async {
       // An empty answer is the service's fail-soft shape, not an error.
       await pumpConnected(tester, list: Future.value(oneProject()), lookup: Future.value(const []));
 
-      expect(find.byType(PregoNavSubtitleSkeleton), findsNothing);
-      expect(find.byType(PregoNavSubtitle), findsNothing);
+      expectNoComputerLine();
+      expect(computerButtonOf(tester).onPressed, isNull);
       expect(find.text("All projects"), findsOneWidget);
     });
   });

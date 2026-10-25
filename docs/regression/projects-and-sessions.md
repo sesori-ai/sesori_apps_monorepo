@@ -235,7 +235,7 @@ state.
   led by "All projects" and then the known projects. Picking a project narrows the list to it: the title takes
   its name, rows stop naming the project, and an empty result names the project. "All projects" restores the
   whole list. This is the filter Archived shares; it resets on restart, on a computer switch, and when its project
-  leaves the list. The header holds New session, Archived and Settings. New session opens in the filtered
+  leaves the list. The header holds New session, the computer button, Archived and Settings. New session opens in the filtered
   project, else the project of the newest session, else asks for a project
   ([session creation](session-creation-and-options.md)); Archived opens under the current filter. A pull refreshes
   every project and imports, as above. Until the project list loads the home shows a skeleton, a failed project
@@ -256,19 +256,24 @@ state.
 - However a phone session is reached, from the home or a notification, Android back (edge gesture or
   button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
   holds for sheets over harness settings and archived sessions.
-- On the phone, only the top-level home and Settings pages show a large 36 bold title. Under the home's
-  title, a status row names the computer the app works on, holds a skeleton while the name loads, and says what
-  onboarding waits for before any bridge is registered. The row is left out when the lookup finds no computer to
-  name.
+- On the phone, only the top-level home and Settings pages show a large 36 bold title. The home's title stands
+  alone, with no computer line under it; the computer is a round glass button in the bar, after New session and
+  before Archived and Settings. A small dot in its corner reports the same state the wide sidebar footer's row
+  does (green online, grey connecting, red offline), crossfading as it changes, and its label names the computer
+  and that state ("Computer: Studio Mac, online"), shown as a tooltip under a pointer. Until a computer is named
+  (while the name loads, during onboarding, or when the lookup finds none) the button holds its place with no
+  dot and takes no taps, so the bar never shifts.
   Every other page, File Changes included, shows an 18 bold bar title, with a 12 tertiary subtitle when the
   page has one. A two-line bar title caps its text scale so it stays inside the bar; a title on its own scales
   fully.
-- A named home status row ends in a chevron and opens an anchored computer menu below it (the title above it
-  is the project filter). The menu lists the account's computers, most recently seen first, each with its platform icon,
-  name, and "Online", "Offline · last seen …" or "Offline", and checks the current one (before any target is
-  known, the first one, which the relay serves). Picking the current computer only closes the menu. Picking
-  another closes it, returns to the home with the filter back on "All projects", shows the loading skeleton under
-  the new name, and loads that computer's projects as a first load does, with no rows from the previous computer.
+- The phone home's computer button opens an anchored computer menu below it, also with a single computer (the
+  title is the project filter). The menu lists the account's computers, each with its platform icon, name, and
+  "Online", "Offline · last seen …" or "Offline", and checks the current one (before any target is known, the
+  first one, which the relay serves). From the button, which does not name it, the current computer leads the
+  menu and the rest follow most recently seen first; from a row that names it, every computer keeps that order.
+  Picking the current computer only closes the menu. Picking
+  another closes it, returns to the home with the filter back on "All projects", shows the loading skeleton,
+  and loads that computer's projects as a first load does, with no rows from the previous computer.
   Each switch reports
   `computer_switched` with its `source` (`menu` here) and whether the target was online. A computer's online
   status in the menu, the offline card and Settings follows the relay's presence notices live, and that same

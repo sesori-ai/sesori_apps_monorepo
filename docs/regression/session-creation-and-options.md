@@ -15,8 +15,8 @@ variant, and worktree mode, and creating the session with its first input.
 - The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
   project: the filtered project, else the project of the newest session. With no default it opens a "New
   session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
-  selected and lists the known projects under "Open another folder…"; with no projects it offers only that
-  entry. Choosing one replaces the page with that project's setup page.
+  selected, with "Open another folder…" above its search and the known projects below; with no projects it
+  offers only that action. Choosing one replaces the page with that project's setup page.
 - The desktop home shows the setup composer in place, in the same default project: the sidebar list's filter,
   else the newest session's project. The project holds once it lands, so a newer session elsewhere never moves
   a draft; another filter moves it. While the list is still loading the pane waits blank. With no default it
@@ -29,9 +29,13 @@ variant, and worktree mode, and creating the session with its first input.
   anchored to the selector on wider layouts, the iPad and desktop. Under touch, the sheet and the popover
   open with the keyboard down; tapping the search field raises it, and the sheet and its field stay still
   while the list shortens above the keyboard. Under a pointer the search takes focus as the popover opens, so typing
-  filters at once. The home's title switcher is the same picker. "Open another folder…" leads the picker whatever the
-  search, so it is there with one project, with none, and when the search matches nothing ("No projects
-  match"). It closes the picker, opens the folder browser, and selects the project the browser adds.
+  filters at once. The home's title switcher is the same picker. When the picker chooses a project rather than
+  a filter, "Open another folder…" is a brand-coloured action pinned above the search field, set off by a
+  hairline; the search filters only the projects below, so the action is there with one project, with none,
+  and when the search matches nothing ("No projects match"). Under a pointer it has a hover state, the
+  keyboard highlight starts on the first matching project, Up from there reaches the action, and Enter opens
+  it when nothing matches. It closes the picker, opens the folder browser once the picker has closed, and
+  selects the project the browser adds.
   Search matches project names and paths; a path shows under a name only when another project shares that
   name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
   project's setup page, so a session is never created in the project that was left, and a draft stays with
@@ -535,7 +539,8 @@ startup-extension file failure, retry once the filesystem is usable.
 - A picker opens as a full-screen sheet, detaches from its button, crosses the
   window edge, or grows past its height cap; on desktop, typing does not reach
   the search, the arrows land on a heading, or Esc applies a choice.
-- The project picker hides "Open another folder…" behind a search, lists a
+- The project picker hides "Open another folder…" behind a search or lists it
+  among the projects, lets Enter after a search open it over a match, lists a
   project the search does not match, shows paths under names nobody shares,
   raises the keyboard as it opens under touch, leaves its search field behind
   the phone keyboard once tapped, moves its header or search field as the

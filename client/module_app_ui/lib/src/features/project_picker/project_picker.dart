@@ -18,11 +18,12 @@ typedef NewSessionProjectSelected = void Function({required String projectId, re
 /// layouts and under a pointer. Under touch the search waits for a tap, so the
 /// keyboard stays down until the user wants it.
 ///
-/// Choosing a new session's project, "Open another folder…" leads whatever the
-/// search, so it is there with one project, with none, and when nothing
-/// matches. It opens the folder browser and then selects the project that adds.
-/// Filtering a list instead ([onAllProjects] set), "All projects" leads. A path
-/// shows only under a name another project shares.
+/// Choosing a new session's project, "Open another folder…" is an action
+/// pinned above the search, which filters only the projects, so it is there
+/// with one project, with none, and when nothing matches. It opens the folder
+/// browser and then selects the project that adds. Filtering a list instead
+/// ([onAllProjects] set), "All projects" leads the list. A path shows only
+/// under a name another project shares.
 class const ProjectPicker({
   super.key,
 
@@ -30,8 +31,8 @@ class const ProjectPicker({
   required final String? selectedProjectId,
   required final NewSessionProjectSelected onSelected,
 
-  /// Clears a list's filter. Set, the picker filters: "All projects" leads in
-  /// place of "Open another folder…".
+  /// Clears a list's filter. Set, the picker filters: "All projects" leads the
+  /// list, and "Open another folder…" is left out.
   required final VoidCallback? onAllProjects,
 
   /// Builds the trigger; the callback opens the picker.
@@ -144,17 +145,6 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
             if (widget.selectedProjectId != null) onAllProjects();
           },
           child: _PickerRow(icon: TablerRegular.folders, title: loc.projectPickerAllProjects, detail: null),
-        )
-      else
-        PregoPickerSearchOption(
-          isSelected: false,
-          onPick: () {
-            final route = ModalRoute.of(context);
-            widget.onClose();
-            // A popped route completes only once its closing animation ends.
-            unawaited(route?.completed.then((_) => widget.onOpenFolder()));
-          },
-          child: _PickerRow(icon: TablerRegular.folder_plus, title: loc.projectPickerOpenFolder, detail: null),
         ),
       if (matches.isEmpty && query.isNotEmpty) PregoPickerSearchNote(text: loc.projectPickerNoMatches),
       for (final project in matches)
@@ -190,9 +180,46 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
         _query = query;
         _rows = _buildRows();
       }),
+      // An action rather than a project, so the search leaves it alone.
+      header: widget.onAllProjects == null
+          ? PregoPickerSearchOption(
+              isSelected: false,
+              onPick: () {
+                final route = ModalRoute.of(context);
+                widget.onClose();
+                // A popped route completes only once its closing animation ends.
+                unawaited(route?.completed.then((_) => widget.onOpenFolder()));
+              },
+              child: const _OpenFolderRow(),
+            )
+          : null,
       rows: rows,
       emptyText: null,
       onClose: widget.onClose,
+    );
+  }
+}
+
+/// "Open another folder…", in the brand colour of an action rather than the
+/// greys of the projects under it.
+class const _OpenFolderRow() extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    final color = prego.colors.textBrandSecondary;
+    return Row(
+      spacing: PregoSpacing.md,
+      children: [
+        Icon(TablerRegular.folder_plus, size: PregoIconSize.sm, color: color),
+        Expanded(
+          child: Text(
+            context.loc.projectPickerOpenFolder,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: prego.textTheme.textSm.medium.copyWith(color: color),
+          ),
+        ),
+      ],
     );
   }
 }

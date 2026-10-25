@@ -24,9 +24,11 @@ area documents linked below own the detail.
   in as a first load does, with no rows from the previous computer. Each switch reports `computer_switched` with its `source` (`menu`, `offline_screen`,
   `settings`, `computers_page`, `alert`, `notification`) and whether the target was online, never a name or id
   ([analytics](analytics.md)). Picking the current computer in a menu only closes the menu.
-- **Computer menu.** The home's status row names the target computer, ends in a chevron, and opens an anchored
-  menu listing every computer of the account, most recently seen first, with platform icon, name, online or
-  last-seen state, and a check on the current one ([projects and sessions](projects-and-sessions.md)). From the
+- **Computer menu.** The phone home's computer button, whose label and status dot name the target computer and
+  its state, and the wide sidebar footer's row, which names it and ends in a chevron, open an anchored menu
+  listing every computer of the account, most recently seen first (from the button, the current one first),
+  with platform icon, name, online or last-seen state, and a check on the current one
+  ([projects and sessions](projects-and-sessions.md)). From the
   Settings entry and the desktop header, and from the home while the account has more than one computer, the menu
   ends in "Manage computers…" after a divider, which closes the menu and opens the Computers page; the offline
   card's menu has no such footer.
