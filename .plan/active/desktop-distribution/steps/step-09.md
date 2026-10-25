@@ -198,12 +198,20 @@ helper On/Off restoration, completed temporary-bridge cleanup and
   on both helper-On launches and completed temporary-bridge cleanup. x64 failed in its
   first launch. Cleanup then raced the helper's SIGTERM shutdown, so its probe saw a live
   helper; the receipt reported `current-cleanup`/`ValueError` and hid the original
-  phase. Cleanup now waits for the helper to exit. That x64 run's temporary bridge was not
-  unregistered. Rerun the authenticated mode on main to qualify x64.
-- Authenticated first-run registration: the fixture now leaves bridge intent unset, so
-  the signed GUI's own first-run defaults admit On and write the login registration.
-  Every helper-On launch checks those bytes. The next main-only authenticated run
-  confirms this.
+  phase. Cleanup now waits for the helper to exit (#2036). That x64 run's temporary bridge
+  was not unregistered and remains on the QA account.
+- **Accepted authenticated gate.** Rerun `40155039475` (167 → 203) passed on both CPUs:
+  `signedLoginRegistration` on both helper-On launches, `temporaryBridgeCleanupCompleted`
+  and `productSourceChanged=true`. The fixture leaves bridge intent unset, so this is the
+  signed GUI's own first-run login registration. 11.i.c.b is accepted.
+
+**11.i.d.a — portable AppImages.** Every `linux-packaging` producer now also builds,
+signs (checksums only) and publishes `Sesori-linux-<arch>-<version>-<build>.AppImage`; see
+the regression document. A local arm64 Ubuntu 24.04 smoke built one from signed 194, which
+`--appimage-extract` accepted and which stayed running under Xvfb for 15 s. Producers
+from before this change lack the AppImage and can no longer be prepared; build a fresh
+pair. 11.i.d.b adds Arch rows (x64 official image, ARM64 the community Arch Linux ARM
+port) for launch, keyring, tray, Quit and persistence across replacement.
 
 No host, signing-policy, publication or installed-Mac change is authorized by this
 tooling. Stable stays closed.

@@ -12,7 +12,7 @@ import tempfile
 from github_release_assets import github, public_sha256
 from prepare_desktop_release import ARCHITECTURES, read_json, require, require_producer, sha256
 from qualify_desktop import CPU_NAMES
-from sign_desktop_linux import CHECKSUMS, PUBLIC_KEY
+from sign_desktop_linux import CHECKSUMS, PACKAGE_EXTENSIONS, PUBLIC_KEY
 
 MANIFEST = "desktop-linux-release.json"
 PUBLIC_DESKTOP_KEY = "desktop-linux-public.asc"
@@ -80,21 +80,22 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
                 f"{TRUSTED_PRIMARY_FINGERPRINT}")
         require(signed["checksumFile"] == CHECKSUMS and signed["publicKeyFile"] == PUBLIC_KEY,
                 "Unexpected signing companion files")
-        expected_names = {f"Sesori-linux-{arch}-{version}-{build_number}.{kind}" for kind in ("deb", "rpm")}
-        require(len(signed["artifacts"]) == 2 and {row["name"] for row in signed["artifacts"]} == expected_names,
-                "Expected both qualified DEB/RPM files")
+        formats = {f"Sesori-linux-{arch}-{version}-{build_number}.{extension}": kind
+                   for kind, extension in PACKAGE_EXTENSIONS.items()}
+        require(len(signed["artifacts"]) == len(formats) and {row["name"] for row in signed["artifacts"]} == set(formats),
+                "Expected every qualified DEB/RPM/AppImage file")
         checksum_rows = (line.split() for line in (packages / CHECKSUMS).read_text().splitlines())
         checksums = {name: digest for digest, name in checksum_rows}
-        require(set(checksums) == expected_names, "Unexpected signed checksum inventory")
+        require(set(checksums) == set(formats), "Unexpected signed checksum inventory")
         for row in signed["artifacts"]:
             name = row["name"]
-            kind = Path(name).suffix[1:]
+            kind = formats[name]
             unsigned = read_json(packaging / kind / "packaging.json")
             require(unsigned["bundle"]["identity"] == identity and unsigned["package"]["name"] == name
                     and unsigned["packagerSourceSha"] == source_sha, "Unsigned qualification identity differs")
             require(unsigned["package"]["sha256"] == row["unsignedSha256"], "Unsigned package evidence differs")
-            if kind == "deb":
-                require(row["unsignedSha256"] == row["sha256"], "Signing changed DEB bytes")
+            if kind != "rpm":
+                require(row["unsignedSha256"] == row["sha256"], f"Signing changed {kind} bytes")
             path = packages / name
             require(path.stat().st_size == row["bytes"] and sha256(path) == row["sha256"] == checksums[name],
                     f"Signed package digest mismatch: {name}")
@@ -126,7 +127,7 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
         "repository": repository, "packagingRun": run_id, "producerWorkflowSha": run["head_sha"],
         "preparationSourceSha": tooling_sha, "signerFingerprint": TRUSTED_PRIMARY_FINGERPRINT,
         "artifacts": artifacts, "verificationFiles": verification,
-        "proofBoundary": "Signed native DEB/RPM internal previews and container package fixtures only; "
+        "proofBoundary": "Signed native DEB/RPM/AppImage internal previews and container package fixtures only; "
                          "GUI/login/keyring/tray and real N-to-N+1 upgrades remain unverified. "
                          "Not stable Linux or signed APT/RPM repository publication.",
     }

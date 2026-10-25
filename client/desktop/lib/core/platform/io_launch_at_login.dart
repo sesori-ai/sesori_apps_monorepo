@@ -41,7 +41,8 @@ class IoLaunchAtLogin.forTesting({
         isLinux: Platform.isLinux,
         homeDirectory: _resolveUserHomeDirectory(),
         xdgConfigHome: Platform.environment["XDG_CONFIG_HOME"]?.trim(),
-        executablePath: Platform.resolvedExecutable,
+        // An AppImage runs from a transient mount; autostart must relaunch the image file itself.
+        executablePath: _appImagePath() ?? Platform.resolvedExecutable,
         windowsValueReader: _readWindowsRegistryValue,
         runProcess: ({required String executable, required List<String> arguments}) =>
             Process.run(executable, arguments),
@@ -225,6 +226,11 @@ class IoLaunchAtLogin.forTesting({
   // Use the native API so missing values are identified by stable status codes,
   // rather than localized reg.exe diagnostics.
   static String? _readWindowsRegistryValue() => CURRENT_USER.getString(_appName, path: _windowsRunSubKey);
+
+  static String? _appImagePath() {
+    final String? path = Platform.environment["APPIMAGE"];
+    return Platform.isLinux && path != null && path.isNotEmpty ? path : null;
+  }
 
   static String _resolveUserHomeDirectory() {
     final List<String> keys = Platform.isWindows

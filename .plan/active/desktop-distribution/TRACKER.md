@@ -54,10 +54,12 @@ The distro rows found that signed DEB/RPM packages lacked the dlopened EGL/GLES 
 so the app aborted on clean Debian 13 / Fedora 44 (the public `1.9.2-1022` preview has the
 same gap). #2031 added those dependencies. On fixed producers 202 → 203, `linux-session`
 run `40150578241` passed every native gate on both CPUs. Authenticated 167 → 203 passed
-ARM64 with signed first-run registration. x64 is still owed: cleanup raced helper shutdown
-and hid the original failure. Cleanup now waits for the helper; rerun the authenticated
-mode on main for x64.
-Stable remains closed; AppImage, website and stable publication follow these gates.
+ARM64 with signed first-run registration; x64 first failed on a stale QA bridge (run
+`40151374077`), then its cleanup raced helper shutdown. After
+#2036, authenticated rerun `40155039475` (167 → 203) passed on both CPUs, so 11.i.c.b is
+accepted. 11.i.d.a adds signed portable AppImages to every producer; 11.i.d.b qualifies them
+on Arch, which needs a fresh main producer pair because 167/202/203 carry no AppImage.
+Stable remains closed; website and stable publication follow.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing
 Cloud Run source storage and Firebase federation remain outside the publisher's authority.

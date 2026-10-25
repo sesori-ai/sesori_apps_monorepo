@@ -357,15 +357,15 @@ void main() {
 
   test("update configuration rejects malformed present values without guessing a link", () {
     expect(
-      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable"),
+      resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "stable", isAppImage: false),
       isA<DesktopDevelopmentUpdate>(),
     );
     expect(
-      () => resolveDesktopUpdateDestination(encodedIdentity: "not-json", encodedChannel: "stable"),
+      () => resolveDesktopUpdateDestination(encodedIdentity: "not-json", encodedChannel: "stable", isAppImage: false),
       throwsA(isA<Object>()),
     );
     expect(
-      () => resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "preview"),
+      () => resolveDesktopUpdateDestination(encodedIdentity: null, encodedChannel: "preview", isAppImage: false),
       throwsArgumentError,
     );
   });
@@ -378,7 +378,11 @@ void main() {
       os: DesktopBundleOs.macos,
       architecture: DesktopBundleArchitecture.arm64,
     );
-    final destination = resolveDesktopUpdateDestination(encodedIdentity: identity.encode(), encodedChannel: "internal");
+    final destination = resolveDesktopUpdateDestination(
+      encodedIdentity: identity.encode(),
+      encodedChannel: "internal",
+      isAppImage: false,
+    );
     final uri = (destination as DesktopManualDownload).uri;
     final launcher = getIt<UrlLauncher>();
     when(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).thenAnswer((_) async => true);
