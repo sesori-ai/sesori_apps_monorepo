@@ -886,7 +886,7 @@ jobs:
             throw "Unexpected installed payload: $($unexpectedInstalled.FullName -join ', ')"
           }
           $uninstaller = Join-Path $install 'Update.exe'
-          $removed = Start-Process -FilePath $uninstaller -ArgumentList @('--uninstall', '--silent') -Wait -PassThru
+          $removed = Start-Process -FilePath $uninstaller -ArgumentList @('uninstall', '--silent') -Wait -PassThru
           if ($removed.ExitCode -ne 0) { throw "Uninstall failed: $($removed.ExitCode)" }
           foreach ($payload in $recordedPayload) {
             if (Test-Path (Join-Path $current $payload.relativePath)) {

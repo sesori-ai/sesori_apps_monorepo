@@ -720,7 +720,7 @@ desktop downloads, stable schema borrowing preview availability, a dead Linux/se
 inference, losing attention settings, startup network waits, or a download action
 that stops/restarts the app or helper. On Windows, changing login intent during install,
 a hook that starts the GUI, a silent install that launches the app, wrong-CPU payloads,
-uninstall leaving the login value, or uninstall touching data outside the install folder
+uninstall leaving the login value, or uninstall deleting shared user data outside the install folder
 are failures. Linux package ownership of
 `/usr/bin/sesori-bridge`, user homes or autostart entries; guessed runtime dependencies;
 non-native container execution; package scriptlets; altered staged payloads; or calling

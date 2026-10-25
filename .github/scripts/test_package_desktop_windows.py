@@ -206,7 +206,7 @@ class WindowsPackagingTests(unittest.TestCase):
         self.assertIn("if ($LASTEXITCODE -ne 0) { throw 'Installed payload verification failed' }", workflow)
         self.assertIn('Get-FileHash $installedPath -Algorithm SHA256', workflow)
         self.assertIn("'--installto'", workflow)
-        self.assertIn("@('--uninstall', '--silent')", workflow)
+        self.assertIn("@('uninstall', '--silent')", workflow)
         self.assertIn('foreach ($payload in $recordedPayload)', workflow)
         self.assertNotIn("Inno", workflow)
 

@@ -10,16 +10,11 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from package_desktop_linux import compiled_channel
+from package_desktop_linux import VPK_PACKAGE_SHA256, VPK_PACKAGE_URL, VPK_VERSION, compiled_channel, velopack_version
 from qualify_desktop import ROOT, inventory, native_arch, run
 
 PACK_ID = "sesori-desktop"
 ICON_SOURCE = ROOT / "client/desktop/windows/runner/resources/app_icon.ico"
-# Keep these three, install_vpk and velopack_version in sync with package_desktop_linux.py, whose AppImage
-# uses the same vpk.
-VPK_VERSION = "1.2.161"
-VPK_PACKAGE_URL = f"https://github.com/velopack/velopack/releases/download/{VPK_VERSION}/vpk.{VPK_VERSION}.nupkg"
-VPK_PACKAGE_SHA256 = "2b56ce117f803fc70c103cb423bd040e395e40370f6ff6e10818e9ff9c26a323"
 # vpk adds its updater, a launcher stub and its manifest beside the bundle. Setup installs the updater as
 # Update.exe and the stub as Sesori.exe in the install root, and only the manifest joins the bundle in current\.
 VELOPACK_ADDED_FILES = frozenset({"Squirrel.exe", "Sesori_ExecutionStub.exe", "sq.version"})
@@ -60,13 +55,6 @@ def install_vpk(*, work: Path) -> Path:
     run(command=["dotnet", "tool", "install", "vpk", "--version", VPK_VERSION, "--tool-path", str(tools),
                  "--source", str(feed)], cwd=work)
     return Path(shutil.which("vpk", path=str(tools)))  # vpk.exe on Windows
-
-
-def velopack_version(*, identity: dict, channel: str) -> str:
-    # Velopack orders releases by SemVer 2. Internal builds share the product version, so the build number orders them.
-    if channel == "stable":
-        return identity["version"]
-    return f"{identity['version']}-internal.{identity['buildNumber']}"
 
 
 def payload_digests(*, root: Path) -> dict[str, str]:
