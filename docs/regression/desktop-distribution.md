@@ -118,6 +118,16 @@ host GTK 3, libsecret, EGL/GLES and glibc 2.39 or newer (the Ubuntu 24.04 build 
 It installs no menu entry, and launch at login autostarts the
 image file named by `APPIMAGE`, not its transient mount. Repositories serve only the DEB/RPM rows.
 
+`linux-session` replaces the AppImage natively on Arch Linux (x64: the pinned official
+image; ARM64: the Arch Linux ARM community rootfs, verified against its pinned signing key)
+under a headless Plasma 6 Wayland session with the StatusNotifier host. As user `qa`
+it installs the previous image at `~/Applications/Sesori.AppImage` and launches it over FUSE.
+It requires a render, the mounted bundle identity and a pid-matched tray. It enables launch
+at login and requires `Exec="<image>" "--hidden"`. It quits from the tray menu and requires
+exit 0, unmount and no helper. It then replaces the image at the same path, relaunches
+hidden, and requires `Launch at login: On` and preserved probe data. A registration naming
+the transient mount fails this row.
+
 Native Ubuntu 24.04 and Debian 13 containers install, same-version reinstall and
 remove the DEB. Their official multi-architecture base-image indexes are pinned, as is
 the Fedora 44 base that builds, installs, same-version reinstalls and removes the RPM

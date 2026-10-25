@@ -7,6 +7,7 @@ import tempfile
 import unittest
 from unittest import mock
 
+import qualify_desktop_linux_appimage as appimage
 import qualify_desktop_linux_session as qualification
 
 
@@ -193,6 +194,17 @@ class LinuxSessionQualificationTest(unittest.TestCase):
         self.assertIn(f"FEDORA_IMAGE: {fedora}\n", workflow)
         self.assertLess(workflow.index("Upgrade and exercise Secret Service"),
                         workflow.index("qualify_desktop_linux_session.py login"))
+        arch = workflow.split("Replace the portable AppImage on native Arch Linux", 1)[1].split("      - name:", 1)[0]
+        self.assertIn("ARCH_X64_IMAGE: docker.io/library/archlinux@sha256:", arch)
+        self.assertLess(arch.index("VALIDSIG $ARCH_ARM_SIGNER "), arch.index("docker import"))
+        self.assertIn("--device /dev/fuse", arch)
+
+    def test_appimage_menu_items_cover_nested_rows_and_skip_separators(self):
+        layout = (0, {}, [(7, {"label": "Open Sesori"}, []), (8, {}, []),
+                          (9, {"label": "More"}, [(11, {"label": "Quit Sesori", "enabled": True}, []),
+                                                     (12, {"label": "Bridge: Off", "enabled": False}, [])])])
+        self.assertEqual(appimage.menu_items(layout=layout), {"Open Sesori": 7, "More": 9, "Quit Sesori": 11,
+                                                                "Bridge: Off": 12})
 
 
 if __name__ == "__main__":

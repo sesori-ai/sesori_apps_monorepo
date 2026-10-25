@@ -141,8 +141,8 @@ the image itself is unsigned and its checksum is in the signed checksums. It nee
 libsecret, EGL/GLES, glibc 2.39 or newer and FUSE. Mark it executable and run it. To update,
 quit Sesori and replace the image at the same path and file name, so launch at login keeps
 working. Its app destination is
-`<channel>-linux-<x64|arm64>-appimage`; the website adds those anchors before AppImages are
-offered.
+`<channel>-linux-<x64|arm64>-appimage`, on the website. Native qualification runs on Arch
+Linux (x64) and the community Arch Linux ARM port (ARM64); it is not a universal-distro claim.
 
 Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to the
 unchanged `linux-package-managers` app destination. Each available row links the
