@@ -40,6 +40,7 @@ class const ArchivedSessionsView({
         selectedSessionId: null,
         disconnectedBuilder: disconnectedBuilder,
         emptyState: emptyState,
+        header: null,
       ),
     ],
   );

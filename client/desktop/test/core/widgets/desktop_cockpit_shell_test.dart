@@ -554,7 +554,7 @@ void main() {
         tester.getSize(page).width,
         width < DesktopCockpitShell.autoCollapseBreakpoint ? width : width - besideOpenPanel(width: 260),
       );
-      expect(find.byType(SessionSplitShell), findsNothing);
+      expect(find.byType(SessionSidebarShell), findsNothing);
     }
   });
 

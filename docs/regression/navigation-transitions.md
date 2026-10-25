@@ -3,7 +3,7 @@
 ## Capability
 
 The Sesori phone and desktop apps give route changes platform-appropriate
-motion while keeping the intentional login, settings-modal, split-view, and
+motion while keeping the intentional login, settings-modal, sidebar-pane, and
 desktop main-pane transitions distinct.
 
 ## Required Behavior
@@ -14,8 +14,11 @@ desktop main-pane transitions distinct.
 - On the phone, signed-in navigation starts at the home (`/sessions`). Session
   detail (`/sessions/<projectId>/<sessionId>`), new session
   (`/sessions/new?project=<id>`) and diffs open over it with the same platform
-  transition. From 700 pt the home stays as the list beside them, and pane
-  changes fade instead of sliding.
+  transition. From 700 pt the home is a sidebar beside them and its own pane
+  is a new session, and pane changes fade instead of sliding. Collapsing the
+  sidebar slides it out while the pane widens and grows a restore button
+  before the pane's leading; restoring reverses the motion. Rotating across
+  700 pt keeps the open page and its state, and keeps the collapse.
   The one exception is the session screen replacing the new-session screen that
   created it: it appears with no entry transition, because the new-session
   screen already shows its first message where the session screen does. Back
@@ -54,9 +57,9 @@ desktop main-pane transitions distinct.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; the notification-open and computer-switch dispatcher tests prove a notification opens its session over the home (switching computers first) and a switch replaces the stack with the home; session deletion navigation coverage proves deleting the open session returns home; desktop router coverage proves the project page's exits; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
+| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; sidebar shell coverage proves the 700 pt breakpoint, the collapse motion and restore, and that rotating keeps the open session and the list; the notification-open and computer-switch dispatcher tests prove a notification opens its session over the home (switching computers first) and a switch replaces the stack with the home; session deletion navigation coverage proves deleting the open session returns home; desktop router coverage proves the project page's exits; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
 | L3 Release | Client end to end on iOS and Android: exercise a standard push/pop, compact session navigation, a settings child, and the settings modal. |
-| L4 Extended | Client end to end on macOS and with reduced motion enabled: repeat the transition matrix and exercise split-view pane fading where the viewport supports it. |
+| L4 Extended | Client end to end on macOS and with reduced motion enabled: repeat the transition matrix and exercise sidebar pane fading and the collapse and restore motion where the viewport supports it. |
 | L5 Full | No additional coverage. |
 
 ## Failure Signals
@@ -64,7 +67,9 @@ desktop main-pane transitions distinct.
 - A route appears or disappears instantly when reduced motion is disabled.
 - iOS or macOS uses no transition, or Android loses its configured transition.
 - A settings child rises as a modal, or the settings modal slides horizontally.
-- Compact and split session layouts use each other's transition.
+- Compact and sidebar session layouts use each other's transition.
+- Collapsing or restoring the sidebar snaps, moves the pane's title in a jump,
+  or rotating drops the open session or its draft.
 - A desktop main-pane page slides, moves the sidebar, or fades under reduced
   motion.
 - A desktop modal rises as a bottom sheet, a phone modal opens as a dialog,
@@ -82,6 +87,8 @@ desktop main-pane transitions distinct.
 - `client/app/test/core/routing/app_route_test.dart`
 - `client/app/test/core/routing/imperative_pane_route_test.dart`
 - `client/app/test/core/routing/adaptive_session_route_matrix_test.dart`
+- `client/app/test/core/widgets/session_sidebar/session_sidebar_shell_test.dart`
+- `client/module_app_ui/lib/src/widgets/session_sidebar/session_sidebar_shell.dart`
 - `client/app/test/features/session_detail/adaptive_session_detail_routing_test.dart`
 - `client/module_core/test/routing/notification_open_dispatcher_test.dart`
 - `client/module_core/test/routing/computer_switch_dispatcher_test.dart`

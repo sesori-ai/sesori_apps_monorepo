@@ -2687,10 +2687,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailCopy => 'Copy';
 
   @override
-  String get emptySessionDetailTitle => 'Select a session';
+  String get sessionSidebarCollapse => 'Collapse sidebar';
 
   @override
-  String get emptySessionDetailSubtitle => 'Choose a session from the list to view details';
+  String get sessionSidebarExpand => 'Expand sidebar';
 
   @override
   String get projectsOnboardingWhyLede => 'Your LLM of choice runs on your computer.';

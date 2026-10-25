@@ -122,6 +122,8 @@ class const DesktopSidebar({
                       // The footer's recovery card says so.
                       disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
                       emptyState: SessionEmptyState(projectName: filterName),
+                      // The filter heads the list already, beside Refresh.
+                      header: null,
                     ),
                   ],
                 ),

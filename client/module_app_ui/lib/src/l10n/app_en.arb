@@ -1856,8 +1856,10 @@
   "sessionDetailCompactionAuto": "auto",
   "@sessionDetailCompactionAuto": {"description": "Detail after 'Context compacted' when the coding agent compacted on its own rather than on the user's request, e.g. 'Context compacted · auto'. Lowercase because it follows a separator."},
   "sessionDetailCopy": "Copy",
-  "emptySessionDetailTitle": "Select a session",
-  "emptySessionDetailSubtitle": "Choose a session from the list to view details",
+  "sessionSidebarCollapse": "Collapse sidebar",
+  "@sessionSidebarCollapse": {"description": "Label of the phone and tablet sidebar footer button that hides the sidebar beside the open page."},
+  "sessionSidebarExpand": "Expand sidebar",
+  "@sessionSidebarExpand": {"description": "Label of the toolbar button that brings the collapsed phone and tablet sidebar back."},
   "projectsOnboardingWhyLede": "Your LLM of choice runs on your computer.",
   "@projectsOnboardingWhyLede": {
     "description": "Headline line of the onboarding 'Why is this needed?' sheet, explaining that the AI model runs on the developer's own machine."
