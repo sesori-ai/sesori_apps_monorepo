@@ -36,7 +36,7 @@ lib/
 │   ├── platform/     FlutterMasterKeyStore, FlutterUrlLauncher, AppLifecycleObserver
 │   ├── routing/      GoRouter routes, deep link handling (AppLinksDeepLinkSource)
 │   └── widgets/      Connection overlay, modal bottom sheets
-├── features/         Screen widgets (login, home, session_list, session_detail)
+├── features/         Screen widgets (login, home, new_session, session_detail, session_diffs, settings, splash)
 └── main.dart         Entry point
 ```
 
