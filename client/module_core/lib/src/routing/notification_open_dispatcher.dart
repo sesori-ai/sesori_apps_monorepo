@@ -117,7 +117,7 @@ class NotificationOpenDispatcher({
 
     final bridgeId = request.bridgeId;
     if (bridgeId != null && bridgeId != await _selectedComputerService.targetBridgeId()) {
-      // The switch returns to Projects and retargets the connection before the
+      // The switch returns to the home and retargets the connection before the
       // session screen below is built, so that screen waits for the new
       // computer's connection and loads the session there, as after a cold
       // launch. Whatever is on top belongs to the previous computer.
@@ -138,11 +138,7 @@ class NotificationOpenDispatcher({
     _routeDispatcher.replaceStack(
       stack: RouteStack(
         paths: [
-          const AppRoute.projects(),
-          AppRoute.sessions(
-            projectId: request.projectId,
-            projectName: null,
-          ),
+          const AppRoute.home(),
           sessionDetail,
         ].map((route) => route.buildPath()).toList(growable: false),
       ),

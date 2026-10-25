@@ -6,15 +6,13 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../features/home/home_screen.dart";
 import "../../features/home/onboarding/bridge_onboarding.dart";
 import "../../features/login/login_screen.dart";
 import "../../features/new_session/new_session_screen.dart";
-import "../../features/project_list/project_list_screen.dart";
 import "../../features/session_detail/session_detail_screen.dart";
 import "../../features/session_diffs/session_diffs_screen.dart";
 import "../../features/session_list/archived_sessions_artwork.dart";
-import "../../features/session_list/session_list_cubit_provider.dart";
-import "../../features/session_list/session_list_screen.dart";
 import "../../features/settings/computers_screen.dart";
 import "../../features/settings/default_input_settings_screen.dart";
 import "../../features/settings/harnesses_settings_screen.dart";
@@ -38,8 +36,7 @@ GlobalKey<NavigatorState> get appRootNavigatorKey => _rootNavigatorKey;
 GlobalKey<NavigatorState> get appSignedInNavigatorKey => _signedInNavigatorKey;
 
 const _newSessionRouteSegment = "new";
-const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
-const _sessionDetailRouteSegment = ":$sessionIdPathParam";
+const _sessionDetailRouteSegment = ":$projectIdPathParam/:$sessionIdPathParam";
 const _sessionDiffsRouteSegment = "diffs";
 const _settingsDefaultInputRouteSegment = "default-input";
 const _settingsNotificationsRouteSegment = "notifications";
@@ -111,7 +108,8 @@ extension on AppRoute {
       AppRouteArchivedSessionDetail() => throw StateError("Archive pages belong to their flow shell"),
       AppRouteSplash() => const SplashScreen(),
       AppRouteLogin() => const LoginScreen(),
-      AppRouteProjects() => const ProjectListScreen(),
+      AppRouteHome() => const HomeScreen(selectedSessionId: null),
+      AppRouteProjectSessions() => throw StateError("The project page is desktop only"),
       AppRouteSettings() => const SettingsScreen(),
       AppRouteSettingsDefaultInput() => const DefaultInputSettingsScreen(),
       AppRouteSettingsNotifications() => const NotificationSettingsScreen(),
@@ -120,10 +118,6 @@ extension on AppRoute {
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSettingsComputers() => const ComputersScreen(),
       AppRouteSettingsProjects() => const ProjectsSettingsScreen(),
-      AppRouteSessions(:final projectId, :final projectName) => SessionListScreen(
-        projectId: projectId,
-        projectName: projectName,
-      ),
       AppRouteNewSession(:final projectId, :final projectName) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
@@ -292,9 +286,32 @@ List<RouteBase> _buildAppRoutes({
           sessionCleanupService: getIt<SessionCleanupService>(),
           sessionLaunchService: getIt<SessionLaunchService>(),
           connectionService: getIt<ConnectionService>(),
+          filterTracker: getIt<SessionListFilterTracker>(),
+          sessionListService: getIt<SessionListService>(),
+          projectViewingService: getIt<ProjectViewingService>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
-          child: child,
+          // The home and Archived both name the computer they reach.
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (_) => BridgeIdentityCubit(
+                  registeredBridgesService: getIt<RegisteredBridgesService>(),
+                  connectionService: getIt<ConnectionService>(),
+                  selectedComputerService: getIt<SelectedComputerService>(),
+                ),
+              ),
+              BlocProvider(
+                create: (_) => ComputerSwitcherCubit(
+                  registeredBridgesService: getIt<RegisteredBridgesService>(),
+                  connectionService: getIt<ConnectionService>(),
+                  selectedComputerService: getIt<SelectedComputerService>(),
+                  activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+                ),
+              ),
+            ],
+            child: child,
+          ),
         ),
       ),
       routes: _buildSignedInRoutes(sessionShellNavigatorKey: sessionShellNavigatorKey),
@@ -304,138 +321,109 @@ List<RouteBase> _buildAppRoutes({
 
 List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> sessionShellNavigatorKey}) {
   return [
-    AppRouteDef.projects.toGoRoute(
+    ShellRoute(
+      navigatorKey: sessionShellNavigatorKey,
+      // From 700 pt the home lists beside the open page; below it is the page.
+      builder: (context, state, child) => _shellBackHandler(
+        navigatorKey: sessionShellNavigatorKey,
+        child: SessionSplitShell(
+          list: HomeScreen(selectedSessionId: state.pathParameters[sessionIdPathParam]),
+          child: child,
+        ),
+      ),
       routes: [
-        ShellRoute(
-          navigatorKey: sessionShellNavigatorKey,
-          builder: (context, state, child) {
-            final projectId = state.pathParameters[projectIdPathParam] ?? "";
-            final projectName = state.uri.queryParameters[projectNameQueryParam];
-            final selectedSessionId = state.pathParameters[sessionIdPathParam];
-            final projectViewingService = getIt<ProjectViewingService>();
-
-            return _shellBackHandler(
-              navigatorKey: sessionShellNavigatorKey,
-              child: SessionListCubitProvider(
-                key: ValueKey("session-list-cubit-$projectId"),
-                projectId: projectId,
-                child: SessionSplitShell(
-                  projectViewingService: projectViewingService,
-                  list: _SessionListPane(
-                    projectId: projectId,
-                    projectName: projectName,
-                    selectedSessionId: selectedSessionId,
-                  ),
-                  child: child,
-                ),
-              ),
-            );
-          },
+        GoRoute(
+          path: AppRouteDef.home.path,
+          pageBuilder: (context, state) => buildSessionPaneTransitionPage(
+            context: context,
+            state: state,
+            pageKey: state.pageKey,
+            skipsEntryTransition: false,
+            child: Builder(
+              builder: (context) => SessionSplitScope.of(context).isSplit
+                  ? EmptySessionDetailPanel(
+                      background: const SesoriBackgroundWidget(),
+                      connectionBanner: ConnectionBanner.maybeFor(context),
+                    )
+                  : const HomeScreen(selectedSessionId: null),
+            ),
+          ),
           routes: [
             GoRoute(
-              path: _sessionsRouteSegment,
-              pageBuilder: (context, state) => buildSessionPaneTransitionPage(
-                context: context,
-                state: state,
-                pageKey: state.pageKey,
-                skipsEntryTransition: false,
-                child: Builder(
-                  builder: (context) {
-                    final route = switch (AppRoute.fromDef(
-                      def: AppRouteDef.sessions,
-                      pathParams: state.pathParameters,
-                      queryParams: state.uri.queryParameters,
-                    )) {
-                      final AppRouteSessions route => route,
-                      final route => throw StateError("Route ${route.def.name} is not a sessions route"),
-                    };
-                    return SessionSplitScope.of(context).isSplit
-                        ? EmptySessionDetailPanel(
-                            background: const SesoriBackgroundWidget(),
-                            connectionBanner: ConnectionBanner.maybeFor(context),
-                          )
-                        : SessionListScreen(projectId: route.projectId, projectName: route.projectName);
-                  },
-                ),
-              ),
+              path: _newSessionRouteSegment,
+              pageBuilder: (context, state) {
+                final route = switch (AppRoute.fromDef(
+                  def: AppRouteDef.newSession,
+                  pathParams: state.pathParameters,
+                  queryParams: state.uri.queryParameters,
+                )) {
+                  final AppRouteNewSession route => route,
+                  final route => throw StateError("Route ${route.def.name} is not a new-session route"),
+                };
+                return buildSessionPaneTransitionPage(
+                  context: context,
+                  state: state,
+                  pageKey: state.pageKey,
+                  skipsEntryTransition: false,
+                  child: NewSessionScreen(
+                    projectId: route.projectId,
+                    projectName: route.projectName,
+                  ),
+                );
+              },
+            ),
+            GoRoute(
+              path: _sessionDetailRouteSegment,
+              pageBuilder: (context, state) {
+                final route = switch (AppRoute.fromDef(
+                  def: AppRouteDef.sessionDetail,
+                  pathParams: state.pathParameters,
+                  queryParams: state.uri.queryParameters,
+                )) {
+                  final AppRouteSessionDetail route => route,
+                  final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
+                };
+                return buildSessionPaneTransitionPage(
+                  context: context,
+                  state: state,
+                  pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId)),
+                  skipsEntryTransition: route.fromLaunch,
+                  child: SessionDetailScreen(
+                    auditView: false,
+                    onBack: null,
+                    key: ValueKey("session-detail-${route.sessionId}"),
+                    projectId: route.projectId,
+                    projectName: route.projectName,
+                    sessionId: route.sessionId,
+                    sessionTitle: route.sessionTitle,
+                    readOnly: route.readOnly,
+                  ),
+                );
+              },
               routes: [
                 GoRoute(
-                  path: _newSessionRouteSegment,
+                  path: _sessionDiffsRouteSegment,
                   pageBuilder: (context, state) {
                     final route = switch (AppRoute.fromDef(
-                      def: AppRouteDef.newSession,
+                      def: AppRouteDef.sessionDiffs,
                       pathParams: state.pathParameters,
                       queryParams: state.uri.queryParameters,
                     )) {
-                      final AppRouteNewSession route => route,
-                      final route => throw StateError("Route ${route.def.name} is not a new-session route"),
+                      final AppRouteSessionDiffs route => route,
+                      final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
                     };
                     return buildSessionPaneTransitionPage(
                       context: context,
                       state: state,
                       pageKey: state.pageKey,
                       skipsEntryTransition: false,
-                      child: NewSessionScreen(
+                      child: SessionDiffsScreen(
+                        key: ValueKey("session-diffs-${route.sessionId}"),
                         projectId: route.projectId,
-                        projectName: route.projectName,
-                      ),
-                    );
-                  },
-                ),
-                GoRoute(
-                  path: _sessionDetailRouteSegment,
-                  pageBuilder: (context, state) {
-                    final route = switch (AppRoute.fromDef(
-                      def: AppRouteDef.sessionDetail,
-                      pathParams: state.pathParameters,
-                      queryParams: state.uri.queryParameters,
-                    )) {
-                      final AppRouteSessionDetail route => route,
-                      final route => throw StateError("Route ${route.def.name} is not a session-detail route"),
-                    };
-                    return buildSessionPaneTransitionPage(
-                      context: context,
-                      state: state,
-                      pageKey: ValueKey((state.pageKey, route.projectId, route.sessionId)),
-                      skipsEntryTransition: route.fromLaunch,
-                      child: SessionDetailScreen(
-                        auditView: false,
-                        onBack: null,
-                        key: ValueKey("session-detail-${route.sessionId}"),
-                        projectId: route.projectId,
-                        projectName: route.projectName,
                         sessionId: route.sessionId,
-                        sessionTitle: route.sessionTitle,
-                        readOnly: route.readOnly,
                       ),
                     );
                   },
-                  routes: [
-                    GoRoute(
-                      path: _sessionDiffsRouteSegment,
-                      pageBuilder: (context, state) {
-                        final route = switch (AppRoute.fromDef(
-                          def: AppRouteDef.sessionDiffs,
-                          pathParams: state.pathParameters,
-                          queryParams: state.uri.queryParameters,
-                        )) {
-                          final AppRouteSessionDiffs route => route,
-                          final route => throw StateError("Route ${route.def.name} is not a session-diffs route"),
-                        };
-                        return buildSessionPaneTransitionPage(
-                          context: context,
-                          state: state,
-                          pageKey: state.pageKey,
-                          skipsEntryTransition: false,
-                          child: SessionDiffsScreen(
-                            key: ValueKey("session-diffs-${route.sessionId}"),
-                            projectId: route.projectId,
-                            sessionId: route.sessionId,
-                          ),
-                        );
-                      },
-                    ),
-                  ],
                 ),
               ],
             ),
@@ -472,52 +460,6 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
   ];
 }
 
-class const _SessionListPane({
-  required final String projectId,
-  required final String? projectName,
-  required final String? selectedSessionId,
-}) extends StatelessWidget {
-  @override
-  Widget build(BuildContext context) {
-    const actionDispatcher = SessionListActionDispatcher(
-      deleteConfirmation: SessionDeleteConfirmation.sheet,
-      onSessionArchived: null,
-      onSessionDeleted: closeDeletedSessionRoute,
-      onSessionMarkedUnread: null,
-    );
-    // ignore: no_slop_linter/avoid_navigator_of, the signed-in navigator's pop is required here so shell chrome exits the whole shell instead of the nested pane route
-    final signedInNavigator = Navigator.of(context);
-
-    return KeyedSubtree(
-      key: ValueKey("session-list-$projectId"),
-      child: SessionListPanel(
-        onOpenArchived: () => context.pushRoute(AppRoute.archivedSessions(projectId: projectId)),
-        projectName: projectName,
-        selectedSessionId: selectedSessionId,
-        // Use the signed-in navigator from shell chrome; GoRouter pop would
-        // target the nested pane navigator and only pop the right-pane route.
-        // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
-        onBack: signedInNavigator.canPop() ? () => signedInNavigator.pop() : null,
-        onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
-        onSessionTap: ({required session}) {
-          context.goRoute(
-            AppRoute.sessionDetail(
-              projectId: projectId,
-              projectName: projectName,
-              sessionId: session.id,
-              sessionTitle: session.title,
-              readOnly: false,
-              fromLaunch: false,
-            ),
-          );
-        },
-        actionDispatcher: actionDispatcher,
-        archivedEmptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
-      ),
-    );
-  }
-}
-
 final appRouter = GoRouter(
   navigatorKey: _rootNavigatorKey,
   initialLocation: AppRouteDef.splash.path,
@@ -543,7 +485,7 @@ ShellRoute buildHarnessSettingsRoute() {
     // Remove owned pageless sheets first, without touching the opener.
     outerNavigator.popUntil((route) => route == flowRoute);
     if (flowRoute.isFirst) {
-      context.goRoute(const AppRoute.projects());
+      context.goRoute(const AppRoute.home());
     } else {
       outerNavigator.pop();
     }
@@ -617,7 +559,7 @@ ShellRoute buildArchivedSessionsRoute() {
     final outerNavigator = flowRoute.navigator ?? (throw StateError("Archive flow has no navigator"));
     outerNavigator.popUntil((route) => route == flowRoute);
     if (flowRoute.isFirst) {
-      context.goRoute(const AppRoute.projects());
+      context.goRoute(const AppRoute.home());
     } else {
       outerNavigator.pop();
     }
@@ -712,16 +654,7 @@ void closeDeletedSessionRoute({required BuildContext context, required String se
   // ignore: no_slop_linter/avoid_raw_go_router, reads current route state; navigation below uses the typed extension
   final routeState = GoRouter.of(context).state;
   if (routeState.pathParameters[sessionIdPathParam] != sessionId) return;
-
-  final projectId = routeState.pathParameters[projectIdPathParam];
-  if (projectId == null) return;
-
-  context.goRoute(
-    AppRoute.sessions(
-      projectId: projectId,
-      projectName: routeState.uri.queryParameters[projectNameQueryParam],
-    ),
-  );
+  context.goRoute(const AppRoute.home());
 }
 
 /// A stale deletion must not move a different audit record or the live opener.

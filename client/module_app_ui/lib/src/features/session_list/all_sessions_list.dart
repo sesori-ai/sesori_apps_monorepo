@@ -138,6 +138,9 @@ class const _Sessions({
     final cubit = context.read<AllSessionsCubit>();
     final state = context.watch<AllSessionsCubit>().state;
     final now = DateTime.now();
+    // The list's bottom breathing room collapses with its last row, which
+    // rests above the home indicator.
+    final endPadding = 8 + MediaQuery.paddingOf(context).bottom;
     final searching = state.query.trim().isNotEmpty;
     // A launching row has no title to match, and is neither running nor
     // unread yet, so a search or a chip hides it.
@@ -265,14 +268,14 @@ class const _Sessions({
               context: context,
               launching: true,
               child: Padding(
-                padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? 8 : 0),
+                padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? endPadding : 0),
                 child: PendingSessionLaunchTile(launch: launch),
               ),
             ),
             SessionListItemEntry(item: _SessionItem(:final row)) => _sessionRow(
               context: context,
               row: row,
-              isLast: index == entries.length - 1,
+              bottomPadding: index == entries.length - 1 ? endPadding : 0,
               tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
               labelsProject: state.projectId == null,
             ),
@@ -297,14 +300,13 @@ class const _Sessions({
   Widget _sessionRow({
     required BuildContext context,
     required AllSessionsRow row,
-    required bool isLast,
+    required double bottomPadding,
     required bool tookLaunchRow,
     required bool labelsProject,
   }) {
     final dispatcher = list.actionDispatcher;
     final tile = Padding(
-      // The list's bottom breathing room collapses with its last row.
-      padding: EdgeInsetsDirectional.only(bottom: isLast ? 8 : 0),
+      padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
       child: BlocProvider(
         create: (_) => list.createActionCubit(projectId: row.project.id, session: row.session),
         child: Builder(

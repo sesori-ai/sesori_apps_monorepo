@@ -35,7 +35,7 @@ void main() {
       final state = await completed;
 
       expect(state, isA<SplashReady>());
-      expect((state as SplashReady).route, isA<AppRouteProjects>());
+      expect((state as SplashReady).route, isA<AppRouteHome>());
       verify(() => authSession.restoreLocalSession()).called(1);
       verifyNever(() => authSession.restoreSession());
     });

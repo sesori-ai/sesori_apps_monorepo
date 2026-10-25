@@ -32,7 +32,7 @@ class SplashCubit(final AuthSession _authSession) extends Cubit<SplashState> {
       }
       emit(
         SplashState.ready(
-          route: hasSession ? const AppRoute.projects() : const AppRoute.login(),
+          route: hasSession ? const AppRoute.home() : const AppRoute.login(),
         ),
       );
     } catch (e, st) {

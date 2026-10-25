@@ -181,6 +181,8 @@ void _registerListServices({
 
 class MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
 
+class _MockSessionListFilterTracker() extends Mock implements SessionListFilterTracker;
+
 /// The signed-in scope the router mounts around [child], built from the
 /// services [registerListServices] registers.
 Widget testSessionScope({required SessionLaunchService sessionLaunchService, required Widget child}) => SessionScope(
@@ -191,6 +193,10 @@ Widget testSessionScope({required SessionLaunchService sessionLaunchService, req
   sessionCleanupService: SessionCleanupService(repository: MockSessionRepository()),
   sessionLaunchService: sessionLaunchService,
   connectionService: getIt<ConnectionService>(),
+  // Only the all-projects list reads these, and the Projects screen has none.
+  filterTracker: _MockSessionListFilterTracker(),
+  sessionListService: getIt<SessionListService>(),
+  projectViewingService: stubbedProjectViewingService(),
   alertNavigatorKey: null,
   child: child,
 );

@@ -15,6 +15,8 @@ import "package:sesori_shared/sesori_shared.dart";
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;
 
 void main() {
+  setUpAll(registerCoreFallbackValues);
+
   testWidgets("cockpits own both inventories, admit initial projects, and dispose their scopes", (tester) async {
     final repository = MockProjectRepository();
     final connection = MockConnectionService();
@@ -48,6 +50,12 @@ void main() {
     getIt.registerSingleton<RegisteredBridgesService>(MockRegisteredBridgesService());
     getIt.registerSingleton<ConnectionService>(connection);
     getIt.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
+    final filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projects);
+    getIt.registerSingleton<SessionListFilterTracker>(filterTracker);
+    getIt.registerSingleton<SessionListService>(
+      SessionListService(repository: repository, activityCalculator: const SessionActivityCalculator()),
+    );
+    getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
     getIt.registerFactory<SessionLaunchService>(
       () => inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -102,6 +110,10 @@ void main() {
       await getIt.unregister<RegisteredBridgesService>();
       await getIt.unregister<ConnectionService>();
       await getIt.unregister<ActiveBridgeLocality>();
+      await getIt.unregister<SessionListFilterTracker>();
+      await getIt.unregister<SessionListService>();
+      await getIt.unregister<ProjectViewingService>();
+      await filterTracker.dispose();
       await getIt.unregister<SessionLaunchService>();
       await getIt.unregister<ProjectInventoryService>();
       await getIt.unregister<RecentSessionInventoryService>();

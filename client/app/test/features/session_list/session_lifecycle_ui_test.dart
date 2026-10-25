@@ -110,7 +110,7 @@ void main() {
     mockProjectRepository = MockProjectRepository();
     mockConnectionService = MockConnectionService();
     mockSseEventTracker = MockSseEventTracker();
-    mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+    mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
     mockFailureReporter = MockFailureReporter();
     statusController = BehaviorSubject<ConnectionStatus>.seeded(
       const ConnectionStatus.connected(

@@ -32,6 +32,6 @@ void main() {
     ).switchTo(bridgeId: "br_b", source: ComputerSwitchSource.menu);
 
     expect(calls, ["navigate", "select"]);
-    expect(routes.stacks.single.paths, [const AppRoute.projects().buildPath()]);
+    expect(routes.stacks.single.paths, [const AppRoute.home().buildPath()]);
   });
 }

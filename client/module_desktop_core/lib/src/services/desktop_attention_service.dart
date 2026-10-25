@@ -597,8 +597,7 @@ class DesktopAttentionService({
     _routeDispatcher.replaceStack(
       stack: RouteStack(
         paths: <AppRoute>[
-          const AppRoute.projects(),
-          AppRoute.sessions(projectId: request.projectId, projectName: null),
+          const AppRoute.home(),
           sessionDetail,
         ].map((route) => route.buildPath()).toList(growable: false),
       ),

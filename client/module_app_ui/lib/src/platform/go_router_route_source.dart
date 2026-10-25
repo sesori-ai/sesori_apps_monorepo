@@ -24,7 +24,7 @@ class GoRouterRouteSource._({required final GoRouterDelegate _routerDelegate}) i
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRouteStream.stream;
 
   @override
-  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+  Stream<bool> get homeVisibility => currentRouteStream.map((route) => route == AppRouteDef.home);
 
   @override
   String? get currentLocation => _currentLocation(_routerDelegate.currentConfiguration);
@@ -96,8 +96,8 @@ class GoRouterRouteSource._({required final GoRouterDelegate _routerDelegate}) i
     ..sort((first, second) => _compareMatchPrecedence(first: first, second: second));
 
   /// A literal segment beats a parameter at the first place paths disagree, so
-  /// `/projects/:id/sessions/new` is tried before
-  /// `/projects/:id/sessions/:sessionId`. Failing that, the deeper path wins.
+  /// `/sessions/new` is tried before `/sessions/:projectId/:sessionId`. Failing
+  /// that, the deeper path wins.
   static int _compareMatchPrecedence({required AppRouteDef first, required AppRouteDef second}) {
     final List<String> firstSegments = first.path.split("/");
     final List<String> secondSegments = second.path.split("/");

@@ -160,7 +160,7 @@ class _LoginScreenBodyState() extends State<_LoginScreenBody> {
             // Relay connection is handled reactively: AuthManager emits
             // AuthState.authenticated → ConnectionService connects. The
             // connection overlay shows progress; navigation proceeds immediately.
-            context.goRoute(const AppRoute.projects());
+            context.goRoute(const AppRoute.home());
             return;
           }
           if (_pendingOption != null) {

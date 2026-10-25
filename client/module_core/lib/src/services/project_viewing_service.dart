@@ -257,7 +257,7 @@ class ProjectViewingService({
     };
 
     return switch (_route) {
-      AppRouteDef.sessions => listProjectId,
+      AppRouteDef.home || AppRouteDef.projectSessions => listProjectId,
       AppRouteDef.newSession || AppRouteDef.sessionDiffs => wideListPaneVisible ? listProjectId : null,
       AppRouteDef.sessionDetail => switch (_detailClaim) {
         _ProjectViewClaimReady(:final projectId) => projectId,
@@ -270,7 +270,6 @@ class ProjectViewingService({
       AppRouteDef.archivedSessionDetail ||
       AppRouteDef.splash ||
       AppRouteDef.login ||
-      AppRouteDef.projects ||
       AppRouteDef.settings ||
       AppRouteDef.settingsNotifications ||
       AppRouteDef.settingsDefaultInput ||

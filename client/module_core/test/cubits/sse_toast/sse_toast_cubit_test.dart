@@ -19,7 +19,7 @@ void main() {
 
     setUp(() {
       connectionService = MockConnectionService();
-      routeSource = MockRouteSource(initialRoute: AppRouteDef.projects, currentLocation: "/projects");
+      routeSource = MockRouteSource(initialRoute: AppRouteDef.home, currentLocation: "/sessions");
       events = StreamController<SseEvent>.broadcast();
       when(() => connectionService.events).thenAnswer((_) => events.stream);
     });
@@ -124,14 +124,14 @@ void main() {
         events.add(SseEvent(data: toast));
         await Future<void>.delayed(Duration.zero);
         routeSource.emitRoute(AppRouteDef.sessionDetail);
-        routeSource.currentLocation = "/projects/project-1/sessions/session-2";
+        routeSource.currentLocation = "/sessions/project-1/session-2";
         events.add(SseEvent(data: toast));
         await Future<void>.delayed(Duration.zero);
-        routeSource.currentLocation = "/projects/project-1/sessions/session-1";
+        routeSource.currentLocation = "/sessions/project-1/session-1";
         events.add(SseEvent(data: toast));
         await Future<void>.delayed(Duration.zero);
         routeSource.emitRoute(AppRouteDef.sessionDiffs);
-        routeSource.currentLocation = "/projects/project-1/sessions/session-1/diffs";
+        routeSource.currentLocation = "/sessions/project-1/session-1/diffs";
         events.add(SseEvent(data: toast));
       },
       expect: () => const [

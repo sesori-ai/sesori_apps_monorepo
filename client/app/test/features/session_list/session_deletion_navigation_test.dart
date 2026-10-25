@@ -9,14 +9,14 @@ void main() {
       final navigatorKey = GlobalKey<NavigatorState>();
       final router = GoRouter(
         navigatorKey: navigatorKey,
-        initialLocation: "/projects/p1/sessions/deleted$suffix?name=Project+One",
+        initialLocation: "/sessions/p1/deleted$suffix?name=Project+One",
         routes: [
           GoRoute(
-            path: "/projects/:projectId/sessions",
+            path: "/sessions",
             builder: (_, _) => const SizedBox(),
             routes: [
               GoRoute(
-                path: ":sessionId",
+                path: ":projectId/:sessionId",
                 builder: (_, _) => const SizedBox(),
                 routes: [GoRoute(path: "diffs", builder: (_, _) => const SizedBox())],
               ),
@@ -35,12 +35,11 @@ void main() {
 
       closeDeletedSessionRoute(context: context, sessionId: "deleted");
       await tester.pumpAndSettle();
-      expect(router.state.uri.path, "/projects/p1/sessions");
-      expect(router.state.uri.queryParameters["name"], "Project One");
+      expect(router.state.uri.toString(), "/sessions");
 
       closeDeletedSessionRoute(context: context, sessionId: "deleted");
       await tester.pumpAndSettle();
-      expect(router.state.uri.path, "/projects/p1/sessions");
+      expect(router.state.uri.toString(), "/sessions");
       expect(tester.takeException(), isNull);
     });
   }

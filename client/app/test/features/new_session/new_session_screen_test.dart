@@ -171,16 +171,16 @@ Widget _buildApp({
   GoRouterWidgetBuilder? sessionDetailBuilder,
 }) {
   final router = GoRouter(
-    initialLocation: "/projects/project-1/sessions/new",
+    initialLocation: "/sessions/new?project=project-1",
     routes: [
       GoRoute(
         path: "/",
         builder: (context, state) => const Scaffold(body: SizedBox.shrink()),
         routes: [
           GoRoute(
-            path: "projects/:projectId/sessions/new",
+            path: "sessions/new",
             builder: (context, state) => NewSessionScreen(
-              projectId: state.pathParameters["projectId"] ?? "project-1",
+              projectId: state.uri.queryParameters["project"],
               projectName: "Project One",
             ),
           ),
@@ -194,7 +194,7 @@ Widget _buildApp({
           builder: (context, state) => const Material(child: Text("harnesses-settings")),
         ),
       GoRoute(
-        path: "/projects/:projectId/sessions/:sessionId",
+        path: "/sessions/:projectId/:sessionId",
         builder:
             sessionDetailBuilder ??
             (context, state) {
@@ -522,7 +522,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final router = GoRouter.of(tester.element(find.byType(NewSessionScreen)));
-    expect(router.state.uri.path, "/projects/project-2/sessions/new");
+    expect(router.state.uri.toString(), "/sessions/new?project=project-2&name=Project+Two");
     // The replaced route keeps its page; the new project still gets its own cubit.
     verify(() => projectRepository.getProject(projectId: "project-2")).called(1);
   });
@@ -1731,8 +1731,8 @@ void main() {
     expect(find.byType(PregoLaunchStatus), findsNothing);
     expect(find.text(loc.sessionListNewSession), findsOneWidget);
     expect(
-      GoRouter.of(tester.element(bubble)).routeInformationProvider.value.uri.path,
-      "/projects/project-1/sessions/new",
+      GoRouter.of(tester.element(bubble)).routeInformationProvider.value.uri.toString(),
+      "/sessions/new?project=project-1",
     );
 
     // The composer stays where it was, keeping the keyboard, for follow-ups.
@@ -2025,7 +2025,7 @@ void main() {
 
     expect(find.text("session-detail:session-1"), findsOneWidget);
     expect(
-      find.text("uri:/projects/project-1/sessions/session-1?readOnly=false&name=Project+One&fromLaunch=1"),
+      find.text("uri:/sessions/project-1/session-1?readOnly=false&name=Project+One&fromLaunch=1"),
       findsOneWidget,
     );
     expect(find.byType(NewSessionScreen), findsNothing);

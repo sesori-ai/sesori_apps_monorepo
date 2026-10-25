@@ -30,8 +30,7 @@ void main() {
     final widget = route.builder!(
       _FakeBuildContext(),
       _FakeGoRouterState(
-        pathParameters: {"projectId": "project-1"},
-        queryParameters: {"name": "Sesori"},
+        queryParameters: {"project": "project-1", "name": "Sesori"},
       ),
     );
 
@@ -65,7 +64,7 @@ void main() {
     final shell = buildDesktopRoutes().single as ShellRoute;
     final pages = shell.routes.whereType<GoRoute>().toList();
     for (final def in [
-      AppRouteDef.sessions,
+      AppRouteDef.projectSessions,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
       AppRouteDef.sessionDiffs,
@@ -78,7 +77,7 @@ void main() {
       lessThan(pages.indexWhere((page) => page.path == AppRouteDef.sessionDetail.path)),
     );
     final state = _FakeGoRouterState(pathParameters: {"projectId": "p"}, queryParameters: {"name": "Sesori"});
-    final provider = _routeWithPath(AppRouteDef.sessions.path).builder!(
+    final provider = _routeWithPath(AppRouteDef.projectSessions.path).builder!(
       _FakeBuildContext(),
       state,
     ) as DesktopSessionListCubitProvider;
@@ -86,20 +85,20 @@ void main() {
     final screen = provider.child as DesktopSessionListScreen;
     expect(screen.projectName, "Sesori");
     expect(
-      _routeWithPath(AppRouteDef.projects.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
+      _routeWithPath(AppRouteDef.home.path).builder!(_FakeBuildContext(), _FakeGoRouterState()),
       isA<DesktopHomePane>(),
     );
   });
 
   testWidgets("the actual cockpit boundary tracks root popups above retained nested pages", (tester) async {
     final router = GoRouter(
-      initialLocation: AppRouteDef.projects.path,
+      initialLocation: AppRouteDef.home.path,
       routes: [
         ShellRoute(
           builder: (context, state, child) => _paneBoundary(context: context, state: state, child: child),
           routes: [
             GoRoute(
-              path: AppRouteDef.projects.path,
+              path: AppRouteDef.home.path,
               builder: (context, _) => Text("visible:${SessionDetailRouteVisibility.isVisibleOf(context: context)}"),
             ),
           ],
@@ -171,12 +170,12 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
-    expect(router.state.uri.path, AppRouteDef.projects.path);
+    expect(router.state.uri.path, AppRouteDef.home.path);
     final dispatcher = DesktopRouteDispatcher(router: router, routerReady: Future<void>.value());
     dispatcher.replaceStack(
       stack: RouteStack(
         paths: [
-          const AppRoute.projects(),
+          const AppRoute.home(),
           _sessions,
           _detail(readOnly: false),
         ].map((route) => route.buildPath()).toList(),
@@ -216,7 +215,7 @@ void main() {
     dispatcher.dismissPopups();
     dispatcher.replaceStack(
       stack: RouteStack(
-        paths: [const AppRoute.projects(), _sessions, other].map((route) => route.buildPath()).toList(),
+        paths: [const AppRoute.home(), _sessions, other].map((route) => route.buildPath()).toList(),
       ),
     );
     await dispatcher.flushPendingForTesting();
@@ -228,7 +227,7 @@ void main() {
     expect(router.state.uri.toString(), _sessions.buildPath());
     router.pop();
     await tester.pumpAndSettle();
-    expect(router.state.uri.path, AppRouteDef.projects.path);
+    expect(router.state.uri.path, AppRouteDef.home.path);
     expect(find.text("home"), findsOneWidget);
     expect(tester.takeException(), isNull);
   });
@@ -252,7 +251,10 @@ void main() {
     // The sidebar's New session row pushes the page over the one it was opened from.
     unawaited(router.push(const AppRoute.newSession(projectId: "p", projectName: "UI / Core").buildPath()));
     await tester.pumpAndSettle();
-    expect(router.state.uri.path, const AppRoute.newSession(projectId: "p", projectName: null).buildPath());
+    expect(
+      router.state.uri.toString(),
+      const AppRoute.newSession(projectId: "p", projectName: "UI / Core").buildPath(),
+    );
     await tester.tap(find.text("created"));
     await tester.pumpAndSettle();
     expect(router.state.uri.toString(), _detail(readOnly: false).buildPath());
@@ -347,6 +349,14 @@ void main() {
     expect(router.state.uri.toString(), _sessions.buildPath());
   });
 
+  testWidgets("a new session without a project goes home", (tester) async {
+    final router = _callbackRouter(initialRoute: const AppRoute.newSession(projectId: null, projectName: null));
+    addTearDown(router.dispose);
+    await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+    await tester.pumpAndSettle();
+    expect(router.state.uri.toString(), const AppRoute.home().buildPath());
+  });
+
   testWidgets("the diffs breadcrumb opens the project", (tester) async {
     final router = _callbackRouter(initialRoute: _diffs);
     addTearDown(router.dispose);
@@ -400,7 +410,7 @@ class _FakeGoRouterState({
   final Uri uri = Uri(path: "/", queryParameters: queryParameters.isEmpty ? null : queryParameters);
 }
 
-const _sessions = AppRoute.sessions(projectId: "p", projectName: "UI / Core");
+const _sessions = AppRoute.projectSessions(projectId: "p", projectName: "UI / Core");
 const _diffs = AppRoute.sessionDiffs(projectId: "p", projectName: "UI / Core", sessionId: "s");
 AppRoute _detail({required bool readOnly}) => AppRoute.sessionDetail(
   projectId: "p",
@@ -484,7 +494,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                         button(
                           label: "delete open session",
                           action: () {
-                            final provider = _routeWithPath(AppRouteDef.sessions.path).builder!(
+                            final provider = _routeWithPath(AppRouteDef.projectSessions.path).builder!(
                               context,
                               state,
                             ) as DesktopSessionListCubitProvider;

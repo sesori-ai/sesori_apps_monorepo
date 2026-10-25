@@ -16,7 +16,7 @@ class const NotificationSettingsScreen({super.key}) extends StatelessWidget {
       ),
       child: NotificationSettingsView(
         connectionBanner: ConnectionBanner.maybeFor(context),
-        onClose: () => context.goRoute(const AppRoute.projects()),
+        onClose: () => context.goRoute(const AppRoute.home()),
       ),
     );
   }

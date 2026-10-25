@@ -82,8 +82,8 @@ state.
   marker is already current runs no import and emits no progress or completion
   line.
 - A user rescans the catalog by refreshing. Every manual refresh also imports
-  from every routable harness: a pull on the project list, the full-screen
-  session list or the wide split-view pane, however far it travels, the desktop
+  from every routable harness: a pull on the phone home, full screen or in the
+  wide split-view list, however far it travels, the desktop
   sidebar's Refresh and the desktop project page's Refresh button all start the
   same all-harness import beside their reload, once the pull is let go, reported
   by the same scan row. Routable is not the same as enabled: a blocked or failed
@@ -194,13 +194,14 @@ state.
   `ProjectInventoryService`, without a mounted Cubit. Its thin adapter preserves immediate optimistic state and
   completed-read visibility. The signed-in `SessionScope` owns one factory instance of each inventory: on mobile the
   router's signed-in shell around every signed-in route, on desktop the cockpit; no route creates its own. The same
-  scope owns the archive Undo window and launch failures, so both survive navigation and end with sign-out.
+  scope owns the active all-projects list, the archive Undo window and launch failures, so all three survive
+  navigation and end with sign-out.
   Replacing a consumer replays retained data, while exiting the owning scope disposes the inventory and
   fences late state application/unseen seeding. Onboarding and loaded-inventory analytics retain their existing policy.
   Explicit refresh follows the latest owning read after each result, even when an awaited successor applied before
-  another read started. `SessionListRefreshService` coordinates project and recent services for the Projects pull
-  and the desktop sidebar's Refresh without presentation dependencies (a per-project list reloads itself through
-  `SessionListCubit.refreshAndImport`); recent
+  another read started. `SessionListRefreshService` coordinates project and recent services for the phone home's
+  pull and the desktop sidebar's Refresh without presentation dependencies (the desktop project page reloads itself
+  through `SessionListCubit.refreshAndImport`); recent
   refresh joins pending admission reads, waits for its admitted cohort and reports failures despite retained rows.
   Removal retires an entry's refresh obligation; disposal prevents further reads or late unseen seeding.
 - Project and session inventory presentation is shared by the mobile and
@@ -226,53 +227,61 @@ state.
   cubit; the sidebar never claims project viewing. Archived rows open read-only.
   Mobile retains its adaptive session split. Desktop Activity, ordinary recents, contextual shortcuts and local
   controls follow the [cockpit contract](desktop-cockpit-shell.md); the sidebar is not another full session-list pane.
-- On the phone, Projects opens with an Activity group above the project list when any session is waiting on the
-  user or running: waiting sessions first, then running ones, each in project order. A waiting row carries an
-  amber dot and a "Waiting" cue before its project name; a running row carries the activity loader. Rows end with
-  the session's updated time whenever one exists. A row opens its session directly, and pulling to refresh also
-  retries each project's session read. Finished unseen sessions stay in their project lists, and the group and
-  its Projects heading are left out when nothing is in motion.
-- A session being created leads its project's running rows in the phone's Activity and the desktop home's Running
-  section as a launching row: the AI sparkle, its title and "Creating… · `<harness>` · `<project>`" with no time. A
-  tap explains that it is still being created and opens nothing; on the phone a search hides it. Its session takes its place
-  once it runs, or gives way at once to its waiting row when it first waits on the user; until then it stays out of
-  the desktop home's Recent. A newer launch whose session runs while an older one below it is still being created
-  keeps its row until the older one lands or fails, then takes its own row's place. Activity's rows and headings grow and shrink
-  in as they enter and leave, so the rows below move continuously (instantly under reduced motion), and a failed
-  launch's row leaves.
-- However a phone session is reached, from Activity or from its project's list, Android back (edge gesture or
+- The phone opens signed in on the home (`/sessions`): one list of every listed project's active sessions in the
+  shared session-row timeline below, with search and the All, Running and Unread chips. Each row names its
+  project. The large title reads "All projects" with a chevron, and a tap opens the project picker in filter mode,
+  led by "All projects" and then the known projects. Picking a project narrows the list to it: the title takes
+  its name, rows stop naming the project, and an empty result names the project. "All projects" restores the
+  whole list. This is the filter Archived shares; it resets on restart, on a computer switch, and when its project
+  leaves the list. The header holds New session, Archived and Settings. New session opens in the filtered
+  project, else the project of the newest session, else asks for a project
+  ([session creation](session-creation-and-options.md)); Archived opens under the current filter. A pull refreshes
+  every project and imports, as above. Until the project list loads the home shows a skeleton, a failed project
+  list shows its error with Retry, a computer with no projects shows the add-project call to action, and the
+  disconnected pages below replace the list.
+- From 700 pt the home is the list beside the open page (a session, new session or File Changes), and the list
+  marks the open session. Below 700 pt each is its own page over the home.
+- A session being created leads the desktop home's Running section as a launching row: the AI sparkle, its title
+  and "Creating… · `<harness>` · `<project>`" with no time. A tap explains that it is still being created and opens
+  nothing. Its session takes its place once it runs, or gives way at once to its waiting row when it first waits
+  on the user; until then it stays out of the desktop home's Recent. A newer launch whose session runs while an
+  older one below it is still being created keeps its row until the older one lands or fails, then takes its own
+  row's place. The section's rows and headings grow and shrink in as they enter and leave, so the rows below move
+  continuously (instantly under reduced motion), and a failed launch's row leaves.
+- However a phone session is reached, from the home or a notification, Android back (edge gesture or
   button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
   holds for sheets over harness settings and archived sessions.
-- On the phone, only the top-level Projects and Settings pages show a large 36 bold title. Under the Projects
+- On the phone, only the top-level home and Settings pages show a large 36 bold title. Under the home's
   title, a status row names the computer the app works on, holds a skeleton while the name loads, and says what
   onboarding waits for before any bridge is registered. The row is left out when the lookup finds no computer to
   name.
   Every other page, File Changes included, shows an 18 bold bar title, with a 12 tertiary subtitle when the
   page has one. A two-line bar title caps its text scale so it stays inside the bar; a title on its own scales
   fully.
-- A named Projects status row ends in a chevron, and it and the title above it open an anchored computer menu
-  below the row. The menu lists the account's computers, most recently seen first, each with its platform icon,
+- A named home status row ends in a chevron and opens an anchored computer menu below it (the title above it
+  is the project filter). The menu lists the account's computers, most recently seen first, each with its platform icon,
   name, and "Online", "Offline · last seen …" or "Offline", and checks the current one (before any target is
   known, the first one, which the relay serves). Picking the current computer only closes the menu. Picking
-  another closes it, returns to the Projects root, shows the shimmer loading list under the new name, and loads
-  that computer's projects as a first load does, with no rows from the previous computer. Each switch reports
+  another closes it, returns to the home with the filter back on "All projects", shows the loading skeleton under
+  the new name, and loads that computer's projects as a first load does, with no rows from the previous computer.
+  Each switch reports
   `computer_switched` with its `source` (`menu` here) and whether the target was online. A computer's online
   status in the menu, the offline card and Settings follows the relay's presence notices live, and that same
   status is what `computer_switched` reports. The capability as a whole is in [multi-computer](multi-computer.md).
-- With the picked computer offline, phone Projects heads its body "<name> is offline" ("Bridge offline" while the
+- With the picked computer offline, the phone home heads its body "<name> is offline" ("Bridge offline" while the
   name is unknown) over when it was last seen. Below that, an "Other computers" card lists up to two of the
   account's other online computers, most recently seen first, as one-tap switches; with more online, a
   "+ n others" row opens the computer menu; with other computers but none online, it says "No other computers
   online". An account with only the offline computer shows no card. The card grows into place when the list
   arrives instead of pushing the start command down in one frame. A switch from the card or its menu lands on the
-  new computer's Projects root as a menu switch does and reports `computer_switched` with source
+  new computer's home as a menu switch does and reports `computer_switched` with source
   `offline_screen`. The desktop home shows the same heading, last-seen line and card when it views another
   computer (see `desktop-cockpit-shell.md`). "Need help?" sits at the bottom of a short page and right after the
   last control of a taller one, scrolling with it, so it never covers a control.
 - File Changes with more than one file opens with a list of every file: its A, D or M status, name, folder and
   nonzero +/− counts. A tap scrolls that file's diff to the top, reopening it if it was collapsed, however far
   down the file is. A single-file change shows no list.
-- A project's pages show its repository slug as that subtitle, with no chevron or popover. A slug too long for
+- The desktop project page shows its repository slug as that subtitle, with no chevron or popover. A slug too long for
   the bar shortens in the middle, keeping owner and repository ends, and a long press or hover shows it whole.
 - A session page has no subtitle; the composer's model pill already names the model.
 - Blue means selected, on or actionable (toggles, picker checks, the selected sidebar row, links, focus rings).
@@ -294,18 +303,16 @@ state.
   are reserved for back; on Android gesture navigation, both 10% edges are
   reserved. Android button navigation and other platforms retain the full row
   as a swipe target.
-- Pull-to-refresh provides visible drag and in-flight feedback in both the
-  full-screen lists and the wide split-view session pane. The refresh itself is
+- Pull-to-refresh provides visible drag and in-flight feedback on the home, full
+  screen and in the wide split-view list, and in Archived. The refresh itself is
   dispatched when the pull is let go, not when it crosses the trigger, so the
   scan row a refresh reveals arrives after the finger lifts. On every
   platform, releasing an ordinary pull while its refresh is pending keeps the
   pane content displaced and its Cupertino indicator visible, and reports the
   outcome when it settles.
-- At the end of either full-screen list, the final project or session row
-  scrolls above its floating creation button and the bottom safe area instead
-  of remaining obscured. Session-list clearance grows with accessibility text
-  scaling when its labelled action becomes taller. The wide split-view session
-  pane has no floating action and does not reserve that clearance.
+- At the end of the home or Archived, the final session row rests above the
+  bottom safe area instead of under the home indicator. Neither list has a
+  floating creation button; New session sits in the home's header.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
@@ -316,21 +323,16 @@ state.
 - Session listings are project-scoped and pageable and carry plugin attribution,
   times, worktree and branch facts, prompt defaults, and unseen state that
   advances on activity and clears on view or mark-as-read.
-- A phone project row shows its path cut to the last two folders, growing one
-  folder at a time while a same-named project still ends the same way; a path
-  shown whole keeps its root. Its status line reads "2 running" from the
-  running-session count (a session only waiting for input is not running), or
-  shows a resting sparkle that screen readers hear as New activity, then the
-  last change, with dates past a month reading "15 Aug". Adding a project from
-  either app opens it.
+- The phone's project picker and Settings › Projects show a project's path cut
+  to the last two folders, growing one folder at a time while a same-named
+  project still ends the same way; a path shown whole keeps its root. Adding a
+  first project from the phone home's empty state opens a new session in it.
 - `GET /projects` reports `directoryMissing` for a project whose folder no
   longer exists at its path. The bridge probes each folder asynchronously; a
   probe that fails or takes longer than two seconds reads as present, and is
-  logged. The phone row then shows "Folder not found" in amber in its status
-  slot, ahead of running and unread, with a Remove button in place of the
-  chevron. The row's menu and swipe action say Remove instead of Hide; Remove
-  hides the project. A bridge older than this field reports every folder as
-  present, which was the previous behavior.
+  logged. Settings › Projects then marks the row as described below. A bridge
+  older than this field reports every folder as present, which was the previous
+  behavior.
 - Settings › Projects manages the connected computer's projects. The phone opens it from a Projects row after
   Harnesses in the Bridge settings, as a pushed page with its own bar; the desktop shows it as the Projects tab of
   the settings window. The page leads with "Open another folder…", which opens the folder browser; the added
@@ -350,9 +352,9 @@ state.
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, retrying, background tasks), then the project
   when the list gives one, the branch shortened in the middle and the pull
-  request; it no longer names the harness. A project's own session list, and
-  the shared Archived list while it is filtered to one project, give no
-  project; the Archived list across every project names each row's. Screen
+  request; it no longer names the harness. The desktop project page, and the
+  home and Archived while filtered to one project, give no project; across
+  every project the home and Archived name each row's. Screen
   readers hear the waiting state once, from the status slot. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
   text size, and they grow with
@@ -370,19 +372,19 @@ state.
 - Above the active session list, on the phone and the split pane alike, chips
   read All, Running and Unread with exact counts from the loaded list and narrow
   it locally without a request. A filter that leaves nothing says so. The chips
-  hide in the archived list and while the project has neither sessions nor a
+  hide in the archived list and while the list has neither sessions nor a
   launching row.
-- A session being created leads Today in its project's active list, on the
-  phone and desktop alike, as a launching row of the same height as a session
+- A session being created leads Today on the phone home and on its project's
+  desktop page, as a launching row of the same height as a session
   row: the first line of its first message (or "Untitled session"), the AI
   sparkle in the status slot, the harness logo before the title and
   "Creating… · `<harness>`" with no time.
   Tapping it explains that the session is still being created and opens
   nothing; it has no menu or swipe actions. It is left out of the chip counts,
   hidden under Running and Unread, while searching and in Archived, and a
-  project whose only row is a launch shows that row rather than the empty
-  state (on desktop, rather than the empty project's composer), including
-  when the launch came from Home or the page is reopened while it creates. When the session exists the row cross-fades in place into the real
+  list whose only row is a launch shows that row rather than the empty
+  state (on the desktop project page, rather than the empty project's composer), including
+  when the launch came from the desktop home or the page is reopened while it creates. When the session exists the row cross-fades in place into the real
   session row (instantly under reduced motion) without moving the rows below,
   and the launch never shows two rows: while its project has a launch still
   waiting, a session that arrives after the list first loaded stays out of it,
@@ -397,12 +399,11 @@ state.
   keeps its row until the older one lands or fails, then takes its own row's place. If a session does not
   land in its row's place, it moves where it belongs on the next change to the list's sessions as an ordinary change;
   activity and progress updates do not count. A failed launch's row leaves the list.
-- On the phone, a search field tops Projects and each session list once they
-  have anything to search. It narrows the loaded titles without a request,
-  ignoring case and needing every typed word: project names and Activity's
-  session titles on Projects, session titles (and the chips' counts) on a
-  session list. Nothing matching reads "No matches"; clearing the field
-  restores the full list, and a field that remounts shows the query in force.
+- On the phone, a search field tops the home and Archived once they have
+  anything to search. It narrows the loaded session titles (and the chips'
+  counts) without a request, ignoring case and needing every typed word.
+  Nothing matching reads "No matches"; clearing the field restores the full
+  list, and a field that remounts shows the query in force.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
   date whose field order and separators follow the user's full device locale;
   dates from the current year omit the year, while earlier years remain explicit.
@@ -552,8 +553,8 @@ state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted ordinary projects, while preserving an existing project's stored visibility. Focused Codex rollout coverage exercises external activity (details below). Focused native, snapshot, and derived import coverage proves startup catalog hydration and rescans hide new home dot-directory and temporary projects without omitting their sessions or changing their import counts, leave ordinary and nested-dot projects visible, and preserve a folder revealed through Add/Open Project; OpenCode project-list reconciliation and active-session hydration add unknown projects visible, and the v20 migration shows hidden ordinary projects while temporary and home dot-directory ones stay hidden; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused path-label coverage grows same-named project paths until they differ and keeps a whole path's root; add-project coverage opens the added project, lists Home and Root on a POSIX host plus a POSIX bridge's volumes by name, and a Windows bridge's drives beside Home, and disables the button for the place being browsed, opens the parent from the up button, including a touch just outside its drawn 40 px inside the 44 px target, and disables it at the root, and gives the "/" segment a touch- or pointer-sized tap target, with bridge coverage listing Windows drives, filtered macOS volumes and Linux mounts, nothing on an unreadable mount table, only for the prefix-less request, and skipping a stalled probe. Bridge list coverage flags a missing folder in `GET /projects` and reads an unreadable one as present; phone row coverage shows "Folder not found" in amber ahead of running with a Remove button that hides the project, and desktop sidebar coverage shows the amber icon, its tooltip, and Remove in the menu. Settings › Projects coverage lists the rows under Open another folder, renames, hides, removes a missing project, opens the folder browser, and dims and disables the page offline until the bridge returns; phone Settings and router coverage open it from the Bridge settings, and desktop coverage opens the folder browser over the settings window. Focused phone search coverage filters Projects and session lists by title, narrows the chip counts, reads No matches, clears, and keeps the query visible when the field remounts. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants for this computer using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves a pull of any length is one refresh, dispatched once the finger lifts, that starts one scan; that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, and that terminal tones, platform corners, localized count branches, and live-region semantics remain exact; that every settled result clears itself and the row then fades and folds without the content below jumping; and that every unavailable connection state and a connected bridge with no routable harness show no row and dispatch nothing. |
-| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok scans a persisted session into the catalog with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by a pull renders its row through starting, running, its result, and its fade-out on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. Several computers on one account: the Projects computer menu lists each with its platform, status, and last seen time; picking another lands on its Projects root with a loading list and no projects from the previous computer, and reports one `computer_switched` event. With the picked computer offline, the offline screen names it and lists the other online computers, and tapping one switches the same way with source `offline_screen`. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted ordinary projects, while preserving an existing project's stored visibility. Focused Codex rollout coverage exercises external activity (details below). Focused native, snapshot, and derived import coverage proves startup catalog hydration and rescans hide new home dot-directory and temporary projects without omitting their sessions or changing their import counts, leave ordinary and nested-dot projects visible, and preserve a folder revealed through Add/Open Project; OpenCode project-list reconciliation and active-session hydration add unknown projects visible, and the v20 migration shows hidden ordinary projects while temporary and home dot-directory ones stay hidden; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused path-label coverage grows same-named project paths until they differ and keeps a whole path's root; add-project coverage opens the added project, lists Home and Root on a POSIX host plus a POSIX bridge's volumes by name, and a Windows bridge's drives beside Home, and disables the button for the place being browsed, opens the parent from the up button, including a touch just outside its drawn 40 px inside the 44 px target, and disables it at the root, and gives the "/" segment a touch- or pointer-sized tap target, with bridge coverage listing Windows drives, filtered macOS volumes and Linux mounts, nothing on an unreadable mount table, only for the prefix-less request, and skipping a stalled probe. Bridge list coverage flags a missing folder in `GET /projects` and reads an unreadable one as present; phone row coverage shows "Folder not found" in amber ahead of running with a Remove button that hides the project, and desktop sidebar coverage shows the amber icon, its tooltip, and Remove in the menu. Settings › Projects coverage lists the rows under Open another folder, renames, hides, removes a missing project, opens the folder browser, and dims and disables the page offline until the bridge returns; phone Settings and router coverage open it from the Bridge settings, and desktop coverage opens the folder browser over the settings window. Focused phone home coverage filters the list from the title and back to All projects, starts New session in the filtered project, and asks for a project when there is no default. Focused phone search coverage filters session lists by title, narrows the chip counts, reads No matches, clears, and keeps the query visible when the field remounts. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants for this computer using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves a pull of any length is one refresh, dispatched once the finger lifts, that starts one scan; that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, and that terminal tones, platform corners, localized count branches, and live-region semantics remain exact; that every settled result clears itself and the row then fades and folds without the content below jumping; and that every unavailable connection state and a connected bridge with no routable harness show no row and dispatch nothing. |
+| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok scans a persisted session into the catalog with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by a pull renders its row through starting, running, its result, and its fade-out on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. The phone home on cold start lists every project's sessions; a filter round trip from the title narrows and restores it; Archived from the header opens under the filter; New session starts in the default project, or asks for one when there is none. Several computers on one account: the home's computer menu lists each with its platform, status, and last seen time; picking another lands on its home with the filter on All projects, a loading list and no sessions from the previous computer, and reports one `computer_switched` event. With the picked computer offline, the offline screen names it and lists the other online computers, and tapping one switches the same way with source `offline_screen`. |
 | L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all leaves a refresh as a silent reload, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked settles a refresh as a plain reload with no row. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
@@ -596,9 +597,9 @@ a hidden folder through Add/Open Project and confirm rescanning preserves it. Co
 row state and meaningful count variant in light/dark themes, iPhone/Android
 viewports, and reduced motion, and watch a settled row fade and fold away
 without the content below jumping. Then vary the number of enabled harnesses,
-whether any is blocked or failed, and which surface starts the run — each of
-the three lists, the desktop sidebar's Refresh, and the desktop project page's
-Refresh. Vary a first import against a
+whether any is blocked or failed, and which surface starts the run — the phone
+home, full screen and in the split, Archived, the desktop sidebar's Refresh,
+and the desktop project page's Refresh. Vary a first import against a
 re-import of an unchanged catalog, newly discovered versus already-hidden projects, and a bridge
 that reports its delta against one that omits it. Refresh while
 fully disconnected, reconnecting, connection-lost, and bridge-offline, and
@@ -612,14 +613,15 @@ started one. Restore harness eligibility afterwards.
   computer's projects or a pushed page on screen, the header keeps the old name, or picking the current computer
   reconnects.
 - The offline screen's "Other computers" card lists the offline computer itself or an offline one, a card row
-  switches without returning to the Projects root, or the card snaps the page down when the list arrives.
+  switches without returning to the home, or the card snaps the page down when the list arrives.
 - Phone search asks the bridge for anything, misses a title for its case or word
   order, keeps chip counts from the unsearched list, or leaves a blank page
   instead of "No matches".
-- Phone Activity lists an idle session, orders a running session before a waiting one, keeps a finished
-  session after it stops, or a row opens the project instead of its session.
-- Android back with a sheet open (steps, reasoning, tool detail) over a session opened from Activity returns to
-  Projects instead of closing the sheet, or closes stacked sheets together.
+- The home's title filter shows another project's rows, filtered rows still name their project, the filter
+  survives a computer switch, or New session or Archived ignores it. The home says it has no sessions while the
+  project list is loading, has failed or the computer is disconnected.
+- Android back with a sheet open (steps, reasoning, tool detail) over a session opened from the home returns to
+  the home instead of closing the sheet, or closes stacked sheets together.
 - A catalog read starts a backend, hangs on import, returns a partial list, or an
   older response overwrites a post-commit snapshot.
 - An already-satisfied automatic hydration emits a misleading zero-count
@@ -656,7 +658,7 @@ started one. Restore harness eligibility afterwards.
   any scan exposes a new home dot-directory or temporary project, hidden projects'
   sessions are omitted or counted as new again on an unchanged rescan, or a folder
   deliberately revealed through Add/Open Project is hidden again.
-- An ordinary project is missing from Projects after a fresh install or upgrade
+- An ordinary project is missing from the project picker after a fresh install or upgrade
   while its sessions exist on the bridge.
 - Desktop wide navigation recreates the session inventory on each selected
   detail/diff route, loses selection, or narrow navigation renders both panes.
@@ -697,9 +699,8 @@ started one. Restore harness eligibility afterwards.
   has no active system back gesture stops accepting row actions.
 - A wide session pane starts an ordinary refresh without showing or holding its
   pull indicator until the operation completes.
-- The final row in a full-screen project or session list remains behind its
-  floating creation button when scrolled to the end, or the wide pane gains an
-  unnecessary matching gap.
+- The final row of the home or Archived stays under the home indicator when
+  scrolled to the end.
 - Two rows for one scan, a row whose height changes as harnesses report, or a
   scan row growing under a finger that is still pulling.
 - A settled scan that never clears, a row that vanishes or makes the content
@@ -757,7 +758,9 @@ started one. Restore harness eligibility afterwards.
   `bridge/app/lib/src/services/catalog_import_service.dart`, and catalog and
   session handlers in `bridge/app/lib/src/routing/`
 - Contract: `bridge/sesori_plugin_interface/lib/src/bridge_plugin.dart`
-- Client presentation and scanning: `client/module_app_ui/lib/src/features/project_list/`,
+- Client presentation and scanning: `client/module_app_ui/lib/src/features/home/`,
+  `client/app/lib/features/home/`,
+  `client/module_app_ui/lib/src/features/project_list/`,
   `client/module_app_ui/lib/src/features/session_list/`,
   `client/module_app_ui/lib/src/features/session_detail/`,
   `client/module_app_ui/lib/src/features/new_session/`,

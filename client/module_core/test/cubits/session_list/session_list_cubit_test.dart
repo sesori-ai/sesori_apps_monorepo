@@ -108,7 +108,7 @@ void main() {
     );
 
     test("sidebar action scope skips initial fetch/view claims and retains rename refresh", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.home);
       final session = testSession(title: "Original");
       when(() => mockSessionService.renameSession(sessionId: session.id, title: "Renamed"))
           .thenAnswer((_) async => ApiResponse.success(session.copyWith(title: "Renamed")));
@@ -160,7 +160,7 @@ void main() {
         ),
       );
       expect(await cubit.renameSession(sessionId: later.id, title: "Later renamed"), isTrue);
-      mockRouteSource.emitRoute(AppRouteDef.sessions);
+      mockRouteSource.emitRoute(AppRouteDef.projectSessions);
       await Future<void>.delayed(Duration.zero);
       await cubit.close();
       verifyNever(() => mockProjectViewingService.beginListClaim(projectId: any(named: "projectId")));
@@ -169,7 +169,7 @@ void main() {
     });
 
     test("successful list render readies its project claim and close releases it", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -194,7 +194,7 @@ void main() {
     });
 
     test("tracker replay and archive toggle leave loading intact until REST completes", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       final response = Completer<ApiResponse<SessionListResponse>>();
       when(
         () => mockProjectRepository.listSessions(
@@ -215,7 +215,7 @@ void main() {
     });
 
     test("failed initial list render marks its claim failed and archive toggle preserves failure", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -241,7 +241,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "constructor: with sessions route already visible, only the initial load runs",
       build: () {
-        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
@@ -252,7 +252,7 @@ void main() {
       },
       act: (_) async {
         await Future<void>.delayed(Duration.zero);
-        mockRouteSource.emitRoute(AppRouteDef.sessions);
+        mockRouteSource.emitRoute(AppRouteDef.projectSessions);
         await Future<void>.delayed(Duration.zero);
       },
       expect: () => [
@@ -397,7 +397,7 @@ void main() {
     blocTest<SessionListCubit, SessionListState>(
       "route return: refreshes once when navigation returns to sessions",
       build: () {
-        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+        mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.home);
         when(
           () => mockProjectRepository.listSessions(
             projectId: projectId,
@@ -426,9 +426,9 @@ void main() {
             ),
           ),
         );
-        mockRouteSource.emitRoute(AppRouteDef.sessions);
+        mockRouteSource.emitRoute(AppRouteDef.projectSessions);
         await Future<void>.delayed(Duration.zero);
-        mockRouteSource.emitRoute(AppRouteDef.sessions);
+        mockRouteSource.emitRoute(AppRouteDef.projectSessions);
         await Future<void>.delayed(Duration.zero);
       },
       skip: 1,
@@ -902,7 +902,7 @@ void main() {
         SessionListResponse(items: [withPullRequest]),
         SessionListResponse(items: [withoutPullRequest]),
       ];
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -2169,7 +2169,7 @@ void main() {
     );
 
     test("fetch seeds the tracker with the REST unseen flags", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -2201,7 +2201,7 @@ void main() {
     });
 
     test("live tracker marker reorders running sessions and advances displayed recency", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -2248,7 +2248,7 @@ void main() {
     });
 
     test("live marker received during REST fetch wins over the stale seed", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       final response = Completer<ApiResponse<SessionListResponse>>();
       when(
         () => mockProjectRepository.listSessions(
@@ -2288,7 +2288,7 @@ void main() {
     });
 
     test("live tracker updates re-emit the merged unseen map", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -2312,7 +2312,7 @@ void main() {
     });
 
     test("markSessionSeen applies the change to the tracker optimistically", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -2339,7 +2339,7 @@ void main() {
     });
 
     test("markSessionSeen failure refetches the authoritative list", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.sessions);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projectSessions);
       when(
         () => mockProjectRepository.listSessions(
           projectId: projectId,
@@ -2373,7 +2373,7 @@ void main() {
     });
 
     test("action scope close retains a dialog through rename, mark recovery and delete", () async {
-      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.projects);
+      mockRouteSource = MockRouteSource(initialRoute: AppRouteDef.home);
       final session = testSession(id: "s1", unseen: true);
       final renameReply = Completer<ApiResponse<Session>>();
       final markReply = Completer<ApiResponse<void>>();

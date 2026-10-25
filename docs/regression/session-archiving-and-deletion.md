@@ -105,10 +105,10 @@ entirely along with its transcript and its dedicated worktree.
 - Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
-  narrows the list to one project. A project's Archived button, in both portrait
-  and split-pane session lists, opens the modal filtered to that project
-  (`?project=<id>`) through the same filter the all-projects lists share; it adds
-  no second filter. The live list remains active-only. The modal has a search
+  narrows the list to one project. The home's Archived button, full screen or in
+  the split's list pane, opens the modal under the home's filter
+  (`?project=<id>` while it shows one project) through the same filter the
+  all-projects lists share; it adds no second filter. The live list remains active-only. The modal has a search
   field, no new-session button and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
   the project list has loaded: while it loads the modal shows a skeleton, a failed
@@ -128,7 +128,7 @@ entirely along with its transcript and its dedicated worktree.
   archive list; X closes the entire modal to its original opener, preserving its
   list/scroll and draft. Both controls remain available during loading and errors,
   including related-session audit navigation. Direct archive entry has a safe X
-  exit to projects and leaves the project filter as it was. Audit cubits never
+  exit to the home and leaves the project filter as it was. Audit cubits never
   replace the opener's live-project claims;
   the covered project's declaration is suspended until the opener is visible.
   A covered live detail also stops declaring its session viewed, so new output
@@ -184,7 +184,7 @@ restart before explicit re-import.
 
 - Mobile mixes active rows into archives, shows a new-session floating button in
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
-- A project's Archived button opens other projects' archives, filtered rows
+- The home's Archived button ignores the home's filter, filtered rows
   repeat the project name, an unfiltered row omits it, or a newly archived
   session is missing until a manual refresh.
 - Archived says “No archived sessions” while the project list is loading, has

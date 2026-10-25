@@ -17,17 +17,17 @@ area documents linked below own the detail.
   jump. With nothing stored, the relay serves the account's default computer, the most recently connected one, and
   the app adopts the id the relay reports without reconnecting. Older apps that name no computer get that default
   ([bridge connectivity](bridge-connectivity.md)).
-- **Switch flow.** Every switch goes through one dispatcher: it replaces the route stack with the Projects root, then
+- **Switch flow.** Every switch goes through one dispatcher: it replaces the route stack with the home, then
   records the pick and retargets the connection, so no deeper screen ever has its computer change underneath it. The
   previous computer's socket is detached first, its late answers are dropped, and its bridge-scoped caches reset. The
-  list shows the existing shimmer loading state under the new name and fades in as a first load does, with no rows
-  from the previous computer. Each switch reports `computer_switched` with its `source` (`menu`, `offline_screen`,
+  home's project filter returns to All projects, and the list shows its loading skeleton under the new name and fades
+  in as a first load does, with no rows from the previous computer. Each switch reports `computer_switched` with its `source` (`menu`, `offline_screen`,
   `settings`, `computers_page`, `alert`, `notification`) and whether the target was online, never a name or id
   ([analytics](analytics.md)). Picking the current computer in a menu only closes the menu.
-- **Computer menu.** The Projects status row names the target computer, ends in a chevron, and opens an anchored
+- **Computer menu.** The home's status row names the target computer, ends in a chevron, and opens an anchored
   menu listing every computer of the account, most recently seen first, with platform icon, name, online or
   last-seen state, and a check on the current one ([projects and sessions](projects-and-sessions.md)). From the
-  Settings entry and the desktop header, and from Projects while the account has more than one computer, the menu
+  Settings entry and the desktop header, and from the home while the account has more than one computer, the menu
   ends in "Manage computers…" after a divider, which closes the menu and opens the Computers page; the offline
   card's menu has no such footer.
 - **Computers page.** Lists every computer in menu order: platform icon, name, the hostname under a name of the
@@ -38,7 +38,7 @@ area documents linked below own the detail.
   clears it. The row shows a spinner in place of its "⋯" while a rename or removal runs, and until it finishes
   Rename… and Remove… stay disabled on every row while Switch stays available; a renamed row changes in place
   everywhere the computer is named, and a failure shows a short error alert and leaves the row as it was. On the phone the page sits under
-  Settings (from Projects, Settings is pushed under it, so Back lands there); on desktop it is pushed inside the
+  Settings (from the home, Settings is pushed under it, so Back lands there); on desktop it is pushed inside the
   Settings Bridge tab, with a Back button that stays in the window.
 - **Removing a computer.** Only an offline computer can be removed: an online one other than this computer shows
   Remove… disabled with "Quit Sesori on <name> to remove it". Remove… asks first ("Remove <name>? It disappears
@@ -74,7 +74,7 @@ area documents linked below own the detail.
   that newly joins the list while the app is open is announced once as "<name> is now linked" with a Switch action
   ([popup alerts](popup-alerts.md)).
 - **Pushes.** Session pushes carry the id of the computer they came from; tapping one for another computer switches
-  first, lands on Projects, then opens the session on that computer. A push without an id opens on the current
+  first, lands on the home, then opens the session over it on that computer. A push without an id opens on the current
   computer. Connection-status pushes from the auth server name the computer ("<name> is online", "<name> went
   offline"), and one computer's status push never replaces another's in the tray ([notifications](notifications.md)).
 - **Relay pinning.** The relay keeps up to 10 bridges of an account connected at once. Each app reaches only the
@@ -95,9 +95,9 @@ release-target client platform and macOS desktop; Linux and Windows machine iden
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the owning suites for the stored target in relay `auth`, adoption without reconnect, retarget, bridge-scoped cache resets, the switch dispatcher returning to Projects before it retargets, the computer list's presence overlay, the Computers page and its rename rules, the one-action-at-a-time lock, the replacement chosen after a removal (including a switch made while it ran), and a push for another computer switching before it opens the session. |
+| L1 Smoke | Automated, no plugin: the owning suites for the stored target in relay `auth`, adoption without reconnect, retarget, bridge-scoped cache resets, the switch dispatcher returning to the home before it retargets, the computer list's presence overlay, the Computers page and its rename rules, the one-action-at-a-time lock, the replacement chosen after a removal (including a switch made while it ran), and a push for another computer switching before it opens the session. |
 | L2 Routine | Relay integration with two bridges and one app on one account: the app reaches only the computer it targets and its projects; with no target it reaches the most recently connected bridge; a presence notice for the other computer arrives and updates its status; a same-id restart replaces only its own connection. Headless bridge: deleting the stored bridge id and restarting registers into the same entry. |
-| L3 Release | Client end to end on the release-target client platform with two computers: a switch from the menu, the offline card, Settings, and the linked-computer alert, each landing on the new computer's Projects root with no rows from the previous one; a relaunch staying on the last pick; the target stopping and starting with the offline screen and menu following live; the Computers page opened from "Manage computers…", switching from it, renaming a computer and clearing the name back to its hostname, and Back returning to Settings; Remove… disabled on an online computer, removing an offline one closing its row, and removing the viewed offline one moving to the next. macOS desktop: the "Viewing:" header, viewing the other computer while the local bridge keeps serving a phone, that computer's offline body without Start, the Computers page inside the Settings window with its in-window Back, and Remove… on "This computer" showing the explanation whose "Turn off bridge" stops the bridge and then hides. |
+| L3 Release | Client end to end on the release-target client platform with two computers: a switch from the menu, the offline card, Settings, and the linked-computer alert, each landing on the new computer's home with the filter on All projects and no rows from the previous one; a relaunch staying on the last pick; the target stopping and starting with the offline screen and menu following live; the Computers page opened from "Manage computers…", switching from it, renaming a computer and clearing the name back to its hostname, and Back returning to Settings; Remove… disabled on an online computer, removing an offline one closing its row, and removing the viewed offline one moving to the next. macOS desktop: the "Viewing:" header, viewing the other computer while the local bridge keeps serving a phone, that computer's offline body without Start, the Computers page inside the Settings window with its in-window Back, and Remove… on "This computer" showing the explanation whose "Turn off bridge" stops the bridge and then hides. |
 | L4 Extended | Relay integration with two apps pinned to different computers at once, an older app following the default and re-keying when a newer bridge connects, logout then sign-in starting without a stored target, a desktop fresh install moving to this computer once its helper registers, a relay drop during a switch, and the alternate client platform. Packaged or external: one real-device session push from the other computer opening that computer and the session, and status pushes naming each computer without replacing one another. |
 | L5 Full | Store builds against the production relay and auth server; the 10-bridge cap with the eleventh refused; real Linux and Windows hosts re-registering into their entries after the bridge id file is deleted; a cloned machine image sharing a host key. Packaged or external. |
 
@@ -113,8 +113,8 @@ and another while a phone works on the local bridge.
 
 - An app reaching a computer other than its target, a reconnect or relaunch landing elsewhere, or one app's traffic,
   broadcasts or live events reaching a bridge or app on another computer.
-- A switch leaving the previous computer's projects, sessions, activity or a pushed page on screen, the header
-  keeping the old name, or a late answer from the previous computer repopulating the new one.
+- A switch leaving the previous computer's projects, sessions, activity, project filter or a pushed page on
+  screen, the header keeping the old name, or a late answer from the previous computer repopulating the new one.
 - A bridge with a different id displacing another, a same-id restart reading as offline to the other apps, or the
   app jumping to another computer on its own.
 - The menu, offline card, Settings entry or desktop header disagreeing about which computer is current or whether
@@ -129,7 +129,7 @@ and another while a phone works on the local bridge.
 - Remove… removing an online computer or the desktop's own, removing without confirmation, the list jumping or
   rows above a removed one moving, a failed removal dropping the row, the app staying on a computer it just
   removed while another remains, or a removal overriding a switch the user made while it ran.
-- A rename showing on the page but not in the menu, the Projects header or Settings, a nickname hiding the
+- A rename showing on the page but not in the menu, the home's header or Settings, a nickname hiding the
   hostname on the page, or "Use hostname" leaving the nickname in place.
 
 ## Known Limitations
@@ -161,7 +161,8 @@ and another while a phone works on the local bridge.
   `other_computers_card.dart`, `linked_computer_alerts.dart`, `features/settings/widgets/computer_settings_entry.dart`,
   `features/settings/computers_view.dart`; `client/desktop/lib/features/settings/desktop_settings_modal.dart`;
   `client/module_desktop_core/lib/src/orchestration/desktop_computer_target_orchestrator.dart`;
-  `client/desktop/lib/features/home/desktop_home_pane.dart`; and their tests.
+  `client/desktop/lib/features/home/desktop_home_pane.dart`;
+  `client/module_app_ui/lib/src/features/home/sessions_home_view.dart`; and their tests.
 - Bridge: `bridge/app/lib/src/auth/machine_id_api.dart`, `bridge_registration_repository.dart`, and the push
   dispatcher and content builder with their tests.
 - Shared contracts: `bridge_summary_test.dart`, `relay_notice_message_test.dart`, `notification_data_test.dart`.

@@ -8,6 +8,7 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -27,8 +28,6 @@ class MockSessionDetailLoadService() extends Mock implements SessionDetailLoadSe
 class MockSessionRepository() extends Mock implements SessionRepository;
 
 class MockPermissionRepository() extends Mock implements PermissionRepository;
-
-class MockSessionListCubit() extends Mock implements SessionListCubit;
 
 class MockMcpService() extends Mock implements McpService;
 
@@ -188,6 +187,14 @@ void _registerDependencies({
   );
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
+  // The page's own action cubit runs its menu actions.
+  final projectRepository = MockProjectRepository();
+  getIt.registerSingleton<ProjectRepository>(projectRepository);
+  getIt.registerSingleton<SessionListService>(
+    SessionListService(repository: projectRepository, activityCalculator: const SessionActivityCalculator()),
+  );
+  getIt.registerSingleton<SessionCleanupService>(SessionCleanupService(repository: promptDispatcher));
+  getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
 }
 
 void main() {
@@ -322,15 +329,7 @@ void main() {
     when(service.dispose).thenAnswer((_) async {});
     GetIt.instance.registerFactory<McpService>(() => service);
     addTearDown(states.close);
-    final sessions = MockSessionListCubit();
-    when(() => sessions.stream).thenAnswer((_) => const Stream<SessionListState>.empty());
-
-    await tester.pumpWidget(
-      BlocProvider<SessionListCubit>.value(
-        value: sessions,
-        child: _buildApp(sessionTitle: null, navigatorKey: null),
-      ),
-    );
+    await tester.pumpWidget(_buildApp(sessionTitle: null, navigatorKey: null));
     await tester.pumpAndSettle();
     final context = tester.element(find.byType(SessionDetailBody));
     final loaded = context.read<SessionDetailCubit>().state as SessionDetailLoaded;

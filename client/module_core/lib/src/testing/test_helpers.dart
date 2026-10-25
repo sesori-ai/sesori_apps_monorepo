@@ -400,7 +400,7 @@ class MockRouteSource({
   ValueStream<AppRouteDef?> get currentRouteStream => _currentRoute.stream;
 
   @override
-  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+  Stream<bool> get homeVisibility => currentRouteStream.map((route) => route == AppRouteDef.home);
 
   AppRouteDef? get currentRoute => _currentRoute.value;
 

@@ -15,7 +15,7 @@ class ComputerSwitchDispatcher({
   required final RouteDispatcher _routeDispatcher,
 }) {
   Future<void> switchTo({required String bridgeId, required ComputerSwitchSource source}) async {
-    _routeDispatcher.replaceStack(stack: RouteStack(paths: [const AppRoute.projects().buildPath()]));
+    _routeDispatcher.replaceStack(stack: RouteStack(paths: [const AppRoute.home().buildPath()]));
     await _selectedComputerService.select(bridgeId: bridgeId, source: source);
   }
 }

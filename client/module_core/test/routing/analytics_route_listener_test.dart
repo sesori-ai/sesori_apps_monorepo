@@ -14,7 +14,7 @@ class _FakeRouteSource({required AppRouteDef? initialRoute}) implements RouteSou
   ValueStream<AppRouteDef?> get currentRouteStream => routes.stream;
 
   @override
-  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+  Stream<bool> get homeVisibility => currentRouteStream.map((route) => route == AppRouteDef.home);
 
   @override
   String? currentLocation;
@@ -104,7 +104,7 @@ void main() {
 
     const sequence = [
       AppRouteDef.login,
-      AppRouteDef.projects,
+      AppRouteDef.home,
       AppRouteDef.settings,
       AppRouteDef.settingsDefaultInput,
       AppRouteDef.settingsNotifications,
@@ -113,7 +113,7 @@ void main() {
       AppRouteDef.settingsProfile,
       AppRouteDef.settingsComputers,
       AppRouteDef.settingsProjects,
-      AppRouteDef.sessions,
+      AppRouteDef.projectSessions,
       AppRouteDef.archivedSessions,
       AppRouteDef.newSession,
       AppRouteDef.sessionDetail,
@@ -130,7 +130,7 @@ void main() {
       service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen),
       [
         AnalyticsScreen.login,
-        AnalyticsScreen.projects,
+        AnalyticsScreen.sessions,
         AnalyticsScreen.settings,
         AnalyticsScreen.settingsDefaultInput,
         AnalyticsScreen.settingsNotifications,
@@ -153,7 +153,7 @@ void main() {
     await listener.start();
 
     routeSource
-      ..emit(route: AppRouteDef.projects)
+      ..emit(route: AppRouteDef.home)
       ..emit(route: AppRouteDef.sessionDetail);
     await _flush();
     expect(service.events, isEmpty);
@@ -180,7 +180,7 @@ void main() {
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
     await listener.start();
 
-    routeSource.emit(route: AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.home);
     await Future<void>.delayed(Duration.zero);
     final afterObservation = DateTime.now().toUtc();
     await Future<void>.delayed(const Duration(milliseconds: 10));
@@ -222,7 +222,7 @@ void main() {
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
     await listener.start();
 
-    routeSource.emit(route: AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.home);
     await Future<void>.delayed(Duration.zero);
     routeSource.emit(route: AppRouteDef.sessionDetail);
     await _flush();
@@ -244,7 +244,7 @@ void main() {
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
     await listener.start();
 
-    routeSource.emit(route: AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.home);
     await Future<void>.delayed(Duration.zero);
     service.emit(state: _activeState());
     await Future<void>.delayed(Duration.zero);
@@ -254,7 +254,7 @@ void main() {
     await _flush();
 
     expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
-      AnalyticsScreen.projects,
+      AnalyticsScreen.sessions,
     ]);
   });
 
@@ -266,7 +266,7 @@ void main() {
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
     await listener.start();
 
-    routeSource.emit(route: AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.home);
     await Future<void>.delayed(Duration.zero);
     service.emit(state: _inactiveState());
     delivery.complete(AnalyticsDeliveryResult.acceptedBySdk);
@@ -289,7 +289,7 @@ void main() {
     );
     await listener.start();
 
-    routeSource.emit(route: AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.home);
     await Future<void>.delayed(const Duration(milliseconds: 20));
     service.deliveryCompleter = null;
     service.emit(state: _inactiveState());
@@ -297,8 +297,8 @@ void main() {
     await _flush();
 
     expect(service.events.whereType<ProductScreenViewedEvent>().map((event) => event.screen), [
-      AnalyticsScreen.projects,
-      AnalyticsScreen.projects,
+      AnalyticsScreen.sessions,
+      AnalyticsScreen.sessions,
     ]);
   });
 
@@ -308,7 +308,7 @@ void main() {
     listener = AnalyticsRouteListener(routeSource: routeSource, analyticsService: service);
     await listener.start();
 
-    routeSource.emit(route: AppRouteDef.projects);
+    routeSource.emit(route: AppRouteDef.home);
     await _flush();
     routeSource.emit(route: null);
     service.emit(state: _activeState());

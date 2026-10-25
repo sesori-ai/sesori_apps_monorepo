@@ -89,7 +89,7 @@ class SessionListCubit({
         _routeSource.currentRouteStream
             .distinct()
             .pairwise()
-            .where((pair) => pair.first != AppRouteDef.sessions && pair.last == AppRouteDef.sessions)
+            .where((pair) => pair.first != AppRouteDef.projectSessions && pair.last == AppRouteDef.projectSessions)
             .listen((_) {
               if (isClosed) return;
               unawaited(refreshSessions());

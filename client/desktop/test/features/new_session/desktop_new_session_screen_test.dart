@@ -343,7 +343,7 @@ void main() {
       getIt.registerSingleton<CatalogRescanService>(scans);
       getIt.registerSingleton<UrlLauncher>(_MockUrlLauncher());
       final router = GoRouter(
-        initialLocation: "/projects/p/sessions/new",
+        initialLocation: "/sessions/new?project=p",
         routes: [
           GoRoute(
             path: AppRouteDef.newSession.path,
@@ -396,7 +396,7 @@ void main() {
       final composer = tester.element(find.byType(PromptInput));
       tester.widget<DesktopNewSessionView>(find.byType(DesktopNewSessionView)).onOpenHarnessSettings();
       await tester.pumpAndSettle();
-      expect(router.state.uri.path, "/projects/p/sessions/new");
+      expect(router.state.uri.toString(), "/sessions/new?project=p");
       final overview = tester.element(find.byType(HarnessesSettingsView));
       final harnessCubit = overview.read<PluginManagementCubit>();
       if (closeFromDetail) {

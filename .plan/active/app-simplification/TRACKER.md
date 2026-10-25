@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 7.b.ii/13 follows 7.b.i/13.
+- Current step: 8/13 follows 7.b.ii/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -19,7 +19,7 @@
 | 6/13 | All-projects list model | Done | #2033 |
 | 7.a/13 | Archived across projects | Done | `sesori/app-simplification-step-7a` |
 | 7.b.i/13 | Home building blocks; Archived's project-list states | Done | `sesori/app-simplification-step-7b-i` |
-| 7.b.ii/13 | All-projects home and route tree | Not started | — |
+| 7.b.ii/13 | All-projects home and route tree | Done | `sesori/app-simplification-step-7b-ii` |
 | 8/13 | Projects screen removed | Not started | — |
 | 9/13 | Wide phone and tablet sidebar | Not started | — |
 | 10.a/13 | Desktop sidebar on the shared list | Not started | — |

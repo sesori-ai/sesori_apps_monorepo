@@ -10,21 +10,34 @@ import "../../core/widgets/mobile_composer_presentation_scope.dart";
 
 class const NewSessionScreen({
   super.key,
-  required final String projectId,
+
+  /// Null asks for a project first.
+  required final String? projectId,
   required final String? projectName,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final projectId = this.projectId;
+    if (projectId == null) {
+      return NewSessionProjectPrompt(
+        onProjectSelected: ({required projectId, required projectName}) =>
+            context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
+        onBack: context.pop,
+        banner: ConnectionBanner.maybeFor(context),
+      );
+    }
     return BlocProvider(
       // Replacing the route keeps its page, so the project keys the provider:
       // another project gets a fresh cubit and never the one that was left.
       key: ValueKey(projectId),
       create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
-      child: Builder(builder: (context) => _build(context: context)),
+      child: Builder(
+        builder: (context) => _build(context: context, projectId: projectId),
+      ),
     );
   }
 
-  Widget _build({required BuildContext context}) {
+  Widget _build({required BuildContext context, required String projectId}) {
     return NewSessionView(
       projectId: projectId,
       projectName: projectName,

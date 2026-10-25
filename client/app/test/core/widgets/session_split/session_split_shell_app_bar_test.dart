@@ -17,7 +17,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+        initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
         currentRouteDef: AppRouteDef.sessionDetail,
         sessionsByProject: {
           "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
@@ -44,7 +44,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions/session-1/diffs",
+        initialLocation: "/sessions/p1/session-1/diffs",
         currentRouteDef: AppRouteDef.sessionDiffs,
         sessionsByProject: {
           "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],

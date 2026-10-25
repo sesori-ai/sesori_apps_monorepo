@@ -11,17 +11,27 @@ desktop main-pane transitions distinct.
 - Standard pushes and pops use the Material platform transition: a horizontal
   Cupertino slide on iOS and macOS, and the configured Material transition on
   Android.
-- Compact session-list, session-detail, new-session, and diff navigation uses
-  the same platform transition. Split-view pane changes fade instead of sliding.
+- On the phone, signed-in navigation starts at the home (`/sessions`). Session
+  detail (`/sessions/<projectId>/<sessionId>`), new session
+  (`/sessions/new?project=<id>`) and diffs open over it with the same platform
+  transition. From 700 pt the home stays as the list beside them, and pane
+  changes fade instead of sliding.
   The one exception is the session screen replacing the new-session screen that
   created it: it appears with no entry transition, because the new-session
   screen already shows its first message where the session screen does. Back
   from it still animates, and every other entry to the same session, including a
   deep link, transitions as usual.
-- The base compact session-detail toolbar returns to the typed sessions route.
-  This keeps path-like project identifiers percent-encoded and matchable instead
-  of reconstructing the parent URL from decoded route parameters. A child or
+- The base compact session-detail toolbar returns to the home. A child or
   background-task detail opened with a push still pops to its parent detail.
+  Typed routes keep path-like project identifiers percent-encoded, so a
+  session's URL stays matchable.
+- A notification opens its session over the home, so Back lands on the home;
+  a notification for another computer switches to it first. A computer switch
+  replaces the stack with the home, and deleting the open session returns to it.
+- The desktop serves the same home route with its own home pane. Its project
+  page stays at `/projects/<projectId>/sessions`, and its new-session fallback,
+  open-project, mark-unread and delete exits return there. A desktop session
+  opened from a notification goes back to the home.
 - Settings and modal harness settings rise from the bottom on every platform;
   settings child pages use the standard platform push.
 - Login uses its intentional fade and logo hero motion.
@@ -60,9 +70,11 @@ desktop main-pane transitions distinct.
 - A desktop modal rises as a bottom sheet, a phone modal opens as a dialog,
   Escape closes more than the top dialog, or a dialog fades under reduced
   motion.
-- Returning from a base compact session detail produces an unmatchable sessions
-  URL, especially when a project identifier contains filesystem-path separators,
-  or a pushed child detail returns to the sessions list instead of its parent.
+- Returning from a base compact session detail lands anywhere but the home, a
+  session URL whose project identifier contains filesystem-path separators does
+  not match, or a pushed child detail returns to the home instead of its parent.
+- A notification's Back skips the home, or a computer switch leaves a page from
+  the previous computer on the stack.
 
 ## Sources
 
@@ -71,6 +83,8 @@ desktop main-pane transitions distinct.
 - `client/app/test/core/routing/imperative_pane_route_test.dart`
 - `client/app/test/core/routing/adaptive_session_route_matrix_test.dart`
 - `client/app/test/features/session_detail/adaptive_session_detail_routing_test.dart`
+- `client/module_core/test/routing/notification_open_dispatcher_test.dart`
+- `client/module_core/test/routing/computer_switch_dispatcher_test.dart`
 - `client/desktop/lib/core/routing/desktop_router.dart`
 - `client/desktop/test/core/routing/desktop_router_test.dart`
 - `client/module_prego/lib/components/surfaces/prego_modal.dart`

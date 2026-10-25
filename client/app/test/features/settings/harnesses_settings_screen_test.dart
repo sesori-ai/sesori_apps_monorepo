@@ -97,8 +97,8 @@ Widget _app({String initialLocation = "/settings/harnesses"}) {
     initialLocation: initialLocation,
     routes: [
       GoRoute(
-        path: "/projects",
-        builder: (_, _) => const Scaffold(body: Text("projects-route")),
+        path: "/sessions",
+        builder: (_, _) => const Scaffold(body: Text("home-route")),
       ),
       ..._signedInRoutes().map(
         (route) => route is GoRoute && route.path == AppRouteDef.settings.path
@@ -150,8 +150,8 @@ Widget _appPushedFromOpener({
         ),
       ),
       GoRoute(
-        path: "/projects",
-        builder: (context, state) => const Scaffold(body: Text("projects-route")),
+        path: "/sessions",
+        builder: (context, state) => const Scaffold(body: Text("home-route")),
       ),
       ..._signedInRoutes().map(
         (route) => throughSettings && route is GoRoute && route.path == AppRouteDef.settings.path
@@ -1963,7 +1963,7 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("pull refresh delegates to the cubit and direct modal X returns to Projects", (tester) async {
+  testWidgets("pull refresh delegates to the cubit and direct modal X returns home", (tester) async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     await tester.pumpWidget(_app());
     await tester.pumpAndSettle();
@@ -1985,7 +1985,7 @@ void main() {
 
     await tester.tap(find.bySemanticsLabel("Close settings"));
     await tester.pumpAndSettle();
-    expect(find.text("projects-route"), findsOneWidget);
+    expect(find.text("home-route"), findsOneWidget);
   });
 
   testWidgets("pushed over another screen, close returns to the opener without stacking Settings", (tester) async {
@@ -2005,10 +2005,10 @@ void main() {
 
     expect(find.byType(HarnessesSettingsScreen), findsNothing);
     expect(find.text("open-harnesses"), findsOneWidget);
-    expect(find.text("projects-route"), findsNothing);
+    expect(find.text("home-route"), findsNothing);
   });
 
-  for (final openerPath in ["/projects", "/projects/p/sessions/s", "/projects/p/sessions/new"]) {
+  for (final openerPath in ["/sessions", "/sessions/p/s", "/sessions/new"]) {
     testWidgets("pushed Back preserves Settings and its original $openerPath opener", (tester) async {
       snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
       await tester.pumpWidget(
@@ -2079,7 +2079,7 @@ void main() {
     verifyNever(() => service.cancelAuthentication(pluginId: any(named: "pluginId")));
   });
 
-  testWidgets("direct pushed detail constructs only overview ancestry and Back falls back to Projects", (tester) async {
+  testWidgets("direct pushed detail constructs only overview ancestry and Back falls back home", (tester) async {
     snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
     await tester.pumpWidget(_app(initialLocation: "/settings/harnesses/future-harness?presentation=pushed"));
     await tester.pumpAndSettle();
@@ -2091,7 +2091,7 @@ void main() {
     expect(find.text("settings-ancestor", skipOffstage: false), findsNothing);
     await tester.tap(find.bySemanticsLabel("Back"));
     await tester.pumpAndSettle();
-    expect(find.text("projects-route"), findsOneWidget);
+    expect(find.text("home-route"), findsOneWidget);
   });
 
   testWidgets("production harness shell retains one cubit across detail Back and closes to the opener", (tester) async {
@@ -2167,5 +2167,10 @@ void main() {
   });
 }
 
-/// The signed-in routes without the scope around them.
-List<RouteBase> _signedInRoutes() => buildAppRoutesForTesting().whereType<ShellRoute>().single.routes;
+/// The signed-in routes without the scope around them, and without the session
+/// shell, which needs that scope; each test stands in its own home.
+List<RouteBase> _signedInRoutes() => [
+  for (final route in buildAppRoutesForTesting().whereType<ShellRoute>().single.routes)
+    if (!(route is ShellRoute && route.routes.whereType<GoRoute>().any((child) => child.path == AppRouteDef.home.path)))
+      route,
+];

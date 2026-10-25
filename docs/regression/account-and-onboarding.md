@@ -3,7 +3,7 @@
 ## Capability
 
 Signing into a Sesori account from the app, restoring or ending that session, and
-the first-run guidance that reaches a working bridge: the empty-Projects
+the first-run guidance that reaches a working bridge: the empty home's
 onboarding and the bridge's standalone install/open-app prompt. No coding plugin
 participates.
 
@@ -73,9 +73,9 @@ participates.
   Legal. Bridge opens with the current computer's entry (platform,
   name, presence), a flat row under the caption, above the computer-scoped
   card, which leads with Harnesses; Preferences holds Notifications and Default
-  input. The entry opens the same computer menu as Projects, ending in "Manage
+  input. The entry opens the same computer menu as the home, ending in "Manage
   computers…" ([multi-computer](multi-computer.md)), and picking another
-  computer lands on its Projects root; picking the current one only closes the
+  computer lands on its home; picking the current one only closes the
   menu. The entry appears only once
   the computer list names the current computer and grows in without a jump.
   Offline, Harnesses and the YOLO, warm-up and refresh rows dim and do not respond to taps.
@@ -93,10 +93,12 @@ participates.
   same computer that lost its stored bridge id reuses that computer's existing
   entry instead of adding a duplicate. Without a readable identifier the bridge
   registers without a host key and logs the failure.
-- With no bridge, mobile Projects shows install/start commands, the explainer and support links; copy/share
-  hand off the command unchanged. Desktop home instead offers supervised local bridge recovery.
-  Connected with no projects shows the add-project call to action on either surface.
-- With the target computer offline, mobile Projects names the computer in the
+- Signed-in launch opens the phone home (`/sessions`), the list of every project's sessions.
+- With no bridge, the phone home shows install/start commands, the explainer and support links in place of
+  the list; copy/share hand off the command unchanged. Desktop home instead offers supervised local bridge
+  recovery. Connected with no projects shows the add-project call to action on either surface; on the phone,
+  adding that first project opens a new session in it.
+- With the target computer offline, the phone home names the computer in the
   bar's bridge line and in a "<name> is offline" heading when the name is known
   ("Bridge offline" otherwise), with when it was last seen when that is known,
   then the account's other online computers ([projects](projects-and-sessions.md)),
@@ -120,9 +122,9 @@ participates.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Signed-in launch restores the local session and reaches Projects with no network work at splash; the macOS desktop restores a shared-store token using its classic-Keychain master; a bridge start reaches readiness. Client end to end plus headless bridge; no plugin. |
+| L1 Smoke | Signed-in launch restores the local session and reaches the home with no network work at splash; the macOS desktop restores a shared-store token using its classic-Keychain master; a bridge start reaches readiness. Client end to end plus headless bridge; no plugin. |
 | L2 Routine | One provider through sign-in and logout on the release-target client platform, including an in-flight restore/refresh race and definitive refresh rejection, plus the prompt decision for marker-present, already-registered, and absent accounts. Client end to end plus headless bridge; no plugin. Automated: browser sign-in cancel, reopen, failed launch, resume, declined and expired outcomes, and last-method recording through logout in the auth manager and login cubit; the shared email form and the phone's waiting line; the desktop's layouts, handoff card, countdown, notices, stale-failure switches and "Last used" marker; the gate bringing the window forward only after a sign-in from the login screen; and the bridge registration host key, hashed with its salt as lowercase hex, omitted from the request when no machine id is readable, and never carrying the raw machine id. |
-| L3 Release | Every sign-in option on the release-target client platform and on the macOS desktop, both empty-Projects states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. On the macOS desktop, also Cancel then another provider, Open again, Copy link finished in another browser, a declined page, expiry at five minutes, a browser that fails to open (launcher stubbed in a dev build), "Last used" after sign-out, the window coming forward, both layouts across 820 points and at 560×480, and dragging the window by its top band. Client end to end plus relay integration; no plugin. |
+| L3 Release | Every sign-in option on the release-target client platform and on the macOS desktop, both empty-home states, and prompt ordering proved by a real client joining, completing key exchange, and issuing a request while the prompt shows. On the macOS desktop, also Cancel then another provider, Open again, Copy link finished in another browser, a declined page, expiry at five minutes, a browser that fails to open (launcher stubbed in a dev build), "Last used" after sign-out, the window coming forward, both layouts across 820 points and at 560×480, and dragging the window by its top band. Client end to end plus relay integration; no plugin. |
 | L4 Extended | Android native storage failure without an automatic data reset, background/resume mid sign-in, unreachable or rejecting auth server, expiry refresh, logout while connected, logout during restore/login persistence, refresh rejection followed by relaunch, withheld push registration, delayed status check, second mobile platform including the shared email form and one browser provider. Windows and Linux desktops: Apple and one other provider through the browser, and Copy link; the folded layout on Windows, and Copy link without a working browser opener on Linux. Client end to end where the app observes it, headless where the bridge owns it. |
 | L5 Full | Store builds: native Apple sign-in on a real device, email flow, legal and analytics-preference surfaces, marker rewrite after a fresh install, and the status-endpoint-unavailable path against an older auth deployment. Packaged or external; no plugin. |
 
@@ -191,7 +193,8 @@ and how the wait goes: reopened, copied, confirmed, cancelled, declined or expir
 
 ## Sources
 
-- Client auth, login, splash, registered-bridge, and project onboarding code and tests.
+- Client auth, login, splash, registered-bridge, and home onboarding code
+  (`client/app/lib/features/home/onboarding/`) and tests.
 - Desktop sign-in: `client/desktop/lib/features/login/`, `AuthGateCubit`,
   `LastSignInStorage`, and `client/desktop/test/features/login/login_view_test.dart`.
 - Bridge app-client onboarding service and runtime runner, plus their owning tests.

@@ -81,10 +81,10 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
             onOpenProject: ({required context, required project, required displayName}) => _goRoute(
               context: context,
-              route: AppRoute.sessions(projectId: project.id, projectName: displayName),
+              route: AppRoute.projectSessions(projectId: project.id, projectName: displayName),
             ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
-            onOpenProjects: () => _goRoute(context: context, route: const AppRoute.projects()),
+            onOpenProjects: () => _goRoute(context: context, route: const AppRoute.home()),
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
             onGoBack: () => _goBack(context: context),
             child: Builder(
@@ -100,10 +100,10 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
     routes: <RouteBase>[
       GoRoute(
         path: AppRouteDef.splash.path,
-        redirect: (_, _) => const AppRoute.projects().buildPath(),
+        redirect: (_, _) => const AppRoute.home().buildPath(),
       ),
       GoRoute(
-        path: AppRouteDef.projects.path,
+        path: AppRouteDef.home.path,
         builder: (BuildContext context, GoRouterState state) => DesktopHomePane(
           onOpenSession: ({required context, required project, required displayName, required session}) => _goRoute(
             context: context,
@@ -118,7 +118,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           ),
           onOpenProject: ({required context, required project, required displayName}) => _goRoute(
             context: context,
-            route: AppRoute.sessions(projectId: project.id, projectName: displayName),
+            route: AppRoute.projectSessions(projectId: project.id, projectName: displayName),
           ),
           onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
           onManageComputers: () => unawaited(
@@ -127,7 +127,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
         ),
       ),
       GoRoute(
-        path: AppRouteDef.sessions.path,
+        path: AppRouteDef.projectSessions.path,
         builder: (BuildContext context, GoRouterState state) {
           final route = _decodeSessionsRoute(state: state);
           return DesktopSessionListCubitProvider(
@@ -156,34 +156,37 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           );
         },
       ),
-      // Literal /new must precede the dynamic session-id route.
       GoRoute(
         path: AppRouteDef.newSession.path,
+        // Every desktop entry names its project; one without goes home.
+        redirect: (_, state) =>
+            _decodeNewSessionRoute(state: state).projectId == null ? const AppRoute.home().buildPath() : null,
         builder: (BuildContext context, GoRouterState state) {
           final route = _decodeNewSessionRoute(state: state);
+          final projectId = route.projectId ?? (throw StateError("A new session without a project redirects home"));
           return DesktopNewSessionScreen(
             // Replacing the route reuses the page, so the key is what gives
             // another project its own cubit.
-            key: ValueKey("desktop-new-session-${route.projectId}"),
+            key: ValueKey("desktop-new-session-$projectId"),
             onProjectSelected: ({required projectId, required projectName}) => _replaceRoute(
               context: context,
               route: AppRoute.newSession(projectId: projectId, projectName: projectName),
             ),
-            projectId: route.projectId,
+            projectId: projectId,
             projectName: route.projectName,
             onBack: () => _popRouteOrGo(
               context: context,
-              fallback: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+              fallback: AppRoute.projectSessions(projectId: projectId, projectName: route.projectName),
             ),
             onOpenProject: () => _goRoute(
               context: context,
-              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+              route: AppRoute.projectSessions(projectId: projectId, projectName: route.projectName),
             ),
             onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
             onSessionCreated: ({required session}) => _replaceRoute(
               context: context,
               route: AppRoute.sessionDetail(
-                projectId: route.projectId,
+                projectId: projectId,
                 projectName: route.projectName,
                 sessionId: session.id,
                 sessionTitle: session.title,
@@ -207,7 +210,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             projectName: route.projectName,
             onOpenProject: () => _goRoute(
               context: context,
-              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+              route: AppRoute.projectSessions(projectId: route.projectId, projectName: route.projectName),
             ),
             // A subtask pushed over its parent pops back there with the transcript kept; one reached
             // any other way (the sidebar, a notification) opens its parent.
@@ -239,7 +242,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             sessionActions: _desktopSessionActions,
             onMarkedUnread: () => _goRoute(
               context: context,
-              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+              route: AppRoute.projectSessions(projectId: route.projectId, projectName: route.projectName),
             ),
             onOpenSession: ({required projectId, required sessionId, required sessionTitle, required readOnly}) =>
                 _pushRoute(
@@ -266,7 +269,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             sessionId: route.sessionId,
             onOpenProject: () => _goRoute(
               context: context,
-              route: AppRoute.sessions(projectId: route.projectId, projectName: route.projectName),
+              route: AppRoute.projectSessions(projectId: route.projectId, projectName: route.projectName),
             ),
           );
         },
@@ -302,14 +305,14 @@ class const _PageFade({@override required final Duration transitionDuration}) ex
   ) => FadeTransition(opacity: animation, child: child);
 }
 
-AppRouteSessions _decodeSessionsRoute({required GoRouterState state}) {
+AppRouteProjectSessions _decodeSessionsRoute({required GoRouterState state}) {
   return switch (AppRoute.fromDef(
-    def: AppRouteDef.sessions,
+    def: AppRouteDef.projectSessions,
     pathParams: state.pathParameters,
     queryParams: state.uri.queryParameters,
   )) {
-    final AppRouteSessions route => route,
-    final route => throw StateError("Route ${route.def.name} is not a sessions route"),
+    final AppRouteProjectSessions route => route,
+    final route => throw StateError("Route ${route.def.name} is not a project-sessions route"),
   };
 }
 
@@ -369,7 +372,7 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
   }
   _goRoute(
     context: context,
-    route: AppRoute.sessions(
+    route: AppRoute.projectSessions(
       projectId: projectId,
       projectName: routeState.uri.queryParameters[projectNameQueryParam],
     ),
@@ -378,7 +381,7 @@ void _closeDeletedSessionRoute({required BuildContext context, required String s
 
 void _goDesktopHome() {
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  desktopRouter.go(const AppRoute.projects().buildPath());
+  desktopRouter.go(const AppRoute.home().buildPath());
 }
 
 void _goRoute({required BuildContext context, required AppRoute route}) {

@@ -16,7 +16,7 @@ class _EmptyRouteSource() implements RouteSource {
   ValueStream<AppRouteDef?> get currentRouteStream => _route.stream;
 
   @override
-  Stream<bool> get projectPageVisibility => currentRouteStream.map((route) => route == AppRouteDef.projects);
+  Stream<bool> get homeVisibility => currentRouteStream.map((route) => route == AppRouteDef.home);
 
   @override
   String? get currentLocation => null;

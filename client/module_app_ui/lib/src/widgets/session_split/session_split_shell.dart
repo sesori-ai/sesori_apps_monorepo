@@ -1,3 +1,4 @@
+import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
@@ -6,55 +7,37 @@ import "session_split_scope.dart";
 
 /// Adaptive shell that renders either a single-pane narrow layout or a
 /// two-pane wide layout for session routes.
+///
+/// It reports whether its list pane shows to the scope's [AllSessionsCubit],
+/// which owns the wide-pane claim.
 class const SessionSplitShell({
   super.key,
   required final Widget list,
   required final Widget child,
-  required final ProjectViewingService projectViewingService,
 }) extends StatefulWidget {
   @override
   State<SessionSplitShell> createState() => _SessionSplitShellState();
 }
 
 class _SessionSplitShellState() extends State<SessionSplitShell> {
-  late ProjectViewingService _projectViewingService;
-  late ProjectViewPaneClaim _paneClaim;
+  late final AllSessionsCubit _sessions;
   bool _listPaneVisible = false;
 
   @override
   void initState() {
     super.initState();
-    _projectViewingService = widget.projectViewingService;
-    _paneClaim = _projectViewingService.beginWideListPaneClaim();
-  }
-
-  @override
-  void didUpdateWidget(covariant SessionSplitShell oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (identical(oldWidget.projectViewingService, widget.projectViewingService)) return;
-    _projectViewingService.releaseWideListPaneClaim(claim: _paneClaim);
-    _projectViewingService = widget.projectViewingService;
-    _paneClaim = _projectViewingService.beginWideListPaneClaim();
-    if (_listPaneVisible) {
-      _projectViewingService.setWideListPaneVisible(
-        claim: _paneClaim,
-        isVisible: true,
-      );
-    }
+    _sessions = context.read<AllSessionsCubit>();
   }
 
   void _reportListPanePresence({required bool isVisible}) {
     if (_listPaneVisible == isVisible) return;
     _listPaneVisible = isVisible;
-    _projectViewingService.setWideListPaneVisible(
-      claim: _paneClaim,
-      isVisible: isVisible,
-    );
+    _sessions.setPaneVisible(isVisible: isVisible);
   }
 
   @override
   void dispose() {
-    _projectViewingService.releaseWideListPaneClaim(claim: _paneClaim);
+    _reportListPanePresence(isVisible: false);
     super.dispose();
   }
 

@@ -92,7 +92,7 @@ void main() {
           builder: (_, _) => testSessionScope(sessionLaunchService: launchService, child: const ProjectListScreen()),
         ),
         GoRoute(
-          path: "/projects/:projectId/sessions/:sessionId",
+          path: "/sessions/:projectId/:sessionId",
           builder: (_, state) {
             onSessionRoute(state.pathParameters["sessionId"]!);
             return const SizedBox.shrink();

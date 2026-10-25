@@ -17,49 +17,14 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("SessionSplitShell", () {
-    testWidgets("moves the visible pane claim when its viewing service changes", (tester) async {
-      final firstService = stubbedProjectViewingService();
-      final replacementService = stubbedProjectViewingService();
-      await tester.binding.setSurfaceSize(const Size(1024, 800));
-      addTearDown(() => tester.binding.setSurfaceSize(null));
-
-      Widget buildShell({required ProjectViewingService service}) {
-        return MaterialApp(
-          home: SessionSplitShell(
-            projectViewingService: service,
-            list: const SizedBox(),
-            child: const SizedBox(),
-          ),
-        );
-      }
-
-      await tester.pumpWidget(buildShell(service: firstService));
-      await tester.pump();
-      clearInteractions(firstService);
-
-      await tester.pumpWidget(buildShell(service: replacementService));
-      await tester.pump();
-
-      verify(
-        () => firstService.releaseWideListPaneClaim(claim: any(named: "claim")),
-      ).called(1);
-      verify(replacementService.beginWideListPaneClaim).called(1);
-      verify(
-        () => replacementService.setWideListPaneVisible(
-          claim: any(named: "claim"),
-          isVisible: true,
-        ),
-      ).called(1);
-    });
-
     testWidgets("narrow route exposes isSplit=false and hides split panes", (tester) async {
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(390, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions",
-        currentRouteDef: AppRouteDef.sessions,
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
         sessionsByProject: {
           "p1": [adaptiveTestSession(projectId: "p1", id: "s1", title: "Session One")],
         },
@@ -87,7 +52,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions/session-1?title=Session+One&readOnly=false",
+        initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
         currentRouteDef: AppRouteDef.sessionDetail,
         sessionsByProject: {
           "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
@@ -117,8 +82,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions",
-        currentRouteDef: AppRouteDef.sessions,
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
         sessionsByProject: {
           "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
         },
@@ -138,8 +103,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions",
-        currentRouteDef: AppRouteDef.sessions,
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
         sessionsByProject: const {"p1": []},
       );
 
@@ -157,8 +122,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions",
-        currentRouteDef: AppRouteDef.sessions,
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
         sessionsByProject: {
           "p1": [adaptiveTestSession(projectId: "p1", id: "s1", title: "Session One")],
         },
@@ -198,7 +163,7 @@ void main() {
       // s1 -> s2 updates it in place while the pushed new-session page becomes
       // the exiting route that Flutter pops during build.
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions/s1?title=Session+One&readOnly=false&name=Project+One",
+        initialLocation: "/sessions/p1/s1?title=Session+One&readOnly=false&name=Project+One",
         currentRouteDef: AppRouteDef.sessionDetail,
         sessionsByProject: {
           "p1": [
@@ -278,14 +243,14 @@ void main() {
       expect(find.text(loc.newSessionLaunchingInBackground), findsOneWidget);
     });
 
-    testWidgets("wide to narrow resize preserves the same SessionListCubit instance", (tester) async {
+    testWidgets("wide to narrow resize preserves the same AllSessionsCubit instance", (tester) async {
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(1024, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       addTearDown(harness.tearDown);
       await harness.setUp(
-        initialLocation: "/projects/p1/sessions",
-        currentRouteDef: AppRouteDef.sessions,
+        initialLocation: "/sessions",
+        currentRouteDef: AppRouteDef.home,
         sessionsByProject: {
           "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
         },
@@ -293,11 +258,11 @@ void main() {
 
       await tester.pumpWidget(harness.buildApp());
       await tester.pumpAndSettle();
-      final before = BlocProvider.of<SessionListCubit>(tester.element(find.text("Session One")));
+      final before = BlocProvider.of<AllSessionsCubit>(tester.element(find.text("Session One")));
 
       await tester.binding.setSurfaceSize(const Size(390, 800));
       await tester.pumpAndSettle();
-      final after = BlocProvider.of<SessionListCubit>(tester.element(find.text("Session One")));
+      final after = BlocProvider.of<AllSessionsCubit>(tester.element(find.text("Session One")));
 
       expect(identical(before, after), isTrue);
       verify(

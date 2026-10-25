@@ -90,6 +90,6 @@ class const ProjectListScreen({super.key}) extends StatelessWidget {
     required ProjectSummary project,
     required String displayName,
   }) {
-    context.pushRoute(AppRoute.sessions(projectId: project.id, projectName: displayName));
+    context.pushRoute(AppRoute.projectSessions(projectId: project.id, projectName: displayName));
   }
 }

@@ -18,8 +18,8 @@ void main() {
   setUpAll(registerAllFallbackValues);
 
   group("adaptive session route matrix", () {
-    testWidgets("/projects/:projectId/sessions renders correctly at 390px and 1024px", (tester) async {
-      const location = "/projects/p1/sessions";
+    testWidgets("/sessions renders correctly at 390px and 1024px", (tester) async {
+      const location = "/sessions";
       final sessions = {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
       };
@@ -30,7 +30,7 @@ void main() {
         try {
           await harness.setUp(
             initialLocation: location,
-            currentRouteDef: AppRouteDef.sessions,
+            currentRouteDef: AppRouteDef.home,
             sessionsByProject: sessions,
           );
 
@@ -56,8 +56,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
     });
 
-    testWidgets("/projects/:projectId/sessions/:sessionId renders correctly at 390px and 1024px", (tester) async {
-      const location = "/projects/p1/sessions/session-1?title=Session+One&readOnly=false";
+    testWidgets("/sessions/:projectId/:sessionId renders correctly at 390px and 1024px", (tester) async {
+      const location = "/sessions/p1/session-1?title=Session+One&readOnly=false";
       final sessions = {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
       };
@@ -92,8 +92,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
     });
 
-    testWidgets("/projects/:projectId/sessions/:sessionId/diffs renders correctly at 390px and 1024px", (tester) async {
-      const location = "/projects/p1/sessions/session-1/diffs";
+    testWidgets("/sessions/:projectId/:sessionId/diffs renders correctly at 390px and 1024px", (tester) async {
+      const location = "/sessions/p1/session-1/diffs";
       final sessions = {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
       };
@@ -133,10 +133,8 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
     });
 
-    testWidgets("/projects/:projectId/sessions/new renders in the session pane and wins over dynamic matching", (
-      tester,
-    ) async {
-      const location = "/projects/p1/sessions/new";
+    testWidgets("/sessions/new renders in the session pane", (tester) async {
+      const location = "/sessions/new?project=p1";
       final sessions = {
         "p1": [adaptiveTestSession(projectId: "p1", id: "session-1", title: "Session One")],
       };
@@ -174,7 +172,7 @@ void main() {
       addTearDown(() => tester.binding.setSurfaceSize(null));
     });
 
-    testWidgets("detail toolbar back returns path-like project IDs to their sessions route", (tester) async {
+    testWidgets("detail toolbar back from a path-like project ID returns home", (tester) async {
       const projectId = "/Users/example/workspace/project";
       final detailLocation = const AppRoute.sessionDetail(
         projectId: projectId,
@@ -183,10 +181,6 @@ void main() {
         sessionTitle: "Session One",
         readOnly: false,
         fromLaunch: false,
-      ).buildPath();
-      final sessionsLocation = const AppRoute.sessions(
-        projectId: projectId,
-        projectName: "Project One",
       ).buildPath();
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(390, 800));
@@ -206,12 +200,12 @@ void main() {
       await tester.tap(find.byIcon(TablerRegular.chevron_left));
       await tester.pumpAndSettle();
 
-      expect(harness.currentLocation, sessionsLocation);
+      expect(harness.currentLocation, const AppRoute.home().buildPath());
       expect(find.text("Session One"), findsOneWidget);
     });
 
     testWidgets("shrinking from wide detail to 390 keeps the same full-screen detail route", (tester) async {
-      const location = "/projects/p1/sessions/session-1?title=Session+One&readOnly=false";
+      const location = "/sessions/p1/session-1?title=Session+One&readOnly=false";
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(1024, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
@@ -242,7 +236,7 @@ void main() {
     testWidgets("expanding from narrow diffs to 1024 keeps the same route and shows split list plus diffs", (
       tester,
     ) async {
-      const location = "/projects/p1/sessions/session-1/diffs";
+      const location = "/sessions/p1/session-1/diffs";
       final harness = AdaptiveSessionRouterTestHarness();
       await tester.binding.setSurfaceSize(const Size(390, 800));
       addTearDown(() => tester.binding.setSurfaceSize(null));
