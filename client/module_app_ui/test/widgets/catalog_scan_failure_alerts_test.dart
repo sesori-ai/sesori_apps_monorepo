@@ -24,7 +24,7 @@ void main() {
         supportedLocales: AppLocalizations.supportedLocales,
         home: BlocProvider(
           create: (_) => SessionListRefreshCubit(service: service),
-          child: const CatalogScanFailureAlerts(child: Scaffold()),
+          child: const CatalogScanFailureAlerts(navigatorKey: null, child: Scaffold()),
         ),
       ),
     );

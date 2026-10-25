@@ -190,6 +190,7 @@ Widget testSessionScope({required SessionLaunchService sessionLaunchService, req
       getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
   sessionCleanupService: SessionCleanupService(repository: MockSessionRepository()),
   sessionLaunchService: sessionLaunchService,
+  alertNavigatorKey: null,
   child: child,
 );
 

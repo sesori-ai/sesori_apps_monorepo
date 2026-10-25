@@ -89,7 +89,7 @@ state.
   routable, which is not the same as enabled: a blocked or failed harness is
   refused by the bridge and is left out. The harness settings surface offers the
   same rescan for one named harness.
-- Every manual refresh also imports from every harness: an ordinary pull on the
+- Every manual refresh also imports from every routable harness: an ordinary pull on the
   project list or a session list, the desktop sidebar's Refresh and the desktop
   project page's Refresh all start the same all-harness import beside their
   reload, reported by the same scan row. Automatic reloads (reconnect, staleness,
@@ -208,8 +208,9 @@ state.
   Replacing a consumer replays retained data, while exiting the owning scope disposes the inventory and
   fences late state application/unseen seeding. Onboarding and loaded-inventory analytics retain their existing policy.
   Explicit refresh follows the latest owning read after each result, even when an awaited successor applied before
-  another read started. `SessionListRefreshService` coordinates project and recent services for every manual
-  refresh without presentation dependencies; recent
+  another read started. `SessionListRefreshService` coordinates project and recent services for the Projects pull
+  and the desktop sidebar's Refresh without presentation dependencies (a per-project list reloads itself through
+  `SessionListCubit.refreshAndImport`); recent
   refresh joins pending admission reads, waits for its admitted cohort and reports failures despite retained rows.
   Removal retires an entry's refresh obligation; disposal prevents further reads or late unseen seeding.
 - Project and session inventory presentation is shared by the mobile and

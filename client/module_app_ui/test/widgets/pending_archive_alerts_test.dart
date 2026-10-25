@@ -32,7 +32,7 @@ void main() {
               builder: (_, _) => BlocProvider(
                 create: (_) =>
                     cubit = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: repository)),
-                child: const PendingArchiveAlerts(child: Scaffold()),
+                child: const PendingArchiveAlerts(navigatorKey: null, child: Scaffold()),
               ),
             ),
           ],
@@ -40,6 +40,37 @@ void main() {
       ),
     );
   }
+
+  testWidgets("hosted above the router, it shows Undo on the root navigator's overlay", (tester) async {
+    repository = MockSessionRepository();
+    final navigatorKey = GlobalKey<NavigatorState>();
+    await tester.pumpWidget(
+      BlocProvider(
+        create: (_) =>
+            cubit = PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: repository)),
+        child: MaterialApp.router(
+          theme: ThemeData(extensions: [PregoDesignSystem.light]),
+          localizationsDelegates: AppLocalizations.localizationsDelegates,
+          supportedLocales: AppLocalizations.supportedLocales,
+          routerConfig: GoRouter(
+            navigatorKey: navigatorKey,
+            routes: [GoRoute(path: "/", builder: (_, _) => const Scaffold())],
+          ),
+          builder: (_, child) => PendingArchiveAlerts(navigatorKey: navigatorKey, child: child ?? const SizedBox()),
+        ),
+      ),
+    );
+
+    cubit.archive(session: session, deleteWorktree: true);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text("Session archived"), findsOneWidget);
+
+    await tester.tap(find.text("Undo"));
+    await tester.pumpAndSettle();
+    expect(cubit.state.window, isA<PendingArchiveIdle>());
+    expect(find.text("Session archived"), findsNothing);
+  });
 
   testWidgets("offers Undo for as long as the window is open, and Undo sends nothing", (tester) async {
     await pumpAlerts(tester);

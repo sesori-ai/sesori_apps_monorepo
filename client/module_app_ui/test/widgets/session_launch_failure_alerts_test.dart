@@ -35,7 +35,7 @@ void main() {
                     authSession: auth,
                   ),
                 ),
-                child: const SessionLaunchFailureAlerts(child: Scaffold()),
+                child: const SessionLaunchFailureAlerts(navigatorKey: null, child: Scaffold()),
               ),
             ),
           ],

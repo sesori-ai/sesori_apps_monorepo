@@ -286,6 +286,8 @@ List<RouteBase> _buildAppRoutes({
               getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
           sessionCleanupService: getIt<SessionCleanupService>(),
           sessionLaunchService: getIt<SessionLaunchService>(),
+          // Above that navigator, so its alerts join the pages' alert slot.
+          alertNavigatorKey: signedInNavigatorKey,
           child: child,
         ),
       ),
