@@ -100,7 +100,7 @@ Widget _app({String initialLocation = "/settings/harnesses"}) {
         path: "/projects",
         builder: (_, _) => const Scaffold(body: Text("projects-route")),
       ),
-      ...buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey).map(
+      ..._signedInRoutes().map(
         (route) => route is GoRoute && route.path == AppRouteDef.settings.path
             ? GoRoute(
                 path: route.path,
@@ -153,7 +153,7 @@ Widget _appPushedFromOpener({
         path: "/projects",
         builder: (context, state) => const Scaffold(body: Text("projects-route")),
       ),
-      ...buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey).map(
+      ..._signedInRoutes().map(
         (route) => throughSettings && route is GoRoute && route.path == AppRouteDef.settings.path
             ? GoRoute(
                 path: route.path,
@@ -2298,7 +2298,7 @@ void main() {
       await openHarnesses(tester);
       await _openRow(tester, "harness_management_scan_future-harness");
 
-      rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+      rescan.emit(const CatalogRescanState.failed(failedPluginIds: {"codex"}));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 400));
 
@@ -2336,3 +2336,6 @@ void main() {
     });
   });
 }
+
+/// The signed-in routes without the scope around them.
+List<RouteBase> _signedInRoutes() => buildAppRoutesForTesting().whereType<ShellRoute>().single.routes;

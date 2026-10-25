@@ -2129,6 +2129,18 @@
   "@catalogScanFailedDetail": {
     "description": "Supporting line on a failed scan row. The bridge's own error text is never shown here, so the row points at the log that has it."
   },
+  "catalogScanImportFailedAlert": "{count, plural, =1{Couldn't import from {harnesses}} other{Couldn't import from {count} harnesses: {harnesses}}}",
+  "@catalogScanImportFailedAlert": {
+    "description": "Alert title when a refresh's import failed for some harnesses. harnesses lists the harnesses' names.",
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "harnesses": {
+        "type": "String"
+      }
+    }
+  },
   "catalogScanUnsupportedTitle": "Scanning needs a newer bridge",
   "@catalogScanUnsupportedTitle": {
     "description": "Title of the scan row when the connected bridge is too old to scan harness catalogs on request."

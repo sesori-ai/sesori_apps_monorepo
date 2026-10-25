@@ -40,10 +40,6 @@ class ProjectListCubit({required final ProjectInventoryService _inventoryService
 
   String? parentHostPath({required String path}) => _inventoryService.parentHostPath(path: path);
 
-  void startCatalogScan() => _inventoryService.startCatalogScan();
-  void cancelCatalogScan() => _inventoryService.cancelCatalogScan();
-  void dismissCatalogScan() => _inventoryService.dismissCatalogScan();
-
   void reportNeedHelpMenuOpened({required OnboardingSurface surface}) =>
       _inventoryService.reportNeedHelpMenuOpened(surface: surface);
 

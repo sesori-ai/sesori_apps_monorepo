@@ -19,59 +19,35 @@ import "desktop_sidebar.dart";
 import "desktop_sidebar_expansion.dart";
 import "desktop_window_drag_area.dart";
 
-/// Shared project/recent inventories and one layout owner per signed-in cockpit.
+/// The signed-in [SessionScope] plus the cockpit's own layout owners.
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => RepositoryProvider<RecentSessionInventoryService>(
-    lazy: false,
-    create: (_) => getIt<RecentSessionInventoryService>(),
-    dispose: (inventory) => unawaited(inventory.dispose()),
-    child: RepositoryProvider<ProjectInventoryService>(
-      create: (_) => getIt<ProjectInventoryService>(),
-      dispose: (inventory) => unawaited(inventory.dispose()),
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
-          ),
-          BlocProvider(
-            lazy: false,
-            create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
-          ),
-          BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
-          // Outlives every page and the sidebar, so an Undo window survives navigation.
-          BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: getIt())),
-          // Outlives the composer that started a launch, for its row and its failure alert.
-          BlocProvider(create: (_) => SessionLaunchCubit(launchService: getIt())),
-          // For each list's own launching rows.
-          RepositoryProvider<SessionLaunchService>.value(value: getIt<SessionLaunchService>()),
-          BlocProvider(
-            create: (_) => LinkedComputerAlertCubit(
-              registeredBridgesService: getIt<RegisteredBridgesService>(),
-              activeBridgeLocality: getIt<ActiveBridgeLocality>(),
-            ),
-          ),
-          BlocProvider(
-            create: (context) => DesktopSidebarRefreshCubit(
-              service: getIt<DesktopSidebarRefreshService>(
-                param1: context.read<ProjectInventoryService>(),
-                param2: context.read<RecentSessionInventoryService>(),
-              ),
-            ),
-          ),
-        ],
-        child: PendingArchiveAlerts(
-          navigatorKey: null,
-          child: SessionLaunchFailureAlerts(
-            navigatorKey: null,
-            child: LinkedComputerAlerts(
-              navigatorKey: null,
-              onSwitchComputer: ({required bridgeId, required source}) =>
-                  unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
-              child: child,
-            ),
+  Widget build(BuildContext context) => SessionScope(
+    createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
+    createProjectInventory: getIt.call<ProjectInventoryService>,
+    createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
+        getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
+    sessionCleanupService: getIt<SessionCleanupService>(),
+    sessionLaunchService: getIt<SessionLaunchService>(),
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          lazy: false,
+          create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
+        ),
+        BlocProvider(create: (_) => DesktopSidebarCubit(repository: getIt())),
+        BlocProvider(
+          create: (_) => LinkedComputerAlertCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
           ),
         ),
+      ],
+      child: LinkedComputerAlerts(
+        navigatorKey: null,
+        onSwitchComputer: ({required bridgeId, required source}) =>
+            unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
+        child: child,
       ),
     ),
   );

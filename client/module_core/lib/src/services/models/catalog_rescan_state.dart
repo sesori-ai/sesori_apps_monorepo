@@ -66,10 +66,10 @@ sealed class const CatalogRescanState() {
 
   const factory partlyFailed({
     required int succeededCount,
-    required int failedCount,
+    required Set<String> failedPluginIds,
   }) = CatalogRescanPartlyFailed;
 
-  const factory failed({required int harnessCount}) = CatalogRescanFailed;
+  const factory failed({required Set<String> failedPluginIds}) = CatalogRescanFailed;
 
   const factory unsupported() = CatalogRescanUnsupported;
 
@@ -123,18 +123,21 @@ final class const CatalogRescanSucceeded({
   required final CatalogRescanCounts counts,
 }) extends CatalogRescanState;
 
-/// Some harnesses succeeded and some did not.
+/// Some harnesses succeeded and some did not. [failedPluginIds] name the
+/// harnesses that failed, so the alert can say which.
 ///
 /// Deliberately carries no counts: a partial total would invite the reader to
 /// trust it as the whole result.
 final class const CatalogRescanPartlyFailed({
   required final int succeededCount,
-  required final int failedCount,
-}) extends CatalogRescanState;
+  required final Set<String> failedPluginIds,
+}) extends CatalogRescanState {
+  int get failedCount => failedPluginIds.length;
+}
 
 /// Every harness failed. Carries no message: `CatalogImportFailed.message` is
 /// the bridge's raw `error.toString()` and is never lifted into client state.
-final class const CatalogRescanFailed({required final int harnessCount}) extends CatalogRescanState;
+final class const CatalogRescanFailed({required final Set<String> failedPluginIds}) extends CatalogRescanState;
 
 /// This bridge cannot rescan at all, because it predates the import route.
 final class const CatalogRescanUnsupported() extends CatalogRescanState;

@@ -16,9 +16,9 @@ void main() {
       final cubit = ChatInputModeCubit(store: _MockChatInputModeStore(), initialMode: ChatInputMode.textFirst);
       addTearDown(cubit.close);
       final navigatorKey = GlobalKey<NavigatorState>();
-      final settingsRoute = buildAppRoutesForTesting(rootNavigatorKey: navigatorKey)
-          .whereType<GoRoute>()
-          .singleWhere((route) => route.path == AppRouteDef.settings.path);
+      final settingsRoute = _signedInRoutes().whereType<GoRoute>().singleWhere(
+        (route) => route.path == AppRouteDef.settings.path,
+      );
       final detailRoutes = settingsRoute.routes;
       final router = GoRouter(
         navigatorKey: navigatorKey,
@@ -78,3 +78,6 @@ void main() {
     });
   }
 }
+
+/// The signed-in routes without the scope around them.
+List<RouteBase> _signedInRoutes() => buildAppRoutesForTesting().whereType<ShellRoute>().single.routes;

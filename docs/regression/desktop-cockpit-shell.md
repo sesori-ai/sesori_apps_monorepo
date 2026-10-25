@@ -57,8 +57,10 @@ The main pane hosts one full-width routed page.
   sidebar presentation. The compact Projects shortcut opens home, including empty/recovery states when the window is
   too narrow to expand. The separated footer groups This computer with the Settings and collapse controls.
   Icon/status hints and truncated-label hints remain useful, while fully visible labels need no duplicate tooltip.
-- Explicit sidebar refresh runs through Layer-3 `DesktopSidebarRefreshService` over the same scoped project and recent
-  inventory services. It awaits the project phase before refreshing admitted recent entries, joining initial reads
+- Explicit sidebar refresh runs through `SessionListRefreshCubit` and the shared `SessionListRefreshService` over the
+  same scoped project and recent inventory services, and starts the all-harness import beside the reload. The cockpit
+  shows no import progress row; a failed import raises the shared alert naming its harnesses. It awaits the project
+  phase before refreshing admitted recent entries, joining initial reads
   already in flight. An ordinary project failure still allows retained recent entries to update; either phase failing
   produces failure feedback. Useful rows stay visible. Busy controls cannot dispatch duplicate intent, and busy/idle
   refresh plus Settings expose accessible names and keyboard actions.
@@ -484,8 +486,9 @@ after the user picked another one.
 - `client/desktop/lib/core/platform/flutter_window_host.dart`
 - `client/desktop/macos/Runner/MainFlutterWindow.swift`
 - `client/module_desktop_core/lib/src/foundation/platform/window_host.dart`
-- `client/module_desktop_core/lib/src/services/desktop_sidebar_refresh_service.dart`
-- `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_refresh_cubit.dart`
+- `client/module_core/lib/src/services/session_list_refresh_service.dart`
+- `client/module_core/lib/src/cubits/session_list/session_list_refresh_cubit.dart`
+- `client/module_app_ui/lib/src/widgets/session_scope.dart`
 - `client/desktop/lib/core/widgets/desktop_connection_pill.dart`
 - `client/desktop/lib/core/widgets/desktop_bridge_recovery_card.dart`
 - `client/desktop/lib/core/widgets/desktop_bridge_popover.dart`

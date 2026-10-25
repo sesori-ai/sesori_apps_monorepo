@@ -186,8 +186,11 @@ void main() {
             ),
             loc.catalogScanCompleteTitle,
           ),
-          (const CatalogRescanState.partlyFailed(succeededCount: 1, failedCount: 1), loc.catalogScanPartlyFailedTitle),
-          (const CatalogRescanState.failed(harnessCount: 1), loc.catalogScanFailedTitle),
+          (
+            const CatalogRescanState.partlyFailed(succeededCount: 1, failedPluginIds: {"codex"}),
+            loc.catalogScanPartlyFailedTitle,
+          ),
+          (const CatalogRescanState.failed(failedPluginIds: {"codex"}), loc.catalogScanFailedTitle),
           (const CatalogRescanState.unsupported(), loc.catalogScanUnsupportedTitle),
           (const CatalogRescanState.notConnected(), loc.catalogScanNotConnectedTitle),
           (const CatalogRescanState.noHarness(), loc.catalogScanNoHarnessTitle),
@@ -730,13 +733,13 @@ void main() {
               action: PregoColorsDark.textSuccessPrimary,
             ),
             (
-              scan: const CatalogRescanState.partlyFailed(succeededCount: 2, failedCount: 1),
+              scan: const CatalogRescanState.partlyFailed(succeededCount: 2, failedPluginIds: {"codex"}),
               accent: PregoColorsDark.bgWarningSecondary,
               mark: PregoColorsDark.fgWarningSecondary,
               action: PregoColorsDark.textWarningPrimary,
             ),
             (
-              scan: const CatalogRescanState.failed(harnessCount: 3),
+              scan: const CatalogRescanState.failed(failedPluginIds: {"codex", "claude", "opencode"}),
               accent: PregoColorsDark.bgErrorSolid,
               mark: PregoColorsDark.fgErrorPrimary,
               action: PregoColorsDark.textErrorPrimary,
@@ -792,8 +795,8 @@ void main() {
             harnessCount: 2,
             counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
           ),
-          const CatalogRescanState.partlyFailed(succeededCount: 2, failedCount: 1),
-          const CatalogRescanState.failed(harnessCount: 3),
+          const CatalogRescanState.partlyFailed(succeededCount: 2, failedPluginIds: {"codex"}),
+          const CatalogRescanState.failed(failedPluginIds: {"codex", "claude", "opencode"}),
           const CatalogRescanState.unsupported(),
           const CatalogRescanState.notConnected(),
           const CatalogRescanState.noHarness(),
@@ -897,7 +900,7 @@ void main() {
     });
 
     testWidgets("names how many harnesses failed out of the whole scan", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.partlyFailed(succeededCount: 2, failedCount: 1));
+      await pumpRow(tester, const CatalogRescanState.partlyFailed(succeededCount: 2, failedPluginIds: {"codex"}));
 
       expect(find.text("Scanning finished"), findsOneWidget);
       expect(find.text("1 of 3 harnesses could not be scanned"), findsOneWidget);
@@ -906,7 +909,7 @@ void main() {
     // The bridge's raw error text is never lifted into client state, so the row
     // points at the log that has it.
     testWidgets("points at the bridge log when every harness failed", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.failed(harnessCount: 2));
+      await pumpRow(tester, const CatalogRescanState.failed(failedPluginIds: {"codex", "claude"}));
 
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(find.text(loc.catalogScanFailedTitle), findsOneWidget);
@@ -962,7 +965,7 @@ void main() {
         ),
         isTrue,
       );
-      expect(await announcesFor(const CatalogRescanState.failed(harnessCount: 1)), isTrue);
+      expect(await announcesFor(const CatalogRescanState.failed(failedPluginIds: {"codex"})), isTrue);
       expect(
         await announcesFor(
           const CatalogRescanState.reading(
@@ -979,7 +982,7 @@ void main() {
     // SizeTransition only changes layout, so a retained card would keep its
     // labels and its live action button reachable by keyboard at zero height.
     testWidgets("unmounts the card once it has folded away", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.failed(harnessCount: 1));
+      await pumpRow(tester, const CatalogRescanState.failed(failedPluginIds: {"codex"}));
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(find.text(loc.catalogScanDismiss, skipOffstage: false), findsOneWidget);
 
@@ -1115,7 +1118,7 @@ void main() {
     });
 
     testWidgets("dismisses a finished scan without cancelling anything", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.failed(harnessCount: 1));
+      await pumpRow(tester, const CatalogRescanState.failed(failedPluginIds: {"codex"}));
 
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
       expect(
@@ -1132,7 +1135,7 @@ void main() {
     });
 
     testWidgets("focuses and activates Dismiss from the keyboard", (tester) async {
-      await pumpRow(tester, const CatalogRescanState.failed(harnessCount: 1));
+      await pumpRow(tester, const CatalogRescanState.failed(failedPluginIds: {"codex"}));
 
       await tester.sendKeyEvent(LogicalKeyboardKey.tab);
       await tester.pump();
@@ -1169,7 +1172,7 @@ void main() {
 
       await pumpRow(
         tester,
-        const CatalogRescanState.failed(harnessCount: 1),
+        const CatalogRescanState.failed(failedPluginIds: {"codex"}),
         textScaler: textScaler,
         width: 402,
       );

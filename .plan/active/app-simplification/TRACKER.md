@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 1/13, publishing the plan.
+- Current step: 2.b/13 is next; 2.a/13 is done on `sesori/app-simplification-step-2a`.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -11,7 +11,7 @@
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/13 | Publish the plan | In review | — |
-| 2.a/13 | One session scope; every refresh imports | Not started | — |
+| 2.a/13 | One session scope; every refresh imports | Done | `sesori/app-simplification-step-2a` |
 | 2.b/13 | Scan cancel, dismiss, deep pull and per-harness scan removed | Not started | — |
 | 3/13 | Searchable picker with Open another folder | Not started | — |
 | 4/13 | Settings › Projects | Not started | — |

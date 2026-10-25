@@ -65,8 +65,8 @@ typedef ProjectListDisconnectedRefresh = Future<void> Function({
 
 /// Surface-neutral project inventory presentation.
 ///
-/// Product shells construct the cubits above this view, including the
-/// [RecentSessionsCubit] its Activity group reads, and inject route,
+/// Product shells construct the cubits above this view: `SessionScope`'s, and
+/// the [RecentSessionsCubit] its Activity group reads. They also inject route,
 /// recovery, connection-banner, and empty-state presentation. This keeps CLI
 /// install guidance in mobile and supervised bridge startup in desktop.
 class const ProjectListView({
@@ -175,10 +175,11 @@ class _ProjectListViewState() extends State<ProjectListView> {
       onRefresh: _refreshFor(context: context, state: state),
       // Only the loaded list can scan: the disconnected states pull to
       // reconnect, and there is nothing to scan into until the list is there.
+      // Every pull imports; the deep one reports through the scan row alone.
       deepRefresh: state is ProjectListLoaded
           ? CatalogScanRow.deepRefresh(
               context: context,
-              onStart: () => context.read<ProjectListCubit>().startCatalogScan(),
+              onStart: () => unawaited(context.read<SessionListRefreshCubit>().refresh()),
             )
           : null,
       slivers: _buildContentSlivers(
@@ -252,7 +253,8 @@ class _ProjectListViewState() extends State<ProjectListView> {
   /// The scaffold's pull-to-refresh action for [state], or `null` when there is
   /// nothing to pull for.
   ///
-  /// A loaded list re-fetches its projects. Product shells decide what a pull
+  /// A loaded list re-fetches its projects and sessions and imports from every
+  /// harness. Product shells decide what a pull
   /// means while disconnected: mobile retries relay connection, while desktop
   /// requests the supervised bridge to start.
   Future<void> Function()? _refreshFor({required BuildContext context, required ProjectListState state}) {
@@ -357,7 +359,7 @@ class _ProjectListViewState() extends State<ProjectListView> {
     required ProjectListLoaded state,
     required bool isRefreshing,
   }) {
-    final ProjectListLoaded(:projects, :runningByProjectId, :unseenByProjectId, :catalogScan) = state;
+    final ProjectListLoaded(:projects, :runningByProjectId, :unseenByProjectId) = state;
     final loc = context.loc;
     final pathLabels = projectPathLabels(
       projects: projects,
@@ -372,9 +374,9 @@ class _ProjectListViewState() extends State<ProjectListView> {
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
       SliverToBoxAdapter(
         child: CatalogScanRow(
-          scan: catalogScan,
-          onCancel: () => context.read<ProjectListCubit>().cancelCatalogScan(),
-          onDismiss: () => context.read<ProjectListCubit>().dismissCatalogScan(),
+          scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan),
+          onCancel: () => context.read<SessionListRefreshCubit>().cancelImport(),
+          onDismiss: () => context.read<SessionListRefreshCubit>().dismissImport(),
         ),
       ),
       if (projects.isNotEmpty)
@@ -539,10 +541,9 @@ class _ProjectListViewState() extends State<ProjectListView> {
 
   Future<void> _refreshProjects(BuildContext context) async {
     final loc = context.loc;
-    final cubit = context.read<ProjectListCubit>();
-    // Activity reads each project's sessions on its own; a pull retries those too.
-    final results = await Future.wait([cubit.refreshProjects(), context.read<RecentSessionsCubit>().refresh()]);
-    final success = results.every((succeeded) => succeeded);
+    // Activity's sessions come from the same scoped inventory, so this reloads
+    // them too.
+    final success = await context.read<SessionListRefreshCubit>().refresh();
     if (!context.mounted) return;
     PregoPopupAlertPresenter.of(context).show(
       title: success ? loc.projectListRefreshSuccess : loc.projectListRefreshFailed,

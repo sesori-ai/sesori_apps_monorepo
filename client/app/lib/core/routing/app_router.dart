@@ -24,11 +24,15 @@ import "../di/injection.dart";
 import "imperative_pane_route.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
+final _signedInNavigatorKey = GlobalKey<NavigatorState>();
 final _sessionShellNavigatorKey = GlobalKey<NavigatorState>();
 
 /// The root navigator hosting every app route. Used to present app-wide UI
 /// (for example backend toast guidance) without a screen context.
 GlobalKey<NavigatorState> get appRootNavigatorKey => _rootNavigatorKey;
+
+/// The navigator inside [SessionScope] that hosts every signed-in route.
+GlobalKey<NavigatorState> get appSignedInNavigatorKey => _signedInNavigatorKey;
 
 const _newSessionRouteSegment = "new";
 const _sessionsRouteSegment = ":$projectIdPathParam/sessions";
@@ -249,20 +253,49 @@ extension BuildContextNavigation on BuildContext {
 }
 
 List<RouteBase> buildAppRoutes() {
-  return _buildAppRoutes(rootNavigatorKey: _rootNavigatorKey, sessionShellNavigatorKey: _sessionShellNavigatorKey);
+  return _buildAppRoutes(
+    signedInNavigatorKey: _signedInNavigatorKey,
+    sessionShellNavigatorKey: _sessionShellNavigatorKey,
+  );
 }
 
-List<RouteBase> buildAppRoutesForTesting({required GlobalKey<NavigatorState> rootNavigatorKey}) {
-  return _buildAppRoutes(rootNavigatorKey: rootNavigatorKey, sessionShellNavigatorKey: GlobalKey<NavigatorState>());
+List<RouteBase> buildAppRoutesForTesting() {
+  return _buildAppRoutes(
+    signedInNavigatorKey: GlobalKey<NavigatorState>(),
+    sessionShellNavigatorKey: GlobalKey<NavigatorState>(),
+  );
 }
 
 List<RouteBase> _buildAppRoutes({
-  required GlobalKey<NavigatorState> rootNavigatorKey,
+  required GlobalKey<NavigatorState> signedInNavigatorKey,
   required GlobalKey<NavigatorState> sessionShellNavigatorKey,
 }) {
   return [
     AppRouteDef.splash.toGoRoute(),
     AppRouteDef.login.toGoRoute(),
+    ShellRoute(
+      navigatorKey: signedInNavigatorKey,
+      // One scope for every signed-in route: opened with the account's first
+      // route and disposed when sign-out leaves them all.
+      builder: (context, state, child) => _shellBackHandler(
+        navigatorKey: signedInNavigatorKey,
+        child: SessionScope(
+          createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
+          createProjectInventory: getIt.call<ProjectInventoryService>,
+          createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
+              getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
+          sessionCleanupService: getIt<SessionCleanupService>(),
+          sessionLaunchService: getIt<SessionLaunchService>(),
+          child: child,
+        ),
+      ),
+      routes: _buildSignedInRoutes(sessionShellNavigatorKey: sessionShellNavigatorKey),
+    ),
+  ];
+}
+
+List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> sessionShellNavigatorKey}) {
+  return [
     AppRouteDef.projects.toGoRoute(
       routes: [
         ShellRoute(
@@ -441,8 +474,8 @@ class const _SessionListPane({
       onSessionDeleted: closeDeletedSessionRoute,
       onSessionMarkedUnread: null,
     );
-    // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required here so shell chrome exits the whole shell instead of the nested pane route
-    final rootNavigator = Navigator.of(context);
+    // ignore: no_slop_linter/avoid_navigator_of, the signed-in navigator's pop is required here so shell chrome exits the whole shell instead of the nested pane route
+    final signedInNavigator = Navigator.of(context);
 
     return KeyedSubtree(
       key: ValueKey("session-list-$projectId"),
@@ -451,10 +484,10 @@ class const _SessionListPane({
             context.pushRoute(AppRoute.archivedSessions(projectId: projectId, projectName: projectName)),
         projectName: projectName,
         selectedSessionId: selectedSessionId,
-        // Use the root navigator from shell chrome; GoRouter pop would target
-        // the nested pane navigator and only pop the right-pane route.
+        // Use the signed-in navigator from shell chrome; GoRouter pop would
+        // target the nested pane navigator and only pop the right-pane route.
         // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
-        onBack: rootNavigator.canPop() ? () => rootNavigator.pop() : null,
+        onBack: signedInNavigator.canPop() ? () => signedInNavigator.pop() : null,
         onNewSession: () => context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
         onSessionTap: ({required session}) {
           context.goRoute(

@@ -421,37 +421,19 @@ class const _SesoriAppShell() extends StatelessWidget {
                   child: FeedbackPromptListener(
                     navigatorKey: appRootNavigatorKey,
                     voiceInputScopeBuilder: ({required child}) => FeedbackVoiceInputScope(child: child),
-                    // Above the router, so an archive's Undo window survives
-                    // leaving the project it was started in.
-                    child: MultiBlocProvider(
-                      providers: [
-                        BlocProvider(
-                          create: (_) => PendingSessionArchiveCubit(cleanupService: getIt<SessionCleanupService>()),
-                        ),
-                        // Above the router too: a launching row and the alert
-                        // for a failed launch outlive the composer that started it.
-                        BlocProvider(create: (_) => SessionLaunchCubit(launchService: getIt<SessionLaunchService>())),
-                        // For each list's own launching rows.
-                        RepositoryProvider<SessionLaunchService>.value(value: getIt<SessionLaunchService>()),
-                        BlocProvider(
-                          create: (_) => LinkedComputerAlertCubit(
-                            registeredBridgesService: getIt<RegisteredBridgesService>(),
-                            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
-                          ),
-                        ),
-                      ],
-                      child: PendingArchiveAlerts(
+                    // Archives, launches and their alerts live in the router's
+                    // signed-in SessionScope.
+                    child: BlocProvider(
+                      create: (_) => LinkedComputerAlertCubit(
+                        registeredBridgesService: getIt<RegisteredBridgesService>(),
+                        activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+                      ),
+                      child: LinkedComputerAlerts(
                         navigatorKey: appRootNavigatorKey,
-                        child: SessionLaunchFailureAlerts(
-                          navigatorKey: appRootNavigatorKey,
-                          child: LinkedComputerAlerts(
-                            navigatorKey: appRootNavigatorKey,
-                            onSwitchComputer: ({required bridgeId, required source}) => unawaited(
-                              getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source),
-                            ),
-                            child: child ?? const SizedBox.shrink(),
-                          ),
+                        onSwitchComputer: ({required bridgeId, required source}) => unawaited(
+                          getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source),
                         ),
+                        child: child ?? const SizedBox.shrink(),
                       ),
                     ),
                   ),

@@ -83,9 +83,13 @@ void main() {
     );
     registerListServices(projectRepository: mockProjectRepository);
 
+    final launchService = inMemorySessionLaunchService(launchRepository: launches);
     final router = GoRouter(
       routes: [
-        GoRoute(path: "/", builder: (_, _) => const ProjectListScreen()),
+        GoRoute(
+          path: "/",
+          builder: (_, _) => testSessionScope(sessionLaunchService: launchService, child: const ProjectListScreen()),
+        ),
         GoRoute(
           path: "/projects/:projectId/sessions/:sessionId",
           builder: (_, state) {
@@ -96,13 +100,10 @@ void main() {
       ],
     );
 
-    final launchService = inMemorySessionLaunchService(launchRepository: launches);
     await tester.pumpWidget(
       MultiBlocProvider(
         providers: [
           BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
-          RepositoryProvider.value(value: launchService),
-          BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
         ],
         child: MaterialApp.router(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),

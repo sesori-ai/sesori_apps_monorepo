@@ -18,7 +18,6 @@ import "../repositories/project_repository.dart";
 import "catalog_rescan_service.dart";
 import "loaded_state_analytics_reporter.dart";
 import "models/add_project_outcome.dart";
-import "models/catalog_rescan_state.dart";
 import "models/optimistic_rename_tracker.dart";
 import "models/project_list_state.dart";
 import "models/session_activity_info.dart";
@@ -86,10 +85,7 @@ class ProjectInventoryService({
       _sseEventTracker.projectTimestampUpdates.listen(_onProjectTimestampUpdated),
     );
 
-    // 1a2. The catalog scan, which any surface can start. Its state is only
-    //     projected onto the list; the operation itself is the service's.
-    _subscriptions.add(_catalogRescanService.state.listen(_onCatalogScanState));
-    // A committed import raises no list invalidation of its own.
+    // 1a2. A committed catalog import raises no list invalidation of its own.
     _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
 
     // 1b. Immediate unseen (bold) updates (no API call).
@@ -872,7 +868,6 @@ class ProjectInventoryService({
               projects: sortedProjects,
               runningByProjectId: runningByProjectId,
               unseenByProjectId: _unseenByProjectId(projects: sortedProjects),
-              catalogScan: _catalogRescanService.state.value,
             ),
           );
           _loadedStateAnalyticsReporter.reportLoaded(
@@ -965,22 +960,6 @@ class ProjectInventoryService({
     if (_state.isClosed || !_catalogRefreshPausedAfterFailure) return;
     _catalogRefreshPausedAfterFailure = false;
     _ensureCatalogRefresh();
-  }
-
-  /// Starts a catalog scan across every harness this bridge can import from.
-  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
-
-  /// Stops the scan in flight.
-  void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());
-
-  /// Clears a finished scan the user has read.
-  void dismissCatalogScan() => _catalogRescanService.dismiss();
-
-  void _onCatalogScanState(CatalogRescanState scan) {
-    if (_state.isClosed) return;
-    if (state case final ProjectListLoaded loaded) {
-      _emit(state: loaded.copyWith(catalogScan: scan));
-    }
   }
 
   void _emit({required ProjectListState state}) => _state.add(state);

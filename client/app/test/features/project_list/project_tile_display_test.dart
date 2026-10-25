@@ -77,7 +77,11 @@ void main() {
 
     final router = GoRouter(
       routes: [
-        GoRoute(path: "/", builder: (_, _) => const ProjectListScreen()),
+        GoRoute(
+          path: "/",
+          builder: (_, _) =>
+              testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
+        ),
         GoRoute(
           path: "/projects/:projectId/sessions",
           builder: (_, state) {
@@ -92,8 +96,6 @@ void main() {
       MultiBlocProvider(
         providers: [
           BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
-          BlocProvider(create: (_) => idleSessionLaunchCubit()),
-          RepositoryProvider(create: (_) => idleSessionLaunchService()),
         ],
         child: MaterialApp.router(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),

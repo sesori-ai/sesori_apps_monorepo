@@ -187,7 +187,8 @@ void main() {
 
   testWidgets("the toolbar's Refresh shows progress until the silent refresh returns", (tester) async {
     final refresh = Completer<bool>();
-    when(() => cubit.refreshSessions(waitForPrData: true)).thenAnswer((_) => refresh.future);
+    // The toolbar's Refresh reloads this list and imports from every harness.
+    when(cubit.refreshAndImport).thenAnswer((_) => refresh.future);
     await pumpPage(tester: tester, filter: SessionListFilter.active);
     expect(find.byType(LinearProgressIndicator), findsNothing);
 

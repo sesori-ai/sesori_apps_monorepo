@@ -10,14 +10,7 @@ import "../extensions/build_context_x.dart";
 /// Tells the user, once, that new sessions they left could not be created,
 /// as their launching rows leave the lists. A failure while its composer is
 /// still open restores the draft there instead and never reaches this.
-class const SessionLaunchFailureAlerts({
-  super.key,
-
-  /// The navigator whose overlay shows the alert, for a shell that mounts
-  /// this above its router. Null where this already sits under a navigator.
-  required final GlobalKey<NavigatorState>? navigatorKey,
-  required final Widget child,
-}) extends StatefulWidget {
+class const SessionLaunchFailureAlerts({super.key, required final Widget child}) extends StatefulWidget {
   @override
   State<SessionLaunchFailureAlerts> createState() => _SessionLaunchFailureAlertsState();
 }
@@ -45,7 +38,7 @@ class _SessionLaunchFailureAlertsState() extends State<SessionLaunchFailureAlert
       _flush?.cancel();
       _flush = null;
       _batch.clear();
-      _presenter()?.dismiss();
+      if (mounted) PregoPopupAlertPresenter.of(context).dismiss();
     });
   }
 
@@ -57,24 +50,14 @@ class _SessionLaunchFailureAlertsState() extends State<SessionLaunchFailureAlert
     super.dispose();
   }
 
-  PregoPopupAlertPresenter? _presenter() {
-    final navigatorKey = widget.navigatorKey;
-    final overlay = navigatorKey?.currentState?.overlay;
-    return navigatorKey == null
-        ? PregoPopupAlertPresenter.of(context)
-        : overlay == null
-        ? null
-        : PregoPopupAlertPresenter.fromOverlayState(overlay);
-  }
-
   void _show() {
     final failures = [..._batch];
     _batch.clear();
     _flush = null;
-    final presenter = _presenter();
+    final presenter = PregoPopupAlertPresenter.of(context);
     final loc = context.loc;
     final names = {for (final failure in failures) failure.projectName};
-    presenter?.show(
+    presenter.show(
       title: names.contains(null)
           ? loc.newSessionFailedAfterLeavingUnnamed(failures.length)
           : loc.newSessionFailedAfterLeaving(failures.length, names.nonNulls.join(", ")),

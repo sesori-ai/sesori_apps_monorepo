@@ -195,7 +195,8 @@ class const _TopStrip({required final WindowHost? windowHost, required final Ani
   }
 }
 
-/// Reloads projects and their sessions: on the Projects header while the sidebar is open, in the rail's footer.
+/// Reloads projects and their sessions and imports from every harness: on the
+/// Projects header while the sidebar is open, in the rail's footer.
 class const _SidebarRefreshButton({
   required final ProjectListState projectState,
   required final double iconSize,
@@ -204,9 +205,10 @@ class const _SidebarRefreshButton({
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final refresh = context.watch<DesktopSidebarRefreshCubit>();
     final refreshing =
-        refresh.state == DesktopSidebarRefreshState.refreshing ||
+        context.select(
+          (SessionListRefreshCubit refresh) => refresh.state.status == SessionListRefreshStatus.refreshing,
+        ) ||
         switch (projectState) {
           ProjectListLoaded(:final isRefreshing) => isRefreshing,
           ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => false,
@@ -216,7 +218,7 @@ class const _SidebarRefreshButton({
       key: const Key("desktop-sidebar-refresh"),
       tooltip: refreshing ? loc.desktopSidebarRefreshing : loc.desktopSidebarRefresh,
       padding: EdgeInsets.zero,
-      onPressed: canRefresh ? () => unawaited(refresh.refresh()) : null,
+      onPressed: canRefresh ? () => unawaited(context.read<SessionListRefreshCubit>().refresh()) : null,
       icon: refreshing
           ? Semantics(
               label: loc.desktopSidebarRefreshing,
@@ -312,11 +314,12 @@ class const _SidebarFooter({
         ),
       ),
     ];
-    return BlocListener<DesktopSidebarRefreshCubit, DesktopSidebarRefreshState>(
-      listenWhen: (_, current) =>
-          current == DesktopSidebarRefreshState.succeeded || current == DesktopSidebarRefreshState.failed,
+    return BlocListener<SessionListRefreshCubit, SessionListRefreshState>(
+      listenWhen: (previous, current) =>
+          previous.status != current.status &&
+          (current.status == SessionListRefreshStatus.succeeded || current.status == SessionListRefreshStatus.failed),
       listener: (context, state) {
-        final succeeded = state == DesktopSidebarRefreshState.succeeded;
+        final succeeded = state.status == SessionListRefreshStatus.succeeded;
         PregoPopupAlertPresenter.of(context).show(
           title: succeeded ? loc.desktopSidebarRefreshSuccess : loc.desktopSidebarRefreshFailed,
           variant: succeeded

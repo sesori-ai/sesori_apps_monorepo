@@ -71,14 +71,12 @@ void main() {
   Widget buildApp() => MultiBlocProvider(
     providers: [
       BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
-      BlocProvider(create: (_) => idleSessionLaunchCubit()),
-      RepositoryProvider(create: (_) => idleSessionLaunchService()),
     ],
     child: MaterialApp(
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
-      home: const ProjectListScreen(),
+      home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
     ),
   );
 
@@ -154,7 +152,10 @@ void main() {
   testWidgets("the title and the machine row open the computer menu, which switches computers", (tester) async {
     final dispatcher = _MockComputerSwitchDispatcher();
     when(
-      () => dispatcher.switchTo(bridgeId: any(named: "bridgeId"), source: ComputerSwitchSource.menu),
+      () => dispatcher.switchTo(
+        bridgeId: any(named: "bridgeId"),
+        source: ComputerSwitchSource.menu,
+      ),
     ).thenAnswer((_) async {});
     getIt.registerLazySingleton<ComputerSwitchDispatcher>(() => dispatcher);
     final bridges = [

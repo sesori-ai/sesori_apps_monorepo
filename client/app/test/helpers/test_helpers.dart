@@ -4,8 +4,10 @@ import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_svg/flutter_svg.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:http/http.dart" as http;
+import "package:material_ui/material_ui.dart" show Widget;
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
+import "package:sesori_app_ui/sesori_app_ui.dart" show SessionScope;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
@@ -160,6 +162,16 @@ void _registerListServices({
       catalogRescanService: getIt<CatalogRescanService>(),
     ),
   );
+  if (getIt.isRegistered<SessionListRefreshService>()) {
+    getIt.unregister<SessionListRefreshService>();
+  }
+  getIt.registerFactoryParam<SessionListRefreshService, ProjectInventoryService, RecentSessionInventoryService>(
+    (projectInventory, recentInventory) => SessionListRefreshService(
+      projectInventory: projectInventory,
+      recentInventory: recentInventory,
+      catalogRescanService: getIt<CatalogRescanService>(),
+    ),
+  );
   // Projects reads every project's recent sessions for its Activity group.
   // Screens under test see none unless a test registers its own inventory.
   if (!getIt.isRegistered<RecentSessionInventoryService>()) {
@@ -168,6 +180,18 @@ void _registerListServices({
 }
 
 class MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+
+/// The signed-in scope the router mounts around [child], built from the
+/// services [registerListServices] registers.
+Widget testSessionScope({required SessionLaunchService sessionLaunchService, required Widget child}) => SessionScope(
+  createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
+  createProjectInventory: getIt.call<ProjectInventoryService>,
+  createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
+      getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
+  sessionCleanupService: SessionCleanupService(repository: MockSessionRepository()),
+  sessionLaunchService: sessionLaunchService,
+  child: child,
+);
 
 /// A recent-session inventory that holds [entries] and never reads.
 MockRecentSessionInventoryService stubRecentSessionInventory({required Map<String, RecentSessionsEntry> entries}) {

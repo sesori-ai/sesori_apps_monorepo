@@ -13,7 +13,6 @@ import "package:sesori_dart_core/src/foundation/models/product_analytics/product
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_preference.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
 import "package:sesori_dart_core/src/services/models/add_project_outcome.dart";
-import "package:sesori_dart_core/src/services/models/catalog_rescan_state.dart";
 import "package:sesori_dart_core/src/services/models/product_analytics_state.dart";
 import "package:sesori_dart_core/src/services/models/project_list_state.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
@@ -2621,7 +2620,7 @@ void main() {
       );
     });
 
-    group("catalog scan", () {
+    group("catalog changes", () {
       void stubProjects() {
         when(
           () => mockProjectRepository.listProjects(),
@@ -2631,28 +2630,6 @@ void main() {
       Future<ApiResponse<Projects>> successfulResponse({required List<ProjectSummary> projects}) {
         return Future<ApiResponse<Projects>>.value(ApiResponse.success(Projects(data: projects)));
       }
-
-      test("projects the scan onto the loaded state", () async {
-        stubProjects();
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await Future<void>.delayed(Duration.zero);
-
-        fakeCatalogRescanService.emit(
-          const CatalogRescanState.reading(
-            activePluginName: "Codex",
-            sessionsSeen: 148,
-            finishedHarnessCount: 0,
-            pluginIds: {"codex"},
-          ),
-        );
-        await Future<void>.delayed(Duration.zero);
-
-        expect(
-          (cubit.state as ProjectListLoaded).catalogScan,
-          isA<CatalogRescanReading>().having((s) => s.sessionsSeen, "sessionsSeen", 148),
-        );
-      });
 
       test("refreshes after a committed catalog change", () async {
         stubProjects();
@@ -2666,25 +2643,6 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         verify(() => mockProjectRepository.listProjects()).called(1);
-      });
-
-      test("keeps a terminal scan through the committed-change refresh", () async {
-        stubProjects();
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await Future<void>.delayed(Duration.zero);
-        stubProjects();
-
-        fakeCatalogRescanService.emit(
-          const CatalogRescanState.succeeded(
-            harnessCount: 1,
-            counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
-          ),
-        );
-        fakeCatalogRescanService.emitCatalogChanged();
-        await Future<void>.delayed(Duration.zero);
-
-        expect((cubit.state as ProjectListLoaded).catalogScan, isA<CatalogRescanSucceeded>());
       });
 
       test("post-commit data wins over overlapping earlier reads", () async {
@@ -2832,23 +2790,6 @@ void main() {
         expect(await cubit.refreshProjects(), isTrue);
         expect(requestCount, 3);
         expect((cubit.state as ProjectListLoaded).projects, [projectC]);
-      });
-
-      test("forwards the scan intents to the service", () async {
-        stubProjects();
-        final cubit = buildCubit();
-        addTearDown(cubit.close);
-        await Future<void>.delayed(Duration.zero);
-
-        cubit
-          ..startCatalogScan()
-          ..cancelCatalogScan()
-          ..dismissCatalogScan();
-        await Future<void>.delayed(Duration.zero);
-
-        expect(fakeCatalogRescanService.startAllCalls, 1);
-        expect(fakeCatalogRescanService.cancelCalls, 1);
-        expect(fakeCatalogRescanService.dismissCalls, 1);
       });
     });
   });

@@ -378,13 +378,15 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Scope.**
   - Add `SessionScope` in `module_app_ui`, `SessionListRefreshService` in `module_core` (moved from
     `module_desktop_core`, now adding `startAll`) and `SessionListRefreshCubit`.
-  - The phone wraps its signed-in routes in `SessionScope`, and the Projects screen drops its own providers.
+  - The phone wraps its signed-in routes in `SessionScope` through an outer signed-in ShellRoute (splash and login
+    stay outside), and the Projects screen drops its own providers. `PendingSessionArchiveCubit` and
+    `SessionLaunchCubit` move from above the router into the scope, so they end with sign-out.
   - `DesktopCockpitCubitProvider` composes `SessionScope`.
 - **Refresh.**
-  - The Projects pull, the desktop sidebar refresh and the desktop project page's Refresh call
-    `SessionListRefreshCubit.refresh`.
-  - The per-project session list's pull calls a new `SessionListCubit.refreshAndImport`, which does its own reload
-    plus `startAll`. That list is gone in step 8.
+  - The Projects pull and the desktop sidebar refresh call `SessionListRefreshCubit.refresh`.
+  - The per-project session lists' pulls (phone list, split pane, Archived) and the desktop project page's Refresh,
+    which reloads that page's own per-project list, call a new `SessionListCubit.refreshAndImport`, which does its
+    own reload plus `startAll`. Those lists are gone in step 8.
     - This is a deliberate transitional exception. That list's rows come from its own cubit, not from the
       inventories the refresh cubit reloads.
     - Both entry points start the same `CatalogRescanService` operation, so import state keeps one owner.
