@@ -139,6 +139,7 @@ void main() {
   late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late int logoutCompletions;
+  late int archivedOpens;
   late _MockFileAccessCubit fileAccess;
   late MockRegisteredBridgesService registeredBridges;
   late _MockComputerSwitchDispatcher computerSwitchDispatcher;
@@ -155,6 +156,7 @@ void main() {
       buildSignature: "",
     );
     logoutCompletions = 0;
+    archivedOpens = 0;
     fileAccess = _MockFileAccessCubit();
     whenListen(
       fileAccess,
@@ -326,6 +328,7 @@ void main() {
                     showDesktopSettingsModal(
                       context: context,
                       initialTab: tab,
+                      onOpenArchived: () => archivedOpens++,
                       onLogoutCompleted: () => logoutCompletions++,
                     ),
                   ),
@@ -571,6 +574,27 @@ void main() {
     await tester.pumpAndSettle();
     verify(() => computerSwitchDispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.settings)).called(1);
     expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+  });
+
+  testWidgets("Archived sessions sits under the tabs on every tab and opens Archived as the window closes", (
+    tester,
+  ) async {
+    await open(tester: tester, tab: DesktopSettingsTab.general);
+    final archived = find.byKey(const Key("desktop-settings-archived"));
+    expect(find.descendant(of: archived, matching: find.text("Archived sessions")), findsOneWidget);
+    expect(
+      tester.getTopLeft(archived).dy,
+      greaterThan(tester.getBottomLeft(find.byKey(const ValueKey("desktop-settings-tab-account"))).dy),
+    );
+    await select(tester: tester, tab: DesktopSettingsTab.bridge);
+    // The Bridge tab leaves it to the tab list.
+    expect(find.text("Archived sessions"), findsOneWidget);
+    expect(archivedOpens, 0);
+
+    await tester.tap(archived);
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+    expect(archivedOpens, 1);
   });
 
   testWidgets("Manage computers pushes Computers inside the Bridge tab, and a switch there closes the window", (

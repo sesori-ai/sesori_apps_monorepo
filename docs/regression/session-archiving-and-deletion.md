@@ -114,10 +114,10 @@ entirely along with its transcript and its dedicated worktree.
 - Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
-  narrows the list to one project. The home's Archived button, in its bar or in
-  the sidebar footer from 700 pt, opens the modal under the home's filter
-  through the same filter the all-projects lists share; it adds no second
-  filter. The live
+  narrows the list to one project. Settings' Archived sessions row, after
+  Projects in the Bridge section and disabled offline, opens the modal over
+  Settings under the home's filter through the same filter the all-projects
+  lists share; it adds no second filter. The live
   list remains active-only. The modal has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
@@ -130,10 +130,11 @@ entirely along with its transcript and its dedicated worktree.
   failure alert. Archived lists never claim a viewed project. Swipe and menu
   actions run on a per-row action cubit; a deleted row leaves when the bridge's
   `session.deleted` event arrives.
-- Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the sidebar footer's
-  Archived under the sidebar's shared filter, with the archive empty state and no artwork. Its rows open the
-  ordinary session page read-only over it, Delete asks in the desktop dialog, and its close returns to the page
-  it opened over, or home when reached directly (see `desktop-cockpit-shell.md`). While the computer is disconnected it lists nothing.
+- Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the settings window's
+  Archived sessions row, which closes the window first. It uses the sidebar's shared filter, the archive empty
+  state and no artwork. Its rows open the ordinary session page read-only over it, Delete asks in the desktop
+  dialog, and its close returns to the page it opened over, or home when reached directly (see
+  `desktop-cockpit-shell.md`). While the computer is disconnected it lists nothing.
 - Archived detail (`/archived-sessions/<projectId>/<sessionId>`) is read-only
   from its first frame. In the composer's place it
   shows what the newest agent reply ran with as read-only pills (see
@@ -198,7 +199,7 @@ restart before explicit re-import.
 
 - Mobile mixes active rows into archives, shows a new-session floating button in
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
-- The home's Archived button ignores the home's filter, filtered rows
+- Settings' Archived sessions row ignores the home's filter, filtered rows
   repeat the project name, an unfiltered row omits it, or a newly archived
   session is missing until a manual refresh.
 - Archived says “No archived sessions” while the project list is loading, has

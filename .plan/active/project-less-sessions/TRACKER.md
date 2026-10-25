@@ -11,7 +11,7 @@
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/7 | Publish the plan | Done | #2067 |
-| 2/7 | Floating new-session button; Archived in Settings | Not started | — |
+| 2/7 | Floating new-session button; Archived in Settings | Done | #2070 |
 | 3/7 | Picker actions in a footer | Not started | — |
 | 4/7 | Sesori folder and per-session scratch folders (inert) | In review | #2069 |
 | 5/7 | No project project turned on | Not started | — |

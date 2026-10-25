@@ -5209,7 +5209,7 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get harnessesStatusRunning;
 
-  /// No description provided for @archivedSessionsTitle.
+  /// Title of the Archived page, and of the Settings row that opens it.
   ///
   /// In en, this message translates to:
   /// **'Archived sessions'**
