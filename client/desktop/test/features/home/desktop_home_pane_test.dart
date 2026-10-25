@@ -344,6 +344,12 @@ void main() {
       addTearDown(tester.view.reset);
       whenListen(recent, updates, initialState: entries);
       final launchService = inMemorySessionLaunchService(launchRepository: launches);
+      final projectList = _MockProjectListCubit();
+      whenListen(
+        projectList,
+        const Stream<ProjectListState>.empty(),
+        initialState: ProjectListState.loaded(projects: projects),
+      );
       await tester.pumpWidget(
         MaterialApp(
           theme: buildPregoThemeData(brightness: Brightness.light),
@@ -358,6 +364,7 @@ void main() {
               BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
               BlocProvider<PendingSessionArchiveCubit>.value(value: archive),
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
+              BlocProvider<ProjectListCubit>.value(value: projectList),
             ],
             child: DesktopHomeStart(
               projects: projects,
@@ -368,6 +375,7 @@ void main() {
               onOpenSession: ({required context, required project, required displayName, required session}) =>
                   opened.add((projectId: project.id, sessionId: session.id)),
               onOpenHarnessSettings: () {},
+              openFolder: ({required context, required onProjectAdded}) {},
             ),
           ),
         ),
@@ -524,7 +532,8 @@ void main() {
 
       tester
           .widget<NewSessionView>(find.byType(NewSessionView))
-          .onProjectSelected(projectId: "two", projectName: "Two");
+          .projectChoice
+          ?.onProjectSelected(projectId: "two", projectName: "Two");
       await tester.pump();
 
       expect(createdFor, ["one", "two"]);

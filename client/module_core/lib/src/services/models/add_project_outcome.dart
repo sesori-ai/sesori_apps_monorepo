@@ -1,15 +1,5 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-/// Outcome of an add-project action (create or discover/open).
-///
-/// Distinguishes a permission denial (so the UI can show an actionable macOS
-/// Full Disk Access message) from other failures.
-enum AddProjectOutcome() {
-  success,
-  permissionDenied,
-  otherError,
-}
-
 /// Outcome of adding an existing folder as a project.
 sealed class const OpenProjectOutcome();
 

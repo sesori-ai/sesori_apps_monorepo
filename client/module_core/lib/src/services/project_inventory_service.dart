@@ -590,28 +590,6 @@ class ProjectInventoryService({
     });
   }
 
-  /// Creates a new project named [name] below [parentPath].
-  ///
-  /// On success the project list is refreshed. A permission denial from the
-  /// bridge is reported distinctly so the UI can show an actionable message.
-  Future<AddProjectOutcome> createProject({
-    required String parentPath,
-    required String name,
-  }) async {
-    final response = await _projectRepository.createProject(
-      parentPath: parentPath,
-      name: name,
-    );
-    if (_state.isClosed) return AddProjectOutcome.otherError;
-    switch (response) {
-      case SuccessResponse():
-        await refreshProjects();
-        return AddProjectOutcome.success;
-      case ErrorResponse(:final error):
-        return _addProjectFailureOutcome(error: error);
-    }
-  }
-
   /// Creates a plain folder named [name] below [parentPath] on the bridge host.
   ///
   /// The project list is untouched — this only makes the directory, so the
@@ -790,13 +768,6 @@ class ProjectInventoryService({
         }
         return const FilesystemSuggestionsError();
     }
-  }
-
-  AddProjectOutcome _addProjectFailureOutcome({required ApiError error}) {
-    if (_isPermissionDenied(error: error)) {
-      return AddProjectOutcome.permissionDenied;
-    }
-    return AddProjectOutcome.otherError;
   }
 
   bool _isPermissionDenied({required ApiError error}) {

@@ -420,6 +420,11 @@ This document and `TRACKER.md`. Verification: Markdown only.
   the new project.
 - **Phone wiring.** The phone new-session screen uses the live list; remove `NewSessionProjectsCubit` and the dead
   `createProject` pair.
+  - The phone header hides only while the composer holds the keyboard. Hiding it for any keyboard would unmount
+    the picker's trigger under its own sheet, jumping the page behind it and leaving the folder browser no
+    context to open from.
+- **Desktop wiring.** The desktop new-session page and the home composer use the same picker in popover form; the
+  project page, which names its own project, shows no picker until step 11 removes it.
 - **Verification:**
   - Widget tests: search narrows, a no-match keeps the add entry, collisions show paths, zero and one project.
   - Simulator: the portrait sheet with the keyboard, and the iPad popover.

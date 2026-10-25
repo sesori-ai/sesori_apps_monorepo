@@ -13,6 +13,14 @@ import "../../widgets/bridge_update_sheet.dart";
 import "new_folder_dialog.dart";
 import "widgets/project_tile.dart";
 
+/// Opens the folder browser over [context]: the shell calls
+/// [showAddProjectDialog] with the services it injects, and [onProjectAdded]
+/// receives the project the browser added.
+typedef ProjectFolderOpener = void Function({
+  required BuildContext context,
+  required ProjectOpenedCallback onProjectAdded,
+});
+
 /// Shows the Add Project modal: a bottom sheet on touch, a dialog on pointer.
 ///
 /// Presented through [showPregoModalRoute] rather than [showPregoModal]

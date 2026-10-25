@@ -45,9 +45,9 @@ class const NewSessionView({
   required final String projectId,
   required final String? projectName,
 
-  /// The projects the header's selector offers; empty shows the project only.
-  required final List<ProjectSummary> projects,
-  required final NewSessionProjectSelected onProjectSelected,
+  /// Null names the project without a picker, for a page that is the
+  /// project's own.
+  required final NewSessionProjectChoice? projectChoice,
   required final VoidCallback onBack,
   required final VoidCallback onOpenHarnessSettings,
   required final NewSessionCreatedCallback onSessionCreated,
@@ -83,6 +83,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   bool get _dedicatedWorktree => _chosenDedicatedWorktree ?? true;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
+
+  /// Whether the keyboard up is the composer's, which the header makes room
+  /// for. The project picker's search raises it too, and the header holding
+  /// that picker stays.
+  bool _composerFocused = false;
   late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
 
@@ -457,7 +462,10 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           // Reports focus for the session screen that takes the composer over.
           canRequestFocus: false,
           skipTraversal: true,
-          onFocusChange: (focused) => context.read<NewSessionCubit>().reportComposerFocus(focused: focused),
+          onFocusChange: (focused) {
+            setState(() => _composerFocused = focused);
+            context.read<NewSessionCubit>().reportComposerFocus(focused: focused);
+          },
           child: PromptInput(
             draftIdentity: ComposerDraftRepository.newSessionIdentity(projectId: widget.projectId),
             restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
@@ -618,8 +626,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     final header = NewSessionHeader(
       projectId: widget.projectId,
       projectName: widget.projectName,
-      projects: widget.projects,
-      onProjectSelected: widget.onProjectSelected,
+      projectChoice: widget.projectChoice,
       harness: _buildHarnessPill(cubit: cubit, data: composerData),
     );
     final chromePage = switch (widget.pageChrome) {
@@ -728,7 +735,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                         children: [
                           // The keyboard leaves this pane a few rows tall;
                           // they belong to the options being typed against.
-                          if (MediaQuery.viewInsetsOf(context).bottom == 0) header,
+                          if (!_composerFocused || MediaQuery.viewInsetsOf(context).bottom == 0) header,
                           ?options,
                         ],
                       ),

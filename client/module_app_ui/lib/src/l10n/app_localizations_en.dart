@@ -132,6 +132,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get newSessionHeading => 'What should we work on?';
 
   @override
+  String get projectPickerTitle => 'Projects';
+
+  @override
+  String get projectPickerSearchHint => 'Search projects';
+
+  @override
+  String get projectPickerOpenFolder => 'Open another folder…';
+
+  @override
+  String get projectPickerAllProjects => 'All projects';
+
+  @override
+  String get projectPickerNoMatches => 'No projects match';
+
+  @override
   String get sessionChangesLabel => 'Changes';
 
   @override
