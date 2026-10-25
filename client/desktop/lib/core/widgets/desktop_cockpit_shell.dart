@@ -379,7 +379,9 @@ class const _TitleBarStrip({required final WindowHost? windowHost, required fina
 }
 
 /// Brings a hidden sidebar back (D9) from the page's top-left corner, past
-/// the traffic lights on macOS. It fades in as the sidebar slides away.
+/// the traffic lights on macOS. It fades in as the sidebar slides away, riding
+/// just ahead of the title that [DesktopSidebarRestoreInset] moves, so the two
+/// never overlap.
 class const _SidebarRestoreButton({required final bool autoCollapsed, required final VoidCallback onPressed})
     extends StatelessWidget {
   @override
@@ -387,6 +389,8 @@ class const _SidebarRestoreButton({required final bool autoCollapsed, required f
     final expansion = DesktopSidebarExpansion.of(context);
     final loc = context.loc;
     const size = DesktopSidebarRestoreInset.buttonSize;
+    final travel = DesktopSidebarRestoreInset.buttonStart + size;
+    final towardStart = Directionality.of(context) == TextDirection.rtl ? 1.0 : -1.0;
     return PositionedDirectional(
       top: (DesktopPageToolbar.height - size) / 2,
       start: DesktopSidebarRestoreInset.buttonStart,
@@ -394,25 +398,32 @@ class const _SidebarRestoreButton({required final bool autoCollapsed, required f
         expansion: expansion,
         builder: (context, phase) => phase == DesktopSidebarPhase.open
             ? const SizedBox.shrink()
-            : FadeTransition(
-                opacity: ReverseAnimation(expansion),
-                child: SizedBox.square(
-                  dimension: size,
-                  child: IconButton(
-                    key: const Key("desktop-sidebar-restore"),
-                    // A window too narrow for the sidebar keeps it hidden.
-                    tooltip: autoCollapsed
-                        ? loc.desktopSidebarExpand
-                        : loc.desktopShortcutHint(
-                            loc.desktopSidebarExpand,
-                            defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
-                          ),
-                    padding: const EdgeInsets.all(PregoSpacing.sm),
-                    onPressed: autoCollapsed ? null : onPressed,
-                    icon: Icon(
-                      TablerRegular.layout_sidebar_left_expand,
-                      size: PregoIconSize.md,
-                      color: autoCollapsed ? context.prego.colors.textDisabled : null,
+            : DesktopSidebarExpansionBuilder(
+                expansion: expansion,
+                builder: (expansion, child) => Transform.translate(
+                  offset: Offset(towardStart * travel * expansion, 0),
+                  child: child,
+                ),
+                child: FadeTransition(
+                  opacity: ReverseAnimation(expansion),
+                  child: SizedBox.square(
+                    dimension: size,
+                    child: IconButton(
+                      key: const Key("desktop-sidebar-restore"),
+                      // A window too narrow for the sidebar keeps it hidden.
+                      tooltip: autoCollapsed
+                          ? loc.desktopSidebarExpand
+                          : loc.desktopShortcutHint(
+                              loc.desktopSidebarExpand,
+                              defaultTargetPlatform == TargetPlatform.macOS ? "⌘B" : "Ctrl+B",
+                            ),
+                      padding: const EdgeInsets.all(PregoSpacing.sm),
+                      onPressed: autoCollapsed ? null : onPressed,
+                      icon: Icon(
+                        TablerRegular.layout_sidebar_left_expand,
+                        size: PregoIconSize.md,
+                        color: autoCollapsed ? context.prego.colors.textDisabled : null,
+                      ),
                     ),
                   ),
                 ),

@@ -443,6 +443,10 @@ void main() {
     final titleInset = tester.getTopLeft(title).dx - besideOpenPanel(width: 260);
     expect(restore, findsNothing);
     await tester.tap(toggle);
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 80));
+    // Midway, the button rides just ahead of the sliding title, never over it.
+    expect(tester.getRect(restore).right, moreOrLessEquals(tester.getTopLeft(title).dx - titleInset));
     await tester.pumpAndSettle();
     const size = DesktopSidebarRestoreInset.buttonSize;
     expect(

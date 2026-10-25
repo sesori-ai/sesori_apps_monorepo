@@ -42,7 +42,8 @@ The main pane hosts one full-width routed page.
 - Collapse hides the sidebar completely: the panel and its resize gap slide out past the window's start edge
   in 220 ms while the page widens into their room, and the panel never squeezes its rows on the way. A restore
   button fades in at the page's top-left, centred in the 54-pixel toolbar band; page toolbars and the home's
-  Viewing header move their content past it while it shows. The button and Cmd/Ctrl+B bring the sidebar back
+  Viewing header move their content past it while it shows, and it slides just ahead of that content, never
+  over it. The button and Cmd/Ctrl+B bring the sidebar back
   at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
   screen reader. Reduced motion removes the slide without delaying drag feedback.
 - Windows narrower than 760 pixels temporarily hide the sidebar without changing saved preferences; the
