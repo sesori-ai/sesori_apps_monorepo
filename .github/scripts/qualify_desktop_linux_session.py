@@ -84,7 +84,7 @@ def prepare(*, inputs: Path, output: Path, previous: int, current: int, tooling_
         # trusted main producer, compiled identity and native package evidence.
         releases[label] = prepare_signed(
             root=root, output=output / label, source_sha=identity["sourceSha"], tooling_sha=tooling_sha,
-            repository=REPOSITORY, run_id=run_id, current_run_id=None,
+            channel=Channel.INTERNAL, repository=REPOSITORY, run_id=run_id, current_run_id=None,
             version=identity["version"], build_number=identity["buildNumber"])
         verify_release(root=output / label, channel=Channel.INTERNAL, fingerprint=TRUSTED_PRIMARY_FINGERPRINT)
     versions = [version_order(version=f"{releases[label]['version']}-{releases[label]['buildNumber']}")

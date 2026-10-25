@@ -180,6 +180,7 @@ jobs:
       version: ${{ needs.preflight.outputs.version }}
       build_number: ${{ needs.next-build-number.outputs.build_number }}
       packaging_run: ${{ github.run_id }}
+      channel: internal
     secrets: inherit
 
   desktop-macos:

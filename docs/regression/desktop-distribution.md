@@ -190,8 +190,8 @@ must never rebuild apps, change release completion or dispatch stores. RPM metad
 signatures do not provide APT's expiry guarantee; its filenames contain checksums.
 Publishing must retain old referenced objects and place payloads/indexes before signed
 entrypoints; RPM's separate XML/signature update can safely refuse a concurrent refresh
-rather than install unauthenticated data. This tooling does not publish, approve a
-stable channel, or replace compiled-identity/native qualification in release preparation.
+rather than install unauthenticated data. This tooling does not publish or replace
+compiled-identity/native qualification in release preparation.
 
 Disposable-key APT/DNF fixtures exercise repository trust and inert package installation,
 version upgrade and removal inside fresh roots, with unrelated state preserved.
@@ -199,10 +199,13 @@ Channel mismatch, absent CPUs, wrong signer, altered packages/checksums/signatur
 unverifiable metadata refuse completion. These fixtures do not establish native GUI,
 account/keyring, tray, login-launch, real application upgrades or public HTTPS delivery.
 
-## Hosted Linux preview repositories
+## Hosted Linux repositories
 
-`linux-repository.yml` follows completed public internal previews and supports weekly
-metadata-only refresh/manual repair. Signing runs in the existing protected environment,
+`linux-repository.yml` follows each channel's newest completed public Linux release
+(internal pre-releases; stable non-draft `v<X.Y.Z>`, promoted or not) and supports weekly
+metadata-only refresh/manual repair. Every run refreshes every channel that has one in
+independent matrix legs; a channel without a completed release (stable before its first
+Linux release) is skipped and the run succeeds. Signing runs in the existing protected environment,
 with tools installed first and no container network. A separate publisher uses GitHub
 federation restricted to this repository, main and the named workflow; its service
 account owns object access only on the dedicated package bucket, not project IAM,
@@ -212,14 +215,13 @@ public-sharing exception tag; untagged resources retain their previous domain re
 Before any write, verify independent key trust, signed index/package references and
 exact public inventory. Altering a producer inventory must not conceal modified package
 or index bytes. Reject expired APT metadata, immutable conflicts and rollback from a
-retried older run. Retain previous content, publish dependencies first and InRelease
+retried older run, each per channel. Retain previous content, publish dependencies first and InRelease
 last; verify anonymous SHA-256 delivery and do not publish the private CI inventory.
 
 L2 covers real signed references, ordered writes, retry/failure behavior and existing
 inert client fixtures. L3 requires the merged workflow's production-key/federation run,
 anonymous public files and real APT/DNF refresh against HTTPS. Bucket access alone is
-not repository delivery. Neither level substitutes for native desktop/account upgrades
-or grants stable admission. See [operations](../desktop/linux-repositories.md).
+not repository delivery. Neither level substitutes for native desktop/account upgrades. See [operations](../desktop/linux-repositories.md).
 
 ### Native Linux desktop sessions
 
@@ -282,7 +284,7 @@ signed first-run defaults write exactly that registration and that it survives t
 upgrade. Helper-On restoration at OS login is not separately qualified.
 
 Real account restoration and helper On/Off behavior are separate gates. This workflow
-does not publish releases or admit stable Linux.
+does not publish releases.
 
 ### Authenticated Linux replacement
 
@@ -410,8 +412,13 @@ checkout. Parallel Linux/macOS reusable calls have distinct concurrency groups.
 The Linux publisher requires both native package sets, matching signed/unsigned
 provenance, clean source and all six package fixtures. Both signer reports and checksum
 signatures must match the repository's approved primary fingerprint, independently of
-producer configuration or downloaded key material. It then requires an existing public
-internal release whose tag resolves to that exact source. No stable Linux path is admitted.
+producer configuration or downloaded key material. Its `--channel` must equal the compiled
+channel; binaries are never relabeled. Internal requires an existing public
+`v<X.Y.Z>-internal.<N>` pre-release; stable requires the existing non-draft approved
+`v<X.Y.Z>`, promoted or still a pre-release, exactly as macOS does. Either tag must resolve
+to that exact source. Production builds stable packages from the approved source/build
+before approval and attaches them only after `submit-release.yml`'s `release` job;
+`bridge-only` skips Linux, and a Linux failure leaves the release, tag and macOS unchanged.
 Core CLI and macOS assets remain untouched. Each public asset is anonymously hash-checked;
 identical retries are allowed, conflicting bytes are never overwritten.
 `desktop-linux-release.json` is uploaded last and does not depend on macOS completion.
@@ -420,9 +427,9 @@ bytes. `desktop-linux-public.asc` is separate from the core CLI owner's replacea
 asset, even though both use the same signing key. Private evidence never becomes a
 release asset. The publisher cannot create/promote releases, move tags or change Latest.
 
-The user accepted GUI/login/keyring/tray and real N→N+1 gaps for opt-in internal previews.
-These packages do not establish stable Linux admission or signed APT/RPM repository trust.
-Fixture tests alone do not establish production-key access or public retrieval.
+Native GUI/login/keyring/tray and N→N+1 upgrades were qualified on earlier signed builds,
+not per release; the manifest's `proofBoundary` says so. Fixture tests alone do not
+establish production-key access or public retrieval.
 
 Public acceptance on 2026-10-13 used native producer `38438783418` for aligned
 `1.9.1+1013` and publisher `38443588001`. Both compiled internal identities and all six
@@ -469,8 +476,9 @@ Stable bridge/npm cleanup skips completed desktop previews even when stable desk
 assets exist: an internal channel must not be forced onto stable. This also preserves
 previews during bridge-only production or pending/failed stable desktop attachment.
 `DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
-and it is now `true`. Linux internal previews were admitted on 2026-10-13;
-Windows and stable Linux remain unadmitted.
+and it is now `true`. Linux internal previews were admitted on 2026-10-13. Stable Linux
+publication is wired through production without a separate variable; it has no live
+release yet. Windows remains unadmitted.
 
 Admitted macOS publication attaches four installers, `desktop-checksums.txt` and
 `desktop-release.json` to existing product tags. It never creates/promotes a release,
@@ -602,7 +610,7 @@ app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
 construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
 six native package-manager fixtures on Linux. Separate signed Linux qualification and
 public internal delivery are recorded above. macOS and Linux internal installers are
-public; stable macOS/Linux and Windows availability are not implied.
+public; stable Linux and Windows availability are not implied.
 Exact accepted sources, runs, hashes and proof limits stay
 in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and

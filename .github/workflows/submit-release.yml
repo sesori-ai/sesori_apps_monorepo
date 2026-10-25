@@ -7,9 +7,9 @@ name: Submit Release
 # auto-updater consumes).
 #
 # Store submission jobs run on ubuntu-latest because submission is pure HTTPS
-# API work. Bridge and admitted macOS desktop binaries are rebuilt on native matrices.
-# Desktop attaches to the same release only after its own verification and the
-# existing production approval; it never changes the bridge/mobile finalizer.
+# API work. Bridge, admitted macOS and Linux desktop binaries are rebuilt on native matrices.
+# Each desktop platform attaches to the same release only after its own verification and
+# the existing production approval; it never changes the bridge/mobile finalizer.
 #
 # Required prerequisite: the build must have been uploaded by
 # release-all-platforms.yml, which pushes an annotated `v<X>-internal.<N>` tag
@@ -446,6 +446,44 @@ jobs:
       version: ${{ needs.resolve.outputs.version }}
       build_number: ${{ needs.resolve.outputs.build_number }}
       channel: stable
+
+  build-desktop-linux:
+    name: Build and qualify Linux desktop (release)
+    if: inputs.track == 'production' && inputs.platforms != 'bridge-only'
+    needs: resolve
+    permissions:
+      contents: read
+      actions: read
+      pull-requests: read
+      # Required for callee admission; its manual debug job is skipped here.
+      id-token: write
+    uses: ./.github/workflows/desktop-qualification.yml
+    with:
+      source_sha: ${{ needs.resolve.outputs.commit_sha }}
+      build_number: ${{ needs.resolve.outputs.build_number }}
+      channel: stable
+      mode: linux-packaging
+    secrets: inherit
+
+  # Independent of macOS and of the core finalizers: a Linux failure leaves the release and tag unchanged.
+  publish-desktop-linux:
+    name: Attach Linux desktop packages to the approved release
+    needs: [resolve, build-desktop-linux, release]
+    if: >-
+      always() && inputs.track == 'production' &&
+      needs.build-desktop-linux.result == 'success' && needs.release.result == 'success'
+    permissions:
+      contents: write
+      actions: read
+      id-token: write
+    uses: ./.github/workflows/desktop-linux-release.yml
+    with:
+      source_sha: ${{ needs.resolve.outputs.commit_sha }}
+      version: ${{ needs.resolve.outputs.version }}
+      build_number: ${{ needs.resolve.outputs.build_number }}
+      packaging_run: ${{ github.run_id }}
+      channel: stable
+    secrets: inherit
 
   # bridge-only submits skip both store jobs and with them the
   # store-production reviewer gate. This no-op job holds that gate BEFORE the

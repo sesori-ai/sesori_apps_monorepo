@@ -1,13 +1,12 @@
-# Linux preview repository operations
+# Linux repository operations
 
-`linux-repository.yml` publishes signed APT/RPM metadata for **internal previews
-only**, using already-completed public Linux releases. It never builds applications,
-creates/promotes releases or dispatches stores. Stable admission and native desktop,
-account/keyring/tray and genuine application-upgrade qualification remain separate.
+`linux-repository.yml` publishes signed APT/RPM metadata for the `internal` and
+`stable` channels, each from its newest already-completed public Linux release. It
+never builds applications, creates/promotes releases or dispatches stores.
 Infrastructure or a passing fixture alone is not live publication: bootstrap requires
 a successful main-branch run and anonymous verification of its actual output.
 
-## Accepted preview delivery
+## Accepted internal delivery
 
 [Run 38754986125](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/38754986125),
 from merged #1997 (`50e59ba739f9cddae58e5b0ddc325b0d40e628a5`), published
@@ -19,17 +18,25 @@ in an ARM64 Fedora container, without installing or executing the application.
 
 [Retained verification summaries](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2002#issuecomment-6196620863)
 include the independent verifier revision and the exact evidence boundary. This accepts
-preview repository delivery, not native x64/ARM64 application/account qualification or
-stable publication.
+internal repository delivery only; stable repository delivery has no live acceptance yet.
 
 ## Ownership and triggers
 
 - `desktop-linux-release.yml` calls the repository workflow after the existing
-  immutable GitHub preview publication completes. Core/macOS assets stay untouched.
+  immutable GitHub publication completes: internal from the shared cycle, stable from
+  `submit-release.yml` production after `store-production` approval and the `release`
+  job. Core/macOS assets stay untouched.
 - Monday's metadata-only refresh also covers quiet release periods. Manual dispatch
-  repairs failures or bootstraps existing qualified previews without store builds.
-- All three paths share one non-cancelling concurrency group. Selection chooses the
-  newest completed internal package version, not the most recently republished old tag.
+  repairs failures or bootstraps existing qualified releases without store builds.
+- All three paths share one non-cancelling concurrency group. Every run refreshes each
+  channel that has a completed release, so a replaced pending run loses no channel.
+  A `select` job lists those channels; signing and publication run one independent
+  matrix leg per channel. Before the first stable Linux release, stable is skipped and
+  the run still succeeds.
+- Internal follows the newest completed `v<X.Y.Z>-internal.<N>` pre-release by package
+  version, not the most recently republished old tag. Stable follows the newest
+  non-draft `v<X.Y.Z>` carrying `desktop-linux-release.json`. Like macOS, that includes a
+  release still held as a pre-release because `publish_bridge` was unticked.
 - The `linux-signing` job downloads the original packages/checksums, builds tools
   before exposing secrets and signs in a network-disabled container. It checks both
   CPU headers, signed checksum inventories and native RPM signatures against primary
@@ -101,6 +108,12 @@ Manual repair/bootstrap, from a merged trusted workflow:
 ```bash
 gh workflow run linux-repository.yml --repo sesori-ai/sesori_apps_monorepo --ref main
 ```
+
+Stable packages come only from a stable-channel build of the approved release's
+source and build number; internal binaries are never relabeled. To bootstrap a stable
+release approved before Linux was wired, dispatch `desktop-qualification.yml` with
+`mode=linux-packaging`, `channel=stable` and that release's source/build, then
+`desktop-linux-release.yml` with `channel=stable` and that packaging run.
 
 This command must never be replaced by dispatching the store-uploading shared cycle
 merely to prove repository delivery. Website availability and installation guidance

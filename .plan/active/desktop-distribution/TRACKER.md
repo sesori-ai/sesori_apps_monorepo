@@ -59,8 +59,9 @@ ARM64 with signed first-run registration; x64 first failed on a stale QA bridge 
 #2036, authenticated rerun `40155039475` (167 → 203) passed on both CPUs, so 11.i.c.b is
 accepted. 11.i.d.a (#2039) adds signed portable AppImages to every producer. 11.i.d.b is
 accepted: fresh producers 40159666182 → 40160283183 passed Arch and every existing row on
-both CPUs in `linux-session` run `40161934369`. 11.j (landingpage #113) adds AppImage
-and internal-repository guidance. Stable remains closed until 11.k.
+both CPUs in `linux-session` run `40161934369`. 11.j (landingpage #113) is live with AppImage
+and internal-repository guidance. 11.k adds production stable Linux build/attachment plus
+per-channel repositories; stable stays closed until its first live release and repository acceptance.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing
 Cloud Run source storage and Firebase federation remain outside the publisher's authority.

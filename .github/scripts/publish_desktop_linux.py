@@ -1,6 +1,7 @@
-"""Attach qualified Linux internal previews; never create/promote a release or change core assets."""
+"""Attach qualified Linux desktop packages; never create/promote a release or change core assets."""
 
 import argparse
+from enum import StrEnum
 import json
 import os
 from pathlib import Path
@@ -26,6 +27,11 @@ FIXTURE_CHECKS = (
 )
 
 
+class Channel(StrEnum):
+    STABLE = "stable"
+    INTERNAL = "internal"
+
+
 def verify_checksums(*, packages: Path, fingerprint: str) -> None:
     # The caller supplies the repository's public trust anchor, never an identity
     # accepted solely from the producer's signing report or downloaded key.
@@ -48,13 +54,11 @@ def verify_checksums(*, packages: Path, fingerprint: str) -> None:
         require(len(signatures) == 1 and signatures[0][-1] == fingerprint, "Unexpected checksum signer")
 
 
-def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
+def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str, channel: Channel,
             repository: str, run_id: int, current_run_id: int | None,
             version: str, build_number: int) -> dict:
     run = require_producer(root=root, source_sha=source_sha, tooling_sha=tooling_sha,
                            repository=repository, run_id=run_id, current_run_id=current_run_id)
-    require(run["path"] in {".github/workflows/desktop-qualification.yml",
-                            ".github/workflows/release-all-platforms.yml"}, "Unexpected Linux producer")
     require(bool(re.fullmatch(r"(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)", version)), "Expected clean release version")
     require(type(build_number) is int and build_number > 0, "Expected positive shared build number")
     output.mkdir(parents=True)
@@ -72,7 +76,7 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
         require(signed["identity"] == identity, "Signing identity differs from sealed bundle")
         defines = dict(line.split("=", 1) for line in (bundle / "dart-defines.env").read_text().splitlines())
         require(json.loads(defines["SESORI_DESKTOP_BUNDLE_IDENTITY"]) == identity, "Compiled identity differs")
-        require(defines["SESORI_DESKTOP_RELEASE_CHANNEL"] == "internal", "Only compiled internal previews are admitted")
+        require(defines["SESORI_DESKTOP_RELEASE_CHANNEL"] == channel.value, "Cannot relabel compiled channel")
         patch = bundle / "build-source-changes.patch"
         require(patch.exists() and patch.stat().st_size == 0, "Missing clean-source evidence or modified source")
         require(signed["signerFingerprint"] == TRUSTED_PRIMARY_FINGERPRINT,
@@ -121,29 +125,33 @@ def prepare(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
             # Separate immutable desktop asset from the core CLI owner's replaceable key asset.
             shutil.copyfile(packages / PUBLIC_KEY, key)
     verification.append({"name": PUBLIC_DESKTOP_KEY, "sha256": sha256(key), "bytes": key.stat().st_size})
+    tag = f"v{version}" if channel is Channel.STABLE else f"v{version}-internal.{build_number}"
     metadata = {
-        "schemaVersion": 1, "platform": "linux", "channel": "internal", "version": version,
-        "buildNumber": build_number, "sourceSha": source_sha, "tag": f"v{version}-internal.{build_number}",
+        "schemaVersion": 1, "platform": "linux", "channel": channel.value, "version": version,
+        "buildNumber": build_number, "sourceSha": source_sha, "tag": tag,
         "repository": repository, "packagingRun": run_id, "producerWorkflowSha": run["head_sha"],
         "preparationSourceSha": tooling_sha, "signerFingerprint": TRUSTED_PRIMARY_FINGERPRINT,
         "artifacts": artifacts, "verificationFiles": verification,
-        "proofBoundary": "Signed native DEB/RPM/AppImage internal previews and container package fixtures only; "
-                         "GUI/login/keyring/tray and real N-to-N+1 upgrades remain unverified. "
-                         "Not stable Linux or signed APT/RPM repository publication.",
+        "proofBoundary": "This run verified signed native DEB/RPM/AppImage packages and container package "
+                         "fixtures. Native GUI/login/keyring/tray and N-to-N+1 upgrades were qualified "
+                         "separately on earlier builds, not for this build. Repositories publish separately.",
     }
     (output / MANIFEST).write_text(json.dumps(metadata, indent=2) + "\n")
     return metadata
 
 
-def publish(*, root: Path, output: Path, source_sha: str, tooling_sha: str,
+def publish(*, root: Path, output: Path, source_sha: str, tooling_sha: str, channel: Channel,
             repository: str, run_id: int, current_run_id: int | None,
             version: str, build_number: int) -> None:
     metadata = prepare(root=root, output=output, source_sha=source_sha, tooling_sha=tooling_sha,
-                       repository=repository, run_id=run_id, current_run_id=current_run_id,
+                       channel=channel, repository=repository, run_id=run_id, current_run_id=current_run_id,
                        version=version, build_number=build_number)
     tag = metadata["tag"]
     release = json.loads(github(arguments=["api", f"repos/{repository}/releases/tags/{tag}"]))
-    require(not release["draft"] and release["prerelease"], "Existing public internal release required")
+    # Same rule as macOS: stable may stay a pre-release until its bridge rollout is promoted.
+    require(not release["draft"], "Shared release must already be public")
+    if channel is Channel.INTERNAL:
+        require(release["prerelease"], "Internal desktop packages require an internal pre-release")
     commit = json.loads(github(arguments=["api", f"repos/{repository}/commits/{tag}"]))
     require(commit["sha"] == source_sha, "Shared release tag source differs from desktop source")
     existing = {asset["name"] for asset in release["assets"]}
@@ -166,6 +174,7 @@ def main() -> None:
         parser.add_argument(f"--{name}", required=True)
     for name in ("run-id", "build-number"):
         parser.add_argument(f"--{name}", type=int, required=True)
+    parser.add_argument("--channel", type=Channel, choices=list(Channel), required=True)
     publish(**vars(parser.parse_args()), current_run_id=int(os.environ.get("GITHUB_RUN_ID", "0")) or None)
 
 

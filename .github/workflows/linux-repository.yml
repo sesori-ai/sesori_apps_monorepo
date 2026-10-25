@@ -1,6 +1,7 @@
-name: Publish Linux preview repositories
+name: Publish Linux repositories
 
-# Metadata maintenance only: reuse completed public previews, never build apps or stores.
+# Metadata maintenance only: reuse each channel's newest completed public release, never build apps or stores.
+# Every run refreshes every channel that has one, so a replaced pending run loses no channel.
 on:
   workflow_call:
   workflow_dispatch:
@@ -11,11 +12,36 @@ permissions:
   contents: read
 
 concurrency:
-  group: linux-internal-repository-publication
+  group: linux-repository-publication
   cancel-in-progress: false
 
 jobs:
+  select:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      channels: ${{ steps.select.outputs.channels }}
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - name: Select channels with a completed public Linux release
+        id: select
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python .github/scripts/publish_linux_repository.py select >> "$GITHUB_OUTPUT"
+
   sign:
+    needs: select
+    # No completed release (stable before its first Linux publication) is a no-op, not a failure.
+    if: needs.select.outputs.channels != '[]'
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: ${{ fromJSON(needs.select.outputs.channels) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     environment: linux-signing
@@ -33,15 +59,19 @@ jobs:
         run: |
           docker build -f .github/scripts/Dockerfile.linux-signing -t sesori-linux-signing .
           docker build -f .github/scripts/Dockerfile.linux-repository -t sesori-linux-repository .
-      - name: Download newest completed public internal preview
+      - name: Download newest completed public ${{ matrix.channel }} release
         env:
           GH_TOKEN: ${{ github.token }}
-        run: python .github/scripts/publish_linux_repository.py download --output build/linux-repository-input
+          CHANNEL: ${{ matrix.channel }}
+        run: |
+          python .github/scripts/publish_linux_repository.py download --channel "$CHANNEL" \
+            --output build/linux-repository-input
       - name: Sign repository metadata without network access
         env:
           LINUX_GPG_PRIVATE_KEY: ${{ secrets.LINUX_GPG_PRIVATE_KEY }}
           LINUX_GPG_PASSPHRASE: ${{ secrets.LINUX_GPG_PASSPHRASE }}
           LINUX_GPG_FINGERPRINT: ${{ vars.LINUX_GPG_FINGERPRINT }}
+          CHANNEL: ${{ matrix.channel }}
         run: |
           mkdir -p build/linux-repository-output
           docker run --rm --network none \
@@ -50,18 +80,28 @@ jobs:
             -v "$GITHUB_WORKSPACE/build/linux-repository-output:/output" \
             -e LINUX_GPG_PRIVATE_KEY -e LINUX_GPG_PASSPHRASE -e LINUX_GPG_FINGERPRINT \
             sesori-linux-repository python3 .github/scripts/build_linux_repository.py \
-              --root /prepared --output /output/repository --channel internal
+              --root /prepared --output /output/repository --channel "$CHANNEL"
       - name: Verify public signatures and complete reference tree independently
-        run: python .github/scripts/publish_linux_repository.py verify --root build/linux-repository-output/repository
+        env:
+          CHANNEL: ${{ matrix.channel }}
+        run: |
+          python .github/scripts/publish_linux_repository.py verify --channel "$CHANNEL" \
+            --root build/linux-repository-output/repository
       - uses: actions/upload-artifact@v4
         with:
-          name: linux-internal-repository
+          name: linux-${{ matrix.channel }}-repository
           path: build/linux-repository-output/repository/
           if-no-files-found: error
           retention-days: 14
 
   publish:
-    needs: sign
+    needs: [select, sign]
+    # One channel's signing failure must not hold back the other; its own artifact is required.
+    if: ${{ !cancelled() && needs.select.result == 'success' && needs.select.outputs.channels != '[]' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        channel: ${{ fromJSON(needs.select.outputs.channels) }}
     runs-on: ubuntu-24.04
     timeout-minutes: 20
     permissions:
@@ -77,7 +117,7 @@ jobs:
           python-version: '3.13'
       - uses: actions/download-artifact@v4
         with:
-          name: linux-internal-repository
+          name: linux-${{ matrix.channel }}-repository
           path: build/linux-repository-publication
       - uses: google-github-actions/auth@v3
         with:
@@ -86,4 +126,8 @@ jobs:
           service_account: linux-package-publisher@sesori-ai.iam.gserviceaccount.com
       - uses: google-github-actions/setup-gcloud@v3
       - name: Publish immutable content before signed entrypoints and verify anonymous bytes
-        run: python .github/scripts/publish_linux_repository.py publish --root build/linux-repository-publication
+        env:
+          CHANNEL: ${{ matrix.channel }}
+        run: |
+          python .github/scripts/publish_linux_repository.py publish --channel "$CHANNEL" \
+            --root build/linux-repository-publication
