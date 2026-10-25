@@ -15,7 +15,6 @@ class const HomeScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => _HomeView(
     presentation: SessionsHomePage(
-      onOpenArchived: ({required context}) => context.pushRoute(const AppRoute.archivedSessions()),
       onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
       connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
       onSwitchComputer: switchComputer,
@@ -27,7 +26,7 @@ class const HomeScreen({super.key}) extends StatelessWidget {
 }
 
 /// The wide layout's sidebar body: the home's list beside the open page.
-/// [HomeSidebarFooter] holds the computer switcher, Archived and Settings.
+/// [HomeSidebarFooter] holds the computer switcher and Settings.
 class const HomeSidebar({
   super.key,
 

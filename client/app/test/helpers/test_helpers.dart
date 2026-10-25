@@ -298,6 +298,7 @@ Widget sessionRowApp({
                 disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
                 emptyState: const SizedBox.shrink(),
                 header: null,
+                endClearance: 0,
               ),
             ],
           ),

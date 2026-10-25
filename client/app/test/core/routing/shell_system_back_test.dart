@@ -121,7 +121,7 @@ void main() {
 
           await _systemBack(tester: tester, back: back);
           expect(find.byKey(_detailKey), findsNothing);
-          expect(find.byKey(const Key("home-archived")), findsOneWidget);
+          expect(find.byKey(const Key("home-new-session")), findsOneWidget);
         } finally {
           await harness.tearDown();
         }
