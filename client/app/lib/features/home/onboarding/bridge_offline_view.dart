@@ -15,7 +15,7 @@ part of "bridge_onboarding.dart";
 /// its own and on pull-to-refresh, so the design spends the space on the
 /// command the user actually has to run.
 ///
-/// A body, not a page: it is hosted in its page.s own scroll (see
+/// A body, not a page: it is hosted in its page's own scroll (see
 /// [DisconnectedComputerSlivers]) so the expanded install commands scroll under a fixed
 /// bar. Anchored to the top of that page at the design's offset; the enclosing
 /// sliver grows past the viewport once the body outgrows it.

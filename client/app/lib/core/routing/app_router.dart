@@ -294,7 +294,27 @@ List<RouteBase> _buildAppRoutes({
           connectionService: getIt<ConnectionService>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
-          child: child,
+          // The home and Archived both name the computer they reach.
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider(
+                create: (_) => BridgeIdentityCubit(
+                  registeredBridgesService: getIt<RegisteredBridgesService>(),
+                  connectionService: getIt<ConnectionService>(),
+                  selectedComputerService: getIt<SelectedComputerService>(),
+                ),
+              ),
+              BlocProvider(
+                create: (_) => ComputerSwitcherCubit(
+                  registeredBridgesService: getIt<RegisteredBridgesService>(),
+                  connectionService: getIt<ConnectionService>(),
+                  selectedComputerService: getIt<SelectedComputerService>(),
+                  activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+                ),
+              ),
+            ],
+            child: child,
+          ),
         ),
       ),
       routes: _buildSignedInRoutes(sessionShellNavigatorKey: sessionShellNavigatorKey),
