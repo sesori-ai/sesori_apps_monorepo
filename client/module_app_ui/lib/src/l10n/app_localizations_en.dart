@@ -82,9 +82,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopGoBack => 'Go back';
 
   @override
-  String get desktopProjectPageArchived => 'Archived';
-
-  @override
   String sessionListFilterAll(int count) {
     return 'All · $count';
   }
@@ -131,9 +128,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionListFilterUnread(int count) {
     return 'Unread · $count';
   }
-
-  @override
-  String get desktopProjectPageRefresh => 'Refresh sessions';
 
   @override
   String get desktopSidebarRefresh => 'Refresh projects and sessions';

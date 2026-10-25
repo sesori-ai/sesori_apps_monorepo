@@ -229,12 +229,6 @@ abstract class AppLocalizations {
   /// **'Go back'**
   String get desktopGoBack;
 
-  /// Desktop project page toolbar toggle that switches the list to the project's archived sessions.
-  ///
-  /// In en, this message translates to:
-  /// **'Archived'**
-  String get desktopProjectPageArchived;
-
   /// Session list filter chip showing every active session, with their count.
   ///
   /// In en, this message translates to:
@@ -318,12 +312,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unread · {count}'**
   String sessionListFilterUnread(int count);
-
-  /// Desktop project page toolbar button that reloads the project's session list and imports sessions from the harnesses.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh sessions'**
-  String get desktopProjectPageRefresh;
 
   /// Tooltip for explicitly refreshing both desktop sidebar inventories.
   ///

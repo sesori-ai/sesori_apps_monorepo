@@ -48,9 +48,6 @@ enum AppRouteDef(final String path) {
   settingsHarnesses("/settings/harnesses"),
   settingsHarnessDetail("/settings/harnesses/:$pluginIdPathParam"),
   settingsProfile("/settings/profile"),
-
-  /// The desktop project page, until the desktop composer home replaces it.
-  projectSessions("/projects/:$projectIdPathParam/sessions"),
   archivedSessions("/archived-sessions"),
   archivedSessionDetail("/archived-sessions/:$projectIdPathParam/:$sessionIdPathParam"),
   newSession("/sessions/new"),
@@ -98,10 +95,6 @@ sealed class const AppRoute() {
   const factory settingsHarnessDetail({required String pluginId, required HarnessSettingsPresentation presentation}) =
       AppRouteSettingsHarnessDetail;
   const factory settingsProfile() = AppRouteSettingsProfile;
-  const factory projectSessions({
-    required String projectId,
-    required String? projectName,
-  }) = AppRouteProjectSessions;
   const factory archivedSessions() = AppRouteArchivedSessions;
   const factory archivedSessionDetail({
     required String projectId,
@@ -151,10 +144,6 @@ sealed class const AppRoute() {
         queryParams: queryParams,
       ),
       AppRouteDef.settingsProfile => const AppRoute.settingsProfile(),
-      AppRouteDef.projectSessions => AppRouteProjectSessions.fromParams(
-        pathParams: pathParams,
-        queryParams: queryParams,
-      ),
       AppRouteDef.archivedSessions => const AppRoute.archivedSessions(),
       AppRouteDef.archivedSessionDetail => AppRouteArchivedSessionDetail.fromParams(
         pathParams: pathParams,
@@ -293,37 +282,6 @@ class const AppRouteSettingsProfile() extends AppRoute {
 
   @override
   String buildPath() => def.path;
-}
-
-class const AppRouteProjectSessions({
-  required final String projectId,
-  required final String? projectName,
-}) extends AppRoute {
-  static const _projectIdPathParam = projectIdPathParam;
-  static const _nameQueryParam = projectNameQueryParam;
-
-  /// Decodes from path/query parameter maps (inverse of [buildPath]).
-  factory fromParams({
-    required Map<String, String> pathParams,
-    required Map<String, String> queryParams,
-  }) {
-    return AppRouteProjectSessions(
-      projectId: pathParams[_projectIdPathParam] ?? "",
-      projectName: queryParams[_nameQueryParam],
-    );
-  }
-
-  @override
-  AppRouteDef get def => AppRouteDef.projectSessions;
-
-  @override
-  String buildPath() {
-    final base = "/projects/${Uri.encodeComponent(projectId)}/sessions";
-    final queryParams = <String, String>{
-      _nameQueryParam: ?projectName,
-    };
-    return _appendQuery(path: base, queryParameters: queryParams);
-  }
 }
 
 /// The new-session composer. A null [projectId] opens it with no project

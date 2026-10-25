@@ -166,13 +166,13 @@ void main() {
       expect(sent, ["project-1", null, "project-1"]);
     });
 
-    test("the home and the desktop project page show the list claim; settings shows none", () async {
+    test("the home shows the list claim; settings shows none", () async {
       readyList("project-1");
       await drain();
 
       routeSource.routes.add(AppRouteDef.settings);
       await drain();
-      routeSource.routes.add(AppRouteDef.projectSessions);
+      routeSource.routes.add(AppRouteDef.home);
       await drain();
 
       expect(sent, ["project-1", null, "project-1"]);
@@ -283,28 +283,6 @@ void main() {
 
       expect(sent.last, "project-3");
       expect(sent.where((projectId) => projectId == "project-3"), hasLength(1));
-    });
-
-    test("releasing the newest list claim hands the list back to the one it replaced", () async {
-      final sidebar = readyList("project-1");
-      await drain();
-      routeSource.routes.add(AppRouteDef.projectSessions);
-      final page = service.beginListClaim(projectId: "project-2");
-      service.markClaimReady(claim: page, projectId: "project-2");
-      await drain();
-      expect(service.declaredProjectId, "project-2");
-
-      // The buried claim keeps following its own loads.
-      service.markClaimFailed(claim: sidebar);
-      service.markClaimReady(claim: sidebar, projectId: "project-1");
-      routeSource.routes.add(AppRouteDef.home);
-      service.releaseClaim(claim: page);
-      await drain();
-      expect(sent, ["project-1", "project-2", "project-1"]);
-
-      service.releaseClaim(claim: sidebar);
-      await drain();
-      expect(sent.last, isNull);
     });
 
     test("background clears once and resume reasserts the visible project", () async {

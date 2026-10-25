@@ -195,7 +195,6 @@ void main() {
       AppRouteDef.settingsProfile: "/settings/profile",
       AppRouteDef.settingsComputers: "/settings/computers",
       AppRouteDef.settingsProjects: "/settings/projects",
-      AppRouteDef.projectSessions: "/projects/p1/sessions",
       AppRouteDef.archivedSessions: "/archived-sessions",
       AppRouteDef.archivedSessionDetail: "/archived-sessions/p1/s1",
       AppRouteDef.newSession: "/sessions/new",

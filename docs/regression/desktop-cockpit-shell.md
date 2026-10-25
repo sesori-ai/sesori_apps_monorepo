@@ -318,8 +318,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   exists, and the desktop app installing the pointer scope.
 - The sidebar's shared list across projects, a row opening its session in its own project, the filter
   narrowing the list and returning to All projects, project-local retry, the list hearing whether the sidebar
-  shows it through collapse, restore and narrow windows, and a filtered sidebar declaring its project again
-  once a project page's list claim is released (`desktop_cockpit_shell_test`).
+  shows it through collapse, restore and narrow windows, and a filtered sidebar declaring its project
+  (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
 - The session page toolbar above a centred transcript column wider than the centred composer's: a subtask's crumb,

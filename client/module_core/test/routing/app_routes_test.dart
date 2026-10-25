@@ -130,18 +130,6 @@ void main() {
       expect((unchosen.projectId, unchosen.projectName), (null, null));
     });
 
-    test("project sessions ignores legacy worktree capability query parameters", () {
-      final decoded = AppRoute.fromDef(
-        def: AppRouteDef.projectSessions,
-        pathParams: const {"projectId": "project-1"},
-        queryParams: const {"name": "Project One", "supportsDedicatedWorktrees": "false"},
-      ) as AppRouteProjectSessions;
-
-      expect(decoded.projectId, "project-1");
-      expect(decoded.projectName, "Project One");
-      expect(decoded.buildPath(), "/projects/project-1/sessions?name=Project+One");
-    });
-
     test("session detail with name encodes path params exactly once and round-trips", () {
       const route = AppRoute.sessionDetail(
         projectId: "project/with?special&chars",
