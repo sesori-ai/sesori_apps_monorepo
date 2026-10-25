@@ -242,6 +242,8 @@ import 'package:sesori_dart_core/src/services/session_interaction_calculator.dar
     as _i414;
 import 'package:sesori_dart_core/src/services/session_launch_service.dart'
     as _i8;
+import 'package:sesori_dart_core/src/services/session_list_filter_tracker.dart'
+    as _i1070;
 import 'package:sesori_dart_core/src/services/session_list_refresh_service.dart'
     as _i478;
 import 'package:sesori_dart_core/src/services/session_list_service.dart'
@@ -828,6 +830,13 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i102.BridgeSettingsRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
       ),
+    );
+    gh.lazySingleton<_i1070.SessionListFilterTracker>(
+      () => _i1070.SessionListFilterTracker(
+        connectionService: gh<_i369.ConnectionService>(),
+        projectListService: gh<_i703.ProjectListService>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i516.NotificationOpenDispatcher>(
       () => _i516.NotificationOpenDispatcher(

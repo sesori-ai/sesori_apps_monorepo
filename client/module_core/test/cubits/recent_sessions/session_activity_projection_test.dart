@@ -16,6 +16,7 @@ void main() {
         "one": RecentSessionsLoaded(
           sourceSessions: [projectOneRunning],
           visibleSessions: [projectOneRunning],
+          archivedSessions: const [],
           activityBySessionId: const {
             "one-running": SessionActivityInfo(
               mainAgentRunning: true,
@@ -29,6 +30,7 @@ void main() {
         "two": RecentSessionsLoaded(
           sourceSessions: [projectTwoUnseen, projectTwoCleared],
           visibleSessions: [projectTwoUnseen, projectTwoCleared],
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {
             "two-cleared": (unseen: false, lastUserActivityAt: null),
@@ -58,6 +60,7 @@ void main() {
             "one": RecentSessionsLoaded(
               sourceSessions: sessions,
               visibleSessions: sessions,
+              archivedSessions: const [],
               activityBySessionId: const {},
               listStateBySessionId: const {},
             ),
@@ -72,6 +75,7 @@ void main() {
     final running = RecentSessionsLoaded(
       sourceSessions: [deferred],
       visibleSessions: [deferred],
+      archivedSessions: const [],
       activityBySessionId: const {
         "deferred": SessionActivityInfo(
           mainAgentRunning: true,
@@ -120,6 +124,7 @@ void main() {
         "one": RecentSessionsLoaded(
           sourceSessions: [running, waitingOne, unseen],
           visibleSessions: [running, waitingOne, unseen],
+          archivedSessions: const [],
           activityBySessionId: {
             "running": activity(awaitingInput: false),
             "waiting-one": activity(awaitingInput: true),
@@ -129,6 +134,7 @@ void main() {
         "two": RecentSessionsLoaded(
           sourceSessions: [waitingTwo],
           visibleSessions: [waitingTwo],
+          archivedSessions: const [],
           activityBySessionId: {"waiting-two": activity(awaitingInput: true)},
           listStateBySessionId: const {},
         ),
@@ -163,12 +169,14 @@ void main() {
         "one": RecentSessionsLoaded(
           sourceSessions: one,
           visibleSessions: one,
+          archivedSessions: const [],
           activityBySessionId: const {},
           listStateBySessionId: const {},
         ),
         "two": RecentSessionsLoaded(
           sourceSessions: two,
           visibleSessions: two,
+          archivedSessions: const [],
           activityBySessionId: const {
             "two-running": SessionActivityInfo(
               mainAgentRunning: true,
@@ -200,6 +208,7 @@ void main() {
         "one": RecentSessionsLoaded(
           sourceSessions: [waiting],
           visibleSessions: [waiting],
+          archivedSessions: const [],
           activityBySessionId: const {
             "waiting": SessionActivityInfo(
               mainAgentRunning: false,
@@ -226,6 +235,7 @@ void main() {
         "one": RecentSessionsLoaded(
           sourceSessions: [markedUnread],
           visibleSessions: [markedUnread],
+          archivedSessions: const [],
           activityBySessionId: const {
             "waiting": SessionActivityInfo(
               mainAgentRunning: false,
@@ -252,6 +262,7 @@ void main() {
     final loaded = RecentSessionsLoaded(
       sourceSessions: sessions,
       visibleSessions: sessions,
+      archivedSessions: const [],
       activityBySessionId: const {},
       listStateBySessionId: const {},
     );

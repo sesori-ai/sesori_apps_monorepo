@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 2.b/13, 3/13 and 6/13 follow 2.a/13.
+- Current step: 2.b/13 and 3/13 follow 2.a/13; 7.a/13 follows 6/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -16,7 +16,7 @@
 | 3/13 | Searchable picker with Open another folder | Done | `sesori/app-simplification-step-3` |
 | 4/13 | Settings › Projects | Not started | — |
 | 5/13 | Row logo and project label | Done | #2030 |
-| 6/13 | All-projects list model | Not started | — |
+| 6/13 | All-projects list model | Done | `sesori/app-simplification-step-6` |
 | 7.a/13 | Archived across projects | Not started | — |
 | 7.b/13 | All-projects home and route tree | Not started | — |
 | 8/13 | Projects screen removed | Not started | — |
@@ -39,6 +39,9 @@
 - 2026-10-24: round 1 of the UX review settled the list, filter, archived, wide layout, refresh and picker
   questions. Round 2 settled the row logo position, the wording, the phone picker form and the scan-row ending.
   The Harnesses-row offline bug the user reported in round 1 was fixed separately in #2026.
+- 2026-10-24: step 6 filled four gaps in `PLAN.md` *Ownership*: `setHiddenSessionIds` (so chip counts skip
+  rows held by an Undo window or a launch row), one shared filter for both modes (D6 enters through
+  `selectProject`), the `SessionListService` comparators as the single ordering owner, and `retry` plus `isLoading`.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record
