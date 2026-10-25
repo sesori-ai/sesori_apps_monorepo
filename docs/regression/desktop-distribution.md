@@ -156,6 +156,12 @@ The final RPM digest differs from its unsigned source report; `signing.json` rec
 both. DEB checksums are detached artifact authentication, not an APT `InRelease`
 claim. PR CI's disposable-key fixtures also check GPGV and DNF's signature-required
 install/reinstall/remove flow in an isolated install root, including unsigned-RPM refusal.
+Installed DEB/RPM packages register their compiled channel's signed repository
+(`sesori.list` with its key, or `sesori.repo` with its key). The native fixtures
+verify those files byte for byte and require that the registered key has the
+fingerprints of the key that signed the package. Removal deletes the files.
+Failure signal: a downloaded package that never receives updates, or a second
+Sesori APT source with a different `signed-by` value.
 Main-only native runs establish production-key access separately. These fixtures do
 not run the real application. Historical unsigned package runs remain unsigned
 proof; new tooling alone does not relabel them. Public repositories and

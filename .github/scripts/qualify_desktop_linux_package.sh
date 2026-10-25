@@ -42,6 +42,7 @@ case "$format" in
     apt-get update
     apt-get install -y "$package"
     package_paths="$(dpkg-query -L sesori-desktop)"
+    repository_key=/etc/apt/keyrings/sesori.asc
     ;;
   rpm)
     scripts="$(rpm -qp --scripts "$package")"
@@ -49,34 +50,41 @@ case "$format" in
     rpmkeys --import "$signed_dir/sesori-linux-public.asc"
     dnf --setopt=localpkg_gpgcheck=True install -y "$package"
     package_paths="$(rpm -ql sesori-desktop)"
+    repository_key=/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori
     ;;
   *) echo "Unsupported package format: $format" >&2; exit 2 ;;
 esac
 
-printf '%s\n' "$package_paths" | python3 "$script" verify-owned-paths >"$evidence.ownership.json"
+printf '%s\n' "$package_paths" | python3 "$script" verify-owned-paths --format "$format" >"$evidence.ownership.json"
 sentinel_after_install="$(find /root/.config/sesori /root/.local/share/sesori \
   /root/.local/share/sesori-attachments /root/projects/sesori-project \
   -type f -print0 | sort -z | xargs -0 sha256sum)"
 [[ "$sentinel_before" == "$sentinel_after_install" ]] || { echo 'Install changed shared data sentinel' >&2; exit 1; }
 
-python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" >"$evidence.installed.json"
+python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" --format "$format" >"$evidence.installed.json"
+# The registered repository must trust exactly the key that signed these packages.
+key_fingerprints() { GNUPGHOME="$verification_home" gpg --batch --show-keys --with-colons "$1" | grep '^fpr'; }
+[[ "$(key_fingerprints "$repository_key")" == "$(key_fingerprints "$signed_dir/sesori-linux-public.asc")" ]] || {
+  echo 'Registered repository key differs from the package signer' >&2; exit 1;
+}
 
 case "$format" in
   deb)
     apt-get install --reinstall -y "$package"
-    python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" >"$evidence.reinstalled.json"
+    python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" --format "$format" >"$evidence.reinstalled.json"
     apt-get remove -y sesori-desktop
     ;;
   rpm)
     dnf --setopt=localpkg_gpgcheck=True reinstall -y "$package"
-    python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" >"$evidence.reinstalled.json"
+    python3 "$script" verify-installed --bundle "$bundle" --arch "$arch" --format "$format" >"$evidence.reinstalled.json"
     dnf remove -y sesori-desktop
     ;;
 esac
 
 for removed in /opt/sesori-desktop /usr/bin/sesori-desktop \
   /usr/share/applications/sesori-desktop.desktop \
-  /usr/share/icons/hicolor/512x512/apps/sesori-desktop.png; do
+  /usr/share/icons/hicolor/512x512/apps/sesori-desktop.png /etc/apt/sources.list.d/sesori.list \
+  /etc/apt/keyrings/sesori.asc /etc/yum.repos.d/sesori.repo /etc/pki/rpm-gpg/RPM-GPG-KEY-sesori; do
   [[ ! -e "$removed" && ! -L "$removed" ]] || { echo "Package-owned path remains: $removed" >&2; exit 1; }
 done
 sentinel_after="$(find /root/.config/sesori /root/.local/share/sesori /root/.local/share/sesori-attachments \
@@ -103,6 +111,7 @@ Path(output).write_text(json.dumps({
     "boundedSystemOwnershipVerified": ownership["boundedSystemOwnership"],
     "sameVersionReinstallVerified": installed == reinstalled,
     "removeOwnedPathsVerified": True,
+    "repositoryKeyMatchesSigner": True,
     "sharedDataPreserved": True,
     "proofBoundary": "Signed-checksum verification and native container install/reinstall/removal; "
                      "RPM local signatures required. Not repository, N-to-N+1, GUI/account or desktop-session proof",

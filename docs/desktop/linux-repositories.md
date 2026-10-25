@@ -20,6 +20,28 @@ in an ARM64 Fedora container, without installing or executing the application.
 include the independent verifier revision and the exact evidence boundary. This accepts
 internal repository delivery only; stable repository delivery has no live acceptance yet.
 
+## Package registration
+
+Every DEB and RPM registers its compiled channel's repository on install, so the
+system updater (Software Updater, GNOME Software, Discover, `dnf-automatic`)
+delivers later versions without any manual setup. There are no maintainer scripts.
+The registration is ordinary package-owned files, which removal deletes:
+
+- DEB: `/etc/apt/keyrings/sesori.asc` and `/etc/apt/sources.list.d/sesori.list`.
+  These are the website's manual-setup paths and line, so an earlier manual setup
+  is replaced in place rather than duplicated (a duplicate with a different
+  `signed-by` path would make APT reject both).
+- RPM: `/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori` and `/etc/yum.repos.d/sesori.repo`,
+  with `skip_if_unavailable=1` so an unreachable Sesori repository never blocks
+  the system's other updates.
+
+The key comes from `client/desktop/linux/packaging/sesori-linux-public.asc`, a copy
+of the published key. The install fixture fails if its fingerprints differ from
+the key that signed the package. When the signing subkey is extended or rotated,
+update that file, and ship a release containing it before the old subkey expires
+(currently 2027-10-14). Installs that never receive that release cannot verify
+newer repository metadata.
+
 ## Ownership and triggers
 
 - `desktop-linux-release.yml` calls the repository workflow after the existing
