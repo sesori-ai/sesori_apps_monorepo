@@ -53,12 +53,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopFileAccessUnknown => 'Access could not be confirmed';
 
   @override
-  String get desktopHomeNeedsYou => 'Needs you';
-
-  @override
-  String get desktopHomeRecent => 'Recent';
-
-  @override
   String desktopShortcutHint(String label, String shortcut) {
     return '$label ($shortcut)';
   }

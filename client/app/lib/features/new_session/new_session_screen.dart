@@ -25,6 +25,7 @@ class const NewSessionScreen({
         onBack: context.pop,
         banner: ConnectionBanner.maybeFor(context),
         opensPicker: true,
+        topBar: null,
       );
     }
     return BlocProvider(

@@ -82,6 +82,7 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
         // Nobody asked for it yet: the pane shows on rotation, a filter
         // change or under an opened session, so the picker waits for a tap.
         opensPicker: false,
+        topBar: null,
       );
     }
     final projectId = project.id;

@@ -62,8 +62,6 @@ class SessionListLaunchRowsCubit({
         launching: launching,
         sessionIds: launches.sessionIds,
         sessions: sessions,
-        slot: sessions,
-        placedSessionIds: const {},
       ),
     );
   }

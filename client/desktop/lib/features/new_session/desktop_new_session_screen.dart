@@ -73,7 +73,6 @@ class const DesktopNewSessionView({
       pageChrome: NewSessionPageChrome(
         maxContentWidth: maxContentWidth,
         transcriptWidth: desktopTranscriptWidth,
-        footer: null,
         topBar: DesktopPageToolbar(
           breadcrumb: (
             label: liveProjectName(context: context, projectId: projectId, projectName: projectName),

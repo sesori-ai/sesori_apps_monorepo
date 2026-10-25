@@ -25,8 +25,6 @@ void main() {
     launching: launching,
     sessionIds: sessionIds,
     sessions: sessions,
-    slot: sessions,
-    placedSessionIds: const {},
   );
 
   test("a list opened mid-launch holds its project's newest session for each launch waiting, whatever the clocks", () {
@@ -118,7 +116,7 @@ void main() {
     expect(landed.rowKeys, {"created": "launch-1"});
   });
 
-  test("a session not in the row's slot goes where it belongs on the next sessions update", () {
+  test("a session not at the list's head goes where it belongs on the next sessions update", () {
     final promoted = resolve(
       previous: resolve(
         previous: LaunchRows.none,
@@ -286,7 +284,7 @@ void main() {
     expect(failed.heldSessionIds, isEmpty);
   });
 
-  group("an Activity surface", () {
+  group("per-project rows", () {
     RecentSessionsEntry loaded(List<Session> sessions) => RecentSessionsLoaded(
       sourceSessions: sessions,
       visibleSessions: sessions,
@@ -294,115 +292,22 @@ void main() {
       activityBySessionId: const {},
       listStateBySessionId: const {},
     );
-    Map<String, LaunchRows> resolveActivity({
+    Map<String, LaunchRows> resolveProject({
       required Map<String, LaunchRows> previous,
       required SessionLaunchState launches,
       required RecentSessionsEntry entry,
-      required List<Session> running,
-    }) => resolveProjectLaunchRows(
-      previous: previous,
-      launches: launches,
-      entries: {"project-1": entry},
-      slots: {"project-1": (sessions: running, placedSessionIds: const {})},
-    );
-    const promotedState = SessionLaunchState(launching: [], sessionIds: {"launch-1": "created"});
-
-    test("holds a session that reached its project before Activity, and swaps it in once it runs", () {
-      final opened = resolveActivity(
-        previous: const {},
-        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
-        entry: loaded([existing]),
-        running: const [],
-      );
-      final arrived = resolveActivity(
-        previous: opened,
-        launches: promotedState,
-        entry: loaded([created, existing]),
-        running: const [],
-      );
-      expect(arrived["project-1"]?.placeholders, [launch], reason: "the project lists it, Activity does not yet");
-      expect(arrived["project-1"]?.heldSessionIds, {"created"}, reason: "so Recent leaves it out meanwhile");
-
-      final running = resolveActivity(
-        previous: arrived,
-        launches: promotedState,
-        entry: loaded([created, existing]),
-        running: [created],
-      );
-      expect(running["project-1"]?.placeholders, isEmpty);
-      expect(running["project-1"]?.heldSessionIds, isEmpty);
-      expect(running["project-1"]?.rowKeys, {"created": "launch-1"}, reason: "it takes the row's place");
-    });
-
-    test("lets a session that never runs go where it belongs on the next sessions update", () {
-      final arrived = resolveActivity(
-        previous: resolveActivity(
-          previous: const {},
-          launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
-          entry: loaded([existing]),
-          running: const [],
-        ),
-        launches: promotedState,
-        entry: loaded([created, existing]),
-        running: const [],
-      );
-      final released = resolveActivity(
-        previous: arrived,
-        launches: promotedState,
-        entry: loaded([testSession(id: "other"), created, existing]),
-        running: const [],
-      );
-
-      expect(released["project-1"]?.placeholders, isEmpty, reason: "no Creating… is left behind");
-      expect(released["project-1"]?.heldSessionIds, isEmpty);
-    });
-
-    test("a newer launch in place takes its row as soon as the older one goes as an ordinary change", () {
-      final newer = LaunchingSession(
-        launchId: "launch-2",
-        projectId: "project-1",
-        pluginId: "claude",
-        startedAt: DateTime.utc(2026, 10, 7, 12, 1),
-        title: "Add tests",
-      );
-      final createdNewer = testSession(id: "created-2");
-      const named = SessionLaunchState(launching: [], sessionIds: {"launch-1": "created", "launch-2": "created-2"});
-      final bothNamed = resolveActivity(
-        previous: resolveActivity(
-          previous: const {},
-          launches: SessionLaunchState(launching: [newer, launch], sessionIds: const {}),
-          entry: loaded([existing]),
-          running: const [],
-        ),
-        launches: named,
-        entry: loaded([createdNewer, created, existing]),
-        running: [createdNewer],
-      );
-      expect(bothNamed["project-1"]?.placeholders, [newer, launch]);
-
-      // The older session never runs, so it goes where it belongs.
-      final settled = resolveActivity(
-        previous: bothNamed,
-        launches: named,
-        entry: loaded([testSession(id: "other"), createdNewer, created, existing]),
-        running: [createdNewer],
-      );
-      expect(settled["project-1"]?.placeholders, isEmpty, reason: "no update is left to settle the newer row");
-      expect(settled["project-1"]?.rowKeys, {"created-2": "launch-2"});
-    });
+    }) => resolveProjectLaunchRows(previous: previous, launches: launches, entries: {"project-1": entry});
 
     test("keeps a project's row and its session while the project reloads", () {
-      final opened = resolveActivity(
+      final opened = resolveProject(
         previous: const {},
         launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
         entry: loaded([existing]),
-        running: const [],
       );
-      final reloading = resolveActivity(
+      final reloading = resolveProject(
         previous: opened,
-        launches: promotedState,
+        launches: const SessionLaunchState(launching: [], sessionIds: {"launch-1": "created"}),
         entry: RecentSessionsLoading(),
-        running: const [],
       );
 
       expect(reloading["project-1"]?.placeholders, [launch]);
@@ -410,19 +315,17 @@ void main() {
     });
 
     test("drops a failed launch's row while the project's read is unavailable", () {
-      final waiting = resolveActivity(
+      final waiting = resolveProject(
         previous: const {},
         launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
         entry: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
-        running: const [],
       );
       expect(waiting["project-1"]?.placeholders, [launch]);
 
-      final failed = resolveActivity(
+      final failed = resolveProject(
         previous: waiting,
         launches: const SessionLaunchState(launching: [], sessionIds: {}),
         entry: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
-        running: const [],
       );
       expect(failed["project-1"]?.placeholders, isEmpty, reason: "no Creating… outlives the failure alert");
     });
