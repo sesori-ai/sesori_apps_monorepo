@@ -12,8 +12,8 @@ String projectDisplayName({required AppLocalizations loc, required ProjectSummar
 /// The last segment of a bridge host [path], whichever separator it uses. A
 /// Windows drive root such as `C:\` keeps its full path, not a bare `C:`.
 String hostPathBasename({required String path}) {
-  final basename = p.posix.basename(_toPosix(path: path));
-  return basename.endsWith(":") ? path : basename;
+  final posix = _toPosix(path: path);
+  return RegExp(r"^[A-Za-z]:/?$").hasMatch(posix) ? path : p.posix.basename(posix);
 }
 
 /// Each project's path by id, shortened to the trailing folders that tell it

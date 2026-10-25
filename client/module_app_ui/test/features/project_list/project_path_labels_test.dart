@@ -35,4 +35,8 @@ void main() {
     expect(hostPathBasename(path: r"C:\"), r"C:\");
     expect(hostPathBasename(path: "C:/"), "C:/");
   });
+
+  test("hostPathBasename keeps a colon-suffixed folder's name", () {
+    expect(hostPathBasename(path: "/work/build:"), "build:");
+  });
 }
