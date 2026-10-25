@@ -193,6 +193,7 @@ BridgeControlState _state({
   toggleTarget: target,
   launchAtLoginEnabled: false,
   controlStatus: status,
+  updateState: const DesktopUpdateManagedBySystem(),
 );
 
 class _BridgeCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;

@@ -23,6 +23,7 @@ import 'package:sesori_desktop_core/src/api/control_channel_api.dart' as _i639;
 import 'package:sesori_desktop_core/src/api/desktop_instance_api.dart' as _i828;
 import 'package:sesori_desktop_core/src/api/desktop_instance_storage.dart'
     as _i155;
+import 'package:sesori_desktop_core/src/api/desktop_relaunch_api.dart' as _i67;
 import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
     as _i21;
 import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
@@ -35,6 +36,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
     as _i746;
+import 'package:sesori_desktop_core/src/foundation/platform/installed_desktop_bundle_source.dart'
+    as _i234;
 import 'package:sesori_desktop_core/src/foundation/platform/launch_at_login.dart'
     as _i589;
 import 'package:sesori_desktop_core/src/foundation/platform/window_host.dart'
@@ -43,6 +46,8 @@ import 'package:sesori_desktop_core/src/orchestration/desktop_bridge_takeover_or
     as _i850;
 import 'package:sesori_desktop_core/src/orchestration/desktop_computer_target_orchestrator.dart'
     as _i945;
+import 'package:sesori_desktop_core/src/orchestration/desktop_exit_orchestrator.dart'
+    as _i240;
 import 'package:sesori_desktop_core/src/orchestration/desktop_logout_orchestrator.dart'
     as _i165;
 import 'package:sesori_desktop_core/src/orchestration/desktop_startup_orchestrator.dart'
@@ -55,6 +60,8 @@ import 'package:sesori_desktop_core/src/repositories/control_command_repository.
     as _i171;
 import 'package:sesori_desktop_core/src/repositories/desktop_instance_repository.dart'
     as _i210;
+import 'package:sesori_desktop_core/src/repositories/desktop_update_repository.dart'
+    as _i737;
 import 'package:sesori_desktop_core/src/services/bridge_process_service.dart'
     as _i765;
 import 'package:sesori_desktop_core/src/services/control_command_service.dart'
@@ -65,6 +72,8 @@ import 'package:sesori_desktop_core/src/services/desktop_instance_service.dart'
     as _i494;
 import 'package:sesori_desktop_core/src/services/desktop_relay_connection_service.dart'
     as _i314;
+import 'package:sesori_desktop_core/src/services/desktop_update_service.dart'
+    as _i407;
 import 'package:sesori_desktop_core/src/services/window_bounds_service.dart'
     as _i68;
 import 'package:sesori_desktop_core/src/trackers/bridge_process_log_tracker.dart'
@@ -83,6 +92,7 @@ extension GetItInjectableX on _i174.GetIt {
     _i526.EnvironmentFilter? environmentFilter,
   }) {
     final gh = _i526.GetItHelper(this, environment, environmentFilter);
+    gh.lazySingleton<_i67.DesktopRelaunchApi>(() => _i67.DesktopRelaunchApi());
     gh.lazySingleton<_i464.ControlChannelServer>(
       () => _i464.ControlChannelServer(),
       dispose: (i) => i.dispose(),
@@ -104,6 +114,12 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i874.BridgeProcessApi>(
       () => _i874.BridgeProcessApi(
         processEnvironment: gh<_i961.BridgeProcessEnvironment>(),
+      ),
+    );
+    gh.lazySingleton<_i737.DesktopUpdateRepository>(
+      () => _i737.DesktopUpdateRepository(
+        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
+        relaunchApi: gh<_i67.DesktopRelaunchApi>(),
       ),
     );
     gh.lazySingleton<_i73.BridgeIdStorage>(
@@ -216,6 +232,13 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i407.DesktopUpdateService>(
+      () => _i407.DesktopUpdateService(
+        updateRepository: gh<_i737.DesktopUpdateRepository>(),
+        instanceRepository: gh<_i210.DesktopInstanceRepository>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i175.ControlCommandService>(
       () => _i175.ControlCommandService(
         repository: gh<_i171.ControlCommandRepository>(),
@@ -244,6 +267,12 @@ extension GetItInjectableX on _i174.GetIt {
         productAnalyticsService: gh<_i948.ProductAnalyticsService>(),
         attentionService: gh<_i404.DesktopAttentionService>(),
         authSession: gh<_i948.AuthSession>(),
+      ),
+    );
+    gh.lazySingleton<_i240.DesktopExitOrchestrator>(
+      () => _i240.DesktopExitOrchestrator(
+        processService: gh<_i765.BridgeProcessService>(),
+        updateService: gh<_i407.DesktopUpdateService>(),
       ),
     );
     gh.lazySingleton<_i455.DesktopStartupOrchestrator>(

@@ -502,6 +502,7 @@ const BridgeControlState _bridgeControlState = BridgeControlState(
   toggleTarget: BridgeProcessDesiredState.on,
   launchAtLoginEnabled: false,
   controlStatus: BridgeControlStatus.offline,
+  updateState: DesktopUpdateManagedBySystem(),
 );
 
 BridgeSummary _computer({required String id, required String name, required BridgeRegistrationStatus status}) =>

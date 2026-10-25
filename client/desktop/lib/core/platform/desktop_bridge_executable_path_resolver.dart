@@ -45,9 +45,6 @@ final class const DesktopBridgeBundleException({
       '"$bundlePath" (${innerError.runtimeType.toString()}). $userMessage';
 }
 
-@visibleForTesting
-typedef DesktopBridgeManifestReader = String Function({required String manifestPath});
-
 /// Release helpers are bound to the running GUI's immutable build identity.
 /// Debug/profile builds retain the explicit override and repository layout.
 /// Validation happens on every resolve, including after an on-disk Linux upgrade.
@@ -59,11 +56,10 @@ class DesktopBridgeExecutablePathResolver.forTesting({
   required final DesktopBundleOs _os,
   required final DesktopBundleArchitecture _architecture,
   required final bool _isReleaseMode,
-  required final String? _compiledIdentityJson,
+  required final InstalledDesktopBundleSource _bundleSource,
   required final DesktopBridgeExecutableExists _executableExists,
-  required final DesktopBridgeManifestReader _readManifest,
 }) implements BridgeExecutablePathResolver {
-  new()
+  new({required InstalledDesktopBundleSource bundleSource})
     : this.forTesting(
         environment: Platform.environment,
         workingDirectory: Directory.current.path,
@@ -71,11 +67,8 @@ class DesktopBridgeExecutablePathResolver.forTesting({
         os: DesktopBundleOs.values.byName(Platform.operatingSystem),
         architecture: DesktopBundleArchitecture.fromAbi(abi: Abi.current()),
         isReleaseMode: kReleaseMode,
-        compiledIdentityJson: const bool.hasEnvironment(DesktopBundleIdentity.defineName)
-            ? const String.fromEnvironment(DesktopBundleIdentity.defineName)
-            : null,
+        bundleSource: bundleSource,
         executableExists: ({required String executablePath}) => File(executablePath).existsSync(),
-        readManifest: ({required String manifestPath}) => File(manifestPath).readAsStringSync(),
       );
 
   @visibleForTesting
@@ -118,18 +111,12 @@ class DesktopBridgeExecutablePathResolver.forTesting({
     final String bundlePath = _os == DesktopBundleOs.macos
         ? path.join(path.dirname(executableDirectory), "Helpers", "bridge")
         : path.join(executableDirectory, "bridge");
-    final String manifestPath = _os == DesktopBundleOs.macos
-        ? path.join(path.dirname(executableDirectory), "Resources", DesktopBundleIdentity.manifestName)
-        : path.join(bundlePath, DesktopBundleIdentity.manifestName);
     try {
-      final String? compiledIdentityJson = _compiledIdentityJson;
-      if (compiledIdentityJson == null) {
+      final DesktopBundleIdentity? expected = _bundleSource.compiledIdentity;
+      if (expected == null) {
         throw StateError("Release GUI is missing its compiled desktop bundle identity");
       }
-      final DesktopBundleIdentity expected = DesktopBundleIdentity.decode(encoded: compiledIdentityJson);
-      final DesktopBundleIdentity actual = DesktopBundleIdentity.decode(
-        encoded: _readManifest(manifestPath: manifestPath),
-      );
+      final DesktopBundleIdentity actual = _bundleSource.readInstalledIdentity();
       if (actual != expected || expected.os != _os || expected.architecture != _architecture) {
         throw StateError(
           "Desktop bundle identity mismatch: GUI=${expected.encode()}, helper=${actual.encode()}, "

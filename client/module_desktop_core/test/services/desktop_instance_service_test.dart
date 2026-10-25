@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:test/test.dart";
@@ -20,7 +21,7 @@ void main() {
   test("a successful lock claim owns the primary launch", () async {
     when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => true);
 
-    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.primary);
+    expect(await service.claimLaunch(afterUpdate: false), DesktopInstanceLaunchDisposition.primary);
     verifyNever(() => repository.signalPrimary());
   });
 
@@ -28,7 +29,7 @@ void main() {
     when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => false);
     when(() => repository.signalPrimary()).thenAnswer((_) async => true);
 
-    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.secondaryActivated);
+    expect(await service.claimLaunch(afterUpdate: false), DesktopInstanceLaunchDisposition.secondaryActivated);
   });
 
   test("reclaims the lock when the owner exits during activation", () async {
@@ -36,7 +37,7 @@ void main() {
     when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => ++claims == 2);
     when(() => repository.signalPrimary()).thenAnswer((_) async => false);
 
-    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.primary);
+    expect(await service.claimLaunch(afterUpdate: false), DesktopInstanceLaunchDisposition.primary);
     expect(claims, 2);
   });
 
@@ -44,8 +45,36 @@ void main() {
     when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => false);
     when(() => repository.signalPrimary()).thenAnswer((_) async => false);
 
-    expect(await service.claimLaunch(), DesktopInstanceLaunchDisposition.secondaryActivationFailed);
+    expect(await service.claimLaunch(afterUpdate: false), DesktopInstanceLaunchDisposition.secondaryActivationFailed);
     verify(() => repository.tryAcquirePrimary()).called(2);
+  });
+
+  test("a relaunch after an update waits for the exiting desktop to release the lock", () {
+    fakeAsync((async) {
+      int claims = 0;
+      when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => ++claims == 5);
+      DesktopInstanceLaunchDisposition? disposition;
+      unawaited(service.claimLaunch(afterUpdate: true).then((value) => disposition = value));
+
+      async.elapse(DesktopInstanceService.afterUpdateLockRetryDelay * 4);
+
+      expect(disposition, DesktopInstanceLaunchDisposition.primary);
+      verifyNever(() => repository.signalPrimary());
+    });
+  });
+
+  test("a relaunch after an update activates a desktop that never exits", () {
+    fakeAsync((async) {
+      when(() => repository.tryAcquirePrimary()).thenAnswer((_) async => false);
+      when(() => repository.signalPrimary()).thenAnswer((_) async => true);
+      DesktopInstanceLaunchDisposition? disposition;
+      unawaited(service.claimLaunch(afterUpdate: true).then((value) => disposition = value));
+
+      async.elapse(DesktopInstanceService.afterUpdateLockRetryDelay * DesktopInstanceService.afterUpdateLockAttempts);
+
+      expect(disposition, DesktopInstanceLaunchDisposition.secondaryActivated);
+      verify(() => repository.tryAcquirePrimary()).called(1 + DesktopInstanceService.afterUpdateLockAttempts);
+    });
   });
 
   test("a newer persisted intent cancels an in-flight startup restore read", () async {

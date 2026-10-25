@@ -245,7 +245,10 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
   }
 
   Widget _page() => switch (_tab) {
-    DesktopSettingsTab.general => const DesktopGeneralSettingsScreen(),
+    DesktopSettingsTab.general => BlocProvider(
+      create: (_) => DesktopUpdateCubit(service: getIt<DesktopUpdateService>()),
+      child: const DesktopGeneralSettingsScreen(),
+    ),
     DesktopSettingsTab.harnesses => _DesktopHarnessSettingsPage(onClose: widget.onClose),
     DesktopSettingsTab.projects => ProjectsSettingsView(chrome: SettingsPageInWindow()),
     DesktopSettingsTab.bridge => MultiBlocProvider(

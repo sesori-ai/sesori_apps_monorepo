@@ -4,6 +4,7 @@ import "../api/desktop_instance_api.dart";
 import "../api/desktop_instance_storage.dart";
 import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/desktop_attention_preference.dart";
+import "../foundation/desktop_automatic_updates.dart";
 import "../foundation/desktop_sidebar_layout.dart";
 import "../foundation/platform/window_host.dart";
 
@@ -40,4 +41,9 @@ class DesktopInstanceRepository._create({
 
   Future<void> writeAttentionPreference({required DesktopAttentionPreference preference}) =>
       _storage.writeAttentionPreference(preference: preference);
+
+  Future<DesktopAutomaticUpdates> readAutomaticUpdates() => _storage.readAutomaticUpdates();
+
+  Future<void> writeAutomaticUpdates({required DesktopAutomaticUpdates preference}) =>
+      _storage.writeAutomaticUpdates(preference: preference);
 }

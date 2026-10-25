@@ -10,8 +10,8 @@ enum BridgeKind() {
   @JsonValue("cli")
   cli,
 
-  /// The bridge bundled with and supervised by Sesori Desktop, updated by the
-  /// desktop app's own updater.
+  /// The bridge bundled with and supervised by Sesori Desktop. It never updates
+  /// itself; it changes only when the whole desktop bundle is updated.
   @JsonValue("desktop")
   desktop,
 }

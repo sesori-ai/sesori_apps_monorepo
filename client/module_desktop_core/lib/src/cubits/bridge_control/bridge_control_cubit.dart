@@ -5,16 +5,19 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/bridge_process_desired_state.dart";
+import "../../foundation/models/desktop_update_state.dart";
 import "../../foundation/platform/desktop_application_terminator.dart";
 import "../../foundation/platform/launch_at_login.dart";
 import "../../foundation/platform/system_tray.dart";
 import "../../foundation/platform/window_host.dart";
 import "../../orchestration/desktop_bridge_takeover_orchestrator.dart";
+import "../../orchestration/desktop_exit_orchestrator.dart";
 import "../../repositories/bridge_process_log_repository.dart";
 import "../../services/bridge_process_service.dart";
 import "../../services/bridge_process_state.dart";
 import "../../services/desktop_instance_service.dart";
 import "../../services/desktop_relay_connection_service.dart";
+import "../../services/desktop_update_service.dart";
 import "../../services/window_bounds_service.dart";
 import "../../trackers/bridge_control_status.dart";
 import "../../trackers/bridge_status_tracker.dart";
@@ -42,6 +45,8 @@ class BridgeControlCubit._create({
   required final DesktopLogoutTracker _logoutTracker,
   required final UrlLauncher _urlLauncher,
   required final LaunchAtLogin _launchAtLogin,
+  required final DesktopUpdateService _updateService,
+  required final DesktopExitOrchestrator _exitOrchestrator,
   required final bool _hiddenLaunch,
 }) extends Cubit<BridgeControlState> {
   new({
@@ -58,6 +63,8 @@ class BridgeControlCubit._create({
     required DesktopLogoutTracker logoutTracker,
     required UrlLauncher urlLauncher,
     required LaunchAtLogin launchAtLogin,
+    required DesktopUpdateService updateService,
+    required DesktopExitOrchestrator exitOrchestrator,
     required bool hiddenLaunch,
   }) : this._create(
          processService: processService,
@@ -73,6 +80,8 @@ class BridgeControlCubit._create({
          logoutTracker: logoutTracker,
          urlLauncher: urlLauncher,
          launchAtLogin: launchAtLogin,
+         updateService: updateService,
+         exitOrchestrator: exitOrchestrator,
          hiddenLaunch: hiddenLaunch,
        );
 
@@ -92,6 +101,7 @@ class BridgeControlCubit._create({
           ),
           launchAtLoginEnabled: false,
           controlStatus: _statusTracker.status,
+          updateState: _updateService.currentState,
         ),
       );
 
@@ -101,6 +111,7 @@ class BridgeControlCubit._create({
   StreamSubscription<WindowHostEvent>? _windowSubscription;
   StreamSubscription<DesktopLogoutStatus>? _logoutSubscription;
   StreamSubscription<void>? _focusRequestSubscription;
+  StreamSubscription<DesktopUpdateState>? _updateSubscription;
   SystemTrayAvailability _trayAvailability = SystemTrayAvailability.initializing;
   BridgeControlActivity _activity = BridgeControlActivity.idle;
   DesktopLogoutStatus _logoutStatus = DesktopLogoutStatus.idle;
@@ -119,6 +130,7 @@ class BridgeControlCubit._create({
     _windowSubscription = _windowHost.events.listen((event) => _onWindowEvent(event: event));
     _logoutSubscription = _logoutTracker.statuses.listen(_onLogoutStatus);
     _focusRequestSubscription = _instanceService.focusRequests.listen((_) => unawaited(showWindow()));
+    _updateSubscription = _updateService.states.listen((_) => _rebuildMenu());
 
     await _loadLaunchAtLoginState();
     if (!isClosed) {
@@ -169,6 +181,10 @@ class BridgeControlCubit._create({
       case SystemTrayCommand.toggleLaunchAtLogin:
         if (!_controlsLocked) {
           unawaited(toggleLaunchAtLogin());
+        }
+      case SystemTrayCommand.restartToUpdate:
+        if (!_controlsLocked) {
+          unawaited(restartToUpdate());
         }
       case SystemTrayCommand.quit:
         if (!_controlsLocked) {
@@ -383,7 +399,12 @@ class BridgeControlCubit._create({
     }
   }
 
-  Future<void> quit() async {
+  Future<void> quit() => _exit(intent: DesktopExitIntent.quit);
+
+  /// Quits so the installed update starts in its place.
+  Future<void> restartToUpdate() => _exit(intent: DesktopExitIntent.restartToUpdate);
+
+  Future<void> _exit({required DesktopExitIntent intent}) async {
     if (_controlsLocked) {
       return;
     }
@@ -394,9 +415,9 @@ class BridgeControlCubit._create({
     // intent. An explicit Bridge Off action has already persisted Off; Quit
     // only stops the current process so a later launch can restore last-On.
     try {
-      await _processService.stop();
+      await _exitOrchestrator.prepareExit(intent: intent);
     } on Object catch (error, stackTrace) {
-      logw("Desktop quit stopped because the supervised bridge could not stop", error, stackTrace);
+      logw("Desktop ${intent.name} stopped because preparing the exit failed", error, stackTrace);
       _markQuitFailed();
       return;
     }
@@ -444,6 +465,7 @@ class BridgeControlCubit._create({
       toggleTarget: _toggleTarget(processState: processState, desiredState: desiredState),
       launchAtLoginEnabled: _launchAtLoginEnabled,
       controlStatus: controlStatus,
+      updateState: _updateService.currentState,
     );
     emit(nextState);
     if (syncTray && _trayAvailability.isAvailable) {
@@ -517,6 +539,7 @@ class BridgeControlCubit._create({
 
   @override
   Future<void> close() async {
+    await _updateSubscription?.cancel();
     await _focusRequestSubscription?.cancel();
     await _logoutSubscription?.cancel();
     await _windowSubscription?.cancel();

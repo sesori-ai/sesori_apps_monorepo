@@ -22,10 +22,19 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
   Future<void> _pendingDesiredStateWrite = Future<void>.value();
   int _restoreGeneration = 0;
 
+  /// A relaunch after an update waits up to 90 s for the exiting desktop to
+  /// release the lock. It starts before the helper stops, which can take the
+  /// helper's 60 s graceful and 5 s forced timeouts, then teardown flushes logs.
+  static const int afterUpdateLockAttempts = 360;
+  static const Duration afterUpdateLockRetryDelay = Duration(milliseconds: 250);
+
   Stream<void> get focusRequests => _repository.focusRequests;
 
-  Future<DesktopInstanceLaunchDisposition> claimLaunch() async {
+  Future<DesktopInstanceLaunchDisposition> claimLaunch({required bool afterUpdate}) async {
     if (await _repository.tryAcquirePrimary()) {
+      return DesktopInstanceLaunchDisposition.primary;
+    }
+    if (afterUpdate && await _waitForPrimaryRelease()) {
       return DesktopInstanceLaunchDisposition.primary;
     }
     if (await _repository.signalPrimary()) {
@@ -39,6 +48,17 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
     }
     logw("Another desktop instance owns the lock but could not be activated");
     return DesktopInstanceLaunchDisposition.secondaryActivationFailed;
+  }
+
+  Future<bool> _waitForPrimaryRelease() async {
+    for (int attempt = 0; attempt < afterUpdateLockAttempts; attempt++) {
+      await Future<void>.delayed(afterUpdateLockRetryDelay);
+      if (await _repository.tryAcquirePrimary()) {
+        return true;
+      }
+    }
+    logw("The desktop that restarted to update still holds the lock; activating it instead");
+    return false;
   }
 
   /// Reads persisted intent only while no newer user action invalidates it.
