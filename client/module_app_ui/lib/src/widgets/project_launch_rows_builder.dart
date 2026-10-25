@@ -1,43 +1,6 @@
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
-
-/// What an Activity surface's slots read besides the inventory: the inputs of
-/// its [SessionActivityProjection].
-typedef ActivitySlotInputs = ({List<ProjectSummary> projects, Set<String> hiddenSessionIds});
-
-/// The Activity an Activity surface lists, from the inventory and its inputs.
-SessionActivityProjection activityProjection({
-  required Map<String, RecentSessionsEntry> entries,
-  required ActivitySlotInputs inputs,
-}) => SessionActivityProjection.from(
-  projects: inputs.projects,
-  entries: entries,
-  hiddenSessionIds: inputs.hiddenSessionIds,
-);
-
-/// A home's Activity slots: each project's running rows, which its launching
-/// rows lead. A launch whose session waits on the user gives way to it in
-/// Needs you.
-Map<String, LaunchSlot> runningActivitySlots({
-  required Map<String, RecentSessionsEntry> entries,
-  required ActivitySlotInputs inputs,
-}) {
-  final projection = activityProjection(entries: entries, inputs: inputs);
-  final running = <String, List<Session>>{};
-  for (final (:project, :entry) in projection.running) {
-    (running[project.id] ??= []).add(entry.session);
-  }
-  final needsYou = <String, Set<String>>{};
-  for (final (:project, :entry) in projection.needsYou) {
-    (needsYou[project.id] ??= {}).add(entry.session.id);
-  }
-  return {
-    for (final projectId in {...running.keys, ...needsYou.keys})
-      projectId: (sessions: running[projectId] ?? const [], placedSessionIds: needsYou[projectId] ?? const {}),
-  };
-}
 
 /// Builds a surface that draws launching rows per project, with each
 /// project's [LaunchRows] from the surface's own [ProjectLaunchRowsCubit].

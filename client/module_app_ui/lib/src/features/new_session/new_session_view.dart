@@ -29,14 +29,12 @@ typedef NewSessionCreatedCallback = void Function({required Session session});
 /// A pointer surface's frame for the page: [topBar] replaces the glass bar, and
 /// the header, the options and the composer form one centred column no wider
 /// than [maxContentWidth], instead of anchoring the composer to the bottom.
-/// [footer] follows the composer in that column. While the first message is
-/// sending it rests in a column [transcriptWidth] wide, the one the session's
-/// own transcript uses.
+/// While the first message is sending it rests in a column [transcriptWidth]
+/// wide, the one the session's own transcript uses.
 class const NewSessionPageChrome({
   required final Widget topBar,
   required final double maxContentWidth,
   required final double transcriptWidth,
-  required final Widget? footer,
 });
 
 /// Shared new-session presentation below shell-owned routing, DI, and platform
@@ -317,7 +315,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
 
   /// The page under [chrome]: one centred column that scrolls as a whole when
   /// the pane is too short for it. At Send the page becomes the session it is
-  /// creating: the top bar, header, options and footer fade out as the
+  /// creating: the top bar, header and options fade out as the
   /// message fades in above the composer, which moves to the bottom edge where
   /// the session screen keeps it (D8). A failure plays it backwards.
   Widget _buildChromePage({
@@ -360,7 +358,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                         fadingIdle(header),
                         if (options != null) fadingIdle(options),
                         if (isSending) SizedBox(height: composerHeight) else ?composer,
-                        if (chrome.footer case final footer?) fadingIdle(footer),
                       ],
                     ),
                   ),

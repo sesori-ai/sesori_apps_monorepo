@@ -30,7 +30,7 @@ void main() {
   late _MockConnectionOverlayCubit overlay;
   late int contentTaps;
   late _MockProjectListCubit projects;
-  late _MockRecentSessionsCubit recent;
+  late Map<String, RecentSessionsEntry> recent;
   late _MockRecentSessionInventoryService recentInventory;
   late _MockProjectInventoryService projectInventory;
   late BehaviorSubject<String?> filter;
@@ -68,14 +68,8 @@ void main() {
       initialState: const ConnectionOverlayState.hidden(connected: true),
     );
     projects = _MockProjectListCubit();
-    recent = _MockRecentSessionsCubit();
-    whenListen(
-      recent,
-      const Stream<Map<String, RecentSessionsEntry>>.empty(),
-      // Loaded and empty: a loading list shimmers for as long as it waits.
-      initialState: {"project-1": _loaded(sessions: const [])},
-    );
-    when(() => recent.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
+    // Loaded and empty: a loading list shimmers for as long as it waits.
+    recent = {"project-1": _loaded(sessions: const [])};
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
@@ -85,7 +79,9 @@ void main() {
     );
     // The inventories behind the mocked cubits, as the shared list reads them.
     recentInventory = _MockRecentSessionInventoryService();
-    when(() => recentInventory.state).thenAnswer((_) => recent.stream.shareValueSeeded(recent.state));
+    when(
+      () => recentInventory.state,
+    ).thenAnswer((_) => const Stream<Map<String, RecentSessionsEntry>>.empty().shareValueSeeded(recent));
     when(() => recentInventory.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     projectInventory = _MockProjectInventoryService();
     when(() => projectInventory.state).thenAnswer((_) => projects.state);
@@ -123,7 +119,6 @@ void main() {
         home: MultiBlocProvider(
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
-            BlocProvider<RecentSessionsCubit>.value(value: recent),
             RepositoryProvider<RecentSessionInventoryService>.value(value: recentInventory),
             RepositoryProvider.value(value: launchService),
             BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
@@ -185,18 +180,14 @@ void main() {
         ],
       ),
     );
-    whenListen(
-      recent,
-      const Stream<Map<String, RecentSessionsEntry>>.empty(),
-      initialState: {
-        "project-1": _loaded(
-          sessions: [testSession(id: "s1", title: "Fix the build", updatedAt: 2)],
-        ),
-        "project-2": _loaded(
-          sessions: [testSession(id: "s2", title: "Write docs", updatedAt: 1)],
-        ),
-      },
-    );
+    recent = {
+      "project-1": _loaded(
+        sessions: [testSession(id: "s1", title: "Fix the build", updatedAt: 2)],
+      ),
+      "project-2": _loaded(
+        sessions: [testSession(id: "s2", title: "Write docs", updatedAt: 1)],
+      ),
+    };
   }
 
   final running = _state(processState: const BridgeProcessRunning(pid: 42));
@@ -637,11 +628,7 @@ void main() {
   });
 
   testWidgets("a project whose sessions fail to load says so in the list and retries it", (tester) async {
-    whenListen(
-      recent,
-      const Stream<Map<String, RecentSessionsEntry>>.empty(),
-      initialState: const {"project-1": RecentSessionsFailed(reason: RemoteFailureReason.networkDown)},
-    );
+    recent = const {"project-1": RecentSessionsFailed(reason: RemoteFailureReason.networkDown)};
     await tester.pumpWidget(app(state: running));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: list, matching: find.text("Retry")));
@@ -654,15 +641,11 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
       try {
-        whenListen(
-          recent,
-          const Stream<Map<String, RecentSessionsEntry>>.empty(),
-          initialState: {
-            "project-1": _loaded(
-              sessions: [testSession(id: "s1", title: "Fix the build")],
-            ),
-          },
-        );
+        recent = {
+          "project-1": _loaded(
+            sessions: [testSession(id: "s1", title: "Fix the build")],
+          ),
+        };
         final reply = Completer<bool>();
         when(refreshService.refresh).thenAnswer((_) => reply.future);
         await tester.pumpWidget(app(state: running));
@@ -888,11 +871,7 @@ void main() {
         const Stream<ProjectListState>.empty(),
         initialState: ProjectListState.loaded(projects: available),
       );
-      whenListen(
-        recent,
-        const Stream<Map<String, RecentSessionsEntry>>.empty(),
-        initialState: {for (final project in available) project.id: _loaded(sessions: const [])},
-      );
+      recent = {for (final project in available) project.id: _loaded(sessions: const [])};
       return app(
         state: running,
         child: DesktopCockpitShell(
@@ -1179,13 +1158,9 @@ void main() {
     final auth = StreamController<AuthGateState>();
     addTearDown(auth.close);
     whenListen(authGate, auth.stream, initialState: const AuthGateState.signedIn(user: null));
-    whenListen(
-      recent,
-      const Stream<Map<String, RecentSessionsEntry>>.empty(),
-      initialState: {
-        "project-1": _loaded(sessions: [build, docs, untitled]),
-      },
-    );
+    recent = {
+      "project-1": _loaded(sessions: [build, docs, untitled]),
+    };
     final opened = <String>[];
     var backs = 0;
     await tester.pumpWidget(
@@ -1357,8 +1332,6 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
-class _MockRecentSessionsCubit() extends MockCubit<Map<String, RecentSessionsEntry>> implements RecentSessionsCubit;
-
 class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
 
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;

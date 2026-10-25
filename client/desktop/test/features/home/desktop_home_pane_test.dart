@@ -24,9 +24,12 @@ void main() {
   late BehaviorSubject<String?> localIds;
   late _MockComputerSwitchDispatcher switches;
   late _MockFileAccessCubit fileAccess;
+  late _MockAllSessionsCubit sessions;
 
   setUp(() {
     projects = _MockProjectListCubit();
+    sessions = _MockAllSessionsCubit();
+    whenListen(sessions, const Stream<AllSessionsState>.empty(), initialState: _list(defaultProjectId: null));
     fileAccess = _MockFileAccessCubit();
     whenListen(
       fileAccess,
@@ -88,11 +91,11 @@ void main() {
             BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
             BlocProvider<ProjectListCubit>.value(value: projects),
             BlocProvider<FileAccessCubit>.value(value: fileAccess),
+            BlocProvider<AllSessionsCubit>.value(value: sessions),
           ],
           child: Scaffold(
             body: DesktopHomePane(
               onOpenSession: ({required context, required project, required displayName, required session}) {},
-              onOpenProject: ({required context, required project, required displayName}) {},
               onOpenHarnessSettings: () {},
               onManageComputers: () {},
             ),
@@ -261,12 +264,13 @@ void main() {
     });
   });
 
-  testWidgets("empty home offers the shared add-project action", (tester) async {
+  testWidgets("a home without projects asks for one, through the picker's Open another folder", (tester) async {
     await pumpHome(
       tester: tester,
       state: const ProjectListState.loaded(projects: []),
     );
-    final button = tester.widget<PregoButtonsSolid>(find.byType(PregoButtonsSolid));
+    expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
+    final button = tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_project")));
     expect(button.onPressed, isNotNull);
     verifyNever(bridgeControlCubit.recoverConnection);
   });
@@ -299,10 +303,7 @@ void main() {
     const two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
     late List<String> createdFor;
     late List<({String projectId, String sessionId})> opened;
-    late _MockRecentSessionsCubit recent;
-    late _MockPendingSessionArchiveCubit archive;
     late _MockChatInputModeCubit inputMode;
-    late SessionLaunchRepository launches;
 
     _MockNewSessionCubit newSessionCubit({required Stream<NewSessionState> states}) {
       final cubit = _MockNewSessionCubit();
@@ -319,31 +320,22 @@ void main() {
 
     setUp(() {
       createdFor = [];
-      launches = inMemorySessionLaunchRepository();
       opened = [];
-      recent = _MockRecentSessionsCubit();
-      archive = _MockPendingSessionArchiveCubit();
       inputMode = _MockChatInputModeCubit();
-      whenListen(
-        archive,
-        const Stream<PendingSessionArchiveState>.empty(),
-        initialState: const PendingSessionArchiveState(window: PendingArchiveIdle(), archivingIds: {}),
-      );
       whenListen(inputMode, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
     });
 
     Future<void> pumpStart({
       required WidgetTester tester,
-      required Map<String, RecentSessionsEntry> entries,
-      Stream<Map<String, RecentSessionsEntry>> updates = const Stream.empty(),
+      required AllSessionsState list,
+      Stream<AllSessionsState> listUpdates = const Stream.empty(),
       Stream<NewSessionState> states = const Stream<NewSessionState>.empty(),
       List<ProjectSummary> projects = const [one, two],
     }) async {
       tester.view.physicalSize = const Size(1200, 1400);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      whenListen(recent, updates, initialState: entries);
-      final launchService = inMemorySessionLaunchService(launchRepository: launches);
+      whenListen(sessions, listUpdates, initialState: list);
       final projectList = _MockProjectListCubit();
       whenListen(
         projectList,
@@ -358,11 +350,7 @@ void main() {
           home: MultiBlocProvider(
             providers: [
               BlocProvider<FileAccessCubit>.value(value: fileAccess),
-              BlocProvider<RecentSessionsCubit>.value(value: recent),
-              RepositoryProvider.value(value: _inventoryOf(recent: recent)),
-              RepositoryProvider.value(value: launchService),
-              BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
-              BlocProvider<PendingSessionArchiveCubit>.value(value: archive),
+              BlocProvider<AllSessionsCubit>.value(value: sessions),
               BlocProvider<ChatInputModeCubit>.value(value: inputMode),
               BlocProvider<ProjectListCubit>.value(value: projectList),
             ],
@@ -382,180 +370,120 @@ void main() {
       await tester.pump();
     }
 
-    testWidgets("shows the composer, then needs-you, running and recent sessions", (tester) async {
-      final waiting = _session(id: "waiting", projectId: "two", updated: 3);
-      final running = _session(id: "running", projectId: "one", updated: 2);
-      final settled = _session(id: "settled", projectId: "two", updated: 1);
+    // The switch builds, then its crossfade runs out, so only the pane switched
+    // to remains.
+    Future<void> crossfade(WidgetTester tester) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump();
+    }
+
+    String shownProject(WidgetTester tester) => tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId;
+
+    testWidgets("starts a new session in the list's default project", (tester) async {
       await pumpStart(
         tester: tester,
-        entries: {
-          "one": RecentSessionsLoaded(
-            sourceSessions: [running],
-            visibleSessions: [running],
-            archivedSessions: const [],
-            activityBySessionId: {"running": _activity(awaitingInput: false)},
-            listStateBySessionId: const {},
-          ),
-          "two": RecentSessionsLoaded(
-            sourceSessions: [waiting, settled],
-            visibleSessions: [waiting, settled],
-            archivedSessions: const [],
-            activityBySessionId: {"waiting": _activity(awaitingInput: true)},
-            listStateBySessionId: const {},
-          ),
-        },
+        list: _list(defaultProjectId: "two"),
       );
+
+      expect(createdFor, ["two"]);
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(shownProject(tester), "two");
+    });
+
+    testWidgets("waits while the list loads, then takes up the first default", (tester) async {
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpStart(
+        tester: tester,
+        list: _list(defaultProjectId: null, isLoading: true),
+        listUpdates: updates.stream,
+      );
+      expect(find.byKey(const Key("desktop-home-waiting")), findsOneWidget);
+      expect(find.byKey(const Key("desktop-home-prompt")), findsNothing);
+
+      updates.add(_list(defaultProjectId: "one"));
+      await tester.pump();
+      await crossfade(tester);
 
       expect(createdFor, ["one"]);
-      expect(find.byType(PromptInput), findsOneWidget);
-      double top(String text) => tester.getTopLeft(find.text(text)).dy;
-      expect(top("Needs you"), lessThan(top("waiting")));
-      expect(top("waiting"), lessThan(top("Running")));
-      expect(top("Running"), lessThan(top("running")));
-      expect(top("running"), lessThan(top("Recent")));
-      expect(top("Recent"), lessThan(top("settled")));
-
-      await tester.tap(find.text("settled"));
-      expect(opened, [(projectId: "two", sessionId: "settled")]);
+      expect(find.byKey(const Key("desktop-home-waiting")), findsNothing);
     });
 
-    testWidgets("a launch runs from the start and gives way to its session once it runs", (tester) async {
-      final settled = _session(id: "settled", projectId: "one", updated: 1);
-      final created = _session(id: "created", projectId: "one", updated: 5).copyWith(title: "Fix the bug");
-      Map<String, RecentSessionsEntry> entries({required List<Session> sessions, required bool running}) => {
-        "one": RecentSessionsLoaded(
-          sourceSessions: sessions,
-          visibleSessions: sessions,
-          archivedSessions: const [],
-          activityBySessionId: {if (running) "created": _activity(awaitingInput: false)},
-          listStateBySessionId: const {},
-        ),
-      };
-      final updates = StreamController<Map<String, RecentSessionsEntry>>();
+    testWidgets("a newer session elsewhere keeps the draft's project; another filter moves it", (tester) async {
+      final updates = StreamController<AllSessionsState>();
       addTearDown(updates.close);
       await pumpStart(
         tester: tester,
-        entries: entries(sessions: [settled], running: false),
-        updates: updates.stream,
+        list: _list(defaultProjectId: "one"),
+        listUpdates: updates.stream,
       );
-      Future<void> settle() async {
-        await tester.pump();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-      }
 
-      launches.start(
-        launchId: "launch-1",
-        projectId: "one",
-        pluginId: "claude",
-        startedAt: DateTime.now(),
-        projectName: "One",
-        submission: NewSessionSubmissionSnapshot.text(
-          draft: ComposerDraft.typed(text: "Fix the bug"),
-          attachments: const [],
-        ),
-      );
-      launches.releaseHandoff(launchId: "launch-1");
-      await settle();
-      final launchRow = find.byKey(const ValueKey("desktop-home-launch-launch-1"));
-      final createdRow = find.byKey(const ValueKey("desktop-home-created"));
-      expect(find.descendant(of: launchRow, matching: find.text("Fix the bug")), findsOneWidget);
-      double top(Finder finder) => tester.getTopLeft(finder).dy;
-      expect(top(find.text("Running")), lessThan(top(launchRow)));
-      expect(top(launchRow), lessThan(top(find.text("Recent"))));
+      updates.add(_list(defaultProjectId: "two"));
+      await tester.pump();
+      await crossfade(tester);
+      expect(createdFor, ["one"]);
 
-      // Its session reaches the project before it runs: it waits out of Recent.
-      launches.promote(launchId: "launch-1", session: created);
-      updates.add(entries(sessions: [created, settled], running: false));
-      await settle();
-      expect(launchRow, findsOneWidget);
-      expect(createdRow, findsNothing);
-
-      // Once it runs, it takes the launching row's place.
-      updates.add(entries(sessions: [created, settled], running: true));
-      await settle();
-      expect(launchRow, findsNothing);
-      expect(top(find.text("Running")), lessThan(top(createdRow)));
-      expect(top(createdRow), lessThan(top(find.text("Recent"))));
+      updates.add(_list(projectId: "two", defaultProjectId: "two"));
+      await tester.pump();
+      await crossfade(tester);
+      expect(createdFor, ["one", "two"]);
+      expect(shownProject(tester), "two");
     });
 
-    testWidgets("a launch whose session first shows waiting on the user gives way to it in Needs you", (tester) async {
-      final created = _session(id: "created", projectId: "one", updated: 5).copyWith(title: "Fix the bug");
-      Map<String, RecentSessionsEntry> entries({required List<Session> sessions}) => {
-        "one": RecentSessionsLoaded(
-          sourceSessions: sessions,
-          visibleSessions: sessions,
-          archivedSessions: const [],
-          activityBySessionId: {for (final session in sessions) session.id: _activity(awaitingInput: true)},
-          listStateBySessionId: const {},
-        ),
-      };
-      final updates = StreamController<Map<String, RecentSessionsEntry>>();
-      addTearDown(updates.close);
-      await pumpStart(
-        tester: tester,
-        entries: entries(sessions: const []),
-        updates: updates.stream,
-      );
-      Future<void> settle() async {
-        await tester.pump();
-        await tester.pump();
-        await tester.pump(const Duration(milliseconds: 500));
-      }
+    testWidgets("without a default, asks for a project and starts in the one picked", (tester) async {
+      await pumpStart(tester: tester, list: _list(defaultProjectId: null));
+      expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
+      expect(find.text("Choose a project"), findsOneWidget);
+      expect(createdFor, isEmpty);
 
-      launches.start(
-        launchId: "launch-1",
-        projectId: "one",
-        pluginId: "claude",
-        startedAt: DateTime.now(),
-        projectName: "One",
-        submission: NewSessionSubmissionSnapshot.text(
-          draft: ComposerDraft.typed(text: "Fix the bug"),
-          attachments: const [],
-        ),
-      );
-      launches.releaseHandoff(launchId: "launch-1");
-      await settle();
-      final launchRow = find.byKey(const ValueKey("desktop-home-launch-launch-1"));
-      expect(launchRow, findsOneWidget);
+      tester
+          .widget<NewSessionProjectPrompt>(find.byType(NewSessionProjectPrompt))
+          .onProjectSelected(projectId: "two", projectName: "Two");
+      await tester.pump();
+      await crossfade(tester);
 
-      // It never runs without waiting, so it never reaches Running.
-      launches.promote(launchId: "launch-1", session: created);
-      updates.add(entries(sessions: [created]));
-      await settle();
-      expect(launchRow, findsNothing);
-      final createdRow = find.byKey(const ValueKey("desktop-home-created"));
-      expect(createdRow, findsOneWidget);
-      expect(tester.getTopLeft(find.text("Needs you")).dy, lessThan(tester.getTopLeft(createdRow).dy));
+      expect(createdFor, ["two"]);
+      expect(shownProject(tester), "two");
     });
 
     testWidgets("picking another project gives it its own cubit", (tester) async {
-      await pumpStart(tester: tester, entries: const {});
-      expect(find.text("Needs you"), findsNothing);
+      await pumpStart(
+        tester: tester,
+        list: _list(defaultProjectId: "one"),
+      );
 
       tester
           .widget<NewSessionView>(find.byType(NewSessionView))
           .onProjectSelected
           ?.call(projectId: "two", projectName: "Two");
       await tester.pump();
+      await crossfade(tester);
 
       expect(createdFor, ["one", "two"]);
-      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "two");
+      expect(shownProject(tester), "two");
     });
 
     testWidgets("a reordered project list keeps the project already shown", (tester) async {
-      await pumpStart(tester: tester, entries: const {});
-      await pumpStart(tester: tester, entries: const {}, projects: const [two, one]);
+      await pumpStart(
+        tester: tester,
+        list: _list(defaultProjectId: "one"),
+      );
+      await pumpStart(
+        tester: tester,
+        list: _list(defaultProjectId: "one"),
+        projects: const [two, one],
+      );
 
       expect(createdFor, ["one"]);
-      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, "one");
+      expect(shownProject(tester), "one");
     });
 
     testWidgets("a session started from home opens in the picked project", (tester) async {
       final created = _session(id: "created", projectId: "one", updated: 1);
       await pumpStart(
         tester: tester,
-        entries: const {},
+        list: _list(defaultProjectId: "one"),
         states: Stream.value(NewSessionState.created(session: created, launchId: "launch-1")),
       );
       await tester.pump();
@@ -605,20 +533,21 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
 
-class _MockRecentSessionsCubit() extends MockCubit<Map<String, RecentSessionsEntry>> implements RecentSessionsCubit;
+class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements AllSessionsCubit;
 
-class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
-
-/// The inventory behind [recent], as each list's launching rows read it.
-RecentSessionInventoryService _inventoryOf({required RecentSessionsCubit recent}) {
-  final inventory = _MockRecentSessionInventoryService();
-  when(() => inventory.state).thenAnswer((_) => recent.stream.shareValueSeeded(recent.state));
-  return inventory;
-}
-
-class _MockPendingSessionArchiveCubit()
-    extends MockCubit<PendingSessionArchiveState>
-    implements PendingSessionArchiveCubit;
+/// The sidebar's list as the home reads it: only its filter, default and
+/// loading matter here.
+AllSessionsState _list({String? projectId, required String? defaultProjectId, bool isLoading = false}) =>
+    AllSessionsState(
+      projectId: projectId,
+      query: "",
+      quickFilter: SessionListQuickFilter.all,
+      rows: const [],
+      counts: const SessionListChipCounts(all: 0, running: 0, unread: 0),
+      failures: const [],
+      isLoading: isLoading,
+      defaultProjectId: defaultProjectId,
+    );
 
 class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
 
@@ -632,13 +561,6 @@ const _composing = NewSessionState.composing(
     projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
   ),
   phase: NewSessionPhase.idle(),
-);
-
-SessionActivityInfo _activity({required bool awaitingInput}) => SessionActivityInfo(
-  mainAgentRunning: true,
-  awaitingInput: awaitingInput,
-  lastUserActivityAt: null,
-  updatedAt: null,
 );
 
 Session _session({required String id, required String projectId, required int updated}) => Session(

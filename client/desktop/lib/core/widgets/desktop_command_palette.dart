@@ -34,10 +34,10 @@ String desktopShortcutLabel({required SingleActivator shortcut}) {
 
 typedef _PaletteSession = ({ProjectSummary project, String projectName, Session session});
 
-/// Opens the palette over [commands] and the cockpit's projects and recent
-/// sessions, as they stand now: rows that moved under the highlight would
-/// make Enter pick something else. A pick closes the palette, then acts; a
-/// project pick filters the sidebar's list to it.
+/// Opens the palette over [commands], the cockpit's projects and the sessions
+/// the sidebar's list shows, newest first, as they stand now: rows that moved
+/// under the highlight would make Enter pick something else. A pick closes the
+/// palette, then acts; a project pick filters the sidebar's list to it.
 Future<void> showDesktopCommandPalette({
   required BuildContext context,
   required List<DesktopCommand> commands,
@@ -47,11 +47,7 @@ Future<void> showDesktopCommandPalette({
   final projectState = context.read<ProjectListCubit>().state;
   final projects = projectState is ProjectListLoaded ? projectState.projects : const <ProjectSummary>[];
   final sessions = <_PaletteSession>[
-    for (final (:project, :session) in sessionsByRecency(
-      projects: projects,
-      entries: context.read<RecentSessionsCubit>().state,
-      hiddenSessionIds: context.read<PendingSessionArchiveCubit>().state.hiddenIds,
-    ))
+    for (final AllSessionsRow(:project, :session) in context.read<AllSessionsCubit>().state.rows)
       (project: project, projectName: desktopProjectDisplayName(context: context, project: project), session: session),
   ];
   final authGate = context.read<AuthGateCubit>();

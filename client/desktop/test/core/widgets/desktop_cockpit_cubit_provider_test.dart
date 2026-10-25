@@ -140,17 +140,14 @@ void main() {
     final context = tester.element(find.byType(SizedBox));
     expect(context.read<RecentSessionInventoryService>(), same(first));
     expect(context.read<ProjectInventoryService>(), same(projectInstances.single));
-    final consumer = context.read<RecentSessionsCubit>();
     final projectConsumer = context.read<ProjectListCubit>();
     final refreshConsumer = context.read<SessionListRefreshCubit>();
     expect(workflowCount, 1);
-    expect(consumer.state, same(first.state.value));
 
     await tester.pumpWidget(const SizedBox.shrink());
     // Provider teardown's asynchronous cancellations also finish in the real test zone.
     await tester.runAsync(() async {});
     await tester.pump();
-    expect(consumer.isClosed, isTrue);
     expect(projectConsumer.isClosed, isTrue);
     expect(refreshConsumer.isClosed, isTrue);
     expect(events.hasListener, isFalse);

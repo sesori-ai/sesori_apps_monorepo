@@ -17,6 +17,12 @@ variant, and worktree mode, and creating the session with its first input.
   session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
   selected and lists the known projects under "Open another folder…"; with no projects it offers only that
   entry. Choosing one replaces the page with that project's setup page.
+- The desktop home shows the setup composer in place, in the same default project: the sidebar list's filter,
+  else the newest session's project. The project holds once it lands, so a newer session elsewhere never moves
+  a draft; another filter moves it. While the list is still loading the pane waits blank. With no default it
+  shows the same "What should we work on?" prompt with nothing selected, its picker waiting for a click; with
+  no projects the picker offers only "Open another folder…". A pick swaps in that project's composer with a
+  short crossfade (none under reduced motion).
 - On phone and desktop the setup page opens with the heading "What should we work on?" and a project
   selector naming the session's project from the live project list (the route's name until it loads). The
   selector always opens a searchable project picker: a bottom sheet on a phone below 700 pt, whose search

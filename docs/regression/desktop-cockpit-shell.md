@@ -4,7 +4,7 @@
 
 Desktop navigation in a resizable sidebar that floats as a panel over the page and hides completely when
 collapsed, with desktop-owned layout preferences. The sidebar shows the shared all-projects session list under
-its project filter; it and the home pane share one signed-in project inventory and one recent-session cache.
+its project filter; the home pane reads the same signed-in project inventory and the list's default project.
 The main pane hosts one full-width routed page.
 
 ## Required Behavior
@@ -83,8 +83,8 @@ The main pane hosts one full-width routed page.
   shows the shortcut. Windows and Linux retain native window chrome.
 - Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command palette: a
   search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
-  while the window is wide enough to expand it; Settings; Go back; each with its shortcut), the recent Sessions newest
-  first with their project and without archived ones, and Projects. Typing narrows all three by title words (an untitled
+  while the window is wide enough to expand it; Settings; Go back; each with its shortcut), the Sessions the sidebar's
+  list shows (under its filter, search and chip) newest first with their project, and every Project. Typing narrows all three by title words (an untitled
   session by "Untitled session"), bolding the matched letters; signing out closes the palette with the cockpit; nothing
   matching reads "No matches". Up/Down move the highlight past headings, Enter or a click closes the palette and runs
   the pick, and Esc closes it. A session pick opens it; a project pick filters the sidebar's list to that project and
@@ -202,11 +202,12 @@ The main pane hosts one full-width routed page.
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
   floating glass bar and one full-width transcript and composer.
-- With projects, home starts work: the new-session composer for a picked project (the first listed until the
-  user picks another, each pick with its own draft), then Needs you, Running and Recent sections across projects.
-  Recent holds the five newest sessions that are neither running nor waiting; empty sections are left out. A row
-  opens its session, and a session started from home opens in the picked project. Empty inventory offers
-  Add/Open Project. Loading is labelled and failures retry the shared inventory. A disconnected home branches on
+- Home is the new-session composer alone, in the sidebar list's default project (its filter, else the newest
+  session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
+  filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank, and with no
+  default the shared "Choose a project" prompt shows instead, offering only "Open another folder…" when there are
+  no projects. A session started from home opens in its project. Loading projects is labelled and failures retry
+  the shared inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
   CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
   "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the
@@ -427,7 +428,8 @@ Unicode, window sizes, theme, and sidebar width; preserve any already-running
 bridge during UI-only checks.
 
 On home, watch for a session starting in a project other than the one picked, a draft following a project
-reorder or surviving a new pick, a running or waiting session under Recent, and an empty section heading, a Start button
+reorder or surviving a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
+the prompt while the list loads on launch, a Start button
 offered for another computer, a header that pops in on each load, or the desktop jumping back to this computer
 after the user picked another one.
 
