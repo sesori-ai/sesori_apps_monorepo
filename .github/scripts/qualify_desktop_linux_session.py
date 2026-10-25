@@ -371,7 +371,10 @@ def login(*, inputs: Path, output: Path, desktop: Desktop, architecture: str) ->
     subprocess.run(["gnome-keyring-daemon", "--unlock", "--components=secrets"], env=env, check=True,
                    input="disposable-ci-keyring\n", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
                    text=True, timeout=30)
-    run(arguments=["busctl", "--user", "status", "org.freedesktop.secrets"], env=env)
+    # The forked daemon claims the bus name asynchronously.
+    wait_for(description="unlocked Secret Service", check=lambda: subprocess.run(
+        ["busctl", "--user", "status", "org.freedesktop.secrets"], env=env,
+        stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL).returncode == 0)
     registration = Path.home() / ".config/autostart/com.sesori.desktop.desktop"
     registration.parent.mkdir(parents=True, exist_ok=True)
     registration.write_text(LOGIN_REGISTRATION)
