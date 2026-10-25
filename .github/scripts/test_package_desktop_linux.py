@@ -1,3 +1,4 @@
+import io
 import json
 import struct
 import tempfile
@@ -284,69 +285,87 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertIn("/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori\n%config(noreplace) /etc/yum.repos.d/sesori.repo\n", spec)
         self.assertEqual(evidence["dependencies"], ["libc.so.6()(64bit)"])
 
-    def test_appimage_appends_pinned_runtime_and_verifies_embedded_appdir(self):
-        app_root = self.root / "appdir"
-        packaging.assemble_appdir(bundle=self.bundle, root=app_root)
-        self.assertEqual(packaging.os.readlink(app_root / "AppRun"), "sesori_desktop")
-        self.assertEqual(packaging.os.readlink(app_root / ".DirIcon"), "sesori-desktop.png")
-        self.assertIn("Exec=sesori_desktop\n", (app_root / "sesori-desktop.desktop").read_text())
+    def build_appimage(self, *, image_bundle: Path | None = None, nupkg: bytes = b"vpk package"):
+        """Run build_appimage with a fake vpk that writes a runtime-prefixed image of `image_bundle`."""
         work, output = self.root / "appimage work", self.root / "appimage output"
         work.mkdir()
         output.mkdir()
-        runtime = b"\x7fELF runtime"
-        digest = packaging.hashlib.sha256(runtime).hexdigest()
+        # A 64-bit ELF runtime whose single 64-byte section header ends at byte 128.
+        runtime = bytearray(128)
+        runtime[:4] = b"\x7fELF"
+        struct.pack_into("<Q", runtime, 0x28, 64)
+        struct.pack_into("<HH", runtime, 0x3A, 64, 1)
         commands = []
 
         def fake_run(*, command, cwd, env=None):
             commands.append(command)
-            if command[0] == "mksquashfs":
-                Path(command[2]).write_bytes(b"hsqs")
+            if command[1] == "pack":
+                options = dict(zip(command[2::2], command[3::2]))
+                releases = Path(options["--outputDir"])
+                releases.mkdir()
+                channel, version = options["--channel"], options["--packVersion"]
+                (releases / f"sesori-desktop-{channel}.AppImage").write_bytes(bytes(runtime) + b"hsqs")
+                (releases / f"sesori-desktop-{version}-{channel}-full.nupkg").write_bytes(b"full")
+                (releases / f"releases.{channel}.json").write_text("{}")
+                (releases / f"assets.{channel}.json").write_text("[]")
             elif "-d" in command:
-                self.assertEqual(Path(command[-1]).read_bytes(), runtime + b"hsqs")
-                packaging.shutil.copytree(app_root, command[command.index("-d") + 1], symlinks=True)
+                appdir = Path(command[command.index("-d") + 1])
+                packaging.shutil.copytree(image_bundle or self.bundle, appdir / "usr/bin", symlinks=True)
+                (appdir / "usr/bin/UpdateNix").write_bytes(elf(machine=62))
+                (appdir / "usr/bin/sq.version").write_text("<package/>")
+                packaging.shutil.copy2(packaging.ICON_SOURCE, appdir / "sesori-desktop.png")
             return "squashfs-root/AppRun\n"
 
         response = mock.MagicMock()
-        response.__enter__.return_value.read.return_value = runtime
-        with mock.patch.dict(packaging.APPIMAGE_RUNTIMES, {"x64": ("runtime-x86_64", digest)}), mock.patch.object(
-            packaging.urllib.request, "urlopen", return_value=response
-        ), mock.patch.object(packaging, "run", side_effect=fake_run):
+        response.__enter__.return_value = io.BytesIO(nupkg)
+        with mock.patch.object(packaging, "VPK_PACKAGE_SHA256", packaging.hashlib.sha256(b"vpk package").hexdigest()), \
+                mock.patch.object(packaging.urllib.request, "urlopen", return_value=response), \
+                mock.patch.object(packaging, "run", side_effect=fake_run):
             artifact, evidence = packaging.build_appimage(
-                root=app_root, work=work, output=output, arch="x64",
+                bundle=self.bundle, work=work, output=output, arch="x64",
                 identity={"version": self.version, "buildNumber": 42},
             )
+        return artifact, evidence, commands
+
+    def test_appimage_is_packed_by_pinned_vpk_from_the_exact_bundle(self):
+        artifact, evidence, commands = self.build_appimage()
         self.assertEqual(artifact.name, f"Sesori-linux-x64-{self.version}-42.AppImage")
-        self.assertEqual(artifact.stat().st_mode & 0o777, 0o755)
-        self.assertIn("-root-owned", commands[0])
-        self.assertTrue(all(command[1:3] == ["-offset", str(len(runtime))] for command in commands[1:]))
-        self.assertEqual(evidence["runtime"]["sha256"], digest)
+        install, pack = commands[0], commands[1]
+        # Only the verified local package can be installed.
+        self.assertEqual(install[:6], ["dotnet", "tool", "install", "vpk", "--version", "1.2.161"])
+        self.assertEqual(install[install.index("--source") + 1], str(self.root / "appimage work/vpk-feed"))
+        self.assertTrue((self.root / "appimage work/vpk-feed/vpk.1.2.161.nupkg").is_file())
+        options = dict(zip(pack[2::2], pack[3::2]))
+        self.assertEqual(options, {
+            "--packId": "sesori-desktop", "--packVersion": f"{self.version}-internal.42",
+            "--packDir": str(self.bundle), "--mainExe": "sesori_desktop", "--packTitle": "Sesori",
+            "--icon": str(packaging.ICON_SOURCE), "--categories": "Development;Utility", "--channel": "internal",
+            "--outputDir": str(self.root / "appimage work/velopack"),
+        })
+        self.assertTrue(all(command[1:3] == ["-offset", "128"] for command in commands[2:]))
+        velopack = artifact.parent / "velopack"
+        self.assertEqual(sorted(path.name for path in velopack.iterdir()),
+                         ["releases.internal.json", f"sesori-desktop-{self.version}-internal.42-internal-full.nupkg"])
+        self.assertEqual(evidence["velopack"]["runtime"]["bytes"], 128)
+        self.assertEqual([row["name"] for row in evidence["velopack"]["releaseFiles"]],
+                         sorted(path.name for path in velopack.iterdir()))
         self.assertIn("FUSE", evidence["hostRequirements"])
 
-    def test_appimage_runtime_digest_mismatch_refuses(self):
-        response = mock.MagicMock()
-        response.__enter__.return_value.read.return_value = b"tampered"
-        with mock.patch.object(packaging.urllib.request, "urlopen", return_value=response), \
-                self.assertRaisesRegex(ValueError, "digest mismatch"):
-            packaging.appimage_runtime(arch="arm64", work=self.root)
+    def test_velopack_versions_increase_within_each_channel(self):
+        identity = {"version": self.version, "buildNumber": 42}
+        self.assertEqual(packaging.velopack_version(identity=identity, channel="stable"), self.version)
+        self.assertEqual(packaging.velopack_version(identity=identity, channel="internal"), f"{self.version}-internal.42")
 
-    def test_appimage_squashfs_mismatch_refuses(self):
-        app_root = self.root / "appdir"
-        packaging.assemble_appdir(bundle=self.bundle, root=app_root)
-        runtime = self.root / "runtime"
-        runtime.write_bytes(b"runtime")
+    def test_vpk_package_digest_mismatch_refuses(self):
+        with self.assertRaisesRegex(ValueError, "vpk package digest mismatch"):
+            self.build_appimage(nupkg=b"tampered")
 
-        def fake_run(*, command, cwd, env=None):
-            if command[0] == "mksquashfs":
-                Path(command[2]).write_bytes(b"hsqs")
-            elif "-d" in command:
-                Path(command[command.index("-d") + 1]).mkdir()
-            return ""
-
-        with mock.patch.object(packaging, "appimage_runtime", return_value=runtime), mock.patch.object(
-            packaging, "run", side_effect=fake_run
-        ), self.assertRaisesRegex(ValueError, "does not match"):
-            packaging.build_appimage(root=app_root, work=self.root, output=self.root, arch="x64",
-                                     identity={"version": self.version, "buildNumber": 42})
+    def test_appimage_without_the_exact_bundle_refuses(self):
+        changed = self.root / "changed bundle"
+        packaging.shutil.copytree(self.bundle, changed, symlinks=True)
+        (changed / "data/flutter_assets/NOTICE").unlink()
+        with self.assertRaisesRegex(ValueError, "exact staged bundle"):
+            self.build_appimage(image_bundle=changed)
 
     def test_existing_output_refuses_before_tools_or_payload_changes(self):
         output = self.root / "existing"

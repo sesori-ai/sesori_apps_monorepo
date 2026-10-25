@@ -44,13 +44,14 @@ CHANNELS = ("stable", "internal")
 DYNAMIC_LOAD_PATTERN = re.compile(rb"\b(?:dlopen|DynamicLibrary\.open)\s*\(")
 DESKTOP_ENTRY_TEXT = ("[Desktop Entry]\nType=Application\nName=Sesori\nComment=AI coding cockpit\n"
                       "Exec={exec}\nIcon=sesori-desktop\nTerminal=false\nCategories=Development;Utility;\n")
-# Static type2 runtime; release assets are signed by the AppImage type 2 runtime key 570C77ACEA40C0F1B758902CBF96CCA56490F695.
-APPIMAGE_RUNTIME_URL = "https://github.com/AppImage/type2-runtime/releases/download/20251108/{name}"
 APPIMAGE_HOST_REQUIREMENTS = ["glibc >= 2.39", "GTK 3", "libsecret", "libEGL.so.1", "libGLESv2.so.2", "FUSE"]
-APPIMAGE_RUNTIMES = {
-    "x64": ("runtime-x86_64", "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"),
-    "arm64": ("runtime-aarch64", "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444"),
-}
+# Velopack's vpk builds the AppImage and its release package. The vpk tool package carries the static type2
+# AppImage runtime and UpdateNix that go into the image, so this one digest pins all three.
+VPK_VERSION = "1.2.161"
+VPK_PACKAGE_URL = f"https://github.com/velopack/velopack/releases/download/{VPK_VERSION}/vpk.{VPK_VERSION}.nupkg"
+VPK_PACKAGE_SHA256 = "2b56ce117f803fc70c103cb423bd040e395e40370f6ff6e10818e9ff9c26a323"
+# vpk places the bundle in the image's usr/bin and adds its updater and manifest beside it.
+VELOPACK_ADDED_FILES = {"UpdateNix", "sq.version"}
 
 
 def run(*, command: list[str], cwd: Path, env: dict[str, str] | None = None) -> str:
@@ -207,16 +208,6 @@ def assemble_payload(*, bundle: Path, root: Path, package_format: str) -> None:
         (root / path).chmod(0o644)
 
 
-def assemble_appdir(*, bundle: Path, root: Path) -> None:
-    shutil.copytree(bundle, root, symlinks=True)
-    # The runtime executes AppRun; the kernel resolves the symlink, so /proc/self/exe still finds lib/ and data/.
-    (root / "AppRun").symlink_to("sesori_desktop")
-    (root / "sesori-desktop.desktop").write_text(DESKTOP_ENTRY_TEXT.format(exec="sesori_desktop"), encoding="utf-8")
-    verify_icon(path=ICON_SOURCE)
-    shutil.copy2(ICON_SOURCE, root / "sesori-desktop.png")
-    (root / ".DirIcon").symlink_to("sesori-desktop.png")
-
-
 def elf_files(*, root: Path) -> list[Path]:
     return [path for path in sorted(root.rglob("*")) if path.is_file() and not path.is_symlink()
             and native_arch(path=path) is not None]
@@ -306,36 +297,76 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
                      "packageFiles": run(command=["rpm", "-qlp", str(package)], cwd=work).splitlines()}
 
 
-def appimage_runtime(*, arch: str, work: Path) -> Path:
-    name, digest = APPIMAGE_RUNTIMES[arch]
-    runtime = work / name
-    with urllib.request.urlopen(APPIMAGE_RUNTIME_URL.format(name=name), timeout=60) as response:
-        runtime.write_bytes(response.read())
-    if sha256(runtime) != digest:
-        raise ValueError(f"AppImage runtime digest mismatch: {name}: {sha256(runtime)}; expected {digest}")
-    return runtime
+def install_vpk(*, work: Path) -> Path:
+    feed = work / "vpk-feed"
+    feed.mkdir()
+    package = feed / f"vpk.{VPK_VERSION}.nupkg"
+    with urllib.request.urlopen(VPK_PACKAGE_URL, timeout=60) as response, package.open("wb") as stream:
+        shutil.copyfileobj(response, stream)
+    if sha256(package) != VPK_PACKAGE_SHA256:
+        raise ValueError(f"vpk package digest mismatch: {sha256(package)}; expected {VPK_PACKAGE_SHA256}")
+    tools = work / "vpk-tool"
+    # --source replaces every NuGet source, so only the verified package can be installed.
+    run(command=["dotnet", "tool", "install", "vpk", "--version", VPK_VERSION, "--tool-path", str(tools),
+                 "--source", str(feed)], cwd=work)
+    return tools / "vpk"
 
 
-def build_appimage(*, root: Path, work: Path, output: Path, arch: str, identity: dict) -> tuple[Path, dict]:
-    runtime = appimage_runtime(arch=arch, work=work)
-    squashfs = work / "payload.squashfs"
-    command = ["mksquashfs", str(root), str(squashfs), "-root-owned", "-noappend", "-comp", "zstd", "-no-progress"]
-    run(command=command, cwd=work)
+def velopack_version(*, identity: dict, channel: str) -> str:
+    # Velopack orders releases by SemVer 2. Internal builds share the product version, so the build number orders them.
+    if channel == "stable":
+        return identity["version"]
+    return f"{identity['version']}-internal.{identity['buildNumber']}"
+
+
+def squashfs_offset(*, image: Path) -> int:
+    # The runtime is a 64-bit ELF; the squashfs starts where its section headers end (as --appimage-offset reports).
+    with image.open("rb") as stream:
+        header = stream.read(64)
+    section_headers = int.from_bytes(header[0x28:0x30], "little")
+    entry_size = int.from_bytes(header[0x3A:0x3C], "little")
+    entries = int.from_bytes(header[0x3C:0x3E], "little")
+    return section_headers + entry_size * entries
+
+
+def build_appimage(*, bundle: Path, work: Path, output: Path, arch: str, identity: dict) -> tuple[Path, dict]:
+    channel = compiled_channel(bundle=bundle)
+    version = velopack_version(identity=identity, channel=channel)
+    vpk = install_vpk(work=work)
+    verify_icon(path=ICON_SOURCE)
+    releases = work / "velopack"
+    command = [str(vpk), "pack", "--packId", PACKAGE_NAME, "--packVersion", version, "--packDir", str(bundle),
+               "--mainExe", "sesori_desktop", "--packTitle", "Sesori", "--icon", str(ICON_SOURCE),
+               "--categories", "Development;Utility", "--channel", channel, "--outputDir", str(releases)]
+    print(run(command=command, cwd=work))
     package = output / f"Sesori-linux-{arch}-{identity['version']}-{identity['buildNumber']}.AppImage"
-    with package.open("wb") as stream:
-        stream.write(runtime.read_bytes())
-        stream.write(squashfs.read_bytes())
-    package.chmod(0o755)
-    # Read the embedded image back without executing the runtime and require the exact AppDir.
-    offset = str(runtime.stat().st_size)
+    shutil.move(releases / f"{PACKAGE_NAME}-{channel}.AppImage", package)
+    # The full release package and its feed stay with the run's artifacts until feed publication.
+    velopack = output / "velopack"
+    velopack.mkdir()
+    for name in (f"{PACKAGE_NAME}-{version}-{channel}-full.nupkg", f"releases.{channel}.json"):
+        shutil.copy2(releases / name, velopack / name)
+    # Read the embedded image back without executing the runtime and require the exact staged bundle.
+    offset = squashfs_offset(image=package)
     extracted = work / "extracted"
-    run(command=["unsquashfs", "-offset", offset, "-no-progress", "-d", str(extracted), str(package)], cwd=work)
-    if payload_inventory(root=extracted) != payload_inventory(root=root):
-        raise ValueError("AppImage squashfs does not match the assembled AppDir")
+    run(command=["unsquashfs", "-offset", str(offset), "-no-progress", "-d", str(extracted), str(package)], cwd=work)
+    contents = extracted / "usr/bin"
+    bundled = [row for row in payload_inventory(root=contents) if row["path"] not in VELOPACK_ADDED_FILES]
+    if bundled != payload_inventory(root=bundle) or not (contents / "UpdateNix").is_file():
+        raise ValueError("AppImage does not contain the exact staged bundle")
+    if sha256(extracted / f"{PACKAGE_NAME}.png") != sha256(ICON_SOURCE):
+        raise ValueError("AppImage icon differs from the application icon")
+    with package.open("rb") as stream:
+        runtime_digest = hashlib.sha256(stream.read(offset)).hexdigest()
     # A portable image has no package-manager dependencies; record what the host must provide.
     return package, {"dependencies": [], "dependencyCommand": command, "hostRequirements": APPIMAGE_HOST_REQUIREMENTS,
-                     "runtime": {"name": runtime.name, "sha256": sha256(runtime), "bytes": runtime.stat().st_size},
-                     "packageFiles": run(command=["unsquashfs", "-offset", offset, "-lls", str(package)],
+                     "velopack": {"vpkVersion": VPK_VERSION, "vpkPackageSha256": VPK_PACKAGE_SHA256,
+                                  "packVersion": version, "channel": channel,
+                                  "runtime": {"sha256": runtime_digest, "bytes": offset},
+                                  "releaseFiles": [{"name": path.name, "sha256": sha256(path),
+                                                    "bytes": path.stat().st_size}
+                                                   for path in sorted(velopack.iterdir())]},
+                     "packageFiles": run(command=["unsquashfs", "-offset", str(offset), "-lls", str(package)],
                                          cwd=work).splitlines()}
 
 
@@ -385,15 +416,17 @@ def package(*, bundle: Path, output: Path, arch: str, package_format: str, packa
     output.mkdir(parents=True)
     with tempfile.TemporaryDirectory(prefix="sesori-linux-package-") as temporary:
         work = Path(temporary)
-        root = work / "root"
         if package_format == "appimage":
-            assemble_appdir(bundle=bundle, root=root)
+            payload = payload_inventory(root=bundle)
+            artifact, package_evidence = build_appimage(bundle=bundle, work=work, output=output, arch=arch,
+                                                        identity=evidence["identity"])
         else:
+            root = work / "root"
             assemble_payload(bundle=bundle, root=root, package_format=package_format)
-        payload = payload_inventory(root=root)
-        builder = {"deb": build_deb, "rpm": build_rpm, "appimage": build_appimage}[package_format]
-        artifact, package_evidence = builder(root=root, work=work, output=output, arch=arch,
-                                             identity=evidence["identity"])
+            payload = payload_inventory(root=root)
+            builder = {"deb": build_deb, "rpm": build_rpm}[package_format]
+            artifact, package_evidence = builder(root=root, work=work, output=output, arch=arch,
+                                                 identity=evidence["identity"])
     report = {
         "packagerSourceSha": run(command=["git", "rev-parse", "HEAD"], cwd=ROOT).strip(),
         "format": package_format,

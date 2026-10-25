@@ -107,7 +107,10 @@ def exercise(*, inputs: Path, probes: Path, output: Path, architecture: str) -> 
         log = output / f"{label}-application.log"
         wait_for(description=f"{label} Flutter rendering", check=lambda: RENDERED in log.read_text())
         mount = Path(wait_for(description="AppImage mount", check=lambda: glob.glob(MOUNTS))[0])
-        identity = json.loads((mount / "bridge/desktop-bundle.json").read_text())
+        # Velopack images keep the bundle in usr/bin. Drop the mount-root fallback once no retained
+        # producer run predates Velopack packaging.
+        manifest = mount / "usr/bin/bridge/desktop-bundle.json"
+        identity = json.loads((manifest if manifest.exists() else mount / "bridge/desktop-bundle.json").read_text())
         release = json.loads((inputs / label / "desktop-linux-release.json").read_text())
         require(all(identity[key] == release[key] for key in ("version", "buildNumber", "sourceSha")),
                 "Running AppImage identity differs from qualified release")
