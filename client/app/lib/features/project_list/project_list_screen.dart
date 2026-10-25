@@ -26,80 +26,64 @@ part "widgets/bridge_offline_view.dart";
 class const ProjectListScreen({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
+    // The inventories and the project list come from the signed-in SessionScope.
+    return MultiBlocProvider(
       providers: [
-        RepositoryProvider<ProjectInventoryService>(
-          create: (_) => getIt<ProjectInventoryService>(),
-          dispose: (inventory) => unawaited(inventory.dispose()),
+        BlocProvider(
+          create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
         ),
-        // Every project's recent sessions, for the Activity group.
-        RepositoryProvider<RecentSessionInventoryService>(
-          lazy: false,
-          create: (_) => getIt<RecentSessionInventoryService>(),
-          dispose: (inventory) => unawaited(inventory.dispose()),
+        BlocProvider(
+          create: (_) => BridgeIdentityCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+          ),
+        ),
+        BlocProvider(
+          create: (_) => ComputerSwitcherCubit(
+            registeredBridgesService: getIt<RegisteredBridgesService>(),
+            connectionService: getIt<ConnectionService>(),
+            selectedComputerService: getIt<SelectedComputerService>(),
+            activeBridgeLocality: getIt<ActiveBridgeLocality>(),
+          ),
         ),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
-          ),
-          BlocProvider(
-            create: (context) => RecentSessionsCubit(inventoryService: context.read<RecentSessionInventoryService>()),
-          ),
-          BlocProvider(
-            create: (_) => BridgeIdentityCubit(
-              registeredBridgesService: getIt<RegisteredBridgesService>(),
-              connectionService: getIt<ConnectionService>(),
-              selectedComputerService: getIt<SelectedComputerService>(),
+      child: ProjectListView(
+        onAddProject: _showAddProject,
+        onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
+        // Settings goes under the page so Back from Computers lands there.
+        onManageComputers: ({required context}) {
+          context.pushRoute(const AppRoute.settings());
+          context.pushRoute(const AppRoute.settingsComputers());
+        },
+        onOpenSession: ({required context, required project, required displayName, required session}) {
+          context.pushRoute(
+            AppRoute.sessionDetail(
+              projectId: project.id,
+              projectName: displayName,
+              sessionId: session.id,
+              sessionTitle: session.title,
+              readOnly: false,
+              fromLaunch: false,
             ),
-          ),
-          BlocProvider(
-            create: (_) => ComputerSwitcherCubit(
-              registeredBridgesService: getIt<RegisteredBridgesService>(),
-              connectionService: getIt<ConnectionService>(),
-              selectedComputerService: getIt<SelectedComputerService>(),
-              activeBridgeLocality: getIt<ActiveBridgeLocality>(),
-            ),
-          ),
-        ],
-        child: ProjectListView(
-          onAddProject: _showAddProject,
-          onOpenSettings: ({required context}) => context.pushRoute(const AppRoute.settings()),
-          // Settings goes under the page so Back from Computers lands there.
-          onManageComputers: ({required context}) {
-            context.pushRoute(const AppRoute.settings());
-            context.pushRoute(const AppRoute.settingsComputers());
-          },
-          onOpenSession: ({required context, required project, required displayName, required session}) {
-            context.pushRoute(
-              AppRoute.sessionDetail(
-                projectId: project.id,
-                projectName: displayName,
-                sessionId: session.id,
-                sessionTitle: session.title,
-                readOnly: false,
-                fromLaunch: false,
-              ),
-            );
-          },
-          onOpenProject: _openProject,
-          disconnectedViewBuilder: ({required context, required state, required bridge}) => state.hasRegisteredBridges
-              ? _BridgeOfflineView(bridge: bridge, onSwitchComputer: _switchComputer)
-              : const _ConnectBridgeChecklist(),
-          disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
-            surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
-            // The offline fix is the command above, so help stays a quiet link.
-            quiet: state.hasRegisteredBridges,
-          ),
-          connectedEmptyViewBuilder: ({required context}) => _ConnectedEmptyView(
-            onAddProject: () => _showAddProject(context: context),
-          ),
-          connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
-          onRefreshDisconnected: ({required context, required state}) =>
-              context.read<ProjectListCubit>().reconnectBridge(),
-          onSwitchComputer: _switchComputer,
+          );
+        },
+        onOpenProject: _openProject,
+        disconnectedViewBuilder: ({required context, required state, required bridge}) => state.hasRegisteredBridges
+            ? _BridgeOfflineView(bridge: bridge, onSwitchComputer: _switchComputer)
+            : const _ConnectBridgeChecklist(),
+        disconnectedActionBuilder: ({required context, required state}) => _NeedHelpMenu(
+          surface: state.hasRegisteredBridges ? OnboardingSurface.bridgeOffline : OnboardingSurface.connectSetup,
+          // The offline fix is the command above, so help stays a quiet link.
+          quiet: state.hasRegisteredBridges,
         ),
+        connectedEmptyViewBuilder: ({required context}) => _ConnectedEmptyView(
+          onAddProject: () => _showAddProject(context: context),
+        ),
+        connectionBannerBuilder: ({required context}) => ConnectionBanner.maybeFor(context),
+        onRefreshDisconnected: ({required context, required state}) =>
+            context.read<ProjectListCubit>().reconnectBridge(),
+        onSwitchComputer: _switchComputer,
       ),
     );
   }

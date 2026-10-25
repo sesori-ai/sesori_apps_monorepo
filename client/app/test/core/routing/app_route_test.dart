@@ -202,7 +202,7 @@ void main() {
     });
 
     test("harness-only shell is a sibling of Settings with overview ancestry", () {
-      final settingsRoute = buildAppRoutes().whereType<GoRoute>().singleWhere(
+      final settingsRoute = _signedInRoutes().whereType<GoRoute>().singleWhere(
         (route) => route.path == AppRouteDef.settings.path,
       );
       final children = settingsRoute.routes;
@@ -211,7 +211,7 @@ void main() {
       expect((children[2] as GoRoute).path, "profile");
       expect((children[3] as GoRoute).path, "computers");
       expect(children, hasLength(4));
-      final harnessShell = buildAppRoutes().whereType<ShellRoute>().singleWhere(
+      final harnessShell = _signedInRoutes().whereType<ShellRoute>().singleWhere(
         (shell) => shell.routes.whereType<GoRoute>().any((route) => route.path == AppRouteDef.settingsHarnesses.path),
       );
       final overview = harnessShell.routes.single as GoRoute;
@@ -264,16 +264,15 @@ void main() {
       expect("${AppRouteDef.sessionDetail.path}/diffs", AppRouteDef.sessionDiffs.path);
     });
 
-    test("keeps live sessions nested and modal flows in root shells", () {
+    test("keeps live sessions nested and modal flows in signed-in shells", () {
       final routes = buildAppRoutes();
       final flatPaths = routes.whereType<GoRoute>().map((route) => route.path).toList();
+      final signedInPaths = _signedInRoutes().whereType<GoRoute>().map((route) => route.path).toList();
       final shell = _sessionShellRoute();
       final allPaths = _collectAbsoluteRoutePaths(routes: routes);
 
-      expect(
-        flatPaths,
-        equals([AppRouteDef.splash.path, AppRouteDef.login.path, AppRouteDef.projects.path, AppRouteDef.settings.path]),
-      );
+      expect(flatPaths, equals([AppRouteDef.splash.path, AppRouteDef.login.path]));
+      expect(signedInPaths, equals([AppRouteDef.projects.path, AppRouteDef.settings.path]));
       expect(shell.routes, hasLength(1));
       expect(
         allPaths,
@@ -378,8 +377,8 @@ void main() {
     });
 
     group("nested route tree invariants", () {
-      test("registers separate live session, archive and harness shell routes", () {
-        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(3));
+      test("registers separate signed-in, live session, archive and harness shell routes", () {
+        expect(_collectShellRoutes(routes: buildAppRoutes()), hasLength(4));
       });
 
       test("shell owns exactly one first-level session route", () {
@@ -416,10 +415,12 @@ void main() {
         expect(sessionsRoute.routes.whereType<GoRoute>().map((route) => route.path), equals(["new", ":sessionId"]));
       });
 
-      test("only non-session routes remain top-level GoRoutes", () {
+      test("only splash and login sit outside the signed-in shell", () {
         expect(buildAppRoutes().whereType<GoRoute>().map((route) => route.path), [
           AppRouteDef.splash.path,
           AppRouteDef.login.path,
+        ]);
+        expect(_signedInRoutes().whereType<GoRoute>().map((route) => route.path), [
           AppRouteDef.projects.path,
           AppRouteDef.settings.path,
         ]);
@@ -559,6 +560,9 @@ List<ShellRoute> _collectShellRoutes({required List<RouteBase> routes}) {
   }
   return shells;
 }
+
+/// The routes inside the signed-in shell, whose builder mounts `SessionScope`.
+List<RouteBase> _signedInRoutes() => buildAppRoutes().whereType<ShellRoute>().single.routes;
 
 ShellRoute _sessionShellRoute() =>
     _collectShellRoutes(routes: buildAppRoutes())

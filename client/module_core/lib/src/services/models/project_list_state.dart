@@ -2,7 +2,6 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
-import "catalog_rescan_state.dart";
 
 part "project_list_state.freezed.dart";
 
@@ -22,14 +21,6 @@ sealed class ProjectListState with _$ProjectListState {
     /// `SesoriSessionUnseenChanged` updates, the latter taking precedence.
     @Default({}) Map<String, bool> unseenByProjectId,
     @Default(false) bool isRefreshing,
-
-    /// The catalog scan shown above the list, if any is worth showing.
-    ///
-    /// Carried here beside [isRefreshing] because it is the same kind of thing:
-    /// transient operation status the list renders over its content. The scan
-    /// itself is owned by `CatalogRescanService`; this is only the projection
-    /// the screen watches.
-    @Default(CatalogRescanState.idle()) CatalogRescanState catalogScan,
   }) = ProjectListLoaded;
 
   const factory failed({required RemoteFailureReason reason}) = ProjectListFailed;

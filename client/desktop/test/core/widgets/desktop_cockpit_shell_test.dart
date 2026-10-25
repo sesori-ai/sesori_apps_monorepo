@@ -70,7 +70,8 @@ void main() {
       ),
     );
     refreshService = _MockRefreshService();
-    when(refreshService.refresh).thenAnswer((_) async => DesktopSidebarRefreshOutcome.succeeded);
+    when(() => refreshService.scan).thenAnswer((_) => BehaviorSubject.seeded(const CatalogRescanState.idle()));
+    when(refreshService.refresh).thenAnswer((_) async => true);
     repository = _MockRepository();
     when(repository.readSidebarLayout).thenAnswer((_) async => const DesktopSidebarLayout());
     when(() => repository.writeSidebarLayout(layout: any(named: "layout"))).thenAnswer((_) async {});
@@ -98,7 +99,7 @@ void main() {
             RepositoryProvider.value(value: _inventoryOf(recent: recent)),
             RepositoryProvider.value(value: launchService),
             BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
-            BlocProvider(create: (_) => DesktopSidebarRefreshCubit(service: refreshService)),
+            BlocProvider(create: (_) => SessionListRefreshCubit(service: refreshService)),
             BlocProvider<DesktopSidebarCubit>(create: (_) => sidebar = DesktopSidebarCubit(repository: repository)),
             BlocProvider(
               create: (_) => PendingSessionArchiveCubit(
@@ -401,14 +402,15 @@ void main() {
     expect(find.byKey(const Key("desktop-sidebar-refresh")), findsNothing);
     await tester.tap(find.text("Retry"));
     verify(projects.retryLoadProjects).called(1);
-    verifyNever(projects.refreshProjects);
   });
 
-  for (final outcome in DesktopSidebarRefreshOutcome.values) {
-    testWidgets("keyboard refresh stays busy until ${outcome.name} and retains useful rows", (tester) async {
+  for (final succeeded in [true, false]) {
+    testWidgets("keyboard refresh stays busy until it ${succeeded ? "succeeds" : "fails"} and retains useful rows", (
+      tester,
+    ) async {
       final semantics = tester.ensureSemantics();
       try {
-        final reply = Completer<DesktopSidebarRefreshOutcome>();
+        final reply = Completer<bool>();
         when(refreshService.refresh).thenAnswer((_) => reply.future);
         await tester.pumpWidget(app(state: running));
         await tester.pumpAndSettle();
@@ -426,16 +428,13 @@ void main() {
         expect(find.text("Sesori Desktop"), findsOneWidget);
         expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-settings"))).onPressed, isNotNull);
         verify(refreshService.refresh).called(1);
-        verifyNever(projects.refreshProjects);
-        reply.complete(outcome);
+        reply.complete(succeeded);
         await tester.pumpAndSettle();
         expect(tester.widget<IconButton>(refresh).onPressed, isNotNull);
         expect(find.text("Sesori Desktop"), findsOneWidget);
         expect(
           find.text(
-            outcome == DesktopSidebarRefreshOutcome.succeeded
-                ? "Projects and sessions updated"
-                : "Could not refresh projects and sessions",
+            succeeded ? "Projects and sessions updated" : "Could not refresh projects and sessions",
           ),
           findsOneWidget,
         );
@@ -2292,7 +2291,7 @@ class _MockAuthGateCubit() extends MockCubit<AuthGateState> implements AuthGateC
 void _noOp() {}
 void _openProject({required BuildContext context, required ProjectSummary project, required String displayName}) {}
 
-class _MockRefreshService() extends Mock implements DesktopSidebarRefreshService;
+class _MockRefreshService() extends Mock implements SessionListRefreshService;
 
 class _MockWindowHost() extends Mock implements WindowHost;
 
@@ -2311,4 +2310,5 @@ RecentSessionInventoryService _inventoryOf({required RecentSessionsCubit recent}
   when(() => inventory.state).thenAnswer((_) => recent.stream.shareValueSeeded(recent.state));
   return inventory;
 }
+
 class _MockRepository() extends Mock implements DesktopInstanceRepository;

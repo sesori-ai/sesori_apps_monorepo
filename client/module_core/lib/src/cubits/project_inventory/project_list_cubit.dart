@@ -19,7 +19,6 @@ class ProjectListCubit({required final ProjectInventoryService _inventoryService
   Future<void> loadProjects() => _inventoryService.loadProjects();
   Future<void> retryLoadProjects() => _inventoryService.retryLoadProjects();
   Future<void> reconnectBridge() => _inventoryService.reconnectBridge();
-  Future<bool> refreshProjects() => _inventoryService.refreshProjects();
 
   Future<bool> hideProject({required String projectId}) => _inventoryService.hideProject(projectId: projectId);
 
@@ -39,10 +38,6 @@ class ProjectListCubit({required final ProjectInventoryService _inventoryService
       _inventoryService.fetchFilesystemSuggestions(prefix: prefix);
 
   String? parentHostPath({required String path}) => _inventoryService.parentHostPath(path: path);
-
-  void startCatalogScan() => _inventoryService.startCatalogScan();
-  void cancelCatalogScan() => _inventoryService.cancelCatalogScan();
-  void dismissCatalogScan() => _inventoryService.dismissCatalogScan();
 
   void reportNeedHelpMenuOpened({required OnboardingSurface surface}) =>
       _inventoryService.reportNeedHelpMenuOpened(surface: surface);

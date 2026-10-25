@@ -20,16 +20,16 @@ class const SessionListScreen({
     );
     // The sessions route is the base of the nested pane navigator, so the
     // pane navigator can never pop it; the poppable session shell route (with
-    // /projects underneath) lives on the root navigator.
-    // ignore: no_slop_linter/avoid_navigator_of, root navigator pop is required so back exits the session shell to the projects list instead of targeting the nested pane navigator
-    final rootNavigator = Navigator.of(context, rootNavigator: true);
+    // /projects underneath) lives on the signed-in navigator around it.
+    // ignore: no_slop_linter/avoid_navigator_of, the signed-in navigator's pop is required so back exits the session shell to the projects list instead of targeting the nested pane navigator
+    final signedInNavigator = Navigator.of(context).context.findAncestorStateOfType<NavigatorState>();
 
     return SessionListScaffold(
       onOpenArchived: () =>
           context.pushRoute(AppRoute.archivedSessions(projectId: projectId, projectName: projectName)),
       projectName: projectName,
       // ignore: unnecessary_lambdas, Navigator.pop is generic and does not match VoidCallback as a tear-off
-      onBack: rootNavigator.canPop() ? () => rootNavigator.pop() : null,
+      onBack: signedInNavigator != null && signedInNavigator.canPop() ? () => signedInNavigator.pop() : null,
       onNewSession: () {
         context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName));
       },

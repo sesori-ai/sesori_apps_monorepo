@@ -1706,7 +1706,7 @@ void main() {
       await ready();
       await cubit.startCatalogScanFor(pluginId: "codex");
 
-      rescan.emit(const CatalogRescanState.partlyFailed(succeededCount: 2, failedCount: 1));
+      rescan.emit(const CatalogRescanState.partlyFailed(succeededCount: 2, failedPluginIds: {"codex"}));
       await _settle();
 
       expect(
@@ -1721,7 +1721,7 @@ void main() {
       rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
       await cubit.startCatalogScanFor(pluginId: "codex");
 
-      rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+      rescan.emit(const CatalogRescanState.failed(failedPluginIds: {"codex"}));
       await _settle();
 
       expect((cubit.state as PluginManagementReady).scanOutcome, isNull);
@@ -1783,7 +1783,7 @@ void main() {
         ..stubStartResult(
           CatalogRescanStartResult.failed(cause: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null)),
         )
-        ..stubBeforeStartAnswers(() => rescan.emit(const CatalogRescanState.failed(harnessCount: 1)));
+        ..stubBeforeStartAnswers(() => rescan.emit(const CatalogRescanState.failed(failedPluginIds: {"codex"})));
 
       await cubit.startCatalogScanFor(pluginId: "codex");
       await _settle();
@@ -1835,7 +1835,7 @@ void main() {
     test("an announced outcome is cleared so it is reported once", () async {
       await ready();
       await cubit.startCatalogScanFor(pluginId: "codex");
-      rescan.emit(const CatalogRescanState.failed(harnessCount: 1));
+      rescan.emit(const CatalogRescanState.failed(failedPluginIds: {"codex"}));
       await _settle();
 
       cubit.dismissCatalogScanOutcome();

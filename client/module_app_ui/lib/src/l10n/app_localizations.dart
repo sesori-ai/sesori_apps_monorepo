@@ -5035,6 +5035,12 @@ abstract class AppLocalizations {
   /// **'Check bridge logs'**
   String get catalogScanFailedDetail;
 
+  /// Alert title when a refresh's import failed for one or more harnesses. harnesses lists the failed harnesses' names.
+  ///
+  /// In en, this message translates to:
+  /// **'{count, plural, =1{Couldn\'t import from {harnesses}} other{Couldn\'t import from {count} harnesses: {harnesses}}}'**
+  String catalogScanImportFailedAlert(int count, String harnesses);
+
   /// Title of the scan row when the connected bridge is too old to scan harness catalogs on request.
   ///
   /// In en, this message translates to:

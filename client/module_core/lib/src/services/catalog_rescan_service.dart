@@ -133,12 +133,10 @@ class CatalogRescanService({
     }
     switch (_managementService.snapshots.valueOrNull) {
       // Without a management snapshot there are no harness ids to fan out to,
-      // so no request is made and no `404` would ever come back to reveal the
-      // missing route. `/plugin/management` is *younger* than `/plugin/import`
-      // (v1.7.0 against v1.6.0), so such a bridge may well be importing right
-      // now — which is why a live operation is left alone.
+      // so no request is made. Every refresh imports, so this settles silently
+      // and the refresh is only a reload: an older bridge has nothing to fix.
       case PluginManagementLoadResultUnsupported():
-        if (_members.isEmpty) _publish(const CatalogRescanState.unsupported());
+        return;
       case PluginManagementLoadResultSupported(:final response):
         final pluginIds = [
           for (final plugin in response.plugins)
@@ -148,11 +146,7 @@ class CatalogRescanService({
           if (_members.isEmpty) _publish(const CatalogRescanState.noHarness());
           return;
         }
-        await _start(
-          pluginIds: pluginIds,
-          coversEveryHarness: true,
-          operationBridgeId: response.bridgeId,
-        );
+        await _start(pluginIds: pluginIds, operationBridgeId: response.bridgeId);
       // No snapshot to fan out over. Reported rather than returned silently,
       // because the caller is a gesture that has already told the user a scan
       // started, and a failed snapshot keeps answering this way until it is
@@ -186,11 +180,7 @@ class CatalogRescanService({
       PluginManagementLoadResultFailure() ||
       null => null,
     };
-    final results = await _start(
-      pluginIds: [pluginId],
-      coversEveryHarness: false,
-      operationBridgeId: operationBridgeId,
-    );
+    final results = await _start(pluginIds: [pluginId], operationBridgeId: operationBridgeId);
     return results[pluginId] ?? const CatalogRescanStartResult.notImportable();
   }
 
@@ -248,7 +238,6 @@ class CatalogRescanService({
 
   Future<Map<String, CatalogRescanStartResult>> _start({
     required List<String> pluginIds,
-    required bool coversEveryHarness,
     required String? operationBridgeId,
   }) async {
     // Never begin inside a cancellation's window: its DELETEs are already
@@ -290,16 +279,10 @@ class CatalogRescanService({
     // live state before dispatch and an unsupported answer is never published
     // over a live operation.
     if (_members.isEmpty && _state.value.isLive) {
-      // "No import route" is a claim about the whole bridge, so only a fan-out
-      // that covered every harness may make it. A targeted start reports its
-      // own rejection through the returned result instead; the bridge answers
-      // 404 for an unknown *and* for a deselected plugin, so one 404 says
-      // nothing about the route.
-      final unsupported =
-          coversEveryHarness && results.isNotEmpty && results.values.every((r) => r is CatalogRescanStartUnsupported);
-      _closeOperation(
-        unsupported ? const CatalogRescanState.unsupported() : const CatalogRescanState.idle(),
-      );
+      // Every member was refused, so nothing runs. A refresh that imports
+      // settles silently into its reload; a targeted start reports its own
+      // rejection through the returned result.
+      _closeOperation(const CatalogRescanState.idle());
       return results;
     }
     _publishLive();
@@ -384,6 +367,9 @@ class CatalogRescanService({
     }
 
     final pluginId = progress.pluginId;
+    // The row and the alert name only the harness; the bridge's own message is
+    // kept here, in the local log.
+    if (progress case CatalogImportFailed(:final message)) logw("Catalog import failed for $pluginId: $message");
     if (!_members.contains(pluginId)) {
       // A rescan someone else started, seen live. Adopt it so its imported
       // sessions still reach the lists, but as an observed operation, which
@@ -520,14 +506,17 @@ class CatalogRescanService({
     }
 
     final succeeded = settledMembers.whereType<CatalogImportCompleted>().toList(growable: false);
-    final failedCount = settledMembers.length - succeeded.length;
+    final failedPluginIds = {
+      for (final progress in settledMembers)
+        if (progress is! CatalogImportCompleted) progress.pluginId,
+    };
     if (succeeded.isEmpty) {
-      _closeOperation(CatalogRescanState.failed(harnessCount: settledMembers.length));
+      _closeOperation(CatalogRescanState.failed(failedPluginIds: failedPluginIds));
       return;
     }
-    if (failedCount > 0) {
+    if (failedPluginIds.isNotEmpty) {
       _closeOperation(
-        CatalogRescanState.partlyFailed(succeededCount: succeeded.length, failedCount: failedCount),
+        CatalogRescanState.partlyFailed(succeededCount: succeeded.length, failedPluginIds: failedPluginIds),
       );
       return;
     }

@@ -99,14 +99,14 @@ List<_SessionListRow> _sessionListRows({
   return rows;
 }
 
-/// Pull-to-refresh handler shared by [SessionListScaffold] and
-/// [SessionListPanel]: re-fetches the session list and reports the outcome via
-/// a popup alert. Both hosts own their own scroll view and refresh control, so the
+/// Pull-to-refresh handler shared by every per-project session list: re-fetches
+/// the list, imports from every harness, and reports the reload's outcome via a
+/// popup alert. Each host owns its own scroll view and refresh control, so the
 /// refresh action lives here, next to the content.
 Future<void> refreshSessionList(BuildContext context) async {
   final loc = context.loc;
   final cubit = context.read<SessionListCubit>();
-  final success = await cubit.refreshSessions(waitForPrData: true);
+  final success = await cubit.refreshAndImport();
   if (!context.mounted) return;
 
   PregoPopupAlertPresenter.of(context).show(

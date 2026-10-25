@@ -71,14 +71,12 @@ void main() {
     return MultiBlocProvider(
       providers: [
         BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
-        BlocProvider(create: (_) => idleSessionLaunchCubit()),
-        RepositoryProvider(create: (_) => idleSessionLaunchService()),
       ],
       child: MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: const ProjectListScreen(),
+        home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
       ),
     );
   }
@@ -148,6 +146,7 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.text(loc.projectListRefreshSuccess), findsOneWidget);
+    expect(rescanService.startAllCalls, 1, reason: "every pull imports");
   });
 
   // A pull that fires the second stage runs no ordinary refresh at all, so it

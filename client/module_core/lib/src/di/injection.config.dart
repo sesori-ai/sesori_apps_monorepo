@@ -242,6 +242,8 @@ import 'package:sesori_dart_core/src/services/session_interaction_calculator.dar
     as _i414;
 import 'package:sesori_dart_core/src/services/session_launch_service.dart'
     as _i8;
+import 'package:sesori_dart_core/src/services/session_list_refresh_service.dart'
+    as _i478;
 import 'package:sesori_dart_core/src/services/session_list_service.dart'
     as _i763;
 import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
@@ -844,6 +846,17 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.factoryParam<
+      _i478.SessionListRefreshService,
+      _i870.ProjectInventoryService,
+      _i623.RecentSessionInventoryService
+    >(
+      (projectInventory, recentInventory) => _i478.SessionListRefreshService(
+        projectInventory: projectInventory,
+        recentInventory: recentInventory,
+        catalogRescanService: gh<_i572.CatalogRescanService>(),
+      ),
     );
     gh.factory<_i623.RecentSessionInventoryService>(
       () => _i623.RecentSessionInventoryService(

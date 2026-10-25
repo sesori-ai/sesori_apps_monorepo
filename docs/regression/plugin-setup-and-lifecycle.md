@@ -439,6 +439,9 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   differently. A scan started from a list is not announced again here, and neither is a start
   the bridge refused outright, which the harness card already reports; a run that ends without
   a terminal outcome announces nothing at all.
+- Any import that some or all harnesses failed, whichever surface started it, also raises the
+  lists' shared alert naming those harnesses by their display names; the bridge's message for
+  each is logged locally.
 
 - Mobile and desktop share a grouped overview (Needs attention, Enabled, Not installed,
   Disabled) and URL-addressable `/settings/harnesses/:pluginId` details. Registry order is

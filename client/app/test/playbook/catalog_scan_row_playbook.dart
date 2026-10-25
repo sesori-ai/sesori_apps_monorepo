@@ -347,14 +347,14 @@ const catalogScanRowScenarios = <CatalogScanRowScenario>[
     id: "partly-failed",
     name: "Partial failure",
     description: "Some harnesses completed and one could not be scanned.",
-    scan: CatalogRescanState.partlyFailed(succeededCount: 2, failedCount: 1),
+    scan: CatalogRescanState.partlyFailed(succeededCount: 2, failedPluginIds: {"codex"}),
     action: CatalogScanRowAction.dismiss,
   ),
   CatalogScanRowScenario(
     id: "failed",
     name: "All failed",
     description: "Every harness failed; the bounded copy points to the bridge log.",
-    scan: CatalogRescanState.failed(harnessCount: 2),
+    scan: CatalogRescanState.failed(failedPluginIds: {"codex", "claude"}),
     action: CatalogScanRowAction.dismiss,
   ),
   CatalogScanRowScenario(

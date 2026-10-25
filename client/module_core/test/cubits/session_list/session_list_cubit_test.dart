@@ -2514,7 +2514,7 @@ void main() {
         await cubit.stream.firstWhere((state) => state is SessionListLoaded);
 
         fakeCatalogRescanService.emit(
-          const CatalogRescanState.failed(harnessCount: 2),
+          const CatalogRescanState.failed(failedPluginIds: {"codex", "claude"}),
         );
         await Future<void>.delayed(Duration.zero);
         expect((cubit.state as SessionListLoaded).catalogScan, isA<CatalogRescanFailed>());
@@ -2727,6 +2727,18 @@ void main() {
         expect(fakeCatalogRescanService.startAllCalls, 1);
         expect(fakeCatalogRescanService.cancelCalls, 1);
         expect(fakeCatalogRescanService.dismissCalls, 1);
+      });
+
+      test("refreshAndImport reloads with PR data and starts an import", () async {
+        stubSessions();
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await cubit.stream.firstWhere((state) => state is SessionListLoaded);
+
+        expect(await cubit.refreshAndImport(), isTrue);
+
+        expect(fakeCatalogRescanService.startAllCalls, 1);
+        verify(() => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: true)).called(1);
       });
     });
   });

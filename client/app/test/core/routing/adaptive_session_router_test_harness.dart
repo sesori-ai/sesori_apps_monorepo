@@ -304,7 +304,7 @@ class AdaptiveSessionRouterTestHarness() {
       initialLocation: initialLocation,
       routes: [
         ...extraRoutes,
-        ..._buildHarnessRoutes(rootNavigatorKey: rootNavigatorKey),
+        ...buildAppRoutesForTesting(),
       ],
     );
   }
@@ -314,12 +314,6 @@ class AdaptiveSessionRouterTestHarness() {
       providers: [
         BlocProvider<ConnectionOverlayCubit>(create: (_) => StubConnectionOverlayCubit()),
         BlocProvider<ChatInputModeCubit>(create: (_) => StubChatInputModeCubit()),
-        BlocProvider(
-          create: (_) =>
-              PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
-        ),
-        BlocProvider(create: (_) => idleSessionLaunchCubit()),
-        RepositoryProvider(create: (_) => idleSessionLaunchService()),
       ],
       child: MaterialApp.router(
         routerConfig: router,
@@ -355,10 +349,6 @@ class AdaptiveSessionRouterTestHarness() {
     config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
     health: HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
   );
-}
-
-List<RouteBase> _buildHarnessRoutes({required GlobalKey<NavigatorState> rootNavigatorKey}) {
-  return buildAppRoutesForTesting(rootNavigatorKey: rootNavigatorKey);
 }
 
 Session adaptiveTestSession({

@@ -19,7 +19,10 @@ class GoRouterRouteDispatcher implements RouteDispatcher {
       // ignore: no_slop_linter/avoid_raw_go_router
       _pushRoute = ((route) => appRouter.push<void>(route)),
       _dismissPopups = (() {
-        appRouter.routerDelegate.navigatorKey.currentState?.popUntil((route) => !_isPopupRoute(route: route));
+        // Signed-in routes open their sheets on the signed-in navigator.
+        for (final navigatorKey in [appSignedInNavigatorKey, appRouter.routerDelegate.navigatorKey]) {
+          navigatorKey.currentState?.popUntil((route) => !_isPopupRoute(route: route));
+        }
       }),
       _routerReady = WidgetsBinding.instance.endOfFrame;
 

@@ -79,7 +79,7 @@ String toString() {
 
 
 class ProjectListLoaded implements ProjectListState {
-  const ProjectListLoaded({required  List<ProjectSummary> projects,  Map<String, int> runningByProjectId = const {},  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false, this.catalogScan = const CatalogRescanState.idle()}): _projects = projects,_runningByProjectId = runningByProjectId,_unseenByProjectId = unseenByProjectId;
+  const ProjectListLoaded({required  List<ProjectSummary> projects,  Map<String, int> runningByProjectId = const {},  Map<String, bool> unseenByProjectId = const {}, this.isRefreshing = false}): _projects = projects,_runningByProjectId = runningByProjectId,_unseenByProjectId = unseenByProjectId;
   
 
  final  List<ProjectSummary> _projects;
@@ -114,13 +114,6 @@ class ProjectListLoaded implements ProjectListState {
 }
 
 @JsonKey() final  bool isRefreshing;
-/// The catalog scan shown above the list, if any is worth showing.
-///
-/// Carried here beside [isRefreshing] because it is the same kind of thing:
-/// transient operation status the list renders over its content. The scan
-/// itself is owned by `CatalogRescanService`; this is only the projection
-/// the screen watches.
-@JsonKey() final  CatalogRescanState catalogScan;
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
@@ -132,18 +125,18 @@ $ProjectListLoadedCopyWith<ProjectListLoaded> get copyWith => _$ProjectListLoade
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other.projects, _projects)&&const DeepCollectionEquality().equals(other.runningByProjectId, _runningByProjectId)&&const DeepCollectionEquality().equals(other.unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing)&&(identical(other.catalogScan, catalogScan) || other.catalogScan == catalogScan));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProjectListLoaded&&const DeepCollectionEquality().equals(other.projects, _projects)&&const DeepCollectionEquality().equals(other.runningByProjectId, _runningByProjectId)&&const DeepCollectionEquality().equals(other.unseenByProjectId, _unseenByProjectId)&&(identical(other.isRefreshing, isRefreshing) || other.isRefreshing == isRefreshing));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_runningByProjectId),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing,catalogScan);
+    return Object.hash(runtimeType,const DeepCollectionEquality().hash(_projects),const DeepCollectionEquality().hash(_runningByProjectId),const DeepCollectionEquality().hash(_unseenByProjectId),isRefreshing);
 }
 
 @override
 String toString() {
-    return 'ProjectListState.loaded(projects: $projects, runningByProjectId: $runningByProjectId, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing, catalogScan: $catalogScan)';
+    return 'ProjectListState.loaded(projects: $projects, runningByProjectId: $runningByProjectId, unseenByProjectId: $unseenByProjectId, isRefreshing: $isRefreshing)';
 }
 
 
@@ -154,7 +147,7 @@ abstract mixin class $ProjectListLoadedCopyWith<$Res> implements $ProjectListSta
   factory $ProjectListLoadedCopyWith(ProjectListLoaded value, $Res Function(ProjectListLoaded) _then) = _$ProjectListLoadedCopyWithImpl;
 @useResult
 $Res call({
- List<ProjectSummary> projects, Map<String, int> runningByProjectId, Map<String, bool> unseenByProjectId, bool isRefreshing, CatalogRescanState catalogScan
+ List<ProjectSummary> projects, Map<String, int> runningByProjectId, Map<String, bool> unseenByProjectId, bool isRefreshing
 });
 
 
@@ -171,14 +164,13 @@ class _$ProjectListLoadedCopyWithImpl<$Res>
 
 /// Create a copy of ProjectListState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? runningByProjectId = null,Object? unseenByProjectId = null,Object? isRefreshing = null,Object? catalogScan = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? projects = null,Object? runningByProjectId = null,Object? unseenByProjectId = null,Object? isRefreshing = null,}) {
   return _then(ProjectListLoaded(
 projects: null == projects ? _self._projects : projects // ignore: cast_nullable_to_non_nullable
 as List<ProjectSummary>,runningByProjectId: null == runningByProjectId ? _self._runningByProjectId : runningByProjectId // ignore: cast_nullable_to_non_nullable
 as Map<String, int>,unseenByProjectId: null == unseenByProjectId ? _self._unseenByProjectId : unseenByProjectId // ignore: cast_nullable_to_non_nullable
 as Map<String, bool>,isRefreshing: null == isRefreshing ? _self.isRefreshing : isRefreshing // ignore: cast_nullable_to_non_nullable
-as bool,catalogScan: null == catalogScan ? _self.catalogScan : catalogScan // ignore: cast_nullable_to_non_nullable
-as CatalogRescanState,
+as bool,
   ));
 }
 

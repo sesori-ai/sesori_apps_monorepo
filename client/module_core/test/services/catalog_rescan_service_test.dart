@@ -3,6 +3,7 @@ import "dart:async";
 import "package:fake_async/fake_async.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_auth/sesori_auth.dart";
+import "package:sesori_dart_core/logging.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/connection_status.dart";
 import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_event.dart";
@@ -396,9 +397,11 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanPartlyFailed>()
-            .having((s) => s.succeededCount, "succeededCount", 1)
-            .having((s) => s.failedCount, "failedCount", 1),
+        isA<CatalogRescanPartlyFailed>().having((s) => s.succeededCount, "succeededCount", 1).having(
+          (s) => s.failedPluginIds,
+          "failedPluginIds",
+          {"claude"},
+        ),
       );
     });
 
@@ -409,8 +412,34 @@ void main() {
       connection.emitProgress(const CatalogImportProgress.failed(pluginId: "claude", message: "b"));
 
       final state = service.state.value;
-      expect(state, isA<CatalogRescanFailed>().having((s) => s.harnessCount, "harnessCount", 2));
+      expect(
+        state,
+        isA<CatalogRescanFailed>().having((s) => s.failedPluginIds, "failedPluginIds", {"codex", "claude"}),
+      );
       expect(state.toString(), isNot(contains("boom")));
+    });
+
+    test("logs each failed harness with the bridge's message", () async {
+      final sink = _LogSink();
+      final previousLevel = logLevel;
+      setLogLevel(LogLevel.debug);
+      setLogSink(sink: sink);
+      addTearDown(() {
+        setLogSink(sink: const StdoutLogSink());
+        setLogLevel(previousLevel);
+      });
+      await service.startAll();
+
+      connection.emitProgress(const CatalogImportProgress.failed(pluginId: "codex", message: "a"));
+      connection.emitProgress(const CatalogImportProgress.failed(pluginId: "claude", message: "b"));
+
+      expect(
+        [
+          for (final record in sink.records)
+            if (record.level == LogLevel.warning) record.message,
+        ],
+        ["Catalog import failed for codex: a", "Catalog import failed for claude: b"],
+      );
     });
 
     test("clears a success after its window but keeps a failure until dismissed", () async {
@@ -550,19 +579,21 @@ void main() {
 
       expect(
         service.state.value,
-        isA<CatalogRescanPartlyFailed>()
-            .having((s) => s.succeededCount, "succeededCount", 1)
-            .having((s) => s.failedCount, "failedCount", 1),
+        isA<CatalogRescanPartlyFailed>().having((s) => s.succeededCount, "succeededCount", 1).having(
+          (s) => s.failedPluginIds,
+          "failedPluginIds",
+          {"claude"},
+        ),
       );
     });
 
-    test("reports an unsupported bridge when every harness answers 404", () async {
+    test("settles silently when every harness answers 404", () async {
       repository.resultFor["codex"] = const CatalogImportMutationResult.notFound();
       repository.resultFor["claude"] = const CatalogImportMutationResult.notFound();
 
       await service.startAll();
 
-      expect(service.state.value, isA<CatalogRescanUnsupported>());
+      expect(service.state.value, isA<CatalogRescanIdle>());
     });
 
     test("a joining start that answers 404 leaves the live run untouched", () async {
@@ -689,12 +720,12 @@ void main() {
       expect(catalogChanges, isEmpty, reason: "a failed import did not change the catalog");
     });
 
-    test("reports an unsupported bridge from an unsupported snapshot, issuing no request", () async {
+    test("settles silently on an unsupported snapshot, issuing no request", () async {
       build(snapshot: const PluginManagementLoadResult.unsupported());
 
       await service.startAll();
 
-      expect(service.state.value, isA<CatalogRescanUnsupported>());
+      expect(service.state.value, isA<CatalogRescanIdle>(), reason: "an older bridge only reloads");
       expect(repository.startedPluginIds, isEmpty);
     });
 
@@ -1280,4 +1311,12 @@ class _FakeConnectionService({required ConnectionStatus initialStatus}) implemen
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+class _LogSink() implements LogSink {
+  final records = <LogRecord>[];
+  @override
+  void write({required LogRecord record}) => records.add(record);
+  @override
+  Future<void> flush() async {}
 }

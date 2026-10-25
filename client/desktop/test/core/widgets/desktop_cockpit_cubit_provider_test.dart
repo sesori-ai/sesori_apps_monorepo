@@ -10,7 +10,6 @@ import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
-import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;
@@ -83,17 +82,21 @@ void main() {
       unawaited(projects.listProjects());
       return inventory;
     });
-    getIt.registerFactoryParam<DesktopSidebarRefreshService, ProjectInventoryService, RecentSessionInventoryService>((
+    getIt.registerFactoryParam<SessionListRefreshService, ProjectInventoryService, RecentSessionInventoryService>((
       project,
       recent,
     ) {
       expect(project, same(projectInstances.last));
       expect(recent, same(instances.last));
       workflowCount++;
-      return DesktopSidebarRefreshService(projectInventory: project, recentInventory: recent);
+      return SessionListRefreshService(
+        projectInventory: project,
+        recentInventory: recent,
+        catalogRescanService: catalog,
+      );
     });
     addTearDown(() async {
-      await getIt.unregister<DesktopSidebarRefreshService>();
+      await getIt.unregister<SessionListRefreshService>();
       await getIt.unregister<SessionCleanupService>();
       await getIt.unregister<RegisteredBridgesService>();
       await getIt.unregister<ActiveBridgeLocality>();
@@ -110,7 +113,7 @@ void main() {
     final child = Builder(
       builder: (context) {
         context.read<ProjectListCubit>();
-        context.read<DesktopSidebarRefreshCubit>();
+        context.read<SessionListRefreshCubit>();
         return const SizedBox.shrink();
       },
     );
@@ -125,7 +128,7 @@ void main() {
     expect(context.read<ProjectInventoryService>(), same(projectInstances.single));
     final consumer = context.read<RecentSessionsCubit>();
     final projectConsumer = context.read<ProjectListCubit>();
-    final refreshConsumer = context.read<DesktopSidebarRefreshCubit>();
+    final refreshConsumer = context.read<SessionListRefreshCubit>();
     expect(workflowCount, 1);
     expect(consumer.state, same(first.state.value));
 

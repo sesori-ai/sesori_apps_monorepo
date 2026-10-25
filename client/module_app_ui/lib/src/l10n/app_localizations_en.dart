@@ -2892,6 +2892,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get catalogScanFailedDetail => 'Check bridge logs';
 
   @override
+  String catalogScanImportFailedAlert(int count, String harnesses) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: 'Couldn\'t import from $count harnesses: $harnesses',
+      one: 'Couldn\'t import from $harnesses',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get catalogScanUnsupportedTitle => 'Scanning needs a newer bridge';
 
   @override

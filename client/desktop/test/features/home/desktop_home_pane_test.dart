@@ -279,7 +279,6 @@ void main() {
     );
     await tester.tap(find.text("Retry"));
     verify(projects.retryLoadProjects).called(1);
-    verifyNever(projects.refreshProjects);
   });
 
   testWidgets("loading home is labelled and does not substitute a Flutter renderer", (tester) async {

@@ -211,9 +211,8 @@ void main() {
   testWidgets("wide macOS pane stays displaced while refresh is pending", (tester) async {
     final refreshCompleter = Completer<bool>();
     var refreshStarted = false;
-    when(
-      () => cubit.refreshSessions(waitForPrData: true),
-    ).thenAnswer((_) {
+    // The pane's pull reloads the list and imports from every harness.
+    when(cubit.refreshAndImport).thenAnswer((_) {
       refreshStarted = true;
       return refreshCompleter.future;
     });

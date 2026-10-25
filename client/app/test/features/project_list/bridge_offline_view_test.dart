@@ -109,14 +109,12 @@ void main() {
       MultiBlocProvider(
         providers: [
           BlocProvider<ConnectionOverlayCubit>.value(value: overlayCubit),
-          BlocProvider(create: (_) => idleSessionLaunchCubit()),
-          RepositoryProvider(create: (_) => idleSessionLaunchService()),
         ],
         child: MaterialApp(
           theme: ThemeData(extensions: [PregoDesignSystem.light]),
           localizationsDelegates: AppLocalizations.localizationsDelegates,
           supportedLocales: AppLocalizations.supportedLocales,
-          home: const ProjectListScreen(),
+          home: testSessionScope(sessionLaunchService: idleSessionLaunchService(), child: const ProjectListScreen()),
         ),
       ),
     );

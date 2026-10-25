@@ -885,6 +885,17 @@ class SessionListCubit({
     _ensureCatalogRefresh();
   }
 
+  /// The pull on this per-project list: its own reload plus an import.
+  ///
+  /// Transitional. This list's rows come from this cubit rather than from the
+  /// inventories `SessionListRefreshCubit` reloads, so it cannot use that
+  /// refresh; both start the same `CatalogRescanService` import. The list goes
+  /// once the all-projects list replaces it.
+  Future<bool> refreshAndImport() {
+    unawaited(_catalogRescanService.startAll());
+    return refreshSessions(waitForPrData: true);
+  }
+
   /// Starts a catalog scan across every harness this bridge can import from.
   void startCatalogScan() => unawaited(_catalogRescanService.startAll());
 
