@@ -30,7 +30,7 @@
 | 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Done | #2054 |
 | 11.iii/13 | Session list view mode removed | Done | #2058 |
 | 11.iv/13 | Project-sessions route and list-claim stack removed | Done | #2062 |
-| 12/13 | Regression documents reconciled | Not started | — |
+| 12/13 | Regression documents reconciled | In review | #2064 |
 | 13/13 | L3 matrix run; plan retired | Not started | — |
 
 ## Evidence and decisions
