@@ -12,7 +12,6 @@ class const HarnessesSettingsScreen({super.key, required final Widget child}) ex
     create: (_) => PluginManagementCubit(
       service: getIt<PluginManagementService>(),
       urlLauncher: getIt<UrlLauncher>(),
-      catalogRescanService: getIt<CatalogRescanService>(),
     ),
     child: HarnessSettingsFlowView(child: child),
   );

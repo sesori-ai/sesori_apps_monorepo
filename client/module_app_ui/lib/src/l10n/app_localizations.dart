@@ -379,7 +379,7 @@ abstract class AppLocalizations {
   /// **'Unread · {count}'**
   String sessionListFilterUnread(int count);
 
-  /// Desktop project page overflow menu action that reloads the project's session list.
+  /// Desktop project page toolbar button that reloads the project's session list and imports sessions from the harnesses.
   ///
   /// In en, this message translates to:
   /// **'Refresh sessions'**
@@ -4933,12 +4933,6 @@ abstract class AppLocalizations {
   /// **'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.'**
   String get projectsOnboardingWhyFaqReadAnswer;
 
-  /// Caption under the pull-to-refresh spinner once the pull has passed the ordinary trigger, inviting the user to keep pulling to start a full catalog scan. Names what the user gets rather than the mechanism: scanning harnesses is how it works, not what it is for.
-  ///
-  /// In en, this message translates to:
-  /// **'Keep pulling to find new sessions'**
-  String get catalogScanPullCaption;
-
   /// Ordinary title of the row above a list while a catalog scan is in flight, including the number of terminal harnesses.
   ///
   /// In en, this message translates to:
@@ -4986,12 +4980,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{harness} must finish starting before scanning can continue. You can keep browsing.'**
   String catalogScanWaitingDetail(String harness);
-
-  /// Action on the running scan row that stops the catalog scan in flight.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get catalogScanCancel;
 
   /// Title of the scan row once every harness finished scanning successfully.
   ///
@@ -5064,96 +5052,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'{count, plural, =1{Couldn\'t import from {harnesses}} other{Couldn\'t import from {count} harnesses: {harnesses}}}'**
   String catalogScanImportFailedAlert(int count, String harnesses);
-
-  /// Title of the scan row when the connected bridge is too old to scan harness catalogs on request.
-  ///
-  /// In en, this message translates to:
-  /// **'Scanning needs a newer bridge'**
-  String get catalogScanUnsupportedTitle;
-
-  /// Supporting line on the unsupported scan row, naming what would make scanning available.
-  ///
-  /// In en, this message translates to:
-  /// **'Update the bridge to scan from here'**
-  String get catalogScanUnsupportedDetail;
-
-  /// Title of the scan row when a deep pull cannot start because there is no live bridge connection.
-  ///
-  /// In en, this message translates to:
-  /// **'Bridge not connected'**
-  String get catalogScanNotConnectedTitle;
-
-  /// Supporting line on the not-connected scan row, naming what the user must do before scanning.
-  ///
-  /// In en, this message translates to:
-  /// **'Connect to a bridge to scan'**
-  String get catalogScanNotConnectedDetail;
-
-  /// Title of the scan row when the connected bridge has no harness ready to scan, or has not reported its harnesses yet.
-  ///
-  /// In en, this message translates to:
-  /// **'No harness to scan'**
-  String get catalogScanNoHarnessTitle;
-
-  /// Supporting line on the no-harness scan row, naming where the user can see and fix their harness setup.
-  ///
-  /// In en, this message translates to:
-  /// **'Check your harnesses in Settings'**
-  String get catalogScanNoHarnessDetail;
-
-  /// Popup shown on Settings to Harnesses when a scan started there finishes. The placeholder is the same result wording the lists' scan row uses, so one scan reads the same everywhere.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan complete — {result}'**
-  String harnessManagementScanFinished(String result);
-
-  /// Popup shown on Settings to Harnesses when a scan started there finished with some harnesses failing. Both counts are at least one, so the total is always plural.
-  ///
-  /// In en, this message translates to:
-  /// **'{failed} of {total} harnesses could not be scanned'**
-  String harnessManagementScanPartlyFailed(int failed, int total);
-
-  /// Popup shown on Settings to Harnesses when a scan started there failed outright. Names the bridge log because this outcome comes from the bridge's own progress events, unlike a request that never reached it.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan failed. Check the bridge log for details'**
-  String get harnessManagementScanFinishedFailed;
-
-  /// Settings action on a harness card that re-imports that one harness's catalog, the pointer-and-keyboard equivalent of the lists' deep pull.
-  ///
-  /// In en, this message translates to:
-  /// **'Scan for sessions'**
-  String get harnessManagementScan;
-
-  /// Supporting line under the per-harness scan action, saying what scanning does.
-  ///
-  /// In en, this message translates to:
-  /// **'Find sessions created or moved outside Sesori and reload their latest messages.'**
-  String get harnessManagementScanDescription;
-
-  /// Replaces the scan action's description when the bridge refused to import from this harness, usually because it is not running or its setup is incomplete.
-  ///
-  /// In en, this message translates to:
-  /// **'This harness cannot be scanned right now'**
-  String get harnessManagementScanNotReady;
-
-  /// Replaces the scan action's description when the connected bridge is too old to import catalogs on request.
-  ///
-  /// In en, this message translates to:
-  /// **'Update the bridge to scan from here'**
-  String get harnessManagementScanUnsupported;
-
-  /// Replaces the scan action's description when the request itself failed. Names no log, because the request may never have reached the bridge, and the client-side cause it is recorded against has no user-facing viewer.
-  ///
-  /// In en, this message translates to:
-  /// **'Could not start the scan. Try again in a moment'**
-  String get harnessManagementScanFailed;
-
-  /// Action on a finished scan row that clears it once the user has read the result.
-  ///
-  /// In en, this message translates to:
-  /// **'Dismiss'**
-  String get catalogScanDismiss;
 
   /// No description provided for @harnessManagementRefreshSetupDescription.
   ///

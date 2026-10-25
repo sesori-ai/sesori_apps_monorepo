@@ -8,7 +8,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
@@ -54,7 +53,6 @@ void main() {
   late StreamController<PluginAuthenticationTerminalUpdate> terminal;
   late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> browserStates;
   late PluginManagementCubit cubit;
-  late FakeCatalogRescanService scan;
   final opened = <String>[];
 
   setUpAll(() => registerFallbackValue(const PluginLifecycleCommandRequest.enable()));
@@ -65,7 +63,6 @@ void main() {
     authenticationChallenges = BehaviorSubject.seeded(const {}, sync: true);
     terminal = StreamController.broadcast();
     browserStates = BehaviorSubject.seeded(const {});
-    scan = FakeCatalogRescanService();
     when(() => service.snapshots).thenAnswer((_) => snapshots.stream);
     when(() => service.installStates).thenAnswer((_) => installs.stream);
     when(() => service.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
@@ -77,7 +74,7 @@ void main() {
         request: any(named: "request"),
       ),
     ).thenAnswer((_) async => const PluginManagementMutationResult.uncertain());
-    cubit = PluginManagementCubit(service: service, urlLauncher: _Launcher(), catalogRescanService: scan);
+    cubit = PluginManagementCubit(service: service, urlLauncher: _Launcher());
     opened.clear();
   });
   tearDown(() async {
@@ -87,7 +84,6 @@ void main() {
     await authenticationChallenges.close();
     await terminal.close();
     await browserStates.close();
-    await scan.onDispose();
   });
 
   void publish({required List<PluginManagementMetadata> plugins}) => snapshots.add(

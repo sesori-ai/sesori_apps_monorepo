@@ -57,8 +57,8 @@ state.
   `/tmp`, or `/private/tmp`, or whose first directory entry below the resolved
   user home starts with `.`, start hidden.
   Both `~/.tool` and its descendants qualify; a dot directory nested below a
-  visible home entry does not. Automatic hydration, Deep Scan/full refresh, and
-  scans from harness settings share these defaults. They still import and count
+  visible home entry does not. Automatic hydration and the import every manual
+  refresh starts share these defaults. They still import and count
   every project and session, including hidden temporary projects; rescanning an
   unchanged catalog reports nothing new. A scan never reveals a project it
   hid; deliberately selecting a folder through Add/Open Project reveals it, and
@@ -81,19 +81,14 @@ state.
   the producer omits the delta. An automatic hydration request whose completion
   marker is already current runs no import and emits no progress or completion
   line.
-- A user can start a catalog rescan from the app. The three list surfaces — the
-  project list, the full-screen session list, and the wide split-view pane —
-  offer it as a second, deeper stage of their pull, which invites itself with a
-  caption once the ordinary trigger is passed and commits at the deeper one
-  while the finger is still down. It covers every harness the bridge reports as
-  routable, which is not the same as enabled: a blocked or failed harness is
-  refused by the bridge and is left out. The harness settings surface offers the
-  same rescan for one named harness.
-- Every manual refresh also imports from every routable harness: an ordinary pull on the
-  project list or a session list, the desktop sidebar's Refresh and the desktop
-  project page's Refresh all start the same all-harness import beside their
-  reload, reported by the same scan row. Automatic reloads (reconnect, staleness,
-  committed catalog changes) never import.
+- A user rescans the catalog by refreshing. Every manual refresh also imports
+  from every routable harness: a pull on the project list, the full-screen
+  session list or the wide split-view pane, however far it travels, the desktop
+  sidebar's Refresh and the desktop project page's Refresh button all start the
+  same all-harness import beside their reload, once the pull is let go, reported
+  by the same scan row. Routable is not the same as enabled: a blocked or failed
+  harness is refused by the bridge and is left out. Automatic reloads
+  (reconnect, staleness, committed catalog changes) never import.
 - A dormant OpenCode import first attempts a direct metadata-only SQLite snapshot. A
   successful snapshot must not resolve or start an OpenCode runtime, server, health
   probe, CLI session listing, or REST API. It reads projects, project-directory
@@ -141,37 +136,32 @@ state.
   confirmed as starting for three seconds, the row explains that scanning is
   waiting for startup and that the user can keep browsing. This one-shot
   presentation timer resets on any phase or harness change and never polls or
-  changes bridge work. It offers to cancel throughout live work. Every live
+  changes bridge work. The row has no controls. Every live
   phase shares the same Deep Scan loading-card treatment, and the row scrolls
   with the list rather than pinning. The entrance animation plays once when a
   pull first reveals the row; later updates do not replay it, and the scan
   indicator keeps animating until a terminal outcome replaces it. Android
   Remove Animations and iOS Reduce Motion both hold the intentional first
-  frame without the entrance bounce, and the pull-caption invitation keeps
-  only its gentle opacity transition. Finished outcomes use the shared PREGO
+  frame without the entrance bounce. Finished outcomes use the shared PREGO
   result-card geometry, expanding rather than clipping at accessibility text
-  sizes: a success, warning, or error glow rises from the lower edge and the
-  matching tinted Dismiss action remains available until the result clears.
+  sizes: a success, warning, or error glow rises from the lower edge until the
+  result clears.
   Loading and every result state use a vertically centered 20px leading mark
   with identical edge inset and icon-to-text gap. Titles do not shift
   horizontally between states; at standard text size, icon and title
   positions stay fixed vertically too. Enlarged text may grow the card without
   changing those horizontal insets.
-- A deep pull is reported by that row alone: it raises no confirmation of its
-  own. A scan started from
-  harness settings is the exception, because that surface has no row — it
-  announces how the run ended, once, and only for a run it started itself.
-- A finished scan says what it found, sessions first, and clears itself shortly
-  after. Everything else waits to be dismissed: some harnesses failing, all of
-  them failing, a request made without a live bridge connection, and no harness
-  available to read on a connected bridge. An all-harness import on a bridge that
-  cannot import (no import route at all, or no harness list to fan out over)
-  settles silently, so the refresh is an ordinary reload there; a scan aimed at
-  one harness still reports that bridge as unsupported. A diagnostic the user did not get to
-  read is worse than a row that outstays its welcome. Losing or regaining the
-  connection clears any row, waiting or not, as does the connected bridge
-  turning out to be a different machine — none of those rows describes a run
-  this bridge is still party to.
+- A finished scan says what it found, sessions first, and clears itself about
+  four seconds later, as does one that some or all harnesses failed (the alert
+  below keeps a failure readable). The row then fades and folds away, and the
+  content below closes up smoothly instead of jumping. A refresh made without a
+  live bridge connection, with no routable harness on a connected bridge, or on
+  a bridge that cannot import (no import route at all, or no harness list to fan
+  out over) shows no row, so the refresh is an ordinary reload there; a harness
+  list that could not be read is logged locally. Losing or regaining the
+  connection clears any row, as does the connected bridge turning out to be a
+  different machine — none of those rows describes a run this bridge is still
+  party to.
 - An import that some or all harnesses failed also raises one error alert on
   every surface, naming them: "Couldn't import from Codex", or "Couldn't import
   from 2 harnesses: Codex, Claude Code". The bridge's message for each failed
@@ -307,7 +297,7 @@ state.
 - Pull-to-refresh provides visible drag and in-flight feedback in both the
   full-screen lists and the wide split-view session pane. The refresh itself is
   dispatched when the pull is let go, not when it crosses the trigger, so the
-  gesture has already chosen its stage by the time anything runs. On every
+  scan row a refresh reveals arrives after the finger lifts. On every
   platform, releasing an ordinary pull while its refresh is pending keeps the
   pane content displaced and its Cupertino indicator visible, and reports the
   outcome when it settles.
@@ -316,17 +306,6 @@ state.
   of remaining obscured. Session-list clearance grows with accessibility text
   scaling when its labelled action becomes taller. The wide split-view session
   pane has no floating action and does not reserve that clearance.
-- A pull that crossed the deeper catalog-scan threshold reports through the scan
-  row alone. On the project list it runs the same refresh as an ordinary pull;
-  on a session list it runs only the scan, which settles into a list refresh of
-  its own. It stops holding the content the moment that stage fires — including
-  the height the control reserves for its indicator, so releasing springs the
-  list to the top in one movement rather than parking it an indicator below and
-  collapsing a moment later — and shows neither indicator nor caption
-  afterwards, because the scan row is the only report from then on. A pull made
-  without a live bridge reports that connection requirement rather than claiming
-  there are no harnesses. A connected pull that finds no harness to scan reports
-  that separately. Either outcome leaves the list as it was.
 - A session created in a dedicated worktree receives a system prompt identifying
   that worktree, its initial branch, and base branch. The prompt requires all
   work to remain in that worktree, while permitting use of the initial branch,
@@ -562,9 +541,9 @@ state.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: project list and one project's session list return committed data with plugin attribution. |
-| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted ordinary projects, while preserving an existing project's stored visibility. Focused Codex rollout coverage exercises external activity (details below). Focused native, snapshot, and derived import coverage proves startup catalog hydration and rescans hide new home dot-directory and temporary projects without omitting their sessions or changing their import counts, leave ordinary and nested-dot projects visible, and preserve a folder revealed through Add/Open Project; OpenCode project-list reconciliation and active-session hydration add unknown projects visible, and the v20 migration shows hidden ordinary projects while temporary and home dot-directory ones stay hidden; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused path-label coverage grows same-named project paths until they differ and keeps a whole path's root; add-project coverage opens the added project, lists Home and Root on a POSIX host plus a POSIX bridge's volumes by name, and a Windows bridge's drives beside Home, and disables the button for the place being browsed, opens the parent from the up button, including a touch just outside its drawn 40 px inside the 44 px target, and disables it at the root, and gives the "/" segment a touch- or pointer-sized tap target, with bridge coverage listing Windows drives, filtered macOS volumes and Linux mounts, nothing on an unreadable mount table, only for the prefix-less request, and skipping a stalled probe. Bridge list coverage flags a missing folder in `GET /projects` and reads an unreadable one as present; phone row coverage shows "Folder not found" in amber ahead of running with a Remove button that hides the project, and desktop sidebar coverage shows the amber icon, its tooltip, and Remove in the menu. Focused phone search coverage filters Projects and session lists by title, narrows the chip counts, reads No matches, clears, and keeps the query visible when the field remounts. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants for this computer using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves the deeper pull starts one scan however far it travels, that a pull which fired it runs no ordinary refresh and raises no confirmation while an ordinary pull still does, that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, that terminal tones, platform corners, localized count branches, and Cancel/Dismiss semantics remain exact; that every unavailable connection state reports `Bridge not connected` without dispatch while a connection drop during management refresh cannot fall through to `No harness`; and that a scan started from harness settings is announced there while one started elsewhere is not. |
-| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok scans a persisted session into the catalog with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by the deeper pull renders its row through starting, running, and its result on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. Several computers on one account: the Projects computer menu lists each with its platform, status, and last seen time; picking another lands on its Projects root with a loading list and no projects from the previous computer, and reports one `computer_switched` event. With the picked computer offline, the offline screen names it and lists the other online computers, and tapping one switches the same way with source `offline_screen`. |
-| L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all leaves a refresh as a silent reload, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked reports that there is nothing to scan. |
+| L2 Routine | Headless bridge, representative plugin: open, rename, hide; create a session and see it listed before metadata, then observe generated title and eligible branch refinement through the existing session update without unseen change; unseen otherwise advances and clears; the existing activity marker appears in REST and live list-state projections; statuses report idle/busy. A first import reports every published row as new and lists its newly inserted ordinary projects, while preserving an existing project's stored visibility. Focused Codex rollout coverage exercises external activity (details below). Focused native, snapshot, and derived import coverage proves startup catalog hydration and rescans hide new home dot-directory and temporary projects without omitting their sessions or changing their import counts, leave ordinary and nested-dot projects visible, and preserve a folder revealed through Add/Open Project; OpenCode project-list reconciliation and active-session hydration add unknown projects visible, and the v20 migration shows hidden ordinary projects while temporary and home dot-directory ones stay hidden; a re-import of an unchanged catalog reports the same totals with a zero delta, and a completion whose delta is absent reports its totals without claiming nothing changed. An automatic hydration request with a current marker does not enumerate or publish progress. Focused client coverage holds pre-commit list reads through a completion, ignores a zero-count hydration completion, proves the post-commit snapshot wins and a second completion gets a trailing snapshot, retains a failed snapshot for the next refresh, proves an interrupted full-screen load and pull surface the winning failure while retaining session PR-data waiting, and covers a completion after immediate cancellation. Focused path-label coverage grows same-named project paths until they differ and keeps a whole path's root; add-project coverage opens the added project, lists Home and Root on a POSIX host plus a POSIX bridge's volumes by name, and a Windows bridge's drives beside Home, and disables the button for the place being browsed, opens the parent from the up button, including a touch just outside its drawn 40 px inside the 44 px target, and disables it at the root, and gives the "/" segment a touch- or pointer-sized tap target, with bridge coverage listing Windows drives, filtered macOS volumes and Linux mounts, nothing on an unreadable mount table, only for the prefix-less request, and skipping a stalled probe. Bridge list coverage flags a missing folder in `GET /projects` and reads an unreadable one as present; phone row coverage shows "Folder not found" in amber ahead of running with a Remove button that hides the project, and desktop sidebar coverage shows the amber icon, its tooltip, and Remove in the menu. Focused phone search coverage filters Projects and session lists by title, narrows the chip counts, reads No matches, clears, and keeps the query visible when the field remounts. Focused shared-presentation and shell tests cover project/session empty and row states, split-pane behavior, mobile CLI recovery, both desktop disconnected variants for this computer using supervised Start without CLI copy, and desktop list-to-detail plus child-session routing with unsupported detail controls omitted. Focused client coverage also proves a pull of any length is one refresh, dispatched once the finger lifts, that starts one scan; that the row keeps one height from starting through running to its result, that its loader and beam follow the coordinated timeline and reduced-motion rest frame, and that terminal tones, platform corners, localized count branches, and live-region semantics remain exact; that every settled result clears itself and the row then fades and folds without the content below jumping; and that every unavailable connection state and a connected bridge with no routable harness show no row and dispatch nothing. |
+| L3 Release | Client end to end (phone): every supporting production plugin still covers native/derived ownership, import, and child resolution; Pi imports configured/default/known roots with explicit names and resolvable lineage; Copilot exhausts a multi-page standard ACP catalog and exposes one newly imported session without a second manual refresh; Grok scans a persisted session into the catalog with `grok` attribution, then an unchanged re-import leaves the committed catalog intact; one representative plugin proves two running roots and two projects with running roots reorder after committed user-side activity, inactive session/project order is unchanged, a live patch reorders without another status event or project summary, and omitted ordering facts use updated-time fallbacks. Focused ACP protocol and client ordering tests prove the exact awaiting-only state is not promoted because normal production root prompts remain running while awaiting input. Lists and unseen badges render; project and session row swipes stay inert from the iOS back edge and both Android gesture-navigation edges while remaining active at unreserved edges and under Android button navigation. A catalog scan started by a pull renders its row through starting, running, its result, and its fade-out on one mobile platform and in the wide split-view pane, which drives its pull through a different scroll owner; two *routable* harnesses at once, so the fan-out has two members and a partial failure is reachable at all — enabled is not enough, since a blocked or failed harness is enabled and still left out; one native-ownership and one bridge-derived harness, which count new projects differently; and one run that genuinely imports a new session, visible in the list without a second manual refresh. Several computers on one account: the Projects computer menu lists each with its platform, status, and last seen time; picking another lands on its Projects root with a loading list and no projects from the previous computer, and reports one `computer_switched` event. With the picked computer offline, the offline screen names it and lists the other online computers, and tapping one switches the same way with source `offline_screen`. |
+| L4 Extended | Relay integration, every supporting production plugin: bridge and plugin restart preserve identity and overrides; a moved backend-native project keeps them while a moved bridge-derived project is discovered as new without mutating the old catalog; a cancelled or first-page failed import leaves the prior catalog intact; reads during import stay consistent; an unavailable plugin is reported while others keep listing. Copilot later-page failure commits gathered pages as a non-destructive fail-soft partial observation. Scanning against older and interrupted peers: a bridge that omits its new-item delta falls back to totals rather than reporting nothing new; a supported bridge with no import route at all leaves a refresh as a silent reload, and so does one that has the import route but not the management route the app needs to learn its harnesses — two different bridge versions reaching the same state by different paths; a bridge holding terminal import statuses is reconnected to without announcing a stale success; a disconnect mid-scan reconnects and settles without claiming a summary; and a bridge whose harnesses are all blocked settles a refresh as a plain reload with no row. |
 | L5 Full | Client end to end, every supporting production plugin: multiple clients observe consistent listings and unseen transitions; large catalogs and paged listings behave; unattributed payloads resolve to the historical identity. |
 
 - **L2 Codex rollout coverage:** Append native activity after a full header has
@@ -598,22 +577,22 @@ updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
 navigation, and a non-mobile platform; begin drags inside and just outside each
 10% edge buffer.
-For catalog scanning, vary automatic hydration, Deep Scan, and harness-settings
-rescans. Compare a direct home dot directory, its descendants, the host's system
+For catalog scanning, vary automatic hydration and refresh imports. Compare a direct home dot directory, its descendants, the host's system
 temporary directory, `/tmp` and `/private/tmp` projects, similarly prefixed
 ordinary paths, a dot directory nested
 below a visible home entry, and an existing project's stored visibility. Reveal
-a hidden folder through Add/Open Project and confirm rescanning preserves it. Use the mobile component playbook to compare every scan
+a hidden folder through Add/Open Project and confirm rescanning preserves it. Compare every scan
 row state and meaningful count variant in light/dark themes, iPhone/Android
-viewports, and reduced motion. Then vary the number of enabled harnesses,
+viewports, and reduced motion, and watch a settled row fade and fold away
+without the content below jumping. Then vary the number of enabled harnesses,
 whether any is blocked or failed, and which surface starts the run — each of
-the three lists and the harness settings card. Vary a first import against a
+the three lists, the desktop sidebar's Refresh, and the desktop project page's
+Refresh. Vary a first import against a
 re-import of an unchanged catalog, newly discovered versus already-hidden projects, and a bridge
-that reports its delta against one that omits it. Start the deep pull while
-fully disconnected, reconnecting, connection-lost, and bridge-offline; compare
-each with a connected bridge that has no routable harness; and drop the
-connection while its management refresh is pending. Interrupt live runs:
-cancel mid-scan, disconnect mid-scan and reconnect, and leave the surface that
+that reports its delta against one that omits it. Refresh while
+fully disconnected, reconnecting, connection-lost, and bridge-offline, and
+compare each with a connected bridge that has no routable harness. Interrupt
+live runs: disconnect mid-scan and reconnect, and leave the surface that
 started one. Restore harness eligibility afterwards.
 
 ## Failure Signals
@@ -710,21 +689,16 @@ started one. Restore harness eligibility afterwards.
 - The final row in a full-screen project or session list remains behind its
   floating creation button when scrolled to the end, or the wide pane gains an
   unnecessary matching gap.
-- A pull that started a scan comes to rest an indicator's height below the top
-  before collapsing, rather than settling to the top in one movement.
-- A scan offered for a harness the bridge will not import from, a pull
-  confirming itself beside the row reporting the same run, two rows for one
-  scan, or a row whose height changes as harnesses report.
-- A successful scan that never clears, a failure that clears itself while the
-  connection and the bridge behind it both hold steady, a row reporting totals
-  as though they were new, or a delta claimed while a harness in the run
-  omitted one.
+- Two rows for one scan, a row whose height changes as harnesses report, or a
+  scan row growing under a finger that is still pulling.
+- A settled scan that never clears, a row that vanishes or makes the content
+  below jump instead of fading and folding away, a row reporting totals as
+  though they were new, or a delta claimed while a harness in the run omitted
+  one.
 - A reconnect announcing a scan that already finished, a recovered run claiming
   a summary it never saw, or a cancelled scan leaving its row behind.
-- A refresh on a bridge that cannot import reporting a failure or an unsupported
-  row instead of settling as a plain reload, a disconnected pull falsely
-  reporting no harness, or a connected pull that finds no harness reporting
-  nothing at all.
+- A refresh on a bridge that cannot import, without a live connection, or with
+  no routable harness showing a scan row instead of settling as a plain reload.
 - A manual refresh that does not import, an automatic reload that does, a failed
   import with no alert or one alert per harness, or a route creating its own
   inventory beside the signed-in scope's.
@@ -782,7 +756,6 @@ started one. Restore harness eligibility afterwards.
   `client/desktop/lib/features/session_diffs/`,
   `client/desktop/lib/features/sessions/`,
   `client/module_app_ui/lib/src/widgets/catalog_scan_row.dart`,
-  `client/app/test/playbook/catalog_scan_row_playbook.dart`,
   `client/module_core/lib/src/services/catalog_rescan_service.dart`,
   `client/module_core/lib/src/services/project_inventory_service.dart`,
   `client/module_core/lib/src/cubits/project_inventory/project_list_cubit.dart`,
@@ -809,7 +782,6 @@ started one. Restore harness eligibility afterwards.
   `client/module_prego/test/interactions/prego_swipe_actions_test.dart`,
   `client/module_prego/test/components/prego_sliver_refresh_control_test.dart`,
   `client/module_app_ui/test/widgets/catalog_scan_row_test.dart`,
-  `client/app/test/playbook/catalog_scan_row_playbook_test.dart`,
   `client/module_app_ui/test/features/project_list/add_project_dialog_test.dart`,
   `client/module_app_ui/test/features/session_list/`,
   `client/module_core/test/utils/title_matcher_test.dart`,
