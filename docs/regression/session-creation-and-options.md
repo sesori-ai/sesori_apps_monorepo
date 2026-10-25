@@ -36,7 +36,8 @@ variant, and worktree mode, and creating the session with its first input.
   name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
   project's setup page, so a session is never created in the project that was left, and a draft stays with
   the project it was typed in; choosing the current project only closes the picker. The desktop home's
-  composer uses the same picker and keeps its draft per picked project. On the phone the header sits above the options and hides while the composer's
+  composer uses the same picker and keeps its draft per picked project. On the phone the header sits above
+   the options and hides while the composer's
   keyboard is open, so the options stay in view while typing; the picker's own keyboard leaves it in place.
 - The composer shows the agent entry only when the harness advertises more than one selectable agent.
   Claude, Codex, Copilot, Cursor and OMP advertise only their default mode as one agent, so their composer
