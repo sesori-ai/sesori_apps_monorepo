@@ -153,10 +153,6 @@ class PluginRepository({required final PluginApi _api}) {
     return _mapCatalogImportMutation(await _api.startCatalogImport(pluginId: pluginId));
   }
 
-  Future<CatalogImportMutationResult> cancelCatalogImport({required String pluginId}) async {
-    return _mapCatalogImportMutation(await _api.cancelCatalogImport(pluginId: pluginId));
-  }
-
   Future<CatalogImportStatusesResult> getCatalogImportStatuses() async {
     return switch (await _api.getCatalogImportStatuses()) {
       SuccessResponse(:final data) => CatalogImportStatusesResult.supported(statuses: data.statuses),

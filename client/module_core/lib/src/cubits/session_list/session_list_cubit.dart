@@ -896,15 +896,6 @@ class SessionListCubit({
     return refreshSessions(waitForPrData: true);
   }
 
-  /// Starts a catalog scan across every harness this bridge can import from.
-  void startCatalogScan() => unawaited(_catalogRescanService.startAll());
-
-  /// Stops the scan in flight.
-  void cancelCatalogScan() => unawaited(_catalogRescanService.cancel());
-
-  /// Clears a finished scan the user has read.
-  void dismissCatalogScan() => _catalogRescanService.dismiss();
-
   void _onCatalogScanState(CatalogRescanState scan) {
     if (isClosed) return;
     if (state case final SessionListLoaded loaded) {

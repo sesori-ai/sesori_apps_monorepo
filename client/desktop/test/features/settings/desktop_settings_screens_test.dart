@@ -35,7 +35,6 @@ class _MockBridgeSettingsService() extends Mock implements BridgeSettingsService
 class _MockConnectionService() extends Mock implements ConnectionService;
 class _MockProductAnalyticsService() extends Mock implements ProductAnalyticsService;
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
-class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
 class _MockDesktopAttentionService() extends Mock implements DesktopAttentionService;
 class _MockUrlLauncher() extends Mock implements UrlLauncher;
 class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDispatcher;
@@ -132,7 +131,6 @@ void main() {
   late BehaviorSubject<Map<String, PluginAuthenticationChallenge>> authenticationChallenges;
   late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
-  late BehaviorSubject<CatalogRescanState> catalogScanStates;
   late int logoutCompletions;
   late _MockFileAccessCubit fileAccess;
   late MockRegisteredBridgesService registeredBridges;
@@ -215,19 +213,14 @@ void main() {
     authenticationChallenges = BehaviorSubject<Map<String, PluginAuthenticationChallenge>>.seeded(const {});
     authenticationBrowserStates = BehaviorSubject<Map<String, PluginAuthenticationBrowserState>>.seeded(const {});
     authenticationTerminal = StreamController<PluginAuthenticationTerminalUpdate>.broadcast(sync: true);
-    catalogScanStates = BehaviorSubject<CatalogRescanState>.seeded(const CatalogRescanState.idle());
     pluginService = _MockPluginManagementService();
-    final catalogRescanService = _MockCatalogRescanService();
     when(() => pluginService.snapshots).thenAnswer((_) => pluginSnapshots.stream);
     when(() => pluginService.installStates).thenAnswer((_) => installStates.stream);
     when(() => pluginService.authenticationChallenges).thenAnswer((_) => authenticationChallenges.stream);
     when(() => pluginService.authenticationBrowserStates).thenAnswer((_) => authenticationBrowserStates.stream);
     when(() => pluginService.authenticationTerminal).thenAnswer((_) => authenticationTerminal.stream);
     when(pluginService.onDispose).thenAnswer((_) async {});
-    when(() => catalogRescanService.state).thenAnswer((_) => catalogScanStates.stream);
-    when(catalogRescanService.onDispose).thenAnswer((_) async {});
     getIt.registerSingleton<PluginManagementService>(pluginService);
-    getIt.registerSingleton<CatalogRescanService>(catalogRescanService);
     getIt.registerSingleton<UrlLauncher>(_MockUrlLauncher());
     registeredBridges = MockRegisteredBridgesService();
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridges);
@@ -255,7 +248,6 @@ void main() {
     await authenticationChallenges.close();
     await authenticationBrowserStates.close();
     await authenticationTerminal.close();
-    await catalogScanStates.close();
   });
 
   Future<GoRouter> open({required WidgetTester tester, required DesktopSettingsTab tab}) async {

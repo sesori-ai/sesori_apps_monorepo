@@ -145,12 +145,6 @@ class const PregoGlassScaffold({
   /// the caller-provided content down while it is pulled.
   final Future<void> Function()? onRefresh,
 
-  /// An optional second stage for [onRefresh]. Pulling past a deeper
-  /// threshold runs it **immediately**, not on release: the underlying refresh
-  /// control has no release-gated commit, so a crossed pull cannot be taken
-  /// back and the surface must offer its own cancel.
-  final PregoDeepRefresh? deepRefresh,
-
   /// Page background painted behind the glass. Defaults to `bgSurface1`.
   final Color? backgroundColor,
 
@@ -177,10 +171,6 @@ class const PregoGlassScaffold({
     : assert(
         scrollable || onRefresh == null,
         "onRefresh requires scrollable to be true (the refresh control needs a draggable page)",
-      ),
-      assert(
-        deepRefresh == null || onRefresh != null,
-        "deepRefresh is a second stage of onRefresh, so it needs one to extend",
       );
 
   @override
@@ -325,7 +315,6 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
         if (onRefresh != null)
           PregoSliverRefreshControl(
             onRefresh: onRefresh,
-            deepRefresh: widget.deepRefresh,
             onPulledExtentChanged: (extent) => _refreshPulledExtent = extent,
             decorate: (context, indicator) {
               // A non-extended body already begins below the bar, but its

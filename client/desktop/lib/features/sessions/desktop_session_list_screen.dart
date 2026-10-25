@@ -162,36 +162,12 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                     onPressed: loaded == null || _creating ? null : cubit.toggleArchived,
                   ),
                 ),
-                // A mouse has no pull gesture, so the pull's two refreshes live here.
-                PregoAnchorMenu(
-                  flat: true,
-                  menuWidth: 220,
-                  acquireOpenLease: null,
-                  entriesBuilder: () => [
-                    PregoMenuItem(
-                      title: loc.desktopProjectPageRefresh,
-                      subtitle: null,
-                      isSelected: false,
-                      shortcutLabel: null,
-                      leadingIcon: TablerRegular.refresh,
-                      isEnabled: !_refreshing,
-                      onTap: () => unawaited(_refresh()),
-                    ),
-                    PregoMenuItem(
-                      title: loc.harnessManagementScan,
-                      subtitle: null,
-                      isSelected: false,
-                      shortcutLabel: null,
-                      leadingIcon: TablerRegular.radar_2,
-                      onTap: cubit.startCatalogScan,
-                    ),
-                  ],
-                  triggerBuilder: (context, openMenu) => IconButton(
-                    key: const Key("desktop-project-page-more"),
-                    tooltip: loc.sessionDetailMoreActions,
-                    onPressed: loaded == null ? null : openMenu,
-                    icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
-                  ),
+                // A mouse has no pull gesture, so the pull's refresh lives here.
+                IconButton(
+                  key: const Key("desktop-project-page-refresh"),
+                  tooltip: loc.desktopProjectPageRefresh,
+                  onPressed: loaded == null || _refreshing ? null : () => unawaited(_refresh()),
+                  icon: const Icon(TablerRegular.refresh, size: PregoIconSize.md),
                 ),
               ],
             ),
@@ -218,16 +194,12 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                         // The desktop root owns its single connection banner.
                         banner: null,
                         pageChrome: NewSessionPageChrome(
-                          // The toolbar's Refresh and scan still report here.
+                          // The toolbar's Refresh still reports here.
                           topBar: Column(
                             mainAxisSize: MainAxisSize.min,
                             children: [
                               if (refreshing) const LinearProgressIndicator(),
-                              CatalogScanRow(
-                                scan: loaded.catalogScan,
-                                onCancel: cubit.cancelCatalogScan,
-                                onDismiss: cubit.dismissCatalogScan,
-                              ),
+                              CatalogScanRow(scan: loaded.catalogScan),
                             ],
                           ),
                           maxContentWidth: DesktopSessionListView.maxContentWidth,
@@ -253,11 +225,7 @@ class _DesktopSessionListViewState() extends State<DesktopSessionListView> {
                             slivers: [
                               if (refreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
                               SliverToBoxAdapter(
-                                child: CatalogScanRow(
-                                  scan: loaded?.catalogScan ?? const CatalogRescanState.idle(),
-                                  onCancel: cubit.cancelCatalogScan,
-                                  onDismiss: cubit.dismissCatalogScan,
-                                ),
+                                child: CatalogScanRow(scan: loaded?.catalogScan ?? const CatalogRescanState.idle()),
                               ),
                               SessionListFilteredContent(
                                 projectName: projectName,

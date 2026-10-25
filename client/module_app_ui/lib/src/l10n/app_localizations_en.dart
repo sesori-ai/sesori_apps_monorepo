@@ -2771,9 +2771,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'No. Everything between your phone and computer is end-to-end encrypted — the relay only passes along sealed data it can\'t read.';
 
   @override
-  String get catalogScanPullCaption => 'Keep pulling to find new sessions';
-
-  @override
   String catalogScanRunningTitle(int finished, int total) {
     return 'Scanning · $finished of $total finished';
   }
@@ -2818,9 +2815,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String catalogScanWaitingDetail(String harness) {
     return '$harness must finish starting before scanning can continue. You can keep browsing.';
   }
-
-  @override
-  String get catalogScanCancel => 'Cancel';
 
   @override
   String get catalogScanCompleteTitle => 'Scan complete';
@@ -2901,56 +2895,6 @@ class AppLocalizationsEn extends AppLocalizations {
     );
     return '$_temp0';
   }
-
-  @override
-  String get catalogScanUnsupportedTitle => 'Scanning needs a newer bridge';
-
-  @override
-  String get catalogScanUnsupportedDetail => 'Update the bridge to scan from here';
-
-  @override
-  String get catalogScanNotConnectedTitle => 'Bridge not connected';
-
-  @override
-  String get catalogScanNotConnectedDetail => 'Connect to a bridge to scan';
-
-  @override
-  String get catalogScanNoHarnessTitle => 'No harness to scan';
-
-  @override
-  String get catalogScanNoHarnessDetail => 'Check your harnesses in Settings';
-
-  @override
-  String harnessManagementScanFinished(String result) {
-    return 'Scan complete — $result';
-  }
-
-  @override
-  String harnessManagementScanPartlyFailed(int failed, int total) {
-    return '$failed of $total harnesses could not be scanned';
-  }
-
-  @override
-  String get harnessManagementScanFinishedFailed => 'Scan failed. Check the bridge log for details';
-
-  @override
-  String get harnessManagementScan => 'Scan for sessions';
-
-  @override
-  String get harnessManagementScanDescription =>
-      'Find sessions created or moved outside Sesori and reload their latest messages.';
-
-  @override
-  String get harnessManagementScanNotReady => 'This harness cannot be scanned right now';
-
-  @override
-  String get harnessManagementScanUnsupported => 'Update the bridge to scan from here';
-
-  @override
-  String get harnessManagementScanFailed => 'Could not start the scan. Try again in a moment';
-
-  @override
-  String get catalogScanDismiss => 'Dismiss';
 
   @override
   String get harnessManagementRefreshSetupDescription => 'Recheck installation, sign-in and runtime status.';

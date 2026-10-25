@@ -192,9 +192,7 @@ void main() {
     await pumpPage(tester: tester, filter: SessionListFilter.active);
     expect(find.byType(LinearProgressIndicator), findsNothing);
 
-    await tester.tap(find.byKey(const Key("desktop-project-page-more")));
-    await tester.pumpAndSettle();
-    await tester.tap(find.text("Refresh sessions"));
+    await tester.tap(find.byKey(const Key("desktop-project-page-refresh")));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.byType(LinearProgressIndicator), findsOneWidget);

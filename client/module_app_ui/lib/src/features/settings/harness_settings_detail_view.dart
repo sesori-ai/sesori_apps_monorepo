@@ -43,8 +43,6 @@ class const HarnessSettingsDetailView({
                 globalActionBlocked: state.globalAction.blocksControls,
                 authentication: state.authentication,
                 install: state.installs[pluginId],
-                scanning: state.scanningPluginIds.contains(pluginId),
-                scanRejection: state.scanRejections[pluginId],
               ),
             if (plugin != null)
               Padding(
@@ -123,14 +121,6 @@ class const _HarnessControlCard({
 
   /// This harness' in-flight installation or retained failure.
   required final PluginInstallState? install,
-
-  /// Whether a catalog scan covering this harness is running, started here
-  /// or from a list's pull.
-  required final bool scanning,
-
-  /// Why this harness' last targeted scan was turned down, if it was. Never
-  /// carries an accepted start.
-  required final CatalogRescanStartResult? scanRejection,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -151,17 +141,6 @@ class const _HarnessControlCard({
     // The advertised capability is authoritative; unavailable does not imply an update.
     final showInstall = _canInstall(plugin: plugin);
     final showRestart = showOperational && supportsLifecycle;
-    final showScan = plugin.runtimeState.isRoutable;
-    // A rejection replaces the row's description until the user starts another
-    // scan, so the answer to "why did nothing happen" stays on the card that
-    // was tapped. The bridge's own error text is never among these.
-    final scanRejectionText = switch (scanRejection) {
-      null || CatalogRescanStartAccepted() => null,
-      CatalogRescanStartNotImportable() => loc.harnessManagementScanNotReady,
-      CatalogRescanStartUnsupported() => loc.harnessManagementScanUnsupported,
-      CatalogRescanStartFailed() => loc.harnessManagementScanFailed,
-    };
-    final scanBridgeOutdated = scanRejection is CatalogRescanStartUnsupported;
     final showTimeout = showOperational && supportsIdleTimeout;
     final supportsAuthentication = capabilities.contains(PluginManagementCapability.authentication);
     final showAuthentication = supportsAuthentication && plugin.setup.state == PluginSetupState.authenticationRequired;
@@ -300,7 +279,7 @@ class const _HarnessControlCard({
               ],
             ),
           ),
-          if (showSetupRefresh || showRestart || showScan) ...[
+          if (showSetupRefresh || showRestart) ...[
             const SizedBox(height: PregoSpacing.xl),
             SettingsSection(
               title: loc.harnessesActionsSection,
@@ -328,32 +307,6 @@ class const _HarnessControlCard({
                       title: Text(loc.harnessManagementRestart),
                       subtitle: Text(loc.harnessManagementRestartDescription(plugin.setup.displayName)),
                       onTap: blocked ? null : () => context.read<PluginManagementCubit>().restart(pluginId: pluginId),
-                    ),
-                  // The keyboard-and-pointer twin of the lists' deep pull, which is
-                  // invisible to a screen reader and awkward with a mouse. Offered only
-                  // for a routable harness: `isEnabled` is also true for blocked and
-                  // failed, which the bridge answers with a 503.
-                  if (showScan)
-                    PregoGroupedRow(
-                      key: Key("harness_management_scan_$pluginId"),
-                      icon: TablerRegular.refresh_dot,
-                      verticalPadding: PregoSpacing.lg,
-                      title: Text(loc.harnessManagementScan),
-                      subtitle: Text(scanRejectionText ?? loc.harnessManagementScanDescription),
-                      trailing: scanning
-                          ? const PregoActivityIndicator(color: null)
-                          : scanBridgeOutdated
-                          ? const BridgeUpdateRowTrailing()
-                          : null,
-                      // Scanning again cannot help a bridge too old to scan, so
-                      // the row offers its update steps instead.
-                      // The update steps are informational, so another
-                      // harness's action does not disable them.
-                      onTap: scanBridgeOutdated
-                          ? () => unawaited(showBridgeUpdateSheet(context: context))
-                          : blocked || scanning
-                          ? null
-                          : () => context.read<PluginManagementCubit>().startCatalogScanFor(pluginId: pluginId),
                     ),
                 ],
               ),

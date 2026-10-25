@@ -86,7 +86,6 @@ dev_dependencies:
     sdk: flutter
   integration_test:
     sdk: flutter
-  widgetbook: 3.25.0
   no_slop_linter:
     path: "../../shared/no_slop_linter"
   freezed: ^4.0.1

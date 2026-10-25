@@ -242,7 +242,6 @@ void main() {
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late _MockUrlLauncher urlLauncher;
-  late FakeCatalogRescanService rescan;
 
   setUpAll(() {
     registerFallbackValue(const PluginLifecycleCommandRequest.enable());
@@ -258,7 +257,6 @@ void main() {
     await GetIt.instance.reset();
     service = _MockPluginManagementService();
     urlLauncher = _MockUrlLauncher();
-    rescan = FakeCatalogRescanService();
     snapshots = BehaviorSubject();
     installStates = BehaviorSubject.seeded(const {});
     authenticationChallenges = BehaviorSubject.seeded(const {});
@@ -345,7 +343,6 @@ void main() {
     );
     GetIt.instance.registerSingleton<PluginManagementService>(service);
     GetIt.instance.registerSingleton<UrlLauncher>(urlLauncher);
-    GetIt.instance.registerSingleton<CatalogRescanService>(rescan);
   });
 
   tearDown(() async {
@@ -2167,173 +2164,6 @@ void main() {
 
     expect(find.byType(HarnessesSettingsScreen), findsNothing);
     expect(find.text("open-harnesses"), findsOneWidget);
-  });
-
-  group("per-harness catalog scan", () {
-    Finder scanRowText(String pluginId, String text) => find.descendant(
-      of: find.byKey(Key("harness_management_scan_$pluginId")),
-      matching: find.text(text),
-    );
-
-    Future<void> openHarnesses(WidgetTester tester) async {
-      _useTallSurface(tester);
-      await tester.pumpWidget(_app());
-      snapshots.add(const PluginManagementLoadResult.supported(response: _response, refreshError: null));
-      await tester.pumpAndSettle();
-      await _showDetail(tester, "future-harness");
-    }
-
-    // The keyboard-and-pointer twin of the lists' deep pull. A screen reader
-    // cannot perform that gesture at all, so this row is not optional.
-    testWidgets("starts a scan for the harness whose row was tapped", (tester) async {
-      await openHarnesses(tester);
-
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      expect(rescan.startedPluginIds, ["future-harness"]);
-    });
-
-    // isEnabled is true for blocked and failed, which the bridge rejects with a
-    // 503, so offering the row there would be a tappable no-op.
-    testWidgets("offers no scan for a harness the bridge would refuse", (tester) async {
-      await openHarnesses(tester);
-
-      expect(find.byKey(const Key("harness_management_scan_future-harness")), findsOneWidget);
-      expect(
-        find.byKey(const Key("harness_management_scan_codex")),
-        findsNothing,
-        reason: "codex is setup-blocked, so it is not routable",
-      );
-    });
-
-    testWidgets("does not offer the scan again while one covers this harness", (tester) async {
-      await openHarnesses(tester);
-      final row = find.byKey(const Key("harness_management_scan_future-harness"));
-      await tester.ensureVisible(row);
-      rescan.emit(
-        const CatalogRescanState.preparingOne(
-          pendingPluginName: "Future Harness",
-          finishedHarnessCount: 0,
-          pluginIds: {"future-harness"},
-        ),
-      );
-      // Fixed pumps rather than settling: the row's spinner never stops.
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-
-      expect(tester.widget<PregoGroupedRow>(row).onTap, isNull);
-
-      expect(rescan.startedPluginIds, isEmpty);
-      expect(
-        find.descendant(of: row, matching: find.byType(PregoActivityIndicator)),
-        findsOneWidget,
-      );
-    });
-
-    // The fan-out skips a harness it cannot import from; a targeted scan must
-    // say so on the card the user actually tapped.
-    testWidgets("reports a targeted rejection on the harness that was named", (tester) async {
-      await openHarnesses(tester);
-      rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
-
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(scanRowText("future-harness", loc.harnessManagementScanNotReady), findsOneWidget);
-      await _showDetail(tester, "opencode");
-      expect(
-        scanRowText("opencode", loc.harnessManagementScanDescription),
-        findsOneWidget,
-        reason: "a rejection belongs to the harness that was named, not to every card",
-      );
-    });
-
-    testWidgets("says an older bridge cannot scan rather than reporting a failure", (tester) async {
-      await openHarnesses(tester);
-      rescan.stubStartResult(const CatalogRescanStartResult.unsupported());
-
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(scanRowText("future-harness", loc.harnessManagementScanUnsupported), findsOneWidget);
-    });
-
-    // The cause is kept for the local log; the card renders bounded text only.
-    testWidgets("never renders the error behind a failed start", (tester) async {
-      await openHarnesses(tester);
-      rescan.stubStartResult(
-        CatalogRescanStartResult.failed(
-          cause: ApiError.nonSuccessCode(errorCode: 500, rawErrorString: "boom /Users/someone/secret"),
-        ),
-      );
-
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(scanRowText("future-harness", loc.harnessManagementScanFailed), findsOneWidget);
-      expect(find.textContaining("boom"), findsNothing);
-      expect(find.textContaining("secret"), findsNothing);
-    });
-
-    // This screen has no progress row, so without the popup a scan started
-    // here ends in silence and its result is auto-cleared before the user
-    // could reach a list to read it.
-    testWidgets("announces what a scan started here found", (tester) async {
-      await openHarnesses(tester);
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      rescan.emit(
-        const CatalogRescanState.succeeded(
-          harnessCount: 1,
-          counts: CatalogRescanCounts.delta(newProjects: 2, newSessions: 5),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-
-      expect(find.textContaining("5 new sessions in 2 new projects"), findsOneWidget);
-    });
-
-    testWidgets("announces a failure rather than letting the spinner just stop", (tester) async {
-      await openHarnesses(tester);
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      rescan.emit(const CatalogRescanState.failed(failedPluginIds: {"codex"}));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(find.text(loc.harnessManagementScanFinishedFailed), findsOneWidget);
-    });
-
-    // The row above that list already reported it.
-    testWidgets("says nothing about a scan a list started", (tester) async {
-      await openHarnesses(tester);
-
-      rescan.emit(
-        const CatalogRescanState.succeeded(
-          harnessCount: 1,
-          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 3),
-        ),
-      );
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 400));
-
-      expect(find.textContaining("3 new sessions"), findsNothing);
-    });
-
-    testWidgets("a retry clears the rejection the previous attempt left", (tester) async {
-      await openHarnesses(tester);
-      rescan.stubStartResult(const CatalogRescanStartResult.notImportable());
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      rescan.stubStartResult(const CatalogRescanStartResult.accepted());
-      await _openRow(tester, "harness_management_scan_future-harness");
-
-      final loc = await AppLocalizations.delegate.load(const Locale("en"));
-      expect(scanRowText("future-harness", loc.harnessManagementScanNotReady), findsNothing);
-      expect(scanRowText("future-harness", loc.harnessManagementScanDescription), findsOneWidget);
-    });
   });
 }
 

@@ -442,7 +442,7 @@ void main() {
       );
     });
 
-    test("clears a success after its window but keeps a failure until dismissed", () async {
+    test("clears every settled result after its window", () async {
       fakeAsync((async) {
         // Rebuilt inside the zone: a stream listener runs in the zone that
         // called listen, so a service built in setUp would schedule real
@@ -463,10 +463,11 @@ void main() {
         connection.emitProgress(const CatalogImportProgress.failed(pluginId: "claude", message: "y"));
         expect(service.state.value, isA<CatalogRescanFailed>());
 
-        async.elapse(const Duration(seconds: 30));
-        expect(service.state.value, isA<CatalogRescanFailed>(), reason: "a failure must be read");
+        async.elapse(const Duration(seconds: 3));
+        expect(service.state.value, isA<CatalogRescanFailed>(), reason: "the row stays long enough to read");
 
-        service.dismiss();
+        // The row has no Dismiss; its alert already named the failed harnesses.
+        async.elapse(const Duration(seconds: 2));
         expect(service.state.value, isA<CatalogRescanIdle>());
       });
     });
@@ -500,7 +501,6 @@ void main() {
       connection.emitProgress(_completed("codex", newProjects: 9, newSessions: 9));
       connection.emitProgress(_completed("claude", newProjects: 9, newSessions: 9));
       expect(service.state.value, isA<CatalogRescanSucceeded>());
-      service.dismiss();
 
       await service.startAll();
 
@@ -519,18 +519,18 @@ void main() {
       );
     });
 
-    test("a targeted start joins the live operation instead of replacing it", () async {
+    test("a second refresh joins the live operation instead of replacing it", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
       await service.startAll();
       expect((service.state.value as CatalogRescanPreparingOne).pluginIds, {"codex"});
+      management.emit(_snapshot(routable: const {"codex": "Codex", "claude": "Claude"}));
 
-      final result = await service.start(pluginId: "claude");
+      await service.startAll();
 
-      expect(result, isA<CatalogRescanStartAccepted>());
       expect(
         (service.state.value as CatalogRescanPreparingOne).pluginIds,
         {"codex", "claude"},
-        reason: "codex must stay in aggregation and cancellation",
+        reason: "codex must stay in aggregation",
       );
     });
 
@@ -596,14 +596,14 @@ void main() {
       expect(service.state.value, isA<CatalogRescanIdle>());
     });
 
-    test("a joining start that answers 404 leaves the live run untouched", () async {
+    test("a joining harness that answers 404 leaves the live run untouched", () async {
       build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
       await service.startAll();
       repository.resultFor["ghost"] = const CatalogImportMutationResult.notFound();
+      management.emit(_snapshot(routable: const {"codex": "Codex", "ghost": "Ghost"}));
 
-      final result = await service.start(pluginId: "ghost");
+      await service.startAll();
 
-      expect(result, isA<CatalogRescanStartUnsupported>());
       expect(
         (service.state.value as CatalogRescanPreparingOne).pluginIds,
         {"codex"},
@@ -636,8 +636,6 @@ void main() {
       await service.startAll();
 
       expect(service.state.value.isLive, isTrue, reason: "the live run must survive");
-      service.dismiss();
-      expect(service.state.value.isLive, isTrue, reason: "a live run is not dismissible");
 
       connection.emitProgress(_completed("codex", newProjects: 3, newSessions: 3));
 
@@ -682,21 +680,6 @@ void main() {
       );
     });
 
-    test("a targeted 404 does not claim the whole bridge cannot rescan", () async {
-      // The bridge answers 404 for an unknown plugin and for a deselected one
-      // alike, so one 404 says nothing about whether the route exists.
-      repository.resultFor["codex"] = const CatalogImportMutationResult.notFound();
-
-      final result = await service.start(pluginId: "codex");
-
-      expect(result, isA<CatalogRescanStartUnsupported>(), reason: "the caller is told");
-      expect(
-        service.state.value,
-        isA<CatalogRescanIdle>(),
-        reason: "but no bridge-wide claim reaches the other surfaces",
-      );
-    });
-
     test("a start resolving after its failed run settled leaves the row alone", () async {
       final catalogChanges = <void>[];
       service.catalogChanged.listen(catalogChanges.add);
@@ -715,7 +698,7 @@ void main() {
       expect(
         service.state.value,
         isA<CatalogRescanFailed>(),
-        reason: "a diagnostic the user has not read must not erase itself",
+        reason: "a settled failure must not be erased early",
       );
       expect(catalogChanges, isEmpty, reason: "a failed import did not change the catalog");
     });
@@ -729,24 +712,49 @@ void main() {
       expect(repository.startedPluginIds, isEmpty);
     });
 
-    // The gesture that calls this has already told the user a scan started, so
-    // a fan-out with nothing to fan out to has to say so rather than return.
-    test("reports that there is no harness when the snapshot names none that is routable", () async {
+    // Every refresh calls this, and the reload reports its own outcome, so a
+    // fan-out with nothing to fan out to stays silent.
+    test("settles silently when the snapshot names no routable harness", () async {
       build(snapshot: _snapshot(routable: const {}));
 
       await service.startAll();
 
-      expect(service.state.value, isA<CatalogRescanNoHarness>());
+      expect(service.state.value, isA<CatalogRescanIdle>());
       expect(repository.startedPluginIds, isEmpty);
     });
 
-    test("reports that there is no harness while no snapshot has arrived", () async {
+    test("settles silently while no snapshot has arrived", () async {
       build(snapshot: const PluginManagementLoadResult.loading());
 
       await service.startAll();
 
-      expect(service.state.value, isA<CatalogRescanNoHarness>());
+      expect(service.state.value, isA<CatalogRescanIdle>());
+      expect(management.refreshCalls, 1, reason: "one authoritative read decides first");
       expect(repository.startedPluginIds, isEmpty);
+    });
+
+    test("logs why it skipped the import when the harness list cannot be read", () async {
+      final sink = _LogSink();
+      final previousLevel = logLevel;
+      setLogLevel(LogLevel.debug);
+      setLogSink(sink: sink);
+      addTearDown(() {
+        setLogSink(sink: const StdoutLogSink());
+        setLogLevel(previousLevel);
+      });
+      build(snapshot: PluginManagementLoadResult.failure(error: ApiError.generic()));
+
+      await service.startAll();
+
+      expect(service.state.value, isA<CatalogRescanIdle>());
+      expect(repository.startedPluginIds, isEmpty);
+      expect(
+        [
+          for (final record in sink.records)
+            if (record.level == LogLevel.warning) record.message,
+        ],
+        ["Catalog rescan skipped because the harness list could not be read"],
+      );
     });
 
     for (final (label, status) in [
@@ -755,19 +763,19 @@ void main() {
       ("connection lost", const ConnectionStatus.connectionLost(config: _config)),
       ("bridge offline", const ConnectionStatus.bridgeOffline(config: _config, health: _health)),
     ]) {
-      test("reports that a bridge connection is required while $label", () async {
+      test("settles silently while $label", () async {
         connection.emitStatus(status);
         await pumpEventQueue();
 
         await service.startAll();
 
-        expect(service.state.value, isA<CatalogRescanNotConnected>());
+        expect(service.state.value, isA<CatalogRescanIdle>());
         expect(management.refreshCalls, 0, reason: "disconnected metadata cannot identify current harnesses");
         expect(repository.startedPluginIds, isEmpty);
       });
     }
 
-    test("connection loss during management refresh does not become no harness", () async {
+    test("connection loss during management refresh issues no request", () async {
       management.emit(const PluginManagementLoadResult.loading());
       await pumpEventQueue();
       final releaseRefresh = Completer<void>();
@@ -782,7 +790,7 @@ void main() {
       releaseRefresh.complete();
       await start;
 
-      expect(service.state.value, isA<CatalogRescanNotConnected>());
+      expect(service.state.value, isA<CatalogRescanIdle>());
       expect(repository.startedPluginIds, isEmpty);
     });
 
@@ -798,37 +806,6 @@ void main() {
         isA<CatalogRescanPreparingOne>(),
         reason: "the run in flight is still the truth about what is happening",
       );
-    });
-
-    test("a targeted start on an unsupported bridge tells the caller", () async {
-      build(snapshot: const PluginManagementLoadResult.unsupported());
-
-      expect(await service.start(pluginId: "codex"), isA<CatalogRescanStartUnsupported>());
-    });
-
-    test("a targeted start reports a rejection instead of skipping it", () async {
-      repository.resultFor["codex"] = const CatalogImportMutationResult.unavailable();
-
-      expect(await service.start(pluginId: "codex"), isA<CatalogRescanStartNotImportable>());
-    });
-
-    test("a failed targeted start retains its cause for the log", () async {
-      final cause = ApiError.nonSuccessCode(errorCode: 500, rawErrorString: null);
-      repository.resultFor["codex"] = CatalogImportMutationResult.failure(error: cause);
-
-      final result = await service.start(pluginId: "codex");
-
-      expect(result, isA<CatalogRescanStartFailed>().having((r) => r.cause, "cause", cause));
-    });
-
-    test("cancel fans out one request per member, including while starting", () async {
-      await service.startAll();
-      expect(service.state.value, isA<CatalogRescanPreparingOne>());
-
-      await service.cancel();
-
-      expect(repository.cancelledPluginIds, unorderedEquals(["codex", "claude"]));
-      expect(service.state.value, isA<CatalogRescanIdle>());
     });
 
     test("adopts an unsolicited rescan and refreshes after its commit without claiming a summary", () async {
@@ -907,72 +884,6 @@ void main() {
       );
     });
 
-    test("announces a commit that arrives after an immediate cancel", () async {
-      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
-      final catalogChanges = <void>[];
-      service.catalogChanged.listen(catalogChanges.add);
-      await service.startAll();
-
-      await service.cancel();
-      expect(service.state.value, isA<CatalogRescanIdle>(), reason: "the row still closes immediately");
-
-      connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
-
-      expect(service.state.value, isA<CatalogRescanIdle>());
-      expect(catalogChanges, hasLength(1), reason: "the completed atomic commit still invalidates lists");
-    });
-
-    test("cancel waits for a start still in flight before sending its DELETE", () async {
-      final release = Completer<CatalogImportMutationResult>();
-      repository.pendingFor["codex"] = release.future;
-      final pending = service.startAll();
-
-      final cancelling = service.cancel();
-      await pumpEventQueue();
-
-      expect(
-        repository.cancelledPluginIds,
-        isEmpty,
-        reason: "a DELETE that overtakes its POST cancels nothing",
-      );
-
-      release.complete(const CatalogImportMutationResult.accepted());
-      await pending;
-      await cancelling;
-
-      expect(repository.cancelledPluginIds, contains("codex"));
-    });
-
-    test("a rescan started during a cancellation does not inherit its DELETEs", () async {
-      final release = Completer<CatalogImportMutationResult>();
-      repository.pendingFor["codex"] = release.future;
-      final firstRun = service.startAll();
-
-      final cancelling = service.cancel();
-      // The user taps rescan again while the cancellation is still waiting for
-      // the first start to come back.
-      final secondRun = service.startAll();
-      await pumpEventQueue();
-
-      expect(
-        repository.startedPluginIds.where((id) => id == "codex"),
-        hasLength(1),
-        reason: "the second start must not begin inside the cancellation window",
-      );
-
-      release.complete(const CatalogImportMutationResult.accepted());
-      await firstRun;
-      await cancelling;
-      await secondRun;
-
-      expect(repository.cancelledPluginIds, contains("codex"));
-      expect(
-        repository.startedPluginIds.where((id) => id == "codex"),
-        hasLength(2),
-        reason: "and must run once the cancellation has dispatched",
-      );
-    });
-
     test("a member restarted from outside stops the run claiming a summary", () async {
       await service.startAll();
       connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
@@ -1016,40 +927,6 @@ void main() {
         isA<CatalogRescanReading>().having((s) => s.sessionsSeen, "sessionsSeen", 6),
         reason: "the reset for the new identity must be followed by another read",
       );
-    });
-
-    test("a stale event from a cancelled run cannot reopen it", () async {
-      build(snapshot: _snapshot(routable: const {"codex": "Codex"}));
-      final release = Completer<CatalogImportMutationResult>();
-      repository.pendingFor["codex"] = release.future;
-      final firstRun = service.startAll();
-      final cancelling = service.cancel();
-
-      // A progress event from the run being cancelled arrives before the
-      // DELETE has gone out.
-      connection.emitProgress(
-        const CatalogImportProgress.enumerating(
-          pluginId: "codex",
-          projectsSeen: 1,
-          sessionsSeen: 3,
-        ),
-      );
-
-      expect(
-        service.state.value,
-        isA<CatalogRescanIdle>(),
-        reason: "a cancelled run must not reopen itself as an observed operation",
-      );
-
-      release.complete(const CatalogImportMutationResult.accepted());
-      await firstRun;
-      await cancelling;
-
-      // The next rescan must still be able to claim its own summary.
-      await service.startAll();
-      connection.emitProgress(_completed("codex", newProjects: 2, newSessions: 2));
-
-      expect(service.state.value, isA<CatalogRescanSucceeded>());
     });
 
     test("an outside cancellation closes quietly instead of showing a failure", () async {
@@ -1233,7 +1110,6 @@ class _FakePluginRepository() implements PluginRepository {
   final Map<String, CatalogImportMutationResult> resultFor = {};
   final Map<String, Future<CatalogImportMutationResult>> pendingFor = {};
   final List<String> startedPluginIds = [];
-  final List<String> cancelledPluginIds = [];
   CatalogImportStatusesResult statuses = const CatalogImportStatusesResult.supported(statuses: []);
 
   @override
@@ -1241,12 +1117,6 @@ class _FakePluginRepository() implements PluginRepository {
     startedPluginIds.add(pluginId);
     if (pendingFor.remove(pluginId) case final pending?) return await pending;
     return resultFor[pluginId] ?? const CatalogImportMutationResult.accepted();
-  }
-
-  @override
-  Future<CatalogImportMutationResult> cancelCatalogImport({required String pluginId}) async {
-    cancelledPluginIds.add(pluginId);
-    return const CatalogImportMutationResult.accepted();
   }
 
   @override
