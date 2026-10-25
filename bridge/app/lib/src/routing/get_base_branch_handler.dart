@@ -9,6 +9,7 @@ import "request_handler.dart";
 /// its configured base branch and the repository slug of its git remote.
 class GetBaseBranchHandler({required final ProjectRepository _projectRepository})
     extends BodyRequestHandler<ProjectIdRequest, BaseBranchResponse> {
+  // COMPATIBILITY 2026-10-25 (v1.9.2): Released apps read the git context here; current apps no longer call it. Remove once no supported app release calls /project/base-branch.
   this
     : super(
         HttpMethod.post,
