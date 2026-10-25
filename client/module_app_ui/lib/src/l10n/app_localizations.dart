@@ -175,18 +175,6 @@ abstract class AppLocalizations {
   /// **'Access could not be confirmed'**
   String get desktopFileAccessUnknown;
 
-  /// Desktop home section heading for sessions waiting on the user's answer.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs you'**
-  String get desktopHomeNeedsYou;
-
-  /// Desktop home section heading for the latest sessions across projects that are neither running nor waiting.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent'**
-  String get desktopHomeRecent;
-
   /// Desktop control tooltip with its available platform-specific keyboard shortcut.
   ///
   /// In en, this message translates to:
@@ -240,12 +228,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Go back'**
   String get desktopGoBack;
-
-  /// Desktop project page toolbar toggle that switches the list to the project's archived sessions.
-  ///
-  /// In en, this message translates to:
-  /// **'Archived'**
-  String get desktopProjectPageArchived;
 
   /// Session list filter chip showing every active session, with their count.
   ///
@@ -330,12 +312,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Unread · {count}'**
   String sessionListFilterUnread(int count);
-
-  /// Desktop project page toolbar button that reloads the project's session list and imports sessions from the harnesses.
-  ///
-  /// In en, this message translates to:
-  /// **'Refresh sessions'**
-  String get desktopProjectPageRefresh;
 
   /// Tooltip for explicitly refreshing both desktop sidebar inventories.
   ///

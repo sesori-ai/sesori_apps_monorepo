@@ -53,12 +53,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopFileAccessUnknown => 'Access could not be confirmed';
 
   @override
-  String get desktopHomeNeedsYou => 'Needs you';
-
-  @override
-  String get desktopHomeRecent => 'Recent';
-
-  @override
   String desktopShortcutHint(String label, String shortcut) {
     return '$label ($shortcut)';
   }
@@ -86,9 +80,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopGoBack => 'Go back';
-
-  @override
-  String get desktopProjectPageArchived => 'Archived';
 
   @override
   String sessionListFilterAll(int count) {
@@ -137,9 +128,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String sessionListFilterUnread(int count) {
     return 'Unread · $count';
   }
-
-  @override
-  String get desktopProjectPageRefresh => 'Refresh sessions';
 
   @override
   String get desktopSidebarRefresh => 'Refresh projects and sessions';

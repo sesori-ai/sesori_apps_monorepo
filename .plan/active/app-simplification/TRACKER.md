@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 11.iv/13 follows 11.iii/13.
+- Current step: 12/13 follows 11/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -28,7 +28,7 @@
 | 11.i/13 | Desktop composer home; palette on the shared list; Recent sessions removed | Done | `sesori/app-simplification-step-11-i` |
 | 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Done | `sesori/app-simplification-step-11-ii` |
 | 11.iii/13 | Session list view mode removed | Done | `sesori/app-simplification-step-11-iii` |
-| 11.iv/13 | Project-sessions route and claim stack removed | Not started | — |
+| 11.iv/13 | Project-sessions route and claim stack removed | Done | `sesori/app-simplification-step-11-iv` |
 | 12/13 | Regression documents reconciled | Not started | — |
 | 13/13 | L3 matrix run; plan retired | Not started | — |
 
@@ -77,6 +77,8 @@
   stack move to 11.iv. Besides the view mode, 11.iii removes `SessionListContent` and the git-context chain it
   alone read (`getGitContext`, `ProjectGitContext`, `RepoProvider` and the client's `getBaseBranch`). The bridge
   keeps serving `/project/base-branch` for older apps.
+- 2026-10-25: step 11.iv returns `ProjectViewingService` to one list-claim slot, because `AllSessionsCubit` is
+  now the only holder. It also drops the home-section and project-page strings that 11.i and 11.ii orphaned.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record
