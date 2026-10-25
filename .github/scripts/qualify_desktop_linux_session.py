@@ -399,6 +399,10 @@ def login(*, inputs: Path, output: Path, desktop: Desktop, architecture: str) ->
         return None
 
     pid = wait_for(description="login-launched hidden application", check=hidden_pid, timeout=180)
+    # gnome-session forks the entry in its own cgroup, then moves it into the autostart scope.
+    with suppress(TimeoutError):
+        wait_for(description="autostart scope", timeout=10,
+                 check=lambda: autostart_cgroup in Path(f"/proc/{pid}/cgroup").read_text())
     cgroup = Path(f"/proc/{pid}/cgroup").read_text()
     require(autostart_cgroup in cgroup, f"Application was not launched by session autostart: {cgroup}")
     environ = dict(line.split("=", 1) for line in Path(f"/proc/{pid}/environ").read_text().split("\0") if "=" in line)
