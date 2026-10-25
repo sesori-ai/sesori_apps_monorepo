@@ -46,9 +46,10 @@ or a qualification waiver.
 signed 167 → new signed 194 (producer `39308635308`, containing the bodyless-DELETE fix)
 on both CPUs, with cleanup and package removal passing. 11.i.c.b adds credential-free
 gates on the same pair: unavailable Secret Service, genuine GDM/SDDM login autostart and
-Debian 13 / Fedora 44 native-CPU upgrade rows. The authenticated run now gets its login
-registration from signed first-run defaults. Schema migration is not applicable
-(`schemaVersion` 1 since before public v1.9.1). Details are in [step 9](steps/step-09.md).
+Debian 13 / Fedora 44 native-CPU upgrade rows. The authenticated fixture now leaves its login
+registration to signed first-run defaults; the next main run confirms it. Schema migration
+is not applicable: the desktop persistence DB is at `schemaVersion` 1 and the bundled
+bridge DB at 20, both unchanged from public v1.9.1 through 167 and 194. Details are in [step 9](steps/step-09.md).
 The distro rows found that signed DEB/RPM packages lacked the dlopened EGL/GLES runtime,
 so the app aborted on clean Debian 13 / Fedora 44 (the public `1.9.2-1022` preview has the
 same gap). 11.i.c.b adds those dependencies. After merge, build two increasing fixed main

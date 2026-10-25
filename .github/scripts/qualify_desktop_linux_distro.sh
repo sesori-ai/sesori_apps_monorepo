@@ -73,6 +73,9 @@ as_qa() {
         setsid /usr/bin/sesori-desktop > "$log" 2>&1 & app=$!
         for _ in $(seq 120); do grep -q "Desktop startup: rendering the application" "$log" && break; sleep 0.5; done
         grep -q "Desktop startup: rendering the application" "$log"
+        # ponytail: the line precedes runApp; a missing GL runtime aborts at first frame within ~1 s,
+        # so surviving 5 s is the render check. Window capture stays in the Ubuntu desktop rows.
+        sleep 5
         kill -0 "$app"
         kill -TERM -- "-$app"
         wait "$app" || true
@@ -91,7 +94,8 @@ require_identity current
 as_qa unavailable current absent
 as_qa read current present
 remove_package
-for removed in /opt/sesori-desktop /usr/bin/sesori-desktop /usr/share/applications/sesori-desktop.desktop; do
+for removed in /opt/sesori-desktop /usr/bin/sesori-desktop /usr/share/applications/sesori-desktop.desktop \
+  /usr/share/icons/hicolor/512x512/apps/sesori-desktop.png; do
   [[ ! -e "$removed" && ! -L "$removed" ]] || { echo "Package-owned path remains: $removed" >&2; exit 1; }
 done
 pgrep -f '^/opt/sesori-desktop/' && { echo 'Sesori process remains after removal' >&2; exit 1; }

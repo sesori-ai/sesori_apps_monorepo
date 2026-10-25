@@ -163,8 +163,10 @@ helper On/Off restoration, completed temporary-bridge cleanup and
 **11.i.c.b gates.**
 
 - Source/schema migration: the 167 → 194 pair is a genuine source change, accepted
-  above. Persisted schema has no migration to prove. Drift `schemaVersion` has been 1
-  since `0818f4bfc4`, which public `v1.9.1` already contains. The desktop never runs the
+  above. Persisted schema has no migration to prove. The desktop persistence DB has been
+  at Drift `schemaVersion` 1 since `0818f4bfc4`, and the bundled bridge DB has been at 20.
+  Both are the same in public `v1.9.1`, 167 and 194, and the bridge DB's migrations are
+  covered by the bridge's own release. The desktop never runs the
   legacy native-storage importer, and no public production Linux desktop baseline
   exists. Closed with no added test.
 - Unavailable Secret Service, OS-login autostart and the Debian 13 / Fedora 44 upgrade

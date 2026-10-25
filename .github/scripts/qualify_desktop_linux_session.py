@@ -231,11 +231,11 @@ def exercise(*, inputs: Path, probes: Path, output: Path, desktop: Desktop, arch
             raise ValueError("No StatusNotifier item belongs to the application")
 
         def probe(*, label: str, phase: str):
-            report = output / f"{label}-storage.txt"
+            report = output / f"{label}-{phase}-storage.txt"
             result = run(arguments=[str(probes / label / "sesori_desktop")],
                          env={**env, "SESORI_PACKAGED_PROBE_PHASE": phase,
                               "SESORI_PACKAGED_PROBE_OUTPUT": str(report)})
-            (output / f"{label}-probe.log").write_text(result)
+            (output / f"{label}-{phase}-probe.log").write_text(result)
             require(report.read_text().startswith("PASS shared SQLite/Secret Service"), "Native storage probe failed")
 
         def start_keyring():
