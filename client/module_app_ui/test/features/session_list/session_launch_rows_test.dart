@@ -142,6 +142,7 @@ void main() {
                                 const SliverToBoxAdapter(child: Text("Computer offline")),
                             emptyState: const Text("Nothing here"),
                             header: null,
+                            endClearance: 0,
                           ),
                         ],
                       ),

@@ -151,7 +151,6 @@ void main() {
                 onNewSession: _newSession,
                 sessionActions: _sessionActions,
                 onOpenBridgeSettings: _noOp,
-                onOpenArchived: _noOp,
                 onOpenSettings: _noOp,
                 onGoBack: _noOp,
                 child: GestureDetector(
@@ -219,7 +218,6 @@ void main() {
           onNewSession: _newSession,
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
-          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: SizedBox.expand(
@@ -295,7 +293,6 @@ void main() {
           onNewSession: _newSession,
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
-          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
@@ -401,7 +398,6 @@ void main() {
           onNewSession: _newSession,
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
-          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: DesktopPageToolbar(
@@ -437,31 +433,13 @@ void main() {
     expect(restore, findsNothing);
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
-  testWidgets("the footer's Archived opens the archived page", (tester) async {
-    var opens = 0;
-    await tester.pumpWidget(
-      app(
-        state: running,
-        child: DesktopCockpitShell(
-          selectedProjectId: null,
-          selectedSessionId: null,
-          onOpenSession: _openSession,
-          onNewSession: _newSession,
-          sessionActions: _sessionActions,
-          onOpenBridgeSettings: _noOp,
-          onOpenArchived: () => opens++,
-          onOpenSettings: _noOp,
-          onGoBack: _noOp,
-          child: const SizedBox.shrink(),
-        ),
-      ),
-    );
+  testWidgets("the footer has no Archived button, which Settings holds", (tester) async {
+    await tester.pumpWidget(app(state: running));
     await tester.pumpAndSettle();
-    final archived = find.byKey(const Key("desktop-sidebar-archived"));
-    expect(find.descendant(of: find.byKey(const Key("desktop-sidebar-footer")), matching: archived), findsOneWidget);
-    expect(find.byTooltip("Archived sessions"), findsOneWidget);
-    await tester.tap(archived);
-    expect(opens, 1);
+    final footer = find.byKey(const Key("desktop-sidebar-footer"));
+    expect(find.descendant(of: footer, matching: find.byKey(const Key("desktop-sidebar-settings"))), findsOneWidget);
+    expect(find.descendant(of: footer, matching: find.byIcon(TablerRegular.archive)), findsNothing);
+    expect(find.byTooltip("Archived sessions"), findsNothing);
   });
 
   testWidgets("Bridge opens from the footer without replacing the main pane", (tester) async {
@@ -499,7 +477,6 @@ void main() {
           onNewSession: _newSession,
           sessionActions: _sessionActions,
           onOpenBridgeSettings: () => bridgeOpens++,
-          onOpenArchived: _noOp,
           onOpenSettings: () => settingsOpens++,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
@@ -835,10 +812,10 @@ void main() {
       tester.widget<Container>(footer).decoration,
       isA<BoxDecoration>().having((decoration) => decoration.border, "border", isNotNull),
     );
-    // One 44-point row under a 1-point rule: This computer, then Archived, Settings and collapse.
+    // One 44-point row under a 1-point rule: This computer, then Settings and collapse.
     expect(tester.getSize(footer).height, 45);
     final bridgeRow = tester.getCenter(find.text("This computer")).dy;
-    for (final key in ["desktop-sidebar-archived", "desktop-sidebar-settings", "desktop-sidebar-toggle"]) {
+    for (final key in ["desktop-sidebar-settings", "desktop-sidebar-toggle"]) {
       expect(tester.getCenter(find.byKey(Key(key))).dy, bridgeRow);
     }
   });
@@ -865,7 +842,6 @@ void main() {
               started.add((project.id, displayName)),
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
-          onOpenArchived: _noOp,
           onOpenSettings: _noOp,
           onGoBack: _noOp,
           child: const TextField(autofocus: true),
@@ -1164,7 +1140,6 @@ void main() {
             onNewSession: _newSession,
             sessionActions: _sessionActions,
             onOpenBridgeSettings: _noOp,
-            onOpenArchived: _noOp,
             onOpenSettings: _noOp,
             onGoBack: () => backs++,
             child: const SizedBox.expand(),

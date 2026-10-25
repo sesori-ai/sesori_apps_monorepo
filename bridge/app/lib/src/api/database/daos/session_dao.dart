@@ -374,6 +374,14 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     return {for (final row in rows) row.read(sessionTable.sessionId)!};
   }
 
+  /// The distinct stored directory of every session row, archived ones
+  /// included, exactly as stored.
+  Future<Set<String>> getAllSessionDirectories() async {
+    final query = selectOnly(sessionTable, distinct: true)..addColumns([sessionTable.directory]);
+    final rows = await query.get();
+    return {for (final row in rows) ?row.read(sessionTable.directory)};
+  }
+
   Future<Map<String, SessionDto>> upsertObservedRootSessions({
     required String pluginId,
     required List<ObservedRootSession> sessions,

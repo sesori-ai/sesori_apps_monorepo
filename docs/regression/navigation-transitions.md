@@ -35,8 +35,8 @@ desktop main-pane transitions distinct.
 - The desktop serves the same home route with its own home pane. Its
   new-session fallback, mark-unread, archive and delete exits return there, and
   a desktop session opened from a notification goes back to the home.
-- Settings, the phone's Archived and modal harness settings rise from the
-  bottom on every platform; settings child pages and archived session detail
+- Settings, the phone's Archived (opened from Settings, over it) and modal
+  harness settings rise from the bottom on every platform; settings child pages and archived session detail
   use the standard platform push.
 - Login uses its intentional fade and logo hero motion.
 - Custom login and session transitions honor reduced-motion mode without

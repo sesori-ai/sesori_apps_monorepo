@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -246,7 +247,10 @@ void main() {
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
 
@@ -618,7 +622,10 @@ void main() {
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 1),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["stored-native", "stored-derived"]);
@@ -1782,7 +1789,10 @@ void main() {
         projectsDao: db.projectsDao,
         pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
 

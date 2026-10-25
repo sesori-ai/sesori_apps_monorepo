@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
@@ -49,7 +50,10 @@ void main() {
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
       eventTracker = SessionEventTracker(maxPendingEntriesPerPlugin: 1024);

@@ -99,16 +99,25 @@ entirely along with its transcript and its dedicated worktree.
   compatibility. New clients always send `false`, and new bridges explicitly
   reject `true` before mutation so old clients cannot mistake unperformed branch
   cleanup for success.
+- A delete request with `deleteSessionFolder: true` also removes the deleted
+  session's own scratch folder, after the session rows are gone and without
+  holding the family lock. The bridge removes the folder only when it is a
+  direct child of `~/.sesori/scratch` spelled without `..`, no remaining session
+  row's directory is at or under it, and it is a real directory rather than a
+  link; the removal never follows links inside it. Any other path is kept and
+  the reason is logged, and a removal failure is logged with the path without
+  failing the delete. An omitted flag, as older apps send, keeps the folder.
+  Archiving never removes it.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions. Archived row menus omit Rename and Archive but retain
   permanent Delete and read-state actions.
 - Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
-  narrows the list to one project. The home's Archived button, in its bar or in
-  the sidebar footer from 700 pt, opens the modal under the home's filter
-  through the same filter the all-projects lists share; it adds no second
-  filter. The live
+  narrows the list to one project. Settings' Archived sessions row, after
+  Projects in the Bridge section and disabled offline, opens the modal over
+  Settings under the home's filter through the same filter the all-projects
+  lists share; it adds no second filter. The live
   list remains active-only. The modal has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
@@ -121,10 +130,11 @@ entirely along with its transcript and its dedicated worktree.
   failure alert. Archived lists never claim a viewed project. Swipe and menu
   actions run on a per-row action cubit; a deleted row leaves when the bridge's
   `session.deleted` event arrives.
-- Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the sidebar footer's
-  Archived under the sidebar's shared filter, with the archive empty state and no artwork. Its rows open the
-  ordinary session page read-only over it, Delete asks in the desktop dialog, and its close returns to the page
-  it opened over, or home when reached directly (see `desktop-cockpit-shell.md`). While the computer is disconnected it lists nothing.
+- Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the settings window's
+  Archived sessions row, which closes the window first. It uses the sidebar's shared filter, the archive empty
+  state and no artwork. Its rows open the ordinary session page read-only over it, Delete asks in the desktop
+  dialog, and its close returns to the page it opened over, or home when reached directly (see
+  `desktop-cockpit-shell.md`). While the computer is disconnected it lists nothing.
 - Archived detail (`/archived-sessions/<projectId>/<sessionId>`) is read-only
   from its first frame. In the composer's place it
   shows what the newest agent reply ran with as read-only pills (see
@@ -189,7 +199,7 @@ restart before explicit re-import.
 
 - Mobile mixes active rows into archives, shows a new-session floating button in
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
-- The home's Archived button ignores the home's filter, filtered rows
+- Settings' Archived sessions row ignores the home's filter, filtered rows
   repeat the project name, an unfiltered row omits it, or a newly archived
   session is missing until a manual refresh.
 - Archived says “No archived sessions” while the project list is loading, has
@@ -209,6 +219,10 @@ restart before explicit re-import.
   retains live prompt defaults.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
+- Folder removal deletes anything outside a direct child of the scratch root,
+  the scratch root itself, a folder another session still runs in or under, a
+  link or its target, or a folder the request did not ask to remove; or
+  archiving removes a scratch folder.
 - Any archive or delete surface offers to keep the worktree, or a refusal modal
   presents a third way out beyond Cancel and the destructive force.
 - A shared-worktree-only refusal reaches the user as a question, or a refusal that
@@ -282,5 +296,7 @@ delete and read state from a row, detail and unwinding, the offline page), share
 `all_sessions_cubit_test`, desktop `desktop_session_detail_screen_test`, shared
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
-confirmations, the forced refusal and the kept-worktree notice; and
-`session_cleanup_service_test`, the one owner of the shared-worktree retry.
+confirmations, the forced refusal and the kept-worktree notice;
+`session_cleanup_service_test`, the one owner of the shared-worktree retry; and
+bridge `scratch_repository_test` plus the scratch-folder cases in
+`delete_session_handler_test` and `update_session_archive_status_handler_test`.

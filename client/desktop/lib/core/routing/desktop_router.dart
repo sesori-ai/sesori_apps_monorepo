@@ -81,11 +81,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               route: AppRoute.newSession(projectId: project.id, projectName: displayName),
             ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
-            // Pushed over the page it opened from, which its close returns to.
-            onOpenArchived: () {
-              if (state.uri.path == AppRouteDef.archivedSessions.path) return;
-              _pushRoute(context: context, route: const AppRoute.archivedSessions());
-            },
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
             onGoBack: () => _goBack(context: context),
             child: Builder(
@@ -119,7 +114,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           ),
           onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
           onManageComputers: () => unawaited(
-            showDesktopComputersSettings(context: context, onLogoutCompleted: _goDesktopHome),
+            showDesktopComputersSettings(
+              context: context,
+              onOpenArchived: _archivedOpener(context: context),
+              onLogoutCompleted: _goDesktopHome,
+            ),
           ),
         ),
       ),
@@ -331,9 +330,26 @@ void _openSettings({required BuildContext context, required DesktopSettingsTab i
     showDesktopSettingsModal(
       context: context,
       initialTab: initialTab,
+      onOpenArchived: _archivedOpener(context: context),
       onLogoutCompleted: _goDesktopHome,
     ),
   );
+}
+
+/// Settings' Archived row, bound to the router of the page Settings opened over.
+VoidCallback _archivedOpener({required BuildContext context}) {
+  // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
+  final router = GoRouter.of(context);
+  return () => openDesktopArchived(router: router);
+}
+
+/// Pushes Archived over the current page, which its close returns to. Already
+/// on Archived, it keeps the one page.
+@visibleForTesting
+void openDesktopArchived({required GoRouter router}) {
+  if (router.state.uri.path == AppRouteDef.archivedSessions.path) return;
+  // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
+  unawaited(router.push<void>(const AppRoute.archivedSessions().buildPath()));
 }
 
 void _closeDeletedSessionRoute({required BuildContext context, required String sessionId}) {

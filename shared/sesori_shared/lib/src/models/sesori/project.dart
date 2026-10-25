@@ -1,6 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../../voice/project_glossary_key.dart";
+import "project_kind.dart";
 
 part "project.freezed.dart";
 
@@ -28,6 +29,8 @@ sealed class ProjectSummary with _$ProjectSummary {
     // Whether the project's folder no longer exists at [path]; see [Project.directoryMissing].
     // COMPATIBILITY 2026-09-24 (v1.9.1): Old bridges omit directory-missing state on project lists, so their projects read as present. Require the field once those bridges are unsupported.
     @Default(false) bool directoryMissing,
+    // COMPATIBILITY 2026-10-25 (v1.9.2): Older bridges omit kind, and every project they list is a folder. Require the field once those bridges are unsupported.
+    @JsonKey(unknownEnumValue: ProjectKind.folder) @Default(ProjectKind.folder) ProjectKind kind,
   }) = _ProjectSummary;
 
   // COMPATIBILITY 2026-07-10 (v1.5.0): Old bridges omit path and use the directory as id. Pass the payload directly once those bridges are unsupported.

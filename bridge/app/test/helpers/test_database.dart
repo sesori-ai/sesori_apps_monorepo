@@ -43,3 +43,36 @@ Future<void> insertTestSession({
     preservePullRequestScope: false,
   );
 }
+
+/// Inserts an in-place session row of [projectId] whose stored directory is
+/// [directory], the way a scratch session's own folder is stored.
+Future<void> insertTestSessionInDirectory({
+  required AppDatabase db,
+  required String sessionId,
+  required String projectId,
+  required String directory,
+}) async {
+  await insertTestSession(
+    db: db,
+    sessionId: sessionId,
+    backendSessionId: sessionId,
+    pluginId: "fake",
+    projectId: projectId,
+    isDedicated: false,
+    createdAt: 1,
+    worktreePath: null,
+    branchName: null,
+    baseBranch: null,
+    baseCommit: null,
+    agent: null,
+    agentModel: null,
+  );
+  await db.sessionDao.updateObservedSessionProjection(
+    sessionId: sessionId,
+    directory: directory,
+    catalogTitle: null,
+    updateCatalogTitle: false,
+    updatedAt: 1,
+    projectionUpdatedAt: 1,
+  );
+}

@@ -1,5 +1,9 @@
+import "dart:async";
+
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "../repositories/scratch_repository.dart";
+import "../repositories/session_repository.dart";
 import "chat_history_service.dart";
 import "session_cleanup_result.dart";
 import "session_lifecycle_service.dart";
@@ -10,11 +14,13 @@ class SessionDeletionService({
   required final SessionLifecycleService _sessionLifecycleService,
   required final SessionMutationDispatcher _sessionMutationDispatcher,
   required final ChatHistoryService _chatHistoryService,
+  required final ScratchRepository _scratchRepository,
 }) {
   Future<CleanupResult> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
     required bool force,
+    required bool deleteSessionFolder,
   }) {
     // The two stores are coordinated here rather than inside
     // SessionRepository, which owns no history dependency.
@@ -25,7 +31,14 @@ class SessionDeletionService({
         deleteWorktree: deleteWorktree,
         force: force,
       ),
-      onDeleted: _purgeHistory,
+      onDeleted: (deleted) async {
+        await _purgeHistory(deleted.sessionIds);
+        if (deleteSessionFolder) {
+          // Not awaited: the family lock must not be held while a large
+          // folder is removed.
+          unawaited(_deleteSessionFolder(deleted: deleted));
+        }
+      },
     );
   }
 
@@ -43,6 +56,17 @@ class SessionDeletionService({
         error,
         stackTrace,
       );
+    }
+  }
+
+  /// Best-effort: the session is already gone, so a failure leaves only its
+  /// folder on disk.
+  Future<void> _deleteSessionFolder({required DeletedSessionSubtree deleted}) async {
+    final directory = deleted.session.directory;
+    try {
+      await _scratchRepository.deleteSessionDirectoryIfUnused(path: directory);
+    } on Object catch (error, stackTrace) {
+      Log.w("Failed to delete the folder $directory of deleted session ${deleted.session.id}", error, stackTrace);
     }
   }
 }

@@ -64,7 +64,6 @@ class const DesktopCockpitShell({
   required final ProjectOpenedCallback onNewSession,
   required final SessionListActionDispatcher sessionActions,
   required final VoidCallback onOpenBridgeSettings,
-  required final VoidCallback onOpenArchived,
   required final VoidCallback onOpenSettings,
 
   /// Closes what the page has open, such as its Prompts screen, else leaves a
@@ -195,7 +194,6 @@ class const DesktopCockpitShell({
                 sessionActions: sessionActions,
                 onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                 onOpenBridgeSettings: onOpenBridgeSettings,
-                onOpenArchived: onOpenArchived,
                 onOpenSettings: onOpenSettings,
               ),
             ),

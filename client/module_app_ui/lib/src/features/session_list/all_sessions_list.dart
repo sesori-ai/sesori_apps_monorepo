@@ -62,6 +62,10 @@ class const AllSessionsList({
   /// Heads the list under its search field, such as the sidebar's project
   /// switcher (D4), whether or not there are sessions.
   required final Widget? header,
+
+  /// Extra room under the last row, for a button floating over the list's
+  /// end, such as the phone home's New session.
+  required final double endClearance,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => switch (context.watch<ProjectListCubit>().state) {
@@ -132,8 +136,8 @@ class const _Sessions({
     final state = context.watch<AllSessionsCubit>().state;
     final now = DateTime.now();
     // The list's bottom breathing room collapses with its last row, which
-    // rests above the home indicator.
-    final endPadding = 8 + MediaQuery.paddingOf(context).bottom;
+    // rests above the home indicator and anything floating there.
+    final endPadding = 8 + MediaQuery.paddingOf(context).bottom + list.endClearance;
     final searching = state.query.trim().isNotEmpty;
     // A launching row has no title to match, and is neither running nor
     // unread yet, so a search or a chip hides it.

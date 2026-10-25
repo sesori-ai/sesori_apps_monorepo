@@ -136,7 +136,10 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
         projectsDao: database.projectsDao,
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       sessionRepository = SessionRepository(
         runtime: runtime,
@@ -144,7 +147,10 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
         projectsDao: database.projectsDao,
         pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
         aggregateSourceDeadline: const Duration(seconds: 5),
       );
       final projectRepository = ProjectRepository(
@@ -157,7 +163,10 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           processRunner: ProcessRunner(),
           gitPathExists: ({required String gitPath}) => false,
         ),
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final eventTracker = SessionEventTracker(
         maxPendingEntriesPerPlugin: SessionEventTracker.defaultMaxPendingEntries,
