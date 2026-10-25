@@ -13,30 +13,30 @@ enum DesktopExitIntent() {
 
 /// Layer-4 owner of the work that runs before the desktop exits.
 ///
-/// Stops the helper, then runs the install kind's update step for a restart to
-/// update. When either fails, a helper that was on is restored and the failure
-/// is rethrown, so the app keeps running as before.
+/// A restart to update first runs the install kind's update step, which starts
+/// the new desktop waiting for this one to exit. A failed update step therefore
+/// leaves the running helper untouched; once a package upgrade replaced the
+/// bundle, this process could not start its helper again. The helper is stopped
+/// last; when that fails, a helper that was on is restored. Failures are
+/// rethrown, so the app keeps running.
 @lazySingleton
 class DesktopExitOrchestrator({
   required final BridgeProcessService _processService,
   required final DesktopUpdateService _updateService,
 }) {
   Future<void> prepareExit({required DesktopExitIntent intent}) async {
+    if (intent == DesktopExitIntent.restartToUpdate) {
+      await _updateService.prepareRestartToUpdate();
+    }
     final bool helperWasOn = _processService.desiredState == BridgeProcessDesiredState.on;
     try {
       await _processService.stop();
-      switch (intent) {
-        case DesktopExitIntent.quit:
-          break;
-        case DesktopExitIntent.restartToUpdate:
-          await _updateService.prepareRestartToUpdate();
-      }
     } on Object {
       if (helperWasOn) {
         try {
           await _processService.start();
         } on Object catch (error, stackTrace) {
-          logw("Failed to restart the desktop bridge after preparing the ${intent.name} failed", error, stackTrace);
+          logw("Failed to restore the desktop bridge after its stop failed", error, stackTrace);
         }
       }
       rethrow;

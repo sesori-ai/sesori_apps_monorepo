@@ -87,7 +87,7 @@ class DesktopUpdateService._create({
     _checkTimer = Timer.periodic(checkInterval, (_) => check());
   }
 
-  /// Runs the install kind's restart-to-update step once the helper stopped.
+  /// Runs the install kind's restart-to-update step before the helper stops.
   Future<void> prepareRestartToUpdate() => switch (_updateRepository.installKind) {
     DesktopInstallKind.linuxPackage => _updateRepository.relaunchInstalledPackage(),
     // Their engines arrive in later steps; until then they are never Ready.

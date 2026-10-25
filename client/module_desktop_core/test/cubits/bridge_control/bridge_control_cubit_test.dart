@@ -729,7 +729,7 @@ void main() {
       );
     });
 
-    test("tray Restart to Update relaunches the package only after the helper stopped", () async {
+    test("tray Restart to Update relaunches the package before stopping the helper, then exits", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
@@ -741,8 +741,9 @@ void main() {
 
       systemTray.emit(command: SystemTrayCommand.restartToUpdate);
       await pumpEventQueue(times: 2);
+      expect(relaunchApi.relaunches, 1);
       expect(processService.stopCalls, 1);
-      expect(relaunchApi.relaunches, 0);
+      expect(applicationTerminator.exitCodes, isEmpty);
 
       processService.stopGate!.complete();
       await pumpEventQueue(times: 3);
@@ -752,7 +753,7 @@ void main() {
       expect(applicationTerminator.exitCodes, <int>[0]);
     });
 
-    test("a failed relaunch keeps the app running with its helper restored", () async {
+    test("a failed relaunch keeps the app running with its helper untouched", () async {
       processService.emit(
         state: const BridgeProcessRunning(pid: 42),
         desiredState: BridgeProcessDesiredState.on,
@@ -764,7 +765,8 @@ void main() {
 
       await cubit.restartToUpdate();
 
-      expect(processService.startCalls, 1);
+      expect(processService.stopCalls, 0);
+      expect(processService.startCalls, 0);
       expect(applicationTerminator.exitCodes, isEmpty);
       expect(systemTray.disposeCalls, 0);
       expect(cubit.state.activity, BridgeControlActivity.idle);

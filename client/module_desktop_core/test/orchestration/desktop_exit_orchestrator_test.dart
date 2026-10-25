@@ -25,29 +25,19 @@ void main() {
     verifyNever(() => updateService.prepareRestartToUpdate());
   });
 
-  test("restart to update runs the update step after the helper stopped", () async {
+  test("restart to update starts the new desktop before stopping the helper", () async {
     await orchestrator.prepareExit(intent: DesktopExitIntent.restartToUpdate);
-    verifyInOrder([() => processService.stop(), () => updateService.prepareRestartToUpdate()]);
+    verifyInOrder([() => updateService.prepareRestartToUpdate(), () => processService.stop()]);
     verifyNever(() => processService.start());
   });
 
-  test("a failed update step restores a helper that was on and reports the failure", () async {
+  test("a failed update step leaves the running helper untouched and reports the failure", () async {
     when(() => updateService.prepareRestartToUpdate()).thenThrow(const ProcessException("sesori-desktop", []));
     await expectLater(
       orchestrator.prepareExit(intent: DesktopExitIntent.restartToUpdate),
       throwsA(isA<ProcessException>()),
     );
-    verifyInOrder([
-      () => processService.stop(),
-      () => updateService.prepareRestartToUpdate(),
-      () => processService.start(),
-    ]);
-  });
-
-  test("a failed update step leaves a helper that was off stopped", () async {
-    when(() => processService.desiredState).thenReturn(BridgeProcessDesiredState.off);
-    when(() => updateService.prepareRestartToUpdate()).thenThrow(const ProcessException("sesori-desktop", []));
-    await expectLater(orchestrator.prepareExit(intent: DesktopExitIntent.restartToUpdate), throwsA(anything));
+    verifyNever(() => processService.stop());
     verifyNever(() => processService.start());
   });
 
@@ -56,6 +46,13 @@ void main() {
     await expectLater(orchestrator.prepareExit(intent: DesktopExitIntent.quit), throwsA(isA<StateError>()));
     verifyNever(() => updateService.prepareRestartToUpdate());
     verify(() => processService.start()).called(1);
+  });
+
+  test("a failed stop leaves a helper that was off stopped", () async {
+    when(() => processService.desiredState).thenReturn(BridgeProcessDesiredState.off);
+    when(() => processService.stop()).thenThrow(StateError("stop failed"));
+    await expectLater(orchestrator.prepareExit(intent: DesktopExitIntent.quit), throwsA(isA<StateError>()));
+    verifyNever(() => processService.start());
   });
 }
 

@@ -22,9 +22,10 @@ class DesktopInstanceService._create({required final DesktopInstanceRepository _
   Future<void> _pendingDesiredStateWrite = Future<void>.value();
   int _restoreGeneration = 0;
 
-  /// A relaunch after an update waits up to 15 s for the exiting desktop to
-  /// release the lock; its teardown flushes logs for up to two seconds.
-  static const int afterUpdateLockAttempts = 60;
+  /// A relaunch after an update waits up to 90 s for the exiting desktop to
+  /// release the lock. It starts before the helper stops, which can take the
+  /// helper's 60 s graceful and 5 s forced timeouts, then teardown flushes logs.
+  static const int afterUpdateLockAttempts = 360;
   static const Duration afterUpdateLockRetryDelay = Duration(milliseconds: 250);
 
   Stream<void> get focusRequests => _repository.focusRequests;
