@@ -287,6 +287,7 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertIn("-root-owned", commands[0])
         self.assertTrue(all(command[1:3] == ["-offset", str(len(runtime))] for command in commands[1:]))
         self.assertEqual(evidence["runtime"]["sha256"], digest)
+        self.assertIn("FUSE", evidence["hostRequirements"])
 
     def test_appimage_runtime_digest_mismatch_refuses(self):
         response = mock.MagicMock()

@@ -136,10 +136,11 @@ RPMs have native signatures; DEBs are covered by signed checksums. Package fixtu
 cover Ubuntu 24.04, Debian 13 and Fedora 44, not GUI/login/keyring/tray behavior or a
 real N→N+1 upgrade. Those gaps are accepted only for internal previews.
 
-Each Linux producer also signs a portable `Sesori-linux-<arch>-<version>-<build>.AppImage`,
-covered by the same signed checksums. It needs host GTK 3, libsecret, EGL/GLES and glibc 2.39
-or newer, plus FUSE or `--appimage-extract-and-run`. Mark it executable and run it; replace
-it by downloading the new image after quitting Sesori. Its app destination is
+Each Linux producer also emits a portable `Sesori-linux-<arch>-<version>-<build>.AppImage`;
+the image itself is unsigned and its checksum is in the signed checksums. It needs host GTK 3,
+libsecret, EGL/GLES, glibc 2.39 or newer and FUSE. Mark it executable and run it. To update,
+quit Sesori and replace the image at the same path and file name, so launch at login keeps
+working. Its app destination is
 `<channel>-linux-<x64|arm64>-appimage`; the website adds those anchors before AppImages are
 offered.
 
@@ -147,7 +148,7 @@ Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to
 unchanged `linux-package-managers` app destination. Each available row links the
 experimental limitations note; direct links must not bypass disclosure.
 
-Linux previews require manually downloading, verifying and installing each package;
+DEB/RPM previews require manually downloading, verifying and installing each package;
 they do not configure automatic repository updates or establish N→N+1 safety.
 Replacement remains package-manager-owned, not app-managed. Quit Sesori first;
 never treat shared CLI credentials, databases, runtimes or projects as update cleanup.

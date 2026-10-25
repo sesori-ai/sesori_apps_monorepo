@@ -89,7 +89,7 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                       DesktopReleaseChannel.defineName,
                       defaultValue: "stable",
                     ),
-                    isAppImage: Platform.environment.containsKey("APPIMAGE"),
+                    isAppImage: Platform.isLinux && (Platform.environment["APPIMAGE"]?.isNotEmpty ?? false),
                   ),
                 ),
                 SettingsAppInfo(

@@ -61,7 +61,7 @@ def verify_release(*, root: Path, channel: Channel, fingerprint: str) -> dict:
             verify_checksums(packages=packages, fingerprint=fingerprint)
             checksums = dict((name, digest) for digest, name in
                              (line.split() for line in (packages / CHECKSUMS).read_text().splitlines())
-                             if name.endswith((".deb", ".rpm")))
+                             if not name.endswith(".AppImage"))
             wanted = {row["name"]: row["sha256"] for row in rows if row["name"].startswith(f"Sesori-linux-{arch}-")}
             require(checksums == wanted, f"Signed checksums differ from prepared packages: {arch}")
     return metadata

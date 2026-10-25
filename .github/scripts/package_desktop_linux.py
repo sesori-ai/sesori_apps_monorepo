@@ -34,6 +34,7 @@ DESKTOP_ENTRY_TEXT = ("[Desktop Entry]\nType=Application\nName=Sesori\nComment=A
                       "Exec={exec}\nIcon=sesori-desktop\nTerminal=false\nCategories=Development;Utility;\n")
 # Static type2 runtime; release assets are signed by the AppImage type 2 runtime key 570C77ACEA40C0F1B758902CBF96CCA56490F695.
 APPIMAGE_RUNTIME_URL = "https://github.com/AppImage/type2-runtime/releases/download/20251108/{name}"
+APPIMAGE_HOST_REQUIREMENTS = ["glibc >= 2.39", "GTK 3", "libsecret", "libEGL.so.1", "libGLESv2.so.2", "FUSE"]
 APPIMAGE_RUNTIMES = {
     "x64": ("runtime-x86_64", "2fca8b443c92510f1483a883f60061ad09b46b978b2631c807cd873a47ec260d"),
     "arm64": ("runtime-aarch64", "00cbdfcf917cc6c0ff6d3347d59e0ca1f7f45a6df1a428a0d6d8a78664d87444"),
@@ -292,7 +293,8 @@ def build_appimage(*, root: Path, work: Path, output: Path, arch: str, identity:
     run(command=["unsquashfs", "-offset", offset, "-no-progress", "-d", str(extracted), str(package)], cwd=work)
     if payload_inventory(root=extracted) != payload_inventory(root=root):
         raise ValueError("AppImage squashfs does not match the assembled AppDir")
-    return package, {"dependencies": [], "dependencyCommand": command,
+    # A portable image has no package-manager dependencies; record what the host must provide.
+    return package, {"dependencies": [], "dependencyCommand": command, "hostRequirements": APPIMAGE_HOST_REQUIREMENTS,
                      "runtime": {"name": runtime.name, "sha256": sha256(runtime), "bytes": runtime.stat().st_size},
                      "packageFiles": run(command=["unsquashfs", "-offset", offset, "-lls", str(package)],
                                          cwd=work).splitlines()}

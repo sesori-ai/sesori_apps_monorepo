@@ -247,6 +247,12 @@ class LinuxSigningIntegrationTests(unittest.TestCase):
             self.assertEqual(signing.sha256(path=self.output / artifact["name"]), artifact["sha256"])
             original = self.input / Path(artifact["name"]).suffix[1:].lower() / artifact["name"]
             self.assertEqual(signing.sha256(path=original), artifact["unsignedSha256"])
+        names = {"Sesori-linux-x64-9.8.7-42.deb", "Sesori-linux-x64-9.8.7-42.rpm", "Sesori-linux-x64-9.8.7-42.AppImage"}
+        self.assertEqual({artifact["name"] for artifact in report["artifacts"]}, names)
+        listed = {line.split()[1] for line in (self.output / signing.CHECKSUMS).read_text().splitlines()}
+        self.assertEqual(listed, names)
+        appimage = next(row for row in report["artifacts"] if row["name"].endswith(".AppImage"))
+        self.assertEqual(appimage["sha256"], appimage["unsignedSha256"])
         deb = self.output / "Sesori-linux-x64-9.8.7-42.deb"
         self.assertEqual(deb.read_bytes(), b"deb fixture")
         check = ["sha256sum", "--check", signing.CHECKSUMS]

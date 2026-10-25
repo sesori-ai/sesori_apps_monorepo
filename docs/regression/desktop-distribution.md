@@ -9,7 +9,8 @@ stable/internal channel, OS and CPU section. The page is live; this does not cla
 available update or published installer. Unshipped sections explicitly contain no public
 download; they never link private CI artifacts or infer desktop assets from Latest.
 The website preserves all eight macOS/Windows channel/CPU anchors and `linux-package-managers`,
-plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors. Every generated app fragment
+plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors; the website step adds the
+`<channel>-linux-<x64|arm64>-appimage` anchors. Every generated app fragment
 lands on its own section; Linux preview navigation opens its channel and platform.
 The repository download document is a content/anchor specification, not an alternate
 user-facing destination. Source builds show development guidance; Linux packages show
@@ -113,8 +114,8 @@ icon, packed as a root-owned zstd squashfs behind the static AppImage type2 runt
 Each CPU's runtime is pinned by SHA-256; a mismatched download refuses. The image is read back
 with `unsquashfs -offset` and must match the assembled AppDir exactly; packaging never executes
 it. The AppImage is unchanged by signing and covered only by the signed checksums. It needs
-host GTK 3, libsecret, EGL/GLES and glibc 2.39 or newer (the Ubuntu 24.04 build host), plus FUSE
-or `--appimage-extract-and-run`. It installs no menu entry, and launch at login autostarts the
+host GTK 3, libsecret, EGL/GLES and glibc 2.39 or newer (the Ubuntu 24.04 build host), plus FUSE.
+It installs no menu entry, and launch at login autostarts the
 image file named by `APPIMAGE`, not its transient mount. Repositories serve only the DEB/RPM rows.
 
 Native Ubuntu 24.04 and Debian 13 containers install, same-version reinstall and
@@ -131,7 +132,7 @@ restoration, Secret Service/tray behavior, repository trust or publication.
 
 After construction, a signing step checks the input evidence and matching identities,
 adds a native RPM OpenPGP signature, and signs checksums covering the final RPM and
-unchanged DEB. The full configured primary fingerprint must match the imported key.
+unchanged DEB and AppImage. The full configured primary fingerprint must match the imported key.
 Only this step receives the `linux-signing` secrets. Tools install before secret
 exposure; the network-disabled signing container uses a temporary private GnuPG home
 and passphrase file, removes secret variables from child environments and cleans up
