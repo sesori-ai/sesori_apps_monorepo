@@ -99,7 +99,8 @@ participates.
   recovery. Connected with no projects shows the add-project call to action on either surface; on the phone,
   adding that first project opens a new session in it.
 - With the target computer offline, the phone home names the computer in the
-  computer button's label (the sidebar footer's row from 700 pt) and in a
+  computer button's label (the top-bar button below 700 pt, the sidebar
+  footer's row from 700 pt) and in a
   "<name> is offline" heading when the name is known
   ("Bridge offline" otherwise), with when it was last seen when that is known,
   then the account's other online computers ([projects](projects-and-sessions.md)),

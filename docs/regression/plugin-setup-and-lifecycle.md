@@ -471,7 +471,8 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   then overview returns to the same Settings page. Opened modally from New Session,
   overview shows only right X and detail shows left Back plus right X. Detail Back retains
   the overview flow; X from either page dismisses only the harness modal, preserving the
-  same New Session page and draft. Direct detail links construct overview ancestry without
+  same New Session page and draft. In the mobile app (desktop has no harness routes and
+  opens a Settings window tab instead), direct detail links construct overview ancestry without
   creating an unrelated Settings page, and links without an opener fall back to
   the signed-in home. Removed IDs show an unavailable detail, not another harness.
   Authentication and force sheets belong to this flow and leave with it; sheet dismissal
