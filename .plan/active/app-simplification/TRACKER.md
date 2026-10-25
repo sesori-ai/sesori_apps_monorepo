@@ -3,19 +3,19 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 2.b/13 is next; 2.a/13 is done on `sesori/app-simplification-step-2a`.
+- Current step: 2.b/13, 3/13 and 6/13 follow 2.a/13.
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
 
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
-| 1/13 | Publish the plan | In review | — |
+| 1/13 | Publish the plan | Done | #2027 |
 | 2.a/13 | One session scope; every refresh imports | Done | `sesori/app-simplification-step-2a` |
 | 2.b/13 | Scan cancel, dismiss, deep pull and per-harness scan removed | Not started | — |
 | 3/13 | Searchable picker with Open another folder | Not started | — |
 | 4/13 | Settings › Projects | Not started | — |
-| 5/13 | Row logo and project label | Not started | — |
+| 5/13 | Row logo and project label | Done | #2030 |
 | 6/13 | All-projects list model | Not started | — |
 | 7.a/13 | Archived across projects | Not started | — |
 | 7.b/13 | All-projects home and route tree | Not started | — |

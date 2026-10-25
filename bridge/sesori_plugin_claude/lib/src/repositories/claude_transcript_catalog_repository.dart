@@ -10,6 +10,7 @@ import "../api/models/claude_transcript_record_dto.dart";
 import "../models/claude_effort_level.dart";
 import "../models/claude_message_origin_kind.dart";
 import "../models/claude_subagent_session_id.dart";
+import "mappers/claude_content_mapper.dart";
 import "models/claude_session_record.dart";
 import "models/claude_transcript_record.dart";
 
@@ -147,29 +148,35 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
 
   List<String> _listTranscriptPaths() => _transcriptApi.listTranscriptPaths();
 
-  /// Reads one root transcript's header into a catalog record, or null when it
-  /// is not a session.
+  /// Reads one root transcript's header and tail into a catalog record, or
+  /// null when it is not a session.
+  ///
+  /// The title is the newest `/rename`, else the CLI's newest own title, else
+  /// the opening of the first prompt.
   ClaudeSessionRecord? _readRootRecord(String path) {
     final id = _rootIdFromPath(path);
     if (id == null) return null;
 
     final List<ClaudeTranscriptLineDto> header;
+    final List<ClaudeTranscriptLineDto> tail;
     final DateTime? updatedAt;
     try {
       header = _transcriptApi.readHeader(transcriptPath: path);
+      tail = _transcriptApi.readTailTitleRecords(transcriptPath: path);
       updatedAt = _transcriptApi.lastModified(transcriptPath: path);
     } on Object catch (error, stackTrace) {
-      Log.w("[claude] failed to read transcript header", error, stackTrace);
+      Log.w("[claude] failed to read transcript header or tail", error, stackTrace);
       return null;
     }
     if (header.isEmpty) return null;
 
     String? cwd;
-    String? title;
     String? gitBranch;
     String? cliVersion;
     DateTime? createdAt;
     var sawContent = false;
+    final titles = <ClaudeTranscriptTitleKind, String>{};
+    final prompts = <ClaudeTranscriptUserRecord>[];
 
     for (final line in header) {
       final record = _mapTranscriptRecord(line);
@@ -185,9 +192,10 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
           gitBranch ??= _nonEmpty(record.gitBranch);
           cliVersion ??= _nonEmpty(record.version);
           createdAt ??= record.timestamp;
+          if (record is ClaudeTranscriptUserRecord) prompts.add(record);
         case ClaudeTranscriptTitleRecord():
           if (record.sessionId != null && record.sessionId != id) continue;
-          title ??= record.title;
+          titles[record.kind] = record.title;
         case ClaudeTranscriptUnknownRecord():
           break;
       }
@@ -199,12 +207,24 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     // Without a directory the bridge cannot attribute the session to a project.
     if (cwd == null) return null;
 
+    // The tail holds the newest title records. A small file is read twice,
+    // which repeats the same records in the same order.
+    for (final line in tail) {
+      if (_mapTranscriptRecord(line) case ClaudeTranscriptTitleRecord(:final kind, :final title, :final sessionId)
+          when sessionId == null || sessionId == id) {
+        titles[kind] = title;
+      }
+    }
+
     return ClaudeSessionRecord(
       id: id,
       transcriptPath: path,
       parentId: null,
       cwd: cwd,
-      title: title,
+      title:
+          titles[ClaudeTranscriptTitleKind.custom] ??
+          titles[ClaudeTranscriptTitleKind.generated] ??
+          prompts.map(_promptTitle).nonNulls.firstOrNull,
       createdAt: createdAt,
       updatedAt: updatedAt ?? createdAt,
       gitBranch: gitBranch,
@@ -302,6 +322,34 @@ final RegExp _uuidPattern = RegExp(
 String? _nonEmpty(String? value) {
   final trimmed = value?.trim();
   return trimmed == null || trimmed.isEmpty ? null : trimmed;
+}
+
+/// How much of a first prompt can title a session nobody named.
+const int _promptTitleLength = 100;
+
+final RegExp _whitespace = RegExp(r"\s+");
+
+/// The opening of a prompt the user typed, on one line. Null for anything
+/// else: harness-generated turns, compaction summaries, peer messages, task
+/// outcomes and slash-command envelopes.
+String? _promptTitle(ClaudeTranscriptUserRecord record) {
+  if (record.isMeta || record.isCompactSummary || record.isVisibleInTranscriptOnly) return null;
+  if (record.originKind != ClaudeMessageOriginKind.unknown) return null;
+  const mapper = ClaudeContentMapper();
+  final blocks = mapper.map(content: mapper.visibleUserContent(content: record.content));
+  if (mapper.containsInternalCommandOutput(blocks: blocks) ||
+      mapper.isTaskNotification(blocks: blocks, originKind: record.originKind)) {
+    return null;
+  }
+  for (final block in blocks) {
+    if (block is! ClaudeMappedTextContentBlock) continue;
+    final text = block.text.replaceAll(_whitespace, " ").trim();
+    if (text.isEmpty) continue;
+    final runes = text.runes;
+    if (runes.length <= _promptTitleLength) return text;
+    return "${String.fromCharCodes(runes.take(_promptTitleLength)).trimRight()}…";
+  }
+  return null;
 }
 
 /// Maps the generated API DTO into the closed variants the repository uses.
@@ -428,10 +476,14 @@ ClaudeTranscriptRecord _mapTranscriptRecord(ClaudeTranscriptLineDto line) {
     );
   }
 
-  if (type == ClaudeTranscriptTitleRecord.wireType) {
-    final title = dto.aiTitle?.trim();
-    if (title != null && title.isNotEmpty) {
-      return ClaudeTranscriptTitleRecord(title: title, sessionId: dto.sessionId, raw: line.raw);
+  final titleKind = ClaudeTranscriptTitleKind.tryParse(type);
+  if (titleKind != null) {
+    final title = _nonEmpty(switch (titleKind) {
+      ClaudeTranscriptTitleKind.custom => dto.customTitle,
+      ClaudeTranscriptTitleKind.generated => dto.aiTitle,
+    });
+    if (title != null) {
+      return ClaudeTranscriptTitleRecord(kind: titleKind, title: title, sessionId: dto.sessionId, raw: line.raw);
     }
   }
 

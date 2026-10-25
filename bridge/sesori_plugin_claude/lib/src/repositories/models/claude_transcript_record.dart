@@ -208,15 +208,29 @@ final class const ClaudeTranscriptCompactBoundaryRecord({
   static const String subtype = "compact_boundary";
 }
 
-/// An `ai-title` record — the session title, written by the CLI itself.
+/// Who named a session. A user's `/rename` outranks the CLI's own title.
+enum ClaudeTranscriptTitleKind({required final String wireType}) {
+  custom(wireType: "custom-title"),
+  generated(wireType: "ai-title");
+
+  static ClaudeTranscriptTitleKind? tryParse(String raw) {
+    for (final kind in values) {
+      if (kind.wireType == raw) return kind;
+    }
+    return null;
+  }
+}
+
+/// A session title the CLI persisted. A later record of the same kind
+/// replaces an earlier one.
 final class const ClaudeTranscriptTitleRecord({
+  required final ClaudeTranscriptTitleKind kind,
+
   /// Non-empty by construction; the repository rejects a blank title.
   required final String title,
   required super.sessionId,
   required super.raw,
-}) extends ClaudeTranscriptRecord {
-  static const String wireType = "ai-title";
-}
+}) extends ClaudeTranscriptRecord;
 
 /// Any record type this build does not model.
 ///

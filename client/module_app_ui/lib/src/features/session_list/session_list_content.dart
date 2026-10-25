@@ -212,6 +212,8 @@ class const SessionListContent({
                     padding: EdgeInsetsDirectional.only(bottom: index == rows.length - 1 ? 8 : 0),
                     child: SessionTile(
                       session: session,
+                      // The list is one project's, so its rows don't repeat it.
+                      projectLabel: null,
                       isArchived: session.time?.archived != null,
                       isRunning: loaded.isSessionRunning(session: session),
                       unseen: loaded.isSessionUnseen(session: session),

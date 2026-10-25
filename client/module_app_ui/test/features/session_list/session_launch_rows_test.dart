@@ -134,6 +134,8 @@ void main() {
     expect(launchRow, findsOneWidget);
     expect(find.text("Fix the bug"), findsOneWidget);
     expect(find.textContaining("Creating…"), findsOneWidget);
+    expect(find.descendant(of: launchRow, matching: find.byType(PregoBrandLogo)), findsOneWidget);
+    final titleStart = tester.getTopLeft(find.text("Fix the bug")).dx;
     expect(find.text("All · 1"), findsOneWidget, reason: "a launch is not a session yet");
     final below = rowBelowTop(tester);
     expect(below, greaterThan(tester.getBottomLeft(launchRow).dy - 1), reason: "the launch row leads");
@@ -152,6 +154,7 @@ void main() {
     await settle(tester);
     expect(launchRow, findsNothing);
     expect(find.text("Fix the bug"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("Fix the bug")).dx, titleStart, reason: "the title keeps its place too");
     expect(find.text("All · 2"), findsOneWidget);
     expect(rowBelowTop(tester), below);
   });

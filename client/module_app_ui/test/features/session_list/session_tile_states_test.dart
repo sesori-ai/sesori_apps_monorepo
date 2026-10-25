@@ -7,9 +7,9 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// A session row is a status slot, the title and when it last changed, over a
-/// tertiary meta line: any state that needs words, then harness, branch and
-/// pull request.
+/// A session row is a status slot, the harness logo, the title and when it
+/// last changed, over a tertiary meta line: any state that needs words, then
+/// project, branch and pull request.
 ///
 /// A working row twinkles on an infinite repeating animation, so these tests
 /// pump fixed durations and never `pumpAndSettle` — it would pump to its
@@ -20,6 +20,7 @@ void main() {
 
   SessionTile tile({
     required Session session,
+    String? projectLabel,
     bool isArchived = false,
     bool isRunning = false,
     bool unseen = false,
@@ -33,6 +34,7 @@ void main() {
   }) {
     return SessionTile(
       session: session,
+      projectLabel: projectLabel,
       isArchived: isArchived,
       isRunning: isRunning,
       unseen: unseen,
@@ -180,10 +182,11 @@ void main() {
           tester,
           tile(
             session: testSession(title: "My Session", branchName: branch, pluginId: "claude", updatedAt: now),
+            projectLabel: "demo-app",
           ),
         );
 
-        expect(tester.widget<Text>(find.text("Claude Code")).style?.color, colors.textTertiary);
+        expect(tester.widget<Text>(find.text("demo-app")).style?.color, colors.textTertiary);
         final shown = tester.renderObject<RenderEllipsisText>(find.byType(PregoEllipsisText)).shownText;
         expect(shown, startsWith("sesori/"));
         expect(shown, endsWith("end"));
@@ -205,14 +208,28 @@ void main() {
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
-  testWidgets("every row names its harness, including one this app doesn't know", (tester) async {
+  testWidgets("the harness logo leads the title and speaks the harness, including one this app doesn't know", (
+    tester,
+  ) async {
+    final semantics = tester.ensureSemantics();
+
     await pumpTile(
       tester,
       tile(
-        session: testSession(title: "My Session", pluginId: "opencode"),
+        session: testSession(title: "My Session", pluginId: "opencode", updatedAt: now),
+        isRunning: true,
       ),
     );
-    expect(find.text("OpenCode"), findsOneWidget);
+    final logo = find.byType(PregoBrandLogo);
+    expect(tester.widget<PregoBrandLogo>(logo).pluginId, "opencode");
+    expect(tester.getSize(logo), const Size.square(16));
+    // Between the status slot and the title.
+    expect(tester.getTopLeft(logo).dx, greaterThan(tester.getCenter(find.byType(PregoAiLoader)).dx));
+    expect(tester.getTopRight(logo).dx, lessThan(tester.getTopLeft(find.text("My Session")).dx));
+    expect(find.bySemanticsLabel(RegExp("^Running\nOpenCode\nMy Session\njust now")), findsOneWidget);
+    // The logo names the harness, so the meta line no longer does.
+    expect(find.text("OpenCode"), findsNothing);
+    final knownTitle = tester.getTopLeft(find.text("My Session")).dx;
 
     await pumpTile(
       tester,
@@ -220,7 +237,44 @@ void main() {
         session: testSession(title: "My Session", pluginId: "harness-from-the-future"),
       ),
     );
-    expect(find.text("harness-from-the-future"), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^harness-from-the-future\nMy Session")), findsOneWidget);
+    expect(tester.getTopLeft(find.text("My Session")).dx, knownTitle, reason: "titles line up across harnesses");
+
+    semantics.dispose();
+  });
+
+  testWidgets("a project label leads the meta line, and a missing one leaves the row as tall", (tester) async {
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", branchName: "sesori/add-search", updatedAt: now),
+        projectLabel: "demo-app",
+      ),
+    );
+    expect(
+      tester.getTopRight(find.text("demo-app")).dx,
+      lessThan(tester.getTopLeft(find.text("sesori/add-search")).dx),
+    );
+    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", branchName: "sesori/add-search", updatedAt: now),
+      ),
+    );
+    expect(find.text("demo-app"), findsNothing);
+    expect(find.text("sesori/add-search"), findsOneWidget);
+
+    // Nothing at all for the meta line: it still holds its height, so a row
+    // never jumps when a branch or project arrives.
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session", updatedAt: now),
+      ),
+    );
+    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
   testWidgets("retrying and background tasks lead the meta line in their colours", (tester) async {
@@ -231,7 +285,7 @@ void main() {
     expect(find.text("2 background tasks"), findsOneWidget);
   });
 
-  testWidgets("assistive technology hears the state before the title, then the time", (tester) async {
+  testWidgets("assistive technology hears the state and the harness before the title, then the time", (tester) async {
     final semantics = tester.ensureSemantics();
 
     await pumpTile(
@@ -241,7 +295,7 @@ void main() {
         isRunning: true,
       ),
     );
-    expect(find.bySemanticsLabel(RegExp("^Running\nMy Session\njust now")), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^Running\nplugin-1\nMy Session\njust now")), findsOneWidget);
 
     await pumpTile(
       tester,
@@ -250,7 +304,7 @@ void main() {
         unseen: true,
       ),
     );
-    expect(find.bySemanticsLabel(RegExp("^New activity\nMy Session")), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^New activity\nplugin-1\nMy Session")), findsOneWidget);
 
     await pumpTile(
       tester,
@@ -259,7 +313,7 @@ void main() {
         awaitingInput: true,
       ),
     );
-    expect(find.bySemanticsLabel(RegExp("^Awaiting input\nMy Session")), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^Awaiting input\nplugin-1\nMy Session")), findsOneWidget);
     // The slot speaks the state, so the meta line's "Waiting" stays silent.
     expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
 
@@ -283,7 +337,27 @@ void main() {
 
     expect(find.text("sesori/add-search"), findsOneWidget);
     expect(find.text("PR #42"), findsOneWidget);
+    expect(find.text(" · "), findsOneWidget);
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
+  });
+
+  testWidgets("a pull request alone leads the meta line without a separator", (tester) async {
+    final session = testSession(title: "My Session").copyWith(
+      pullRequest: const PullRequestInfo(
+        number: 42,
+        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
+        title: "Add project search",
+        state: PrState.open,
+        mergeableStatus: PrMergeableStatus.mergeable,
+        reviewDecision: PrReviewDecision.unknown,
+        checkStatus: PrCheckStatus.none,
+      ),
+    );
+
+    await pumpTile(tester, tile(session: session));
+
+    expect(find.text("PR #42"), findsOneWidget);
+    expect(find.text(" · "), findsNothing);
   });
 
   testWidgets("a long branch leaves the pull request its full width", (tester) async {
@@ -361,10 +435,26 @@ void main() {
   });
 
   testWidgets("a title too long for its line fades out instead of ellipsizing", (tester) async {
+    tester.view.physicalSize = const Size(320, 640);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
     await pumpTile(
       tester,
-      tile(session: testSession(title: "A session title far too long to fit the width of a phone's list row")),
+      tile(
+        session: testSession(
+          title: "A session title far too long to fit the width of a phone's list row",
+          pluginId: "claude",
+          updatedAt: now,
+        ),
+        isRunning: true,
+      ),
     );
+
+    // Between the logo and the time, which both keep their place.
+    expect(tester.takeException(), isNull);
+    final titleBox = find.textContaining("A session title");
+    expect(tester.getTopLeft(titleBox).dx, greaterThan(tester.getTopRight(find.byType(PregoBrandLogo)).dx));
+    expect(tester.getTopRight(titleBox).dx, lessThanOrEqualTo(tester.getTopLeft(find.text("now")).dx));
 
     // The fade replaces the ellipsis: the glyphs run toward the trailing slot
     // and dissolve there rather than stopping on a hard "…". The paragraph
@@ -412,7 +502,7 @@ void main() {
       expect(
         tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
         matchesSemantics(
-          label: "My Session\njust now\nplugin-1",
+          label: "plugin-1\nMy Session\njust now",
           isButton: false,
           hasTapAction: false,
           hasLongPressAction: true,
@@ -437,7 +527,7 @@ void main() {
       expect(
         tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
         matchesSemantics(
-          label: "My Session\njust now\nplugin-1\nsesori/add-search",
+          label: "plugin-1\nMy Session\njust now\nsesori/add-search",
           isButton: true,
           isFocusable: true,
           hasTapAction: true,
