@@ -113,7 +113,8 @@ Stable packages come only from a stable-channel build of the approved release's
 source and build number; internal binaries are never relabeled. To bootstrap a stable
 release approved before Linux was wired, dispatch `desktop-qualification.yml` with
 `mode=linux-packaging`, `channel=stable` and that release's source/build, then
-`desktop-linux-release.yml` with `channel=stable` and that packaging run.
+`desktop-linux-release.yml` with `channel=stable`, the same `source_sha`, `version` and
+`build_number`, and that `packaging_run`.
 
 This command must never be replaced by dispatching the store-uploading shared cycle
 merely to prove repository delivery. Website availability and installation guidance

@@ -221,7 +221,8 @@ last; verify anonymous SHA-256 delivery and do not publish the private CI invent
 L2 covers real signed references, ordered writes, retry/failure behavior and existing
 inert client fixtures. L3 requires the merged workflow's production-key/federation run,
 anonymous public files and real APT/DNF refresh against HTTPS. Bucket access alone is
-not repository delivery. Neither level substitutes for native desktop/account upgrades. See [operations](../desktop/linux-repositories.md).
+not repository delivery. Neither level substitutes for native desktop/account upgrades.
+See [operations](../desktop/linux-repositories.md).
 
 ### Native Linux desktop sessions
 
