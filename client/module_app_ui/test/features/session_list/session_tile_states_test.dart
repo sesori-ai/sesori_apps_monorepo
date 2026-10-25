@@ -7,9 +7,9 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
-/// A session row is a status slot, the harness logo, the title and when it
-/// last changed, over a tertiary meta line: any state that needs words, then
-/// project, branch and pull request.
+/// A session row is the harness logo, the title with its status mark after it
+/// and when it last changed, over a tertiary meta line: any state that needs
+/// words, then project and pull request.
 ///
 /// A working row twinkles on an infinite repeating animation, so these tests
 /// pump fixed durations and never `pumpAndSettle` — it would pump to its
@@ -80,13 +80,29 @@ void main() {
   final colors = PregoDesignSystem.light.colors;
   final now = DateTime.now().millisecondsSinceEpoch;
 
-  // Every state on both apps: the slot leads the title, and the time stays.
+  PullRequestInfo pullRequest({
+    required PrState state,
+    PrMergeableStatus mergeableStatus = PrMergeableStatus.mergeable,
+    PrReviewDecision reviewDecision = PrReviewDecision.unknown,
+    PrCheckStatus checkStatus = PrCheckStatus.none,
+    int number = 42,
+  }) => PullRequestInfo(
+    number: number,
+    url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/$number",
+    title: "Add project search",
+    state: state,
+    mergeableStatus: mergeableStatus,
+    reviewDecision: reviewDecision,
+    checkStatus: checkStatus,
+  );
+
+  // Every state on both apps: the mark follows the title, and the time stays.
   for (final pointer in [false, true]) {
     group(pointer ? "pointer rows" : "touch rows", () {
       Future<void> pump(WidgetTester tester, SessionTile row) =>
           pointer ? pumpPointerTile(tester, row) : pumpTile(tester, row);
 
-      testWidgets("a running session leads with a twinkling sparkle and keeps its time", (tester) async {
+      testWidgets("a running session ends its title with a twinkling sparkle and keeps its time", (tester) async {
         await pump(
           tester,
           tile(
@@ -96,11 +112,11 @@ void main() {
         );
 
         expect(sparkleTwinkles(tester), isTrue);
-        expect(tester.getSize(find.byType(PregoAiLoader)), const Size.square(16));
-        expect(
-          tester.getCenter(find.byType(PregoAiLoader)).dx,
-          lessThan(tester.getTopLeft(find.text("My Session")).dx),
-        );
+        final sparkle = find.byType(PregoAiLoader);
+        expect(tester.getSize(sparkle), const Size.square(16));
+        // Right beside a short title, well ahead of the time.
+        expect(tester.getTopLeft(sparkle).dx - tester.getTopRight(find.text("My Session")).dx, 4);
+        expect(tester.getTopRight(sparkle).dx, lessThan(tester.getTopLeft(find.text("now")).dx));
         // A plain live turn carries no words — the twinkle is the signal.
         expect(find.text("Running"), findsNothing);
         expect(find.text("now"), findsOneWidget);
@@ -156,13 +172,14 @@ void main() {
         expect(find.text("Waiting"), findsOneWidget);
       });
 
-      testWidgets("an idle, read session leaves the slot empty and titles still line up", (tester) async {
+      testWidgets("an idle, read session shows no mark and its title starts where a busy one does", (tester) async {
         await pump(
           tester,
           tile(
             session: testSession(id: "a", title: "Idle", updatedAt: now),
           ),
         );
+        expect(find.byType(PregoAiLoader), findsNothing);
         final idleTitle = tester.getTopLeft(find.text("Idle")).dx;
         await pump(
           tester,
@@ -176,22 +193,21 @@ void main() {
         expect(titleWeight(tester, "Busy"), FontWeight.w400);
       });
 
-      testWidgets("a long branch shortens in the middle in the tertiary meta line", (tester) async {
-        const branch = "sesori/a-very-long-worktree-branch-name-that-cannot-possibly-fit-on-one-row-end";
+      testWidgets("the logo leads 12 px in, with the tertiary meta line under it and no branch", (tester) async {
         await pump(
           tester,
           tile(
-            session: testSession(title: "My Session", branchName: branch, pluginId: "claude", updatedAt: now),
+            session: testSession(title: "My Session", branchName: "sesori/add-search", updatedAt: now),
             projectLabel: "demo-app",
           ),
         );
 
+        expect(tester.getTopLeft(find.byType(PregoBrandLogo)).dx, 12);
+        expect(tester.getTopLeft(find.text("demo-app")).dx, 12);
         expect(tester.widget<Text>(find.text("demo-app")).style?.color, colors.textTertiary);
-        final shown = tester.renderObject<RenderEllipsisText>(find.byType(PregoEllipsisText)).shownText;
-        expect(shown, startsWith("sesori/"));
-        expect(shown, endsWith("end"));
-        expect(shown, contains("…"));
-        expect(tester.takeException(), isNull);
+        // The time keeps 16 px from the trailing edge.
+        expect(tester.getTopRight(find.text("now")).dx, 800 - 16);
+        expect(find.text("sesori/add-search"), findsNothing);
       });
     });
   }
@@ -223,10 +239,9 @@ void main() {
     final logo = find.byType(PregoBrandLogo);
     expect(tester.widget<PregoBrandLogo>(logo).pluginId, "opencode");
     expect(tester.getSize(logo), const Size.square(16));
-    // Between the status slot and the title.
-    expect(tester.getTopLeft(logo).dx, greaterThan(tester.getCenter(find.byType(PregoAiLoader)).dx));
+    // Leading the row, ahead of the title and its mark.
     expect(tester.getTopRight(logo).dx, lessThan(tester.getTopLeft(find.text("My Session")).dx));
-    expect(find.bySemanticsLabel(RegExp("^Running\nOpenCode\nMy Session\njust now")), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^OpenCode\nMy Session\nRunning\njust now")), findsOneWidget);
     // The logo names the harness, so the meta line no longer does.
     expect(find.text("OpenCode"), findsNothing);
     final knownTitle = tester.getTopLeft(find.text("My Session")).dx;
@@ -247,27 +262,15 @@ void main() {
     await pumpTile(
       tester,
       tile(
-        session: testSession(title: "My Session", branchName: "sesori/add-search", updatedAt: now),
+        session: testSession(title: "My Session", updatedAt: now),
         projectLabel: "demo-app",
       ),
     );
-    expect(
-      tester.getTopRight(find.text("demo-app")).dx,
-      lessThan(tester.getTopLeft(find.text("sesori/add-search")).dx),
-    );
+    expect(find.text("demo-app"), findsOneWidget);
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
 
-    await pumpTile(
-      tester,
-      tile(
-        session: testSession(title: "My Session", branchName: "sesori/add-search", updatedAt: now),
-      ),
-    );
-    expect(find.text("demo-app"), findsNothing);
-    expect(find.text("sesori/add-search"), findsOneWidget);
-
     // Nothing at all for the meta line: it still holds its height, so a row
-    // never jumps when a branch or project arrives.
+    // never jumps when a project or pull request arrives.
     await pumpTile(
       tester,
       tile(
@@ -285,7 +288,7 @@ void main() {
     expect(find.text("2 background tasks"), findsOneWidget);
   });
 
-  testWidgets("assistive technology hears the state and the harness before the title, then the time", (tester) async {
+  testWidgets("assistive technology hears the harness, the title, then the state and the time", (tester) async {
     final semantics = tester.ensureSemantics();
 
     await pumpTile(
@@ -295,7 +298,7 @@ void main() {
         isRunning: true,
       ),
     );
-    expect(find.bySemanticsLabel(RegExp("^Running\nplugin-1\nMy Session\njust now")), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^plugin-1\nMy Session\nRunning\njust now")), findsOneWidget);
 
     await pumpTile(
       tester,
@@ -304,7 +307,7 @@ void main() {
         unseen: true,
       ),
     );
-    expect(find.bySemanticsLabel(RegExp("^New activity\nplugin-1\nMy Session")), findsOneWidget);
+    expect(find.bySemanticsLabel(RegExp("^plugin-1\nMy Session\nNew activity")), findsOneWidget);
 
     await pumpTile(
       tester,
@@ -313,46 +316,25 @@ void main() {
         awaitingInput: true,
       ),
     );
-    expect(find.bySemanticsLabel(RegExp("^Awaiting input\nplugin-1\nMy Session")), findsOneWidget);
-    // The slot speaks the state, so the meta line's "Waiting" stays silent.
+    expect(find.bySemanticsLabel(RegExp("^plugin-1\nMy Session\nAwaiting input")), findsOneWidget);
+    // The mark speaks the state, so the meta line's "Waiting" stays silent.
     expect(find.bySemanticsLabel(RegExp("Waiting")), findsNothing);
 
     semantics.dispose();
   });
 
-  testWidgets("the pull request shares the meta line with the branch", (tester) async {
-    final session = testSession(title: "My Session", branchName: "sesori/add-search").copyWith(
-      pullRequest: const PullRequestInfo(
-        number: 42,
-        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
-        title: "Add project search",
-        state: PrState.open,
-        mergeableStatus: PrMergeableStatus.mergeable,
-        reviewDecision: PrReviewDecision.unknown,
-        checkStatus: PrCheckStatus.none,
-      ),
-    );
+  testWidgets("the pull request follows the project on the meta line", (tester) async {
+    final session = testSession(title: "My Session").copyWith(pullRequest: pullRequest(state: PrState.open));
 
-    await pumpTile(tester, tile(session: session));
+    await pumpTile(tester, tile(session: session, projectLabel: "demo-app"));
 
-    expect(find.text("sesori/add-search"), findsOneWidget);
-    expect(find.text("PR #42"), findsOneWidget);
+    expect(tester.getTopRight(find.text("demo-app")).dx, lessThan(tester.getTopLeft(find.text("PR #42")).dx));
     expect(find.text(" · "), findsOneWidget);
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
   testWidgets("a pull request alone leads the meta line without a separator", (tester) async {
-    final session = testSession(title: "My Session").copyWith(
-      pullRequest: const PullRequestInfo(
-        number: 42,
-        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/42",
-        title: "Add project search",
-        state: PrState.open,
-        mergeableStatus: PrMergeableStatus.mergeable,
-        reviewDecision: PrReviewDecision.unknown,
-        checkStatus: PrCheckStatus.none,
-      ),
-    );
+    final session = testSession(title: "My Session").copyWith(pullRequest: pullRequest(state: PrState.open));
 
     await pumpTile(tester, tile(session: session));
 
@@ -360,25 +342,57 @@ void main() {
     expect(find.text(" · "), findsNothing);
   });
 
-  testWidgets("a long branch leaves the pull request its full width", (tester) async {
+  // GitHub's glyph and colour for each state, and no word for it.
+  for (final (state, icon, color, label, word) in [
+    (PrState.open, TablerRegular.git_pull_request, colors.fgSuccessPrimary, "Pull request open", "Open"),
+    (PrState.merged, TablerRegular.git_merge, const Color(0xFFA371F7), "Pull request merged", "Merged"),
+    (PrState.closed, TablerRegular.git_pull_request_closed, colors.fgErrorPrimary, "Pull request closed", "Closed"),
+  ]) {
+    testWidgets("a ${state.name} pull request shows its own glyph and colour and says nothing more", (tester) async {
+      final semantics = tester.ensureSemantics();
+      final session = testSession(title: "My Session").copyWith(pullRequest: pullRequest(state: state));
+
+      await pumpTile(tester, tile(session: session));
+
+      final glyph = find.descendant(of: find.byType(PrStatusRow), matching: find.byIcon(icon));
+      expect(tester.widget<Icon>(glyph).color, color);
+      expect(find.text("PR #42"), findsOneWidget);
+      expect(find.text(word), findsNothing);
+      expect(find.bySemanticsLabel(RegExp(label)), findsOneWidget);
+      semantics.dispose();
+    });
+  }
+
+  testWidgets("an open pull request with conflicts adds a red warning", (tester) async {
+    final session =
+        testSession(
+          title: "My Session",
+        ).copyWith(
+          pullRequest: pullRequest(state: PrState.open, mergeableStatus: PrMergeableStatus.conflicting),
+        );
+
+    await pumpTile(tester, tile(session: session));
+
+    final warning = find.descendant(of: find.byType(PrStatusRow), matching: find.byIcon(TablerRegular.alert_triangle));
+    expect(tester.widget<Icon>(warning).color, colors.fgErrorPrimary);
+    expect(find.byIcon(TablerRegular.git_pull_request), findsOneWidget);
+  });
+
+  testWidgets("a long project name leaves the pull request its full width", (tester) async {
     tester.view.physicalSize = const Size(390, 800);
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final session = testSession(title: "My Session", branchName: "visual-hierarchy/a-very-long-phone-activity")
-        .copyWith(
-          pullRequest: const PullRequestInfo(
-            number: 1631,
-            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/1631",
-            title: "Show Activity",
-            state: PrState.open,
-            mergeableStatus: PrMergeableStatus.mergeable,
-            reviewDecision: PrReviewDecision.reviewRequired,
-            checkStatus: PrCheckStatus.pending,
-          ),
-        );
+    final session = testSession(title: "My Session").copyWith(
+      pullRequest: pullRequest(
+        state: PrState.open,
+        number: 1631,
+        reviewDecision: PrReviewDecision.reviewRequired,
+        checkStatus: PrCheckStatus.pending,
+      ),
+    );
 
-    await pumpTile(tester, tile(session: session));
+    await pumpTile(tester, tile(session: session, projectLabel: "a-very-long-project-name-for-a-phone-row"));
 
     // The status row clips only when squeezed below its own width.
     final row = find.byType(PrStatusRow);
@@ -391,20 +405,17 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final session = testSession(title: "My Session", branchName: "sesori/a-very-long-worktree-branch", updatedAt: now)
-        .copyWith(
-          pullRequest: const PullRequestInfo(
-            number: 483,
-            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/483",
-            title: "Redesign the session list item",
-            state: PrState.open,
-            mergeableStatus: PrMergeableStatus.conflicting,
-            reviewDecision: PrReviewDecision.changesRequested,
-            checkStatus: PrCheckStatus.failure,
-          ),
-        );
+    final session = testSession(title: "My Session", updatedAt: now).copyWith(
+      pullRequest: pullRequest(
+        state: PrState.open,
+        number: 483,
+        mergeableStatus: PrMergeableStatus.conflicting,
+        reviewDecision: PrReviewDecision.changesRequested,
+        checkStatus: PrCheckStatus.failure,
+      ),
+    );
 
-    await pumpTile(tester, tile(session: session, awaitingInput: true));
+    await pumpTile(tester, tile(session: session, projectLabel: "demo-app", awaitingInput: true));
 
     expect(tester.takeException(), isNull);
   });
@@ -416,25 +427,24 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final session = testSession(title: "My Session", branchName: "sesori/a-very-long-worktree-branch", updatedAt: now)
-        .copyWith(
-          pullRequest: const PullRequestInfo(
-            number: 483,
-            url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/483",
-            title: "Redesign the session list item",
-            state: PrState.open,
-            mergeableStatus: PrMergeableStatus.conflicting,
-            reviewDecision: PrReviewDecision.changesRequested,
-            checkStatus: PrCheckStatus.failure,
-          ),
-        );
+    final session = testSession(title: "My Session", updatedAt: now).copyWith(
+      pullRequest: pullRequest(
+        state: PrState.open,
+        number: 483,
+        mergeableStatus: PrMergeableStatus.conflicting,
+        reviewDecision: PrReviewDecision.changesRequested,
+        checkStatus: PrCheckStatus.failure,
+      ),
+    );
 
-    await pumpTile(tester, tile(session: session, awaitingInput: true));
+    await pumpTile(tester, tile(session: session, projectLabel: "demo-app", awaitingInput: true));
 
     expect(tester.takeException(), isNull);
   });
 
-  testWidgets("a title too long for its line fades out instead of ellipsizing", (tester) async {
+  testWidgets("a title too long for its line fades out before its mark, which stays ahead of the time", (
+    tester,
+  ) async {
     tester.view.physicalSize = const Size(320, 640);
     tester.view.devicePixelRatio = 1;
     addTearDown(tester.view.reset);
@@ -450,13 +460,15 @@ void main() {
       ),
     );
 
-    // Between the logo and the time, which both keep their place.
+    // Between the logo and the mark; the mark and the time keep their place.
     expect(tester.takeException(), isNull);
     final titleBox = find.textContaining("A session title");
+    final sparkle = find.byType(PregoAiLoader);
     expect(tester.getTopLeft(titleBox).dx, greaterThan(tester.getTopRight(find.byType(PregoBrandLogo)).dx));
-    expect(tester.getTopRight(titleBox).dx, lessThanOrEqualTo(tester.getTopLeft(find.text("now")).dx));
+    expect(tester.getTopRight(titleBox).dx, lessThan(tester.getTopLeft(sparkle).dx));
+    expect(tester.getTopRight(sparkle).dx, lessThan(tester.getTopLeft(find.text("now")).dx));
 
-    // The fade replaces the ellipsis: the glyphs run toward the trailing slot
+    // The fade replaces the ellipsis: the glyphs run toward the mark
     // and dissolve there rather than stopping on a hard "…". The paragraph
     // fades itself, so a row that has nothing to fade pays nothing for it.
     final title = tester.widget<Text>(find.textContaining("A session title"));
@@ -522,12 +534,13 @@ void main() {
         updatedAt: DateTime.now().millisecondsSinceEpoch,
       );
 
-      await pumpTile(tester, tile(session: session));
+      await pumpTile(tester, tile(session: session, projectLabel: "demo-app"));
 
+      // The branch stays off the row, for the session detail to show.
       expect(
         tester.getSemantics(find.descendant(of: find.byType(SessionTile), matching: find.byType(MergeSemantics))),
         matchesSemantics(
-          label: "plugin-1\nMy Session\njust now\nsesori/add-search",
+          label: "plugin-1\nMy Session\njust now\ndemo-app",
           isButton: true,
           isFocusable: true,
           hasTapAction: true,

@@ -14,8 +14,9 @@ import "../project_list/project_path_labels.dart";
 typedef NewSessionProjectSelected = void Function({required String projectId, required String projectName});
 
 /// Chooses a project from the live list, searchable by name and path: a
-/// bottom sheet that rises with the keyboard on a phone, and a popover anchored
-/// to the trigger on wide layouts and under a pointer.
+/// bottom sheet on a phone, and a popover anchored to the trigger on wide
+/// layouts and under a pointer. Under touch the search waits for a tap, so the
+/// keyboard stays down until the user wants it.
 ///
 /// Choosing a new session's project, "Open another folder…" leads whatever the
 /// search, so it is there with one project, with none, and when nothing
@@ -44,7 +45,7 @@ class const ProjectPicker({
     // subtree's providers, and the list they show stays live.
     final cubit = context.read<ProjectListCubit>();
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
-    Widget list({required VoidCallback close, required bool focusesUnderTouch}) => BlocProvider.value(
+    Widget list({required VoidCallback close}) => BlocProvider.value(
       value: cubit,
       child: _ProjectPickerList(
         selectedProjectId: selectedProjectId,
@@ -60,7 +61,6 @@ class const ProjectPicker({
           ),
         ),
         onClose: close,
-        focusesUnderTouch: focusesUnderTouch,
       ),
     );
     if (pointer || MediaQuery.sizeOf(context).width >= wideLayoutBreakpoint) {
@@ -71,7 +71,7 @@ class const ProjectPicker({
         popoverBorderRadius: pointer ? PregoRadius.md : PregoRadius.x4l,
         onClosed: null,
         triggerBuilder: triggerBuilder,
-        contentBuilder: (_, close) => list(close: close, focusesUnderTouch: false),
+        contentBuilder: (_, close) => list(close: close),
       );
     }
     return triggerBuilder(
@@ -86,7 +86,6 @@ class const ProjectPicker({
           builder: (sheetContext) => list(
             // ignore: no_slop_linter/avoid_navigator_of, pops the pageless sheet route this picker pushed
             close: () => Navigator.of(sheetContext).pop(),
-            focusesUnderTouch: true,
           ),
         ),
       ),
@@ -100,7 +99,6 @@ class const _ProjectPickerList({
   required final VoidCallback? onAllProjects,
   required final VoidCallback onOpenFolder,
   required final VoidCallback onClose,
-  required final bool focusesUnderTouch,
 }) extends StatefulWidget {
   @override
   State<_ProjectPickerList> createState() => _ProjectPickerListState();
@@ -195,7 +193,6 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
       rows: rows,
       emptyText: null,
       onClose: widget.onClose,
-      focusesUnderTouch: widget.focusesUnderTouch,
     );
   }
 }

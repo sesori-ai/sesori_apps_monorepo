@@ -2478,13 +2478,16 @@ class AppLocalizationsEn extends AppLocalizations {
   }
 
   @override
-  String get prStateOpen => 'Open';
+  String get prStateOpen => 'Pull request open';
 
   @override
-  String get prStateMerged => 'Merged';
+  String get prStateMerged => 'Pull request merged';
 
   @override
-  String get prStateClosed => 'Closed';
+  String get prStateClosed => 'Pull request closed';
+
+  @override
+  String get prStateUnknown => 'Pull request';
 
   @override
   String get prReviewApproved => 'Approved';
@@ -2503,9 +2506,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get prChecksPending => 'Checks pending';
-
-  @override
-  String get prMergeable => 'Ready to merge';
 
   @override
   String get prConflicting => 'Has merge conflicts';
