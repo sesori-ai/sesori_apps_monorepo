@@ -380,8 +380,8 @@ Widget _paneBoundary({required BuildContext context, required GoRouterState stat
   final shell = buildDesktopRoutes().single as ShellRoute;
   final gate = shell.builder?.call(context, state, child);
   if (gate is! AuthGate) fail("The desktop shell must start with its AuthGate");
-  final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
-  return (provider.child as DesktopCockpitShell).child;
+  final provider = gate.child as DesktopCockpitCubitProvider;
+  return ((provider.child as Builder).builder(context) as DesktopCockpitShell).child;
 }
 
 GoRoute _routeWithPath(String path) {
@@ -511,8 +511,8 @@ Map<ShortcutActivator, VoidCallback> _shellShortcuts({required BuildContext cont
   final shell = buildDesktopRoutes().single as ShellRoute;
   final gate = shell.builder?.call(context, state, const SizedBox());
   if (gate is! AuthGate) fail("The desktop shell must start with its AuthGate");
-  final provider = (gate.child as Builder).builder(context) as DesktopCockpitCubitProvider;
-  final cockpit = provider.child as DesktopCockpitShell;
+  final provider = gate.child as DesktopCockpitCubitProvider;
+  final cockpit = (provider.child as Builder).builder(context) as DesktopCockpitShell;
   return {desktopShortcut(key: LogicalKeyboardKey.bracketLeft): cockpit.onGoBack};
 }
 

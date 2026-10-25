@@ -210,7 +210,8 @@ void main() {
       expect((children[1] as GoRoute).path, "notifications");
       expect((children[2] as GoRoute).path, "profile");
       expect((children[3] as GoRoute).path, "computers");
-      expect(children, hasLength(4));
+      expect((children[4] as GoRoute).path, "projects");
+      expect(children, hasLength(5));
       final harnessShell = _signedInRoutes().whereType<ShellRoute>().singleWhere(
         (shell) => shell.routes.whereType<GoRoute>().any((route) => route.path == AppRouteDef.settingsHarnesses.path),
       );
@@ -293,6 +294,7 @@ void main() {
           AppRouteDef.settingsNotifications.path,
           AppRouteDef.settingsProfile.path,
           AppRouteDef.settingsComputers.path,
+          AppRouteDef.settingsProjects.path,
         ]),
       );
     });

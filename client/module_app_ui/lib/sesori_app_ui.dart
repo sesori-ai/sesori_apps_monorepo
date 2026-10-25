@@ -86,6 +86,7 @@ export "src/features/settings/default_input_settings_view.dart";
 export "src/features/settings/harness_settings_flow_view.dart";
 export "src/features/settings/notification_settings_view.dart";
 export "src/features/settings/profile_view.dart";
+export "src/features/settings/projects_settings_view.dart";
 export "src/features/settings/settings_view.dart";
 export "src/features/settings/widgets/appearance_picker.dart";
 export "src/features/settings/widgets/bridge_settings_section.dart";

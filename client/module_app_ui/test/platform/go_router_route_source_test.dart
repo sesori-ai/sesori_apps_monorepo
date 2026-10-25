@@ -190,6 +190,7 @@ void main() {
       AppRouteDef.settingsHarnessDetail: "/settings/harnesses/codex",
       AppRouteDef.settingsProfile: "/settings/profile",
       AppRouteDef.settingsComputers: "/settings/computers",
+      AppRouteDef.settingsProjects: "/settings/projects",
       AppRouteDef.sessions: "/projects/p1/sessions",
       AppRouteDef.archivedSessions: "/projects/p1/archived-sessions",
       AppRouteDef.archivedSessionDetail: "/projects/p1/archived-sessions/s1",

@@ -23,6 +23,7 @@ import "desktop_profile_screen.dart";
 enum DesktopSettingsTab() {
   general,
   harnesses,
+  projects,
   bridge,
   notifications,
   account,
@@ -58,6 +59,10 @@ Future<void> _showDesktopSettings({
   required VoidCallback onLogoutCompleted,
 }) async {
   final authGate = context.read<AuthGateCubit>();
+  // The window is a root route above the cockpit, so the Projects tab gets the
+  // cockpit's live list and the folder browser's service by value.
+  final projectList = context.read<ProjectListCubit>();
+  final connectionService = context.read<ConnectionService>();
   final reducedMotion = prefersReducedMotion(context) || GlassAccessibilityData.of(context).reduceMotion;
   // ignore: no_slop_linter/avoid_raw_modal_presenters, a desktop-only full-window surface, not a modal sheet or dialog
   await showGeneralDialog<void>(
@@ -80,8 +85,12 @@ Future<void> _showDesktopSettings({
         navigator.pop();
       }
 
-      return BlocProvider<AuthGateCubit>.value(
-        value: authGate,
+      return MultiBlocProvider(
+        providers: [
+          BlocProvider<AuthGateCubit>.value(value: authGate),
+          BlocProvider<ProjectListCubit>.value(value: projectList),
+          RepositoryProvider<ConnectionService>.value(value: connectionService),
+        ],
         child: BlocListener<AuthGateCubit, AuthGateState>(
           // A definitive token-refresh rejection can sign out while this root
           // overlay is above the gated cockpit; dismiss its owned UI as well.
@@ -238,6 +247,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
   Widget _page() => switch (_tab) {
     DesktopSettingsTab.general => const DesktopGeneralSettingsScreen(),
     DesktopSettingsTab.harnesses => _DesktopHarnessSettingsPage(onClose: widget.onClose),
+    DesktopSettingsTab.projects => ProjectsSettingsView(chrome: SettingsPageInWindow()),
     DesktopSettingsTab.bridge => MultiBlocProvider(
       providers: [
         BlocProvider(
@@ -278,6 +288,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
 String _tabLabel({required BuildContext context, required DesktopSettingsTab tab}) => switch (tab) {
   DesktopSettingsTab.general => context.loc.desktopSettingsGeneral,
   DesktopSettingsTab.harnesses => context.loc.settingsHarnessesTitle,
+  DesktopSettingsTab.projects => context.loc.settingsProjectsTitle,
   DesktopSettingsTab.bridge => context.loc.settingsSectionBridge,
   DesktopSettingsTab.notifications => context.loc.settingsNotificationsTitle,
   DesktopSettingsTab.account => context.loc.settingsSectionAccount,
@@ -286,6 +297,7 @@ String _tabLabel({required BuildContext context, required DesktopSettingsTab tab
 IconData _tabIcon({required DesktopSettingsTab tab}) => switch (tab) {
   DesktopSettingsTab.general => TablerRegular.settings,
   DesktopSettingsTab.harnesses => TablerRegular.plug,
+  DesktopSettingsTab.projects => TablerRegular.folder,
   DesktopSettingsTab.bridge => TablerRegular.server,
   DesktopSettingsTab.notifications => TablerRegular.bell,
   DesktopSettingsTab.account => TablerRegular.user,
@@ -427,6 +439,7 @@ class const _DesktopBridgeSettingsPage({
                   description: loc.desktopSettingsConnectedBridgeDescription,
                   // Harnesses has a tab of its own.
                   onOpenHarnesses: null,
+                  onOpenProjects: null,
                   onSwitchComputer: onSwitchComputer,
                   onManageComputers: onManageComputers,
                 ),

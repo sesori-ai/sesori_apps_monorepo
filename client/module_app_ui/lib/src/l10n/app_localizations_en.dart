@@ -542,6 +542,17 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsHarnessesTitle => 'Harnesses';
 
   @override
+  String get settingsProjectsTitle => 'Projects';
+
+  @override
+  String get settingsProjectsOffline => 'Connect to a bridge to manage projects.';
+
+  @override
+  String settingsProjectActions(String name) {
+    return 'Actions for $name';
+  }
+
+  @override
   String get settingsSectionBridge => 'Bridge';
 
   @override
