@@ -16,10 +16,6 @@
   "desktopFileAccessGranted": "Protected files are accessible",
   "desktopFileAccessDenied": "Not granted — folder prompts may pause agents",
   "desktopFileAccessUnknown": "Access could not be confirmed",
-  "desktopHomeNeedsYou": "Needs you",
-  "@desktopHomeNeedsYou": {"description": "Desktop home section heading for sessions waiting on the user's answer."},
-  "desktopHomeRecent": "Recent",
-  "@desktopHomeRecent": {"description": "Desktop home section heading for the latest sessions across projects that are neither running nor waiting."},
   "desktopShortcutHint": "{label} ({shortcut})",
   "@desktopShortcutHint": {
     "description": "Desktop control tooltip with its available platform-specific keyboard shortcut.",

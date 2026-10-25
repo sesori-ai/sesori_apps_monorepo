@@ -67,8 +67,8 @@
   breadcrumbs and exits; 11.iii the session list's view mode, the `projectSessions` route and the claim stack.
   The home follows `AllSessionsCubit.defaultProjectId` as the phone's composer pane does: it waits blank while the
   list loads, shows the shared prompt with no default (with no projects its picker offers only Open another
-  folder…, replacing the old empty home), and crossfades between them. The palette's sessions now follow the
-  sidebar list's filter, search and chip; its projects still list every project.
+  folder…, replacing the old empty home), and crossfades between them. The palette's sessions cover every project,
+  whatever the sidebar list's filter, search and chip (`AllSessionsState.everyProjectRows`), as its projects do.
 - No reduction of the retirement matrix has been requested or accepted.
 
 ## Review record

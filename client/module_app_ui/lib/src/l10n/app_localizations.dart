@@ -175,18 +175,6 @@ abstract class AppLocalizations {
   /// **'Access could not be confirmed'**
   String get desktopFileAccessUnknown;
 
-  /// Desktop home section heading for sessions waiting on the user's answer.
-  ///
-  /// In en, this message translates to:
-  /// **'Needs you'**
-  String get desktopHomeNeedsYou;
-
-  /// Desktop home section heading for the latest sessions across projects that are neither running nor waiting.
-  ///
-  /// In en, this message translates to:
-  /// **'Recent'**
-  String get desktopHomeRecent;
-
   /// Desktop control tooltip with its available platform-specific keyboard shortcut.
   ///
   /// In en, this message translates to:
