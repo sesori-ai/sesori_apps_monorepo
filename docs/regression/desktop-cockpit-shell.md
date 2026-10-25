@@ -201,8 +201,8 @@ The main pane hosts one full-width routed page.
 - The footer's Archived opens the Archived sessions page over the current page: the shared archived list across
   projects, read through the sidebar's shared project filter, with each row naming its project. It never claims
   project viewing. A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
-  returns to the page it opened over, or home when there is none, and pressing Archived while it is open does
-  nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
+  returns to the page it opened over, or home when there is none, and pressing Archived while it is the top page
+  does nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
   card say why.
 - The all-sessions page is a toolbar over one timeline. The toolbar names the project and its repository,
   starts a New session in that project (hidden while an empty project shows the composer, and folded to its
@@ -419,8 +419,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   when the list shows it first, and shows no composer under Archived (`desktop_session_list_screen_test`).
 - Flat typed route registration, no-back all-sessions presentation, archived read-only navigation,
   new-session replacement, Changes breadcrumb and file selection, home states, package-font resolution.
-- The footer's Archived control; the Archived page pushed once over its opener, its rows opening read-only over
-  it, and its close returning to the opener or, reached directly, home (`desktop_router_test`).
+- The footer's Archived control (`desktop_cockpit_shell_test`); the Archived page pushed once over its opener, its
+  rows opening read-only over it, and its close returning to the opener or, reached directly, home
+  (`desktop_router_test`).
 - Recent ordering/pinning, live inventory mutations, action-scope viewing isolation, invalidation/disposal,
   project-collapse and section-fold persistence, every running row beside two others, Show more paging and its
   reset, a row's compact time with its spoken form and its drop under larger text, shared menu/route callbacks. All-project admission happens once per

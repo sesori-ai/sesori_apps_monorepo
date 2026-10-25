@@ -375,7 +375,7 @@ Dependencies:
 - **2.a and 5** are independent; 2.b follows 2.a.
 - **3 follows 2.a** (`SessionScope`), 4 follows 3, and 6 follows 2.a and 5.
 - **7.a follows 6**; 7.b.i follows 3, 4 and 7.a; 7.b.ii follows 7.b.i; 8 follows 7.b.ii.
-- **9 follows 8**; 10.a follows 9; 10.b follows 10.a; 11 follows 10.b.
+- **9 follows 8**; 10.a.i follows 9; 10.a.ii follows 10.a.i; 10.b follows 10.a.ii; 11 follows 10.b.
 - **12 follows every implementation step**, and 13 comes last.
 
 Step 7.b is split in two:
@@ -587,6 +587,9 @@ This document and `TRACKER.md`. Verification: Markdown only.
 - **Regression docs:** `navigation-transitions.md` and `projects-and-sessions.md`.
 
 ### Step 10.a — Desktop sidebar on the shared list (⚙️)
+
+10.a.i ships the footer's Archived entry and its route, with their tests and the macOS Archived check. 10.a.ii ships
+the rest of this checklist.
 
 - **Sidebar body.** `AllSessionsList` under New session and Search, which still opens the palette.
 - **Footer.** It keeps the desktop extras and adds Archived, which opens a new desktop archived route.
