@@ -452,8 +452,8 @@ class const AppRouteSessionDiffs({
   }
 }
 
-/// Archived sessions across every project. [projectId] narrows the shared
-/// project filter on entry; null opens with the filter as it is.
+/// Archived sessions across every project, under the home's shared project
+/// filter (D6).
 class const AppRouteArchivedSessions() extends AppRoute {
   @override
   AppRouteDef get def => AppRouteDef.archivedSessions;
