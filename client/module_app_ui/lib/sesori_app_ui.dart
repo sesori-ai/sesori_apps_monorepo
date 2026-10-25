@@ -123,5 +123,6 @@ export "src/widgets/sesori_background_widget.dart";
 export "src/widgets/sesori_logo.dart";
 export "src/widgets/session_launch_failure_alerts.dart";
 export "src/widgets/session_scope.dart";
+export "src/widgets/session_sidebar/floating_sidebar_panel.dart";
 export "src/widgets/session_sidebar/session_sidebar_shell.dart";
 export "src/widgets/sse_toast_listener.dart";

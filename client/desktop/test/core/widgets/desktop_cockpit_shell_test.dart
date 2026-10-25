@@ -18,7 +18,6 @@ import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
 import "package:sesori_desktop/core/widgets/desktop_connection_pill.dart";
 import "package:sesori_desktop/core/widgets/desktop_page_toolbar.dart";
-import "package:sesori_desktop/core/widgets/desktop_sidebar.dart";
 import "package:sesori_desktop/core/widgets/desktop_sidebar_expansion.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -207,7 +206,7 @@ void main() {
   final page = find.byKey(const Key("cockpit-content"));
   final list = find.byKey(const Key("desktop-sidebar-session-list"));
   final filterTrigger = find.byKey(const Key("desktop-sidebar-filter"));
-  const margin = DesktopSidebar.panelMargin;
+  const margin = FloatingSidebarPanel.margin;
   // The page starts past the open panel and the gaps on either side of it, or
   // at the window's edge while the sidebar is hidden.
   double pageStart(WidgetTester tester) => tester.getTopLeft(page).dx;

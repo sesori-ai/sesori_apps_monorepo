@@ -242,7 +242,9 @@ state.
   list shows its error with Retry, a computer with no projects shows the add-project call to action, and the
   disconnected pages below replace the list.
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
-  over the home. The sidebar leads with New session, then search, then the project switcher heading the list, and
+  over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
+  divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.
+  The sidebar leads with New session, then search, then the project switcher heading the list, and
   its footer holds the computer switcher, Archived, Settings and collapse. With no session open the pane is a new
   session in the list's default project, which holds once chosen so another session turning newest never moves
   the draft; with no default yet it asks for a project with nothing selected, and its picker opens on a tap
