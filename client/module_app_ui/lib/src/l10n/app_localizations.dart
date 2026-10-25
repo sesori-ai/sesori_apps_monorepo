@@ -313,7 +313,7 @@ abstract class AppLocalizations {
   /// **'Search projects'**
   String get projectPickerSearchHint;
 
-  /// First entry of the new-session project picker. Opens the folder browser and starts the session in the folder it adds.
+  /// First entry of the new-session project picker. Opens the folder browser and selects the folder it adds as the project.
   ///
   /// In en, this message translates to:
   /// **'Open another folder…'**

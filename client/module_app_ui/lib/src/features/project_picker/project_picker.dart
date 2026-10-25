@@ -44,8 +44,8 @@ class const ProjectPicker({
       child: _ProjectPickerList(
         selectedProjectId: selectedProjectId,
         onSelected: onSelected,
-        // Runs once the picker has closed. The folder browser opens over this
-        // widget's context, which outlives the picker.
+        // Runs once the picker's route has finished closing. The folder
+        // browser opens over this widget's context, which outlives the picker.
         onOpenFolder: () => openFolder(
           context: context,
           onProjectAdded: ({required context, required project, required displayName}) =>
@@ -131,8 +131,10 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
       PregoPickerSearchOption(
         isSelected: false,
         onPick: () {
+          final route = ModalRoute.of(context);
           widget.onClose();
-          widget.onOpenFolder();
+          // A popped route completes only once its closing animation ends.
+          unawaited(route?.completed.then((_) => widget.onOpenFolder()));
         },
         child: _PickerRow(icon: TablerRegular.folder_plus, title: loc.projectPickerOpenFolder, detail: null),
       ),
