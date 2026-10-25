@@ -42,7 +42,7 @@ void main() {
         ),
       ),
     );
-    when(() => repository.listSessions(projectId: "one", waitForPrData: false)).thenAnswer(
+    when(() => repository.listSessions(projectId: "one")).thenAnswer(
       (_) async => ApiResponse.success(const SessionListResponse(items: [])),
     );
     // Register only owned fake-backed factories, never production DI/bootstrap.

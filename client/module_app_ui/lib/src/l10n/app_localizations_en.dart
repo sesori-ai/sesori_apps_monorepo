@@ -352,6 +352,24 @@ class AppLocalizationsEn extends AppLocalizations {
   String get computerMenuManage => 'Manage computers…';
 
   @override
+  String homeComputerButtonOnline(String name) {
+    return 'Computer: $name, online';
+  }
+
+  @override
+  String homeComputerButtonConnecting(String name) {
+    return 'Computer: $name, connecting';
+  }
+
+  @override
+  String homeComputerButtonOffline(String name) {
+    return 'Computer: $name, offline';
+  }
+
+  @override
+  String get homeComputerButtonUnnamed => 'Computer';
+
+  @override
   String get computersTitle => 'Computers';
 
   @override

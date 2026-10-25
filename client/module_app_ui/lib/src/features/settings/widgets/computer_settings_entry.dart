@@ -40,6 +40,7 @@ class const ComputerSettingsEntry({
                 onSelect: ({required bridgeId}) =>
                     onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.settings),
                 onManageComputers: onManageComputers,
+                currentFirst: false,
                 triggerBuilder: (context, toggle) => Semantics(
                   hint: context.loc.computerMenuSwitchHint,
                   child: Material(

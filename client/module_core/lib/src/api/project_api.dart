@@ -37,10 +37,7 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
     );
   }
 
-  Future<ApiResponse<SessionListResponse>> listSessions({
-    required String projectId,
-    required bool waitForPrData,
-  }) {
+  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
     return _client.post(
       "/sessions",
       fromJson: SessionListResponse.fromJson,
@@ -48,7 +45,7 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
         projectId: projectId,
         start: null,
         limit: null,
-        waitForPrData: waitForPrData,
+        waitForPrData: false,
       ),
     );
   }

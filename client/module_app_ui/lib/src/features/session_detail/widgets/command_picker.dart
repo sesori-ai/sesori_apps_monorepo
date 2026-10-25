@@ -94,6 +94,7 @@ class _CommandPickerState() extends State<CommandPicker> {
     return PregoPickerSearchList(
       searchHint: loc.sessionDetailCommandSearch,
       onQueryChanged: _setQuery,
+      header: null,
       rows: _rows,
       emptyText: loc.sessionDetailNoCommands,
       onClose: widget.onClose,

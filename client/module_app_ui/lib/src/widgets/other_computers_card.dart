@@ -76,6 +76,7 @@ class const OtherComputersCard({
           onSelect: _switch,
           // The card leads back to a working computer, not to management.
           onManageComputers: null,
+          currentFirst: false,
           triggerBuilder: (context, toggle) => PregoGroupedRow(
             title: Text(context.loc.projectsBridgeOfflineMoreComputers(unlisted)),
             trailing: const Icon(TablerRegular.chevron_down),

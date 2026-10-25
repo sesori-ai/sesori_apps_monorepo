@@ -63,6 +63,7 @@ class _ModelPickerState() extends State<ModelPicker> {
         _query = query;
         _rows = _buildRows();
       }),
+      header: null,
       rows: _rows,
       emptyText: null,
       onClose: widget.onClose,

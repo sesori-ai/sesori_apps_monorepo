@@ -27,7 +27,7 @@
 | 10.a.ii/13 | Desktop sidebar on the shared list | Done | #2047 |
 | 10.b/13 | Desktop Activity and rail removed | Done | #2048 |
 | 11.i/13 | Desktop composer home; palette on the shared list; Recent sessions removed | Done | #2052 |
-| 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Done | `sesori/app-simplification-step-11-ii` |
+| 11.ii/13 | Desktop project page, its breadcrumbs and exits removed | Done | #2054 |
 | 11.iii/13 | Session list view mode removed | Done | `sesori/app-simplification-step-11-iii` |
 | 11.iv/13 | Project-sessions route and list-claim stack removed | Done | `sesori/app-simplification-step-11-iv` |
 | 12/13 | Regression documents reconciled | Not started | — |
@@ -63,9 +63,9 @@
 - 2026-10-25: step 10.b keeps the activity projection, because the desktop home's Needs you, Running and Recent
   sections read it until step 11. It drops only the projection's sidebar inputs (set-aside and sticky sessions);
   step 11 removes the rest with the home sections.
-- 2026-10-25: step 11 measured well over 2,000 changed lines before its tests, so it splits into three stacked
+- 2026-10-25: step 11 measured well over 2,000 changed lines before its tests, so it splits into four stacked
   branches: 11.i the composer home, the palette and the Recent sessions removal; 11.ii the project page with its
-  breadcrumbs and exits; 11.iii the session list's view mode, the `projectSessions` route and the claim stack.
+  breadcrumbs and exits; 11.iii the session list's view mode; 11.iv the `projectSessions` route and the claim stack.
   The home follows `AllSessionsCubit.defaultProjectId` as the phone's composer pane does: it waits blank while the
   list loads, shows the shared prompt with no default (with no projects its picker offers only Open another
   folder…, replacing the old empty home), and crossfades between them. The palette's sessions cover every project,
