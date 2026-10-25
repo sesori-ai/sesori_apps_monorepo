@@ -32,6 +32,7 @@ void main() {
     Size size = const Size(1200, 800),
     String? selectedProjectId = "app",
     bool filters = false,
+    PregoInteractionMode mode = PregoInteractionMode.touch,
   }) async {
     tester.view.physicalSize = size;
     tester.view.devicePixelRatio = 1;
@@ -59,17 +60,21 @@ void main() {
           BlocProvider<ProjectListCubit>.value(value: cubit),
           RepositoryProvider<ConnectionService>.value(value: connectionService),
         ],
-        child: MaterialApp(
-          theme: buildPregoThemeData(brightness: Brightness.light),
-          localizationsDelegates: AppLocalizations.localizationsDelegates,
-          supportedLocales: AppLocalizations.supportedLocales,
-          home: Scaffold(
-            body: Center(
-              child: ProjectPicker(
-                selectedProjectId: selectedProjectId,
-                onSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
-                onAllProjects: filters ? () => allProjectsPicks++ : null,
-                triggerBuilder: (_, open) => TextButton(onPressed: open, child: const Text("Choose project")),
+        // Above the app, so the popover's route sees the mode too.
+        child: PregoInteractionScope(
+          mode: mode,
+          child: MaterialApp(
+            theme: buildPregoThemeData(brightness: Brightness.light),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: Scaffold(
+              body: Center(
+                child: ProjectPicker(
+                  selectedProjectId: selectedProjectId,
+                  onSelected: ({required projectId, required projectName}) => selected.add("$projectId $projectName"),
+                  onAllProjects: filters ? () => allProjectsPicks++ : null,
+                  triggerBuilder: (_, open) => TextButton(onPressed: open, child: const Text("Choose project")),
+                ),
               ),
             ),
           ),
@@ -184,7 +189,9 @@ void main() {
     expect(find.text("Search projects"), findsNothing);
   });
 
-  testWidgets("a phone opens a sheet whose search takes the keyboard", (tester) async {
+  bool searchHasFocus(WidgetTester tester) => tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
+
+  testWidgets("a phone opens a sheet with the keyboard down until its search is tapped", (tester) async {
     await pumpPicker(
       tester: tester,
       projects: [_demoApp, _demoApi],
@@ -192,7 +199,11 @@ void main() {
     );
 
     expect(find.text("Projects"), findsOneWidget);
-    expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+    expect(searchHasFocus(tester), isFalse);
+
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    expect(searchHasFocus(tester), isTrue);
 
     await search(tester: tester, query: "app");
     expect(find.text("demo-app"), findsOneWidget);
@@ -201,5 +212,18 @@ void main() {
     await tester.tap(find.text("demo-app"));
     await tester.pumpAndSettle();
     expect(find.text("Projects"), findsNothing);
+  });
+
+  testWidgets("a wide touch popover leaves the keyboard down too", (tester) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi]);
+
+    expect(find.text("Search projects"), findsOneWidget);
+    expect(searchHasFocus(tester), isFalse);
+  });
+
+  testWidgets("under a pointer the search takes focus, so typing filters at once", (tester) async {
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], mode: PregoInteractionMode.pointer);
+
+    expect(searchHasFocus(tester), isTrue);
   });
 }

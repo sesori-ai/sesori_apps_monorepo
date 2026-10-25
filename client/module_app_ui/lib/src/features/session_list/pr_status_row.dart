@@ -4,22 +4,26 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
 import "../../l10n/app_localizations.dart";
-import "session_row_metrics.dart";
 
 // GitHub's merged purple: Prego has no status token that means "merged".
 const _kPrMergedPurple = Color(0xFFA371F7);
 
-/// Compact row showing PR number, state label, and review/check status dots.
+/// The slot the state glyph sits in; wider than the glyph, which spaces it from
+/// the number.
+const double _iconSlotWidth = 20;
+const double _stateIconSize = 14;
+
+/// A session row's pull request: a state glyph, the number, and for an open
+/// pull request its conflict, review and check marks.
 ///
-/// Used inside [_SessionTile] to surface pull-request metadata directly in the
-/// session list without navigating to the detail screen.
+/// The state needs no word: each state has its own glyph and colour, as on
+/// GitHub, and assistive technology hears it from the glyph's label.
 class const PrStatusRow({super.key, required final PullRequestInfo pr}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
-    final stateColor = _stateColor(colors: context.prego.colors, state: pr.state);
-    final mergeIcon = _mergeIcon(status: pr.mergeableStatus);
-    final mergeColor = _mergeColor(colors: context.prego.colors, status: pr.mergeableStatus) ?? stateColor;
+    final colors = context.prego.colors;
+    final state = _stateMark(colors: colors, loc: loc, state: pr.state);
 
     // Squeezed by a narrow pane, the fixed indicators clip rather than overflow.
     return UnconstrainedBox(
@@ -32,102 +36,73 @@ class const PrStatusRow({super.key, required final PullRequestInfo pr}) extends 
         mainAxisSize: MainAxisSize.min,
         children: [
           Tooltip(
-            message: _mergeTooltip(loc: loc, status: pr.mergeableStatus),
-            // The same slot the footer's other detail marks sit in, so the two
-            // details keep one rhythm across the line.
+            message: state.label,
+            // The glyph speaks for itself; the tooltip only helps a pointer.
+            excludeFromSemantics: true,
             child: SizedBox(
-              width: kSessionRowIconSlotWidth,
+              width: _iconSlotWidth,
               child: Center(
-                child: Icon(mergeIcon, size: kSessionRowDetailIconSize, color: mergeColor),
+                child: Icon(state.icon, size: _stateIconSize, color: state.color, semanticLabel: state.label),
               ),
             ),
           ),
           Flexible(
             child: Text(
               loc.prLabel(pr.number),
-              style: context.prego.textTheme.textXs.regular.copyWith(color: context.prego.colors.textSecondary),
+              style: context.prego.textTheme.textXs.regular.copyWith(color: colors.textSecondary),
               maxLines: 1,
               overflow: TextOverflow.ellipsis,
             ),
           ),
-          const SizedBox(width: 4),
-          Flexible(
-            child: Text(
-              _stateText(loc: loc, state: pr.state),
-              style: context.prego.textTheme.textXs.regular.copyWith(color: stateColor),
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-            ),
-          ),
-          // Review/check indicators are only relevant for open PRs.
-          if (pr.state == PrState.open) ...[
-            if (_reviewIndicator(colors: context.prego.colors, loc: loc, decision: pr.reviewDecision)
-                case (:final icon, :final color, :final tooltip)?) ...[
-              const SizedBox(width: 8),
-              Tooltip(
-                message: tooltip,
-                child: Icon(icon, size: PregoIconSize.sm, color: color),
+          // Conflict, review and check marks only matter while it is open.
+          if (pr.state == PrState.open)
+            for (final indicator in [
+              ?_conflictIndicator(colors: colors, loc: loc, status: pr.mergeableStatus),
+              ?_reviewIndicator(colors: colors, loc: loc, decision: pr.reviewDecision),
+              ?_checkIndicator(colors: colors, loc: loc, status: pr.checkStatus),
+            ])
+              Padding(
+                padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xs),
+                child: Tooltip(
+                  message: indicator.tooltip,
+                  child: Icon(indicator.icon, size: PregoIconSize.sm, color: indicator.color),
+                ),
               ),
-            ],
-            if (_checkIndicator(colors: context.prego.colors, loc: loc, status: pr.checkStatus)
-                case (:final icon, :final color, :final tooltip)?) ...[
-              const SizedBox(width: 4),
-              Tooltip(
-                message: tooltip,
-                child: Icon(icon, size: PregoIconSize.sm, color: color),
-              ),
-            ],
-          ],
         ],
       ),
     );
   }
 }
 
-// ---------------------------------------------------------------------------
-// State helpers
-// ---------------------------------------------------------------------------
-
-Color _stateColor({required PregoColors colors, required PrState state}) => switch (state) {
-  PrState.open => colors.fgSuccessPrimary,
-  PrState.merged => _kPrMergedPurple,
-  PrState.closed => colors.borderPrimary,
-  PrState.unknown => colors.borderPrimary,
+/// GitHub's glyph and colour for each state, and the words that say it.
+({IconData icon, Color color, String label}) _stateMark({
+  required PregoColors colors,
+  required AppLocalizations loc,
+  required PrState state,
+}) => switch (state) {
+  PrState.open => (icon: TablerRegular.git_pull_request, color: colors.fgSuccessPrimary, label: loc.prStateOpen),
+  PrState.merged => (icon: TablerRegular.git_merge, color: _kPrMergedPurple, label: loc.prStateMerged),
+  PrState.closed => (
+    icon: TablerRegular.git_pull_request_closed,
+    color: colors.fgErrorPrimary,
+    label: loc.prStateClosed,
+  ),
+  PrState.unknown => (icon: TablerRegular.git_pull_request, color: colors.textTertiary, label: loc.prStateUnknown),
 };
 
-String _stateText({required AppLocalizations loc, required PrState state}) => switch (state) {
-  PrState.open => loc.prStateOpen,
-  PrState.merged => loc.prStateMerged,
-  PrState.closed => loc.prStateClosed,
-  PrState.unknown => "",
+/// A red warning while the open pull request conflicts with its base.
+({IconData icon, Color color, String tooltip})? _conflictIndicator({
+  required PregoColors colors,
+  required AppLocalizations loc,
+  required PrMergeableStatus status,
+}) => switch (status) {
+  PrMergeableStatus.conflicting => (
+    icon: TablerRegular.alert_triangle,
+    color: colors.fgErrorPrimary,
+    tooltip: loc.prConflicting,
+  ),
+  PrMergeableStatus.mergeable || PrMergeableStatus.unknown => null,
 };
-
-// ---------------------------------------------------------------------------
-// Mergeable status helpers
-// ---------------------------------------------------------------------------
-
-/// Returns a color for the merge icon, or null to fall back to the state color.
-Color? _mergeColor({required PregoColors colors, required PrMergeableStatus status}) => switch (status) {
-  PrMergeableStatus.mergeable => colors.fgSuccessPrimary,
-  PrMergeableStatus.conflicting => colors.fgErrorPrimary,
-  PrMergeableStatus.unknown => null,
-};
-
-IconData _mergeIcon({required PrMergeableStatus status}) => switch (status) {
-  PrMergeableStatus.mergeable => TablerRegular.git_merge,
-  PrMergeableStatus.conflicting => TablerRegular.alert_triangle,
-  PrMergeableStatus.unknown => TablerRegular.git_merge,
-};
-
-String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus status}) => switch (status) {
-  PrMergeableStatus.mergeable => loc.prMergeable,
-  PrMergeableStatus.conflicting => loc.prConflicting,
-  PrMergeableStatus.unknown => "",
-};
-
-// ---------------------------------------------------------------------------
-// Review decision indicator
-// ---------------------------------------------------------------------------
 
 /// Returns icon, color, and tooltip for the review decision, or null to hide it.
 ({IconData icon, Color color, String tooltip})? _reviewIndicator({
@@ -152,10 +127,6 @@ String _mergeTooltip({required AppLocalizations loc, required PrMergeableStatus 
   ),
   PrReviewDecision.unknown => null,
 };
-
-// ---------------------------------------------------------------------------
-// Check status indicator
-// ---------------------------------------------------------------------------
 
 /// Returns icon, color, and tooltip for the check status, or null to hide it.
 ({IconData icon, Color color, String tooltip})? _checkIndicator({
