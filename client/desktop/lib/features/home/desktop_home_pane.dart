@@ -158,6 +158,7 @@ class const _DesktopComputerHeader({
                     onSelect: ({required bridgeId}) =>
                         onSwitchComputer(bridgeId: bridgeId, source: ComputerSwitchSource.menu),
                     onManageComputers: onManageComputers,
+                    currentFirst: false,
                     triggerBuilder: (context, toggle) => _ViewingButton(
                       label: remote
                           ? context.loc.desktopViewingComputer(current.name)

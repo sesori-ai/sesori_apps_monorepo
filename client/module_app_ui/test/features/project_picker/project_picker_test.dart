@@ -1,4 +1,5 @@
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -90,7 +91,9 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets("search narrows the projects by name and path, under the add entry", (tester) async {
+  double topOf({required WidgetTester tester, required Finder finder}) => tester.getTopLeft(finder).dy;
+
+  testWidgets("search narrows the projects by name and path", (tester) async {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi, _clientWeb]);
     expect(find.text("Search projects"), findsOneWidget);
     expect(find.text("demo-app"), findsOneWidget);
@@ -98,7 +101,6 @@ void main() {
     expect(find.text("web"), findsOneWidget);
 
     await search(tester: tester, query: "API");
-    expect(find.text("Open another folder…"), findsOneWidget);
     expect(find.text("demo-api"), findsOneWidget);
     expect(find.text("demo-app"), findsNothing);
     expect(find.text("web"), findsNothing);
@@ -109,7 +111,28 @@ void main() {
     expect(find.text("demo-api"), findsNothing);
   });
 
-  testWidgets("a search with no match keeps the add entry and says nothing matches", (tester) async {
+  testWidgets("Open another folder sits above the search, which leaves it alone", (tester) async {
+    // The phone sheet, whose fixed height keeps everything above the list
+    // still while the matches narrow.
+    await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], size: const Size(390, 844));
+    final action = find.text("Open another folder…");
+    final actionTop = topOf(tester: tester, finder: action);
+    expect(actionTop, lessThan(topOf(tester: tester, finder: find.byType(TextField))));
+    expect(
+      topOf(tester: tester, finder: find.byType(TextField)),
+      lessThan(topOf(tester: tester, finder: find.text("demo-app"))),
+    );
+
+    // No query filters it, and it stays put.
+    await search(tester: tester, query: "API");
+    expect(action, findsOneWidget);
+    expect(topOf(tester: tester, finder: action), actionTop);
+    await search(tester: tester, query: "folder");
+    expect(action, findsOneWidget);
+    expect(find.text("No projects match"), findsOneWidget);
+  });
+
+  testWidgets("a search with no match keeps the action and says nothing matches", (tester) async {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi]);
 
     await search(tester: tester, query: "zzz");
@@ -128,7 +151,7 @@ void main() {
     expect(find.textContaining("/demo-app"), findsNothing);
   });
 
-  testWidgets("with no project the add entry is the whole list", (tester) async {
+  testWidgets("with no project the action is all the picker offers", (tester) async {
     await pumpPicker(tester: tester, projects: const []);
 
     expect(find.text("Open another folder…"), findsOneWidget);
@@ -169,7 +192,7 @@ void main() {
     expect(selected, ["api demo-api"]);
   });
 
-  testWidgets("filtering, All projects leads in place of the add entry and clears the filter", (tester) async {
+  testWidgets("filtering, All projects leads in place of the action and clears the filter", (tester) async {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true);
     expect(find.text("All projects"), findsOneWidget);
     expect(find.text("Open another folder…"), findsNothing);
@@ -225,5 +248,47 @@ void main() {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], mode: PregoInteractionMode.pointer);
 
     expect(searchHasFocus(tester), isTrue);
+  });
+
+  Future<void> press({required WidgetTester tester, required LogicalKeyboardKey key}) async {
+    await tester.sendKeyEvent(key);
+    await tester.pumpAndSettle();
+  }
+
+  testWidgets("under a pointer Enter after typing picks the first match, not the action", (tester) async {
+    await pumpPicker(
+      tester: tester,
+      projects: [_demoApp, _demoApi],
+      selectedProjectId: null,
+      mode: PregoInteractionMode.pointer,
+    );
+
+    await search(tester: tester, query: "api");
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(selected, ["api demo-api"]);
+    expect(find.byType(AddProjectDialog), findsNothing);
+  });
+
+  testWidgets("under a pointer Up from the first project reaches the action, which Enter opens", (tester) async {
+    await pumpPicker(
+      tester: tester,
+      projects: [_demoApp, _demoApi],
+      selectedProjectId: null,
+      mode: PregoInteractionMode.pointer,
+    );
+
+    await press(tester: tester, key: LogicalKeyboardKey.arrowUp);
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(selected, isEmpty);
+    expect(find.text("Search projects"), findsNothing);
+    expect(find.byType(AddProjectDialog), findsOneWidget);
+  });
+
+  testWidgets("under a pointer with nothing matching, Enter opens the action", (tester) async {
+    await pumpPicker(tester: tester, projects: [_demoApp], mode: PregoInteractionMode.pointer);
+
+    await search(tester: tester, query: "zzz");
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(find.byType(AddProjectDialog), findsOneWidget);
   });
 }

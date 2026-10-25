@@ -29,7 +29,12 @@ void main() {
 
   setUp(() => selected = []);
 
-  Future<void> pumpMenu(WidgetTester tester, {required VoidCallback? onManageComputers}) async {
+  Future<void> pumpMenu(
+    WidgetTester tester, {
+    required VoidCallback? onManageComputers,
+    String targetId = "a",
+    bool currentFirst = false,
+  }) async {
     final cubit = _MockComputerSwitcherCubit();
     whenListen(
       cubit,
@@ -45,7 +50,7 @@ void main() {
           ),
           _computer(id: "c", name: "old-tower", status: BridgeRegistrationStatus.inactive, lastSeenAt: null),
         ],
-        targetId: "a",
+        targetId: targetId,
         localId: null,
       ),
     );
@@ -60,6 +65,7 @@ void main() {
             child: ComputerMenu(
               onSelect: ({required bridgeId}) => selected.add(bridgeId),
               onManageComputers: onManageComputers,
+              currentFirst: currentFirst,
               triggerBuilder: (context, toggle) => TextButton(onPressed: toggle, child: const Text("trigger")),
             ),
           ),
@@ -121,5 +127,26 @@ void main() {
     expect(managed, 1);
     expect(selected, isEmpty);
     expect(find.text("Manage computers…"), findsNothing);
+  });
+
+  /// The menu's computer names, top to bottom.
+  List<String> menuOrder(WidgetTester tester) =>
+      ["studio-mac", "work-laptop", "old-tower"]
+        ..sort((a, b) => tester.getTopLeft(find.text(a)).dy.compareTo(tester.getTopLeft(find.text(b)).dy));
+
+  testWidgets("keeps the account's order by default", (tester) async {
+    await pumpMenu(tester, onManageComputers: null, targetId: "b");
+
+    expect(menuOrder(tester), ["studio-mac", "work-laptop", "old-tower"]);
+  });
+
+  testWidgets("leads with the current computer for a trigger that does not name it", (tester) async {
+    await pumpMenu(tester, onManageComputers: null, targetId: "b", currentFirst: true);
+
+    expect(menuOrder(tester), ["work-laptop", "studio-mac", "old-tower"]);
+    expect(
+      find.descendant(of: find.byKey(const ValueKey("computer-menu-b")), matching: find.byIcon(TablerRegular.check)),
+      findsOneWidget,
+    );
   });
 }

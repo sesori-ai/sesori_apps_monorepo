@@ -56,11 +56,13 @@ class const PregoPickerPopover({
 }
 
 /// The body of a composer picker: a search field pinned above a list that
-/// scrolls itself.
+/// scrolls itself, under an optional [header] the search does not filter.
 ///
 /// Under a pointer the field takes focus, so typing filters at once. Up and
-/// Down move a highlight through the options, and so does the mouse; Enter
-/// picks the highlighted option, and Esc closes the picker. Under touch the
+/// Down move a highlight through the header and the options, and so does the
+/// mouse; Enter picks the highlighted option, and Esc closes the picker. The
+/// highlight starts on the first matching option, so Enter after typing picks
+/// a match, and falls back to the header when nothing matches. Under touch the
 /// field waits for a tap, so opening a picker never raises the keyboard over
 /// the options.
 class const PregoPickerSearchList({
@@ -69,6 +71,11 @@ class const PregoPickerSearchList({
 
   /// Receives the trimmed, lowercased query.
   required final ValueChanged<String> onQueryChanged,
+
+  /// An option pinned above the search field, such as an action the query
+  /// does not filter, set off from the field by a hairline. Up from the first
+  /// option reaches it. Null shows the field first.
+  required final PregoPickerSearchOption? header,
 
   /// The rows that match the query, or null while they load.
   required final List<PregoPickerSearchRow>? rows,
@@ -85,14 +92,22 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   final _scrollController = ScrollController();
   final _highlightedKey = GlobalKey();
 
-  /// The highlighted option's row index; null when no option matches.
-  late int? _highlighted = _nextOption(after: -1, step: 1);
+  /// The highlighted option's index in [_entries]; null when there is none.
+  late int? _highlighted = _firstHighlight();
+
+  /// What Up and Down move through: the header, then the rows.
+  List<PregoPickerSearchRow> get _entries => [?widget.header, ...?widget.rows];
+
+  /// Where the rows start in [_entries].
+  int get _rowsStart => widget.header == null ? 0 : 1;
+
+  int? _firstHighlight() => _nextOption(after: _rowsStart - 1, step: 1) ?? (widget.header == null ? null : 0);
 
   @override
   void didUpdateWidget(PregoPickerSearchList oldWidget) {
     super.didUpdateWidget(oldWidget);
     // New matches start from the top.
-    if (!identical(oldWidget.rows, widget.rows)) _highlighted = _nextOption(after: -1, step: 1);
+    if (!identical(oldWidget.rows, widget.rows)) _highlighted = _firstHighlight();
   }
 
   @override
@@ -102,9 +117,9 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   }
 
   int? _nextOption({required int after, required int step}) {
-    final rows = widget.rows ?? const <PregoPickerSearchRow>[];
-    for (var index = after + step; index >= 0 && index < rows.length; index += step) {
-      if (rows[index] is PregoPickerSearchOption) return index;
+    final entries = _entries;
+    for (var index = after + step; index >= 0 && index < entries.length; index += step) {
+      if (entries[index] is PregoPickerSearchOption) return index;
     }
     return null;
   }
@@ -131,7 +146,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   void _pickHighlighted() {
     final highlighted = _highlighted;
     if (highlighted == null) return;
-    if (widget.rows?[highlighted] case final PregoPickerSearchOption option) option.onPick();
+    if (_entries[highlighted] case final PregoPickerSearchOption option) option.onPick();
   }
 
   void _setQuery(String value) {
@@ -143,6 +158,17 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
+    final header = widget.header;
+    final rowsStart = _rowsStart;
+    Widget optionRow({required PregoPickerSearchOption option, required int entry}) => _OptionRow(
+      key: entry == _highlighted ? _highlightedKey : null,
+      option: option,
+      pointer: pointer,
+      isHighlighted: pointer && entry == _highlighted,
+      onHover: () {
+        if (_highlighted != entry) setState(() => _highlighted = entry);
+      },
+    );
     final list = switch ((widget.rows, widget.emptyText)) {
       (null, _) => const Padding(
         padding: EdgeInsets.all(PregoSpacing.x3l),
@@ -159,15 +185,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
         itemBuilder: (context, index) => switch (rows[index]) {
           PregoPickerSearchHeading(:final text) => _Heading(text: text, pointer: pointer),
           PregoPickerSearchNote(:final text) => _Note(text: text),
-          final PregoPickerSearchOption option => _OptionRow(
-            key: index == _highlighted ? _highlightedKey : null,
-            option: option,
-            pointer: pointer,
-            isHighlighted: pointer && index == _highlighted,
-            onHover: () {
-              if (_highlighted != index) setState(() => _highlighted = index);
-            },
-          ),
+          final PregoPickerSearchOption option => optionRow(option: option, entry: rowsStart + index),
         },
       ),
     };
@@ -187,6 +205,14 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
         mainAxisSize: MainAxisSize.min,
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
+          if (header != null) ...[
+            Padding(
+              // The list's own inset, so the header lines up with its rows.
+              padding: pointer ? const EdgeInsets.all(4) : const EdgeInsetsDirectional.only(top: 6),
+              child: optionRow(option: header, entry: 0),
+            ),
+            Divider(height: 1, thickness: 0.5, color: prego.colors.borderSecondary),
+          ],
           Padding(
             padding: pointer
                 ? const EdgeInsetsDirectional.fromSTEB(4, 4, 4, 0)

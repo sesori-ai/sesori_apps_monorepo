@@ -727,6 +727,30 @@ abstract class AppLocalizations {
   /// **'Manage computers…'**
   String get computerMenuManage;
 
+  /// Accessibility label and pointer tooltip of the computer button in the phone home's top bar, which opens the computer menu, while the app is fully connected to that computer. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer: {name}, online'**
+  String homeComputerButtonOnline(String name);
+
+  /// Accessibility label and pointer tooltip of the computer button in the phone home's top bar while the app's connection to that computer is not up yet or is being restored. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer: {name}, connecting'**
+  String homeComputerButtonConnecting(String name);
+
+  /// Accessibility label and pointer tooltip of the computer button in the phone home's top bar while that computer's bridge is not running. The name is the computer's name.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer: {name}, offline'**
+  String homeComputerButtonOffline(String name);
+
+  /// Accessibility label of the computer button in the phone home's top bar before the app knows which computer it is paired with; the button is unavailable then.
+  ///
+  /// In en, this message translates to:
+  /// **'Computer'**
+  String get homeComputerButtonUnnamed;
+
   /// Title of the page that lists every computer on the account, opened from 'Manage computers…'.
   ///
   /// In en, this message translates to:

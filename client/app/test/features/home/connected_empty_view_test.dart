@@ -139,14 +139,13 @@ void main() {
     await pumpConnectedEmpty(tester);
 
     expect(find.textContaining("Connected"), findsNothing);
-    // Named once, under the page title — the body itself says nothing about
-    // the connection or the machine behind it.
+    // Named only by the bar's computer button — the body itself says nothing
+    // about the connection or the machine behind it.
+    expect(find.text("Macbook-Pro.local"), findsNothing);
     expect(
-      find.descendant(of: find.byType(PregoNavSubtitle), matching: find.text("Macbook-Pro.local")),
-      findsOneWidget,
+      tester.widget<PregoButtonsIconGlass>(find.byKey(const Key("home-computer"))).semanticLabel,
+      "Computer: Macbook-Pro.local, online",
     );
-    expect(find.text("Macbook-Pro.local"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.device_laptop), findsOneWidget);
   });
 
   testWidgets("tapping the CTA opens the Add Project sheet", (tester) async {

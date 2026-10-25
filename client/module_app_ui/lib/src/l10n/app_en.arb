@@ -312,6 +312,40 @@
   "@computerMenuManage": {
     "description": "Last item of the computer menu, below a divider. Opens the Computers page, where the user can switch to, rename and remove the account's computers."
   },
+  "homeComputerButtonOnline": "Computer: {name}, online",
+  "@homeComputerButtonOnline": {
+    "description": "Accessibility label and pointer tooltip of the computer button in the phone home's top bar, which opens the computer menu, while the app is fully connected to that computer. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Studio Mac"
+      }
+    }
+  },
+  "homeComputerButtonConnecting": "Computer: {name}, connecting",
+  "@homeComputerButtonConnecting": {
+    "description": "Accessibility label and pointer tooltip of the computer button in the phone home's top bar while the app's connection to that computer is not up yet or is being restored. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Studio Mac"
+      }
+    }
+  },
+  "homeComputerButtonOffline": "Computer: {name}, offline",
+  "@homeComputerButtonOffline": {
+    "description": "Accessibility label and pointer tooltip of the computer button in the phone home's top bar while that computer's bridge is not running. The name is the computer's name.",
+    "placeholders": {
+      "name": {
+        "type": "String",
+        "example": "Studio Mac"
+      }
+    }
+  },
+  "homeComputerButtonUnnamed": "Computer",
+  "@homeComputerButtonUnnamed": {
+    "description": "Accessibility label of the computer button in the phone home's top bar before the app knows which computer it is paired with; the button is unavailable then."
+  },
   "computersTitle": "Computers",
   "@computersTitle": {
     "description": "Title of the page that lists every computer on the account, opened from 'Manage computers…'."
