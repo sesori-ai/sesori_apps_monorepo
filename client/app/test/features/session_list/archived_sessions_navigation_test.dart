@@ -169,7 +169,7 @@ void main() {
     final harness = await setUpArchive(
       tester: tester,
       size: const Size(440, 956),
-      initialLocation: const AppRoute.archivedSessions(projectId: null).buildPath(),
+      initialLocation: const AppRoute.archivedSessions().buildPath(),
       currentRouteDef: AppRouteDef.archivedSessions,
       sessionsByProject: {
         "p1": [live, audit],
