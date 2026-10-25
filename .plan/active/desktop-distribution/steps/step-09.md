@@ -175,6 +175,16 @@ helper On/Off restoration, completed temporary-bridge cleanup and
   managers run XDG autostart. Only x64 exposes `/dev/kvm`. Distro rows therefore run as
   native-CPU containers in their own userspace on the runner kernel. They are not
   distro-kernel VMs.
+- Unavailable Secret Service passed on Ubuntu on both CPUs (run `40143637103`): a clean
+  signed-out sign-in screen, a normal Quit and an unchanged read-back. Scratch run
+  `40143724430` proved the GDM/SDDM login-autostart mechanics.
+- The distro rows (run `40144424220`) found a product defect. Flutter's GTK embedder
+  dlopens `libEGL.so.1` and `libGLESv2.so.2` through libepoxy, which neither
+  `dpkg-shlibdeps` nor rpm AutoReq sees. The signed 194 app aborted on clean Debian 13.
+  A local digest-pinned arm64 repro aborted bare on both distros, and rendered with
+  `libegl1 libgles2` (Debian) or `libglvnd-egl libglvnd-gles` (Fedora). Packaging now
+  declares those dependencies. Previous 167 has the same gap, so the upgrade rows need
+  two fixed, increasing main producers built after this merges.
 - Authenticated first-run registration: the fixture now leaves bridge intent unset, so
   the signed GUI's own first-run defaults admit On and write the login registration.
   Every helper-On launch checks those bytes. The next main-only authenticated run

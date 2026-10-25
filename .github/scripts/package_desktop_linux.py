@@ -169,6 +169,12 @@ def elf_files(*, root: Path) -> list[Path]:
             and native_arch(path=path) is not None]
 
 
+# Flutter's GTK embedder dlopens EGL/GLES through libepoxy, so neither dpkg-shlibdeps nor rpm AutoReq sees them;
+# clean Debian 13 and Fedora 44 abort at first frame with "Couldn't open libEGL.so.1" / "libGLESv2.so.2" without these.
+DLOPEN_DEB_DEPENDENCIES = "libegl1, libgles2"
+DLOPEN_RPM_REQUIRES = ("libEGL.so.1()(64bit)", "libGLESv2.so.2()(64bit)")
+
+
 def deb_dependencies(*, root: Path, work: Path, identity: dict) -> tuple[str, list[str]]:
     debian = work / "debian"
     debian.mkdir()
@@ -187,7 +193,7 @@ def deb_dependencies(*, root: Path, work: Path, identity: dict) -> tuple[str, li
     line = next((item for item in output.splitlines() if item.startswith("shlibs:Depends=")), None)
     if line is None:
         raise RuntimeError(f"dpkg-shlibdeps emitted no dependency manifest: {output}")
-    dependencies = line.removeprefix("shlibs:Depends=")
+    dependencies = f'{line.removeprefix("shlibs:Depends=")}, {DLOPEN_DEB_DEPENDENCIES}'
     return dependencies, command
 
 
@@ -224,7 +230,9 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
         "%global __strip /bin/true\n%global debug_package %{nil}\n"
         f"Name: {PACKAGE_NAME}\nVersion: {identity['version']}\nRelease: {identity['buildNumber']}%{{?dist}}\n"
         "Summary: Sesori desktop cockpit\nLicense: Proprietary\n"
-        f"BuildArch: {rpm_arch}\nAutoReqProv: yes\n\n%description\nSesori desktop cockpit\n\n"
+        f"BuildArch: {rpm_arch}\nAutoReqProv: yes\n"
+        + "".join(f"Requires: {soname}\n" for soname in DLOPEN_RPM_REQUIRES)
+        + "\n%description\nSesori desktop cockpit\n\n"
         "%prep\n\n%build\n\n%install\nmkdir -p %{buildroot}\ncp -a %{_sourcedir}/payload/. %{buildroot}/\n\n"
         "%files\n/opt/sesori-desktop\n/usr/bin/sesori-desktop\n"
         "/usr/share/applications/sesori-desktop.desktop\n/usr/share/icons/hicolor/512x512/apps/sesori-desktop.png\n",

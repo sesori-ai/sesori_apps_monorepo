@@ -98,7 +98,11 @@ source, OS and CPU come from the
 staged identity. DEB dependencies come from `dpkg-shlibdeps`; RPM requirements come
 from Fedora's native `rpmbuild` ELF scanning. Current locked Linux plugin sources are
 checked for explicit dynamic loading before packaging; no guessed explicit runtime
-requirement is added when those sources contain none.
+requirement is added when those sources contain none. The one known exception is the
+Flutter GTK embedder itself, which dlopens EGL and GLES through libepoxy: DEBs also
+depend on `libegl1, libgles2`, and RPMs require `libEGL.so.1()(64bit)` and
+`libGLESv2.so.2()(64bit)`. Without them the app aborts at first frame on clean Debian 13
+and Fedora 44 with `Couldn't open libEGL.so.1` / `libGLESv2.so.2`.
 
 Native Ubuntu 24.04 and Debian 13 containers install, same-version reinstall and
 remove the DEB. Their official multi-architecture base-image indexes are pinned, as is

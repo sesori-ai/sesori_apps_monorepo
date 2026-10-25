@@ -49,7 +49,10 @@ gates on the same pair: unavailable Secret Service, genuine GDM/SDDM login autos
 Debian 13 / Fedora 44 native-CPU upgrade rows. The authenticated run now gets its login
 registration from signed first-run defaults. Schema migration is not applicable
 (`schemaVersion` 1 since before public v1.9.1). Details are in [step 9](steps/step-09.md).
-After merge, rerun the authenticated mode on main to confirm the first-run registration.
+The distro rows found that signed DEB/RPM packages lacked the dlopened EGL/GLES runtime,
+so the app aborted on clean Debian 13 / Fedora 44 (the public `1.9.2-1022` preview has the
+same gap). 11.i.c.b adds those dependencies. After merge, build two increasing fixed main
+producers, rerun `linux-session` on that pair, and rerun the authenticated mode on main.
 Stable remains closed; AppImage, website and stable publication follow these gates.
 The user approved a bucket-tag-scoped domain-sharing exception after GCP rejected
 public access. Untagged resources retain the previous domain restriction; existing
