@@ -56,7 +56,7 @@ void main() {
           relaunchApi: relaunchApi,
           feedApi: DesktopUpdateFeedApi(client: http.Client(), bundleSource: bundleSource),
           feedValidator: DesktopUpdateFeedValidator(),
-          packagesStorage: VelopackPackagesStorage(
+          velopackApi: VelopackUpdateApi(
             bundleSource: bundleSource,
             applicationSupportDirectory: _LogDirectory(root: Directory.systemTemp),
           ),

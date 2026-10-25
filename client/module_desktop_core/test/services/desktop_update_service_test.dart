@@ -22,7 +22,7 @@ void main() {
   late _MockDesktopInstanceRepository instanceRepository;
   late _MockDesktopUpdateFeedApi feedApi;
   late _MockDesktopUpdateFeedValidator feedValidator;
-  late _MockVelopackPackagesStorage packagesStorage;
+  late _MockVelopackUpdateApi velopackApi;
 
   setUp(() {
     bundleSource = _FakeInstalledDesktopBundleSource(
@@ -39,7 +39,7 @@ void main() {
     when(() => relaunchApi.relaunchInstalledPackage()).thenAnswer((_) async {});
     feedApi = _MockDesktopUpdateFeedApi();
     feedValidator = _MockDesktopUpdateFeedValidator();
-    packagesStorage = _MockVelopackPackagesStorage();
+    velopackApi = _MockVelopackUpdateApi();
   });
 
   DesktopUpdateService service() => DesktopUpdateService(
@@ -48,7 +48,7 @@ void main() {
       relaunchApi: relaunchApi,
       feedApi: feedApi,
       feedValidator: feedValidator,
-      packagesStorage: packagesStorage,
+      velopackApi: velopackApi,
     ),
     instanceRepository: instanceRepository,
   );
@@ -186,12 +186,11 @@ void main() {
         isAppImage: false,
         channel: DesktopReleaseChannel.stable,
       );
-      when(() => packagesStorage.readPendingVersion()).thenAnswer((_) async => null);
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => null);
       when(() => feedApi.fetchFeed(identity: any(named: "identity"))).thenAnswer((_) async => _feed);
       when(() => feedValidator.verify(feed: any(named: "feed"))).thenAnswer((_) async {});
-      when(() => packagesStorage.stageFeed(feed: any(named: "feed"))).thenAnswer((_) async => _release);
-      when(() => packagesStorage.stagedPackageFile(release: any(named: "release")))
-          .thenAnswer((_) async => stagedPackage);
+      when(() => velopackApi.stageFeed(feed: any(named: "feed"))).thenAnswer((_) async => _release);
+      when(() => velopackApi.stagedPackageFile(release: any(named: "release"))).thenAnswer((_) async => stagedPackage);
       when(
         () => feedApi.downloadPackage(
           identity: any(named: "identity"),
@@ -199,7 +198,7 @@ void main() {
           destination: any(named: "destination"),
         ),
       ).thenAnswer((_) async {});
-      when(() => packagesStorage.downloadStagedRelease()).thenAnswer((_) async => "1.8.5");
+      when(() => velopackApi.downloadStagedRelease()).thenAnswer((_) async => "1.8.5");
     });
 
     test("verify the signed feed before Velopack stages it, then download the package it names", () async {
@@ -212,14 +211,14 @@ void main() {
       verifyInOrder([
         () => feedApi.fetchFeed(identity: _windowsBuild),
         () => feedValidator.verify(feed: _feed),
-        () => packagesStorage.stageFeed(feed: _feed.bytes),
+        () => velopackApi.stageFeed(feed: _feed.bytes),
         () => feedApi.downloadPackage(identity: _windowsBuild, fileName: _release.fileName, destination: stagedPackage),
-        () => packagesStorage.downloadStagedRelease(),
+        () => velopackApi.downloadStagedRelease(),
       ]);
     });
 
     test("a package Velopack already downloaded is Ready without fetching", () async {
-      when(() => packagesStorage.readPendingVersion()).thenAnswer((_) async => "1.8.5");
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.5");
       final updates = service();
       addTearDown(updates.dispose);
 
@@ -230,14 +229,14 @@ void main() {
     });
 
     test("a feed with nothing newer stays idle and downloads nothing", () async {
-      when(() => packagesStorage.stageFeed(feed: any(named: "feed"))).thenAnswer((_) async => null);
+      when(() => velopackApi.stageFeed(feed: any(named: "feed"))).thenAnswer((_) async => null);
       final updates = service();
       addTearDown(updates.dispose);
 
       await updates.check();
 
       expect(updates.currentState, isA<DesktopUpdateIdle>());
-      verifyNever(() => packagesStorage.downloadStagedRelease());
+      verifyNever(() => velopackApi.downloadStagedRelease());
     });
 
     test("a refused signature stays idle without staging the feed", () async {
@@ -248,7 +247,7 @@ void main() {
       await updates.check();
 
       expect(updates.currentState, isA<DesktopUpdateIdle>());
-      verifyNever(() => packagesStorage.stageFeed(feed: any(named: "feed")));
+      verifyNever(() => velopackApi.stageFeed(feed: any(named: "feed")));
     });
 
     test("a check that starts while one runs joins it", () async {
@@ -268,7 +267,7 @@ void main() {
 
   group("applyDownloadedUpdate", () {
     setUp(() {
-      when(() => packagesStorage.applyPendingRelease(restart: any(named: "restart"))).thenAnswer((_) async {});
+      when(() => velopackApi.applyPendingRelease(restart: any(named: "restart"))).thenAnswer((_) async {});
     });
 
     test("a Ready Velopack install starts the updater", () async {
@@ -277,14 +276,14 @@ void main() {
         isAppImage: false,
         channel: DesktopReleaseChannel.stable,
       );
-      when(() => packagesStorage.readPendingVersion()).thenAnswer((_) async => "1.8.5");
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.5");
       final updates = service();
       addTearDown(updates.dispose);
       await updates.check();
 
       await updates.applyDownloadedUpdate(restart: true);
 
-      verify(() => packagesStorage.applyPendingRelease(restart: true)).called(1);
+      verify(() => velopackApi.applyPendingRelease(restart: true)).called(1);
     });
 
     test("an idle Velopack install and a Ready Linux package start nothing", () async {
@@ -309,7 +308,7 @@ void main() {
       expect(package.currentState, isA<DesktopUpdateReady>());
       await package.applyDownloadedUpdate(restart: true);
 
-      verifyNever(() => packagesStorage.applyPendingRelease(restart: any(named: "restart")));
+      verifyNever(() => velopackApi.applyPendingRelease(restart: any(named: "restart")));
     });
   });
 
@@ -383,4 +382,4 @@ class _MockDesktopUpdateFeedApi() extends Mock implements DesktopUpdateFeedApi;
 
 class _MockDesktopUpdateFeedValidator() extends Mock implements DesktopUpdateFeedValidator;
 
-class _MockVelopackPackagesStorage() extends Mock implements VelopackPackagesStorage;
+class _MockVelopackUpdateApi() extends Mock implements VelopackUpdateApi;

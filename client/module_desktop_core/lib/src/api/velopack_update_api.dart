@@ -14,8 +14,9 @@ import "../foundation/velopack/velopack_bindings.dart";
 /// A newer full package that the staged feed names.
 class const VelopackStagedRelease({required final String fileName, required final String version});
 
-/// Layer-1 owner of the staging directory that Velopack reads as its file
-/// source, and of every Velopack update-manager call.
+/// Layer-1 API over Velopack's update manager. It makes every update-manager
+/// call and owns the staging directory that the manager reads as its file
+/// source.
 ///
 /// Only a signature-verified feed is staged. The package is downloaded beside
 /// it, then Velopack copies it into its own packages directory and refuses it
@@ -24,7 +25,7 @@ class const VelopackStagedRelease({required final String fileName, required fina
 /// already there. Each call opens the library in a short-lived isolate, so its
 /// blocking disk work never runs on the UI isolate.
 @lazySingleton
-class VelopackPackagesStorage({
+class VelopackUpdateApi({
   required final InstalledDesktopBundleSource _bundleSource,
   required final DesktopApplicationSupportDirectory _applicationSupportDirectory,
 }) {

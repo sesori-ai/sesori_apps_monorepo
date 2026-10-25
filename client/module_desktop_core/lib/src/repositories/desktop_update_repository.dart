@@ -2,7 +2,7 @@ import "package:injectable/injectable.dart";
 
 import "../api/desktop_relaunch_api.dart";
 import "../api/desktop_update_feed_api.dart";
-import "../api/velopack_packages_storage.dart";
+import "../api/velopack_update_api.dart";
 import "../foundation/models/desktop_bundle_identity.dart";
 import "../foundation/models/desktop_install_kind.dart";
 import "../foundation/models/desktop_update_state.dart";
@@ -17,20 +17,20 @@ class DesktopUpdateRepository._create({
   required final DesktopRelaunchApi _relaunchApi,
   required final DesktopUpdateFeedApi _feedApi,
   required final DesktopUpdateFeedValidator _feedValidator,
-  required final VelopackPackagesStorage _packagesStorage,
+  required final VelopackUpdateApi _velopackApi,
 }) {
   new({
     required InstalledDesktopBundleSource bundleSource,
     required DesktopRelaunchApi relaunchApi,
     required DesktopUpdateFeedApi feedApi,
     required DesktopUpdateFeedValidator feedValidator,
-    required VelopackPackagesStorage packagesStorage,
+    required VelopackUpdateApi velopackApi,
   }) : this._create(
          bundleSource: bundleSource,
          relaunchApi: relaunchApi,
          feedApi: feedApi,
          feedValidator: feedValidator,
-         packagesStorage: packagesStorage,
+         velopackApi: velopackApi,
        );
 
   late final DesktopInstallKind installKind = DesktopInstallKind.resolve(
@@ -63,8 +63,7 @@ class DesktopUpdateRepository._create({
   Future<void> relaunchInstalledPackage() => _relaunchApi.relaunchInstalledPackage();
 
   /// Starts Velopack's updater for the downloaded package; it installs once this process exits.
-  Future<void> applyDownloadedUpdate({required bool restart}) =>
-      _packagesStorage.applyPendingRelease(restart: restart);
+  Future<void> applyDownloadedUpdate({required bool restart}) => _velopackApi.applyPendingRelease(restart: restart);
 
   /// Ready once the package manager has installed a different bundle than the
   /// one this process is running.
@@ -80,21 +79,21 @@ class DesktopUpdateRepository._create({
   /// feed, verifies it, and downloads the package only when Velopack's own
   /// check finds one newer than the running version.
   Future<DesktopUpdateState> _checkVelopack({required DesktopBundleIdentity identity}) async {
-    final String? pendingVersion = await _packagesStorage.readPendingVersion();
+    final String? pendingVersion = await _velopackApi.readPendingVersion();
     if (pendingVersion != null) {
       return DesktopUpdateReady(version: pendingVersion);
     }
     final DesktopUpdateFeed feed = await _feedApi.fetchFeed(identity: identity);
     await _feedValidator.verify(feed: feed);
-    final VelopackStagedRelease? release = await _packagesStorage.stageFeed(feed: feed.bytes);
+    final VelopackStagedRelease? release = await _velopackApi.stageFeed(feed: feed.bytes);
     if (release == null) {
       return const DesktopUpdateIdle();
     }
     await _feedApi.downloadPackage(
       identity: identity,
       fileName: release.fileName,
-      destination: await _packagesStorage.stagedPackageFile(release: release),
+      destination: await _velopackApi.stagedPackageFile(release: release),
     );
-    return DesktopUpdateReady(version: await _packagesStorage.downloadStagedRelease());
+    return DesktopUpdateReady(version: await _velopackApi.downloadStagedRelease());
   }
 }

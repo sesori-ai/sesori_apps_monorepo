@@ -38,9 +38,10 @@ final class const VelopackException({required final String operation, required f
 ///
 /// Threading: every function runs synchronously on the calling thread and the
 /// app passes no callbacks, so Velopack never calls back into Dart from any
-/// thread. The startup hooks run on the root isolate before the first frame,
-/// as Velopack requires. Every update-manager call blocks on disk work, so
-/// `VelopackPackagesStorage` makes them from a short-lived background isolate.
+/// thread. `runDesktopUpdateStartupHooks` runs the startup hooks on the root
+/// isolate before the first frame, as Velopack requires. Every update-manager
+/// call blocks on disk work, so `VelopackUpdateApi`, the Layer-1 API over the
+/// update manager, makes them from a short-lived background isolate.
 /// The last error is process-global; it is read right after the failed call.
 final class VelopackBindings._create({required final DynamicLibrary _library}) {
   new open({required String libraryPath}) : this._create(library: DynamicLibrary.open(libraryPath));

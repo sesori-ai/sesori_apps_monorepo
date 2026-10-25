@@ -27,8 +27,7 @@ import 'package:sesori_desktop_core/src/api/desktop_instance_storage.dart'
 import 'package:sesori_desktop_core/src/api/desktop_relaunch_api.dart' as _i67;
 import 'package:sesori_desktop_core/src/api/desktop_update_feed_api.dart'
     as _i414;
-import 'package:sesori_desktop_core/src/api/velopack_packages_storage.dart'
-    as _i1069;
+import 'package:sesori_desktop_core/src/api/velopack_update_api.dart' as _i862;
 import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
     as _i21;
 import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
@@ -173,8 +172,8 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i1069.VelopackPackagesStorage>(
-      () => _i1069.VelopackPackagesStorage(
+    gh.lazySingleton<_i862.VelopackUpdateApi>(
+      () => _i862.VelopackUpdateApi(
         bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
         applicationSupportDirectory:
             gh<_i695.DesktopApplicationSupportDirectory>(),
@@ -209,6 +208,15 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i948.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i737.DesktopUpdateRepository>(
+      () => _i737.DesktopUpdateRepository(
+        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
+        relaunchApi: gh<_i67.DesktopRelaunchApi>(),
+        feedApi: gh<_i414.DesktopUpdateFeedApi>(),
+        feedValidator: gh<_i265.DesktopUpdateFeedValidator>(),
+        velopackApi: gh<_i862.VelopackUpdateApi>(),
+      ),
     );
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
@@ -249,14 +257,12 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i737.DesktopUpdateRepository>(
-      () => _i737.DesktopUpdateRepository(
-        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
-        relaunchApi: gh<_i67.DesktopRelaunchApi>(),
-        feedApi: gh<_i414.DesktopUpdateFeedApi>(),
-        feedValidator: gh<_i265.DesktopUpdateFeedValidator>(),
-        packagesStorage: gh<_i1069.VelopackPackagesStorage>(),
+    gh.lazySingleton<_i407.DesktopUpdateService>(
+      () => _i407.DesktopUpdateService(
+        updateRepository: gh<_i737.DesktopUpdateRepository>(),
+        instanceRepository: gh<_i210.DesktopInstanceRepository>(),
       ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i175.ControlCommandService>(
       () => _i175.ControlCommandService(
@@ -288,6 +294,12 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i948.AuthSession>(),
       ),
     );
+    gh.lazySingleton<_i240.DesktopExitOrchestrator>(
+      () => _i240.DesktopExitOrchestrator(
+        processService: gh<_i765.BridgeProcessService>(),
+        updateService: gh<_i407.DesktopUpdateService>(),
+      ),
+    );
     gh.lazySingleton<_i455.DesktopStartupOrchestrator>(
       () => _i455.DesktopStartupOrchestrator(
         instanceService: gh<_i494.DesktopInstanceService>(),
@@ -299,13 +311,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i407.DesktopUpdateService>(
-      () => _i407.DesktopUpdateService(
-        updateRepository: gh<_i737.DesktopUpdateRepository>(),
-        instanceRepository: gh<_i210.DesktopInstanceRepository>(),
-      ),
-      dispose: (i) => i.dispose(),
-    );
     gh.lazySingleton<_i850.DesktopBridgeTakeoverOrchestrator>(
       () => _i850.DesktopBridgeTakeoverOrchestrator(
         processService: gh<_i765.BridgeProcessService>(),
@@ -314,12 +319,6 @@ extension GetItInjectableX on _i174.GetIt {
         promptTracker: gh<_i686.BridgePromptTracker>(),
         statusTracker: gh<_i227.BridgeStatusTracker>(),
         logoutTracker: gh<_i786.DesktopLogoutTracker>(),
-      ),
-    );
-    gh.lazySingleton<_i240.DesktopExitOrchestrator>(
-      () => _i240.DesktopExitOrchestrator(
-        processService: gh<_i765.BridgeProcessService>(),
-        updateService: gh<_i407.DesktopUpdateService>(),
       ),
     );
     return this;
