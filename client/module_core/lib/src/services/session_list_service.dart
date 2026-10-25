@@ -44,7 +44,6 @@ class SessionListService({
     final visible = projected.where(
       (session) => switch (filter) {
         SessionListFilter.active => session.time?.archived == null,
-        SessionListFilter.all => true,
         SessionListFilter.archived => session.time?.archived != null,
       },
     );

@@ -37,7 +37,6 @@ void main() {
         .toList();
     expect(project(filter: SessionListFilter.archived), ["later", "earlier"]);
     expect(project(filter: SessionListFilter.active), ["live"]);
-    expect(project(filter: SessionListFilter.all), ["earlier", "live", "later"]);
   });
   test("running sessions use activity markers while inactive sessions stay timestamp ordered", () {
     final service = SessionListService(
@@ -52,7 +51,7 @@ void main() {
         _session(id: "inactive", title: "Beta", updatedAt: 200),
         _session(id: "running-new-activity", title: "Alpha", updatedAt: 100),
       ],
-      filter: SessionListFilter.all,
+      filter: SessionListFilter.active,
       activityBySessionId: const {
         "running-new-update": SessionActivityInfo(isRetrying: true, lastUserActivityAt: null, updatedAt: null),
         "waiting": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
@@ -81,7 +80,7 @@ void main() {
         _session(id: "live-newer", title: "Live", updatedAt: 100).copyWith(lastUserActivityAt: 80),
         _session(id: "backend-newer", title: "Backend", updatedAt: 400).copyWith(lastUserActivityAt: 100),
       ],
-      filter: SessionListFilter.all,
+      filter: SessionListFilter.active,
       activityBySessionId: const {},
       listStateBySessionId: const {
         "live-newer": (unseen: false, lastUserActivityAt: 300),
@@ -107,7 +106,7 @@ void main() {
         _session(id: "new-update", title: "B", updatedAt: 20).copyWith(lastUserActivityAt: 5),
         _session(id: "new-activity", title: "A", updatedAt: 10).copyWith(lastUserActivityAt: 15),
       ],
-      filter: SessionListFilter.all,
+      filter: SessionListFilter.active,
       activityBySessionId: const {
         "new-update": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
         "new-activity": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
@@ -131,7 +130,7 @@ void main() {
         _session(id: "inactive-b", title: "B", updatedAt: 5),
         _session(id: "inactive-a", title: "A", updatedAt: 5),
       ],
-      filter: SessionListFilter.all,
+      filter: SessionListFilter.active,
       activityBySessionId: const {
         "running-a": SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null),
         "running-b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),

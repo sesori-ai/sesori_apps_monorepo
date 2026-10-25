@@ -1314,7 +1314,7 @@ void main() {
       },
     );
 
-    test("renameSession replaces an active PR-data refresh with an equivalent post-write read", () async {
+    test("renameSession replaces an active refresh with a post-write read", () async {
       final original = testSession(id: "s1", title: "Original");
       final renamed = testSession(id: "s1", title: "New Title");
       when(
@@ -1334,27 +1334,21 @@ void main() {
 
       final staleRefreshCompleter = Completer<ApiResponse<SessionListResponse>>();
       final postRenameRefreshCompleter = Completer<ApiResponse<SessionListResponse>>();
-      final waitsForPrData = <bool>[];
       var refreshRequestCount = 0;
       when(
-        () => mockProjectRepository.listSessions(
-          projectId: projectId,
-          waitForPrData: any(named: "waitForPrData"),
-        ),
-      ).thenAnswer((invocation) {
-        waitsForPrData.add(invocation.namedArguments[#waitForPrData] as bool);
+        () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+      ).thenAnswer((_) {
         refreshRequestCount++;
         return refreshRequestCount == 1 ? staleRefreshCompleter.future : postRenameRefreshCompleter.future;
       });
 
-      final staleRefresh = cubit.refreshSessions(waitForPrData: true);
+      final staleRefresh = cubit.refreshSessions();
       final rename = cubit.renameSession(sessionId: "s1", title: "New Title");
       expect(cubit.state.sessions.single.title, "New Title");
 
       renameCompleter.complete(ApiResponse.success(renamed));
       expect(await rename, isTrue);
       expect(refreshRequestCount, 2);
-      expect(waitsForPrData, [isTrue, isTrue]);
 
       staleRefreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [original])));
       postRenameRefreshCompleter.complete(ApiResponse.success(SessionListResponse(items: [renamed])));
@@ -2041,7 +2035,6 @@ void main() {
 
       test("a superseded explicit refresh reports the catalog refresh failure", () async {
         final explicitRefresh = Completer<ApiResponse<SessionListResponse>>();
-        final waitForPrDataCalls = <bool>[];
         var requestCount = 0;
         Future<ApiResponse<SessionListResponse>> nextResponse() => switch (requestCount++) {
           0 => successfulResponse(sessions: const []),
@@ -2050,25 +2043,18 @@ void main() {
           _ => successfulResponse(sessions: const []),
         };
         when(
-          () => mockProjectRepository.listSessions(
-            projectId: projectId,
-            waitForPrData: any(named: "waitForPrData"),
-          ),
-        ).thenAnswer((invocation) {
-          waitForPrDataCalls.add(invocation.namedArguments[#waitForPrData] as bool);
-          return nextResponse();
-        });
+          () => mockProjectRepository.listSessions(projectId: projectId, waitForPrData: false),
+        ).thenAnswer((_) => nextResponse());
 
         final cubit = buildCubit();
         addTearDown(cubit.close);
         expect(await cubit.refreshSessions(), isTrue);
 
-        final refresh = cubit.refreshSessions(waitForPrData: true);
+        final refresh = cubit.refreshSessions();
         await Future<void>.delayed(Duration.zero);
         fakeCatalogRescanService.emitCatalogChanged();
         await Future<void>.delayed(Duration.zero);
         expect(requestCount, 3);
-        expect(waitForPrDataCalls, [false, true, true]);
 
         explicitRefresh.complete(ApiResponse.success(const SessionListResponse(items: [])));
         expect(await refresh, isFalse);

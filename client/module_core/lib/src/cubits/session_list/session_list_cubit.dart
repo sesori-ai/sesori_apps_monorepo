@@ -182,7 +182,7 @@ class SessionListCubit({
       if (response case ErrorResponse(:final error)) {
         loge("Failed to mark session ${read ? "read" : "unread"}", error);
         if (!isClosed) {
-          await _fetchSessions(catalogRefresh: false, waitForPrData: false);
+          await _fetchSessions(catalogRefresh: false);
         }
       }
     } catch (e, st) {
@@ -201,7 +201,7 @@ class SessionListCubit({
             }),
       );
       if (!isClosed) {
-        await _fetchSessions(catalogRefresh: false, waitForPrData: false);
+        await _fetchSessions(catalogRefresh: false);
       }
     }
   }
@@ -349,13 +349,7 @@ class SessionListCubit({
           succeeded: true,
         );
         if (!isClosed) {
-          unawaited(
-            _refreshSessions(
-              force: true,
-              catalogRefresh: false,
-              waitForPrData: _activeRefreshWaitsForPrData,
-            ),
-          );
+          unawaited(_refreshSessions(force: true, catalogRefresh: false));
         }
         return true;
       case ErrorResponse():
@@ -491,9 +485,6 @@ class SessionListCubit({
   /// In-flight silent refresh, used for coalescing.
   Future<_SessionFetchOutcome>? _activeRefresh;
 
-  /// Whether the current silent refresh honors an explicit pull's PR-data wait.
-  bool _activeRefreshWaitsForPrData = false;
-
   /// Most recently started read. This is not a coalescing barrier: a refresh
   /// whose response was superseded uses it only to observe the winning result.
   Future<_SessionFetchOutcome>? _latestFetch;
@@ -511,19 +502,8 @@ class SessionListCubit({
 
   /// Re-fetches sessions silently. Concurrent ordinary calls coalesce onto the
   /// current refresh.
-  ///
-  /// When [waitForPrData] is true the bridge will wait up to 5 s for
-  /// GitHub PR metadata before returning. This is appropriate only for
-  /// explicit user-initiated pull-to-refresh; background triggers such as
-  /// reconnects or SSE events should leave it false.
-  Future<bool> refreshSessions({bool waitForPrData = false}) {
-    return _awaitRefreshResult(
-      refresh: _refreshSessions(
-        force: false,
-        catalogRefresh: false,
-        waitForPrData: waitForPrData,
-      ),
-    );
+  Future<bool> refreshSessions() {
+    return _awaitRefreshResult(refresh: _refreshSessions(force: false, catalogRefresh: false));
   }
 
   /// A catalog refresh can supersede an explicit pull. Wait for the newer read
@@ -544,38 +524,23 @@ class SessionListCubit({
     }
   }
 
-  Future<_SessionFetchOutcome> _refreshSessions({
-    required bool force,
-    required bool catalogRefresh,
-    required bool waitForPrData,
-  }) {
+  Future<_SessionFetchOutcome> _refreshSessions({required bool force, required bool catalogRefresh}) {
     final active = _activeRefresh;
     if (!force && active != null) return active;
 
     late final Future<_SessionFetchOutcome> refresh;
-    refresh =
-        _fetchSessions(
-          catalogRefresh: catalogRefresh,
-          waitForPrData: waitForPrData,
-        ).whenComplete(() {
-          if (!identical(_activeRefresh, refresh)) return;
-          _activeRefresh = null;
-          _activeRefreshWaitsForPrData = false;
-        });
+    refresh = _fetchSessions(catalogRefresh: catalogRefresh).whenComplete(() {
+      if (identical(_activeRefresh, refresh)) _activeRefresh = null;
+    });
     _activeRefresh = refresh;
-    _activeRefreshWaitsForPrData = waitForPrData;
     return refresh;
   }
 
-  Future<_SessionFetchOutcome> _fetchSessions({
-    required bool catalogRefresh,
-    required bool waitForPrData,
-  }) {
+  Future<_SessionFetchOutcome> _fetchSessions({required bool catalogRefresh}) {
     final requestGeneration = ++_fetchGeneration;
     final catalogChangeGeneration = _catalogChangeGeneration;
     final fetch = _runFetchSessions(
       catalogRefresh: catalogRefresh,
-      waitForPrData: waitForPrData,
       requestGeneration: requestGeneration,
       catalogChangeGeneration: catalogChangeGeneration,
     );
@@ -585,19 +550,15 @@ class SessionListCubit({
 
   Future<_SessionFetchOutcome> _runFetchSessions({
     required bool catalogRefresh,
-    required bool waitForPrData,
     required int requestGeneration,
     required int catalogChangeGeneration,
   }) async {
     var didApplySnapshot = false;
     try {
       // Captured BEFORE the fetch so the seed can't overwrite a live update
-      // that arrives while the (possibly PR-data-delayed) request is in flight.
+      // that arrives while the request is in flight.
       final unseenTick = _sessionUnseenTracker.tick;
-      final sessionsResponse = await _sessionListService.listSessions(
-        projectId: _projectId,
-        waitForPrData: waitForPrData,
-      );
+      final sessionsResponse = await _sessionListService.listSessions(projectId: _projectId, waitForPrData: false);
       if (isClosed) return _SessionFetchOutcome.superseded;
       if (requestGeneration != _fetchGeneration) {
         if (sessionsResponse case ErrorResponse(:final error)) {
@@ -675,16 +636,9 @@ class SessionListCubit({
   Future<void> _drainCatalogRefreshes() async {
     while (!isClosed && _catalogChangeConsumedGeneration < _catalogChangeGeneration) {
       final targetGeneration = _catalogChangeGeneration;
-      // A catalog snapshot superseding an explicit pull is still that pull's
-      // winning response, so preserve its bounded PR-data wait.
-      final waitForPrData = _activeRefresh == null ? false : _activeRefreshWaitsForPrData;
       late final _SessionFetchOutcome outcome;
       try {
-        outcome = await _refreshSessions(
-          force: true,
-          catalogRefresh: true,
-          waitForPrData: waitForPrData,
-        );
+        outcome = await _refreshSessions(force: true, catalogRefresh: true);
       } on Object catch (error, stackTrace) {
         loge("Catalog-change session refresh failed unexpectedly", error, stackTrace);
         _catalogRefreshPausedAfterFailure = true;
