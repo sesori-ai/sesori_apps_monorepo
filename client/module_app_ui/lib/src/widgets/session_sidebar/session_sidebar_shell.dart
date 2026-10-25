@@ -127,7 +127,9 @@ class _SessionSidebarShellState() extends State<SessionSidebarShell> with Single
                     sizeFactor: _sidebarCurve,
                     child: SizedBox(
                       key: const Key("session-sidebar"),
-                      width: _sidebarWidth,
+                      // A landscape notch's inset widens the sidebar rather
+                      // than narrowing its content.
+                      width: _sidebarWidth + MediaQuery.paddingOf(context).left,
                       child: Material(
                         color: prego.colors.bgSecondary,
                         child: Row(

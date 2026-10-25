@@ -317,7 +317,8 @@ class const _SidebarSwitcherHeading({required final String title, required final
             borderRadius: BorderRadius.circular(PregoRadius.md),
             onTap: onPressed,
             child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xs, vertical: PregoSpacing.xs),
+              // Lines the title up with the search field and the rows.
+              padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md, vertical: PregoSpacing.xs),
               child: Row(
                 mainAxisSize: MainAxisSize.min,
                 spacing: PregoSpacing.xs,
