@@ -321,6 +321,7 @@ void main() {
       required List<String> titles,
       String query = "",
       List<AllSessionsFailure> failures = const [],
+      SessionListChipCounts? counts,
     }) => state(
       query: query,
       failures: failures,
@@ -334,7 +335,7 @@ void main() {
           ),
       ],
       scratchProjectId: null,
-      counts: SessionListChipCounts(all: titles.length, running: 0, unread: 0),
+      counts: counts ?? SessionListChipCounts(all: titles.length, running: 0, unread: 0),
     );
 
     double opacityAbove(WidgetTester tester, Finder finder) => tester
@@ -738,6 +739,41 @@ void main() {
           expect(tester.getRect(find.byType(SessionTile)), rowRect);
         });
       }
+
+      testWidgets("counts that wrap the chips onto another line ease the room open", (tester) async {
+        // Wide enough for the placeholders' two lines, too narrow for these
+        // counts' two.
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(380, 900);
+        addTearDown(tester.view.reset);
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpLoading(tester, updates: updates.stream, mode: AllSessionsMode.active);
+        final chipsRoom = find.descendant(
+          of: find.byKey(const ValueKey("all-sessions-chips")),
+          matching: find.byType(AnimatedSize),
+        );
+        final loadingHeight = tester.getSize(chipsRoom).height;
+        // Only its placeholder carries no count.
+        final lastPill = find.text("Unread · 0");
+        final lastPillTop = tester.getTopLeft(lastPill).dy;
+
+        final [skeletonTops, pillTops] = await topsAcross(
+          tester,
+          updates: updates,
+          update: loaded(
+            mode: AllSessionsMode.active,
+            titles: ["Fix the parser"],
+            counts: const SessionListChipCounts(all: 1000, running: 100, unread: 100),
+          ),
+          finders: [skeleton, lastPill],
+        );
+        expect(tester.getSize(chipsRoom).height, greaterThan(loadingHeight));
+        // The placeholders fade out where they stood, and what is below eases
+        // down rather than snapping.
+        expect(pillTops.nonNulls, everyElement(lastPillTop));
+        expect(steps(skeletonTops), everyElement(lessThan(2)));
+      });
 
       testWidgets("the chips' and the list's placeholders fade in together", (tester) async {
         await pumpList(tester, initial: loading, mode: AllSessionsMode.active, header: header);

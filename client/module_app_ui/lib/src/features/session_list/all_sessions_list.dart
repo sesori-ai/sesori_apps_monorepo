@@ -293,22 +293,23 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       padding: EdgeInsets.zero,
       onChanged: (query) => cubit.setQuery(query: query),
     );
-    Widget chip({required SessionListQuickFilter filter, required Key? key}) => Semantics(
-      toggled: state.quickFilter == filter,
-      child: PregoButtonsSolid(
-        key: key,
-        label: switch (filter) {
-          SessionListQuickFilter.all => loc.sessionListFilterAll(state.counts.all),
-          SessionListQuickFilter.running => loc.sessionListFilterRunning(state.counts.running),
-          SessionListQuickFilter.unread => loc.sessionListFilterUnread(state.counts.unread),
-        },
-        hierarchy: state.quickFilter == filter
-            ? PregoButtonsSolidHierarchy.primaryAlt
-            : PregoButtonsSolidHierarchy.secondary,
-        size: PregoButtonsSolidSize.sm,
-        onPressed: () => cubit.setQuickFilter(filter: filter),
-      ),
-    );
+    Widget chip({required SessionListQuickFilter filter, required Key? key, required SessionListChipCounts counts}) =>
+        Semantics(
+          toggled: state.quickFilter == filter,
+          child: PregoButtonsSolid(
+            key: key,
+            label: switch (filter) {
+              SessionListQuickFilter.all => loc.sessionListFilterAll(counts.all),
+              SessionListQuickFilter.running => loc.sessionListFilterRunning(counts.running),
+              SessionListQuickFilter.unread => loc.sessionListFilterUnread(counts.unread),
+            },
+            hierarchy: state.quickFilter == filter
+                ? PregoButtonsSolidHierarchy.primaryAlt
+                : PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.sm,
+            onPressed: () => cubit.setQuickFilter(filter: filter),
+          ),
+        );
     Widget chips({required Widget Function(SessionListQuickFilter filter) each}) => Padding(
       padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
       child: Wrap(
@@ -350,30 +351,43 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               // The active list's last box above the failed projects.
               skeleton: heldAboveFailures,
               child: folding(
-                child: SizedBox(
-                  width: double.infinity,
-                  child: Stack(
-                    fit: StackFit.passthrough,
-                    children: [
-                      if (chipsShown)
-                        FadeTransition(
-                          key: const ValueKey("content"),
-                          opacity: _contentOpacity,
-                          child: chips(
-                            each: (filter) => chip(filter: filter, key: Key("session-list-filter-${filter.name}")),
-                          ),
-                        ),
-                      if (chipsHeld)
-                        IgnorePointer(
-                          key: const ValueKey("skeleton"),
-                          child: PregoShimmer(
-                            leaving: !loading,
+                // The arriving counts can wrap the chips onto another line;
+                // the room eases to it rather than snapping what is below.
+                child: _easedSize(
+                  context: context,
+                  child: SizedBox(
+                    width: double.infinity,
+                    child: Stack(
+                      fit: StackFit.passthrough,
+                      children: [
+                        if (chipsShown)
+                          FadeTransition(
+                            key: const ValueKey("content"),
+                            opacity: _contentOpacity,
                             child: chips(
-                              each: (filter) => _barOver(shape: chip(filter: filter, key: null)),
+                              each: (filter) => chip(
+                                filter: filter,
+                                key: Key("session-list-filter-${filter.name}"),
+                                counts: state.counts,
+                              ),
                             ),
                           ),
-                        ),
-                    ],
+                        // Held at the loading counts, so the pills fade out
+                        // where they stood.
+                        if (chipsHeld)
+                          IgnorePointer(
+                            key: const ValueKey("skeleton"),
+                            child: PregoShimmer(
+                              leaving: !loading,
+                              child: chips(
+                                each: (filter) => _barOver(
+                                  shape: chip(filter: filter, key: null, counts: _noCounts),
+                                ),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -628,6 +642,21 @@ class const SessionListSkeleton({super.key, required final bool leaving}) extend
     );
   }
 }
+
+/// A load holds the chips' placeholders only while it has no counts.
+const _noCounts = SessionListChipCounts(all: 0, running: 0, unread: 0);
+
+/// [child], easing between its heights; at once with reduced motion, where a
+/// zero-length [AnimatedSize] would re-dirty itself mid-layout.
+Widget _easedSize({required BuildContext context, required Widget child}) => context.isReducedMotion
+    ? child
+    : AnimatedSize(
+        duration: transcriptMotionDuration,
+        curve: transcriptMotionCurve,
+        alignment: AlignmentDirectional.topStart,
+        clipBehavior: Clip.none,
+        child: child,
+      );
 
 /// [shape] laid out unseen, holding its room under a skeleton bar of its
 /// size.
