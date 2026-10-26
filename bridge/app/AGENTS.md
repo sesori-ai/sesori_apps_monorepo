@@ -10,7 +10,7 @@ harnesses can run concurrently in one bridge.
 bin/bridge.dart                CLI entry point — flag parsing, auth flow, plugin loading
 lib/src/
 ├── foundation/                Layer 0 — relay_client, key_exchange, process primitives
-├── api/                       Layer 1 — database (Drift), gh/git CLI wrappers, sesori_server_api
+├── api/                       Layer 1 — database (Drift), git CLI wrapper, sesori_server_api
 ├── repositories/              Layer 2 — aggregation + all mapping (mappers/, models/, trackers/)
 ├── services/                  Layer 3 — business logic
 ├── routing/                   Layer 4 — one handler per API route; request_router returns 404 unmatched

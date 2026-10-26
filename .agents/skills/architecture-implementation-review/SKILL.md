@@ -319,7 +319,7 @@ Orchestration & business logic:
 
 Data access:
 
-- **`Api`** — dumb data-access class in the API layer. Knows HOW to call an endpoint but has NO decision-making logic. Examples: `GhCliApi`, `SesoriServerApi`, `SessionApi`.
+- **`Api`** — dumb data-access class in the API layer. Knows HOW to call an endpoint but has NO decision-making logic. Examples: `GitCliApi`, `SesoriServerApi`, `SessionApi`.
 - **`Storage`** — file/key-value persistence boundary for a small owned dataset. No business logic.
 - **`Client`** — transport-level class whose sole job is calling an external API or protocol (HTTP, WebSocket). Examples: `RelayClient`, `RelayHttpApiClient`, `PushNotificationClient`.
 - **`Server`** — transport-level host that accepts inbound local/network connections. No business logic.
@@ -846,12 +846,12 @@ Layer 1 — API (data sources)
 │  └─ Transport is abstracted by Drift — all DB code (tables, DAOs, migrations) lives here
 │  └─ Location: app/lib/src/api/database/
 │
-├─ GhCliApi:
+├─ GitCliApi:
 │  └─ Git/worktree operations via shell: create worktree, query branches, compute diffs,
 │     read file content at revision, etc.
 │  └─ Uses ProcessRunner (Layer 0) for shell execution
 │  └─ No decision-making — just executes git commands and returns results
-│  └─ Location: app/lib/src/api/gh_cli_api.dart
+│  └─ Location: app/lib/src/api/git_cli_api.dart
 │
 ├─ SesoriServerApi:
 │  └─ HTTP calls to Sesori auth server: generate session metadata, etc.
@@ -876,7 +876,7 @@ Layer 2 — Repositories (data aggregation + mapping)
 └─ Examples:
    ├─ ProjectRepository — combines BridgePlugin.getProjects() + ProjectsDao (hidden state, base branches)
    ├─ SessionRepository — combines BridgePlugin.getSessions() + SessionDao (metadata, archives, worktrees)
-   ├─ WorktreeRepository — wraps GhCliApi for worktree operations + SessionDao for state tracking
+   ├─ WorktreeRepository — wraps GitCliApi for worktree operations + SessionDao for state tracking
    └─ All mappers (PluginProject → Project, PluginSession → Session, etc.) live HERE
 └─ NO cross-dependency between repositories
 └─ Base classes / shared abstractions: acceptable if they reduce duplication within this layer.
@@ -1010,9 +1010,9 @@ Do not flag any of the following:
 Code excerpt in `app/lib/src/routing/handlers/session_diff_handler.dart`:
 ```dart
 class SessionDiffHandler extends GetHandler {
-  final GhCliApi _gh;
+  final GitCliApi _git;
   // ...
-  Future<Response> handle(Request req) => _gh.getDiff(...);
+  Future<Response> handle(Request req) => _git.diffNumstat(...);
 }
 ```
 
@@ -1091,9 +1091,9 @@ Code excerpt: `OpenCodeService` imports `OpenCodeRepository` and `ActiveSessionT
 Correct review: Not flagged. Documented composition per B-B4 Layer 3.
 
 ### Example 6: Legacy pattern, NOT flagged
-A PR touches `bridge/app/lib/src/routing/handlers/old_session_handler.dart` and adds a new line inside an existing method. The handler already calls `GhCliApi` directly (legacy violation). Git history shows the API call predates the rules.
+A PR touches `bridge/app/lib/src/routing/handlers/old_session_handler.dart` and adds a new line inside an existing method. The handler already calls `GitCliApi` directly (legacy violation). Git history shows the API call predates the rules.
 
-Correct review: Not flagged. Pre-existing legacy code. However, if the new line ALSO adds a direct `GhCliApi` call, flag that specific new line as extending the violation.
+Correct review: Not flagged. Pre-existing legacy code. However, if the new line ALSO adds a direct `GitCliApi` call, flag that specific new line as extending the violation.
 
 ## Self-Audit (internal, not emitted)
 
