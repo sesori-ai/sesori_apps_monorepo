@@ -15,6 +15,10 @@ enum AnchoredPanelPlacement() {
   /// Its top-left corner on the rect's own, dropping below and flipping above
   /// only when it does not fit: a context menu at the pointer.
   atCorner,
+
+  /// Its right edge on the trigger's and a gap below it, flipping above only
+  /// when it does not fit: a menu hung off a button at a row's end.
+  belowRightAligned,
 }
 
 /// A flat Material bubble anchored to a trigger rect, kept on screen and sprung
@@ -153,8 +157,8 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
         width: width,
         maxHeight: effectiveMaxHeight,
         expandUp: expandUp,
-        // A context menu drops from its corner whenever it fits there.
-        spaceBelowToPrefer: atCorner ? spaceBelow : null,
+        spaceBelow: spaceBelow,
+        placement: placement,
         screenPadding: screenPadding,
         safe: safe,
         keyboard: keyboard,
@@ -163,8 +167,9 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
       child: Actor(
         acts: [
           const Act.fadeIn(),
-          // A context menu simply appears; it does not spring out of a trigger.
-          if (!atCorner) ...[
+          // A menu that drops below whenever it fits simply appears: which side
+          // it lands on is settled only at layout, too late to spring toward it.
+          if (placement == AnchoredPanelPlacement.besideTrigger) ...[
             Act.scale(from: 0.96, alignment: expandUp ? Alignment.bottomCenter : Alignment.topCenter),
             Act.slideY(from: expandUp ? 0.06 : -0.06),
           ],
@@ -176,7 +181,7 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
 }
 
 /// Positions the flat bubble within the screen: fixed [width], capped to
-/// [maxHeight], anchored above or below [triggerRect] per [expandUp], and
+/// [maxHeight], anchored above or below [triggerRect] per [placement], and
 /// clamped so it never crosses the screen-edge padding (incl. notches and the
 /// keyboard). The follower moves the result by [triggerShift], so that is
 /// taken back off.
@@ -185,11 +190,14 @@ class _AnchoredPopupLayoutDelegate({
   required final Offset triggerShift,
   required final double width,
   required final double maxHeight,
+
+  /// Whether there is more room above the trigger than below it.
   required final bool expandUp,
 
-  /// Set for a corner placement: the room below the anchor, which wins over
-  /// [expandUp] whenever the child fits in it.
-  required final double? spaceBelowToPrefer,
+  /// The room below the trigger, which a placement that drops below whenever
+  /// the child fits there checks instead of [expandUp].
+  required final double spaceBelow,
+  required final AnchoredPanelPlacement placement,
   required final EdgeInsets screenPadding,
   required final EdgeInsets safe,
   required final double keyboard,
@@ -214,13 +222,19 @@ class _AnchoredPopupLayoutDelegate({
   Offset getPositionForChild(Size size, Size childSize) {
     final leftBound = screenPadding.left + safe.left;
     final rightBound = size.width - screenPadding.right - safe.right - childSize.width;
-    final spaceBelowToPrefer = this.spaceBelowToPrefer;
-    final preferredDx = spaceBelowToPrefer == null ? triggerRect.center.dx - childSize.width / 2 : triggerRect.left;
+    final preferredDx = switch (placement) {
+      AnchoredPanelPlacement.besideTrigger => triggerRect.center.dx - childSize.width / 2,
+      AnchoredPanelPlacement.atCorner => triggerRect.left,
+      AnchoredPanelPlacement.belowRightAligned => triggerRect.right - childSize.width,
+    };
     final dx = preferredDx.clamp(leftBound, math.max(leftBound, rightBound)).toDouble();
 
     final topBound = screenPadding.top + safe.top;
     final bottomBound = size.height - keyboard - screenPadding.bottom - safe.bottom - childSize.height;
-    final up = spaceBelowToPrefer == null ? expandUp : childSize.height > spaceBelowToPrefer;
+    final up = switch (placement) {
+      AnchoredPanelPlacement.besideTrigger => expandUp,
+      AnchoredPanelPlacement.atCorner || AnchoredPanelPlacement.belowRightAligned => childSize.height > spaceBelow,
+    };
     final preferredDy = up ? triggerRect.top - gap - childSize.height : triggerRect.bottom + gap;
     final dy = preferredDy.clamp(topBound, math.max(topBound, bottomBound)).toDouble();
 
@@ -234,7 +248,8 @@ class _AnchoredPopupLayoutDelegate({
         width != oldDelegate.width ||
         maxHeight != oldDelegate.maxHeight ||
         expandUp != oldDelegate.expandUp ||
-        spaceBelowToPrefer != oldDelegate.spaceBelowToPrefer ||
+        spaceBelow != oldDelegate.spaceBelow ||
+        placement != oldDelegate.placement ||
         keyboard != oldDelegate.keyboard ||
         screenPadding != oldDelegate.screenPadding ||
         safe != oldDelegate.safe;

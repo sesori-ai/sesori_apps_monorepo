@@ -156,23 +156,23 @@ class const _ProjectRow({
   required final String pathLabel,
   required final bool online,
 }) extends StatelessWidget {
-  /// Wide enough for the longest action label without the panel covering
-  /// its row.
+  /// Wide enough for the longest action label.
   static const double _menuWidth = 200;
 
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
+    List<PregoMenuEntry> entries() => projectMenuEntries(context: context, project: project);
+    // Flat panels, as a glass popup would morph out of the whole row. A
+    // secondary click anywhere on the row drops this one from the pointer.
     return PregoAnchorMenu(
-      // A flat panel beside the row; a glass popup would morph out of the
-      // whole row.
       flat: true,
       acquireOpenLease: null,
       menuWidth: _menuWidth,
-      entriesBuilder: () => projectMenuEntries(context: context, project: project),
-      triggerBuilder: (context, openMenu) => GestureDetector(
-        onSecondaryTap: online ? openMenu : null,
+      entriesBuilder: entries,
+      triggerBuilder: (context, openRowMenu) => GestureDetector(
+        onSecondaryTap: online ? openRowMenu : null,
         child: PregoGroupedRow(
           icon: TablerRegular.folder,
           title: Text(displayName, maxLines: 1, overflow: TextOverflow.ellipsis),
@@ -182,17 +182,25 @@ class const _ProjectRow({
                   style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textWarningPrimary),
                 )
               : Text(pathLabel, maxLines: 1, overflow: TextOverflow.ellipsis),
-          trailing: Semantics(
-            label: loc.settingsProjectActions(displayName),
-            child: Tooltip(
-              message: loc.settingsProjectActions(displayName),
-              excludeFromSemantics: true,
-              child: PregoButtonsSolid.iconOnly(
-                key: ValueKey("projects-settings-actions-${project.id}"),
-                leadingIcon: TablerRegular.dots,
-                hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                size: PregoButtonsSolidSize.sm,
-                onPressed: online ? openMenu : null,
+          // The "⋯" button hangs the same menu off itself.
+          trailing: PregoAnchorMenu(
+            flat: true,
+            placement: PregoMenuPlacement.belowRightAligned,
+            acquireOpenLease: null,
+            menuWidth: _menuWidth,
+            entriesBuilder: entries,
+            triggerBuilder: (context, openMenu) => Semantics(
+              label: loc.settingsProjectActions(displayName),
+              child: Tooltip(
+                message: loc.settingsProjectActions(displayName),
+                excludeFromSemantics: true,
+                child: PregoButtonsSolid.iconOnly(
+                  key: ValueKey("projects-settings-actions-${project.id}"),
+                  leadingIcon: TablerRegular.dots,
+                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                  size: PregoButtonsSolidSize.sm,
+                  onPressed: online ? openMenu : null,
+                ),
               ),
             ),
           ),

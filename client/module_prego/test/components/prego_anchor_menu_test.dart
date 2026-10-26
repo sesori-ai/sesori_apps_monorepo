@@ -184,6 +184,59 @@ void main() {
         ),
         throwsAssertionError,
       );
+      expect(
+        () => PregoAnchorMenu(
+          acquireOpenLease: null,
+          placement: PregoMenuPlacement.belowRightAligned,
+          entriesBuilder: () => [],
+          triggerBuilder: (context, toggle) => const SizedBox.shrink(),
+        ),
+        throwsAssertionError,
+      );
+    });
+
+    group("right-aligned below the trigger", () {
+      Widget aligned({required Alignment alignment}) => MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: Align(
+            alignment: alignment,
+            child: Padding(
+              padding: const EdgeInsets.all(40),
+              child: PregoAnchorMenu(
+                flat: true,
+                placement: PregoMenuPlacement.belowRightAligned,
+                menuWidth: 200,
+                acquireOpenLease: null,
+                entriesBuilder: () => [
+                  PregoMenuItem(title: "Rename", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
+                  PregoMenuItem(title: "Hide", subtitle: null, isSelected: false, shortcutLabel: null, onTap: () {}),
+                ],
+                triggerBuilder: (context, toggle) => IconButton(onPressed: toggle, icon: const Icon(Icons.more_horiz)),
+              ),
+            ),
+          ),
+        ),
+      );
+      final panel = find.descendant(of: find.byType(AnchoredFlatPanel), matching: find.byType(Material)).first;
+
+      testWidgets("drops below while it fits, even with more room above", (tester) async {
+        await tester.pumpWidget(aligned(alignment: const Alignment(1, 0.4)));
+        await tester.tap(find.byType(IconButton));
+        await tester.pumpAndSettle();
+
+        final trigger = tester.getRect(find.byType(IconButton));
+        expect(tester.getRect(panel).topRight, trigger.bottomRight + const Offset(0, 8));
+      });
+
+      testWidgets("flips above only when it does not fit below", (tester) async {
+        await tester.pumpWidget(aligned(alignment: Alignment.bottomRight));
+        await tester.tap(find.byType(IconButton));
+        await tester.pumpAndSettle();
+
+        final trigger = tester.getRect(find.byType(IconButton));
+        expect(tester.getRect(panel).bottomRight, trigger.topRight - const Offset(0, 8));
+      });
     });
 
     testWidgets("first and last item highlights reach the panel edges", (tester) async {

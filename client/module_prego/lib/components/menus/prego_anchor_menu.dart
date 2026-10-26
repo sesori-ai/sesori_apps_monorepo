@@ -143,6 +143,18 @@ class const PregoMenuSpotlight({
   );
 }
 
+/// Where a flat [PregoAnchorMenu] opens against its trigger. A secondary click
+/// under [PregoInteractionMode.pointer] drops it from the pointer either way.
+enum PregoMenuPlacement() {
+  /// Centred on the trigger, a gap away from it toward whichever side has more
+  /// room.
+  besideTrigger,
+
+  /// Right edges aligned, a gap below the trigger, flipping above only when it
+  /// does not fit: a menu hung off a "⋯" button at a row's end.
+  belowRightAligned,
+}
+
 /// A popup menu that anchors to its trigger, rendered platform-appropriately.
 ///
 /// On Apple platforms it is the `liquid_glass_widgets` [GlassMenu] — the
@@ -196,6 +208,11 @@ class const PregoAnchorMenu({
   /// flat on Android.
   final bool flat = false,
 
+  /// Where the flat menu opens against its trigger. Requires [flat] for
+  /// anything but [PregoMenuPlacement.besideTrigger]; the glass menu places
+  /// itself.
+  final PregoMenuPlacement placement = PregoMenuPlacement.besideTrigger,
+
   /// Starts a scrollable flat menu at the bottom, keeping the last entries
   /// visible when the rows do not fit. Entries still render top to bottom in
   /// [entriesBuilder] order. Requires [flat]; the glass menu owns its scroll.
@@ -218,6 +235,10 @@ class const PregoAnchorMenu({
         "popup is up, so there is no trigger left to keep sharp.",
       ),
       assert(!reverseScroll || flat, "Reverse scrolling requires the flat menu path (flat: true)."),
+      assert(
+        placement == PregoMenuPlacement.besideTrigger || flat,
+        "Only the flat menu path (flat: true) takes a placement; the glass menu places itself.",
+      ),
       assert(acquireOpenLease == null || flat, "An open-menu lease requires the flat menu path.");
 
   @override
@@ -409,7 +430,12 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           );
     return AnchoredFlatPanel(
       triggerRect: secondaryPress == null ? triggerRect : secondaryPress & Size.zero,
-      placement: secondaryPress == null ? AnchoredPanelPlacement.besideTrigger : AnchoredPanelPlacement.atCorner,
+      placement: secondaryPress != null
+          ? AnchoredPanelPlacement.atCorner
+          : switch (widget.placement) {
+              PregoMenuPlacement.besideTrigger => AnchoredPanelPlacement.besideTrigger,
+              PregoMenuPlacement.belowRightAligned => AnchoredPanelPlacement.belowRightAligned,
+            },
       width: widget.menuWidth,
       // The panel measures its rows for real, so the cap is all it needs: it
       // shrink-wraps below it and scrolls above it.

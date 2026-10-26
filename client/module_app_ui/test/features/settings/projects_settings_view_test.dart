@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart" show PointerDeviceKind, kSecondaryButton;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -12,6 +13,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
+import "package:theme_prego/components/menus/anchored_flat_panel.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
@@ -67,7 +69,7 @@ void main() {
     addTearDown(overlayStates.close);
   });
 
-  Future<void> pumpView({required WidgetTester tester, required bool connected}) async {
+  Future<void> pumpView({required WidgetTester tester, required bool connected, required bool pointer}) async {
     final initial = ConnectionOverlayState.hidden(connected: connected);
     whenListen(overlay, overlayStates.stream, initialState: initial);
     final connectionService = MockConnectionService();
@@ -90,16 +92,17 @@ void main() {
       ],
     );
     addTearDown(router.dispose);
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router,
-        theme: buildPregoThemeData(brightness: Brightness.light),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-      ),
+    final app = MaterialApp.router(
+      routerConfig: router,
+      theme: buildPregoThemeData(brightness: Brightness.light),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
+    await tester.pumpWidget(pointer ? PregoInteractionScope(mode: PregoInteractionMode.pointer, child: app) : app);
     await tester.pumpAndSettle();
   }
+
+  final Finder menuPanel = find.descendant(of: find.byType(AnchoredFlatPanel), matching: find.byType(Material)).first;
 
   Future<void> pickAction({required WidgetTester tester, required String projectId, required String action}) async {
     await tester.tap(_actions(projectId));
@@ -111,7 +114,7 @@ void main() {
   testWidgets("lists every folder project under Open another folder, each over its path or its missing folder", (
     tester,
   ) async {
-    await pumpView(tester: tester, connected: true);
+    await pumpView(tester: tester, connected: true, pointer: false);
 
     expect(find.text("Open another folder…"), findsOneWidget);
     expect(find.text("demo-app"), findsOneWidget);
@@ -126,7 +129,7 @@ void main() {
   });
 
   testWidgets("Rename from a row's menu renames that project", (tester) async {
-    await pumpView(tester: tester, connected: true);
+    await pumpView(tester: tester, connected: true, pointer: false);
 
     await pickAction(tester: tester, projectId: "api", action: "Rename");
     await tester.enterText(find.byType(TextField), "renamed-api");
@@ -137,7 +140,7 @@ void main() {
   });
 
   testWidgets("Hide from a row's menu hides that project and says so", (tester) async {
-    await pumpView(tester: tester, connected: true);
+    await pumpView(tester: tester, connected: true, pointer: false);
 
     await pickAction(tester: tester, projectId: "app", action: "Hide project");
 
@@ -146,7 +149,7 @@ void main() {
   });
 
   testWidgets("a project whose folder is gone offers Remove, which drops it", (tester) async {
-    await pumpView(tester: tester, connected: true);
+    await pumpView(tester: tester, connected: true, pointer: false);
 
     await tester.tap(_actions("gone"));
     await tester.pumpAndSettle();
@@ -157,8 +160,34 @@ void main() {
     verify(() => cubit.hideProject(projectId: "gone")).called(1);
   });
 
+  testWidgets("a row's ⋯ drops the menu just below itself, right edges aligned, down to the last row", (
+    tester,
+  ) async {
+    await pumpView(tester: tester, connected: true, pointer: false);
+
+    // A middle row, then the last one, which once opened over the row above.
+    for (final projectId in ["api", "gone"]) {
+      await tester.tap(_actions(projectId));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(menuPanel).topRight, tester.getRect(_actions(projectId)).bottomRight + const Offset(0, 8));
+      await tester.tapAt(const Offset(10, 590));
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets("a secondary click on a row drops the menu from the pointer", (tester) async {
+    await pumpView(tester: tester, connected: true, pointer: true);
+
+    final click = tester.getCenter(find.text("demo-api"));
+    await tester.tapAt(click, buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(menuPanel), click);
+    expect(find.text("Rename"), findsOneWidget);
+  });
+
   testWidgets("Open another folder opens the folder browser", (tester) async {
-    await pumpView(tester: tester, connected: true);
+    await pumpView(tester: tester, connected: true, pointer: false);
 
     await tester.tap(_openFolder);
     await tester.pumpAndSettle();
@@ -169,7 +198,7 @@ void main() {
   testWidgets("offline, the rows dim and stop acting under a line that says why, until the bridge returns", (
     tester,
   ) async {
-    await pumpView(tester: tester, connected: false);
+    await pumpView(tester: tester, connected: false, pointer: false);
 
     expect(find.text("Connect to a bridge to manage projects."), findsOneWidget);
     expect(find.text("demo-app"), findsOneWidget);
