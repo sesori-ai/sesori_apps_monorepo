@@ -80,12 +80,7 @@ class const DesktopHomePane({
           onOpenHarnessSettings: onOpenHarnessSettings,
         );
       case ProjectListLoading():
-        status = Center(
-          child: Semantics(
-            label: context.loc.projectListLoadingSemantics,
-            child: const PregoAiLoader(size: 32),
-          ),
-        );
+        status = _loading(context: context);
       case ProjectListFailed(:final reason):
         status = RemoteFailureView(
           reason: reason,
@@ -107,9 +102,16 @@ class const DesktopHomePane({
     );
   }
 
+  static Widget _loading({required BuildContext context}) => Center(
+    child: Semantics(
+      label: context.loc.projectListLoadingSemantics,
+      child: const PregoAiLoader(size: 32),
+    ),
+  );
+
   /// Another computer's bridge is out of this desktop's reach, so its
   /// recovery is switching away; only this computer's own offers supervised
-  /// start.
+  /// start, and while that start is under way it is still loading.
   static Widget _disconnectedView({required BuildContext context}) {
     final bridge = switch (context.watch<BridgeIdentityCubit>().state) {
       BridgeIdentityNamed(:final bridge) => bridge,
@@ -117,6 +119,9 @@ class const DesktopHomePane({
     };
     if (context.select((ComputerSwitcherCubit cubit) => cubit.state.viewsAnotherComputer)) {
       return DesktopRemoteComputerOfflineView(bridge: bridge, onSwitchComputer: _switchComputer);
+    }
+    if (context.select((LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting)) {
+      return _loading(context: context);
     }
     return DesktopBridgeRecoveryView(
       bridge: bridge,

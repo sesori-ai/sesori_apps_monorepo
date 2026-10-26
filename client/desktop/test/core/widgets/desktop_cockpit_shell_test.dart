@@ -39,6 +39,7 @@ void main() {
   late _MockRefreshService refreshService;
   late _MockWindowHost windowHost;
   late _MockAuthGateCubit authGate;
+  late _MockLocalBridgeStartupCubit startup;
   late SessionLaunchRepository launches;
 
   setUpAll(() {
@@ -55,6 +56,8 @@ void main() {
     bridgeControlCubit = _MockBridgeControlCubit();
     authGate = _MockAuthGateCubit();
     whenListen(authGate, const Stream<AuthGateState>.empty(), initialState: const AuthGateState.signedIn(user: null));
+    startup = _MockLocalBridgeStartupCubit();
+    whenListen(startup, const Stream<LocalBridgeStartupState>.empty(), initialState: LocalBridgeStartupState.settled);
     overlay = _MockConnectionOverlayCubit();
     contentTaps = 0;
     whenListen(
@@ -101,6 +104,7 @@ void main() {
         BlocProvider<BridgeControlCubit>.value(value: bridgeControlCubit),
         BlocProvider<ConnectionOverlayCubit>.value(value: overlay),
         BlocProvider<AuthGateCubit>.value(value: authGate),
+        BlocProvider<LocalBridgeStartupCubit>.value(value: startup),
       ],
       child: MaterialApp(
         theme: buildPregoThemeData(brightness: Brightness.light),
@@ -914,6 +918,48 @@ void main() {
     expect(find.text("Reconnect"), findsOneWidget);
   });
 
+  testWidgets("this computer's starting bridge is no disconnection, until the start fails", (tester) async {
+    final root = app(state: _state(processState: const BridgeProcessStarting()));
+    final updates = StreamController<ConnectionOverlayState>();
+    addTearDown(updates.close);
+    whenListen(overlay, updates.stream, initialState: const ConnectionOverlayState.bridgeOffline());
+    final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+    addTearDown(starts.close);
+    whenListen(startup, starts, initialState: starts.value);
+    await tester.pumpWidget(root);
+    expect(find.byKey(const Key("desktop-connection-pill")), findsNothing);
+
+    updates.add(const ConnectionOverlayState.connectionLost());
+    await tester.pumpAndSettle();
+    expect(find.text("Reconnect"), findsOneWidget);
+
+    updates.add(const ConnectionOverlayState.bridgeOffline());
+    await tester.pumpAndSettle();
+    expect(find.byKey(const Key("desktop-connection-pill")), findsNothing);
+    starts.add(LocalBridgeStartupState.settled);
+    await tester.pumpAndSettle();
+    expect(find.text("Bridge disconnected"), findsOneWidget);
+  });
+
+  testWidgets("the sidebar list loads while this computer's bridge starts, and empties once it fails", (tester) async {
+    whenListen(
+      projects,
+      const Stream<ProjectListState>.empty(),
+      initialState: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
+    );
+    final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+    addTearDown(starts.close);
+    whenListen(startup, starts, initialState: starts.value);
+    await tester.pumpWidget(app(state: _state(processState: const BridgeProcessStarting())));
+    await tester.pump();
+    expect(find.byType(PregoSkeletonList), findsOneWidget);
+
+    starts.add(LocalBridgeStartupState.settled);
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(PregoSkeletonList), findsNothing);
+  });
+
   testWidgets("Retry works and a departing pill lets content receive the click", (tester) async {
     final root = app(state: running);
     final updates = StreamController<ConnectionOverlayState>();
@@ -1265,6 +1311,7 @@ class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
+class _MockLocalBridgeStartupCubit() extends MockCubit<LocalBridgeStartupState> implements LocalBridgeStartupCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
 

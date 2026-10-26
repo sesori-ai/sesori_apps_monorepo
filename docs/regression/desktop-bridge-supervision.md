@@ -154,7 +154,9 @@ and keep native close/quit behavior safe.
   blank; Account reflects synchronization
   progress until that bounded operation settles. One desktop connection pill
   overlays the main pane without moving routed content; local Off suppresses
-  bridge-offline copy while relay recovery remains available.
+  bridge-offline copy while relay recovery remains available, and so does a
+  launch of this computer's bridge until the app reaches it or the start fails
+  or stops (details in `desktop-cockpit-shell.md`).
 - macOS home offers optional Full Disk Access guidance for local coding agents:
   folder prompts may pause unattended work; broader protected-file access is
   optional. Open System Settings never grants access or restarts a helper.
