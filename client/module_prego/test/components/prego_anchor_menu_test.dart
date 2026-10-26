@@ -304,6 +304,27 @@ void main() {
 
         await _expectSpringsOutOf(tester, origin: Alignment.bottomRight, at: trigger.topRight - const Offset(0, 8));
       });
+
+      testWidgets("only fades in under reduced motion, full size and in place from the start", (tester) async {
+        // Above the app, so the popup route sees it too.
+        await tester.pumpWidget(
+          Builder(
+            builder: (context) => MediaQuery(
+              data: MediaQuery.of(context).copyWith(disableAnimations: true),
+              child: aligned(alignment: Alignment.bottomRight),
+            ),
+          ),
+        );
+        final trigger = tester.getRect(find.byType(IconButton));
+        await tester.tap(find.byType(IconButton));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 50));
+
+        final bubble = find.descendant(of: find.byType(AnchoredFlatPanel), matching: find.byType(FadeTransition)).first;
+        expect(tester.widget<FadeTransition>(bubble).opacity.value, inExclusiveRange(0, 1));
+        expect(tester.getRect(panel), tester.getRect(bubble));
+        expect(tester.getRect(panel).bottomRight, trigger.topRight - const Offset(0, 8));
+      });
     });
 
     testWidgets("first and last item highlights reach the panel edges", (tester) async {

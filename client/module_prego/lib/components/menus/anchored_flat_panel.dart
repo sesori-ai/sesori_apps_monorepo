@@ -4,6 +4,7 @@ import "package:cue/cue.dart";
 import "package:flutter/rendering.dart" show RenderFollowerLayer;
 import "package:material_ui/material_ui.dart";
 
+import "../../motion/prego_reduced_motion.dart";
 import "../../theme/prego_theme.dart";
 
 /// Where an [AnchoredFlatPanel] sits against the rect it anchors to.
@@ -118,8 +119,10 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
     WidgetsBinding.instance.addPostFrameCallback(_readTriggerShift);
     final prego = context.prego;
     final AnchoredFlatPanel(:placement, :width, :maxHeight, :borderRadius, :screenPadding) = widget;
+    // Under reduced motion the bubble only fades, so it needs no origin.
+    final reducedMotion = prefersReducedMotion(context);
     // A bubble beside its trigger knows its side before layout.
-    if (placement != AnchoredPanelPlacement.besideTrigger) {
+    if (!reducedMotion && placement != AnchoredPanelPlacement.besideTrigger) {
       WidgetsBinding.instance.addPostFrameCallback(_readBubbleHeight);
     }
     final triggerRect = widget.triggerRect.shift(_triggerShift);
@@ -202,8 +205,10 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
         acts: [
           const Act.fadeIn(),
           // Grows out of the trigger, toward the side the bubble sits on.
-          Act.scale(from: 0.96, alignment: origin),
-          Act.slideY(from: above ? 0.06 : -0.06),
+          if (!reducedMotion) ...[
+            Act.scale(from: 0.96, alignment: origin),
+            Act.slideY(from: above ? 0.06 : -0.06),
+          ],
         ],
         child: panel,
       ),

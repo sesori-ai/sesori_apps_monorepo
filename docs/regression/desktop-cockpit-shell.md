@@ -100,7 +100,7 @@ The main pane hosts one full-width routed page.
 - Every anchored menu in the desktop app is a pointer menu, because the app installs the design system's
   pointer scope at its root: a tight rounded panel of 30-pixel rows, no dimmed window and no lifted row. A
   right-click drops the panel's top-left corner on the pointer and flips it above only when it does not fit
-  below, springing out of the pointer either way; a button press or the keyboard hangs the menu off its trigger as before. A row shows a shortcut only
+  below, springing out of the pointer either way (only fading in under reduced motion); a button press or the keyboard hangs the menu off its trigger as before. A row shows a shortcut only
   where the desktop registers a real binding for the same action. The phone installs no scope and keeps its
   long-press presentation.
 - Session mutations use the existing action controller and a stable sidebar presentation
