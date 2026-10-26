@@ -5,7 +5,6 @@ import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
@@ -47,7 +46,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       await db.sessionDao.insertObservedChild(
         sessionId: "child",
@@ -129,7 +127,6 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "sess-tomb",
         backendSessionId: "sess-tomb",
         projectId: "proj-tomb",
@@ -349,7 +346,6 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "p1",
@@ -361,23 +357,6 @@ void main() {
 
         lastAgent: null,
         lastAgentModel: null,
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/rename",
-          prNumber: 12,
-          url: "https://github.com/org/repo/pull/12",
-          title: "Rename PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
       );
       await repository.renameSession(sessionId: "s1", title: "Renamed");
 
@@ -400,7 +379,6 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s-target",
         backendSessionId: "s-target",
         projectId: "p-stored",
@@ -543,7 +521,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: derivedPlugin.id,
-        preservePullRequestScope: false,
       );
 
       final created = await repository.createSession(
@@ -597,7 +574,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       await db.sessionDao.setTitle(
         sessionId: "stable-session",
@@ -1164,7 +1140,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       for (final child in const [
         (id: "child", backendId: "backend-child", parentId: "root"),
@@ -1672,7 +1647,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
     }
 
@@ -1788,7 +1762,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
 
       // The worktree session primes with its worktree path...
@@ -1972,7 +1945,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
 
       expect(
@@ -2140,7 +2112,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       await db.sessionDao.insertObservedChild(
         sessionId: "stable-child",
@@ -2569,8 +2540,6 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
       directory: "/project",
       worktreePath: null,
       branchName: null,
-      currentBranchName: null,
-      currentGithubRepositoryIdentity: null,
       isDedicated: false,
       archivedAt: null,
       baseBranch: null,

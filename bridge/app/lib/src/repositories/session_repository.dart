@@ -246,7 +246,6 @@ class SessionRepository({
             lastAgentModel: lastAgentModel,
             fastMode: fastMode,
             pluginId: pluginId,
-            preservePullRequestScope: existingBinding?.projectId == projectId && existingBinding?.branchName == null,
           );
           if (parentBinding != null) {
             await _sessionDao.setParentSessionId(
@@ -1590,7 +1589,6 @@ class SessionRepository({
   }) => ProjectDto(
     projectId: projectId,
     path: path,
-    prCacheGithubLogin: null,
     createdAt: 0,
     updatedAt: 0,
     projectionUpdatedAt: 0,

@@ -12,7 +12,6 @@ import "../../foundation/data_directory_hardening.dart";
 import "converters/agent_model_converter.dart";
 import "daos/catalog_hydrations_dao.dart";
 import "daos/projects_dao.dart";
-import "daos/pull_request_dao.dart";
 import "daos/session_dao.dart";
 import "database.steps.dart";
 import "tables/accepted_prompts_table.dart";
@@ -20,7 +19,6 @@ import "tables/catalog_hydrations_table.dart";
 import "tables/deleted_sessions_table.dart";
 import "tables/new_session_defaults_table.dart";
 import "tables/projects_table.dart";
-import "tables/pull_requests_table.dart";
 import "tables/session_continuation_table.dart";
 import "tables/session_options_cache_table.dart";
 import "tables/session_table.dart";
@@ -35,20 +33,19 @@ part "database.g.dart";
     ProjectsTable,
     SessionTable,
     DeletedSessionsTable,
-    PullRequestsTable,
     CatalogHydrationsTable,
     SessionOptionsCacheTable,
     NewSessionDefaultsTable,
     AcceptedPromptsTable,
     SessionContinuationTable,
   ],
-  daos: [ProjectsDao, SessionDao, PullRequestDao, CatalogHydrationsDao],
+  daos: [ProjectsDao, SessionDao, CatalogHydrationsDao],
 )
 class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 20;
+  int get schemaVersion => 21;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -328,6 +325,21 @@ class AppDatabase(super.e) extends _$AppDatabase {
           await customStatement("UPDATE projects_table SET hidden = 0 WHERE project_id = ?", [
             row.read<String>("project_id"),
           ]);
+        }
+      },
+      from20To21: (m, schema) async {
+        // Pull request tracking is gone. Dropping its cache table drops its
+        // scope index too; no table references it. The rebuilds copy every
+        // remaining column by name and leave out only the PR scope columns.
+        // Drift runs each rebuild with foreign keys off, so dropping the old
+        // tables cascades nothing; the check below proves the graph is whole.
+        await customStatement("DROP TABLE pull_requests_table");
+        await m.alterTable(TableMigration(schema.projectsTable));
+        await m.alterTable(TableMigration(schema.sessionsTable));
+
+        final violations = await m.database.customSelect("PRAGMA foreign_key_check").get();
+        if (violations.isNotEmpty) {
+          throw StateError("Migration v20->v21 left foreign key violations: ${violations.map((row) => row.data)}");
         }
       },
     ),

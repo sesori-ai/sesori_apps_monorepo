@@ -575,7 +575,6 @@ Future<void> _insertSession({
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: pluginId,
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,

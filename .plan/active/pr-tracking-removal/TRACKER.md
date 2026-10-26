@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 3/13 (3.ii) and 10/13 in review.
+- Current step: 12/13 in review.
 - User decisions:
   - remove all PR tracking (round 1, Q1 A, 2026-10-25);
   - D7, remove project-view presence (the user's follow-up the same day).
@@ -15,16 +15,16 @@
 |---|---|---|---|
 | 1/13 | Publish the plan | Done | #2068 |
 | 2/13 | Row PR mark removed | Done | #2089 |
-| 3/13 | PR refresh setting removed | In review (3.ii) | #2092 (3.i), #2096 (3.ii) |
+| 3/13 | PR refresh setting removed | Done | #2092 (3.i), #2096 (3.ii) |
 | 4/13 | Client stops declaring the open project | Done | #2091 |
 | 5/13 | Session reads carry no PR data | Done | #2085 (5.i), #2086 (5.ii) |
 | 6/13 | Polling stopped | Done | #2090 |
 | 7/13 | Bridge stops tracking the open project | Done | #2093 |
 | 8/13 | PR sync service removed | Done | #2095 |
 | 9/13 | PR source lookup removed | Done | #2097 |
-| 10/13 | Pull request repository removed | In review | #2098 |
-| 11/13 | gh client removed | Not started | — |
-| 12/13 | Schema v21 drops stored PR data | Not started | — |
+| 10/13 | Pull request repository removed | Done | #2098 |
+| 11/13 | gh client removed | In review | #2099 |
+| 12/13 | Schema v21 drops stored PR data | In review | #2100 |
 | 13/13 | PR wire models removed; plan retired | Not started | — |
 
 ## Decision log

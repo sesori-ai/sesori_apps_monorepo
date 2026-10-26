@@ -395,7 +395,6 @@ void main() {
           variant: "high",
         ),
         pluginId: "fake",
-        preservePullRequestScope: false,
       );
     });
 

@@ -440,7 +440,6 @@ Future<void> _storeSession({
     lastAgent: null,
     lastAgentModel: null,
     pluginId: "fake",
-    preservePullRequestScope: false,
   );
 }
 

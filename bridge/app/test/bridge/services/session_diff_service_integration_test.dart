@@ -383,7 +383,6 @@ Future<void> _insertStoredSession({
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: "opencode",
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
@@ -408,7 +407,6 @@ Future<void> _insertInPlaceStoredSession({
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: "opencode",
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,

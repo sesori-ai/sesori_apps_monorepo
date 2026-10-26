@@ -164,8 +164,6 @@ class FakeSessionDao() {
       directory: worktreePath ?? projectId,
       worktreePath: worktreePath,
       branchName: null,
-      currentBranchName: null,
-      currentGithubRepositoryIdentity: null,
       isDedicated: isDedicated,
       archivedAt: null,
       baseBranch: baseBranch,
@@ -246,7 +244,6 @@ Future<void> recordSessionBinding({
       lastAgent: null,
       lastAgentModel: null,
       pluginId: pluginId,
-      preservePullRequestScope: false,
     );
     return;
   }

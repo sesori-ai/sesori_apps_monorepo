@@ -330,7 +330,6 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       lastAgent: null,
       lastAgentModel: null,
       pluginId: _pluginId,
-      preservePullRequestScope: false,
     );
   }
 

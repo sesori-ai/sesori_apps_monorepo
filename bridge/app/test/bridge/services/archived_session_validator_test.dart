@@ -39,7 +39,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "fake",
-        preservePullRequestScope: false,
       );
     });
 
