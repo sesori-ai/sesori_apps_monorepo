@@ -204,6 +204,18 @@ void main() {
       expect(pushedScreen.child, same(child));
     });
 
+    // Archived is a Settings page, so it pushes with the platform transition
+    // instead of rising as a modal.
+    test("archive shell pushes as a standard page", () {
+      final page = buildArchivedSessionsRoute().pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(),
+        const SizedBox(),
+      );
+      expect(page, isA<MaterialPage<void>>());
+      expect((page as MaterialPage<void>).fullscreenDialog, isFalse);
+    });
+
     test("newSession route builds NewSessionScreen", () {
       final widget = AppRouteDef.newSession.toGoRoute().builder!(
         _FakeBuildContext(),
