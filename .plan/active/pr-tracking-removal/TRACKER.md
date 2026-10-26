@@ -23,7 +23,7 @@
 | 8/13 | PR sync service removed | Done | #2095 |
 | 9/13 | PR source lookup removed | Done | #2097 |
 | 10/13 | Pull request repository removed | Done | #2098 |
-| 11/13 | gh client removed | In review | — |
+| 11/13 | gh client removed | In review | #2099 |
 | 12/13 | Schema v21 drops stored PR data | Not started | — |
 | 13/13 | PR wire models removed; plan retired | Not started | — |
 
