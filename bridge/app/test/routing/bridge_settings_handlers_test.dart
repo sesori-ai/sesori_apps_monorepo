@@ -43,7 +43,7 @@ void main() {
 
     tearDown(() => repository.dispose());
 
-    test("GET returns both settings from one committed snapshot", () async {
+    test("GET still serves the inert PR interval with the other settings from one committed snapshot", () async {
       final response = await GetBridgeSettingsHandler(settingsRepository: repository).routeForTest(
         makeRequest("GET", "/settings"),
       );

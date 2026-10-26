@@ -211,8 +211,6 @@ restart before explicit re-import.
   session is missing until a manual refresh.
 - Archived says “No archived sessions” while the project list is loading, has
   failed, or the computer is disconnected.
-- Opening or closing an audit record consumes the underlying live project's
-  claim, preventing its declaration from returning when the opener is visible.
 - A covered detail marks late output seen, reports activity, or presents a
   question, permission or notice over another page; child Back or cover dismissal
   loses the retained detail/draft or fails to restore its loaded viewed state.

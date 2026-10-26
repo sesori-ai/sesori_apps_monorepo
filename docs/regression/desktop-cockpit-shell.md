@@ -132,8 +132,7 @@ The main pane hosts one full-width routed page.
   Closed or superseded reads cannot seed shared unseen state, and an older
   completion cannot release a newer pending read.
 - The sidebar is the only navigation pane. The home, archived sessions, new session, detail, and diffs
-  are sibling main-pane routes. The sidebar's shared list is the only full list owner; session action menus
-  remain non-viewing action scopes.
+  are sibling main-pane routes. The sidebar's shared list is the only full list owner.
 - The settings window's Archived sessions row, below its tabs on every tab, closes the window and opens the
   Archived sessions page over the current page: the shared archived list across
   projects, read through the sidebar's shared project filter, with each row naming its project.

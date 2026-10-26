@@ -48,7 +48,6 @@ import "listeners/session_mutation_listener.dart";
 import "listeners/session_options_changed_refresh_listener.dart";
 import "listeners/session_options_creation_refresh_listener.dart";
 import "listeners/viewed_project_glossary_listener.dart";
-import "listeners/viewed_project_pr_refresh_listener.dart";
 import "listeners/viewed_session_plugin_warmup_listener.dart";
 import "models/bridge_config.dart";
 import "push/completion_notifier.dart";
@@ -432,11 +431,6 @@ class Orchestrator({
     );
     final pullRequestRefreshSettingsService = PullRequestRefreshSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
-    );
-    final viewedProjectPrRefreshListener = ViewedProjectPrRefreshListener(
-      tracker: projectViewTracker,
-      prSyncService: prSyncService,
-      settingsService: pullRequestRefreshSettingsService,
     );
     final projectGlossaryScopeTracker = ProjectGlossaryScopeTracker(
       bridgeIdProvider: _bridgeRegistrationService,
@@ -845,7 +839,6 @@ class Orchestrator({
       failureReporter: _failureReporter,
       sessionRepository: sessionRepository,
       prSyncService: prSyncService,
-      viewedProjectPrRefreshListener: viewedProjectPrRefreshListener,
       pluginWarmupSettingListener: pluginWarmupSettingListener,
       viewedSessionPluginWarmupListener: viewedSessionPluginWarmupListener,
       currentProjectGlossaryListener: currentProjectGlossaryListener,
@@ -966,7 +959,6 @@ class OrchestratorSession._({
   required final FailureReporter _failureReporter,
   required final SessionRepository _sessionRepository,
   required final PrSyncService _prSyncService,
-  required final ViewedProjectPrRefreshListener _viewedProjectPrRefreshListener,
   required final PluginWarmupSettingListener _pluginWarmupSettingListener,
   required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
   required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
@@ -1151,7 +1143,6 @@ class OrchestratorSession._({
     _pluginEventListener.start();
     _sessionOptionsCreationRefreshListener.start();
     _sessionOptionsChangedRefreshListener.start();
-    _viewedProjectPrRefreshListener.start();
     _pluginWarmupSettingListener.start();
     _viewedSessionPluginWarmupListener.start();
     _currentProjectGlossaryListener.start();
@@ -1257,11 +1248,6 @@ class OrchestratorSession._({
         _statusNotifier?.handleProjectsSummary(summary: startupSummary);
       }
     }
-    _prSyncService.renderedChanges
-        .listen((change) {
-          _enqueueWireEvent(SesoriSseEvent.sessionsUpdated(projectID: change.projectId));
-        })
-        .addTo(_subscriptions);
     _sessionUnseenService.unseenChanges
         .listen((change) {
           _enqueueWireEvent(
@@ -1388,7 +1374,6 @@ class OrchestratorSession._({
     Log.v("[shutdown] completion listener disposed (+${teardownSw.elapsedMilliseconds}ms)");
     await attempt(_maintenanceListener.dispose);
     await Future.wait([
-      attempt(_viewedProjectPrRefreshListener.dispose),
       attempt(_pluginWarmupSettingListener.dispose),
       attempt(_viewedSessionPluginWarmupListener.dispose),
     ]);
