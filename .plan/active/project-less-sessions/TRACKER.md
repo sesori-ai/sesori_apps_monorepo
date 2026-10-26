@@ -15,7 +15,7 @@
 | 3/7 | Picker actions in a footer | Done | #2071 |
 | 4/7 | Sesori folder and per-session scratch folders (inert) | Done | #2069 |
 | 5/7 | No project project turned on | Done | #2074 |
-| 6/7 | No project in the apps | In review | — |
+| 6/7 | No project in the apps | In review | #2087 |
 | 7/7 | L3 matrix run; plan retired | Not started | — |
 
 ## Decision log
