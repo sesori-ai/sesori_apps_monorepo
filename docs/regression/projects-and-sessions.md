@@ -162,7 +162,12 @@ state.
   presentation timer resets on any phase or harness change and never polls or
   changes bridge work. The row has no controls. Every live
   phase shares the same Deep Scan loading-card treatment, and the row scrolls
-  with the list rather than pinning. The entrance animation plays once when a
+  with the list rather than pinning. The row stands above the list from its
+  first loading frame, on the phone home and the desktop sidebar alike: a list
+  opened mid-scan shows it with the loading skeleton, and nothing moves when the
+  projects arrive. A scan that starts later grows the row in. The phone's
+  disconnected pages show no row, even while a pull to reconnect is still
+  loading the list. The entrance animation plays once when a
   pull first reveals the row; later updates do not replay it, and the scan
   indicator keeps animating until a terminal outcome replaces it. Android
   Remove Animations and iOS Reduce Motion both hold the intentional first
@@ -670,8 +675,8 @@ re-import of an unchanged catalog, newly discovered versus already-hidden projec
 that reports its delta against one that omits it. Refresh while
 fully disconnected, reconnecting, connection-lost, and bridge-offline, and
 compare each with a connected bridge that has no routable harness. Interrupt
-live runs: disconnect mid-scan and reconnect, and leave the surface that
-started one. Restore harness eligibility afterwards.
+live runs: disconnect mid-scan and reconnect, leave the surface that
+started one, and cold-start the app while a scan is running. Restore harness eligibility afterwards.
 For "No project", vary native and bridge-derived harnesses, a first import against a re-import, a bridge restart,
 a renamed "No project" row, a missing scratch root, and a scratch session whose harness forks or adds a second
 session in the same folder. Delete the disposable scratch sessions afterwards.
@@ -787,6 +792,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   scrolls, or the phone home's bar still holds New session or Archived.
 - Two rows for one scan, a row whose height changes as harnesses report, or a
   scan row growing under a finger that is still pulling.
+- A list opened mid-scan whose row appears only once the projects load, pushing
+  the list down, or a scan row above the phone's disconnected pages.
 - A settled scan that never clears, a row that vanishes or makes the content
   below jump instead of fading and folding away, a row reporting totals as
   though they were new, or a delta claimed while a harness in the run omitted
