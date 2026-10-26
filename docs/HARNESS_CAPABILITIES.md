@@ -906,14 +906,14 @@ remain available independently of MCP management.
 
 | Adapter | Repository minimum → target | Structured MCP management in Sesori |
 |---|---|---|
-| Pi | 0.99.0 → 1.4.0 | Not supported by the resident RPC method set; native `/mcp` command remains usable. |
-| Antigravity | Exact official ACP pair 1.4.3 | Not implemented; standard ACP has no management API. |
-| Copilot | 1.0.78 → 1.0.103 | Not implemented; standard ACP has no management API. |
-| Cursor | 2026.09.23 → 2026.10.22-27dcf5f | Not implemented; standard ACP has no management API. |
+| Pi | 0.99.0 → 1.0.4 | Not supported by the resident RPC method set; native `/mcp` command remains usable. |
+| Antigravity | Exact official ACP pair 1.3.0 | Not implemented; standard ACP has no management API. |
+| Copilot | 1.0.78 → 1.0.92 | Not implemented; standard ACP has no management API. |
+| Cursor | 2026.09.23 → 2026.10.01-e373342 | Not implemented; standard ACP has no management API. |
 | DeepSeek | 0.1.5 → 0.2.0 | Not implemented; standard ACP has no management API. |
-| Grok Build | 1.0.5 → 1.0.70 | Not implemented; standard ACP has no management API. |
-| Hermes | 0.20.0 → 0.22.5 | Not implemented; standard ACP has no management API. |
-| Oh My Pi | 17.2.13 → 18.12.6 | Not implemented; standard ACP has no management API. |
+| Grok Build | 1.0.5 → 1.0.46 | Not implemented; standard ACP has no management API. |
+| Hermes | 0.20.0 → 0.21.5 | Not implemented; standard ACP has no management API. |
+| Oh My Pi | 17.2.13 → 18.8.0 | Not implemented; standard ACP has no management API. |
 
 Pi's exact [0.99.0 RPC types][pi-mcp-rpc-min] and
 [1.0.4 RPC types][pi-mcp-rpc-target] expose no structured MCP management methods.
