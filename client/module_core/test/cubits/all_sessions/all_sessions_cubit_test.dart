@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -263,6 +265,55 @@ void main() {
 
     cubit.selectProject(projectId: one.id);
     expect(ids(cubit: cubit), ["newest", "oldest"]);
+  });
+
+  group("archived mode stays loading until its reload on open answers", () {
+    late Completer<bool> reload;
+    final noSessions = loaded(sessions: const [], activity: const {});
+
+    setUp(() {
+      // Archived during this run: the loaded inventory still holds it active.
+      entries.add({
+        one.id: loaded(
+          sessions: [session(id: "a", project: one, updatedAt: 10)],
+          activity: const {},
+        ),
+        two.id: noSessions,
+      });
+      reload = Completer<bool>();
+      when(recentInventory.refresh).thenAnswer((_) => reload.future);
+    });
+
+    test("so a stale inventory never reads as empty", () async {
+      final cubit = create(mode: AllSessionsMode.archived);
+      expect(cubit.state.rows, isEmpty);
+      expect(cubit.state.isLoading, isTrue);
+
+      entries.add({
+        one.id: loaded(
+          sessions: [archived(id: "a", project: one, archivedAt: 20)],
+          activity: const {},
+        ),
+        two.id: noSessions,
+      });
+      await settle();
+      expect(ids(cubit: cubit), ["a"]);
+
+      reload.complete(true);
+      await settle();
+      expect(ids(cubit: cubit), ["a"]);
+      expect(cubit.state.isLoading, isFalse);
+    });
+
+    test("and reads as empty once it answers, even when it failed", () async {
+      final cubit = create(mode: AllSessionsMode.archived);
+      expect(cubit.state.isLoading, isTrue);
+
+      reload.complete(false);
+      await settle();
+      expect(cubit.state.rows, isEmpty);
+      expect(cubit.state.isLoading, isFalse, reason: "a failed reload keeps the rows already loaded");
+    });
   });
 
   test("the default project is the filter, otherwise the newest session's, otherwise none", () async {

@@ -61,7 +61,8 @@ final class const AllSessionsState({
   required final List<AllSessionsFailure> failures,
 
   /// Whether the project list, or a listed project under the filter, is still
-  /// loading for the first time.
+  /// loading for the first time, or the archived list's reload on open has not
+  /// answered yet.
   required final bool isLoading,
 
   /// The bridge's "No project" project, or null on a bridge without one.

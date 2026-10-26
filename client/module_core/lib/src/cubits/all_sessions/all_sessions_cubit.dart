@@ -21,7 +21,9 @@ import "all_sessions_state.dart";
 /// chip.
 ///
 /// [AllSessionsMode.archived] reloads the inventory when it opens: the bridge
-/// publishes no event on archive.
+/// publishes no event on archive. Until that reload answers, the list is still
+/// loading, so a session archived since the inventory loaded never leaves it
+/// reading as empty.
 class AllSessionsCubit({
   required final AllSessionsMode _mode,
   required final RecentSessionInventoryService _recentInventory,
@@ -31,6 +33,7 @@ class AllSessionsCubit({
 }) extends Cubit<AllSessionsState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Set<String> _hiddenSessionIds = const {};
+  bool _awaitingReload = _mode == AllSessionsMode.archived;
 
   this
     : super(
@@ -42,6 +45,7 @@ class AllSessionsCubit({
           query: "",
           quickFilter: SessionListQuickFilter.all,
           hiddenSessionIds: const {},
+          awaitingReload: _mode == AllSessionsMode.archived,
           sessionListService: _sessionListService,
         ),
       ) {
@@ -52,7 +56,7 @@ class AllSessionsCubit({
       ..add(
         _filterTracker.projectId.skip(1).where((projectId) => projectId != state.projectId).listen((_) => _update()),
       );
-    if (_mode == AllSessionsMode.archived) unawaited(_recentInventory.refresh());
+    if (_awaitingReload) unawaited(_reload());
   }
 
   AllSessionsMode get mode => _mode;
@@ -80,6 +84,12 @@ class AllSessionsCubit({
 
   Future<void> retry({required String projectId}) => _recentInventory.retry(projectId: projectId);
 
+  Future<void> _reload() async {
+    await _recentInventory.refresh();
+    _awaitingReload = false;
+    if (!isClosed) _update();
+  }
+
   void _update() => _emit(query: state.query, quickFilter: state.quickFilter);
 
   void _emit({required String query, required SessionListQuickFilter quickFilter}) => emit(
@@ -91,6 +101,7 @@ class AllSessionsCubit({
       query: query,
       quickFilter: quickFilter,
       hiddenSessionIds: _hiddenSessionIds,
+      awaitingReload: _awaitingReload,
       sessionListService: _sessionListService,
     ),
   );
@@ -103,6 +114,7 @@ class AllSessionsCubit({
     required String query,
     required SessionListQuickFilter quickFilter,
     required Set<String> hiddenSessionIds,
+    required bool awaitingReload,
     required SessionListService sessionListService,
   }) {
     final (known, scratchProjectId) = switch (projects) {
@@ -147,6 +159,7 @@ class AllSessionsCubit({
       query: query,
     ).where(shown).toList();
     final isLoading =
+        awaitingReload ||
         projects is ProjectListLoading ||
         listed.any(
           (project) => switch (entries[project.id]) {
