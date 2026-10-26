@@ -199,10 +199,6 @@ class FakeSessionDao() {
     }
   }
 
-  Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
-    return _sessions.values.where((s) => s.projectId == projectId).toList();
-  }
-
   Future<void> deleteSession({required String sessionId}) async {
     _sessions.remove(sessionId);
   }
@@ -541,12 +537,6 @@ class FakeSessionRepository({
       for (final entry in rows.entries)
         if (entry.value.archivedAt != null) entry.key,
     };
-  }
-
-  @override
-  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
-    final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
-    return sessions.map((session) => session.toStoredSession()).toList(growable: false);
   }
 
   @override

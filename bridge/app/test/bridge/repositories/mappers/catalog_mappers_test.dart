@@ -107,10 +107,15 @@ void main() {
     expect(session.parentID, "parent-id");
     expect(session.title, "Observed title");
     expect(session.promptDefaults?.agent, "build");
-    expect(session.branchName, "current-feature");
+    expect(session.branchName, "feature");
     expect(session.hasWorktree, isTrue);
     expect(session.unseen, isTrue);
     expect(session.lastUserActivityAt, 12);
+
+    // A session in the project folder, a "No project" session and a detached
+    // worktree store no branch, so none is reported, whatever branch was last
+    // seen live.
+    expect(mapper.map(row: row.copyWith(branchName: null), unseen: true).branchName, isNull);
   });
 
   test("SessionCatalogMapper reports live activity newer than the backend's updated time", () {
