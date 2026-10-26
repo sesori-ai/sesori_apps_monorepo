@@ -477,6 +477,31 @@ void main() {
       );
     }
 
+    testWidgets("a project that fails as the load ends arrives under the skeleton, which stays where it stood", (
+      tester,
+    ) async {
+      const lastFailure = AllSessionsFailure(
+        project: ProjectSummary(id: "p3", name: "Project Three", path: "/p3", time: null),
+        reason: RemoteFailureReason.networkDown,
+      );
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpLoading(tester, updates: updates.stream);
+      updates.add(state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 250));
+      final skeletonTop = tester.getTopLeft(skeleton).dy;
+
+      updates.add(loaded(mode: AllSessionsMode.archived, titles: const [], failures: const [failure, lastFailure]));
+      await tester.pump();
+      expect(tester.getTopLeft(skeleton).dy, skeletonTop);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(tester.getTopLeft(skeleton).dy, skeletonTop);
+      expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
+      expect(paintedOpacity(tester, find.text("Couldn’t load Project Three")), inExclusiveRange(0, 1));
+    });
+
     for (final endsAfter in [250, 320, 600]) {
       testWidgets("a load that ends ${endsAfter}ms in fades the skeleton out from there, never brightening", (
         tester,

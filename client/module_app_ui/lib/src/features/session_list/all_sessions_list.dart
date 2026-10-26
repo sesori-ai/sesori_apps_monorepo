@@ -183,9 +183,9 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   final GlobalKey _skeletonKey = GlobalKey(debugLabel: "all-sessions-skeleton");
   bool _wasLoading = false;
 
-  /// Whether failed projects were listed above the loading skeleton, so it
-  /// leaves from under them rather than from the top.
-  bool _failuresAboveSkeleton = false;
+  /// The failed project listed last above the loading skeleton: it leaves
+  /// from under that row while the row is still listed.
+  String? _skeletonUnderFailureId;
 
   @override
   void initState() {
@@ -259,12 +259,13 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       });
     }
     _wasLoading = loading;
-    if (loading) _failuresAboveSkeleton = state.failures.isNotEmpty;
-    // The skeleton fades out where it stood: hanging from the last failed
-    // project listed above it, else from the top of the first box to arrive
-    // under the header. At most one place holds it.
+    if (loading) _skeletonUnderFailureId = state.failures.lastOrNull?.project.id;
+    // The skeleton fades out where it stood: hanging from the failed project
+    // it stood under, else from the top of the first box to arrive under the
+    // header. At most one place holds it.
     final skeletonLeaving = !loading && !_handOff.isCompleted;
-    final heldUnderFailures = skeletonLeaving && _failuresAboveSkeleton && state.failures.isNotEmpty;
+    final heldUnderFailures =
+        skeletonLeaving && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
     final heldByArrival = skeletonLeaving && !heldUnderFailures;
     final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
     final note = switch (settled) {
@@ -327,7 +328,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
           SliverToBoxAdapter(
             key: ValueKey("all-sessions-failure-${failure.project.id}"),
             child: _holding(
-              skeleton: heldUnderFailures && index == state.failures.length - 1
+              skeleton: heldUnderFailures && failure.project.id == _skeletonUnderFailureId
                   ? _SkeletonHold.below
                   // Without sessions the first one is the first box under the header.
                   : heldByArrival && !hasSessions && index == 0
