@@ -40,13 +40,11 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _insertRoot(
         database: db,
         sessionId: "worktree-root",
         worktreePath: "/worktree",
-        creationBranch: "created-worktree",
       );
       await db.sessionDao.insertObservedChild(
         sessionId: "child",
@@ -86,10 +84,8 @@ void main() {
       final projectRoot = await db.sessionDao.getSession(sessionId: "project-root");
       final worktreeRoot = await db.sessionDao.getSession(sessionId: "worktree-root");
       final child = await db.sessionDao.getSession(sessionId: "child");
-      expect(projectRoot?.branchName, "created-main");
       expect(projectRoot?.currentBranchName, "main");
       expect(projectRoot?.currentGithubRepositoryIdentity, repositoryIdentity);
-      expect(worktreeRoot?.branchName, "created-worktree");
       expect(worktreeRoot?.currentBranchName, "feature/current");
       expect(child?.currentBranchName, isNull);
       expect(child?.currentGithubRepositoryIdentity, isNull);
@@ -101,7 +97,6 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _setScopeAndLogin(
         database: db,
@@ -139,7 +134,6 @@ void main() {
       );
       final detached = await db.sessionDao.getSession(sessionId: "project-root");
       expect(detached?.currentBranchName, isNull);
-      expect(detached?.branchName, "created-main");
       expect(detachedChanged, {projectId});
       expect((await db.projectsDao.getProject(projectId: projectId))?.prCacheGithubLogin, isNull);
     });
@@ -149,7 +143,6 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _setScopeAndLogin(
         database: db,
@@ -189,7 +182,6 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _setScopeAndLogin(
         database: db,
@@ -231,39 +223,11 @@ void main() {
       expect(changed, {projectId});
     });
 
-    test("does not apply a target captured before the durable branch changed", () async {
-      await _insertRoot(
-        database: db,
-        sessionId: "worktree-root",
-        worktreePath: "/worktree",
-        creationBranch: "blue-otter",
-      );
-      final captured = await _storedSessions(database: db);
-      await db.sessionDao.replaceGeneratedBranch(
-        sessionId: "worktree-root",
-        expectedBranchName: "blue-otter",
-        branchName: "fix-login-flow",
-      );
-
-      final changed = await repository.applyResolvedTargets(
-        sessionsByProject: {projectId: captured},
-        targetsByDirectory: const {
-          "/worktree": PullRequestLocalBranchDirectoryTarget(branchName: "blue-otter"),
-        },
-      );
-
-      final session = await db.sessionDao.getSession(sessionId: "worktree-root");
-      expect(session?.branchName, "fix-login-flow");
-      expect(session?.currentBranchName, "fix-login-flow");
-      expect(changed, isEmpty);
-    });
-
     test("prepares the verified account without fabricating missing projects", () async {
       await _insertRoot(
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _setScopeAndLogin(
         database: db,
@@ -303,7 +267,6 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _setScopeAndLogin(
         database: db,
@@ -353,7 +316,6 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _setScopeAndLogin(
         database: db,
@@ -399,7 +361,6 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       await _setScopeAndLogin(
         database: db,
@@ -450,7 +411,6 @@ void main() {
         database: db,
         sessionId: "project-root",
         worktreePath: null,
-        creationBranch: "created-main",
       );
       final failingRepository = _repository(
         database: db,
@@ -492,7 +452,6 @@ Future<void> _insertRoot({
   required AppDatabase database,
   required String sessionId,
   required String? worktreePath,
-  required String creationBranch,
 }) {
   return database.sessionDao.insertSession(
     fastMode: false,
@@ -504,7 +463,6 @@ Future<void> _insertRoot({
     isDedicated: worktreePath != null,
     createdAt: 1,
     worktreePath: worktreePath,
-    branchName: creationBranch,
     baseBranch: "main",
     baseCommit: "abc123",
     lastAgent: null,

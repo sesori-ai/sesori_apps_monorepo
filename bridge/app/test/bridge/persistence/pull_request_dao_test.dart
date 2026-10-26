@@ -43,7 +43,6 @@ void main() {
         isDedicated: true,
         createdAt: 900,
         worktreePath: "/tmp/$sessionId",
-        branchName: branchName,
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: null,

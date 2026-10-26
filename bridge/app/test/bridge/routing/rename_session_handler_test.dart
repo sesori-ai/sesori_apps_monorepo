@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/rename_session_handler.dart";
 import "package:sesori_bridge/src/services/session_mutation_dispatcher.dart";
 import "package:sesori_bridge/src/services/session_operation_dispatcher.dart";
-import "package:sesori_bridge/src/services/worktree_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -39,7 +38,6 @@ void main() {
       sessionMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
-        worktreeService: _UnusedWorktreeService(),
       );
       handler = RenameSessionHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -54,7 +52,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -117,7 +114,6 @@ void main() {
         isDedicated: true,
         createdAt: 1,
         worktreePath: "/tmp",
-        branchName: "feature/rename",
         baseBranch: null,
         baseCommit: null,
 
@@ -215,7 +211,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -237,9 +232,4 @@ void main() {
       expect(plugin.lastRenameSessionId, isNull);
     });
   });
-}
-
-class _UnusedWorktreeService() implements WorktreeService {
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

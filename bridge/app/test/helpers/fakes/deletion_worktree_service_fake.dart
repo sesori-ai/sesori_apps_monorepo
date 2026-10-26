@@ -3,7 +3,6 @@ import "package:sesori_bridge/src/services/worktree_service.dart";
 class DeletionWorktreeServiceFake({final List<String>? operationLog}) implements WorktreeService {
   WorktreeSafetyResult safetyResult = WorktreeSafe();
   bool removeResult = true;
-  bool branchExistsResult = true;
 
   int checkCallCount = 0;
   int removeCallCount = 0;
@@ -37,9 +36,6 @@ class DeletionWorktreeServiceFake({final List<String>? operationLog}) implements
     lastRemoveForce = force;
     return removeResult;
   }
-
-  @override
-  Future<bool> branchExists({required String projectId, required String branchName}) async => branchExistsResult;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

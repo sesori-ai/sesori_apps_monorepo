@@ -9,9 +9,6 @@ export "../repositories/models/worktree_types.dart";
 
 const _maxWorktreeCreationAttempts = 3;
 const _suffixSpace = 0x1000000;
-// Every bridge-created branch lives under this namespace; worktree directories
-// keep the bare slug.
-const _branchPrefix = "sesori/";
 // Adapted from the MIT-licensed unique-names-generator dictionaries:
 // https://github.com/andreasonny83/unique-names-generator/tree/main/src/dictionaries
 const _workspaceColors = [
@@ -283,120 +280,6 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     );
   }
 
-  Future<GeneratedBranchRenameResult> renameGeneratedBranch({
-    required String worktreePath,
-    required String initialBranchName,
-    required String generatedBranchName,
-  }) async {
-    final prefixedBranchName = "$_branchPrefix$generatedBranchName";
-    if (prefixedBranchName == initialBranchName) {
-      return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.unchanged);
-    }
-    if (!await _worktreeRepository.isValidBranchName(branchName: prefixedBranchName)) {
-      return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.invalidGeneratedName);
-    }
-
-    final currentBranchName = await _worktreeRepository.getCurrentBranchName(worktreePath: worktreePath);
-    if (currentBranchName != initialBranchName) {
-      return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.initialBranchChanged);
-    }
-    if (await _worktreeRepository.hasUpstream(
-          worktreePath: worktreePath,
-          branchName: initialBranchName,
-        ) ||
-        await _worktreeRepository.hasRemoteBranch(
-          worktreePath: worktreePath,
-          branchName: initialBranchName,
-        )) {
-      return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.initialBranchPublished);
-    }
-
-    var targetBranchName = prefixedBranchName;
-    if (await _branchExistsLocallyOrRemotely(
-      worktreePath: worktreePath,
-      branchName: targetBranchName,
-    )) {
-      final suffixOffset = _random.nextInt(_suffixSpace);
-      String? availableBranchName;
-      for (var attempt = 0; attempt < _maxWorktreeCreationAttempts; attempt++) {
-        final candidate = "$prefixedBranchName-${_hexSuffix((suffixOffset + attempt) % _suffixSpace)}";
-        if (!await _worktreeRepository.isValidBranchName(branchName: candidate)) continue;
-        if (!await _branchExistsLocallyOrRemotely(
-          worktreePath: worktreePath,
-          branchName: candidate,
-        )) {
-          availableBranchName = candidate;
-          break;
-        }
-      }
-      if (availableBranchName == null) {
-        return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.targetCollisions);
-      }
-      targetBranchName = availableBranchName;
-    }
-
-    await _worktreeRepository.renameBranch(
-      worktreePath: worktreePath,
-      oldBranchName: initialBranchName,
-      newBranchName: targetBranchName,
-    );
-    final String? confirmedBranchName;
-    try {
-      confirmedBranchName = await _worktreeRepository.getCurrentBranchName(worktreePath: worktreePath);
-    } on Object catch (error, stackTrace) {
-      try {
-        await rollbackGeneratedBranchRename(
-          worktreePath: worktreePath,
-          generatedBranchName: targetBranchName,
-          initialBranchName: initialBranchName,
-        );
-      } on Object catch (rollbackError, rollbackStackTrace) {
-        Log.w(
-          "Could not roll back generated branch after confirmation failed in $worktreePath",
-          rollbackError,
-          rollbackStackTrace,
-        );
-      }
-      Error.throwWithStackTrace(error, stackTrace);
-    }
-    if (confirmedBranchName == targetBranchName) {
-      return GeneratedBranchRenamed(branchName: targetBranchName);
-    }
-
-    await rollbackGeneratedBranchRename(
-      worktreePath: worktreePath,
-      generatedBranchName: targetBranchName,
-      initialBranchName: initialBranchName,
-    );
-    return GeneratedBranchRenameSkipped(reason: GeneratedBranchRenameSkipReason.initialBranchChanged);
-  }
-
-  Future<bool> _branchExistsLocallyOrRemotely({
-    required String worktreePath,
-    required String branchName,
-  }) async {
-    return await _worktreeRepository.branchExists(
-          projectPath: worktreePath,
-          branchName: branchName,
-        ) ||
-        await _worktreeRepository.hasRemoteBranch(
-          worktreePath: worktreePath,
-          branchName: branchName,
-        );
-  }
-
-  Future<void> rollbackGeneratedBranchRename({
-    required String worktreePath,
-    required String generatedBranchName,
-    required String initialBranchName,
-  }) {
-    return _worktreeRepository.renameBranch(
-      worktreePath: worktreePath,
-      oldBranchName: generatedBranchName,
-      newBranchName: initialBranchName,
-    );
-  }
-
   Future<String?> resolveHeadCommit({
     required String projectId,
   }) async {
@@ -433,16 +316,6 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
       projectPath: projectPath,
       worktreePath: worktreePath,
       force: force,
-    );
-  }
-
-  Future<bool> branchExists({
-    required String projectId,
-    required String branchName,
-  }) async {
-    return await _worktreeRepository.branchExists(
-      projectPath: await _worktreeRepository.resolveProjectPath(projectId: projectId),
-      branchName: branchName,
     );
   }
 }

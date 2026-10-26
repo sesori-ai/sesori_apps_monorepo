@@ -87,7 +87,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -191,7 +190,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -256,7 +254,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -325,7 +322,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -393,7 +389,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -458,7 +453,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "unicode-session",
         baseBranch: "main",
         baseCommit: "main",
         lastAgent: null,
@@ -518,7 +512,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "large-base-session",
         baseBranch: "main",
         baseCommit: "main",
         lastAgent: null,

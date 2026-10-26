@@ -2,7 +2,6 @@ enum SessionOperation() {
   createSession,
   renameSession,
   applyGeneratedTitle,
-  applyGeneratedBranchName,
   getCommands,
   sendCommand,
   sendPrompt,
