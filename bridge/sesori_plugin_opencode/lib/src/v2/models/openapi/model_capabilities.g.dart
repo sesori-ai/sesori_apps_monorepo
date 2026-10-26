@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
@@ -10,6 +10,7 @@ class ModelCapabilities {
     required this.tools,
     required this.input,
     required this.output,
+    required this.temperature,
   });
 
   factory ModelCapabilities.fromJson(Map<String, dynamic> json) {
@@ -17,6 +18,7 @@ class ModelCapabilities {
       tools: json["tools"] as bool,
       input: (json["input"] as List<dynamic>).cast<String>(),
       output: (json["output"] as List<dynamic>).cast<String>(),
+      temperature: json["temperature"] as bool?,
     );
   }
 
@@ -25,6 +27,7 @@ class ModelCapabilities {
       "tools": tools,
       "input": input,
       "output": output,
+      "temperature": ?temperature,
     };
   }
 
@@ -34,11 +37,13 @@ class ModelCapabilities {
     bool? tools,
     List<String>? input,
     List<String>? output,
+    bool? temperature,
   }) {
     return ModelCapabilities(
       tools: tools ?? this.tools,
       input: input ?? this.input,
       output: output ?? this.output,
+      temperature: temperature ?? this.temperature,
     );
   }
 
@@ -48,12 +53,14 @@ class ModelCapabilities {
       (other is ModelCapabilities &&
           other.tools == tools &&
           const DeepCollectionEquality().equals(other.input, input) &&
-          const DeepCollectionEquality().equals(other.output, output));
+          const DeepCollectionEquality().equals(other.output, output) &&
+          other.temperature == temperature);
 
   @override
-  int get hashCode => Object.hash(tools, const DeepCollectionEquality().hash(input), const DeepCollectionEquality().hash(output));
+  int get hashCode => Object.hash(tools, const DeepCollectionEquality().hash(input), const DeepCollectionEquality().hash(output), temperature);
 
   final bool tools;
   final List<String> input;
   final List<String> output;
+  final bool? temperature;
 }

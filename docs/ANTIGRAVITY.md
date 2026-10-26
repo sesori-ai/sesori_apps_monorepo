@@ -9,15 +9,15 @@ before downloading or authenticating. Installing the runtime does not grant Goog
 
 | Item | Supported contract |
 |---|---|
-| ACP registry package | `1.3.0` |
-| Exact ACP runtime identity | `1.3.0` |
+| ACP registry package | `1.4.3` |
+| Exact ACP runtime identity | `1.4.3` |
 | Bridge hosts | macOS x64/arm64; Linux x64/arm64; Windows x64/arm64 |
 | Authentication | Personal Google OAuth (`oauth-personal`) only |
 
 Business/Enterprise OAuth, Gemini API keys and Agent Platform authentication are not exposed by this integration.
 The [pinned release facts](../bridge/sesori_plugin_antigravity/lib/src/foundation/antigravity_release.dart) contain the
 six official archive URLs, checksums and file sizes. Registry package version and ACP runtime identity are
-separate facts; both now use `1.3.0`. Earlier prefixed build labels remain recognizable for outdated-runtime guidance,
+separate facts; both now use `1.4.3`. Earlier prefixed build labels remain recognizable for outdated-runtime guidance,
 but only the exact current identity passes validation. An explicit binary path remains authoritative, so replace its
 complete pair rather than expecting managed fallback.
 
@@ -101,13 +101,13 @@ needs no browser of its own, but does need a current connected client for initia
   variants of one picker model; ambiguous or future shapes stay separate. Dispatch always sends the exact native ID,
   while live and replay metadata records the normalized model and variant. Failed refresh retains the last-good catalog.
   Gemini, Claude and GPT models advertised by the account share this Antigravity provider. Google's `1.2.1` ACP
-  server filtered non-Gemini models before sending the catalog. In `1.3.0`, those models are enabled only for recognized
-  client identities. Sesori therefore sends the explicitly approved compatibility identity `clientInfo.name: zed`,
+  server filtered non-Gemini models before sending the catalog. From `1.3.0` through `1.4.3`, those models are enabled only for
+  recognized client identities (`1.4.3`: JetBrains, Android Studio, Zed and Xcode). Sesori therefore sends the explicitly approved compatibility identity `clientInfo.name: zed`,
   with title `Sesori Bridge (Zed compatibility)`, consistently for live, replay, login and validation connections.
   This is a plugin-owned compatibility choice, not a Google-supported Sesori client identity. Account entitlements
   still determine the advertised models; Sesori does not fabricate models or read the private model-list endpoint.
   Managed installations upgrade through the existing installer; explicit/PATH installations must replace both
-  binaries with the `1.3.0` pair under the existing exact-version policy.
+  binaries with the `1.4.3` pair under the existing exact-version policy.
 - **History:** replay uses ACP load; live continuation prefers advertised resume. Both use the same normalized updates.
   Explicit import can recover bounded session/cwd metadata from the isolated profile's `.meta` files, once per cold
   live connection. Normal catalog reads use Sesori's database, not repeated provider scans; bridge/live attribution wins
@@ -127,21 +127,21 @@ needs no browser of its own, but does need a current connected client for initia
 
 ## Verification status and further contracts
 
-Implementation is not a claim of completed cross-platform end-to-end verification. All six official `1.3.0` archives
-were independently downloaded and hashed, and their sibling layouts and archived permissions inspected. Hardened
-macOS arm64 extraction passed. A first isolated native probe exited with SIGABRT before returning a usable
-`--version` label. A 2026-10-06 rerun on macOS arm64 (network denied, fresh HOME, no login) passed the production
-managed installation through `ProvisionReady`, `--version` (`1.3.0`), initialize-only validation and SIGTERM
-teardown; the archive came from the verified local copy, not the network. Automated tests verify the
-compatibility identity on live/replay/login/probe requests and exact dispatch of synthetic mixed-provider catalogs.
-Packaged `1.2.1` and `1.3.0` model-selection source establishes the upstream filtering and client-identity gate;
-it does not prove an authenticated account's catalog or model execution.
+Implementation is not a claim of completed cross-platform end-to-end verification. All six official `1.4.3` archives
+were independently downloaded and hashed (matching the registry's published checksums), and their sibling layouts and
+archived permissions inspected. A 2026-10-25 macOS arm64 probe of the directly extracted pair (network denied, fresh
+HOME and `GEMINI_HOME`, no login) returned `--version` (`1.4.3`) and initialize-only ACP 1 identity `1.4.3` with
+unchanged capabilities and auth methods, then exited on SIGTERM. The production managed installation was not rerun for
+`1.4.3`; a 2026-10-06 `1.3.0` rerun on macOS arm64 passed it through `ProvisionReady` from the verified local copy.
+Automated tests verify the compatibility identity on live/replay/login/probe requests and exact dispatch of synthetic
+mixed-provider catalogs. Packaged `1.2.1`, `1.3.0` and `1.4.3` model-selection source establishes the upstream
+filtering and client-identity gate; it does not prove an authenticated account's catalog or model execution.
 
 Earlier `1.2.1` macOS arm64 evidence passed hardened extraction, native `--version`, initialize-only identity/capabilities
 and teardown in disposable, network-denied state. That release's macOS x64 archive passed hardened extraction,
 matching sibling hashes, executable modes and x86_64 headers; native Intel execution was unverified.
 The earlier bounded authenticated ACP probe against package `1.0.0` verified only the generic sub-agent projection
-described above; that observation was not rerun for `1.3.0`.
+described above; that observation was not rerun for `1.4.3`.
 Native Linux/Windows installation, real personal OAuth, authenticated discovery-session creation/resume, full
 ordinary session/image/history flows and the final cumulative L1–L5 matrix remain unverified. Missing test
 infrastructure is a blocked result, not a pass.

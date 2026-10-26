@@ -9,7 +9,7 @@ import "package:opencode_plugin/src/v2/models/openapi/permission_reply.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/permission_source.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/provider_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/server_info.g.dart";
-import "package:opencode_plugin/src/v2/models/openapi/session_inbox_compaction_payload.g.dart";
+import "package:opencode_plugin/src/v2/models/openapi/session_inbox_compaction.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_info.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_assistant.g.dart";
 import "package:opencode_plugin/src/v2/models/openapi/session_message_assistant_reasoning.g.dart";
@@ -94,6 +94,15 @@ Map<String, dynamic> messagesJson() => <String, dynamic>{
   "cursor": <String, dynamic>{"previous": null, "next": "cur_01K5ZQ4D"},
 };
 
+Map<String, dynamic> _compactionAck({required Object payload}) => <String, dynamic>{
+  "id": "msg_fixture",
+  "sessionID": "ses_fixture",
+  "time": <String, int>{"created": 1},
+  "type": "compaction",
+  "payload": payload,
+  "delivery": "queue",
+};
+
 void main() {
   test("retains free-form object compaction payloads", () {
     const payload = <String, dynamic>{
@@ -101,10 +110,10 @@ void main() {
       "nested": <String, dynamic>{"keep": true},
       "items": <Object?>["summary", null],
     };
-    final decoded = SessionInboxCompactionPayload.fromJson(payload);
+    final decoded = SessionInboxCompaction.fromJson(_compactionAck(payload: payload));
 
-    expect(decoded.toJson(), payload);
-    expect(SessionInboxCompactionPayload.fromJson(decoded.toJson()!), decoded);
+    expect(decoded.payload, payload);
+    expect(SessionInboxCompaction.fromJson(decoded.toJson()), decoded);
   });
 
   test("retains nulls in unconstrained compaction arrays", () {
@@ -114,10 +123,10 @@ void main() {
       <String, dynamic>{"keep": true},
       <Object?>[null],
     ];
-    final decoded = SessionInboxCompactionPayload.fromJson(payload);
+    final decoded = SessionInboxCompaction.fromJson(_compactionAck(payload: payload));
 
-    expect(decoded.toJson(), payload);
-    expect(SessionInboxCompactionPayload.fromJson(decoded.toJson()!), decoded);
+    expect(decoded.payload, payload);
+    expect(SessionInboxCompaction.fromJson(decoded.toJson()), decoded);
   });
 
   test("preserves unrecognized permission source discriminators", () {

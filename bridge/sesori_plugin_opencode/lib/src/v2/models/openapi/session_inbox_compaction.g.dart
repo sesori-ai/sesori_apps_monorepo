@@ -1,8 +1,8 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
+import 'package:collection/collection.dart';
 import 'package:meta/meta.dart';
-import 'session_inbox_compaction_payload.g.dart';
 import 'session_inbox_delivery.g.dart';
 import 'session_inbox_info.g.dart';
 
@@ -21,7 +21,7 @@ class SessionInboxCompaction implements SessionInboxInfo {
       id: json["id"] as String,
       sessionID: json["sessionID"] as String,
       time: SessionInboxCompactionTime.fromJson(json["time"] as Map<String, dynamic>),
-      payload: SessionInboxCompactionPayload.fromJson(json["payload"] as Object),
+      payload: json["payload"] as Object,
       delivery: SessionInboxDelivery.fromJson(json["delivery"] as String),
     );
   }
@@ -33,7 +33,7 @@ class SessionInboxCompaction implements SessionInboxInfo {
       "sessionID": sessionID,
       "time": time.toJson(),
       "type": "compaction",
-      "payload": payload.toJson(),
+      "payload": payload,
       "delivery": delivery.toJson(),
     };
   }
@@ -44,7 +44,7 @@ class SessionInboxCompaction implements SessionInboxInfo {
     String? id,
     String? sessionID,
     SessionInboxCompactionTime? time,
-    SessionInboxCompactionPayload? payload,
+    Object? payload,
     SessionInboxDelivery? delivery,
   }) {
     return SessionInboxCompaction(
@@ -63,16 +63,16 @@ class SessionInboxCompaction implements SessionInboxInfo {
           other.id == id &&
           other.sessionID == sessionID &&
           other.time == time &&
-          other.payload == payload &&
+          const DeepCollectionEquality().equals(other.payload, payload) &&
           other.delivery == delivery);
 
   @override
-  int get hashCode => Object.hash(id, sessionID, time, payload, delivery);
+  int get hashCode => Object.hash(id, sessionID, time, const DeepCollectionEquality().hash(payload), delivery);
 
   final String id;
   final String sessionID;
   final SessionInboxCompactionTime time;
-  final SessionInboxCompactionPayload payload;
+  final Object payload;
   final SessionInboxDelivery delivery;
 }
 

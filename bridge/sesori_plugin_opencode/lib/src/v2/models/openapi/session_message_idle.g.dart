@@ -1,10 +1,11 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'session_message_info.g.dart';
+import 'session_structured_error.g.dart';
 
 @immutable
 class SessionMessageIdle implements SessionMessageInfo {
@@ -13,6 +14,7 @@ class SessionMessageIdle implements SessionMessageInfo {
     required this.metadata,
     required this.time,
     required this.outcome,
+    required this.error,
   });
 
   factory SessionMessageIdle.fromJson(Map<String, dynamic> json) {
@@ -21,6 +23,7 @@ class SessionMessageIdle implements SessionMessageInfo {
       metadata: json["metadata"] as Map<String, dynamic>?,
       time: SessionMessageIdleTime.fromJson(json["time"] as Map<String, dynamic>),
       outcome: SessionMessageIdleOutcome.fromJson(json["outcome"] as String),
+      error: json["error"] == null ? null : SessionStructuredError.fromJson(json["error"] as Map<String, dynamic>),
     );
   }
 
@@ -32,6 +35,7 @@ class SessionMessageIdle implements SessionMessageInfo {
       "time": time.toJson(),
       "type": "idle",
       "outcome": outcome.toJson(),
+      "error": ?error?.toJson(),
     };
   }
 
@@ -42,12 +46,14 @@ class SessionMessageIdle implements SessionMessageInfo {
     Map<String, dynamic>? metadata,
     SessionMessageIdleTime? time,
     SessionMessageIdleOutcome? outcome,
+    SessionStructuredError? error,
   }) {
     return SessionMessageIdle(
       id: id ?? this.id,
       metadata: metadata ?? this.metadata,
       time: time ?? this.time,
       outcome: outcome ?? this.outcome,
+      error: error ?? this.error,
     );
   }
 
@@ -58,15 +64,17 @@ class SessionMessageIdle implements SessionMessageInfo {
           other.id == id &&
           const DeepCollectionEquality().equals(other.metadata, metadata) &&
           other.time == time &&
-          other.outcome == outcome);
+          other.outcome == outcome &&
+          other.error == error);
 
   @override
-  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, outcome);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, outcome, error);
 
   final String id;
   final Map<String, dynamic>? metadata;
   final SessionMessageIdleTime time;
   final SessionMessageIdleOutcome outcome;
+  final SessionStructuredError? error;
 }
 
 @immutable

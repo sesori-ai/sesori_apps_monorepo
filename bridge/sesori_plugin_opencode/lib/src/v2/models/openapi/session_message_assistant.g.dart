@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -8,7 +8,7 @@ import 'model_ref.g.dart';
 import 'session_message_assistant_content.g.dart';
 import 'session_message_assistant_retry.g.dart';
 import 'session_message_info.g.dart';
-import 'session_message_provider_state_4.g.dart';
+import 'session_message_native_3.g.dart';
 import 'session_structured_error.g.dart';
 import 'token_usage_info.g.dart';
 
@@ -24,7 +24,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
     required this.snapshot,
     required this.finish,
     required this.rawFinish,
-    required this.providerState,
+    required this.native,
     required this.cost,
     required this.tokens,
     required this.error,
@@ -42,7 +42,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
       snapshot: json["snapshot"] == null ? null : SessionMessageAssistantSnapshot.fromJson(json["snapshot"] as Map<String, dynamic>),
       finish: json["finish"] == null ? null : SessionMessageAssistantFinish.fromJson(json["finish"] as String),
       rawFinish: json["rawFinish"] as String?,
-      providerState: json["providerState"] == null ? null : SessionMessageProviderState4.fromJson(json["providerState"] as Map<String, dynamic>),
+      native: json["native"] == null ? null : SessionMessageNative3.fromJson(json["native"] as Map<String, dynamic>),
       cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] == null ? null : TokenUsageInfo.fromJson(json["tokens"] as Map<String, dynamic>),
       error: json["error"] == null ? null : SessionStructuredError.fromJson(json["error"] as Map<String, dynamic>),
@@ -63,7 +63,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
       "snapshot": ?snapshot?.toJson(),
       "finish": ?finish?.toJson(),
       "rawFinish": ?rawFinish,
-      "providerState": ?providerState?.toJson(),
+      "native": ?native?.toJson(),
       "cost": ?cost,
       "tokens": ?tokens?.toJson(),
       "error": ?error?.toJson(),
@@ -83,7 +83,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
     SessionMessageAssistantSnapshot? snapshot,
     SessionMessageAssistantFinish? finish,
     String? rawFinish,
-    SessionMessageProviderState4? providerState,
+    SessionMessageNative3? native,
     double? cost,
     TokenUsageInfo? tokens,
     SessionStructuredError? error,
@@ -99,7 +99,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
       snapshot: snapshot ?? this.snapshot,
       finish: finish ?? this.finish,
       rawFinish: rawFinish ?? this.rawFinish,
-      providerState: providerState ?? this.providerState,
+      native: native ?? this.native,
       cost: cost ?? this.cost,
       tokens: tokens ?? this.tokens,
       error: error ?? this.error,
@@ -120,14 +120,14 @@ class SessionMessageAssistant implements SessionMessageInfo {
           other.snapshot == snapshot &&
           other.finish == finish &&
           other.rawFinish == rawFinish &&
-          other.providerState == providerState &&
+          other.native == native &&
           other.cost == cost &&
           other.tokens == tokens &&
           other.error == error &&
           other.retry == retry);
 
   @override
-  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, agent, model, const DeepCollectionEquality().hash(content), snapshot, finish, rawFinish, providerState, cost, tokens, error, retry);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, agent, model, const DeepCollectionEquality().hash(content), snapshot, finish, rawFinish, native, cost, tokens, error, retry);
 
   final String id;
   final Map<String, dynamic>? metadata;
@@ -138,7 +138,7 @@ class SessionMessageAssistant implements SessionMessageInfo {
   final SessionMessageAssistantSnapshot? snapshot;
   final SessionMessageAssistantFinish? finish;
   final String? rawFinish;
-  final SessionMessageProviderState4? providerState;
+  final SessionMessageNative3? native;
   final double? cost;
   final TokenUsageInfo? tokens;
   final SessionStructuredError? error;

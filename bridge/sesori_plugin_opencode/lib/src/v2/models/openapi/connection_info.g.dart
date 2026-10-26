@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -174,6 +174,8 @@ enum ConnectionCredentialInfoMethod {
   key,
   @JsonValue("oauth")
   oauth,
+  @JsonValue("external")
+  external,
 
   /// Fallback for values introduced by newer OpenCode servers.
   /// Encodes back to the literal string `unknown`.
@@ -186,6 +188,8 @@ enum ConnectionCredentialInfoMethod {
         return ConnectionCredentialInfoMethod.key;
       case "oauth":
         return ConnectionCredentialInfoMethod.oauth;
+      case "external":
+        return ConnectionCredentialInfoMethod.external;
       default:
         return ConnectionCredentialInfoMethod.unknown;
     }
@@ -197,6 +201,8 @@ enum ConnectionCredentialInfoMethod {
         return "key";
       case ConnectionCredentialInfoMethod.oauth:
         return "oauth";
+      case ConnectionCredentialInfoMethod.external:
+        return "external";
       case ConnectionCredentialInfoMethod.unknown:
         return 'unknown';
     }

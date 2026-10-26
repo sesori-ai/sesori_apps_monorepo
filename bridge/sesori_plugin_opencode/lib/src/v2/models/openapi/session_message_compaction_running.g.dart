@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
@@ -14,7 +14,6 @@ class SessionMessageCompactionRunning implements SessionMessageCompaction {
     required this.time,
     required this.reason,
     required this.summary,
-    required this.recent,
   });
 
   factory SessionMessageCompactionRunning.fromJson(Map<String, dynamic> json) {
@@ -24,7 +23,6 @@ class SessionMessageCompactionRunning implements SessionMessageCompaction {
       time: SessionMessageCompactionRunningTime.fromJson(json["time"] as Map<String, dynamic>),
       reason: SessionMessageCompactionRunningReason.fromJson(json["reason"] as String),
       summary: json["summary"] as String,
-      recent: json["recent"] as String,
     );
   }
 
@@ -38,7 +36,6 @@ class SessionMessageCompactionRunning implements SessionMessageCompaction {
       "status": "running",
       "reason": reason.toJson(),
       "summary": summary,
-      "recent": recent,
     };
   }
 
@@ -50,7 +47,6 @@ class SessionMessageCompactionRunning implements SessionMessageCompaction {
     SessionMessageCompactionRunningTime? time,
     SessionMessageCompactionRunningReason? reason,
     String? summary,
-    String? recent,
   }) {
     return SessionMessageCompactionRunning(
       id: id ?? this.id,
@@ -58,7 +54,6 @@ class SessionMessageCompactionRunning implements SessionMessageCompaction {
       time: time ?? this.time,
       reason: reason ?? this.reason,
       summary: summary ?? this.summary,
-      recent: recent ?? this.recent,
     );
   }
 
@@ -70,18 +65,16 @@ class SessionMessageCompactionRunning implements SessionMessageCompaction {
           const DeepCollectionEquality().equals(other.metadata, metadata) &&
           other.time == time &&
           other.reason == reason &&
-          other.summary == summary &&
-          other.recent == recent);
+          other.summary == summary);
 
   @override
-  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, reason, summary, recent);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, reason, summary);
 
   final String id;
   final Map<String, dynamic>? metadata;
   final SessionMessageCompactionRunningTime time;
   final SessionMessageCompactionRunningReason reason;
   final String summary;
-  final String recent;
 }
 
 @immutable
