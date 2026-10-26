@@ -41,6 +41,29 @@ void main() {
     expect(settings.warmUpPluginsOnSessionOpen, isTrue);
   });
 
+  test("GET parses settings from a bridge that omits the pull request interval", () async {
+    when(
+      () => client.get<BridgeSettingsResponse>(
+        "/settings",
+        fromJson: any(named: "fromJson"),
+      ),
+    ).thenAnswer((invocation) async {
+      final fromJson = invocation.namedArguments[#fromJson] as BridgeSettingsResponse Function(Map<String, dynamic>);
+      return ApiResponse.success(
+        fromJson({
+          "yolo": {"enabled": false, "supportsSessionOverride": true},
+          "warmUpPluginsOnSessionOpen": true,
+        }),
+      );
+    });
+
+    final result = await api.getBridgeSettings();
+
+    final settings = (result as SuccessResponse<BridgeSettingsResponse>).data;
+    expect(settings.yolo.enabled, isFalse);
+    expect(settings.warmUpPluginsOnSessionOpen, isTrue);
+  });
+
   test("PATCH serializes and parses a committed YOLO setting", () async {
     when(
       () => client.patch<BridgeSettingUpdate>(

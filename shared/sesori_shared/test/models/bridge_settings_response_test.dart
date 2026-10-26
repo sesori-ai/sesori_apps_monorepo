@@ -26,6 +26,16 @@ void main() {
     expect(response.warmUpPluginsOnSessionOpen, isNull);
   });
 
+  test("BridgeSettingsResponse accepts a bridge that omits the pull request interval", () {
+    final response = BridgeSettingsResponse.fromJson(const {
+      "yolo": {"enabled": true},
+      "warmUpPluginsOnSessionOpen": false,
+    });
+
+    expect(response.pullRequestRefresh, isNull);
+    expect(response.yolo.enabled, isTrue);
+  });
+
   test("BridgeSettingsResponse rejects a missing nested setting", () {
     expect(
       () => BridgeSettingsResponse.fromJson(const {
