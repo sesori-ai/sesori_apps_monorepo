@@ -167,6 +167,25 @@ void main() {
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
     expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
   });
+
+  testWidgets("an attach action whose support is unknown holds its place inert", (tester) async {
+    var commandPicks = 0;
+    await _pumpAccordion(
+      tester: tester,
+      brightness: Brightness.light,
+      alwaysOpen: true,
+      actionsEnabled: true,
+      showAttachImage: true,
+      onAttachImageTap: null,
+      onSlashCommandsTap: () => commandPicks++,
+    );
+    expect(find.byTooltip("Attach image"), findsOneWidget);
+
+    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(find.byIcon(TablerRegular.slash));
+    await tester.pumpAndSettle();
+    expect(commandPicks, 1);
+  });
 }
 
 Future<void> _pumpAccordion({
@@ -176,7 +195,7 @@ Future<void> _pumpAccordion({
   bool isTyping = false,
   required bool actionsEnabled,
   required bool showAttachImage,
-  required VoidCallback onAttachImageTap,
+  required VoidCallback? onAttachImageTap,
   required VoidCallback onSlashCommandsTap,
 }) async {
   await tester.pumpWidget(

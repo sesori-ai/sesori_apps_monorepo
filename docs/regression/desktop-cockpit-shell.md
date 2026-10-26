@@ -188,8 +188,10 @@ The main pane hosts one full-width routed page.
   else the newest session's project), as `session-creation-and-options.md` details: the project holds once it
   lands, another filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank,
   and with no default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there
-  are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". A
-  session started from home opens in its project. Loading projects is labelled and failures retry the shared
+  are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". After
+  the bridge connects, the composer appears at its final layout at once, with the parts still loading
+  shimmering in place, and its heading never moves as they fill in. A session started from home opens in its
+  project. Loading projects is labelled and failures retry the shared
   inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
   CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
@@ -416,7 +418,8 @@ bridge during UI-only checks.
 
 On home, watch for a session starting in a project other than the one picked, a draft following a project
 reorder or surviving a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
-the prompt while the list loads on launch, a Start button
+the prompt while the list loads on launch, the composer building up part by part or its heading shifting
+after the bridge connects, a Start button
 offered for another computer, a header that pops in on each load, or the desktop jumping back to this computer
 after the user picked another one.
 

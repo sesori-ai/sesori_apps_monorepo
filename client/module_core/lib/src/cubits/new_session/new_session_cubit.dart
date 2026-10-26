@@ -1221,6 +1221,8 @@ class NewSessionCubit({
 
   ComposerDraft get composerDraft => _composerDraft;
 
+  ProjectKind get projectKind => _projectKind;
+
   /// Whether the composer has work in flight whose result lands in it later.
   /// A creation that lands meanwhile waits for it to settle.
   void setComposerBusy({required bool busy}) {

@@ -353,6 +353,7 @@ void main() {
       when(() => cubit.canRefreshOptions).thenReturn(false);
       when(() => cubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+      when(() => cubit.projectKind).thenReturn(ProjectKind.folder);
       return cubit;
     }
 
