@@ -14,6 +14,11 @@ from qualify_desktop import ROOT, inventory, run
 
 ENTITLEMENTS = ROOT / "client/desktop/macos/Runner/Release.entitlements"
 BRIDGE_ENTITLEMENTS = ROOT / "client/desktop/macos/Bridge.entitlements"
+SPARKLE = Path("Contents/Frameworks/Sparkle.framework/Versions/B")
+# Sparkle's nested executables, inside-out in its documented signing order.
+SPARKLE_HELPERS = tuple(SPARKLE / name for name in (
+    "XPCServices/Installer.xpc", "XPCServices/Downloader.xpc", "Autoupdate", "Updater.app"))
+SPARKLE_DOWNLOADER = SPARKLE / "XPCServices/Downloader.xpc"
 
 
 class NotaryStatus(Enum):
@@ -41,7 +46,7 @@ def execute(*, command: list[str], log: Path) -> str:
 
 
 def signing_order(*, app: Path, arch: str) -> list[Path]:
-    """Leaf native code, versioned frameworks, then the enclosing application."""
+    """Leaf native code, Sparkle's helpers, versioned frameworks, then the enclosing application."""
     entries = inventory(root=app, target_os="macos", arch=arch)
     frameworks = sorted((p for p in app.rglob("*.framework") if p.is_dir() and not p.is_symlink()),
                         key=lambda p: len(p.parts), reverse=True)
@@ -53,17 +58,27 @@ def signing_order(*, app: Path, arch: str) -> list[Path]:
     with (app / "Contents/Info.plist").open("rb") as stream:
         executable = plistlib.load(stream)["CFBundleExecutable"]
     container_executables.add((app / "Contents/MacOS" / executable).resolve())
+    sparkle_helpers = [app / helper for helper in SPARKLE_HELPERS]
+    for helper in sparkle_helpers:
+        executable = helper
+        if helper.suffix:  # An .xpc or .app bundle; Autoupdate is a bare executable.
+            with (helper / "Contents/Info.plist").open("rb") as stream:
+                executable = helper / "Contents/MacOS" / plistlib.load(stream)["CFBundleExecutable"]
+        container_executables.add(executable.resolve())
     leaves = [app / row["path"] for row in entries if (app / row["path"]).resolve() not in container_executables]
-    return sorted(leaves, key=lambda p: len(p.parts), reverse=True) + frameworks + [app]
+    return sorted(leaves, key=lambda p: len(p.parts), reverse=True) + sparkle_helpers + frameworks + [app]
 
 
 def sign_app(*, app: Path, arch: str, identity: str, keychain: Path, log: Path) -> None:
     helper = app / "Contents/Helpers/bridge/bin/bridge"
+    sparkle_helpers = {app / path for path in SPARKLE_HELPERS}
     for target in signing_order(app=app, arch=arch):
         command = ["codesign", "--force", "--timestamp", "--sign", identity, "--keychain", str(keychain)]
-        if target in (app, helper):
+        if target in (app, helper) or target in sparkle_helpers:
             command += ["--options", "runtime"]
-        if target == app:
+        if target == app / SPARKLE_DOWNLOADER:
+            command += ["--preserve-metadata=entitlements"]
+        elif target == app:
             command += ["--entitlements", str(ENTITLEMENTS)]
         elif target == helper:
             command += ["--entitlements", str(BRIDGE_ENTITLEMENTS)]

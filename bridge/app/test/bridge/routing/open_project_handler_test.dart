@@ -1,9 +1,11 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
@@ -77,6 +79,10 @@ void main() {
           projectInitializationService: projectInitializationService,
           projectActivityService: projectActivityService,
           projectRepository: projectRepository,
+          projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+            scratchRoot: "/scratch",
+            pathContext: p.context,
+          ),
         ),
       );
     });

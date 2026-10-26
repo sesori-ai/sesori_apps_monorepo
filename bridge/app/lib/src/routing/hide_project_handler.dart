@@ -25,7 +25,11 @@ class HideProjectHandler({required final ProjectMutationService _projectMutation
     final projectId = body.projectId;
     requireNonEmpty(request: request, value: projectId, label: "project id");
 
-    await _projectMutationService.hideProject(projectId: projectId);
+    try {
+      await _projectMutationService.hideProject(projectId: projectId);
+    } on ScratchProjectHideRefusedException {
+      throw buildErrorResponse(request, 409, "the No project project cannot be hidden");
+    }
 
     return const SuccessEmptyResponse();
   }

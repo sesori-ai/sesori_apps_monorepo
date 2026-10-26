@@ -65,6 +65,8 @@ final class const AllSessionsState({
   required final bool isLoading,
 
   /// The new-session default: the filter, otherwise the project of the newest
-  /// session, otherwise null.
+  /// session, otherwise null. Without a filter it stays null while
+  /// [isLoading], so a consumer that holds the first default it sees never
+  /// holds a project that merely answered first.
   required final String? defaultProjectId,
 });

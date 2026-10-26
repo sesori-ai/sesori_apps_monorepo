@@ -664,7 +664,13 @@ void main() {
       addTearDown(() => scratchRoot.delete(recursive: true));
       final folder = Directory(p.join(scratchRoot.path, "2026-10-25-abc"))..createSync();
       File(p.join(folder.path, "notes.txt")).writeAsStringSync("keep me");
-      await insertTestSessionInDirectory(db: db, sessionId: "s1", projectId: scratchRoot.path, directory: folder.path);
+      await insertTestSessionInDirectory(
+        db: db,
+        sessionId: "s1",
+        pluginId: "fake",
+        projectId: scratchRoot.path,
+        directory: folder.path,
+      );
 
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),

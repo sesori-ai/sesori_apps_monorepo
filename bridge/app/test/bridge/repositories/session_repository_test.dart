@@ -1759,6 +1759,57 @@ void main() {
       );
     });
 
+    test("active-root hydration binds a scratch-folder root to No project and inserts no project", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const folder = "/scratch/2026-10-25-abc";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: folder,
+            activeSessions: [PluginActiveSession(id: "scratch-root", awaitingInput: true)],
+          ),
+        ]
+        ..sessionsByWorktree = const {
+          folder: [
+            PluginSession(
+              id: "scratch-root",
+              projectID: folder,
+              directory: folder,
+              parentID: null,
+              title: "Scratch root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        pullRequestDao: db.pullRequestDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // Without the No project row the root stays unbound.
+      expect(await repository.getProjectActivitySummaries(), isEmpty);
+      expect(await db.projectsDao.getAllProjects(), isEmpty);
+      expect(await db.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "scratch-root"), isNull);
+
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "/scratch",
+        path: "/scratch",
+        hidden: false,
+        displayName: "No project",
+      );
+      final summaries = await repository.getProjectActivitySummaries();
+
+      expect(summaries.single.id, "/scratch");
+      final row = await db.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "scratch-root");
+      expect(row?.projectId, "/scratch");
+      expect(row?.directory, folder);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["/scratch"]);
+    });
+
     test("active-root hydration is not persisted after generation replacement", () async {
       final db = createTestDatabase();
       addTearDown(db.close);

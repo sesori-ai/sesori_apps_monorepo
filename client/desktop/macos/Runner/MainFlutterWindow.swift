@@ -14,6 +14,9 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    let messenger = flutterViewController.engine.binaryMessenger
+    ApplicationTermination.shared.attach(messenger: messenger)
+    SparkleUpdater.shared.attach(messenger: messenger)
 
     // The sidebar panel runs to the window's top edge (the Dart side hides the
     // title bar). An empty unified toolbar makes AppKit itself set the traffic

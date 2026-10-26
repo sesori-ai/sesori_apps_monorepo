@@ -168,7 +168,7 @@ void main() {
       verifyPaneVisible(harness, isVisible: true, times: 1);
     });
 
-    testWidgets("the sidebar floats inside the safe area, and the pane keeps the edge's inset only once collapsed", (
+    testWidgets("the sidebar floats inside the safe area, and the pane keeps its pages clear of the side insets", (
       tester,
     ) async {
       // iPhone landscape: the notch side and the home indicator.
@@ -197,12 +197,18 @@ void main() {
         ),
       );
       expect(tester.getTopLeft(find.byKey(_content)).dx, safeArea.left + _sidebarExtent);
-      // The panel's rows and the pane beside it are clear of the notch's inset.
+      // The panel's rows and the pane beside it are clear of the notch's inset;
+      // the pane's page also stops short of the far side's inset itself, as
+      // pages lay their bodies out edge to edge.
       expect(
         MediaQuery.paddingOf(tester.element(inSidebar(find.byKey(const Key("home-new-session"))))),
         EdgeInsets.zero,
       );
-      expect(MediaQuery.paddingOf(tester.element(find.byKey(_detail))), safeArea.copyWith(left: 0));
+      expect(
+        tester.getRect(find.byKey(_detail)),
+        Rect.fromLTRB(safeArea.left + _sidebarExtent, 0, 874 - safeArea.right, 402),
+      );
+      expect(MediaQuery.paddingOf(tester.element(find.byKey(_detail))), safeArea.copyWith(left: 0, right: 0));
       // A row's ink highlight is clipped with the list, not painted over the footer.
       final rowMaterial = find.ancestor(of: find.byKey(const Key("home-new-session")), matching: find.byType(Material));
       expect(
@@ -211,10 +217,30 @@ void main() {
       );
 
       await tester.tap(find.byKey(const Key("session-sidebar-collapse")));
+      await tester.pump();
+      // The page glides left with the pane until it meets the notch's inset,
+      // and never runs under it.
+      var previousLeft = tester.getTopLeft(find.byKey(_detail)).dx;
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final left = tester.getTopLeft(find.byKey(_detail)).dx;
+        expect(left, lessThanOrEqualTo(previousLeft));
+        expect(left, greaterThanOrEqualTo(safeArea.left));
+        previousLeft = left;
+      }
       await tester.pumpAndSettle();
 
       expect(tester.getTopLeft(find.byKey(_content)).dx, 0);
-      expect(MediaQuery.paddingOf(tester.element(find.byKey(_detail))), safeArea);
+      expect(tester.getRect(find.byKey(_detail)), Rect.fromLTRB(safeArea.left, 0, 874 - safeArea.right, 402));
+      expect(MediaQuery.paddingOf(tester.element(find.byKey(_detail))), safeArea.copyWith(left: 0, right: 0));
+
+      // Restoring slides the page back with the pane, from the same inset.
+      await tester.tap(find.byKey(const Key("session-sidebar-restore")));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(tester.getTopLeft(find.byKey(_detail)).dx, safeArea.left);
+      await tester.pumpAndSettle();
+      expect(tester.getTopLeft(find.byKey(_detail)).dx, safeArea.left + _sidebarExtent);
     });
 
     testWidgets("presents snackbars on the shell scaffold across the sidebar and the pane", (tester) async {

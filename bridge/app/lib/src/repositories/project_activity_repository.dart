@@ -83,6 +83,8 @@ class ProjectActivityRepository({
           knownDirectories: {
             for (final stored in storedProjects) stored.path,
             for (final row in sessionProjectPaths) ?row.worktreePath,
+            for (final row in sessionProjectPaths)
+              if (_projectCatalogIdentityCalculator.isWithinScratch(path: row.directory)) row.directory,
           },
         );
         final pathBySessionId = {
@@ -147,6 +149,8 @@ class ProjectActivityRepository({
         final missingProjects = <String, ({String path, int? createdAt, int? updatedAt})>{};
         final evidence = <ProjectActivityEvidence>[];
         for (final project in source.projects) {
+          // A scratch folder never becomes a project of its own.
+          if (_projectCatalogIdentityCalculator.isWithinScratch(path: project.directory)) continue;
           final existing = _projectCatalogIdentityCalculator.calculate(
             projectsById: projectsById,
             projectsByNormalizedPath: projectsByNormalizedPath,

@@ -209,6 +209,14 @@ class AllSessionsCubit({
       titleOf: (row) => row.session.title,
       query: query,
     ).where(shown).toList();
+    final isLoading =
+        projects is ProjectListLoading ||
+        listed.any(
+          (project) => switch (entries[project.id]) {
+            RecentSessionsLoading() || null => true,
+            RecentSessionsLoaded() || RecentSessionsFailed() => false,
+          },
+        );
     return AllSessionsState(
       projectId: projectId,
       query: query,
@@ -233,15 +241,10 @@ class AllSessionsCubit({
           if (entries[project.id] case RecentSessionsFailed(:final reason))
             AllSessionsFailure(project: project, reason: reason),
       ]),
-      isLoading:
-          projects is ProjectListLoading ||
-          listed.any(
-            (project) => switch (entries[project.id]) {
-              RecentSessionsLoading() || null => true,
-              RecentSessionsLoaded() || RecentSessionsFailed() => false,
-            },
-          ),
-      defaultProjectId: projectId ?? merged.firstOrNull?.project.id,
+      isLoading: isLoading,
+      // The newest session is only known once every project's sessions have
+      // loaded: the first project to answer is not the default.
+      defaultProjectId: projectId ?? (isLoading ? null : merged.firstOrNull?.project.id),
     );
   }
 

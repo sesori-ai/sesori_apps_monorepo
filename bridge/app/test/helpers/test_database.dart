@@ -49,6 +49,7 @@ Future<void> insertTestSession({
 Future<void> insertTestSessionInDirectory({
   required AppDatabase db,
   required String sessionId,
+  required String pluginId,
   required String projectId,
   required String directory,
 }) async {
@@ -56,7 +57,7 @@ Future<void> insertTestSessionInDirectory({
     db: db,
     sessionId: sessionId,
     backendSessionId: sessionId,
-    pluginId: "fake",
+    pluginId: pluginId,
     projectId: projectId,
     isDedicated: false,
     createdAt: 1,

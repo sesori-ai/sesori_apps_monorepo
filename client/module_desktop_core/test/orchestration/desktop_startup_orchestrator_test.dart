@@ -139,7 +139,7 @@ void main() {
         .thenAnswer((_) async => DesktopInstanceLaunchDisposition.primary);
 
     expect(await orchestrator.preparePrimaryLaunch(afterUpdate: false), isTrue);
-    verifyNever(() => applicationTerminator.terminate(exitCode: any(named: "exitCode")));
+    verifyNever(() => applicationTerminator.terminate());
   });
 
   test("terminates a secondary launch before UI construction", () async {
@@ -147,7 +147,7 @@ void main() {
       (_) async => DesktopInstanceLaunchDisposition.secondaryActivated,
     );
     expect(await orchestrator.preparePrimaryLaunch(afterUpdate: false), isFalse);
-    verify(() => applicationTerminator.terminate(exitCode: 0)).called(1);
+    verify(() => applicationTerminator.terminate()).called(1);
   });
 
   test("initializes the persisted native window through the bounds service", () async {

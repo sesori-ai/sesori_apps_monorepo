@@ -303,6 +303,9 @@ class CatalogImportRepository({
               for (final row in storedSessionPaths) _normalizeRequiredPath(row.projectPath),
               for (final row in storedSessionPaths)
                 if (_usefulText(row.worktreePath) case final worktreePath?) _normalizeRequiredPath(worktreePath),
+              for (final row in storedSessionPaths)
+                if (_projectCatalogIdentityCalculator.isWithinScratch(path: row.directory))
+                  _normalizeRequiredPath(row.directory),
             };
             _mergeObservedProject(
               observedProjects,
@@ -434,7 +437,7 @@ class CatalogImportRepository({
         final publicationProjects = <String, _ObservedProject>{};
         if (observation.projectOwnership == PluginProjectOwnership.bridgeDerived) {
           final launchDirectory = derivedLaunchDirectory!;
-          _mergeObservedProject(publicationProjects, observedProjects[launchDirectory]!);
+          _mergeObservedProject(publicationProjects, observedProjects[_publishedProjectPath(path: launchDirectory)]!);
           for (final observation in orderedSessions) {
             if (observation.session.parentID != null) continue;
             final existing = currentBindings[observation.session.id];
@@ -458,6 +461,10 @@ class CatalogImportRepository({
         } else {
           publicationProjects.addAll(observedProjects);
         }
+        final scratchRoot = _projectCatalogIdentityCalculator.scratchRoot;
+        // Without the "No project" row, scratch sessions are left out rather
+        // than given a project of their own.
+        if (!projectsById.containsKey(scratchRoot)) publicationProjects.remove(scratchRoot);
 
         final projectRows = <ProjectDto>[];
         final importedProjectIdByPath = <String, String>{};
@@ -508,10 +515,11 @@ class CatalogImportRepository({
           final existing = currentBindings[session.id];
           final parent = session.parentID == null ? null : finalBindingsByBackendId[session.parentID];
           final rootProjectPath = observation.rootProjectPath;
+          final publishedPath = rootProjectPath == null ? null : _publishedProjectPath(path: rootProjectPath);
           final projectId =
-              parent?.projectId ??
-              (rootProjectPath == null ? null : importedProjectIdByPath[_normalizeRequiredPath(rootProjectPath)]);
+              parent?.projectId ?? (publishedPath == null ? null : importedProjectIdByPath[publishedPath]);
           if (projectId == null) {
+            if (publishedPath == scratchRoot) continue;
             throw StateError("plugin $pluginId returned session ${session.id} without a publishable project");
           }
           final row = _mergeSessionRow(
@@ -726,10 +734,22 @@ class CatalogImportRepository({
     existing.rootProjectPath ??= observation.rootProjectPath;
   }
 
+  /// Merges [observed] into [observations] by path. Every scratch folder
+  /// merges into the one "No project" row instead of becoming a project.
   void _mergeObservedProject(
     Map<String, _ObservedProject> observations,
-    _ObservedProject observation,
+    _ObservedProject observed,
   ) {
+    final publishedPath = _publishedProjectPath(path: observed.path);
+    final observation = publishedPath == observed.path
+        ? observed
+        : _ObservedProject(
+            preferredId: publishedPath,
+            path: publishedPath,
+            displayName: null,
+            createdAt: observed.createdAt,
+            updatedAt: observed.updatedAt,
+          );
     final existing = observations[observation.path];
     if (existing == null) {
       observations[observation.path] = observation;
@@ -742,6 +762,15 @@ class CatalogImportRepository({
     if (observation.updatedAt case final updatedAt?) {
       existing.updatedAt = existing.updatedAt == null ? updatedAt : max(existing.updatedAt!, updatedAt);
     }
+  }
+
+  /// The path of the project a root observed at [path] publishes under: the
+  /// scratch root for a scratch folder, otherwise [path] itself.
+  String _publishedProjectPath({required String path}) {
+    final normalizedPath = _normalizeRequiredPath(path);
+    return _projectCatalogIdentityCalculator.isWithinScratch(path: normalizedPath)
+        ? _projectCatalogIdentityCalculator.scratchRoot
+        : normalizedPath;
   }
 
   bool _shouldHideDiscoveredProject({required String projectPath}) {

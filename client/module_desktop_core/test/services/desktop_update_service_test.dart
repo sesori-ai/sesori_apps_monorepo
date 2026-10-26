@@ -15,6 +15,7 @@ void main() {
     registerFallbackValue(_release);
     registerFallbackValue(Uint8List(0));
     registerFallbackValue(File("fallback"));
+    registerFallbackValue(Uri());
   });
 
   late _FakeInstalledDesktopBundleSource bundleSource;
@@ -23,6 +24,8 @@ void main() {
   late _MockDesktopUpdateFeedApi feedApi;
   late _MockDesktopUpdateFeedValidator feedValidator;
   late _MockVelopackUpdateApi velopackApi;
+  late _MockSparkleUpdateEngine sparkleEngine;
+  late StreamController<String> sparkleDownloads;
 
   setUp(() {
     bundleSource = _FakeInstalledDesktopBundleSource(
@@ -40,6 +43,10 @@ void main() {
     feedApi = _MockDesktopUpdateFeedApi();
     feedValidator = _MockDesktopUpdateFeedValidator();
     velopackApi = _MockVelopackUpdateApi();
+    sparkleEngine = _MockSparkleUpdateEngine();
+    sparkleDownloads = StreamController<String>.broadcast(sync: true);
+    addTearDown(sparkleDownloads.close);
+    when(() => sparkleEngine.downloadedVersions).thenAnswer((_) => sparkleDownloads.stream);
   });
 
   DesktopUpdateService service() => DesktopUpdateService(
@@ -49,6 +56,7 @@ void main() {
       feedApi: feedApi,
       feedValidator: feedValidator,
       velopackApi: velopackApi,
+      sparkleEngine: sparkleEngine,
     ),
     instanceRepository: instanceRepository,
   );
@@ -74,24 +82,11 @@ void main() {
       expect(service().currentState, isA<DesktopUpdateManagedBySystem>());
     });
 
-    test("macOS keeps the manual download for its channel and CPU", () {
-      bundleSource = _FakeInstalledDesktopBundleSource(
-        compiledIdentity: _linuxBuild.copyWith(
-          os: DesktopBundleOs.macos,
-          architecture: DesktopBundleArchitecture.arm64,
-        ),
-        isAppImage: false,
-        channel: DesktopReleaseChannel.internal,
-      );
-      final state = service().currentState;
-      expect(state, isA<DesktopUpdateManualDownload>());
-      expect(
-        (state as DesktopUpdateManualDownload).downloadsUri,
-        Uri.parse("https://sesori.com/desktop/#internal-macos-arm64"),
-      );
-    });
-
-    for (final (os, isAppImage) in [(DesktopBundleOs.windows, false), (DesktopBundleOs.linux, true)]) {
+    for (final (os, isAppImage) in [
+      (DesktopBundleOs.macos, false),
+      (DesktopBundleOs.windows, false),
+      (DesktopBundleOs.linux, true),
+    ]) {
       test("${os.name}${isAppImage ? " AppImage" : ""} updates itself and starts idle", () {
         bundleSource = _FakeInstalledDesktopBundleSource(
           compiledIdentity: _linuxBuild.copyWith(os: os),
@@ -162,9 +157,9 @@ void main() {
       expect(updates.currentState, isA<DesktopUpdateManagedBySystem>());
     });
 
-    test("installs without an engine never read the installed manifest", () async {
+    test("a source build never checks", () async {
       bundleSource = _FakeInstalledDesktopBundleSource(
-        compiledIdentity: _linuxBuild.copyWith(os: DesktopBundleOs.macos),
+        compiledIdentity: null,
         isAppImage: false,
         channel: DesktopReleaseChannel.stable,
       );
@@ -173,7 +168,103 @@ void main() {
       await updates.start();
       await updates.check();
       expect(bundleSource.reads, 0);
-      expect(updates.currentState, isA<DesktopUpdateManualDownload>());
+      verifyNever(() => sparkleEngine.checkNow());
+    });
+  });
+
+  group("Sparkle", () {
+    final Uri appcast = Uri.parse("https://updates.example/k1/internal/macos-arm64/appcast.xml");
+    final DesktopBundleIdentity macBuild = _linuxBuild.copyWith(
+      os: DesktopBundleOs.macos,
+      architecture: DesktopBundleArchitecture.arm64,
+    );
+
+    setUp(() {
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: macBuild,
+        isAppImage: false,
+        channel: DesktopReleaseChannel.internal,
+      );
+      when(() => feedApi.appcastUri(identity: any(named: "identity"))).thenReturn(appcast);
+      when(
+        () => sparkleEngine.start(
+          feedUri: any(named: "feedUri"),
+          automaticChecks: any(named: "automaticChecks"),
+        ),
+      ).thenAnswer((_) async {});
+      when(() => sparkleEngine.setAutomaticChecks(enabled: any(named: "enabled"))).thenAnswer((_) async {});
+      when(() => sparkleEngine.checkNow()).thenAnswer((_) async {});
+      when(() => sparkleEngine.installAndRelaunch()).thenAnswer((_) async {});
+    });
+
+    test("start hands Sparkle this build's appcast and the persisted toggle", () async {
+      when(() => instanceRepository.readAutomaticUpdates()).thenAnswer((_) async => DesktopAutomaticUpdates.disabled);
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.start();
+
+      verify(() => feedApi.appcastUri(identity: macBuild)).called(1);
+      verify(() => sparkleEngine.start(feedUri: appcast, automaticChecks: false)).called(1);
+      expect(updates.currentState, isA<DesktopUpdateIdle>());
+    });
+
+    test("Sparkle schedules its own checks; the toggle and Check for updates go to it", () {
+      fakeAsync((async) {
+        final updates = service();
+        unawaited(updates.start());
+        async.flushMicrotasks();
+        async.elapse(DesktopUpdateService.checkInterval * 2);
+        verifyNever(() => sparkleEngine.checkNow());
+
+        unawaited(updates.setAutomaticUpdates(preference: DesktopAutomaticUpdates.disabled));
+        async.flushMicrotasks();
+        verify(() => sparkleEngine.setAutomaticChecks(enabled: false)).called(1);
+
+        unawaited(updates.check());
+        async.flushMicrotasks();
+        verify(() => sparkleEngine.checkNow()).called(1);
+        unawaited(updates.dispose());
+      });
+    });
+
+    test("a downloaded update is Ready", () async {
+      final updates = service();
+      addTearDown(updates.dispose);
+      await updates.start();
+
+      sparkleDownloads.add("1.8.5");
+
+      expect(updates.currentState, isA<DesktopUpdateReady>().having((state) => state.version, "version", "1.8.5"));
+    });
+
+    test("a failed start stays idle", () async {
+      when(
+        () => sparkleEngine.start(
+          feedUri: any(named: "feedUri"),
+          automaticChecks: any(named: "automaticChecks"),
+        ),
+      ).thenThrow(StateError("updater failed to start"));
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.start();
+
+      expect(updates.currentState, isA<DesktopUpdateIdle>());
+    });
+
+    test("Restart to update installs and relaunches; Quit leaves the install to Sparkle", () async {
+      final updates = service();
+      addTearDown(updates.dispose);
+      await updates.start();
+      await updates.applyDownloadedUpdate(restart: true);
+      verifyNever(() => sparkleEngine.installAndRelaunch());
+
+      sparkleDownloads.add("1.8.5");
+      await updates.applyDownloadedUpdate(restart: false);
+      verifyNever(() => sparkleEngine.installAndRelaunch());
+      await updates.applyDownloadedUpdate(restart: true);
+      verify(() => sparkleEngine.installAndRelaunch()).called(1);
     });
   });
 
@@ -320,7 +411,7 @@ void main() {
       verify(() => relaunchApi.relaunchInstalledPackage()).called(1);
     });
 
-    test("installs without an engine do nothing", () async {
+    test("other install kinds do nothing before the helper stops", () async {
       bundleSource = _FakeInstalledDesktopBundleSource(
         compiledIdentity: _linuxBuild.copyWith(os: DesktopBundleOs.macos),
         isAppImage: false,
@@ -383,3 +474,5 @@ class _MockDesktopUpdateFeedApi() extends Mock implements DesktopUpdateFeedApi;
 class _MockDesktopUpdateFeedValidator() extends Mock implements DesktopUpdateFeedValidator;
 
 class _MockVelopackUpdateApi() extends Mock implements VelopackUpdateApi;
+
+class _MockSparkleUpdateEngine() extends Mock implements SparkleUpdateEngine;
