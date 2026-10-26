@@ -7,7 +7,7 @@ import "../project_picker/project_picker.dart";
 
 /// The new-session page, or the home's composer pane, before it has a project:
 /// it asks for one, with nothing selected. With no projects at all the picker
-/// offers only "Open another folder…".
+/// offers only "Open folder…".
 class const NewSessionProjectPrompt({
   super.key,
   required final NewSessionProjectSelected onProjectSelected,

@@ -253,13 +253,13 @@ abstract class AppLocalizations {
   /// **'Search projects'**
   String get projectPickerSearchHint;
 
-  /// First entry of the new-session project picker and of Settings › Projects. Opens the folder browser; the picker then selects the folder it adds as the project.
+  /// Button pinned below the new-session project picker's list. Opens the folder browser; the picker then selects the folder it adds as the project.
   ///
   /// In en, this message translates to:
-  /// **'Open another folder…'**
+  /// **'Open folder…'**
   String get projectPickerOpenFolder;
 
-  /// Shown under the project picker's first entry when no project name or path matches the search.
+  /// Shown as the project picker's list when no project name or path matches the search.
   ///
   /// In en, this message translates to:
   /// **'No projects match'**
@@ -1044,6 +1044,12 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Connect to a bridge to manage projects.'**
   String get settingsProjectsOffline;
+
+  /// First row of Settings › Projects, above the projects it lists. Opens the folder browser, which adds the folder as a project.
+  ///
+  /// In en, this message translates to:
+  /// **'Open another folder…'**
+  String get settingsProjectsOpenFolder;
 
   /// Accessibility label of the '⋯' button on a row of Settings › Projects, which opens that project's actions. The name is the project's name.
   ///

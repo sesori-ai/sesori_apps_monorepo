@@ -190,7 +190,7 @@ The main pane hosts one full-width routed page.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else the newest
   session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
   filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank, and with no
-  default the shared "Choose a project" prompt shows instead, offering only "Open another folder…" when there are
+  default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there are
   no projects. A session started from home opens in its project. Loading projects is labelled and failures retry
   the shared inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
