@@ -343,7 +343,7 @@ class RuntimeInstallService({
         return;
       } on PathAccessException catch (error) {
         if (!Platform.isWindows || attempt >= _windowsRenameAttempts) rethrow;
-        Log.d("[$_runtimeId] rename of '${entity.path}' denied (attempt $attempt), retrying: $error");
+        Log.d("[$_runtimeId] rename of '${entity.path}' denied (attempt $attempt), retrying: ${error.toString()}");
         await Future<void>.delayed(_windowsRenameRetryDelay);
       }
     }
