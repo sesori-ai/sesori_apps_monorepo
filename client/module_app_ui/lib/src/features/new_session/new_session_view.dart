@@ -890,10 +890,11 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
 
 /// [child] with the [gap] above it while [shown], in the motion of
 /// [_AnimatedOptions]: it opens as it fades in and folds away as it fades out,
-/// then leaves the tree. One child that comes and goes rather than a switch
-/// between children, so a change mid-motion turns back from where it is with
-/// the child's state intact; a switcher would hold the composer's global key
-/// twice. Reduced motion changes it at once.
+/// then stays mounted offstage, so the composer keeps its state, staged images
+/// included, until it opens again. One child that comes and goes rather than a
+/// switch between children, so a change mid-motion turns back from where it is
+/// with the child's state intact; a switcher would hold the composer's global
+/// key twice. Reduced motion changes it at once.
 class const _AnimatedFold({required final bool shown, required final double gap, required final Widget child})
     extends StatefulWidget {
   @override
@@ -938,26 +939,29 @@ class _AnimatedFoldState() extends State<_AnimatedFold> with SingleTickerProvide
 
   @override
   Widget build(BuildContext context) {
-    if (_controller.isDismissed) return const SizedBox.shrink();
     final shown = widget.shown;
-    // Clipped only while it moves: at rest a focus ring or glass may paint
-    // past the child's box.
-    return ClipRect(
-      clipBehavior: _controller.isCompleted ? Clip.none : Clip.hardEdge,
-      child: AnimatedBuilder(
-        animation: _animation,
-        builder: (context, child) =>
-            Align(alignment: Alignment.topCenter, heightFactor: math.max(_animation.value, 0), child: child),
-        child: FadeTransition(
-          opacity: _animation,
-          // Leaving, it takes no taps and gives its focus up at once.
-          child: IgnorePointer(
-            ignoring: !shown,
-            child: ExcludeFocus(
-              excluding: !shown,
-              child: Padding(
-                padding: EdgeInsetsDirectional.only(top: widget.gap),
-                child: widget.child,
+    return Visibility(
+      visible: !_controller.isDismissed,
+      maintainState: true,
+      // Clipped only while it moves: at rest a focus ring or glass may paint
+      // past the child's box.
+      child: ClipRect(
+        clipBehavior: _controller.isCompleted ? Clip.none : Clip.hardEdge,
+        child: AnimatedBuilder(
+          animation: _animation,
+          builder: (context, child) =>
+              Align(alignment: Alignment.topCenter, heightFactor: math.max(_animation.value, 0), child: child),
+          child: FadeTransition(
+            opacity: _animation,
+            // Leaving, it takes no taps and gives its focus up at once.
+            child: IgnorePointer(
+              ignoring: !shown,
+              child: ExcludeFocus(
+                excluding: !shown,
+                child: Padding(
+                  padding: EdgeInsetsDirectional.only(top: widget.gap),
+                  child: widget.child,
+                ),
               ),
             ),
           ),

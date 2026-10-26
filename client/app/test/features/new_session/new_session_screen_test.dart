@@ -1573,6 +1573,7 @@ void main() {
     }
 
     await tester.pumpWidget(_buildApp());
+    final promptState = tester.state(composer);
     final folding = await composerTopsBesideNotice();
 
     // It sinks under the bottom edge over the frames the notice opens in,
@@ -1600,6 +1601,8 @@ void main() {
     expect(discoveryCalls, 2);
     expect(composer, findsOneWidget);
     expect(notice, findsNothing);
+    // Kept mounted while folded, so staged images survive the notice.
+    expect(tester.state(composer), same(promptState));
   });
 
   testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
