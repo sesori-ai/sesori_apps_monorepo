@@ -145,8 +145,8 @@ entirely along with its transcript and its dedicated worktree.
   shows what the newest agent reply ran with as read-only pills (see
   [Session creation and options](session-creation-and-options.md)), from options
   read from the bridge's cache only, never discovered. Back, the edge swipe and
-  system Back return to the retained archive list; the list's own leave the whole
-  flow for its original opener, preserving its list/scroll and draft. Back remains
+  system Back return to the retained archive list; the list's own Back leaves the
+  whole flow for its original opener, preserving its list/scroll and draft. Back remains
   available during loading and errors, including related-session audit navigation.
   Direct archive entry falls back to the home from the list's Back and leaves the
   project filter as it was. Audit cubits never
