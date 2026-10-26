@@ -9,16 +9,6 @@ import "../foundation/streaming_process_runner.dart";
 
 typedef GitPathExistsChecker = bool Function({required String gitPath});
 
-sealed class const GitCurrentBranchResult();
-
-final class const GitCurrentBranchNamed({required final String branchName}) extends GitCurrentBranchResult;
-
-final class const GitCurrentBranchDetached() extends GitCurrentBranchResult;
-
-final class const GitCurrentBranchMissingDirectory() extends GitCurrentBranchResult;
-
-final class const GitCurrentBranchNotRepository() extends GitCurrentBranchResult;
-
 class GitWorktreeSafetySnapshot({
   required final bool worktreeExists,
   required final bool hasUnstagedChanges,
@@ -72,50 +62,6 @@ class GitCliApi({
       return false;
     }
     throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
-  }
-
-  Future<GitCurrentBranchResult> getCurrentBranch({required String projectPath}) async {
-    if (!_gitPathExists(gitPath: projectPath)) {
-      return const GitCurrentBranchMissingDirectory();
-    }
-    const arguments = ["symbolic-ref", "--quiet", "--short", "HEAD"];
-    final ProcessResult result;
-    try {
-      result = await _processRunner.run(
-        "git",
-        arguments,
-        workingDirectory: projectPath,
-        environment: const {"LC_ALL": "C"},
-      );
-    } on ProcessException {
-      if (!_gitPathExists(gitPath: projectPath)) {
-        return const GitCurrentBranchMissingDirectory();
-      }
-      rethrow;
-    }
-    if (result.exitCode == 0) {
-      var branchName = result.stdout.toString();
-      if (branchName.endsWith("\r\n")) {
-        branchName = branchName.substring(0, branchName.length - 2);
-      } else if (branchName.endsWith("\n")) {
-        branchName = branchName.substring(0, branchName.length - 1);
-      } else if (branchName.endsWith("\r")) {
-        branchName = branchName.substring(0, branchName.length - 1);
-      }
-      if (branchName.isEmpty) {
-        throw const FormatException("git returned an empty current branch");
-      }
-      return GitCurrentBranchNamed(branchName: branchName);
-    }
-
-    final stderr = result.stderr.toString();
-    if (stderr.toLowerCase().contains("not a git repository")) {
-      return const GitCurrentBranchNotRepository();
-    }
-    if (result.exitCode == 1 && stderr.trim().isEmpty) {
-      return const GitCurrentBranchDetached();
-    }
-    throw ProcessException("git", arguments, stderr, result.exitCode);
   }
 
   /// Initializes a new git repository at [path]. Returns `true` on success.
