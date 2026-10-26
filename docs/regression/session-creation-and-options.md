@@ -252,7 +252,9 @@ variant, and worktree mode, and creating the session with its first input.
   never has the row: it gets no room on a first composer, and room the last project
   left it folds from the next frame without waiting for the check. When the answer
   adds or removes the row, it opens or folds as it fades over about 200 ms, so the
-  composer glides instead of jumping. When options cannot be loaded,
+  composer glides instead of jumping. When the bridge answers that it runs no harness, the composer and the gap
+  above it fold away in that motion as the no-harness notice opens in the options' place, and open again when a
+  harness returns, so the heading barely moves. When options cannot be loaded,
   one "Retry loading models" button stands in the pills' place; a bridge that can
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options

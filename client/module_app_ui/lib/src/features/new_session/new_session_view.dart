@@ -226,15 +226,15 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       ),
     );
     switch (cubit.composerPresentation) {
-      case NewSessionComposerPending():
+      // With no harness the composer only folds away, and it keeps the
+      // placeholders discovery showed rather than dropping them mid-fold.
+      case NewSessionComposerPending() || NewSessionComposerNoHarnesses():
         return _OptionPillsPlaceholder(compact: compact);
       case NewSessionComposerRetry():
         return action(key: const Key("new_session_options_retry"), label: loc.newSessionOptionsRetry);
       case NewSessionComposerLoadOnDemand():
         return action(key: const Key("new_session_options_load"), label: loc.newSessionOptionsLoad);
-      case NewSessionComposerNoHarnesses() ||
-          NewSessionComposerLoginRequired() ||
-          NewSessionComposerProjectUnavailable():
+      case NewSessionComposerLoginRequired() || NewSessionComposerProjectUnavailable():
         return null;
       case NewSessionComposerReady():
         break;
@@ -352,7 +352,8 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     required Widget? sendingPane,
     required Widget header,
     required Widget? options,
-    required Widget? composer,
+    required Widget composer,
+    required bool composerShown,
   }) {
     final isSending = sendingPane != null;
     if (sendingPane != null) _lastSendingPane = sendingPane;
@@ -382,7 +383,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                     child: Column(
                       mainAxisSize: MainAxisSize.min,
                       crossAxisAlignment: CrossAxisAlignment.stretch,
-                      spacing: PregoSpacing.lg,
                       children: [
                         fadingIdle(
                           Column(
@@ -398,7 +398,13 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                             ],
                           ),
                         ),
-                        if (isSending) SizedBox(height: composerHeight) else ?composer,
+                        // The gap above the composer folds with it, so the
+                        // centred column never snaps by the gap.
+                        _AnimatedFold(
+                          shown: composerShown,
+                          gap: PregoSpacing.lg,
+                          child: isSending ? SizedBox(height: composerHeight) : composer,
+                        ),
                       ],
                     ),
                   ),
@@ -422,7 +428,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                     child: FadeTransition(opacity: _sendingMotion, child: lastSendingPane),
                   ),
                 ),
-                if (isSending && composer != null)
+                if (isSending)
                   Padding(
                     padding: EdgeInsets.symmetric(
                       horizontal: math.max(0, (constraints.maxWidth - chrome.maxContentWidth) / 2) + 16,
@@ -608,46 +614,44 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     PageStorage.maybeOf(context)?.writeState(context, _optionsShown, identifier: _optionsShownStorageId);
     // Typing never waits on options; only sending waits on what it needs.
     final notice = _buildBlockedNotice(cubit: cubit);
+    // With no harness the composer folds away as the notice opens in the
+    // options, and opens again once a harness is back.
+    final composerShown = !cubit.hasNoHarnesses;
     // A notice hides the composer rather than replacing it, so staged images,
     // which live only in the composer, survive until the notice clears.
-    final composerColumn = cubit.hasNoHarnesses
-        ? null
-        : Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: [
-              // Plugin-provided guidance can outgrow a short phone at large text.
-              if (notice != null)
-                ConstrainedBox(
-                  constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 2),
-                  child: SingleChildScrollView(primary: false, child: notice),
-                ),
-              Visibility(
-                key: const ValueKey("new_session_prompt"),
-                visible: notice == null,
-                maintainState: true,
-                child: ExcludeFocus(
-                  excluding: notice != null,
-                  child: _buildComposer(
-                    isSending: isSending,
-                    restoringSubmission: restoringSubmission,
-                    restoredAttachments: restoredAttachments,
-                    composerData: composerData,
-                    state: state,
-                  ),
-                ),
-              ),
-            ],
-          );
-    final composer = switch (composerColumn) {
-      null => null,
-      final column => KeyedSubtree(
-        key: _composerKey,
-        child: widget.pageChrome == null
-            ? column
-            : _SlideFromLastPosition(progress: _sendingMotion, towardSending: isSending, child: column),
-      ),
-    };
+    final composerColumn = Column(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Plugin-provided guidance can outgrow a short phone at large text.
+        if (notice != null)
+          ConstrainedBox(
+            constraints: BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 2),
+            child: SingleChildScrollView(primary: false, child: notice),
+          ),
+        Visibility(
+          key: const ValueKey("new_session_prompt"),
+          visible: notice == null,
+          maintainState: true,
+          child: ExcludeFocus(
+            excluding: notice != null,
+            child: _buildComposer(
+              isSending: isSending,
+              restoringSubmission: restoringSubmission,
+              restoredAttachments: restoredAttachments,
+              composerData: composerData,
+              state: state,
+            ),
+          ),
+        ),
+      ],
+    );
+    final composer = KeyedSubtree(
+      key: _composerKey,
+      child: widget.pageChrome == null
+          ? composerColumn
+          : _SlideFromLastPosition(progress: _sendingMotion, towardSending: isSending, child: composerColumn),
+    );
     Widget? sendingPane({required double? transcriptWidth}) => switch (sendingPhase) {
       null => null,
       final phase => SessionLaunchSubmissionView(
@@ -689,6 +693,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         header: header,
         options: options,
         composer: composer,
+        composerShown: composerShown,
       ),
     };
 
@@ -789,7 +794,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                     ),
                   ),
                 ),
-                if (composer != null) Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
+                _AnimatedFold(
+                  shown: composerShown,
+                  gap: 0,
+                  child: Padding(padding: const EdgeInsets.symmetric(horizontal: 16), child: composer),
+                ),
               ],
             ),
           ),
@@ -849,8 +858,10 @@ class _ComposerSurfaceStyleOwnerState() extends State<_ComposerSurfaceStyleOwner
 
 /// The options under the header, with the [gap] above them. They open as they
 /// fade in and fold away as they fade out, so the composer below glides
-/// rather than jumps as a project's answer adds or removes them. A first
-/// build shows them as they are, and reduced motion changes them at once.
+/// rather than jumps as a project's answer adds or removes them. Options that
+/// replace others open above them as they fold, so the two heights trade
+/// evenly instead of the taller holding the room. A first build shows them as
+/// they are, and reduced motion changes them at once.
 class const _AnimatedOptions({super.key, required final double gap, required final Widget? options})
     extends StatelessWidget {
   @override
@@ -859,6 +870,7 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
       duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
+      layoutBuilder: (current, previous) => Column(mainAxisSize: MainAxisSize.min, children: [?current, ...previous]),
       transitionBuilder: (child, animation) => SizeTransition(
         sizeFactor: animation,
         alignment: Alignment.topCenter,
@@ -872,6 +884,85 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
         ),
       ),
       child: options,
+    );
+  }
+}
+
+/// [child] with the [gap] above it while [shown], in the motion of
+/// [_AnimatedOptions]: it opens as it fades in and folds away as it fades out,
+/// then leaves the tree. One child that comes and goes rather than a switch
+/// between children, so a change mid-motion turns back from where it is with
+/// the child's state intact; a switcher would hold the composer's global key
+/// twice. Reduced motion changes it at once.
+class const _AnimatedFold({required final bool shown, required final double gap, required final Widget child})
+    extends StatefulWidget {
+  @override
+  State<_AnimatedFold> createState() => _AnimatedFoldState();
+}
+
+class _AnimatedFoldState() extends State<_AnimatedFold> with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+  late final CurvedAnimation _animation;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(vsync: this, duration: transcriptMotionDuration, value: widget.shown ? 1 : 0)
+      ..addStatusListener((_) => setState(() {}));
+    _animation = CurvedAnimation(
+      parent: _controller,
+      curve: transcriptMotionCurve,
+      reverseCurve: transcriptMotionReverseCurve,
+    );
+  }
+
+  @override
+  void didUpdateWidget(_AnimatedFold oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (widget.shown == oldWidget.shown) return;
+    if (context.isReducedMotion) {
+      _controller.value = widget.shown ? 1 : 0;
+    } else if (widget.shown) {
+      _controller.forward();
+    } else {
+      _controller.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _animation.dispose();
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    if (_controller.isDismissed) return const SizedBox.shrink();
+    final shown = widget.shown;
+    // Clipped only while it moves: at rest a focus ring or glass may paint
+    // past the child's box.
+    return ClipRect(
+      clipBehavior: _controller.isCompleted ? Clip.none : Clip.hardEdge,
+      child: AnimatedBuilder(
+        animation: _animation,
+        builder: (context, child) =>
+            Align(alignment: Alignment.topCenter, heightFactor: math.max(_animation.value, 0), child: child),
+        child: FadeTransition(
+          opacity: _animation,
+          // Leaving, it takes no taps and gives its focus up at once.
+          child: IgnorePointer(
+            ignoring: !shown,
+            child: ExcludeFocus(
+              excluding: !shown,
+              child: Padding(
+                padding: EdgeInsetsDirectional.only(top: widget.gap),
+                child: widget.child,
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }
