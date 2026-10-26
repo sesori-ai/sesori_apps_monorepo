@@ -523,7 +523,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                             ),
                           ),
                         ),
-                        button(label: "close archived", action: archived.onClose),
+                        button(label: "close archived", action: archived.onExit),
                       ],
                       _ => [const Text("home")],
                     },

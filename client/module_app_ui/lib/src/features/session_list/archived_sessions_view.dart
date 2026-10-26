@@ -7,13 +7,21 @@ import "../../extensions/build_context_x.dart";
 import "all_sessions_list.dart";
 import "session_list_action_dispatcher.dart";
 
+/// How Archived is left: [back] for a page pushed like the other Settings
+/// pages, [close] for a page shown over another.
+enum ArchivedSessionsExit() {
+  back,
+  close,
+}
+
 /// Archived sessions across projects, from an archived-mode
 /// [AllSessionsCubit]. The product shell owns its provider, assets and routes.
 class const ArchivedSessionsView({
   super.key,
   required final Widget emptyState,
   required final AllSessionsDisconnectedBuilder disconnectedBuilder,
-  required final VoidCallback onClose,
+  required final ArchivedSessionsExit exit,
+  required final VoidCallback onExit,
   required final AllSessionsRowOpenedCallback onSessionTap,
   required final SessionListActionDispatcher actionDispatcher,
   required final ActionSessionListCubitFactory createActionCubit,
@@ -22,14 +30,18 @@ class const ArchivedSessionsView({
   Widget build(BuildContext context) => PregoGlassScaffold(
     title: context.loc.archivedSessionsTitle,
     titleMode: PregoTopNavigationTitleMode.inline,
-    onBack: null,
+    onBack: switch (exit) {
+      ArchivedSessionsExit.back => onExit,
+      ArchivedSessionsExit.close => null,
+    },
     automaticallyImplyLeading: false,
     actions: [
-      PregoButtonsIconGlass(
-        icon: TablerRegular.x,
-        semanticLabel: context.loc.archivedSessionsClose,
-        onPressed: onClose,
-      ),
+      if (exit == ArchivedSessionsExit.close)
+        PregoButtonsIconGlass(
+          icon: TablerRegular.x,
+          semanticLabel: context.loc.archivedSessionsClose,
+          onPressed: onExit,
+        ),
     ],
     onRefresh: () => _refresh(context: context),
     slivers: [
