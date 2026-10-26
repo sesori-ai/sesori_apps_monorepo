@@ -48,7 +48,6 @@ void main() {
         runtime: pluginRuntime,
         sessionDao: sessionDao,
         projectsDao: database.projectsDao,
-        pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",

@@ -24,37 +24,13 @@ class PullRequestDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabas
     return await (select(pullRequestsTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
-  Future<Map<String, List<PullRequestDto>>> getPrsBySessionIds({
-    required List<String> sessionIds,
-    required String verifiedGithubLogin,
-  }) {
-    return _getPrsBySessionIds(
-      sessionIds: sessionIds,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-  }
-
   Future<Map<String, List<PullRequestDto>>> getPrsByPersistedScopeSessionIds({
     required List<String> sessionIds,
-  }) {
-    return _getPrsBySessionIds(
-      sessionIds: sessionIds,
-      verifiedGithubLogin: null,
-    );
-  }
-
-  Future<Map<String, List<PullRequestDto>>> _getPrsBySessionIds({
-    required List<String> sessionIds,
-    required String? verifiedGithubLogin,
   }) async {
     if (sessionIds.isEmpty) {
       return <String, List<PullRequestDto>>{};
     }
 
-    final readLoginScope = verifiedGithubLogin == null
-        ? const Constant(true)
-        : pullRequestsTable.githubLogin.equals(verifiedGithubLogin) &
-              projectsTable.prCacheGithubLogin.equals(verifiedGithubLogin);
     final query =
         select(pullRequestsTable).join([
           innerJoin(
@@ -71,7 +47,7 @@ class PullRequestDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabas
                 projectsTable.prCacheGithubLogin.equalsExp(pullRequestsTable.githubLogin),
           ),
         ])..where(
-          sessionTable.sessionId.isIn(sessionIds) & sessionTable.parentSessionId.isNull() & readLoginScope,
+          sessionTable.sessionId.isIn(sessionIds) & sessionTable.parentSessionId.isNull(),
         );
 
     final joinedRows = await query.get();

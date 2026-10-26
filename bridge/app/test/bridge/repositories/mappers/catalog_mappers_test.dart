@@ -100,7 +100,7 @@ void main() {
       approvalOverride: null,
     );
 
-    final session = mapper.map(row: row, pullRequest: null, unseen: true);
+    final session = mapper.map(row: row, unseen: true);
 
     expect(session.id, "sesori-id");
     expect(session.pluginId, "codex");
@@ -144,7 +144,7 @@ void main() {
       approvalOverride: null,
     );
 
-    Session mapped(SessionDto row) => mapper.map(row: row, pullRequest: null, unseen: false);
+    Session mapped(SessionDto row) => mapper.map(row: row, unseen: false);
 
     // A plugin that never emits an activity-bearing `session.updated` leaves
     // `updated_at` at the last imported transcript time; the live user-message

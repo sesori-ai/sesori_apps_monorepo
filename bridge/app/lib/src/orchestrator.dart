@@ -281,7 +281,6 @@ class Orchestrator({
       runtime: _pluginRuntime,
       sessionDao: _database.sessionDao,
       projectsDao: _database.projectsDao,
-      pullRequestDao: _database.pullRequestDao,
       unseenCalculator: unseenCalculator,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
       aggregateSourceDeadline: aggregateSourceDeadline,
