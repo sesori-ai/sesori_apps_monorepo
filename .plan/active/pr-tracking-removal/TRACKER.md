@@ -14,7 +14,7 @@
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/13 | Publish the plan | Done | #2068 |
-| 2/13 | Row PR mark removed | In review | — |
+| 2/13 | Row PR mark removed | In review | #2089 |
 | 3/13 | PR refresh setting removed | Not started | — |
 | 4/13 | Client stops declaring the open project | Not started | — |
 | 5/13 | Session reads carry no PR data | In review | #2085 (5.i), #2086 (5.ii) |
