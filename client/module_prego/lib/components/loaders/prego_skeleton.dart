@@ -47,8 +47,10 @@ class const PregoShimmer({
   /// Whether the skeleton is on its way out, as content takes its place.
   /// Turning it on drops an appearance still pending and fades the skeleton
   /// out from wherever it stands, decelerating over 200 ms, so one that never
-  /// showed stays hidden and one still fading in never brightens. It stays
-  /// hidden, and stops sweeping once gone.
+  /// showed stays hidden and one still fading in never brightens. It stops
+  /// sweeping once gone. One built leaving never appears, and turning it off
+  /// again, as the skeleton is needed after all, brings it back as if it had
+  /// never left.
   final bool leaving = false,
 
   /// Peak colour of the sheen band. Defaults to a translucent white, which
@@ -81,7 +83,7 @@ class _PregoShimmerState()
 
   late final AnimationController _slide = AnimationController.unbounded(vsync: this)..value = _slideMin;
 
-  late bool _visible = widget.appearDelay == Duration.zero;
+  late bool _visible = widget.appearDelay == Duration.zero && !widget.leaving;
   Timer? _appearTimer;
 
   /// Held at 0 (but laid out, so nothing jumps) until the appear delay
@@ -118,7 +120,7 @@ class _PregoShimmerState()
       // Faded out after leaving: nothing is left to sweep.
       if (status.isDismissed) syncMotion();
     });
-    if (!_visible) _scheduleAppear();
+    if (!_visible && !widget.leaving) _scheduleAppear();
   }
 
   void _scheduleAppear() {
@@ -139,7 +141,10 @@ class _PregoShimmerState()
       _appearTimer?.cancel();
       // Eased over whatever opacity is left, never rising.
       _opacity.animateBack(0, duration: _fadeDuration, curve: Curves.easeOut);
-    } else if (!widget.leaving && oldWidget.appearDelay != widget.appearDelay && !_visible) {
+    } else if (!widget.leaving && oldWidget.leaving && _visible) {
+      // Needed again before it was gone: back up from where it faded to.
+      _opacity.forward();
+    } else if (!widget.leaving && (oldWidget.leaving || oldWidget.appearDelay != widget.appearDelay) && !_visible) {
       if (widget.appearDelay == Duration.zero) {
         _appearTimer?.cancel();
         _visible = true;
