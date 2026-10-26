@@ -21,7 +21,7 @@
 | 6/13 | Polling stopped | Done | #2090 |
 | 7/13 | Bridge stops tracking the open project | Not started | — |
 | 8/13 | PR sync service removed | Done | #2095 |
-| 9/13 | PR source lookup removed | In review | — |
+| 9/13 | PR source lookup removed | In review | #2097 |
 | 10/13 | Pull request repository removed | Not started | — |
 | 11/13 | gh client removed | Not started | — |
 | 12/13 | Schema v21 drops stored PR data | Not started | — |
