@@ -279,9 +279,19 @@ void main() {
     final now = DateTime.now();
     final loading = state(query: "", failures: const [], rows: const [], scratchProjectId: null, isLoading: true);
     final empty = state(query: "", failures: const [], rows: const [], scratchProjectId: null);
-    AllSessionsState loaded({required AllSessionsMode mode, required List<String> titles, String query = ""}) => state(
+    const failure = AllSessionsFailure(
+      project: ProjectSummary(id: "p2", name: "Project Two", path: "/p2", time: null),
+      reason: RemoteFailureReason.networkDown,
+    );
+    final failureRow = find.text("Couldn’t load Project Two");
+    AllSessionsState loaded({
+      required AllSessionsMode mode,
+      required List<String> titles,
+      String query = "",
+      List<AllSessionsFailure> failures = const [],
+    }) => state(
       query: query,
-      failures: const [],
+      failures: failures,
       rows: [
         for (final title in titles)
           row(
@@ -372,6 +382,70 @@ void main() {
       expect(opacityAbove(tester, find.text("Nothing here")), 1);
     });
 
+    for (final withRows in [true, false]) {
+      testWidgets(
+        "a project that failed during the load arrives with the first content (${withRows ? "with rows" : "alone"})",
+        (tester) async {
+          final updates = StreamController<AllSessionsState>();
+          addTearDown(updates.close);
+          final skeletonTop = await pumpLoading(tester, updates: updates.stream);
+
+          // Another project is still loading.
+          updates.add(
+            state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+          );
+          await tester.pump();
+          expect(failureRow, findsNothing);
+
+          updates.add(
+            loaded(mode: AllSessionsMode.archived, titles: [if (withRows) "Fix the parser"], failures: const [failure]),
+          );
+          await tester.pump();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(opacityAbove(tester, failureRow), inExclusiveRange(0, 1));
+          if (withRows) expect(opacityAbove(tester, failureRow), rowsOpacity(tester));
+          // It fades out where it stood, over the search field or, alone, over the failed project.
+          expect(opacityAbove(tester, find.byType(PregoSkeletonList)), inExclusiveRange(0, 1));
+          expect(tester.getTopLeft(find.byType(PregoSkeletonList)).dy, skeletonTop);
+
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(find.byType(PregoSkeletonList), findsNothing);
+          expect(opacityAbove(tester, failureRow), 1);
+        },
+      );
+    }
+
+    for (final (endsAfter, shown) in [(250, false), (350, true)]) {
+      testWidgets(
+        shown
+            ? "a load that ends once the skeleton has begun to show hands it off"
+            : "a load that ends before the skeleton shows just fades the rows in",
+        (tester) async {
+          final updates = StreamController<AllSessionsState>();
+          addTearDown(updates.close);
+          await pumpList(tester, initial: loading, updates: updates.stream);
+          // The skeleton's appearance delay is 300 ms.
+          await tester.pump(Duration(milliseconds: endsAfter));
+
+          updates.add(loaded(mode: AllSessionsMode.archived, titles: ["Fix the parser"]));
+          // With nothing animating yet, a bare pump would skip the frame before the update arrives.
+          await tester.pump(Duration.zero);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(rowsOpacity(tester), inExclusiveRange(0, 1));
+          expect(find.byType(PregoSkeletonList), shown ? findsOneWidget : findsNothing);
+          if (shown) expect(opacityAbove(tester, find.byType(PregoSkeletonList)), inExclusiveRange(0, 1));
+
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(find.byType(PregoSkeletonList), findsNothing);
+          expect(rowsOpacity(tester), 1);
+        },
+      );
+    }
+
     testWidgets("the search field arrives with the rows, never over an empty body", (tester) async {
       final updates = StreamController<AllSessionsState>();
       addTearDown(updates.close);
@@ -416,8 +490,12 @@ void main() {
       await tester.pump(const Duration(milliseconds: 250));
 
       for (final update in [
-        // A refresh that brings another session.
-        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser", "Write the docs", "Ship it"]),
+        // A refresh that brings another session and a project that failed.
+        loaded(
+          mode: AllSessionsMode.active,
+          titles: ["Fix the parser", "Write the docs", "Ship it"],
+          failures: const [failure],
+        ),
         // A search that narrows the list.
         loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"], query: "parser"),
       ]) {
@@ -426,6 +504,7 @@ void main() {
         expect(find.byType(PregoSkeletonList), findsNothing);
         expect(opacityAbove(tester, find.byType(TextField)), 1);
         expect(rowsOpacity(tester), 1);
+        if (update.failures.isNotEmpty) expect(opacityAbove(tester, failureRow), 1);
       }
     });
 

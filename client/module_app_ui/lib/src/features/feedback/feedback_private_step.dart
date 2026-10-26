@@ -496,6 +496,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
                               appearDelay: Duration.zero,
                               highlightColor: prego.colors.textPlaceholderSubtle,
                               semanticLabel: loc.voiceTranscribing,
+                              onAppear: null,
                               child: Text(
                                 loc.voiceTranscribing,
                                 maxLines: 1,

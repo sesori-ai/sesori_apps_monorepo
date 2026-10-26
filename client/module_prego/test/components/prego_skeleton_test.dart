@@ -38,7 +38,7 @@ void main() {
 
   group("PregoSkeletonList", () {
     testWidgets("renders six two-line rows with the designed width rhythm", (tester) async {
-      await pumpVisible(tester, const PregoSkeletonList());
+      await pumpVisible(tester, const PregoSkeletonList(onAppear: null));
 
       expect(find.byType(PregoSkeletonListTile), findsNWidgets(6));
       expect(titleBars(), findsNWidgets(6));
@@ -63,7 +63,7 @@ void main() {
 
     testWidgets("the width pattern cycles past six rows", (tester) async {
       // Scrollable: eight rows are taller than the test viewport.
-      await pumpVisible(tester, const SingleChildScrollView(child: PregoSkeletonList(itemCount: 8)));
+      await pumpVisible(tester, const SingleChildScrollView(child: PregoSkeletonList(itemCount: 8, onAppear: null)));
 
       expect(find.byType(PregoSkeletonListTile), findsNWidgets(8));
       final widths = titleBars()
@@ -76,7 +76,7 @@ void main() {
 
     testWidgets("announces the semantic label and hides the decorative rows", (tester) async {
       final semantics = tester.ensureSemantics();
-      await pumpVisible(tester, const PregoSkeletonList(semanticLabel: "Loading projects"));
+      await pumpVisible(tester, const PregoSkeletonList(semanticLabel: "Loading projects", onAppear: null));
 
       expect(find.bySemanticsLabel("Loading projects"), findsOneWidget);
       expect(find.byType(ExcludeSemantics), findsWidgets);
@@ -85,17 +85,22 @@ void main() {
   });
 
   group("PregoShimmer", () {
-    testWidgets("stays invisible during the appear delay, then fades in and sweeps", (tester) async {
-      await tester.pumpWidget(harness(const PregoSkeletonList()));
+    testWidgets("stays invisible during the appear delay, then fades in, says so and sweeps", (tester) async {
+      var appeared = 0;
+      await tester.pumpWidget(harness(PregoSkeletonList(onAppear: () => appeared++)));
 
       // Before the appear delay: laid out but fully transparent, no sweep.
       final opacityFinder = find.byWidgetPredicate((w) => w is AnimatedOpacity && w.opacity == 0.0);
       expect(opacityFinder, findsOneWidget);
       expect(find.byType(ShaderMask), findsNothing);
       expect(find.byType(PregoSkeletonListTile), findsNWidgets(6));
+      await tester.pump(const Duration(milliseconds: 299));
+      expect(appeared, 0);
 
-      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(appeared, 1);
       await tester.pump(const Duration(milliseconds: 200));
+      expect(appeared, 1);
 
       expect(
         find.byWidgetPredicate((w) => w is AnimatedOpacity && w.opacity == 1.0),
@@ -110,6 +115,7 @@ void main() {
       await tester.pumpWidget(
         harness(
           const PregoShimmer(
+            onAppear: null,
             appearDelay: Duration.zero,
             child: PregoSkeletonBar(height: 20, width: 100),
           ),
@@ -121,7 +127,7 @@ void main() {
     });
 
     testWidgets("reduced motion keeps the static bars but never sweeps", (tester) async {
-      await pumpVisible(tester, const PregoSkeletonList(), disableAnimations: true);
+      await pumpVisible(tester, const PregoSkeletonList(onAppear: null), disableAnimations: true);
 
       expect(find.byType(PregoSkeletonListTile), findsNWidgets(6));
       expect(find.byType(ShaderMask), findsNothing);
@@ -132,6 +138,7 @@ void main() {
       await pumpVisible(
         tester,
         const PregoShimmer(
+          onAppear: null,
           enabled: false,
           appearDelay: Duration.zero,
           child: PregoSkeletonBar(height: 20, width: 100),
@@ -148,7 +155,7 @@ void main() {
         harness(
           const Directionality(
             textDirection: TextDirection.rtl,
-            child: PregoSkeletonList(),
+            child: PregoSkeletonList(onAppear: null),
           ),
         ),
       );
@@ -201,6 +208,7 @@ void main() {
       await pumpVisible(
         tester,
         const PregoShimmer(
+          onAppear: null,
           appearDelay: Duration.zero,
           // Align loosens the harness's tight width, as list rows do.
           child: Align(

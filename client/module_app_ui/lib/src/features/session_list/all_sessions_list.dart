@@ -161,9 +161,10 @@ class const _Sessions({
 }
 
 class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMixin {
-  /// The hand-off from the loading skeleton to the first rows or the empty
-  /// state: they fade in where the skeleton stood while it fades out over
-  /// them. Complete at rest, so later updates show as they always do.
+  /// The hand-off from the loading skeleton to the first content (rows,
+  /// failed projects or the empty state): it fades in where the skeleton
+  /// stood while the skeleton, if it had shown, fades out over it. Complete
+  /// at rest, so later updates show as they always do.
   late final AnimationController _handOff = AnimationController(
     vsync: this,
     duration: transcriptMotionDuration,
@@ -179,6 +180,11 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   /// from its own place onto the content that replaces it.
   final GlobalKey _skeletonKey = GlobalKey(debugLabel: "all-sessions-skeleton");
   bool _wasLoading = false;
+
+  /// Whether the skeleton has begun to fade in. Only then does the hand-off
+  /// hold it: otherwise its appearance delay could end under the hand-off,
+  /// fading in a faint ghost over the content.
+  bool _skeletonShown = false;
 
   @override
   void initState() {
@@ -254,8 +260,10 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     }
     _wasLoading = loading;
     // The skeleton fades out from the top of the first box under the header,
-    // where it stood. At most one box holds it.
-    final skeletonLeaving = !loading && !_handOff.isCompleted;
+    // where it stood, if it had begun to show. At most one box holds it.
+    final skeletonLeaving = !loading && !_handOff.isCompleted && _skeletonShown;
+    // The skeleton has left the tree, so the next one starts unseen.
+    if (!loading && !skeletonLeaving) _skeletonShown = false;
     final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
     final note = switch (settled) {
       false => null,
@@ -313,29 +321,35 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               ),
             ),
           ),
-        for (final failure in state.failures)
-          SliverToBoxAdapter(
-            key: ValueKey("all-sessions-failure-${failure.project.id}"),
-            child: Padding(
-              padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
-              child: Row(
-                children: [
-                  Expanded(
-                    child: Text(
-                      loc.allSessionsProjectFailed(projectDisplayName(loc: loc, project: failure.project)),
-                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-                    ),
+        // Held back while the skeleton shows, so they arrive with the rest.
+        if (!loading)
+          for (final (index, failure) in state.failures.indexed)
+            SliverToBoxAdapter(
+              key: ValueKey("all-sessions-failure-${failure.project.id}"),
+              child: _arriving(
+                // Without sessions the first one is the first box under the header.
+                holdsSkeleton: skeletonLeaving && !hasSessions && index == 0,
+                child: Padding(
+                  padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          loc.allSessionsProjectFailed(projectDisplayName(loc: loc, project: failure.project)),
+                          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                        ),
+                      ),
+                      PregoButtonsSolid(
+                        label: loc.sessionListRetry,
+                        hierarchy: PregoButtonsSolidHierarchy.secondary,
+                        size: PregoButtonsSolidSize.sm,
+                        onPressed: () => unawaited(cubit.retry(projectId: failure.project.id)),
+                      ),
+                    ],
                   ),
-                  PregoButtonsSolid(
-                    label: loc.sessionListRetry,
-                    hierarchy: PregoButtonsSolidHierarchy.secondary,
-                    size: PregoButtonsSolidSize.sm,
-                    onPressed: () => unawaited(cubit.retry(projectId: failure.project.id)),
-                  ),
-                ],
+                ),
               ),
             ),
-          ),
         if (loading)
           SliverToBoxAdapter(child: _skeleton(context: context))
         else
@@ -398,8 +412,12 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
   }
 
-  Widget _skeleton({required BuildContext context}) =>
-      PregoSkeletonList(key: _skeletonKey, semanticLabel: context.loc.sessionListLoadingSemantics);
+  Widget _skeleton({required BuildContext context}) => PregoSkeletonList(
+    key: _skeletonKey,
+    semanticLabel: context.loc.sessionListLoadingSemantics,
+    // Read when the load ends, so nothing rebuilds for it.
+    onAppear: () => _skeletonShown = true,
+  );
 
   /// [child], fading in with the hand-off. While it [holdsSkeleton], the
   /// skeleton fades out over it and what follows, hanging from its top

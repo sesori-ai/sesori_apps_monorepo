@@ -26,7 +26,7 @@ import "../../theme/prego_theme.dart";
 /// bars still reads as a loading state.
 ///
 /// To avoid a one-frame skeleton flash on fast loads, the region stays laid
-/// out but invisible for [appearDelay], then fades in.
+/// out but invisible for [appearDelay], then fades in and calls [onAppear].
 ///
 /// Skeletons are decorative: descendants are excluded from semantics, and
 /// [semanticLabel] (when given) is announced in their place.
@@ -43,6 +43,11 @@ class const PregoShimmer({
   /// How long the skeleton stays invisible before fading in, so loads that
   /// finish quickly never flash it. [Duration.zero] shows it immediately.
   final Duration appearDelay = const Duration(milliseconds: 300),
+
+  /// Called as the skeleton starts to fade in once [appearDelay] has elapsed,
+  /// so a caller can tell a skeleton the user saw from one that never showed.
+  /// A zero delay shows it from the start, without a call.
+  required final VoidCallback? onAppear,
 
   /// Peak colour of the sheen band. Defaults to a translucent white, which
   /// lightens the grey bars in both themes.
@@ -103,6 +108,7 @@ class _PregoShimmerState()
       if (!mounted) return;
       setState(() => _visible = true);
       syncMotion();
+      widget.onAppear?.call();
     });
   }
 
@@ -276,6 +282,9 @@ class const PregoSkeletonList({
 
   /// Announced to screen readers in place of the decorative rows.
   final String? semanticLabel,
+
+  /// See [PregoShimmer.onAppear].
+  required final VoidCallback? onAppear,
 }) extends StatelessWidget {
   /// Title-bar width fractions cycled across rows; the variation keeps the
   /// placeholder from reading as a striped pattern.
@@ -285,6 +294,7 @@ class const PregoSkeletonList({
   Widget build(BuildContext context) {
     return PregoShimmer(
       semanticLabel: semanticLabel,
+      onAppear: onAppear,
       child: Padding(
         padding: padding,
         child: Column(
