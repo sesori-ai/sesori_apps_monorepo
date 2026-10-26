@@ -49,8 +49,8 @@ class const RuntimeInstallException(
 /// older managed version directory throughout; placement only ever touches the
 /// pinned version directory and this runtime's staging paths. The caller's
 /// mutation-revalidation fence runs before managed-directory/download setup,
-/// scratch preparation, candidate validation, and the synchronous
-/// placement-plus-sentinel activation.
+/// scratch preparation, candidate validation, and the placement-plus-sentinel
+/// activation.
 class RuntimeInstallService({
   required final BinaryDownloadClient _downloadClient,
   required final ChecksumValidator _checksumValidator,
@@ -65,6 +65,8 @@ class RuntimeInstallService({
   static const String _candidateDirName = "candidate";
   static const String _validationWorkingDirName = "validation-cwd";
   static const String _validationStateDirName = "validation-state";
+  static const int _windowsRenameAttempts = 40;
+  static const Duration _windowsRenameRetryDelay = Duration(milliseconds: 250);
 
   /// Whether [versionDir] already holds a fully-installed binary whose recorded
   /// sentinel matches [sha256] — the "verified once at install" check that lets
@@ -207,14 +209,14 @@ class RuntimeInstallService({
       _throwIfAborted(startAborted);
       switch (asset) {
         case ArchiveRuntimeAsset(layout: RuntimeArchiveLayout.packageDirectory):
-          _placePackage(
+          await _placePackage(
             binaryInStaging: binaryInStaging,
             versionDir: versionDir,
             binaryFileName: binaryFileName,
             archiveBinaryName: asset.archiveBinaryName,
           );
         case ArchiveRuntimeAsset(layout: RuntimeArchiveLayout.singleBinary) || DirectBinaryRuntimeAsset():
-          _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
+          await _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
       }
 
       // Sentinel written last: its presence (with a matching hash) is the only
@@ -279,11 +281,11 @@ class RuntimeInstallService({
     return true;
   }
 
-  void _placeBinary({
+  Future<void> _placeBinary({
     required File binaryInStaging,
     required String versionDir,
     required String binaryFileName,
-  }) {
+  }) async {
     final Directory dir = Directory(versionDir);
     if (dir.existsSync()) {
       dir.deleteSync(recursive: true);
@@ -294,7 +296,7 @@ class RuntimeInstallService({
     // normalizes a target-triple-named member to a plain binary.
     final File canonicalBinary = File(p.join(versionDir, binaryFileName));
     canonicalBinary.parent.createSync(recursive: true);
-    binaryInStaging.renameSync(canonicalBinary.path);
+    await _renameWithRetry(entity: binaryInStaging, newPath: canonicalBinary.path);
   }
 
   /// Places an entire extracted package tree at [versionDir], keeping the entry
@@ -302,12 +304,12 @@ class RuntimeInstallService({
   /// [archiveBinaryName] identifies how far above the entry the package root
   /// begins. When that path differs from the canonical [binaryFileName], the
   /// entry file is renamed inside the placed tree rather than moved out of it.
-  void _placePackage({
+  Future<void> _placePackage({
     required File binaryInStaging,
     required String versionDir,
     required String binaryFileName,
     required String archiveBinaryName,
-  }) {
+  }) async {
     final String normalizedArchiveBinaryName = p.normalize(archiveBinaryName);
     final String normalizedBinaryFileName = p.normalize(binaryFileName);
     final List<String> archivePathSegments = p.split(normalizedArchiveBinaryName);
@@ -322,11 +324,28 @@ class RuntimeInstallService({
     }
     dir.parent.createSync(recursive: true);
     // Same filesystem (both under managedDir), so this rename is atomic.
-    packageInStaging.renameSync(versionDir);
+    await _renameWithRetry(entity: packageInStaging, newPath: versionDir);
     if (normalizedArchiveBinaryName != normalizedBinaryFileName) {
       final File canonicalBinary = File(p.join(versionDir, normalizedBinaryFileName));
       canonicalBinary.parent.createSync(recursive: true);
       File(p.join(versionDir, normalizedArchiveBinaryName)).renameSync(canonicalBinary.path);
+    }
+  }
+
+  /// On Windows, antivirus scanning and the image cache briefly keep a
+  /// just-validated executable open, so renaming it or its directory fails
+  /// with access denied. Retry there for a few seconds; elsewhere an access
+  /// error is a real permission problem and fails at once.
+  Future<void> _renameWithRetry({required FileSystemEntity entity, required String newPath}) async {
+    for (var attempt = 1; ; attempt++) {
+      try {
+        entity.renameSync(newPath);
+        return;
+      } on PathAccessException catch (error) {
+        if (!Platform.isWindows || attempt >= _windowsRenameAttempts) rethrow;
+        Log.d("[$_runtimeId] rename of '${entity.path}' denied (attempt $attempt), retrying: $error");
+        await Future<void>.delayed(_windowsRenameRetryDelay);
+      }
     }
   }
 
