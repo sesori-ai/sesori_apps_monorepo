@@ -125,7 +125,7 @@ void main() {
     expect(find.text(BridgeInstall.updateCommand), findsOneWidget);
   });
 
-  testWidgets("a bridge inside Sesori Desktop gets the app's update steps and no terminal commands", (tester) async {
+  testWidgets("a bridge inside Sesori Desktop points to Restart to update and no terminal commands", (tester) async {
     final copied = <String>[];
     tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
       if (call.method == "Clipboard.setData") copied.add((call.arguments as Map)["text"] as String);
@@ -138,10 +138,15 @@ void main() {
 
     expect(find.text("Update Sesori Desktop"), findsOneWidget);
     expect(find.text("Update Sesori Bridge"), findsNothing);
-    expect(find.text("This bridge runs inside Sesori Desktop. On that computer:"), findsOneWidget);
-    expect(find.text("1. Download the latest version:"), findsOneWidget);
-    expect(find.text("2. Quit Sesori Desktop (closing the window may not quit it)."), findsOneWidget);
-    expect(find.text("3. Install the new version, then open Sesori Desktop again."), findsOneWidget);
+    expect(find.text("This bridge runs inside Sesori Desktop, which updates itself."), findsOneWidget);
+    expect(
+      find.text("On that computer, choose Restart to update in Sesori's tray menu or Settings."),
+      findsOneWidget,
+    );
+    expect(
+      find.text("No Check for updates in Settings? That version predates automatic updates. Update it once by hand:"),
+      findsOneWidget,
+    );
     expect(find.text(BridgeInstall.updateCommand), findsNothing);
     expect(find.text(BridgeInstall.macLinuxCommand), findsNothing);
     expect(find.byTooltip("Copy command"), findsNothing);
