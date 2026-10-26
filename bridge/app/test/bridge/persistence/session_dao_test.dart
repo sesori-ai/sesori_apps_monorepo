@@ -60,7 +60,6 @@ void main() {
         isDedicated: true,
         createdAt: 200,
         worktreePath: "/repo/.worktrees/s1",
-        branchName: "s1",
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -88,7 +87,6 @@ void main() {
         isDedicated: true,
         createdAt: 100,
         worktreePath: "/repo/.worktrees/s1",
-        branchName: "feature/one",
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: null,
@@ -114,7 +112,6 @@ void main() {
         isDedicated: true,
         createdAt: 200,
         worktreePath: "/repo/.worktrees/s1",
-        branchName: "feature/one",
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: null,
@@ -138,7 +135,6 @@ void main() {
         isDedicated: false,
         createdAt: 100,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -174,7 +170,6 @@ void main() {
             isDedicated: false,
             createdAt: 100,
             worktreePath: null,
-            branchName: null,
             baseBranch: null,
             baseCommit: null,
             lastAgent: null,
@@ -212,7 +207,6 @@ void main() {
         isDedicated: true,
         createdAt: 100,
         worktreePath: "/repo/.worktrees/root",
-        branchName: "feature/root",
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: "build",
@@ -256,7 +250,6 @@ void main() {
       expect(dto?.title, equals("Bridge title"));
       expect(dto?.catalogTitle, equals("Backend title"));
       expect(dto?.worktreePath, equals("/repo/.worktrees/root"));
-      expect(dto?.branchName, equals("feature/root"));
       expect(dto?.baseBranch, equals("main"));
       expect(dto?.baseCommit, equals("abc123"));
       expect(dto?.lastAgent, isNull);

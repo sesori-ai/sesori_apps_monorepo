@@ -97,7 +97,9 @@ identify the release channel; query it afresh rather than copying example pins.
 - Prefer official stable releases. Do not silently substitute `main`, a
   prerelease, a fork, a different package, or a community adapter. Report channel
   disagreement or missing stable releases. Existing prerelease dependencies
-  inside an adapter are recorded honestly, not silently replaced or upgraded.
+  inside an adapter are recorded honestly, not silently replaced or upgraded. The
+  one standing exception is DeepSeek Harness, which publishes only prereleases:
+  the npm `next` dist-tag of `@deepseek-ai/dsh-agent` is the target (see the reference).
 - Distinguish upstream harness version, adapter version, protocol version,
   registry package version, and branded build identity. They need not match.
 - For GitHub releases check draft/prerelease flags, tag, date, assets and digests.
@@ -112,10 +114,13 @@ identify the release channel; query it afresh rather than copying example pins.
   a version/digest or turn uncertainty into a permanent old pin. Escalate an
   exceptional unresolved supply-chain problem under the temporary-hold policy.
   For closed source, record official distribution/build evidence and source limits.
-- Audit owned adapters as well as their underlying harness. DeepSeek may require
-  changes and a release in `sesori-ai/sesori-deepseek-acp` **before** this repo can
-  consume the new harness. Put producer changes, conformance, publication, asset
-  verification, and consumer pinning in the same dependency-ordered plan.
+- Audit owned adapters as well as their underlying harness. **Every refresh
+  includes DeepSeek's upstream harness**, not only the adapter's latest tag: when
+  DeepSeek Harness has moved past the adapter's embedded pin, migrate and release
+  `sesori-ai/sesori-deepseek-acp` first, then pin the consumer. Never report a newer
+  upstream harness as a follow-up instead of doing that update. Put producer
+  changes, conformance, publication, asset verification, and consumer pinning in
+  the same dependency-ordered work.
 
 Keep independent `minPathVersion` / `minVersion` backing values unchanged unless
 raising them is separately approved. Targets identify the selected stable
@@ -169,13 +174,15 @@ separately from Sesori implementation.
 
 Ask one compact, grouped decision list only for opportunities beyond the
 requested update: optional features, considerable refactors, floor changes or
-separate producer-release authority. Explain benefit, approximate size and risk.
+producer-release authority other than DeepSeek's routine adapter release (which a
+refresh request already authorizes). Explain benefit, approximate size and risk.
 Reuse existing explicit approvals; do not repeatedly ask whether to update an
 included harness or keep its old version. An unavailable authenticated test does
 not require an immediate credentials questionnaire: record its exact procedure
 and required help in the final follow-up batch, then continue implementation.
 Do not interpret update authorization as permission to access live accounts or
-publish a separate adapter. Keep unapproved optional work decision-pending.
+publish an adapter other than DeepSeek's routine release. Keep unapproved optional
+work decision-pending.
 
 Use [sesori-plan-maker](../sesori-plan-maker/SKILL.md) to create/update a durable
 plan under `.plan/active/<slug>/`. It must contain:

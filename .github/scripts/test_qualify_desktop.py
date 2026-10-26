@@ -298,7 +298,6 @@ class NativeInventoryTest(unittest.TestCase):
         self.assertLess(macos.index("--mode assemble"), macos.index("Use existing credentials"))
         self.assertIn("build/desktop-platform-probe/Sesori.app", macos)
         self.assertNotIn("secrets.", native)
-        self.assertIn("Typecheck supported Sparkle lifecycle API", native)
         self.assertIn("needs: tooling", other)
         self.assertNotIn("macos-gui", other)  # Other platforms must not wait on macOS compilation.
         self.assertNotIn("target: macos", other)

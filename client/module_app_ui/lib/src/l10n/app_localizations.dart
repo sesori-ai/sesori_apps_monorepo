@@ -415,18 +415,6 @@ abstract class AppLocalizations {
   /// **'Desktop updates'**
   String get desktopUpdatesTitle;
 
-  /// Opens the published desktop downloads page.
-  ///
-  /// In en, this message translates to:
-  /// **'View downloads'**
-  String get desktopUpdatesViewDownloads;
-
-  /// Manual update guidance for installs without an automatic engine.
-  ///
-  /// In en, this message translates to:
-  /// **'See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.'**
-  String get desktopUpdatesViewDownloadsDescription;
-
   /// Shown for source builds, which cannot update themselves.
   ///
   /// In en, this message translates to:

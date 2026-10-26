@@ -14,24 +14,8 @@ sealed class WorktreeResult();
 
 class WorktreeSuccess({
   required final String path,
-  required final String branchName,
   required final String baseBranch,
   required final String baseCommit,
 }) extends WorktreeResult;
 
 class WorktreeFallback({required final String originalPath, required final String reason}) extends WorktreeResult;
-
-enum GeneratedBranchRenameSkipReason() {
-  invalidGeneratedName,
-  initialBranchChanged,
-  initialBranchPublished,
-  targetCollisions,
-  unchanged,
-}
-
-sealed class GeneratedBranchRenameResult();
-
-class GeneratedBranchRenamed({required final String branchName}) extends GeneratedBranchRenameResult;
-
-class GeneratedBranchRenameSkipped({required final GeneratedBranchRenameSkipReason reason})
-    extends GeneratedBranchRenameResult;

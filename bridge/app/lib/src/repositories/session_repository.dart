@@ -187,7 +187,6 @@ class SessionRepository({
     required PromptModel? model,
     required bool isDedicated,
     required String? worktreePath,
-    required String? branchName,
     required String? baseBranch,
     required String? baseCommit,
     required String? lastAgent,
@@ -250,15 +249,13 @@ class SessionRepository({
             isDedicated: isDedicated,
             createdAt: createdAt,
             worktreePath: worktreePath,
-            branchName: branchName,
             baseBranch: baseBranch,
             baseCommit: baseCommit,
             lastAgent: lastAgent,
             lastAgentModel: lastAgentModel,
             fastMode: fastMode,
             pluginId: pluginId,
-            preservePullRequestScope:
-                existingBinding?.projectId == projectId && existingBinding?.branchName == branchName,
+            preservePullRequestScope: existingBinding?.projectId == projectId && existingBinding?.branchName == null,
           );
           if (parentBinding != null) {
             await _sessionDao.setParentSessionId(
@@ -541,18 +538,6 @@ class SessionRepository({
       projectionUpdatedAt: captureProjectionTimestamp(),
     );
     return updated ? await getCatalogSession(sessionId: sessionId) : null;
-  }
-
-  Future<bool> replaceGeneratedSessionBranch({
-    required String sessionId,
-    required String expectedBranchName,
-    required String branchName,
-  }) {
-    return _sessionDao.replaceGeneratedBranch(
-      sessionId: sessionId,
-      expectedBranchName: expectedBranchName,
-      branchName: branchName,
-    );
   }
 
   Future<bool> isSessionTombstoned({required String sessionId}) async {
@@ -1318,14 +1303,12 @@ class SessionRepository({
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async {
     final sessions = await _sessionDao.getOtherActiveSessionsSharing(
       sessionId: sessionId,
       projectId: projectId,
       worktreePath: worktreePath,
-      branchName: branchName,
     );
     return sessions.isNotEmpty;
   }

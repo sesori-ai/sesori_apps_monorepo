@@ -435,7 +435,6 @@ Future<void> _storeSession({
     isDedicated: false,
     createdAt: 100,
     worktreePath: null,
-    branchName: null,
     baseBranch: null,
     baseCommit: null,
     lastAgent: null,

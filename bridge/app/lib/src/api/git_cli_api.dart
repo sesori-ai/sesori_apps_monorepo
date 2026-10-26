@@ -260,61 +260,16 @@ class GitCliApi({
     return result.stdout.toString().trim().isNotEmpty;
   }
 
-  Future<bool> isValidBranchName({required String branchName}) async {
-    final arguments = ["check-ref-format", "--branch", branchName];
-    final result = await runGit(projectPath: ".", arguments: arguments);
-    return result.exitCode == 0 && result.stdout.toString().trim() == branchName;
-  }
-
-  Future<bool> hasUpstream({
-    required String projectPath,
-    required String branchName,
-  }) async {
-    final arguments = ["for-each-ref", "--format=%(upstream)", "refs/heads/$branchName"];
-    final result = await runGit(projectPath: projectPath, arguments: arguments);
-    if (result.exitCode != 0) {
-      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
-    }
-    return result.stdout.toString().trim().isNotEmpty;
-  }
-
-  Future<bool> hasRemoteBranch({
-    required String projectPath,
-    required String branchName,
-  }) async {
-    final remoteNames = await _listRemotes(projectPath: projectPath);
-    final matchingRefs = {for (final remote in remoteNames) "refs/remotes/$remote/$branchName"};
-    if (matchingRefs.isEmpty) return false;
-
-    const refArguments = ["for-each-ref", "--format=%(refname)", "refs/remotes"];
-    final refsResult = await runGit(projectPath: projectPath, arguments: refArguments);
-    if (refsResult.exitCode != 0) {
-      throw ProcessException("git", refArguments, refsResult.stderr.toString(), refsResult.exitCode);
-    }
-    return refsResult.stdout.toString().split("\n").map((ref) => ref.trim()).any(matchingRefs.contains);
-  }
-
-  Future<void> renameBranch({
-    required String projectPath,
-    required String oldBranchName,
-    required String newBranchName,
-  }) async {
-    final arguments = ["branch", "-m", "--", oldBranchName, newBranchName];
-    final result = await runGit(projectPath: projectPath, arguments: arguments);
-    if (result.exitCode != 0) {
-      throw ProcessException("git", arguments, result.stderr.toString(), result.exitCode);
-    }
-  }
-
+  /// Adds a worktree at [worktreePath] on a detached HEAD at [startPoint].
+  /// The agent working there creates its own branch.
   Future<bool> createWorktree({
     required String projectPath,
     required String worktreePath,
-    required String branchName,
     required String startPoint,
   }) async {
     final result = await runGit(
       projectPath: projectPath,
-      arguments: ["worktree", "add", "-b", branchName, "--no-track", "--", worktreePath, startPoint],
+      arguments: ["worktree", "add", "--detach", "--", worktreePath, startPoint],
     );
     return result.exitCode == 0;
   }

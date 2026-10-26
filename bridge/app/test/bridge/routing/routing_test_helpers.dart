@@ -160,7 +160,6 @@ class FakeSessionDao() {
     required bool isDedicated,
     required int createdAt,
     required String? worktreePath,
-    required String? branchName,
     required String? baseBranch,
     required String? baseCommit,
     required String? lastAgent,
@@ -175,7 +174,7 @@ class FakeSessionDao() {
       parentSessionId: null,
       directory: worktreePath ?? projectId,
       worktreePath: worktreePath,
-      branchName: branchName,
+      branchName: null,
       currentBranchName: null,
       currentGithubRepositoryIdentity: null,
       isDedicated: isDedicated,
@@ -358,7 +357,6 @@ Future<void> recordSessionBinding({
       isDedicated: false,
       createdAt: 1,
       worktreePath: null,
-      branchName: null,
       baseBranch: null,
       baseCommit: null,
       lastAgent: null,
@@ -435,13 +433,6 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<Session?> setGeneratedSessionTitleIfAbsent({required String sessionId, required String title}) async => null;
 
   @override
-  Future<bool> replaceGeneratedSessionBranch({
-    required String sessionId,
-    required String expectedBranchName,
-    required String branchName,
-  }) async => false;
-
-  @override
   Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
@@ -482,7 +473,6 @@ class _NoopSessionRepository() implements SessionRepository {
     required PromptModel? model,
     required bool isDedicated,
     required String? worktreePath,
-    required String? branchName,
     required String? baseBranch,
     required String? baseCommit,
     required String? lastAgent,
@@ -529,8 +519,7 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async => false;
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
@@ -807,13 +796,6 @@ class FakeSessionRepository({
   }
 
   @override
-  Future<bool> replaceGeneratedSessionBranch({
-    required String sessionId,
-    required String expectedBranchName,
-    required String branchName,
-  }) async => false;
-
-  @override
   Future<DeletedSessionSubtree> deleteSession({required String sessionId}) async => _deletedSession(sessionId);
 
   @override
@@ -862,7 +844,6 @@ class FakeSessionRepository({
     required PromptModel? model,
     required bool isDedicated,
     required String? worktreePath,
-    required String? branchName,
     required String? baseBranch,
     required String? baseCommit,
     required String? lastAgent,
@@ -1036,8 +1017,7 @@ class FakeSessionRepository({
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async => false;
 
   @override

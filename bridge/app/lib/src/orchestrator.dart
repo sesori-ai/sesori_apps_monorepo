@@ -352,7 +352,6 @@ class Orchestrator({
     final worktreeRepository = WorktreeRepository(
       worktreesDirectory: sesoriWorktreesDirectory(),
       projectsDao: _database.projectsDao,
-      sessionDao: _database.sessionDao,
       filesystemApi: const FilesystemApi(),
       gitApi: gitCliApi,
       runtime: _pluginRuntime,
@@ -381,7 +380,6 @@ class Orchestrator({
     final sessionMutationDispatcher = SessionMutationDispatcher(
       sessionRepository: sessionRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
-      worktreeService: worktreeService,
     );
     final pushTracker = PushSessionStateTracker(now: clock.now);
     final pushRateLimiter = PushRateLimiter(now: clock.now);
@@ -915,7 +913,6 @@ class Orchestrator({
       pluginId: session.pluginId,
       event: switch (mutation) {
         SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
-        SessionBranchUpdated() ||
         SessionContinuationUpdated() ||
         SessionApprovalOverrideUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),

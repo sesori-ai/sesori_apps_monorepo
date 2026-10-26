@@ -280,18 +280,15 @@ variant, and worktree mode, and creating the session with its first input.
   model and variant choices are validated before prompt dispatch; omitted choices
   preserve native defaults. Agent names reaching clients are display names, with
   native identifiers resolved only inside the plugin.
-- Dedicated mode creates a branch and worktree from the resolved base branch
-  using a bridge-generated lowercase `color-animal` name; the branch is
-  `sesori/color-animal` and the worktree directory is the bare slug, created at
-  `~/.sesori/worktrees/<project folder>-<8-hex path hash>/<slug>`, outside the
-  project. History import hides sessions found there, and worktrees that older
-  bridges created in `<project>/.worktrees/` stay removable. Generated
-  branch refinement keeps the `sesori/` prefix. It checks both branch
-  and filesystem-path occupancy across three distinct pairs, then makes bounded
-  attempts with a secure hexadecimal suffix. It falls back to the project
-  directory when the repository is absent, commitless, or creation fails, and
-  records worktree, branch, base branch, and base commit; in-place mode records
-  the HEAD commit as baseline.
+- Dedicated mode creates a worktree on a detached HEAD at the latest commit of the resolved base branch; the bridge
+  creates no branch. The worktree directory is a bridge-generated lowercase `color-animal` slug, created at
+  `~/.sesori/worktrees/<project folder>-<8-hex path hash>/<slug>`, outside the project. History import hides sessions
+  found there, and worktrees that older bridges created in `<project>/.worktrees/` stay removable. It checks
+  filesystem-path occupancy across three distinct pairs, then makes bounded attempts with a secure hexadecimal suffix.
+  It falls back to the project directory when the repository is absent, commitless, or creation fails, and records
+  worktree, base branch, and base commit; in-place mode records the HEAD commit as baseline. The session note tells
+  the agent the worktree is detached at the base branch's latest commit and asks it to create a branch for the task,
+  named by the repository's own instructions, before its first commit or after the work.
 - A session created for the bridge's scratch project, whose id is the scratch
   root `~/.sesori/scratch`, runs in its own new folder
   `~/.sesori/scratch/<YYYY-MM-DD>-<random>`; the bridge creates the root when it
@@ -399,13 +396,6 @@ variant, and worktree mode, and creating the session with its first input.
   conditional bridge-owned update delivered through the existing
   `session.updated` event. User rename or deletion wins, and plugin rename
   failure does not remove the locally committed generated title.
-- Generated metadata may also rename a root dedicated session's still-current
-  initial branch when it has no upstream or matching remote ref. The worktree
-  directory and plugin working path remain unchanged. Generated refs are validated, collisions use a
-  bounded secure suffix, durable and current branch facts commit together, and
-  the existing `session.updated` event reports the result without claiming a
-  title change. Switched, detached, published, invalid, and failed refinements
-  retain the usable initial branch; persistence failure attempts Git rollback.
 - Graceful shutdown fences new create routes, aborts and drains accepted metadata
   work, drains session operations and local mutations, then closes normalized
   event delivery and its remaining tails.
@@ -487,9 +477,9 @@ variant, and worktree mode, and creating the session with its first input.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
-| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a local lowercase `sesori/color-animal` branch, worktree, and baseline; a gated metadata request does not gate a queryable create response; eligible generated branch refinement preserves the worktree path and publishes the updated session. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. Pi startup dialog fixtures: answer questions before initial history, cancel catalog-probe dialogs without granting access, and preserve queued commands and partial UTF-8 bytes when native RPC takes over. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message, and a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title and eligible branch refinement arrive through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
-| L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, with queued follow-ups and unsent composer content appended in typed order, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied branch/path pairs are skipped and pair exhaustion uses a suffix; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, switched/detached/published branch, invalid generated ref, local/remote collision exhaustion, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
+| L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a lowercase `color-animal` worktree on a detached HEAD at the base tip, no branch, and a baseline; a gated metadata request does not gate a queryable create response. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. Pi startup dialog fixtures: answer questions before initial history, cancel catalog-probe dialogs without granting access, and preserve queued commands and partial UTF-8 bytes when native RPC takes over. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message, and a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title arrives through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, with queued follow-ups and unsent composer content appended in typed order, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied worktree paths are skipped and path exhaustion uses a suffix; a dedicated worktree starts on a detached HEAD at the base tip with no branch created; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
 ## Exploration Guidance
@@ -498,9 +488,8 @@ Vary plugin choice, warm cache versus fresh discovery, dedicated versus in-place
 mode, prompt versus command start, default versus explicit options, and fresh,
 collision-prone, or non-git projects. Also vary fast, slow, failed, and
 shutdown-aborted metadata, plus user rename/deletion while title generation is
-in flight. For dedicated sessions, vary untouched, switched, detached, upstream,
-matching-remote, colliding, and rollback-failing branches while confirming the
-directory stays fixed and title application does not wait for branch refinement.
+in flight. For dedicated sessions, vary an occupied worktree path and confirm the agent creates its own branch from
+the detached HEAD.
 For launch behavior, vary in-route versus background completion, success versus
 definitive rejection versus response loss, navigation before completion, and
 reconnect or option refresh while restoration is pending. For Antigravity, vary cold discovery versus reuse, concurrent reads, reserved-session
@@ -608,7 +597,8 @@ startup-extension file failure, retry once the filesystem is usable.
   silently leaves the previous catalog in place.
 - Recorded worktree, branch, base branch, or base commit disagrees with git.
 - A dedicated workspace name comes from generated metadata, is not lowercase
-  `sesori/color-animal` form, or collides with an existing branch or path.
+  `color-animal` form, or collides with an existing path.
+- A new dedicated worktree starts on a branch, or its detached HEAD is not the latest base-branch commit.
 - Bridge-owned context renders as the user's own message or command arguments.
 - DeepSeek's default catalog omits V4.1 Flash after installing the target runtime,
   or selecting it sends a different upstream model ID.
@@ -632,10 +622,6 @@ startup-extension file failure, retry once the filesystem is usable.
 - Metadata completion delays the create response, creates an unqueryable session,
   overwrites a user title, resurrects a deletion, or loses the local title when
   backend rename fails.
-- Generated branch refinement moves the worktree directory, renames a switched,
-  upstream, or matching-remote branch, overwrites a newer current-branch
-  observation, delays title application, persists facts that disagree with Git,
-  or misses its session update.
 - The sending bubble waits for network metadata, appears after a spinner or
   empty page, omits the submitted text, command or images, gives up on a healthy
   create before 180 s, changes the route before a durable
