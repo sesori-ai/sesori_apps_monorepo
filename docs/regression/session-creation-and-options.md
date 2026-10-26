@@ -245,7 +245,10 @@ variant, and worktree mode, and creating the session with its first input.
   neither the heading nor the composer moves as the bridge answers. The agent and
   model pills shimmer until options arrive, and the harness pill until discovery
   answers; its width then eases over about 200 ms to the chosen harness's, so the
-  centred project pill glides to its new place. The attach button holds its place, inert, until the harness says
+  centred project pill glides to its new place. When discovery fails or finds no harness, the harness pill's room
+  leaves at once; the project pill paints from where it was and slides across over about 200 ms to rest exactly
+  centred, on one line or wrapped (`new_session_screen_test`), moving with the heading as the page re-centres.
+  Reduced motion places it at once. The attach button holds its place, inert, until the harness says
   whether it takes images; only a harness that does not (Grok) folds it away. The
   "New worktree" row shimmers in the room the last project left it while a folder
   project is checked; a page's first composer gives a folder that room. "No project"
@@ -556,6 +559,8 @@ startup-extension file failure, retry once the filesystem is usable.
   cache, Create remains enabled, Recheck becomes unavailable, the plugin runtime
   becomes globally blocked, or Pi reports no models without local `/login` guidance.
 - Options are stale where a discovery failure should be an explicit error.
+- When discovery fails or finds no harness, the project pill snaps sideways, slides under reduced motion, drifts
+  apart from the heading as the page re-centres, or comes to rest off centre.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch
   session cannot be deleted, deletes before the scratch process exits, or hides
   a real CLI/database failure as benign absence.

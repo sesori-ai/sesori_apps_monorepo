@@ -1,7 +1,6 @@
 import "dart:async";
 import "dart:math" as math;
 
-import "package:flutter/rendering.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -22,6 +21,7 @@ import "../session_detail/widgets/transcript_motion.dart";
 import "new_session_header.dart";
 import "new_session_no_harness_notice.dart";
 import "new_session_plugin_chooser.dart";
+import "slide_from_last_position.dart";
 
 typedef NewSessionComposerScopeBuilder = Widget Function({required Widget child});
 typedef NewSessionCreatedCallback = void Function({required Session session});
@@ -659,7 +659,14 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       key: _composerKey,
       child: widget.pageChrome == null
           ? composerColumn
-          : _SlideFromLastPosition(progress: _sendingMotion, towardSending: isSending, child: composerColumn),
+          // The composer's one move between the centred column and the
+          // bottom edge (D8).
+          : SlideFromLastPosition(
+              progress: _sendingMotion,
+              forward: isSending,
+              horizontalOnly: false,
+              child: composerColumn,
+            ),
     );
     Widget? sendingPane({required double? transcriptWidth}) => switch (sendingPhase) {
       null => null,
@@ -1100,93 +1107,4 @@ class const _OptionPillsPlaceholder({required final bool compact}) extends State
       ),
     );
   }
-}
-
-/// Paints [child] sliding from where it last painted to where it lies now,
-/// along [progress], each time [towardSending] flips: the composer's one move
-/// between the centred column and the bottom edge (D8). Only the painting
-/// moves; layout and the composer's state are already in their new place.
-class const _SlideFromLastPosition({
-  required final Animation<double> progress,
-  required final bool towardSending,
-  required super.child,
-}) extends SingleChildRenderObjectWidget {
-  @override
-  _RenderSlideFromLastPosition createRenderObject(BuildContext context) =>
-      _RenderSlideFromLastPosition(progress: progress, towardSending: towardSending);
-
-  @override
-  void updateRenderObject(BuildContext context, _RenderSlideFromLastPosition renderObject) {
-    renderObject.update(progress: progress, towardSending: towardSending);
-  }
-}
-
-class _RenderSlideFromLastPosition({required Animation<double> progress, required bool towardSending})
-    extends RenderProxyBox {
-  Animation<double> _progress = progress;
-  bool _towardSending = towardSending;
-
-  /// Where the child last painted, globally; the next move starts there.
-  Offset? _lastPosition;
-
-  /// How far the child was from its new place when the move began.
-  Offset _from = Offset.zero;
-
-  /// Where the child paints relative to its layout, so taps and semantics
-  /// follow what is on screen during the move.
-  Offset _shift = Offset.zero;
-  bool _moved = false;
-
-  void update({required Animation<double> progress, required bool towardSending}) {
-    if (!identical(progress, _progress)) {
-      if (attached) _progress.removeListener(markNeedsPaint);
-      _progress = progress;
-      if (attached) _progress.addListener(markNeedsPaint);
-    }
-    if (towardSending != _towardSending) {
-      _towardSending = towardSending;
-      _moved = true;
-      markNeedsPaint();
-    }
-  }
-
-  @override
-  void attach(PipelineOwner owner) {
-    super.attach(owner);
-    _progress.addListener(markNeedsPaint);
-  }
-
-  @override
-  void detach() {
-    _progress.removeListener(markNeedsPaint);
-    super.detach();
-  }
-
-  @override
-  void paint(PaintingContext context, Offset offset) {
-    final position = localToGlobal(Offset.zero);
-    final done = _towardSending ? _progress.value : 1 - _progress.value;
-    final remaining = 1 - Curves.easeOutCubic.transform(done);
-    if (_moved) {
-      // A flip mid-move (a launch failing within the motion) resumes from
-      // where the child painted, scaled to the part of the curve still left.
-      final gap = (_lastPosition ?? position) - position;
-      _from = remaining < 1e-6 ? Offset.zero : gap / remaining;
-      _moved = false;
-    }
-    _shift = _from * remaining;
-    _lastPosition = position + _shift;
-    super.paint(context, offset + _shift);
-  }
-
-  @override
-  bool hitTestChildren(BoxHitTestResult result, {required Offset position}) => result.addWithPaintOffset(
-    offset: _shift,
-    position: position,
-    hitTest: (result, transformed) => super.hitTestChildren(result, position: transformed),
-  );
-
-  @override
-  void applyPaintTransform(RenderBox child, Matrix4 transform) =>
-      transform.translateByDouble(_shift.dx, _shift.dy, 0, 1);
 }

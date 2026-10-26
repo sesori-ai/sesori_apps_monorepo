@@ -8,6 +8,7 @@ import "../../extensions/build_context_x.dart";
 import "../project_list/project_path_labels.dart";
 import "../project_picker/project_picker.dart";
 import "../session_detail/widgets/transcript_motion.dart";
+import "slide_from_last_position.dart";
 
 /// [projectId]'s name in the live project list, which knows a rename the
 /// route's [projectName] can miss.
@@ -31,12 +32,50 @@ class const NewSessionHeader({
   required final String? projectName,
   required final NewSessionProjectSelected? onProjectSelected,
   required final Widget? harness,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
+  @override
+  State<NewSessionHeader> createState() => _NewSessionHeaderState();
+}
+
+class _NewSessionHeaderState() extends State<NewSessionHeader> with SingleTickerProviderStateMixin {
+  /// The harness's room beside the project, from gone (0) to held (1).
+  late final AnimationController _harnessMotion;
+
+  @override
+  void initState() {
+    super.initState();
+    _harnessMotion = AnimationController(
+      vsync: this,
+      duration: transcriptMotionDuration,
+      value: widget.harness == null ? 0 : 1,
+    );
+  }
+
+  @override
+  void didUpdateWidget(NewSessionHeader oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    final held = widget.harness != null;
+    if (held == (oldWidget.harness != null)) return;
+    if (context.isReducedMotion) {
+      _harnessMotion.value = held ? 1 : 0;
+    } else if (held) {
+      _harnessMotion.forward();
+    } else {
+      _harnessMotion.reverse();
+    }
+  }
+
+  @override
+  void dispose() {
+    _harnessMotion.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
-    final onProjectSelected = this.onProjectSelected;
+    final NewSessionHeader(:projectId, :projectName, :onProjectSelected, :harness) = widget;
     final label = onProjectSelected == null
         ? projectName ?? loc.projectListDefaultName
         : liveProjectName(context: context, projectId: projectId, projectName: projectName);
@@ -62,15 +101,24 @@ class const NewSessionHeader({
           spacing: PregoSpacing.md,
           runSpacing: PregoSpacing.md,
           children: [
-            if (onProjectSelected == null)
-              pill(onPressed: null)
-            else
-              ProjectPicker(
-                selectedProjectId: projectId,
-                onSelected: onProjectSelected,
-                onAllProjects: null,
-                triggerBuilder: (_, open) => pill(onPressed: open),
-              ),
+            // The harness's room leaves at once when discovery fails or finds
+            // none, and returns at once when it runs again, so the project
+            // paints from where it was and slides to its new place. Across
+            // only: the column moving around the header carries it with the
+            // heading.
+            SlideFromLastPosition(
+              progress: _harnessMotion,
+              forward: harness != null,
+              horizontalOnly: true,
+              child: onProjectSelected == null
+                  ? pill(onPressed: null)
+                  : ProjectPicker(
+                      selectedProjectId: projectId,
+                      onSelected: onProjectSelected,
+                      onAllProjects: null,
+                      triggerBuilder: (_, open) => pill(onPressed: open),
+                    ),
+            ),
             // The harness's width eases as its shimmer turns into the
             // chooser, so the centred row glides rather than jumps.
             if (harness case final harness?)
