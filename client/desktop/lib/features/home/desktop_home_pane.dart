@@ -67,11 +67,44 @@ class const DesktopHomePane({
     );
   }
 
-  Widget _buildBody(BuildContext context) {
+  /// The ready home and the status page cross-fade, as when a computer switch
+  /// loads and then lands. Both fill the body, so neither moves while they
+  /// cross, and the one leaving takes no clicks, focus or announcements.
+  Widget _buildBody(BuildContext context) => AnimatedSwitcher(
+    duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
+    switchInCurve: Curves.easeOut,
+    switchOutCurve: Curves.easeIn,
+    // Unkeyed, unlike the default, so each switch gets an entry of its own: a
+    // body back before its last one has faded out would otherwise replace that
+    // one at once, which then vanishes mid-fade.
+    transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+    layoutBuilder: (current, previous) => Stack(
+      fit: StackFit.expand,
+      children: [
+        for (final child in previous) _crossing(child: child, leaving: true),
+        if (current != null) _crossing(child: current, leaving: false),
+      ],
+    ),
+    child: _body(context),
+  );
+
+  /// Wraps a body under its entry's key, so a body that starts leaving keeps
+  /// its state.
+  static Widget _crossing({required Widget child, required bool leaving}) => IgnorePointer(
+    key: child.key,
+    ignoring: leaving,
+    child: ExcludeFocus(
+      excluding: leaving,
+      child: ExcludeSemantics(excluding: leaving, child: child),
+    ),
+  );
+
+  Widget _body(BuildContext context) {
     final Widget status;
     switch (context.watch<ProjectListCubit>().state) {
       case ProjectListLoaded(:final projects):
         return DesktopHomeStart(
+          key: const Key("desktop-home-ready"),
           projects: projects,
           createNewSessionCubit: ({required projectId, required projectName, required projectKind}) =>
               createNewSessionCubit(
@@ -103,6 +136,7 @@ class const DesktopHomePane({
         status = _disconnectedView(context: context);
     }
     return ColoredBox(
+      key: const Key("desktop-home-status"),
       color: Theme.of(context).scaffoldBackgroundColor,
       child: CustomScrollView(
         slivers: [

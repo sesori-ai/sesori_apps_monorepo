@@ -246,7 +246,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 9900));
         expect(lineOpacity(tester), 0);
         expect(find.bySemanticsLabel(line), findsNothing);
-        expect(find.bySemanticsLabel("Loading projects"), findsOneWidget);
+        expect(find.semantics.byLabel("Loading projects"), findsOne);
 
         // The app reaches the bridge and loads the projects: the launch's wait
         // is dropped, so its 10 s pass without the line.
@@ -283,7 +283,7 @@ void main() {
         expect(tester.getRect(loader), place);
         expect(tester.getRect(find.text(line)).top, greaterThan(place.bottom));
         expect(find.bySemanticsLabel(line), findsOneWidget);
-        expect(find.bySemanticsLabel("Loading projects"), findsOneWidget);
+        expect(find.semantics.byLabel("Loading projects"), findsOne);
         await tester.pumpWidget(const SizedBox.shrink());
       } finally {
         semantics.dispose();
@@ -492,6 +492,179 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.byKey(const Key("desktop-computer-header")), findsNothing);
+    });
+  });
+
+  group("a computer switch", () {
+    const project = ProjectSummary(id: "one", name: "demo-app", path: "/one", time: null);
+    const ready = ProjectListState.loaded(projects: [project], folderProjects: [project], scratchProject: null);
+    final composer = find.byType(PromptInput);
+    final loader = find.byType(PregoAiLoader);
+    late StreamController<ProjectListState> updates;
+
+    setUp(() {
+      // The composer's own services, on a bridge that never answers.
+      final plugins = _MockPluginService();
+      when(
+        () => plugins.discover(
+          currentSelectedPluginId: any(named: "currentSelectedPluginId"),
+          currentSelectionBridgeId: any(named: "currentSelectionBridgeId"),
+        ),
+      ).thenAnswer((_) => Completer<ApiResponse<NewSessionPluginDiscovery>>().future);
+      final projectRepository = MockProjectRepository();
+      when(
+        () => projectRepository.getProject(projectId: any(named: "projectId")),
+      ).thenAnswer((_) => Completer<ApiResponse<Project>>().future);
+      final analytics = MockProductAnalyticsService();
+      final tracker = NewSessionSelectionTracker();
+      getIt
+        ..registerSingleton<NewSessionPluginService>(plugins)
+        ..registerSingleton<NewSessionOptionsService>(_MockOptionsService())
+        ..registerSingleton<ProjectRepository>(projectRepository)
+        ..registerSingleton<NewSessionSelectionTracker>(tracker)
+        ..registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository())
+        ..registerSingleton<ProductAnalyticsService>(analytics)
+        ..registerSingleton<SessionLaunchService>(
+          SessionLaunchService(
+            sessionRepository: MockSessionRepository(),
+            launchRepository: inMemorySessionLaunchRepository(),
+            feedbackPromptService: FakeFeedbackPromptService(),
+            productAnalyticsService: analytics,
+            selectionTracker: tracker,
+            authSession: FakeAuthSession(initialState: const AuthState.initial()),
+          ),
+        )
+        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+      whenListen(sessions, const Stream<AllSessionsState>.empty(), initialState: _list(defaultProjectId: project.id));
+      updates = StreamController<ProjectListState>();
+      addTearDown(updates.close);
+    });
+
+    Future<void> pumpReadyHome({required WidgetTester tester}) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpHome(tester: tester, state: ready, updates: updates.stream);
+    }
+
+    // The state lands, then the frame it schedules starts the cross-fade.
+    Future<void> land({required WidgetTester tester, required ProjectListState state}) async {
+      updates.add(state);
+      await tester.pump();
+      await tester.pump();
+    }
+
+    // The opacity [finder] is painted with: every fade above it, multiplied.
+    double opacityOf({required WidgetTester tester, required Finder finder}) => tester
+        .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
+        .fold<double>(1, (opacity, fade) => opacity * fade.opacity.value);
+
+    testWidgets("cross-fades from the composer to the loader and back, each staying in its place", (tester) async {
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+
+      // Switching away: the composer fades out as the next computer loads.
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: composer), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(tester.getRect(composer), composerRect);
+      final loaderRect = tester.getRect(loader);
+
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(composer, findsNothing);
+      expect(opacityOf(tester: tester, finder: loader), 1);
+      expect(tester.getRect(loader), loaderRect);
+
+      // Its projects arrive: the composer fades in over the leaving loader.
+      await land(tester: tester, state: ready);
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: composer), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(tester.getRect(composer), composerRect);
+      expect(tester.getRect(loader), loaderRect);
+      // The arriving composer takes clicks while it fades in.
+      expect(composer.hitTestable(), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.getRect(composer), composerRect);
+    });
+
+    testWidgets("the leaving body takes no clicks, focus or announcements as it fades", (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await pumpReadyHome(tester: tester);
+        // A draft keeps the field open once it loses focus.
+        await tester.tap(composer);
+        await tester.pump();
+        await tester.enterText(find.byType(EditableText), "Fix the flaky test");
+        await tester.pump(const Duration(milliseconds: 300));
+        final field = tester.widget<EditableText>(find.byType(EditableText)).focusNode;
+        expect(field.hasFocus, isTrue);
+
+        await land(tester: tester, state: const ProjectListState.loading());
+        await tester.pump(const Duration(milliseconds: 110));
+        expect(find.byType(EditableText), findsOneWidget);
+        expect(field.hasFocus, isFalse);
+        field.requestFocus();
+        await tester.pump();
+        expect(field.hasFocus, isFalse);
+        expect(find.semantics.byLabel("Loading projects"), findsOne);
+
+        await tester.pump(const Duration(milliseconds: 230));
+        await land(tester: tester, state: ready);
+        await tester.pump(const Duration(milliseconds: 110));
+        expect(loader, findsOneWidget);
+        expect(find.semantics.byLabel("Loading projects"), findsNothing);
+        expect(composer.hitTestable(), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+      } finally {
+        semantics.dispose();
+      }
+    });
+
+    testWidgets("with reduced motion, swaps at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await pumpReadyHome(tester: tester);
+
+      await land(tester: tester, state: const ProjectListState.loading());
+      expect(composer, findsNothing);
+      expect(opacityOf(tester: tester, finder: loader), 1);
+
+      await land(tester: tester, state: ready);
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+    });
+
+    testWidgets("switching back and forth faster than the fade settles on the last body alone", (tester) async {
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 60));
+      final leaving = opacityOf(tester: tester, finder: composer);
+      await land(tester: tester, state: ready);
+      // The composer coming back is a new one: the one leaving goes on fading
+      // from where it was, under the leaving loader and the new composer.
+      expect(find.byType(DesktopHomeStart), findsNWidgets(2));
+      expect(opacityOf(tester: tester, finder: composer.first), leaving);
+      expect(opacityOf(tester: tester, finder: composer.last), 0);
+      expect(loader, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 60));
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 60));
+      await land(tester: tester, state: ready);
+
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DesktopHomeStart), findsOneWidget);
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.getRect(composer), composerRect);
     });
   });
 
@@ -893,6 +1066,10 @@ class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDisp
 class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
+
+class _MockPluginService() extends Mock implements NewSessionPluginService;
+
+class _MockOptionsService() extends Mock implements NewSessionOptionsService;
 
 class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements AllSessionsCubit;
 

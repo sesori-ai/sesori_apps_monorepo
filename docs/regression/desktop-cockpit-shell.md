@@ -209,7 +209,10 @@ The main pane hosts one full-width routed page.
 - Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
   menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
   computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
-  state. The desktop starts on the stored pick, else this computer when its bridge id is known; a fresh install
+  state. The body cross-fades between the composer and the loader or another status page, as when a switch loads
+  the next computer's projects and lands on its composer: each stays in place, the swap is at once with reduced
+  motion, and the body fading out takes no clicks, focus or announcements. The desktop starts on the stored pick,
+  else this computer when its bridge id is known; a fresh install
   connects to the relay's default computer until its helper registers. Each sign-in pins this computer again when
   nothing is stored. The desktop follows this computer's supervised bridge when its id appears or changes (a fresh
   install, a new login, a re-registration) unless the user picked another computer in this sign-in; picking this
