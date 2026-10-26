@@ -30,5 +30,15 @@
 	<string>MainMenu</string>
 	<key>NSPrincipalClass</key>
 	<string>NSApplication</string>
+	<key>SUAutomaticallyUpdate</key>
+	<true/>
+	<key>SUEnableAutomaticChecks</key>
+	<true/>
+	<key>SUPublicEDKey</key>
+	<string>fX8esm5FEY71sv0tGsx2Wdb0DB5IECuPdtdYHd5Wun4=</string>
+	<key>SUScheduledCheckInterval</key>
+	<integer>21600</integer>
+	<key>SUVerifyUpdateBeforeExtraction</key>
+	<true/>
 </dict>
 </plist>

@@ -22,7 +22,9 @@ enum DesktopExitIntent() {
 /// The helper is stopped next; when that fails, a helper that was on is
 /// restored. Only then does a downloaded Velopack update start its updater,
 /// which waits a bounded time for this process to exit and then replaces the
-/// install, so the helper must already be gone. A restart restores the helper
+/// install, so the helper must already be gone. A Sparkle restart likewise
+/// installs only after the helper stopped; a Sparkle quit installs on normal
+/// termination with nothing to start here. A restart restores the helper
 /// when that fails too. Failures are rethrown, so the app keeps running. A
 /// quit still exits when the updater fails to start; the update stays
 /// downloaded for the next exit.

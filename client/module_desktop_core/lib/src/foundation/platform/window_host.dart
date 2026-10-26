@@ -3,6 +3,11 @@ import "package:meta/meta.dart";
 /// Events emitted by the dumb native-window adapter.
 enum WindowHostEvent() {
   closeRequested,
+
+  /// The system asked the whole app to quit (macOS Cmd+Q, Dock Quit, logout).
+  /// The host waits until `DesktopApplicationTerminator` terminates or
+  /// cancels the termination.
+  quitRequested,
   moved,
   resized,
 }

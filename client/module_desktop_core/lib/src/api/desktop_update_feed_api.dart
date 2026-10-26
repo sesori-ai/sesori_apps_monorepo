@@ -13,6 +13,7 @@ class const DesktopUpdateFeed({required final Uint8List bytes, required final St
 /// Layer-1 unauthenticated GETs of this install's Velopack feed, its `.sig`
 /// and the full package it names, from
 /// `https://storage.googleapis.com/sesori-ai-linux-packages/desktop-updates/k1/<channel>/<os>-<arch>/`.
+/// macOS reads its Sparkle `appcast.xml` from the same directory.
 @lazySingleton
 class DesktopUpdateFeedApi({
   required final http.Client _client,
@@ -50,6 +51,9 @@ class DesktopUpdateFeedApi({
       await sink.close();
     }
   }
+
+  /// Sparkle fetches and verifies this appcast itself.
+  Uri appcastUri({required DesktopBundleIdentity identity}) => _feedUri(identity: identity, fileName: "appcast.xml");
 
   Future<Uint8List> _get({required Uri uri}) async {
     final http.Response response = await _client.get(uri).timeout(_requestTimeout);

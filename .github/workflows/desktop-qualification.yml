@@ -81,6 +81,8 @@ on:
       - '.github/scripts/package_desktop_macos.py'
       - '.github/scripts/test_package_desktop_macos.py'
       - 'client/desktop/macos/Bridge.entitlements'
+      - 'client/desktop/macos/Runner/Info.plist'
+      - 'client/module_desktop_core/lib/src/foundation/desktop_update_public_key.dart'
       - '.github/scripts/package_desktop_windows.py'
       - '.github/scripts/test_package_desktop_windows.py'
       - '.github/scripts/package_desktop_linux.py'
@@ -105,7 +107,6 @@ on:
       - 'client/desktop/lib/core/platform/io_launch_at_login.dart'
       - '.github/scripts/macos_signing_ci.sh'
       - '.github/scripts/test_macos_signing_workflows.py'
-      - '.github/scripts/probe_sparkle.swift'
       - '.github/scripts/probe_desktop_macos.py'
       - '.github/scripts/test_probe_desktop_macos.py'
       - '.github/scripts/qualify_desktop_macos_upgrade.py'
@@ -1223,20 +1224,6 @@ jobs:
           mkdir -p build/desktop-qualification
           python .github/scripts/qualify_desktop.py bootstrap --arch '${{ matrix.arch }}' --sdk-dir "$SDK_DIR" \
             2>&1 | tee build/desktop-qualification/bootstrap.log
-      - name: Typecheck supported Sparkle lifecycle API
-        run: |
-          set -euo pipefail
-          cd build/desktop-qualification
-          curl --fail --location --output Sparkle.tar.xz \
-            https://github.com/sparkle-project/Sparkle/releases/download/2.10.0/Sparkle-2.10.0.tar.xz
-          echo 'c2bf58aa8387266ac179357b1415d6f2635f044da8be41042af32425dae6da0c  Sparkle.tar.xz' |
-            shasum --algorithm 256 --check
-          mkdir sparkle
-          tar -xf Sparkle.tar.xz -C sparkle
-          xcrun swiftc -typecheck -F sparkle ../../.github/scripts/probe_sparkle.swift \
-            2>&1 | tee sparkle-api.log
-          echo 'Sparkle 2.10.0 public API typecheck passed; runtime update behavior remains unverified.' \
-            >> sparkle-api.log
       - name: Resolve locked workspaces
         run: |
           set -euo pipefail

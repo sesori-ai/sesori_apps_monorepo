@@ -1,5 +1,6 @@
 import json
 import plistlib
+import re
 import shutil
 import struct
 import tempfile
@@ -35,6 +36,21 @@ class MacPackagingTests(unittest.TestCase):
             (framework / name).symlink_to(f"Versions/Current/{name}")
             (framework / "Resources").symlink_to("Versions/Current/Resources", target_is_directory=True)
             self.frameworks.append(framework)
+        sparkle = self.app / "Contents/Frameworks/Sparkle.framework"
+        version = sparkle / "Versions/B"
+        self.write_binary(path=version / "Sparkle")
+        self.write_plist(path=version / "Resources/Info.plist", executable="Sparkle")
+        (sparkle / "Versions/Current").symlink_to("B", target_is_directory=True)
+        (sparkle / "Sparkle").symlink_to("Versions/Current/Sparkle")
+        (sparkle / "Resources").symlink_to("Versions/Current/Resources", target_is_directory=True)
+        self.frameworks.append(sparkle)
+        self.write_binary(path=version / "Autoupdate")
+        for bundle, executable in (("XPCServices/Installer.xpc", "Installer"),
+                                   ("XPCServices/Downloader.xpc", "Downloader"), ("Updater.app", "Updater")):
+            self.write_binary(path=version / bundle / "Contents/MacOS" / executable)
+            self.write_plist(path=version / bundle / "Contents/Info.plist", executable=executable)
+        self.sparkle_helpers = [version / name for name in (
+            "XPCServices/Installer.xpc", "XPCServices/Downloader.xpc", "Autoupdate", "Updater.app")]
         self.keychain = self.root / "private.keychain-db"
         self.log = self.root / "packaging.log"
 
@@ -48,12 +64,13 @@ class MacPackagingTests(unittest.TestCase):
         path.parent.mkdir(parents=True, exist_ok=True)
         path.write_bytes(plistlib.dumps({"CFBundleExecutable": executable}))
 
-    def test_native_leaves_then_frameworks_then_app_without_signing_symlink_aliases(self):
+    def test_native_leaves_then_sparkle_helpers_then_frameworks_then_app_without_signing_symlink_aliases(self):
         order = packaging.signing_order(app=self.app, arch="arm64")
         self.assertEqual(set(order[:3]), {self.helper, *self.libraries})
-        self.assertEqual(set(order[3:-1]), set(self.frameworks))
+        self.assertEqual(order[3:7], self.sparkle_helpers)
+        self.assertEqual(set(order[7:-1]), set(self.frameworks))
         self.assertEqual(order[-1], self.app)
-        self.assertEqual(len(order), 7)
+        self.assertEqual(len(order), 12)
         self.assertNotIn(self.manifest, order)
         self.assertTrue(all(not path.is_symlink() for path in order))
 
@@ -74,13 +91,20 @@ class MacPackagingTests(unittest.TestCase):
             self.assertEqual(command[command.index("--sign") + 1], "Expected publisher")
             self.assertEqual(command[command.index("--keychain") + 1], str(self.keychain))
             self.assertIn("--timestamp", command)
-            self.assertEqual("--options" in command, target in (self.app, self.helper))
+            self.assertEqual("--options" in command, target in (self.app, self.helper, *self.sparkle_helpers))
+            self.assertEqual("--preserve-metadata=entitlements" in command, target == self.sparkle_helpers[1])
             self.assertEqual("--entitlements" in command, target in (self.app, self.helper))
             if target in (self.app, self.helper):
                 entitlements = packaging.ENTITLEMENTS if target == self.app else packaging.BRIDGE_ENTITLEMENTS
                 self.assertEqual(command[command.index("--entitlements") + 1], str(entitlements))
             self.assertNotIn("--deep", command)  # Deep verification, never deep signing.
         self.assertEqual(execute.call_args_list[-1].kwargs["command"][-1], str(self.app))
+
+    def test_sparkle_trusts_the_published_update_key(self):
+        with (packaging.ROOT / "client/desktop/macos/Runner/Info.plist").open("rb") as stream:
+            info = plistlib.load(stream)
+        dart = (packaging.ROOT / "client/module_desktop_core/lib/src/foundation/desktop_update_public_key.dart").read_text()
+        self.assertEqual(info["SUPublicEDKey"], re.search(r'desktopUpdatePublicKey = "([^"]+)"', dart).group(1))
 
     def test_bridge_entitlements_allow_aot_memory_without_disabling_library_validation(self):
         with packaging.BRIDGE_ENTITLEMENTS.open("rb") as stream:
@@ -94,7 +118,7 @@ class MacPackagingTests(unittest.TestCase):
             evidence = packaging.verify_app(app=self.app, arch="arm64", log=self.log)
         commands = [call.kwargs["command"] for call in execute.call_args_list]
         verified = {Path(command[-1]) for command in commands if command[:3] == ["codesign", "--verify", "--strict"]}
-        self.assertEqual(len(verified), 7)
+        self.assertEqual(len(verified), 12)
         self.assertTrue(set(self.libraries).issubset(verified))
         self.assertIn(["codesign", "--verify", "--deep", "--strict", str(self.app)], commands)
         self.assertIn(["xcrun", "stapler", "validate", str(self.app)], commands)

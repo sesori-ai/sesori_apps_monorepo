@@ -2,11 +2,9 @@
 
 ## Supported behavior
 
-Desktop Settings → General includes app-update guidance, separate from bridge configuration and supervision.
-Packaged macOS/Windows builds expose
-**View downloads**, opening `https://sesori.com/desktop/` with the compiled build's
-stable/internal channel, OS and CPU section. The page is live; this does not claim an
-available update or published installer. Unshipped sections explicitly contain no public
+Desktop Settings → General includes app-update controls, separate from bridge configuration and
+supervision. Every packaged build updates in place (below); the app no longer links a manual
+download page. On `https://sesori.com/desktop/`, unshipped sections explicitly contain no public
 download; they never link private CI artifacts or infer desktop assets from Latest.
 The website preserves all eight macOS/Windows channel/CPU anchors and `linux-package-managers`,
 plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors; the website step adds the
@@ -14,9 +12,7 @@ plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors; the website st
 lands on its own section; Linux preview navigation opens its channel and platform.
 The repository download document is a content/anchor specification, not an alternate
 user-facing destination. Source builds show development guidance; Linux packages show
-package-manager guidance. A Linux AppImage (the runtime sets `APPIMAGE`) instead links its
-`<channel>-linux-<x64|arm64>-appimage` manual-download section; website anchors for it land
-with the website step.
+package-manager guidance.
 
 The deployed website resolves completed public macOS stable/internal and Linux internal
 releases independently. It follows all release pages on the fixed GitHub repository
@@ -40,12 +36,9 @@ Staging accepts `--channel stable|internal` (default stable) and emits
 build metadata, not helper identity, persisted state or a client/bridge contract.
 Malformed present metadata does not select a guessed download destination.
 
-macOS uses manual signed packages. Users Quit normally before replacing or installing,
-then reopen manually. Closing a tray-backed window is not Quit.
-Failed helper stop retains the existing refusal to Quit. Nothing in the download
-action stops a helper, installs, changes bridge intent or automatically relaunches.
-Linux DEB/RPM upgrades remain package-manager-owned; Windows and AppImage installs update
-through Velopack (below). Shared CLI data is not update cleanup.
+macOS updates through Sparkle, Windows and AppImage installs through Velopack (below), and
+Linux DEB/RPM upgrades remain package-manager-owned. Closing a tray-backed window is not Quit.
+A failed helper stop retains the existing refusal to Quit. Shared CLI data is not update cleanup.
 
 ## Linux package restart to update
 
@@ -73,6 +66,20 @@ An unreachable, unsigned or tampered feed, or a package with a wrong SHA-256, le
 idle and is only logged locally. Velopack never applies an update at app startup.
 Failure signals: an unsigned feed or wrong package is applied, a feed failure shows an error,
 the helper outlives the updater, or the update applies with the app still running.
+
+## Sparkle updates (macOS)
+
+Sparkle checks every 6 hours while Automatic updates is on, and on **Check for updates**, from
+`.../desktop-updates/k1/<channel>/macos-<arch>/appcast.xml` (the app supplies the URL), and
+verifies the archive's EdDSA signature against the compiled `SUPublicEDKey` before extracting.
+It never shows its own permission prompt or update window for a normal update; downloads are
+silent. A downloaded update shows **Restart to update**. Restart to update stops the helper,
+then Sparkle installs and relaunches; a plain Quit installs on normal termination.
+Every system quit (Cmd+Q, Dock Quit, logout, Sparkle's own quit request) runs the same exit as
+tray Quit: the helper stops before the app exits. A quit request during a running quit is
+declined at once. A failed helper stop keeps the app running and declines the quit request.
+Failure signals: an unsigned or tampered archive installs, Cmd+Q leaves the helper running,
+Sparkle shows a prompt, or Restart to update installs without relaunching.
 
 ## Client storage boundary
 

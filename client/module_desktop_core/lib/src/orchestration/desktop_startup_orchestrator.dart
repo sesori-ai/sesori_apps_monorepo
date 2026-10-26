@@ -88,7 +88,7 @@ class DesktopStartupOrchestrator._create({
     if (disposition == DesktopInstanceLaunchDisposition.primary) {
       return true;
     }
-    _applicationTerminator.terminate(exitCode: 0);
+    _applicationTerminator.terminate();
     return false;
   }
 

@@ -11,6 +11,11 @@ class AppDelegate: FlutterAppDelegate {
     return false
   }
 
+  // Dart stops the bridge helper before the app exits; see ApplicationTermination.
+  override func applicationShouldTerminate(_ sender: NSApplication) -> NSApplication.TerminateReply {
+    return ApplicationTermination.shared.shouldTerminate()
+  }
+
   override func applicationSupportsSecureRestorableState(_ app: NSApplication) -> Bool {
     return true
   }
