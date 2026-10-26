@@ -286,8 +286,13 @@ sub-agent parts, plus the signal that a tool changed files.
   background launch never finalizes the part. When Claude resumes the same
   agent after it stopped, the repeated start reopens the existing part as
   `running`, clears its prior outcome, and restores the already-announced child
-  to busy. A part appears only once its input names the description and prompt,
-  never with placeholder text. On replay the same parts render from the
+  to busy until the resumed run's own notification. A `SendMessage` resume
+  names the `SendMessage` call in its typed task frames, so they match the
+  part by the sub-agent's task id; its `<task-notification>` envelope still
+  renders as its own Automation step. Failure signal: the composer's sub-agent
+  pill and the transcript's sub-agent row count fewer running sub-agents than
+  the stop dialog. A part appears only once its input names the description
+  and prompt, never with placeholder text. On replay the same parts render from the
   transcript, current resident state overrides an earlier terminal notification,
   and a still-running task the session's resident process no longer owns renders
   as `cancelled`.

@@ -1328,6 +1328,82 @@ void main() {
       await subscription.cancel();
     });
 
+    test("a SendMessage-resumed sub-agent runs in its child status, the summary and the stop count alike", () async {
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+      Map<String, Object?> taskFrame({required String subtype, required String toolUseId}) => {
+        "type": "system",
+        "subtype": subtype,
+        "session_id": testSessionId,
+        "task_id": "abc123",
+        "tool_use_id": toolUseId,
+        "task_type": "local_agent",
+        "status": "completed",
+        "summary": "done",
+      };
+      Map<String, Object?> assistantToolUse({required String id, required String name, required Object input}) => {
+        "type": "assistant",
+        "session_id": testSessionId,
+        "message": {
+          "id": "msg-$id",
+          "model": "claude-opus-5",
+          "content": [
+            {"type": "tool_use", "id": id, "name": name, "input": input},
+          ],
+        },
+      };
+
+      process.emit(
+        assistantToolUse(
+          id: "toolu-agent",
+          name: "Agent",
+          input: {"description": "Say hi", "prompt": "hi", "subagent_type": "general-purpose"},
+        ),
+      );
+      process.emit({
+        "type": "user",
+        "session_id": testSessionId,
+        "uuid": "launch-result",
+        "message": {
+          "role": "user",
+          "content": [
+            {"type": "tool_result", "tool_use_id": "toolu-agent", "content": "Async agent launched successfully."},
+          ],
+        },
+        "tool_use_result": {"isAsync": true, "status": "async_launched", "agentId": "abc123"},
+      });
+      process.emit(taskFrame(subtype: "task_started", toolUseId: "toolu-agent"));
+      process.emit(taskFrame(subtype: "task_notification", toolUseId: "toolu-agent"));
+      await pump();
+      expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusIdle>());
+
+      // Resuming the finished agent registers it under the SendMessage call.
+      process.emit(assistantToolUse(id: "toolu-send", name: "SendMessage", input: {"to": "abc123", "message": "more"}));
+      process.emit(taskFrame(subtype: "task_started", toolUseId: "toolu-send"));
+      process.emit({"type": "result", "subtype": "success", "session_id": testSessionId, "is_error": false});
+      await pump();
+
+      expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusBusy>());
+      final session = harness.plugin.getActiveSessionsSummary().single.activeSessions.single;
+      expect(session.mainAgentRunning, isFalse);
+      expect(session.childSessionIds, ["agent-abc123"]);
+      final rejection = await harness.plugin.abortSession(
+        sessionId: testSessionId,
+        subAgents: PluginAbortSubAgentPolicy.confirm,
+        useAtomicStop: false,
+        knownSubAgentSessionIds: const {},
+      );
+      expect(
+        rejection,
+        isA<PluginAbortRejectedSubAgentsRunning>().having((it) => it.runningSubAgentCount, "runningSubAgentCount", 1),
+      );
+
+      process.emit(taskFrame(subtype: "task_notification", toolUseId: "toolu-send"));
+      await pump();
+      expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusIdle>());
+    });
+
     test("persisted cleanup is idempotent for an absent transcript", () async {
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);

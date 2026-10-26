@@ -282,15 +282,23 @@ final class ClaudeToolTracker() {
 
   /// Binds a `task_started` frame to its launching call.
   ///
-  /// Claude can resume the same background agent after it previously stopped,
-  /// reusing both ids. A repeated start therefore reopens the task rather than
-  /// leaving its prior terminal presentation in place.
+  /// Claude can resume the same background agent after it previously stopped.
+  /// A repeated start therefore reopens the task rather than leaving its prior
+  /// terminal presentation in place.
   ClaudeTrackedTool? taskStarted({required String toolUseId, required String taskId}) {
-    final task = _tasks[toolUseId];
+    final task = _lifecycleTask(toolUseId: toolUseId, taskId: taskId);
     if (task == null) return null;
     task.taskId ??= taskId;
     return _markTaskRunning(task);
   }
+
+  /// The task a typed `task_started` or `task_notification` frame names.
+  ///
+  /// A `SendMessage` resume reports the `SendMessage` call as the frame's
+  /// tool-use id (verified on CLI 2.1.310), so a task the launch already bound
+  /// is also found by its task id, the sub-agent id.
+  _TrackedTool? _lifecycleTask({required String toolUseId, required String taskId}) =>
+      _tasks[toolUseId] ?? _tasks.values.where((task) => task.taskId == taskId).firstOrNull;
 
   /// Reconciles a replayed task with the resident process's current lifecycle.
   ClaudeTrackedTool? markTaskRunning({required String toolUseId}) {
@@ -309,7 +317,7 @@ final class ClaudeToolTracker() {
   }
 
   /// Applies the authoritative terminal notification for a task, replacing
-  /// any tool-result fallback. Returns null when [toolUseId] is not a known
+  /// any tool-result fallback. Returns null when the frame names no known
   /// task, so callers keep an unmatched envelope visible.
   ClaudeTrackedTool? taskNotified({
     required String toolUseId,
@@ -318,7 +326,7 @@ final class ClaudeToolTracker() {
     required String? summary,
     required String? result,
   }) {
-    final task = _tasks[toolUseId];
+    final task = _lifecycleTask(toolUseId: toolUseId, taskId: taskId);
     if (task == null) return null;
     final mapped = status.toPluginToolStatus();
     task
@@ -331,17 +339,19 @@ final class ClaudeToolTracker() {
   }
 
   /// [taskNotified] for a `<task-notification>` envelope; null when it names
-  /// no known task, including an envelope without a tool-use id.
+  /// no known task, including an envelope without a tool-use id. Only the
+  /// tool-use id matches: a `SendMessage`-resumed agent's envelope names the
+  /// `SendMessage` call and stays its own row, as it does on replay.
   ClaudeTrackedTool? envelopeNotified({required ClaudeTaskNotification notification}) =>
       switch (notification.toolUseId) {
-        final toolUseId? => taskNotified(
+        final toolUseId? when isKnownTask(toolUseId: toolUseId) => taskNotified(
           toolUseId: toolUseId,
           taskId: notification.taskId,
           status: notification.status,
           summary: notification.summary,
           result: notification.result,
         ),
-        null => null,
+        _ => null,
       };
 
   bool isKnownTask({required String toolUseId}) => _tasks.containsKey(toolUseId);

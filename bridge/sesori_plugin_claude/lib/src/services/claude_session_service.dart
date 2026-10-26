@@ -802,6 +802,7 @@ final class ClaudeSessionService({
         }
         for (final notification in message.taskNotifications) {
           state.runningTaskIds.remove(notification.taskId);
+          state.subAgentOwnedTaskIds.remove(notification.taskId);
         }
         if (message.taskNotifications.isNotEmpty) _settleIdle(sessionId: sessionId, state: state);
       case ClaudeStreamMessage():
@@ -865,12 +866,12 @@ final class ClaudeSessionService({
   /// as busy/idle exactly like an enqueued turn.
   ///
   /// Only frames that prove turn activity begin one: token stream, assistant
-  /// content, a permission ask, or a background task's completion (the CLI
-  /// follows it with a wake-up turn, so busy spans launch → task → wake-up
-  /// without a transient idle). Bookkeeping frames (`init`, `status`, unknown
-  /// types) do not, so post-turn stragglers cannot re-busy a session, and
-  /// forwarded sub-agent frames do not either: they are task activity, already
-  /// held by [_SessionTurnState.runningTaskIds].
+  /// content, a permission ask, or the completion of a background task the
+  /// main agent launched (the CLI follows it with a wake-up turn, so busy
+  /// spans launch → task → wake-up without a transient idle). Bookkeeping
+  /// frames (`init`, `status`, unknown types) do not, so post-turn stragglers
+  /// cannot re-busy a session, and forwarded sub-agent frames do not either:
+  /// they are task activity, already held by [_SessionTurnState.runningTaskIds].
   void _trackSelfStartedTurn({required String sessionId, required ClaudeStreamMessage message}) {
     final state = _turns[sessionId];
     if (state == null) return;
@@ -879,12 +880,22 @@ final class ClaudeSessionService({
           ClaudeAssistantMessage(parentToolUseId: final String _):
         break;
       // A stopped task was killed (an interrupt, a stop_task); the CLI runs no
-      // wake-up turn for it, so opening one here would pin the session busy. A
-      // user frame carrying only stopped notifications (or none) is the same.
+      // wake-up turn for it, so opening one here would pin the session busy.
       case ClaudeTaskNotificationMessage(status: ClaudeTaskStatus.stopped):
         break;
+      // A sub-agent's own task, such as its background shell, reports back to
+      // that sub-agent, not to the main agent: the CLI runs no main-agent
+      // wake-up turn for it, so opening one would report the main agent
+      // running until its next turn ends.
+      case ClaudeTaskNotificationMessage(taskId: final taskId?) when state.subAgentOwnedTaskIds.contains(taskId):
+        break;
+      // A user frame carrying only such notifications (or none) is the same.
       case ClaudeUserMessage()
-          when message.taskNotifications.every((notification) => notification.status == ClaudeTaskStatus.stopped):
+          when message.taskNotifications.every(
+            (notification) =>
+                notification.status == ClaudeTaskStatus.stopped ||
+                state.subAgentOwnedTaskIds.contains(notification.taskId),
+          ):
         break;
       case ClaudeStreamEventMessage() ||
           ClaudeAssistantMessage() ||
