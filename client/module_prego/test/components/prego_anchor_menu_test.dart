@@ -53,6 +53,57 @@ List<PregoMenuEntry> _agentEntries(List<String> names, {void Function(String nam
 /// The scroll position of the open glass popup.
 ScrollPosition _popupScroll(WidgetTester tester) => tester.state<ScrollableState>(find.byType(Scrollable)).position;
 
+/// The open flat panel's spring on the current frame: its opacity, the point it scales about, how far it has scaled
+/// and slid, where layout put it, and where it paints.
+({double opacity, Alignment origin, double scale, double slide, Rect laidOut, Rect painted}) _flatSpring(
+  WidgetTester tester,
+) {
+  final bubble = find.descendant(of: find.byType(AnchoredFlatPanel), matching: find.byType(FadeTransition)).first;
+  final scale = tester.widget<ScaleTransition>(
+    find.descendant(of: bubble, matching: find.byType(ScaleTransition)).first,
+  );
+  final slide = tester.widget<SlideTransition>(
+    find.descendant(of: bubble, matching: find.byType(SlideTransition)).first,
+  );
+  return (
+    opacity: tester.widget<FadeTransition>(bubble).opacity.value,
+    origin: scale.alignment,
+    scale: scale.scale.value,
+    slide: slide.position.value.dy,
+    laidOut: tester.getRect(bubble),
+    painted: tester.getRect(find.descendant(of: bubble, matching: find.byType(Material)).first),
+  );
+}
+
+/// Pumps the flat panel just opened through its first frames and checks that it springs out of its [origin] point,
+/// which layout puts [at] the trigger from the first frame. That first frame, which measures the panel, is never
+/// painted; the first painted one already scales about [origin], without restarting the spring; and mid-spring the
+/// panel is still smaller, pinned at [origin] across and short of its spot on the trigger's side.
+Future<void> _expectSpringsOutOf(WidgetTester tester, {required Alignment origin, required Offset at}) async {
+  await tester.pump();
+  var spring = _flatSpring(tester);
+  expect(spring.opacity, 0);
+  expect(origin.withinRect(spring.laidOut), at);
+
+  await tester.pump(const Duration(milliseconds: 16));
+  spring = _flatSpring(tester);
+  expect(spring.opacity, greaterThan(0));
+  expect(origin.withinRect(spring.laidOut), at);
+  expect(spring.origin, origin);
+  // The scale and the slide keep pace with the fade, which never changed.
+  expect(spring.scale, moreOrLessEquals(0.96 + 0.04 * spring.opacity));
+  expect(spring.slide, moreOrLessEquals(0.06 * origin.y * (1 - spring.opacity)));
+
+  await tester.pump(const Duration(milliseconds: 50));
+  spring = _flatSpring(tester);
+  expect(spring.scale, lessThan(1));
+  expect(spring.painted.width, lessThan(spring.laidOut.width));
+  final settled = origin.withinRect(spring.laidOut);
+  final painted = origin.withinRect(spring.painted);
+  expect(painted.dx, moreOrLessEquals(settled.dx));
+  expect(painted.dy - settled.dy, origin.y < 0 ? lessThan(0) : greaterThan(0));
+}
+
 void main() {
   group("Android (flat) path", () {
     testWidgets("opens a flat menu, runs the tap callback, and dismisses", (tester) async {
@@ -236,6 +287,22 @@ void main() {
 
         final trigger = tester.getRect(find.byType(IconButton));
         expect(tester.getRect(panel).bottomRight, trigger.topRight - const Offset(0, 8));
+      });
+
+      testWidgets("grows down out of the ⋯", (tester) async {
+        await tester.pumpWidget(aligned(alignment: const Alignment(1, 0.4)));
+        final trigger = tester.getRect(find.byType(IconButton));
+        await tester.tap(find.byType(IconButton));
+
+        await _expectSpringsOutOf(tester, origin: Alignment.topRight, at: trigger.bottomRight + const Offset(0, 8));
+      });
+
+      testWidgets("grows up out of the ⋯ when it flips above", (tester) async {
+        await tester.pumpWidget(aligned(alignment: Alignment.bottomRight));
+        final trigger = tester.getRect(find.byType(IconButton));
+        await tester.tap(find.byType(IconButton));
+
+        await _expectSpringsOutOf(tester, origin: Alignment.bottomRight, at: trigger.topRight - const Offset(0, 8));
       });
     });
 
@@ -835,6 +902,44 @@ void main() {
 
       expect(tester.getBottomLeft(panel), const Offset(120, 580));
     });
+
+    testWidgets("a secondary-click menu grows down out of the pointer", (tester) async {
+      await tester.pumpWidget(pointer(child: row()));
+      await tester.tapAt(const Offset(120, 30), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+
+      await _expectSpringsOutOf(tester, origin: Alignment.topLeft, at: const Offset(120, 30));
+    });
+
+    testWidgets("a secondary-click menu flipped above the pointer grows up out of it", (tester) async {
+      await tester.pumpWidget(pointer(child: row(alignment: Alignment.bottomLeft)));
+      await tester.tapAt(const Offset(120, 580), buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+
+      await _expectSpringsOutOf(tester, origin: Alignment.bottomLeft, at: const Offset(120, 580));
+    });
+
+    for (final (rowAlignment, origin) in [
+      (Alignment.topLeft, Alignment.topCenter),
+      (Alignment.bottomLeft, Alignment.bottomCenter),
+    ]) {
+      testWidgets("a button-hung menu springs from its trigger's side, set up from the first frame ($origin)", (
+        tester,
+      ) async {
+        await tester.pumpWidget(pointer(child: row(alignment: rowAlignment)));
+        final trigger = tester.getRect(find.byType(TextButton));
+        await tester.tap(find.text("Row"));
+        await tester.pump();
+
+        // Beside its trigger the panel knows its side before layout, so its first frame already holds the spring's
+        // start.
+        final first = _flatSpring(tester);
+        expect(first.origin, origin);
+        expect(first.scale, 0.96);
+        expect(first.slide, 0.06 * origin.y);
+
+        final edge = origin.y < 0 ? trigger.bottomCenter + const Offset(0, 8) : trigger.topCenter - const Offset(0, 8);
+        await _expectSpringsOutOf(tester, origin: origin, at: edge);
+      });
+    }
 
     testWidgets("a button press still hangs the menu off its trigger", (tester) async {
       await tester.pumpWidget(pointer(child: row()));

@@ -98,11 +98,30 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
     if (shift != _triggerShift) setState(() => _triggerShift = shift);
   }
 
+  /// The bubble as laid out, read for its height.
+  final _bubbleKey = GlobalKey();
+
+  /// The bubble's height at the last layout, null before the first. A
+  /// placement that drops below whenever it fits only learns its side from it.
+  double? _bubbleHeight;
+
+  /// Reads the bubble's height once a build has been laid out, so the next
+  /// build springs it from the side that layout put it on.
+  void _readBubbleHeight(Duration _) {
+    if (!mounted) return;
+    final height = _bubbleKey.currentContext?.size?.height;
+    if (height != _bubbleHeight) setState(() => _bubbleHeight = height);
+  }
+
   @override
   Widget build(BuildContext context) {
     WidgetsBinding.instance.addPostFrameCallback(_readTriggerShift);
     final prego = context.prego;
     final AnchoredFlatPanel(:placement, :width, :maxHeight, :borderRadius, :screenPadding) = widget;
+    // A bubble beside its trigger knows its side before layout.
+    if (placement != AnchoredPanelPlacement.besideTrigger) {
+      WidgetsBinding.instance.addPostFrameCallback(_readBubbleHeight);
+    }
     final triggerRect = widget.triggerRect.shift(_triggerShift);
     // Granular getters so re-layout is driven only by the metrics this bubble
     // actually uses, not by any unrelated MediaQueryData change.
@@ -150,29 +169,41 @@ class _AnchoredFlatPanelState() extends State<AnchoredFlatPanel> {
       ),
     );
 
+    final layout = _AnchoredPopupLayoutDelegate(
+      triggerRect: triggerRect,
+      triggerShift: _triggerShift,
+      width: width,
+      maxHeight: effectiveMaxHeight,
+      expandUp: expandUp,
+      spaceBelow: spaceBelow,
+      placement: placement,
+      screenPadding: screenPadding,
+      safe: safe,
+      keyboard: keyboard,
+      gap: gap,
+    );
+    // A bubble that drops below whenever it fits settles its side only at
+    // layout, so it springs from the side the last layout chose. Before the
+    // first layout it assumes below, but that first frame is never painted: the
+    // fade starts at zero opacity, so the bubble shows only from the next
+    // frame, by when it has its side. Swapping the origin keeps the spring's
+    // progress, so nothing restarts.
+    final above = layout.sitsAbove(childHeight: _bubbleHeight ?? 0);
+    final origin = switch (placement) {
+      AnchoredPanelPlacement.besideTrigger => above ? Alignment.bottomCenter : Alignment.topCenter,
+      AnchoredPanelPlacement.atCorner => above ? Alignment.bottomLeft : Alignment.topLeft,
+      AnchoredPanelPlacement.belowRightAligned => above ? Alignment.bottomRight : Alignment.topRight,
+    };
+
     return CustomSingleChildLayout(
-      delegate: _AnchoredPopupLayoutDelegate(
-        triggerRect: triggerRect,
-        triggerShift: _triggerShift,
-        width: width,
-        maxHeight: effectiveMaxHeight,
-        expandUp: expandUp,
-        spaceBelow: spaceBelow,
-        placement: placement,
-        screenPadding: screenPadding,
-        safe: safe,
-        keyboard: keyboard,
-        gap: gap,
-      ),
+      delegate: layout,
       child: Actor(
+        key: _bubbleKey,
         acts: [
           const Act.fadeIn(),
-          // A menu that drops below whenever it fits simply appears: which side
-          // it lands on is settled only at layout, too late to spring toward it.
-          if (placement == AnchoredPanelPlacement.besideTrigger) ...[
-            Act.scale(from: 0.96, alignment: expandUp ? Alignment.bottomCenter : Alignment.topCenter),
-            Act.slideY(from: expandUp ? 0.06 : -0.06),
-          ],
+          // Grows out of the trigger, toward the side the bubble sits on.
+          Act.scale(from: 0.96, alignment: origin),
+          Act.slideY(from: above ? 0.06 : -0.06),
         ],
         child: panel,
       ),
@@ -231,15 +262,19 @@ class _AnchoredPopupLayoutDelegate({
 
     final topBound = screenPadding.top + safe.top;
     final bottomBound = size.height - keyboard - screenPadding.bottom - safe.bottom - childSize.height;
-    final up = switch (placement) {
-      AnchoredPanelPlacement.besideTrigger => expandUp,
-      AnchoredPanelPlacement.atCorner || AnchoredPanelPlacement.belowRightAligned => childSize.height > spaceBelow,
-    };
+    final up = sitsAbove(childHeight: childSize.height);
     final preferredDy = up ? triggerRect.top - gap - childSize.height : triggerRect.bottom + gap;
     final dy = preferredDy.clamp(topBound, math.max(topBound, bottomBound)).toDouble();
 
     return Offset(dx, dy) - triggerShift;
   }
+
+  /// Whether a bubble [childHeight] tall sits above the trigger rather than
+  /// below it.
+  bool sitsAbove({required double childHeight}) => switch (placement) {
+    AnchoredPanelPlacement.besideTrigger => expandUp,
+    AnchoredPanelPlacement.atCorner || AnchoredPanelPlacement.belowRightAligned => childHeight > spaceBelow,
+  };
 
   @override
   bool shouldRelayout(_AnchoredPopupLayoutDelegate oldDelegate) {
