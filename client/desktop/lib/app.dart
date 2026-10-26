@@ -133,6 +133,15 @@ class const _DesktopAppShell({required final bool hiddenLaunch}) extends Statele
             return cubit;
           },
         ),
+        // Created with the app, so the launch it opens with counts as loading.
+        BlocProvider<LocalBridgeStartupCubit>(
+          lazy: false,
+          create: (_) => LocalBridgeStartupCubit(
+            processService: getIt(),
+            statusTracker: getIt(),
+            connectionService: getIt(),
+          ),
+        ),
       ],
       child: MaterialApp.router(
         title: _appTitle,

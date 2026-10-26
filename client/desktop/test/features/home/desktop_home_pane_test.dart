@@ -25,8 +25,11 @@ void main() {
   late _MockComputerSwitchDispatcher switches;
   late _MockFileAccessCubit fileAccess;
   late _MockAllSessionsCubit sessions;
+  late _MockLocalBridgeStartupCubit startup;
 
   setUp(() {
+    startup = _MockLocalBridgeStartupCubit();
+    whenListen(startup, const Stream<LocalBridgeStartupState>.empty(), initialState: LocalBridgeStartupState.settled);
     projects = _MockProjectListCubit();
     sessions = _MockAllSessionsCubit();
     whenListen(sessions, const Stream<AllSessionsState>.empty(), initialState: _list(defaultProjectId: null));
@@ -92,6 +95,7 @@ void main() {
             BlocProvider<ProjectListCubit>.value(value: projects),
             BlocProvider<FileAccessCubit>.value(value: fileAccess),
             BlocProvider<AllSessionsCubit>.value(value: sessions),
+            BlocProvider<LocalBridgeStartupCubit>.value(value: startup),
           ],
           child: Scaffold(
             body: DesktopHomePane(
@@ -179,6 +183,21 @@ void main() {
     verify(bridgeControlCubit.recoverConnection).called(1);
   });
 
+  testWidgets("this computer's starting bridge is a load until the start fails", (tester) async {
+    final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+    addTearDown(starts.close);
+    whenListen(startup, starts, initialState: starts.value);
+    await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: false));
+
+    expect(find.byType(PregoAiLoader), findsOneWidget);
+    expect(find.text("Start the bridge"), findsNothing);
+
+    starts.add(LocalBridgeStartupState.settled);
+    await tester.pumpAndSettle();
+    expect(find.byType(PregoAiLoader), findsNothing);
+    expect(find.text("Start the bridge"), findsOneWidget);
+  });
+
   group("with several computers", () {
     final local = _computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active);
     final remote = _computer(id: "remote", name: "workstation", status: BridgeRegistrationStatus.inactive);
@@ -211,6 +230,20 @@ void main() {
       await tester.tap(find.text("this-mac"));
       verify(() => switches.switchTo(bridgeId: local.id, source: ComputerSwitchSource.offlineScreen)).called(1);
       verifyNever(bridgeControlCubit.recoverConnection);
+    });
+
+    testWidgets("an offline remote computer shows offline while this computer's bridge starts", (tester) async {
+      whenListen(
+        startup,
+        const Stream<LocalBridgeStartupState>.empty(),
+        initialState: LocalBridgeStartupState.starting,
+      );
+      arrange(computers: [local, remote], targetId: remote.id, localId: local.id);
+      await pumpHome(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
+      await tester.pumpAndSettle();
+
+      expect(find.text("workstation is offline"), findsOneWidget);
+      expect(find.byType(PregoAiLoader), findsNothing);
     });
 
     testWidgets("this computer offline keeps the supervised start", (tester) async {
@@ -550,6 +583,8 @@ class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements
 class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+
+class _MockLocalBridgeStartupCubit() extends MockCubit<LocalBridgeStartupState> implements LocalBridgeStartupCubit;
 
 /// Names the live connection's target, as the real service does.
 class _ConnectionTargetSelection({required final BehaviorSubject<ConnectionStatus> _statuses})

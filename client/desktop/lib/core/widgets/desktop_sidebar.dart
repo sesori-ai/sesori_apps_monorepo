@@ -109,8 +109,16 @@ class const DesktopSidebar({
                         sessions: [session],
                       ),
                       selectedSessionId: selectedSessionId,
-                      // The footer's recovery card says so.
-                      disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
+                      // The footer's recovery card says so, unless this
+                      // computer's bridge is still starting: that is a load.
+                      disconnectedBuilder: ({required context, required state}) => SliverToBoxAdapter(
+                        child:
+                            context.select(
+                              (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
+                            )
+                            ? PregoSkeletonList(semanticLabel: context.loc.sessionListLoadingSemantics)
+                            : null,
+                      ),
                       emptyState: SessionEmptyState(projectName: filterName),
                       // The filter heads the list already, beside Refresh.
                       header: null,

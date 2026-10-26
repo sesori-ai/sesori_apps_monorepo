@@ -194,7 +194,12 @@ The main pane hosts one full-width routed page.
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
   CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
   "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the
-  bridge on that computer, and the shared Other computers card, with no Start button.
+  bridge on that computer, and the shared Other computers card, with no Start button. While the desktop is
+  launching this computer's bridge (including a cold start) and has not reached it yet, this computer's offline
+  bridge is a load: the home shows the same loader as any load and the sidebar list shows its loading skeleton.
+  Recovery appears only once the supervisor leaves starting and running (a failed start, a stop, login required,
+  contention), or a bridge the app had reached is lost (a crash restart stays disconnected); another computer's
+  offline state shows immediately.
 - Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
   menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
   computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
@@ -209,7 +214,8 @@ The main pane hosts one full-width routed page.
   Reconnecting appears after the shared grace period; connection lost retains
   Reconnect until a reconnect starts, which clears it. Local desired Off, including cold-start/default Off before a user
   starts the bridge, suppresses bridge-offline copy—not relay recovery for
-  clients using another bridge. Recovery hides the pill with a
+  clients using another bridge. So does launching this computer's bridge, until the app reaches it or the
+  supervisor leaves starting and running. Recovery hides the pill with a
   short fade; reduced motion disables it. Departing content neither intercepts
   input nor remains in accessibility announcements.
 - The This computer row always exposes its supervised status through a dot and an
@@ -298,7 +304,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
 - Home computer header shown, hidden for a lone local computer, and switching from its menu; disconnected home
-  for a remote target (offline body, other computers, no Start) versus this computer (supervised Start); the
+  for a remote target (offline body, other computers, no Start, also while this computer's bridge launches) versus
+  this computer (supervised Start; the loader while its bridge launches, recovery once the start fails); the
   desktop target following a new or changed supervised bridge id unless another computer was picked in this
   sign-in; header and body agreeing on "this computer" before the supervised id is known.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,
@@ -318,7 +325,12 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The sidebar's shared list across projects, a row opening its session in its own project, the filter
   narrowing the list and returning to All projects, and project-local retry (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
-  sidebar recovery/actions/locks.
+  sidebar recovery/actions/locks; no bridge-offline pill and a sidebar skeleton while this computer's bridge
+  launches.
+- The launch window (`local_bridge_startup_cubit_test`): opens on a cold start or one already under way, holds
+  through Running and the relay's reconnect, ends on connecting to this computer or any failed, stopped or crashed
+  supervisor state, does not reopen on a crash restart, ignores another computer as the target, and follows the
+  id a fresh install registers.
 - The session page toolbar above a centred transcript column wider than the centred composer's: a subtask's crumb,
   status slot and title styles and order, its "Main session" crumb returning to its parent
   (popping to the kept parent when opened from it, opening the parent otherwise), the sparkle leading

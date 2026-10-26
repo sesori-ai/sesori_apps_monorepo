@@ -11,11 +11,16 @@ class const DesktopConnectionPill({super.key}) extends StatelessWidget {
   Widget build(BuildContext context) {
     final overlay = context.watch<ConnectionOverlayCubit>();
     final wanted = context.select((BridgeControlCubit cubit) => cubit.state.desiredState);
+    final starting = context.select(
+      (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
+    );
     final state = overlay.state;
     final title = switch (state) {
       ConnectionOverlayHidden() => null,
       // Off is quiet regardless of origin, including the cold-start/default value.
       ConnectionOverlayBridgeOffline() when wanted == BridgeProcessDesiredState.off => null,
+      // This computer's bridge is still coming up: a load, not a disconnection.
+      ConnectionOverlayBridgeOffline() when starting => null,
       ConnectionOverlayBridgeOffline() => context.loc.bridgeDisconnectedTitle,
       // Relay recovery can still be needed when using another bridge.
       ConnectionOverlayReconnecting() => context.loc.connectionReconnectingTitle,
