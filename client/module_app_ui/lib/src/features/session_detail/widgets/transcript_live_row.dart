@@ -31,7 +31,6 @@ class const TranscriptLiveLabel({super.key, required final Widget label, require
       baseColor: context.prego.colors.textTertiary,
       highlightColor: context.prego.colors.textPrimary,
       semanticLabel: semanticLabel,
-      onAppear: null,
       child: label,
     ),
   );

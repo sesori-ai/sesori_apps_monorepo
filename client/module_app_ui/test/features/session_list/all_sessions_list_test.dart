@@ -316,6 +316,28 @@ void main() {
         .opacity
         .value;
 
+    /// The opacity [finder] paints at, through every fade above it.
+    double paintedOpacity(WidgetTester tester, Finder finder) => tester
+        .widgetList(
+          find.ancestor(
+            of: finder,
+            matching: find.byWidgetPredicate((w) => w is FadeTransition || w is SliverFadeTransition || w is Opacity),
+          ),
+        )
+        .fold(
+          1.0,
+          (painted, widget) =>
+              painted *
+              switch (widget) {
+                FadeTransition(:final opacity) || SliverFadeTransition(:final opacity) => opacity.value,
+                Opacity(:final opacity) => opacity,
+                _ => 1.0,
+              },
+        );
+    final skeleton = find.byType(PregoSkeletonList);
+    double skeletonOpacity(WidgetTester tester) =>
+        skeleton.evaluate().isEmpty ? 0 : paintedOpacity(tester, find.byType(PregoSkeletonListTile).first);
+
     /// Pumps a loading list until its skeleton has appeared, and returns
     /// where the skeleton stands.
     Future<double> pumpLoading(
@@ -324,10 +346,13 @@ void main() {
       AllSessionsMode mode = AllSessionsMode.archived,
     }) async {
       await pumpList(tester, initial: loading, updates: updates, mode: mode);
-      // Its 300 ms appearance delay, then its 200 ms fade in.
-      await tester.pump(const Duration(milliseconds: 600));
+      // Its 300 ms appearance delay, then its 200 ms fade in, timed from the
+      // frame after the delay.
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(skeletonOpacity(tester), 1);
       expect(find.byType(TextField), findsNothing);
-      return tester.getTopLeft(find.byType(PregoSkeletonList)).dy;
+      return tester.getTopLeft(skeleton).dy;
     }
 
     for (final mode in AllSessionsMode.values) {
@@ -344,19 +369,16 @@ void main() {
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
 
-        expect(opacityAbove(tester, find.byType(PregoSkeletonList)), inExclusiveRange(0, 1));
+        expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
         expect(rowsOpacity(tester), inExclusiveRange(0, 1));
         expect(opacityAbove(tester, find.byType(TextField)), rowsOpacity(tester));
         if (mode == AllSessionsMode.active) {
           expect(opacityAbove(tester, find.byKey(const Key("session-list-filter-all"))), rowsOpacity(tester));
         }
-        // The same skeleton, still fully shown under its own fade, where it stood.
-        final shimmer = find.descendant(of: find.byType(PregoSkeletonList), matching: find.byType(AnimatedOpacity));
-        expect(tester.widget<AnimatedOpacity>(shimmer).opacity, 1);
-        expect(tester.getTopLeft(find.byType(PregoSkeletonList)).dy, skeletonTop);
+        expect(tester.getTopLeft(skeleton).dy, skeletonTop);
 
         await tester.pump(const Duration(milliseconds: 150));
-        expect(find.byType(PregoSkeletonList), findsNothing);
+        expect(skeleton, findsNothing);
         expect(opacityAbove(tester, find.byType(TextField)), 1);
         expect(rowsOpacity(tester), 1);
       });
@@ -372,7 +394,7 @@ void main() {
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
 
-      expect(opacityAbove(tester, find.byType(PregoSkeletonList)), inExclusiveRange(0, 1));
+      expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
       expect(opacityAbove(tester, find.text("Nothing here")), inExclusiveRange(0, 1));
       expect(tester.getTopLeft(find.byType(PregoSkeletonList)).dy, skeletonTop);
       expect(tester.getTopLeft(find.text("Nothing here")).dy, skeletonTop);
@@ -382,20 +404,30 @@ void main() {
       expect(opacityAbove(tester, find.text("Nothing here")), 1);
     });
 
+    final failurePadding = find.ancestor(of: failureRow, matching: find.byType(Padding)).first;
+
     for (final withRows in [true, false]) {
       testWidgets(
-        "a project that failed during the load arrives with the first content (${withRows ? "with rows" : "alone"})",
+        "a project that fails during the load fades in by itself, over the skeleton it stays above "
+        "(${withRows ? "with rows" : "alone"})",
         (tester) async {
           final updates = StreamController<AllSessionsState>();
           addTearDown(updates.close);
-          final skeletonTop = await pumpLoading(tester, updates: updates.stream);
+          await pumpLoading(tester, updates: updates.stream);
 
           // Another project is still loading.
           updates.add(
             state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
           );
           await tester.pump();
-          expect(failureRow, findsNothing);
+          expect(paintedOpacity(tester, failureRow), 0);
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(paintedOpacity(tester, failureRow), inExclusiveRange(0, 1));
+          expect(skeletonOpacity(tester), 1);
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(paintedOpacity(tester, failureRow), 1);
+          final skeletonTop = tester.getTopLeft(skeleton).dy;
+          expect(skeletonTop, tester.getRect(failurePadding).bottom);
 
           updates.add(
             loaded(mode: AllSessionsMode.archived, titles: [if (withRows) "Fix the parser"], failures: const [failure]),
@@ -404,46 +436,82 @@ void main() {
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 100));
 
-          expect(opacityAbove(tester, failureRow), inExclusiveRange(0, 1));
-          if (withRows) expect(opacityAbove(tester, failureRow), rowsOpacity(tester));
-          // It fades out where it stood, over the search field or, alone, over the failed project.
-          expect(opacityAbove(tester, find.byType(PregoSkeletonList)), inExclusiveRange(0, 1));
-          expect(tester.getTopLeft(find.byType(PregoSkeletonList)).dy, skeletonTop);
+          // It fades out where it stood, under the failed project.
+          expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
+          expect(tester.getTopLeft(skeleton).dy, tester.getRect(failurePadding).bottom);
+          // Alone, nothing arrives above it to push it down.
+          if (!withRows) expect(tester.getTopLeft(skeleton).dy, skeletonTop);
+          expect(paintedOpacity(tester, failureRow), 1);
+          if (withRows) expect(rowsOpacity(tester), inExclusiveRange(0, 1));
 
           await tester.pump(const Duration(milliseconds: 150));
-          expect(find.byType(PregoSkeletonList), findsNothing);
-          expect(opacityAbove(tester, failureRow), 1);
+          expect(skeleton, findsNothing);
+          expect(paintedOpacity(tester, failureRow), 1);
+        },
+      );
+
+      testWidgets(
+        "a project that fails as the load ends fades in with the first content (${withRows ? "with rows" : "alone"})",
+        (tester) async {
+          final updates = StreamController<AllSessionsState>();
+          addTearDown(updates.close);
+          final skeletonTop = await pumpLoading(tester, updates: updates.stream);
+
+          updates.add(
+            loaded(mode: AllSessionsMode.archived, titles: [if (withRows) "Fix the parser"], failures: const [failure]),
+          );
+          await tester.pump();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+
+          expect(paintedOpacity(tester, failureRow), inExclusiveRange(0, 1));
+          if (withRows) expect(paintedOpacity(tester, failureRow), moreOrLessEquals(rowsOpacity(tester)));
+          // It fades out where it stood, over the search field or, alone, over the failed project.
+          expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
+          expect(tester.getTopLeft(skeleton).dy, skeletonTop);
+
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(skeleton, findsNothing);
+          expect(paintedOpacity(tester, failureRow), 1);
         },
       );
     }
 
-    for (final (endsAfter, shown) in [(250, false), (350, true)]) {
-      testWidgets(
-        shown
-            ? "a load that ends once the skeleton has begun to show hands it off"
-            : "a load that ends before the skeleton shows just fades the rows in",
-        (tester) async {
-          final updates = StreamController<AllSessionsState>();
-          addTearDown(updates.close);
-          await pumpList(tester, initial: loading, updates: updates.stream);
-          // The skeleton's appearance delay is 300 ms.
-          await tester.pump(Duration(milliseconds: endsAfter));
+    for (final endsAfter in [250, 320, 600]) {
+      testWidgets("a load that ends ${endsAfter}ms in fades the skeleton out from there, never brightening", (
+        tester,
+      ) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(tester, initial: loading, updates: updates.stream);
+        // Its 300 ms appearance delay, then its 200 ms fade in, timed from the
+        // frame after the delay.
+        await tester.pump(Duration(milliseconds: endsAfter < 300 ? endsAfter : 300));
+        if (endsAfter > 300) await tester.pump(Duration(milliseconds: endsAfter - 300));
+        final start = skeletonOpacity(tester);
+        expect(start, switch (endsAfter) {
+          250 => 0,
+          320 => inExclusiveRange(0, 1),
+          _ => 1,
+        });
 
-          updates.add(loaded(mode: AllSessionsMode.archived, titles: ["Fix the parser"]));
-          // With nothing animating yet, a bare pump would skip the frame before the update arrives.
-          await tester.pump(Duration.zero);
-          await tester.pump();
-          await tester.pump(const Duration(milliseconds: 100));
+        updates.add(loaded(mode: AllSessionsMode.archived, titles: ["Fix the parser"]));
+        // With nothing animating yet, a bare pump would skip the frame before the update arrives.
+        await tester.pump(Duration.zero);
+        var last = start;
+        // The fade's clock starts on the frame after the one ending the load.
+        for (var elapsed = 0; elapsed <= 200; elapsed += 10) {
+          await tester.pump(const Duration(milliseconds: 10));
+          final opacity = skeletonOpacity(tester);
+          expect(opacity, lessThanOrEqualTo(last), reason: "at ${elapsed}ms");
+          last = opacity;
+        }
+        expect(last, 0);
 
-          expect(rowsOpacity(tester), inExclusiveRange(0, 1));
-          expect(find.byType(PregoSkeletonList), shown ? findsOneWidget : findsNothing);
-          if (shown) expect(opacityAbove(tester, find.byType(PregoSkeletonList)), inExclusiveRange(0, 1));
-
-          await tester.pump(const Duration(milliseconds: 150));
-          expect(find.byType(PregoSkeletonList), findsNothing);
-          expect(rowsOpacity(tester), 1);
-        },
-      );
+        await tester.pump(const Duration(milliseconds: 10));
+        expect(skeleton, findsNothing);
+        expect(rowsOpacity(tester), 1);
+      });
     }
 
     testWidgets("the search field arrives with the rows, never over an empty body", (tester) async {
@@ -473,45 +541,49 @@ void main() {
       await pumpLoading(tester, updates: updates.stream);
 
       updates.add(loaded(mode: AllSessionsMode.archived, titles: ["Fix the parser"]));
-      await tester.pump();
+      // With nothing animating, a bare pump would skip the frame before the update arrives.
+      await tester.pump(Duration.zero);
 
       expect(find.byType(PregoSkeletonList), findsNothing);
       expect(opacityAbove(tester, find.byType(TextField)), 1);
       expect(rowsOpacity(tester), 1);
     });
 
-    testWidgets("a later refresh or search does not run the hand-off again", (tester) async {
+    testWidgets("a later refresh or search does not run a fade again", (tester) async {
       final updates = StreamController<AllSessionsState>();
       addTearDown(updates.close);
       await pumpLoading(tester, updates: updates.stream, mode: AllSessionsMode.active);
-      updates.add(loaded(mode: AllSessionsMode.active, titles: ["Fix the parser", "Write the docs"]));
+      updates.add(
+        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser", "Write the docs"], failures: const [failure]),
+      );
       await tester.pump();
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 250));
 
       for (final update in [
-        // A refresh that brings another session and a project that failed.
+        // A refresh that brings another session.
         loaded(
           mode: AllSessionsMode.active,
           titles: ["Fix the parser", "Write the docs", "Ship it"],
           failures: const [failure],
         ),
         // A search that narrows the list.
-        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"], query: "parser"),
+        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"], query: "parser", failures: const [failure]),
       ]) {
         updates.add(update);
         await tester.pump();
-        expect(find.byType(PregoSkeletonList), findsNothing);
+        expect(skeleton, findsNothing);
         expect(opacityAbove(tester, find.byType(TextField)), 1);
         expect(rowsOpacity(tester), 1);
-        if (update.failures.isNotEmpty) expect(opacityAbove(tester, failureRow), 1);
+        expect(paintedOpacity(tester, failureRow), 1);
       }
     });
 
-    final skeleton = find.byType(PregoSkeletonList);
-    bool skeletonShown(WidgetTester tester) =>
-        tester.widget<AnimatedOpacity>(find.descendant(of: skeleton, matching: find.byType(AnimatedOpacity))).opacity ==
-        1;
+    /// Whether the skeleton has begun to fade in.
+    bool skeletonShown(WidgetTester tester) => !tester
+        .widget<FadeTransition>(find.descendant(of: skeleton, matching: find.byType(FadeTransition)))
+        .opacity
+        .isDismissed;
     for (final mode in AllSessionsMode.values) {
       for (final throughProjectLoad in [true, false]) {
         testWidgets(
@@ -556,7 +628,7 @@ void main() {
             await tester.pump();
             await tester.pump(const Duration(milliseconds: 100));
             expect(tester.element(skeleton), same(first));
-            expect(opacityAbove(tester, skeleton), inExclusiveRange(0, 1));
+            expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
             expect(rowsOpacity(tester), inExclusiveRange(0, 1));
 
             await tester.pump(const Duration(milliseconds: 150));

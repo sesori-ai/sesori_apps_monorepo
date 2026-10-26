@@ -300,7 +300,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       return PregoShimmer(
         appearDelay: Duration.zero,
         semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
-        onAppear: null,
         child: PregoSkeletonBar(height: _optionPillHeight, width: 140, color: context.prego.colors.bgQuaternary),
       );
     }
@@ -901,7 +900,6 @@ class const _DedicatedWorkspaceRow({
           null => PregoShimmer(
             appearDelay: Duration.zero,
             semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
-            onAppear: null,
             child: PregoSkeletonBar(height: 20, width: 150, color: prego.colors.bgQuaternary),
           ),
           // The label names what the switch does, so they must reach a screen
@@ -977,7 +975,6 @@ class const _OptionPillsPlaceholder({required final bool compact}) extends State
     return PregoShimmer(
       appearDelay: Duration.zero,
       semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
-      onAppear: null,
       child: _OptionPillRow(
         compact: compact,
         pills: [

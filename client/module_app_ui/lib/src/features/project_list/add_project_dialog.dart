@@ -781,7 +781,6 @@ class const _FolderListSkeleton({required final String semanticLabel}) extends S
     final prego = context.prego;
     return PregoShimmer(
       semanticLabel: semanticLabel,
-      onAppear: null,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [

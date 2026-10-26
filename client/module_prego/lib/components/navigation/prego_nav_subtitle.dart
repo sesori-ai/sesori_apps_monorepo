@@ -135,7 +135,6 @@ class const PregoNavSubtitleSkeleton({super.key}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return const PregoShimmer(
-      onAppear: null,
       child: SizedBox(
         width: _barWidth,
         height: _rowHeight,

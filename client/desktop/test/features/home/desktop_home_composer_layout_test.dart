@@ -248,8 +248,10 @@ void main() {
   final worktreeShimmer = shimmerIn(options);
 
   /// Whether [shimmer] is on screen, not held invisible for a delay.
-  bool shows(WidgetTester tester, Finder shimmer) =>
-      tester.widget<AnimatedOpacity>(find.descendant(of: shimmer, matching: find.byType(AnimatedOpacity))).opacity == 1;
+  bool shows(WidgetTester tester, Finder shimmer) => !tester
+      .widget<FadeTransition>(find.descendant(of: shimmer, matching: find.byType(FadeTransition)))
+      .opacity
+      .isDismissed;
 
   /// Lets an answer land and the transitions it starts run out; the shimmers'
   /// sweep never ends, so pumpAndSettle cannot.
