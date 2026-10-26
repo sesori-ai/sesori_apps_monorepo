@@ -137,7 +137,8 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             emptyState: const SessionArchivedEmptyState(artwork: null),
             // The connection pill and the sidebar's recovery card already say so.
             disconnectedBuilder: ({required context, required state}) => const SliverToBoxAdapter(),
-            onClose: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
+            exit: ArchivedSessionsExit.close,
+            onExit: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
             onSessionTap: ({required row}) => _pushRoute(
               context: context,
               route: AppRoute.sessionDetail(

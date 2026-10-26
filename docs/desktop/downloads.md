@@ -35,30 +35,42 @@ The website's base branch deploys automatically after push/merge, normally withi
 1–3 minutes. A source merge alone is not live-page verification; allow the existing
 deployment to finish instead of creating a redundant deploy commit.
 
-## Updating safely
+## Updates
 
-macOS and Windows use manual signed-installer updates, not automatic updates.
-Download the published package for your existing channel and CPU. Select **Quit**
-in Sesori and wait for it to exit before replacing or installing. Closing the
-window may only hide it to the tray. If Quit reports a helper-stop failure, do not
-replace the running app; resolve that failure first. Reopen Sesori manually after
-installation; last-On/Off intent is preserved by ordinary startup.
+Sesori Desktop updates itself, together with the bridge it bundles. A new version
+downloads in the background and installs when you **Quit** or choose
+**Restart to update** in Settings or the tray menu. Each install follows only its own
+channel and CPU:
+
+- **macOS (DMG or ZIP):** Sparkle, from the EdDSA-signed appcast.
+- **Linux AppImage:** Velopack, which replaces the image in place, so launch at login
+  keeps working. The app verifies the feed's Ed25519 signature before Velopack reads it.
+- **Windows:** Velopack, the same way, from the first public Windows release.
+- **Linux DEB/RPM:** the package registers Sesori's signed repository on install
+  ([package registration](linux-repositories.md#package-registration)), and the
+  system's software updater installs new versions. The DEB adds the Sesori origin to
+  unattended-upgrades, so where that runs (Ubuntu's default) updates install silently.
+  RPM installs update silently where `dnf-automatic` is enabled. Elsewhere they arrive
+  through the system's normal update prompt. Once the package is replaced, the running
+  app offers **Restart to update**.
+
+**Settings → Desktop updates → Automatic updates** is on by default. Off stops the
+background checks; **Check for updates** still checks once on demand. On DEB/RPM the
+toggle covers only the app's own check and prompt; silent installs follow the system
+updater's configuration. Signing keys and feed locations are in
+[desktop update signing](update-signing.md).
 
 On macOS, verify the publisher **DigitalBlock Labs LTD (AQNCF7663C)** and normal
-Gatekeeper acceptance. Copy the complete Sesori app from the DMG into Applications;
-do not replace just the helper or run daily use from the mounted DMG. Never bypass
+Gatekeeper acceptance. Do not run daily use from the mounted DMG. Never bypass
 Gatekeeper or delete Keychain items to make an update work. Shared CLI credentials,
 harness runtimes, databases, session history and projects are not update cleanup.
+
 Windows publisher and installation instructions will accompany a signed public
 release. Private unsigned per-user installers have passed isolated native package
 fixtures, but they are not downloads and do not establish SmartScreen, interactive
 GUI/account behavior or a signed N→N+1 update.
 
 Internal is an explicit test channel, not an automatic promotion to stable.
-Internal build 987 uses the older per-value native storage format. Before replacing
-that build with a shared-store preview, sign out in the old app, Quit, install the
-new package, then sign in again. Internal format changes do not carry a production
-migration promise; old-format replacement proof does not qualify the new format.
 The sections below do not imply every platform/channel has a release. Do not use
 GitHub's generic Latest release to choose a desktop installer.
 
@@ -141,9 +153,8 @@ N→N+1 upgrades were qualified separately on earlier signed builds, not for eve
 
 Each Linux producer also emits a portable `Sesori-linux-<arch>-<version>-<build>.AppImage`;
 the image itself is unsigned and its checksum is in the signed checksums. It needs host GTK 3,
-libsecret, EGL/GLES, glibc 2.39 or newer and FUSE. Mark it executable and run it. To update,
-quit Sesori and replace the image at the same path and file name, so launch at login keeps
-working. Its app destination is
+libsecret, EGL/GLES, glibc 2.39 or newer and FUSE. Mark it executable and run it from a
+fixed path; it [updates itself](#updates) in place there. Its app destination is
 `<channel>-linux-<x64|arm64>-appimage`, on the website. Native qualification runs on Arch
 Linux (x64) and the community Arch Linux ARM port (ARM64); it is not a universal-distro claim.
 
@@ -151,9 +162,8 @@ Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to
 unchanged `linux-package-managers` app destination. Each available row links the
 experimental limitations note; direct links must not bypass disclosure.
 
-DEB/RPM previews require manually downloading, verifying and installing each package;
-they do not configure automatic repository updates or establish N→N+1 safety.
-Replacement remains package-manager-owned, not app-managed. Quit Sesori first;
-never treat shared CLI credentials, databases, runtimes or projects as update cleanup.
-Repository installation commands appear only after separate repository qualification
+Installing a DEB or RPM registers its channel's repository, so later versions arrive
+through the system's software updater ([updates](#updates)); replacement stays
+package-manager-owned, not app-managed. Never treat shared CLI credentials, databases,
+runtimes or projects as update cleanup. Repository installation commands appear only after separate repository qualification
 and explicit publication approval.

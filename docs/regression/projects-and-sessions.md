@@ -250,10 +250,10 @@ state.
   right, above the home indicator, holding still while the list scrolls under it. New session opens in the
   filtered project, else the project of the newest session, else asks for a project
   ([session creation](session-creation-and-options.md)). Settings' Bridge section lists Archived after Projects
-  (dimmed and disabled offline); it rises from the bottom and opens under the current filter. A pull refreshes
-  every project and imports, as above. Until the project list loads the home shows a skeleton, a failed project
-  list shows its error with Retry, a computer with no projects shows the add-project call to action, and the
-  disconnected pages below replace the list.
+  (dimmed and disabled offline); it pushes like the other Settings pages and opens under the current filter. A
+  pull refreshes every project and imports, as above. Until the project list loads the home shows a skeleton, a
+  failed project list shows its error with Retry, a computer with no projects shows the add-project call to action,
+  and the disconnected pages below replace the list.
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
   divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.
@@ -323,8 +323,8 @@ state.
 - Beside the centred title, the phone's session bar carries only Back, Prompts and that menu, so the
   title keeps the rest of the row at 320 px and under large text scaling. It shows no Changes button and no
   busy spinner; the transcript, the composer and the sub-agents bar report the session's progress. The
-  archived page is the same bar with no menu: Back returns to the archived list, whose own bar closes the
-  flow, so the page carries no second close control.
+  archived page is the same bar with no menu: Back returns to the archived list, whose own Back leaves the
+  flow, so the page carries no close control.
 - Project and session row actions remain swipeable without competing visually
   with system back navigation. On iOS, drags beginning in the row's leading 10%
   are reserved for back; on Android gesture navigation, both 10% edges are

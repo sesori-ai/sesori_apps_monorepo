@@ -549,7 +549,8 @@ ShellRoute buildHarnessSettingsRoute() {
   );
 }
 
-/// A full-screen audit flow outside the adaptive live-session panes.
+/// The audit flow outside the adaptive live-session panes, pushed over Settings
+/// like its other pages.
 @visibleForTesting
 ShellRoute buildArchivedSessionsRoute() {
   final navigatorKey = GlobalKey<NavigatorState>();
@@ -567,9 +568,8 @@ ShellRoute buildArchivedSessionsRoute() {
 
   return ShellRoute(
     navigatorKey: navigatorKey,
-    pageBuilder: (context, state, child) => CupertinoPage<void>(
+    pageBuilder: (context, state, child) => MaterialPage<void>(
       key: state.pageKey,
-      fullscreenDialog: true,
       child: _shellBackHandler(
         navigatorKey: navigatorKey,
         child: BlocProvider(
@@ -591,7 +591,8 @@ ShellRoute buildArchivedSessionsRoute() {
         builder: (context, state) => ArchivedSessionsView(
           emptyState: const SessionArchivedEmptyState(artwork: ArchivedSessionsArtwork()),
           disconnectedBuilder: ({required context, required state}) => DisconnectedComputerSlivers(state: state),
-          onClose: () => close(context: context),
+          exit: ArchivedSessionsExit.back,
+          onExit: () => close(context: context),
           onSessionTap: ({required row}) => context.pushRoute(
             AppRoute.archivedSessionDetail(
               projectId: row.project.id,
@@ -628,8 +629,8 @@ ShellRoute buildArchivedSessionsRoute() {
                 sessionTitle: route.sessionTitle,
                 readOnly: true,
                 auditView: true,
-                // Back returns to the archived list, whose own bar closes the
-                // whole flow; a second close control here only crowds the title.
+                // Back returns to the archived list, whose own Back leaves the
+                // whole flow; a close control here only crowds the title.
                 onBack: context.pop,
               );
             },
@@ -661,7 +662,7 @@ void closeDeletedArchivedSessionRoute({required BuildContext context, required S
     queryParams: state.uri.queryParameters,
   );
   if (route.sessionId != sessionId) return;
-  // Pop only the archive navigator; go() would discard the modal's opener.
+  // Pop only the archive navigator; go() would discard the flow's opener.
   // ignore: no_slop_linter/avoid_navigator_of, pop owned audit pages without replacing the root stack
   Navigator.of(context).popUntil((route) => route.isFirst);
 }
