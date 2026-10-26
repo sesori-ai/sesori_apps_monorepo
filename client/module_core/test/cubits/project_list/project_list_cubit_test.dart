@@ -207,6 +207,50 @@ void main() {
       expect((inventory.state as ProjectListLoaded).projects, [projectB]);
     });
 
+    test("a refresh that races a computer switch keeps loading and loads once connected", () async {
+      ServerConnectionConfig config({required String bridgeId}) =>
+          ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: bridgeId);
+      statusController.add(
+        ConnectionStatus.connected(
+          config: config(bridgeId: "a"),
+          health: _connectionHealth,
+        ),
+      );
+      var reads = 0;
+      when(mockProjectRepository.listProjects).thenAnswer(
+        (_) async => switch (reads++) {
+          0 => ApiResponse.success(Projects(data: [projectA])),
+          1 => ApiResponse<Projects>.error(ApiError.generic()),
+          _ => ApiResponse.success(Projects(data: [projectB])),
+        },
+      );
+      final inventory = buildInventory();
+      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+      final states = <ProjectListState>[];
+      final subscription = inventory.stateStream.listen(states.add);
+      addTearDown(subscription.cancel);
+
+      statusController.add(ConnectionStatus.reconnecting(config: config(bridgeId: "b")));
+      await Future<void>.delayed(Duration.zero);
+      final refresh = inventory.refreshProjects();
+      await Future<void>.delayed(Duration.zero);
+      expect(reads, 2);
+      expect(inventory.state, isA<ProjectListLoading>());
+
+      statusController.add(
+        ConnectionStatus.connected(
+          config: config(bridgeId: "b"),
+          health: _connectionHealth,
+        ),
+      );
+      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+
+      expect(await refresh, isTrue, reason: "the refresh follows the load that replaced it");
+      expect(reads, 3, reason: "the switch's own load supersedes the retry without a second read");
+      expect((inventory.state as ProjectListLoaded).projects, [projectB]);
+      expect(states.whereType<ProjectListFailed>(), isEmpty);
+    });
+
     for (final succeeds in [true, false]) {
       test("headless refresh follows the later owner after its successor applied: $succeeds", () async {
         final replies = List.generate(3, (_) => Completer<ApiResponse<Projects>>());
