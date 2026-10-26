@@ -112,7 +112,7 @@
   "@desktopUpdatesAutomaticDescription": {"description": "Explains the automatic updates switch."},
   "desktopUpdatesCheck": "Check for updates",
   "@desktopUpdatesCheck": {"description": "Runs one update check now."},
-  "desktopUpdatesCheckDescription": "Sesori downloads verified updates in the background and installs them when you quit.",
+  "desktopUpdatesCheckDescription": "Sesori downloads verified updates in the background and installs them when you quit or restart to update.",
   "@desktopUpdatesCheckDescription": {"description": "Windows and AppImage installs download signed updates and install them on Quit or Restart to update."},
   "desktopUpdatesCheckPackageDescription": "Your system's software updater installs new versions from Sesori's signed repository.",
   "@desktopUpdatesCheckPackageDescription": {"description": "Linux package installs receive updates from the system package manager."},

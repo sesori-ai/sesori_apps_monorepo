@@ -40,7 +40,7 @@ class DesktopUpdateFeedApi({
     final Uri uri = _feedUri(identity: identity, fileName: fileName);
     final http.StreamedResponse response = await _client.send(http.Request("GET", uri)).timeout(_requestTimeout);
     if (response.statusCode != HttpStatus.ok) {
-      await response.stream.drain<void>();
+      await response.stream.timeout(_downloadIdleTimeout).drain<void>();
       throw HttpException("Desktop update package returned HTTP ${response.statusCode}", uri: uri);
     }
     // Closed on failure too: Windows cannot clear a staging directory with an open file.

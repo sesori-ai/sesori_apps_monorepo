@@ -200,7 +200,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get desktopUpdatesCheckDescription =>
-      'Sesori downloads verified updates in the background and installs them when you quit.';
+      'Sesori downloads verified updates in the background and installs them when you quit or restart to update.';
 
   @override
   String get desktopUpdatesCheckPackageDescription =>
