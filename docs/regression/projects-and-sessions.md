@@ -248,19 +248,25 @@ state.
   The sidebar leads with New session, then search, then the project switcher heading the list, and
   its footer holds the computer switcher, Settings and collapse. With no session open the pane is a new
   session in the list's default project, which holds once chosen so another session turning newest never moves
-  the draft; with no default yet it asks for a project with nothing selected, and its picker opens on a tap
-  rather than by itself. Another filter moves the draft to the filter's default, and New session in the sidebar
-  returns the pane to it. The open page (a session, new session or File Changes) fills the pane and the list marks
-  the open session; archiving or deleting it empties the pane.
+  the draft. Without a filter the default lands only once every project's session read has settled (loaded or
+  failed), so a project that answers first never takes the draft; until then the pane waits blank. With no
+  default it asks for a project with nothing selected, and its picker opens on a tap rather than by itself.
+  Another filter moves the draft to the filter's default, and New session in the sidebar returns the pane to it. The
+  open page (a session, new session or File Changes) fills the pane and the list marks the open session; archiving or
+  deleting it empties the pane.
   Collapse hides the sidebar completely until the pane's restore button brings it back; the collapse lasts until
-  the app restarts and survives rotation. Only a shown sidebar claims the list's project viewing.
+  the app restarts and survives rotation. In iPhone landscape the pane keeps its page clear of the side insets: the
+  far side's always, and the notch side's once collapsing brings the pane there, the page gliding with the pane
+  and stopping at the inset, so neither the transcript nor the composer runs under the Dynamic Island. Only a shown
+  sidebar claims the list's project viewing.
 - However a phone session is reached, from the home or a notification, Android back (edge gesture or
   button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
   holds for sheets over harness settings and archived sessions.
 - On the phone, only the top-level home and Settings pages show a large 36 bold title. The home's title stands
   alone, with no computer line under it; the computer is a round glass button in the bar, before Settings. A
   small dot in its corner reports the same state the wide sidebar footer's row
-  does (green online, grey connecting, red offline), crossfading as it changes, and its label names the computer
+  does (green online, grey connecting, red offline), crossfading as it changes; switching computers turns it
+  grey at once, so the previous computer's connection never shows green for an offline one. Its label names the computer
   and that state ("Computer: Studio Mac, online"), shown as a tooltip under a pointer. Until a computer is named
   (while the name loads, during onboarding, or when the lookup finds none) the button holds its place with no
   dot and takes no taps, so the bar never shifts.
