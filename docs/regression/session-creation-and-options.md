@@ -34,9 +34,9 @@ variant, and worktree mode, and creating the session with its first input.
   set off by a hairline. The search never filters or hides it, so it is there with one project, with none, and
   when the search matches nothing ("No projects match"). On a phone it sits at the sheet's bottom edge and
   rides above the raised keyboard while the search stays still; in a popover it sits right under the rows.
-  Under a pointer it has a hover state, and the keyboard highlight starts on the first matching project and never on the button: Down
-  past the last project highlights it and Enter picks it, typing then Enter picks the first matching project,
-  and with nothing matching Enter picks nothing. When the picker chooses a project rather than a filter, the
+  Under a pointer it has a hover state, and the keyboard highlight starts on the first matching project and
+  never on the button: Down past the last project highlights it and Enter picks it, typing then Enter picks
+  the first matching project, and with nothing matching Enter picks nothing. When the picker chooses a project rather than a filter, the
   button is "Open folder…": it closes the picker, opens the folder browser once the picker has closed, and
   selects the project the browser adds. Filtering a list instead, it is "Show all projects": while every
   project is shown it carries a check, no project is checked, and it only closes the picker; otherwise it
