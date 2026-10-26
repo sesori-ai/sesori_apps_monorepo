@@ -18,7 +18,7 @@
 | 3/13 | PR refresh setting removed | Not started | — |
 | 4/13 | Client stops declaring the open project | Not started | — |
 | 5/13 | Session reads carry no PR data | In review | #2085 (5.i), #2086 (5.ii) |
-| 6/13 | Polling stopped | In review | — |
+| 6/13 | Polling stopped | In review | #2090 |
 | 7/13 | Bridge stops tracking the open project | Not started | — |
 | 8/13 | PR sync service removed | Not started | — |
 | 9/13 | PR source lookup removed | Not started | — |
