@@ -16,6 +16,10 @@ import "../../core/widgets/desktop_sidebar_expansion.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
 import "desktop_file_access_card.dart";
 
+/// How long the home's own changes take: the body crossfade, the header
+/// growing into place and the slow-start line fading in.
+const Duration _homeMotionDuration = Duration(milliseconds: 220);
+
 /// The desktop home: the cockpit's project list states, and otherwise a new
 /// session in the sidebar list's default project from [AllSessionsCubit].
 class const DesktopHomePane({
@@ -80,7 +84,14 @@ class const DesktopHomePane({
           onOpenHarnessSettings: onOpenHarnessSettings,
         );
       case ProjectListLoading():
-        status = _loading(context: context);
+        // The relay can still be connecting as the launch begins, so the
+        // line's wait starts with the launch, not with its offline report.
+        status = _loading(
+          context: context,
+          startingThisComputer: context.select(
+            (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
+          ),
+        );
       case ProjectListFailed(:final reason):
         status = RemoteFailureView(
           reason: reason,
@@ -102,11 +113,19 @@ class const DesktopHomePane({
     );
   }
 
-  static Widget _loading({required BuildContext context}) => Center(
-    child: Semantics(
-      label: context.loc.projectListLoadingSemantics,
-      child: const PregoAiLoader(size: 32),
-    ),
+  /// The loader centred as for any load, with equal room above and below it.
+  /// [_SlowStartLine] waits in the room below, so it fades in and out without
+  /// moving the loader. Every load builds the same tree, so a load turning into
+  /// a launch, or back, keeps the running loader and the line.
+  static Widget _loading({required BuildContext context, required bool startingThisComputer}) => Column(
+    children: [
+      const Spacer(),
+      Semantics(
+        label: context.loc.projectListLoadingSemantics,
+        child: const PregoAiLoader(size: 32),
+      ),
+      Expanded(child: _SlowStartLine(starting: startingThisComputer)),
+    ],
   );
 
   /// Another computer's bridge is out of this desktop's reach, so its
@@ -121,7 +140,7 @@ class const DesktopHomePane({
       return DesktopRemoteComputerOfflineView(bridge: bridge, onSwitchComputer: _switchComputer);
     }
     if (context.select((LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting)) {
-      return _loading(context: context);
+      return _loading(context: context, startingThisComputer: true);
     }
     return DesktopBridgeRecoveryView(
       bridge: bridge,
@@ -131,6 +150,74 @@ class const DesktopHomePane({
 
   static void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) =>
       unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
+}
+
+/// Under the loader: once a launch of this computer's bridge has gone on for
+/// [delay] without the app reaching it (a registration retry, say), a line
+/// fades in to say it is still under way. A normal start connects well before
+/// then, so it never shows. When the launch gives way to an ordinary load, the
+/// line fades out and its wait is dropped; a later launch waits afresh.
+class const _SlowStartLine({required final bool starting}) extends StatefulWidget {
+  static const Duration delay = Duration(seconds: 10);
+
+  @override
+  State<_SlowStartLine> createState() => _SlowStartLineState();
+}
+
+class _SlowStartLineState() extends State<_SlowStartLine> {
+  Timer? _timer;
+  bool _shown = false;
+
+  @override
+  void initState() {
+    super.initState();
+    _wait();
+  }
+
+  @override
+  void didUpdateWidget(_SlowStartLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.starting != widget.starting) _wait();
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  /// Hides the line, and while [_SlowStartLine.starting] waits to show it.
+  void _wait() {
+    _timer?.cancel();
+    _shown = false;
+    _timer = widget.starting ? Timer(_SlowStartLine.delay, () => setState(() => _shown = true)) : null;
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final prego = context.prego;
+    return Align(
+      alignment: Alignment.topCenter,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.x2l, PregoSpacing.lg, PregoSpacing.x2l, 0),
+        // Left out of semantics while hidden; once shown, a live region.
+        child: AnimatedOpacity(
+          opacity: _shown ? 1 : 0,
+          duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
+          curve: Curves.easeOut,
+          child: Semantics(
+            container: true,
+            liveRegion: true,
+            child: Text(
+              context.loc.projectsDesktopBridgeStillStarting,
+              textAlign: TextAlign.center,
+              style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
 }
 
 /// "Viewing: …" above the home: which computer's projects the desktop shows,
@@ -147,7 +234,7 @@ class const _DesktopComputerHeader({
     final current = state.computers.where((computer) => computer.id == state.currentId).firstOrNull;
     final remote = state.viewsAnotherComputer;
     return AnimatedSize(
-      duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+      duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
       curve: Curves.easeInOut,
       alignment: AlignmentDirectional.topStart,
       child: current == null || !(remote || state.computers.length > 1)
@@ -390,7 +477,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
           (_projectId == null && previous.defaultProjectId != current.defaultProjectId),
       listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
       child: AnimatedSwitcher(
-        duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
+        duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
         child: pane,
       ),
     );

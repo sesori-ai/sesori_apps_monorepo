@@ -197,9 +197,12 @@ The main pane hosts one full-width routed page.
   bridge on that computer, and the shared Other computers card, with no Start button. While the desktop is
   launching this computer's bridge (including a cold start) and has not reached it yet, this computer's offline
   bridge is a load: the home shows the same loader as any load and the sidebar list shows its loading skeleton.
-  Recovery appears only once the supervisor leaves starting and running (a failed start, a stop, login required,
-  contention), or a bridge the app had reached is lost (a crash restart stays disconnected); another computer's
-  offline state shows immediately.
+  After 10 s, "Still starting this computer's bridge…" fades in under the loader (at once with reduced motion)
+  without moving it, and fades out the same way if the launch gives way to an ordinary load; a normal start never
+  shows it, and no other load does. Recovery appears only once the
+  supervisor leaves starting and running (a failed start, a stop, login required, contention), or a bridge the
+  app had reached is lost (a crash restart stays disconnected); another computer's offline state shows
+  immediately.
 - Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
   menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
   computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
@@ -305,9 +308,10 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
 - Home computer header shown, hidden for a lone local computer, and switching from its menu; disconnected home
   for a remote target (offline body, other computers, no Start, also while this computer's bridge launches) versus
-  this computer (supervised Start; the loader while its bridge launches, recovery once the start fails); the
-  desktop target following a new or changed supervised bridge id unless another computer was picked in this
-  sign-in; header and body agreeing on "this computer" before the supervised id is known.
+  this computer (supervised Start; the loader while its bridge launches, its still-starting line after 10 s,
+  recovery once the start fails); the desktop target following a new or changed supervised bridge id unless
+  another computer was picked in this sign-in; header and body agreeing on "this computer" before the
+  supervised id is known.
 - Root-popup activity visibility across nested navigators; notification popup dismissal,
   same-page/Back preservation, different-session replacement, readiness and logged-failure ordering.
 - Popover scope/contextual actions, locks/live updates, explicit Stop intent, footer anchoring,

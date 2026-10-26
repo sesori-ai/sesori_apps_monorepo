@@ -486,6 +486,9 @@ class AppLocalizationsEn extends AppLocalizations {
       'Start the bridge on that computer to load its projects and sessions here.';
 
   @override
+  String get projectsDesktopBridgeStillStarting => 'Still starting this computer\'s bridge…';
+
+  @override
   String desktopViewingComputer(String name) {
     return 'Viewing: $name';
   }

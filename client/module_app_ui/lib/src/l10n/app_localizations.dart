@@ -931,6 +931,12 @@ abstract class AppLocalizations {
   /// **'Start the bridge on that computer to load its projects and sessions here.'**
   String get projectsDesktopRemoteOfflineInfo;
 
+  /// Desktop-only line that fades in under the home loader when launching this computer's own bridge has taken longer than 10 seconds and the app has not reached it yet.
+  ///
+  /// In en, this message translates to:
+  /// **'Still starting this computer\'s bridge…'**
+  String get projectsDesktopBridgeStillStarting;
+
   /// Desktop home header naming the other computer whose projects are shown; opens the computer menu.
   ///
   /// In en, this message translates to:
