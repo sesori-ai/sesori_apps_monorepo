@@ -424,7 +424,9 @@ state.
   every project the home and Archived name each row's. Screen
   readers hear the waiting state once, from the status mark. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
-  text size, under touch and under a pointer alike, and they grow with
+  text size under touch. Under a pointer (the desktop app) rows keep the same
+  type, line boxes and gap in 8px rather than 12px vertical padding, so they
+  are 62px, and the launching row and the loading skeleton follow. Rows grow with
   accessibility text rather than clipping or overflowing. Regular rows form
   one timeline with no Running section, in updated-time date buckets, and a
   status change alone never moves a row. A running row sits under Today

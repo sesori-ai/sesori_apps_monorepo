@@ -44,8 +44,8 @@ typedef SessionOpenedCallback = void Function({required Session session});
 /// and assistive one.
 ///
 /// Under a [PregoInteractionMode.pointer] scope the row keeps the touch row's
-/// size, and hovering or focusing it swaps the time for its read toggle and
-/// Archive.
+/// type and line boxes in less vertical padding, and hovering or focusing it
+/// swaps the time for its read toggle and Archive.
 class const SessionTile({
   super.key,
   required final Session session,
@@ -149,7 +149,7 @@ class const SessionTile({
                 onLongPress: openMenu,
                 hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
                 child: Padding(
-                  padding: _rowPadding,
+                  padding: _rowPadding(pointer: pointer),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     spacing: _lineGap,
@@ -492,7 +492,7 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
             onTap: () => PregoPopupAlertPresenter.of(context).show(title: loc.sessionListLaunchingAlert),
             hoverColor: pointer ? prego.colors.bgSecondaryHover : null,
             child: Padding(
-              padding: _rowPadding,
+              padding: _rowPadding(pointer: pointer),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 spacing: _lineGap,
@@ -545,12 +545,13 @@ class const SessionTileSkeleton({
   required final double titleWidthFraction,
   required final double detailsWidth,
 }) extends StatelessWidget {
-  /// As tall as a row at the default text size.
-  static const double height = PregoSpacing.lg * 2 + _titleLineHeight + _lineGap + _metaLineHeight;
+  /// As tall as a row at the default text size, under a pointer or touch.
+  static double heightOf({required bool pointer}) =>
+      _rowVerticalPadding(pointer: pointer) * 2 + _titleLineHeight + _lineGap + _metaLineHeight;
 
   @override
   Widget build(BuildContext context) => Padding(
-    padding: _rowPadding,
+    padding: _rowPadding(pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer),
     child: Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       spacing: _lineGap,
@@ -585,15 +586,16 @@ class const SessionTileSkeleton({
   );
 }
 
-/// The row's insets, shared with the launching row: the harness logo leads
-/// [PregoSpacing.lg] in, and the time keeps the toolbar's [PregoSpacing.xl]
-/// from the trailing edge.
-const EdgeInsetsDirectional _rowPadding = EdgeInsetsDirectional.fromSTEB(
-  PregoSpacing.lg,
-  PregoSpacing.lg,
-  PregoSpacing.xl,
-  PregoSpacing.lg,
-);
+/// The row's insets, shared with the launching row and the placeholder: the
+/// harness logo leads [PregoSpacing.lg] in, and the time keeps the toolbar's
+/// [PregoSpacing.xl] from the trailing edge.
+EdgeInsetsDirectional _rowPadding({required bool pointer}) {
+  final vertical = _rowVerticalPadding(pointer: pointer);
+  return EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, vertical, PregoSpacing.xl, vertical);
+}
+
+/// A finger needs a roomier row than a mouse does.
+double _rowVerticalPadding({required bool pointer}) => pointer ? PregoSpacing.md : PregoSpacing.lg;
 
 /// A title with the status mark right after its text. A long title fades out
 /// before the mark, so the mark always shows; without one the title takes the
