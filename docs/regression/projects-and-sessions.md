@@ -692,8 +692,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - A folder opened through a symbolic link lists a second project for its resolved
   path after an import, its sessions move to that project, or an open fails
   because the link could not be resolved. On macOS or Linux, opening a path that
-  is itself a link to a folder fails as "not a directory" or stores the link's
-  spelling.
+  is itself a link to an existing folder fails as "not a directory", or stores
+  the link's spelling although the link resolves.
 - Sessions lose attribution, land under the wrong project, or a child lists as a
   root. A Claude sub-agent transcript lists as a root, is missing under its
   root, or survives its root's deletion on disk; a legacy flat sub-agent file
