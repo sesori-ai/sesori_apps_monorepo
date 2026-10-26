@@ -25,6 +25,10 @@ class FakeFilesystemApi({
   @override
   Future<bool> directoryExistsAsync(String path) async => directoryExists(path);
 
+  /// No path passes through a link here.
+  @override
+  String resolveDirectoryPath(String path) => path;
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }

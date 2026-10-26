@@ -4,6 +4,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/project_activity_repository.dart";
@@ -600,6 +601,22 @@ void main() {
       expect(opened.id, directory);
       expect(plugin.lastGetProjectId, isNull);
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
+    });
+
+    test("opening keeps a folder whose links cannot be resolved as given", () async {
+      const missing = "/sesori-test-missing/project";
+      final resolvingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: const FilesystemApi(),
+      );
+
+      final target = await resolvingRepo.resolveProjectOpenTarget(path: missing);
+
+      expect(target.id, missing);
+      expect(target.path, missing);
     });
 
     test("openProject atomically rechecks identity after a concurrent catalog import", () async {
