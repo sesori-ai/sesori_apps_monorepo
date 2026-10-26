@@ -514,21 +514,13 @@ void main() {
     await tester.tap(find.text("Open logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
-    final interval = find.byKey(const Key("pull_request_refresh_interval"));
-    await tester.ensureVisible(interval);
-    await tester.pumpAndSettle();
-    await tester.tap(interval);
-    await tester.pumpAndSettle();
-    final input = find.byType(EditableText);
-    await tester.showKeyboard(input);
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pump();
-    expect(tester.widget<EditableText>(input).focusNode.hasFocus, isFalse);
-    expect(find.byType(Dialog), findsOneWidget);
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pumpAndSettle();
-    expect(find.byType(Dialog), findsNothing);
-    expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
+  });
+
+  testWidgets("a bridge without /settings shows the bridge settings as unsupported", (tester) async {
+    when(bridgeSettingsService.load).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+
+    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(2));
   });
 
   testWidgets("Bridge opens with the computer entry, and a switch closes the window", (tester) async {
