@@ -3,8 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 13/13. The L3 matrix ran on 2026-10-25 with two Fail cells and nine Not executed cells, so the
-  plan stays active until the user decides on fixes or reductions.
+- Current step: 13/13. Both Fail cells passed on the 2026-10-25 re-run after #2077, and the two all-harness cells
+  are an accepted reduction (Q2 A). The seven Linux desktop cells (Q1 C) could not run, so the plan stays active
+  until they pass or the user accepts another reduction. See [Re-run](#re-run-2026-10-25).
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -32,7 +33,8 @@
 | 11.iii/13 | Session list view mode removed | Done | #2058 |
 | 11.iv/13 | Project-sessions route and list-claim stack removed | Done | #2062 |
 | 12/13 | Regression documents reconciled | Done | #2064 |
-| 13/13 | L3 matrix run; plan retired | In review | [L3 matrix (2026-10-25)](#l3-matrix-2026-10-25) |
+| 13.i/13 | Collapsed landscape inset, the composer's default project and the offline dot fixed | Done | #2077 |
+| 13/13 | L3 matrix run; plan retired | Blocked: desktop cells not run | [L3 matrix (2026-10-25)](#l3-matrix-2026-10-25) |
 
 ## Evidence and decisions
 
@@ -81,7 +83,20 @@
   keeps serving `/project/base-branch` for older apps.
 - 2026-10-25: step 11.iv returns `ProjectViewingService` to one list-claim slot, because `AllSessionsCubit` is
   now the only holder. It also drops the two project-page strings that 11.ii orphaned.
-- No reduction of the retirement matrix has been requested or accepted.
+- 2026-10-25: step 13.i (#2077) fixed both Fail cells of the first L3 run and the green status dot shown during
+  the skeleton while switching to an offline computer.
+- 2026-10-25: the user decided the open L3 questions (final):
+  - **Q1 C:** the seven desktop cells run on a clean GitHub Actions Linux runner with the Linux desktop build and
+    the dev account, not on the owner's Mac. The macOS debug build shares its bundle id with the owner's real
+    Sesori.app, so no desktop build runs on that Mac.
+  - **Q2 A:** the two all-harness cells (refresh across every installed harness; a failing harness shows the
+    degradation) are an accepted reduction. Unit tests and the live OpenCode pass cover them.
+  - **Q3 A:** a folder opened through a symlink splitting into two projects becomes a standalone bridge PR after
+    the current plans. It is outside this plan.
+  - **Q4 A:** a project opened on another surface not appearing live on the phone becomes a standalone PR after
+    the current plans. It is outside this plan.
+  - Settled side observations: the offline banner behavior is intended; the `computer_switched` analytics event is
+    unit-tested and was not verified on a device; the green dot during the skeleton was fixed in #2077.
 
 ## L3 matrix (2026-10-25)
 
@@ -120,22 +135,22 @@ sheets.
 | iPhone portrait | Settings › Projects rename and hide | Pass | `iphone-30` to `iphone-33` |
 | iPhone landscape | Sidebar with the composer pane | Pass | `iphone-34` (mp4), `iphone-35` |
 | iPhone landscape | Opening a session | Pass | `iphone-36` |
-| iPhone landscape | Collapse and restore | **Fail** | `iphone-37`, `iphone-38-FAIL-…`, `iphone-39` |
+| iPhone landscape | Collapse and restore | **Fail**, then Pass on the re-run | `iphone-37`, `iphone-38-FAIL-…`, `iphone-39`; re-run `ios-a-…` |
 | iPhone landscape | Rotation with a session open | Pass | `iphone-40`, `iphone-41`; collapse survives rotation in `iphone-42` |
-| iPad portrait and landscape | Sidebar with the composer pane | **Fail** | `ipad-01-FAIL-…`; the draft follows a filter in `ipad-03`, `ipad-04` |
+| iPad portrait and landscape | Sidebar with the composer pane | **Fail**, then Pass on the re-run | `ipad-01-FAIL-…`; the draft follows a filter in `ipad-03`, `ipad-04`; re-run `ios-b-…` |
 | iPad portrait and landscape | Opening a session | Pass | `ipad-06` |
 | iPad portrait and landscape | Collapse and restore | Pass | `ipad-05` (mp4), `ipad-07` |
 | iPad portrait and landscape | Rotation with a session open | Pass | `ipad-08`; collapse survives rotation in `ipad-09` |
 | iPad portrait and landscape | Picker popover | Pass | `ipad-02` (portrait), `ipad-10` (landscape) |
-| macOS desktop | The sidebar list and filter | Not executed | See reason 1 |
-| macOS desktop | Collapse and resize | Not executed | See reason 1 |
-| macOS desktop | Launch on the composer | Not executed | See reason 1 |
-| macOS desktop | The palette filter | Not executed | See reason 1 |
-| macOS desktop | Archived from the footer | Not executed | See reason 1 |
-| macOS desktop | The folder picker | Not executed | See reason 1 |
-| macOS desktop | Settings › Projects | Not executed | See reason 1 |
-| Plugins | Refresh across every installed harness | Not executed | See reason 2; the OpenCode refresh passed in the pull refresh cell |
-| Plugins | A failing harness shows the documented degradation | Not executed | See reason 3 |
+| Linux desktop (Q1 C) | The sidebar list and its project filter | Not executed | See reason 1 |
+| Linux desktop (Q1 C) | Collapse and resize | Not executed | See reason 1 |
+| Linux desktop (Q1 C) | Launch on the composer (an empty pane is a new session) | Not executed | See reason 1 |
+| Linux desktop (Q1 C) | The palette filter | Not executed | See reason 1 |
+| Linux desktop (Q1 C) | Archived, reached from the settings window since #2070 | Not executed | See reason 1 |
+| Linux desktop (Q1 C) | The folder picker, with its actions in a footer since #2071 | Not executed | See reason 1 |
+| Linux desktop (Q1 C) | Settings › Projects | Not executed | See reason 1 |
+| Plugins | Refresh across every installed harness | Accepted reduction (Q2 A), not executed | See reason 2; the OpenCode refresh passed in the pull refresh cell |
+| Plugins | A failing harness shows the documented degradation | Accepted reduction (Q2 A), not executed | See reason 3 |
 | Plugins | A bridge older than v1.7.0 shows the documented degradation | Pass | `iphone-21` (mp4), `iphone-22`: a v1.6.0 bridge's pull is a plain reload with no scan row |
 
 **Fail cells:**
@@ -164,23 +179,22 @@ sheets.
 
 **Not executed reasons:**
 
-1. **macOS desktop.**
-   - The debug `client/desktop` build uses bundle id `com.sesori.desktop`. That is the same id as the production
-     Sesori.app installed on the test machine, which holds the owner's real account in its Application Support
-     container and keychain.
-   - Two `flutter run` desktop sessions from the owner's main checkout were also already running.
-   - Launching the debug build would read and overwrite that real state and show real projects, paths and
-     transcripts. This run allowed fixture data only.
-   - Isolating it would need a product change, such as a separate bundle id or data directory, or a clean macOS
-     user or machine.
-2. **Refresh across every installed harness.**
+1. **Desktop.**
+   - The first run did not use macOS. The debug `client/desktop` build uses bundle id `com.sesori.desktop`, the
+     same id as the production Sesori.app on the test machine, which holds the owner's real account. So the user
+     moved these cells to a clean GitHub Actions Linux runner (Q1 C).
+   - The Linux attempt on the re-run did not reach the desktop. See [Re-run](#re-run-2026-10-25), *Desktop
+     blocker*.
+2. **Refresh across every installed harness.** Accepted reduction (Q2 A). Unit tests and the live OpenCode pass
+   cover it. The first run did not execute it for this reason:
    - The isolated bridge home routes only OpenCode:
      - `omp` is disabled in its config;
      - the Hermes availability probe fails;
      - no other harness is signed in there.
    - Covering every installed harness needs the owner's real home directory. The app would then list the machine's
      real projects, paths and transcripts.
-3. **A failing harness.**
+3. **A failing harness.** Accepted reduction (Q2 A), as reason 2. The first run did not execute it for this
+   reason:
    - The documented partial failure needs two routable harnesses at once (see the L3 row in
      `docs/regression/projects-and-sessions.md`). The isolated home has one.
    - Failing OpenCode alone settles a refresh as a plain reload, which does not exercise the degradation.
@@ -189,16 +203,54 @@ sheets.
 
 - Opening a fixture project through the symlinked `/tmp` path and then pulling re-homed its sessions to the
   `/private/tmp` project. The run opened projects through `/private/tmp` instead. This is bridge path
-  handling, outside this plan.
+  handling, outside this plan. The re-run's picker listed both forms again (`ios-b-ipad-picker-project-order`).
+  Follow-up (Q3 A): a standalone bridge PR after the current plans.
 - After a mid-session bridge loss, a loaded list stays browsable under the “Bridge disconnected” banner, with the
   computer button reading connecting. The offline page appears when the picked computer is offline. This matches
-  `ProjectInventoryService`.
+  `ProjectInventoryService`. The user confirmed this is intended.
 - A project opened again through the bridge debug API while the phone home was showing did not appear until a later
-  refresh. The list stayed on All · 7.
+  refresh. The list stayed on All · 7. Follow-up (Q4 A): a standalone PR after the current plans.
 - While switching to an offline computer, the computer button's status dot was green during the skeleton, before
-  the offline page replaced it (`iphone-23`).
+  the offline page replaced it (`iphone-23`). Fixed in #2077.
 - The `computer_switched` analytics event was not verified on the device, because the Flutter log of that run was
-  lost.
+  lost. Unit tests cover it, and the user accepted that.
+
+### Re-run (2026-10-25)
+
+**Setup:**
+
+- The build is `main` at 0aa4b1f550 (#2077) with Flutter 3.47.7.
+- A slot 1 dev bridge ran from source with an isolated home directory.
+- The fixture projects were alpha-app and beta-api, with six OpenCode sessions.
+- The devices were `sesori-dev-1` (iPhone 17) and `sesori-dev-1-ipad`, both headless.
+
+**Evidence** is in `/tmp/app-simplification-13-media/` on the test machine and is not committed.
+
+| Surface | Cell | Result | Evidence |
+|---|---|---|---|
+| iPhone landscape | Collapse and restore | Pass | `ios-a-iphone-landscape-collapsed`, `ios-a-iphone-landscape-collapse-frames` |
+| iPad portrait and landscape | Sidebar with the composer pane | Pass | `ios-b-ipad-cold-start-portrait`, `ios-b-ipad-picker-project-order`, `ios-b-ipad-cold-start-landscape` |
+
+- **iPhone landscape:** with a session open in landscape-left and the sidebar collapsed, the transcript sits clear
+  of the Dynamic Island (a masked capture). The recording shows the collapse and the expand as continuous slides
+  over about four frames, with the pane widening alongside. One late frame-change burst after the first collapse
+  had identical layout before and after, so it is a shade or encoder change, not a jump.
+- **iPad:** project order put beta-api first, while alpha-app held the newest session (“Initial OK Response”).
+  All three cold starts with no session open (two portrait, one landscape) named alpha-app, as D15 requires.
+
+**Desktop blocker.** The seven Linux desktop cells did not run:
+
+- Diagnostic run [40255414836](https://github.com/sesori-ai/sesori_apps_monorepo/actions/runs/40255414836)
+  (`linux-interactive-debug`, x64, tooling `main` at 25a9726e84) used packaging run 40253603390. That is a signed
+  internal Linux build of 0aa4b1f550.
+- Its “Install diagnostic tools” apt step was still running after 25 minutes, against the job's 40-minute
+  ceiling. It never reached Tailscale admission or the desktop, so I cancelled that run.
+- On the test machine, bringing the Tailscale client up broke the system DNS resolver. A name like
+  `api.github.com` stopped resolving, even with Tailscale DNS turned off, and recovered within seconds of
+  `tailscale down`. The client was also found stopped within ten minutes of being brought up, and I had not stopped
+  it.
+- Running the cells needs a runner whose tool install fits the ready window, and an operator Tailscale client that
+  can stay up without breaking that machine's DNS.
 
 ## Review record
 

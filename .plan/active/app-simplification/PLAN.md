@@ -678,8 +678,12 @@ Run the matrix below, record the results in `TRACKER.md`, and move the plan to
   v1.7.0, show the documented degradation. No plugin behavior changes.
 - **Platforms.** Android, Windows and Linux are covered by shared widget and unit tests. Nothing here is
   platform-specific beyond the macOS desktop shell.
-- **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement. None has been
-  accepted.
+- **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement.
+  - Accepted (user, 2026-10-25, Q1 C): the seven macOS desktop cells run on a clean GitHub Actions Linux runner
+    with the Linux desktop build and the dev account, because the macOS debug build shares its bundle id with the
+    owner's real Sesori.app.
+  - Accepted (user, 2026-10-25, Q2 A): the two all-harness Plugins cells (refresh across every installed harness;
+    a failing harness) are not executed. Unit tests and the live OpenCode pass cover them.
 
 ## Risks and accepted behavior
 
