@@ -135,7 +135,7 @@ entirely along with its transcript and its dedicated worktree.
   gets its own Retry row instead of the empty state. The page reloads
   the session inventory when it opens, because the bridge publishes no event on
   archive, and pull-to-refresh runs the scope's shared refresh with a success or
-  failure alert. Archived lists never claim a viewed project. Swipe and menu
+  failure alert. Swipe and menu
   actions run on a per-row action cubit; a deleted row leaves when the bridge's
   `session.deleted` event arrives.
 - Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the settings window's
@@ -152,10 +152,7 @@ entirely along with its transcript and its dedicated worktree.
   whole flow for its original opener, preserving its list/scroll and draft. Back remains
   available during loading and errors, including related-session audit navigation.
   Direct archive entry falls back to the home from the list's Back and leaves the
-  project filter as it was. Audit cubits never
-  replace the opener's live-project claims;
-  the covered project's declaration is suspended until the opener is visible.
-  A covered live detail also stops declaring its session viewed, so new output
+  project filter as it was. A covered live detail stops declaring its session viewed, so new output
   stays unread; leaving the flow reasserts the retained loaded detail. Incoming
   questions, permissions and notices from the covered detail do not interrupt
   archive browsing.

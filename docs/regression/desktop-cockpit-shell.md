@@ -103,11 +103,7 @@ The main pane hosts one full-width routed page.
   below; a button press or the keyboard hangs the menu off its trigger as before. A row shows a shortcut only
   where the desktop registers a real binding for the same action. The phone installs no scope and keeps its
   long-press presentation.
-- Filtered to one project, the sidebar's list claims that project's viewing once its sessions load, as the
-  phone's list does; All projects claims nothing, since the bridge is told one project. The cockpit reports the
-  open sidebar as the visible list pane, so the new session and Changes pages keep that claim only while the
-  sidebar shows. A session action menu never claims
-  project viewing. Session mutations use the existing action controller and a stable sidebar presentation
+- Session mutations use the existing action controller and a stable sidebar presentation
   context. Opening a session menu first retains its
   action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
   confirmation or admitted operation lease. Mark-read, rename, archive and delete finish handling before disposal.
@@ -140,8 +136,8 @@ The main pane hosts one full-width routed page.
   remain non-viewing action scopes.
 - The settings window's Archived sessions row, below its tabs on every tab, closes the window and opens the
   Archived sessions page over the current page: the shared archived list across
-  projects, read through the sidebar's shared project filter, with each row naming its project. It never claims
-  project viewing. A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
+  projects, read through the sidebar's shared project filter, with each row naming its project.
+  A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
   returns to the page it opened over, or home when there is none, and opening Archived while it is the top page
   does nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
   card say why.
@@ -425,7 +421,6 @@ after the user picked another one.
 - `client/module_app_ui/lib/src/features/session_list/all_sessions_list.dart`
 - `client/module_app_ui/lib/src/features/project_picker/project_picker.dart`
 - `client/module_core/lib/src/cubits/all_sessions/all_sessions_cubit.dart`
-- `client/module_core/lib/src/services/project_viewing_service.dart`
 - `client/desktop/lib/core/widgets/desktop_window_drag_area.dart`
 - `client/desktop/lib/core/widgets/desktop_window_brightness.dart`
 - `client/desktop/lib/core/platform/flutter_window_host.dart`

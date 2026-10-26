@@ -206,7 +206,6 @@ Widget testHome() {
     connectionService: getIt<ConnectionService>(),
     filterTracker: filterTracker,
     sessionListService: getIt<SessionListService>(),
-    projectViewingService: stubbedProjectViewingService(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [

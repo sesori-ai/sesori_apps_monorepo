@@ -55,7 +55,6 @@ void main() {
     getIt.registerSingleton<SessionListService>(
       SessionListService(repository: repository, activityCalculator: const SessionActivityCalculator()),
     );
-    getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
     getIt.registerFactory<SessionLaunchService>(
       () => inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
@@ -112,7 +111,6 @@ void main() {
       await getIt.unregister<ActiveBridgeLocality>();
       await getIt.unregister<SessionListFilterTracker>();
       await getIt.unregister<SessionListService>();
-      await getIt.unregister<ProjectViewingService>();
       await filterTracker.dispose();
       await getIt.unregister<SessionLaunchService>();
       await getIt.unregister<ProjectInventoryService>();

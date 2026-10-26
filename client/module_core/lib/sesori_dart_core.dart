@@ -295,7 +295,6 @@ export "src/services/plugin_management_service.dart";
 export "src/services/product_analytics_service.dart";
 export "src/services/project_inventory_service.dart";
 export "src/services/project_list_service.dart";
-export "src/services/project_viewing_service.dart";
 export "src/services/recent_session_inventory_service.dart";
 export "src/services/registered_bridges_service.dart";
 export "src/services/selected_computer_service.dart";

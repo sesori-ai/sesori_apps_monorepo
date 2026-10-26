@@ -216,8 +216,6 @@ import 'package:sesori_dart_core/src/services/project_inventory_service.dart'
     as _i870;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
     as _i703;
-import 'package:sesori_dart_core/src/services/project_viewing_service.dart'
-    as _i413;
 import 'package:sesori_dart_core/src/services/recent_session_inventory_service.dart'
     as _i623;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
@@ -660,14 +658,6 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i7.SessionRepository>(),
         pluginRepository: gh<_i337.PluginRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
-      ),
-    );
-    gh.lazySingleton<_i413.ProjectViewingService>(
-      () => _i413.ProjectViewingService(
-        viewRepository: gh<_i143.ViewDeclarationRepository>(),
-        lifecycleSource: gh<_i904.LifecycleSource>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        routeSource: gh<_i366.RouteSource>(),
       ),
     );
     gh.lazySingleton<_i110.PluginManagementService>(

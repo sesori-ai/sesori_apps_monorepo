@@ -273,8 +273,7 @@ state.
   Collapse hides the sidebar completely until the pane's restore button brings it back; the collapse lasts until
   the app restarts and survives rotation. In iPhone landscape the pane keeps its page clear of the side insets: the
   far side's always, and the notch side's once collapsing brings the pane there, the page gliding with the pane
-  and stopping at the inset, so neither the transcript nor the composer runs under the Dynamic Island. Only a shown
-  sidebar claims the list's project viewing.
+  and stopping at the inset, so neither the transcript nor the composer runs under the Dynamic Island.
 - However a phone session is reached, from the home or a notification, Android back (edge gesture or
   button) first closes the topmost sheet over it, one sheet at a time, and only then leaves the session. The same
   holds for sheets over harness settings and archived sessions.
