@@ -783,5 +783,5 @@ uninstall leaving the login value, or uninstall deleting shared user data outsid
 are failures. Linux package ownership of
 `/usr/bin/sesori-bridge`, user homes or autostart entries; guessed runtime dependencies;
 non-native container execution; package scriptlets; altered staged payloads; or calling
-a same-version reinstall an N→N+1 upgrade are failures. Manual replacement must never
+a same-version reinstall an N→N+1 upgrade are failures. An update must never
 delete shared credentials, harness runtimes, databases, history or projects.
