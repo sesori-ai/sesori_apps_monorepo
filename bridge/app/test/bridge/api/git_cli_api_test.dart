@@ -71,69 +71,6 @@ void main() {
     );
   });
 
-  test("getCurrentBranch removes one line ending without trimming the branch", () async {
-    for (final testCase in [
-      (stdout: "Feature/Current\n", expected: "Feature/Current"),
-      (stdout: "\u2003Feature/Current\u2003\r\n", expected: "\u2003Feature/Current\u2003"),
-      (stdout: "Feature/Current\r", expected: "Feature/Current"),
-      (stdout: "Feature/Current\n\n", expected: "Feature/Current\n"),
-    ]) {
-      final processRunner = _RecordingProcessRunner(stdout: testCase.stdout);
-      final api = GitCliApi(
-        streamingProcessRunner: const StreamingProcessRunner(),
-        processRunner: processRunner,
-        gitPathExists: ({required String gitPath}) => true,
-      );
-
-      final result = await api.getCurrentBranch(projectPath: "/project");
-
-      expect(result, isA<GitCurrentBranchNamed>());
-      expect((result as GitCurrentBranchNamed).branchName, testCase.expected);
-      expect(processRunner.arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
-      expect(processRunner.environment, const {"LC_ALL": "C"});
-    }
-  });
-
-  test("getCurrentBranch distinguishes detached, non-git, and missing directories", () async {
-    final detachedApi = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: _RecordingProcessRunner(exitCode: 1),
-      gitPathExists: ({required String gitPath}) => true,
-    );
-    final nonGitApi = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: _RecordingProcessRunner(exitCode: 128, stderr: "fatal: not a git repository"),
-      gitPathExists: ({required String gitPath}) => true,
-    );
-    final missingRunner = _RecordingProcessRunner();
-    final missingApi = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: missingRunner,
-      gitPathExists: ({required String gitPath}) => false,
-    );
-
-    expect(await detachedApi.getCurrentBranch(projectPath: "/detached"), isA<GitCurrentBranchDetached>());
-    expect(await nonGitApi.getCurrentBranch(projectPath: "/plain"), isA<GitCurrentBranchNotRepository>());
-    expect(
-      await missingApi.getCurrentBranch(projectPath: "/missing"),
-      isA<GitCurrentBranchMissingDirectory>(),
-    );
-    expect(missingRunner.arguments, isNull);
-  });
-
-  test("getCurrentBranch preserves unexpected git failures", () async {
-    final api = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: _RecordingProcessRunner(exitCode: 2, stderr: "unexpected failure"),
-      gitPathExists: ({required String gitPath}) => true,
-    );
-
-    await expectLater(
-      api.getCurrentBranch(projectPath: "/project"),
-      throwsA(isA<ProcessException>()),
-    );
-  });
-
   test("streams only the requested tracked-file prefix through the injected process boundary", () async {
     final process = _FakeStreamingProcess(
       stdoutChunks: [utf8.encode("a.dart\u0000b."), utf8.encode("dart\u0000c.dart\u0000")],
