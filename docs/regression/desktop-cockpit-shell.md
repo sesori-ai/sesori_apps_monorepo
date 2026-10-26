@@ -196,9 +196,10 @@ The main pane hosts one full-width routed page.
   "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the
   bridge on that computer, and the shared Other computers card, with no Start button. While the desktop is
   launching this computer's bridge (including a cold start) and has not reached it yet, this computer's offline
-  bridge is a load: the home shows the same loader as any load and the sidebar list its loading skeleton.
-  Recovery appears only once the start fails or stops, or a bridge the app had reached is lost (a crash restart
-  stays disconnected); another computer's offline state shows immediately.
+  bridge is a load: the home shows the same loader as any load and the sidebar list shows its loading skeleton.
+  Recovery appears only once the supervisor leaves starting and running (a failed start, a stop, login required,
+  contention), or a bridge the app had reached is lost (a crash restart stays disconnected); another computer's
+  offline state shows immediately.
 - Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
   menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
   computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
@@ -213,8 +214,8 @@ The main pane hosts one full-width routed page.
   Reconnecting appears after the shared grace period; connection lost retains
   Reconnect until a reconnect starts, which clears it. Local desired Off, including cold-start/default Off before a user
   starts the bridge, suppresses bridge-offline copy—not relay recovery for
-  clients using another bridge. So does launching this computer's bridge, until the app reaches it or the start
-  fails or stops. Recovery hides the pill with a
+  clients using another bridge. So does launching this computer's bridge, until the app reaches it or the
+  supervisor leaves starting and running. Recovery hides the pill with a
   short fade; reduced motion disables it. Departing content neither intercepts
   input nor remains in accessibility announcements.
 - The This computer row always exposes its supervised status through a dot and an
