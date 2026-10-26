@@ -26,7 +26,7 @@ The main pane hosts one full-width routed page.
   drag only after it travels further than a click tolerates, so toolbar controls keep their clicks,
   undelayed, and a text selection or a scrollbar still wins its own press. Where the band and a zooming
   region overlap, one press still reaches the host once.
-- The sidebar's footer is one 44-point row: This computer, then Archived, Settings and collapse, with the
+- The sidebar's footer is one 44-point row: This computer, then Settings and collapse, with the
   bridge recovery card above it when one applies. Refresh sits beside the project filter at the head of the
   list. The session list clips its rows' highlights, so a highlighted row scrolled under the section above
   never shows through it.
@@ -136,10 +136,11 @@ The main pane hosts one full-width routed page.
 - The sidebar is the only navigation pane. The home, archived sessions, new session, detail, and diffs
   are sibling main-pane routes. The sidebar's shared list is the only full list owner; session action menus
   remain non-viewing action scopes.
-- The footer's Archived opens the Archived sessions page over the current page: the shared archived list across
+- The settings window's Archived sessions row, below its tabs on every tab, closes the window and opens the
+  Archived sessions page over the current page: the shared archived list across
   projects, read through the sidebar's shared project filter, with each row naming its project. It never claims
   project viewing. A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
-  returns to the page it opened over, or home when there is none, and pressing Archived while it is the top page
+  returns to the page it opened over, or home when there is none, and opening Archived while it is the top page
   does nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
   card say why.
 - Hovering a list row, or moving keyboard focus into it, swaps its time for Mark read/unread and Archive
@@ -189,7 +190,7 @@ The main pane hosts one full-width routed page.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else the newest
   session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
   filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank, and with no
-  default the shared "Choose a project" prompt shows instead, offering only "Open another folder…" when there are
+  default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there are
   no projects. A session started from home opens in its project. Loading projects is labelled and failures retry
   the shared inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
@@ -340,9 +341,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   new-session replacement, Changes file selection, home states, package-font resolution.
 - Add project from the sidebar's empty New session row opening New session in the added project
   (`desktop_cockpit_shell_test`).
-- The footer's Archived control (`desktop_cockpit_shell_test`); the Archived page pushed once over its opener, its
-  rows opening read-only over it, and its close returning to the opener or, reached directly, home
-  (`desktop_router_test`).
+- The settings window's Archived row closing the window and opening Archived (`desktop_settings_screens_test`);
+  the Archived page pushed once over its opener, its rows opening read-only over it, and its close returning to
+  the opener or, reached directly, home (`desktop_router_test`).
 - Live inventory mutations, action-scope viewing isolation, invalidation/disposal. All-project admission happens
   once per entering ID, including offscreen projects. Empty/loading/failed entries keep project-local retry. Keep
   loaded rows
@@ -369,7 +370,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Viewing a remote computer from the home header while the local bridge keeps serving a phone, and the remote
   offline body when that computer's bridge stops.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
-- Archived from the footer: the page fades in over the open page, a row opens read-only, Cmd/Ctrl+[ comes back,
+- Archived from Settings: the window closes and the page fades in over the open page, a row opens read-only, Cmd/Ctrl+[ comes back,
   and the close returns to the opener.
 - The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
 - Collapse and restore by the footer button, the restore button and Cmd/Ctrl+B: the panel slides whole while

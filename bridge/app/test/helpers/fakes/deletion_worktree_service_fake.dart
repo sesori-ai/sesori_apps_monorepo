@@ -9,15 +9,17 @@ class DeletionWorktreeServiceFake({final List<String>? operationLog}) implements
   int removeCallCount = 0;
 
   String? lastCheckWorktreePath;
+  String? lastCheckBaseCommit;
   String? lastRemoveProjectId;
   String? lastRemoveWorktreePath;
   bool? lastRemoveForce;
 
   @override
-  Future<WorktreeSafetyResult> checkWorktreeSafety({required String worktreePath}) async {
+  Future<WorktreeSafetyResult> checkWorktreeSafety({required String worktreePath, required String? baseCommit}) async {
     checkCallCount++;
     operationLog?.add("checkSafety");
     lastCheckWorktreePath = worktreePath;
+    lastCheckBaseCommit = baseCommit;
     return safetyResult;
   }
 

@@ -40,12 +40,39 @@ Staging accepts `--channel stable|internal` (default stable) and emits
 build metadata, not helper identity, persisted state or a client/bridge contract.
 Malformed present metadata does not select a guessed download destination.
 
-macOS and Windows use manual signed packages. Users Quit normally before replacing
-or installing, then reopen manually. Closing a tray-backed window is not Quit.
+macOS uses manual signed packages. Users Quit normally before replacing or installing,
+then reopen manually. Closing a tray-backed window is not Quit.
 Failed helper stop retains the existing refusal to Quit. Nothing in the download
 action stops a helper, installs, changes bridge intent or automatically relaunches.
-Linux DEB/RPM upgrades remain package-manager-owned; AppImages are replaced manually like
-macOS and Windows packages. Shared CLI data is not update cleanup.
+Linux DEB/RPM upgrades remain package-manager-owned; Windows and AppImage installs update
+through Velopack (below). Shared CLI data is not update cleanup.
+
+## Linux package restart to update
+
+After the package manager installs a new DEB/RPM bundle, the running app shows
+**Restart to update** in Settings and in the tray. Restarting starts
+`/usr/bin/sesori-desktop --after-update` detached, then stops the helper and quits; the
+new process waits up to 90 s for the primary lock instead of activating the old instance.
+If the relaunch fails, the app keeps running with its helper untouched. Failure signals:
+the helper is left stopped, two primaries run, or no new instance starts.
+
+## Velopack updates (Windows and AppImage)
+
+Velopack installs check at startup and every 6 hours while Automatic updates is on, and on
+**Check for updates**. The app fetches `releases.<channel>.json` and its `.sig` from
+`https://storage.googleapis.com/sesori-ai-linux-packages/desktop-updates/k1/<channel>/<os>-<arch>/`
+and verifies the Ed25519 signature over the exact feed bytes against the compiled update key.
+Only a verified feed is staged, in `velopack-feed/` under the app's support directory, as
+Velopack's file source. Only when Velopack finds a newer full package does the app download it
+there; Velopack then copies it into its own packages directory and refuses it unless size and
+SHA-256 match the feed. The app then shows **Restart to update** in Settings and the tray.
+Quit stops the helper, then starts Velopack's updater silently without relaunch; Restart to
+update does the same and relaunches. The updater waits for the app to exit. A failed updater
+start keeps the app running on restart, restores a helper that was on, and still quits on Quit.
+An unreachable, unsigned or tampered feed, or a package with a wrong SHA-256, leaves the state
+idle and is only logged locally. Velopack never applies an update at app startup.
+Failure signals: an unsigned feed or wrong package is applied, a feed failure shows an error,
+the helper outlives the updater, or the update applies with the app still running.
 
 ## Client storage boundary
 
@@ -62,22 +89,33 @@ New-format N→N+1 preservation needs two shared-store builds.
 ## Private Windows installer qualification
 
 Manual `windows-packaging` qualification builds unsigned x64 and ARM64 per-user
-Inno Setup packages from exact native staged bundles. Install defaults to
-`%LOCALAPPDATA%\Programs\Sesori`; shortcuts launch `sesori_desktop.exe`. Setup and
-uninstall refuse while `Global\com.sesori.desktop.running.<current-user-SID>` exists.
-This per-user marker spans Windows sessions, stays owned by GUI process until OS
-termination, and does not reject another GUI instance.
-Installer never starts Sesori, enables login launch, closes/restarts processes, or
-removes unrecorded files. Uninstall additionally removes only existing `Sesori`
-login value; shared credentials, runtimes, databases, history and projects remain.
+installers from exact native staged bundles with Velopack's `vpk pack` (`--packId sesori-desktop`,
+the compiled channel, pack version `<version>` for stable and `<version>-internal.<build>` for
+internal). The `vpk` 1.2.161 tool package is pinned by SHA-256 and installed only from that
+verified file. vpk's `sesori-desktop-<channel>-Setup.exe` is renamed to
+`Sesori-windows-<arch>-<version>.exe`. Its full `.nupkg` and `releases.<channel>.json` are kept
+as the unpublished `desktop-velopack-windows-<arch>` artifact. The package must contain the exact
+staged bundle plus Velopack's updater, launcher stub, `sq.version` and the app's
+`velopack_libc.dll` (from the SHA-256-pinned `velopack_libc_1.2.161.zip`), every binary native to the
+target CPU (the Setup and updater included), and the Setup must embed that package.
 
-The Inno Setup 7.1.0 x64 acquisition installer is checksum-verified before it
-installs the compiler. Compiler and installer launcher may run under Windows ARM64
-emulation; GUI, helper and shipped libraries
-must match target CPU. Isolated runner probes use per-user global mutex fixtures and
-compare every staged relative file path and SHA-256 with the installed payload; only
-Inno's generated uninstaller files are excluded from the installed extra-file set.
-They do not start the product and prove silent fixture behavior only. Output remains private, unsigned CI evidence:
+Setup installs into `%LOCALAPPDATA%\sesori-desktop`: the bundle in `current\`, beside
+`Update.exe`, a `Sesori.exe` launcher and `packages\`. It creates only the Start menu
+`Sesori\Sesori` shortcut and a `sesori-desktop` uninstall entry with the app icon. An
+interactive install starts Sesori when it finishes; a silent one does not. Setup, reinstall
+and uninstall stop running Sesori processes under the install folder instead of refusing.
+Velopack runs `sesori_desktop.exe --veloapp-<hook> <version>` at install, update and
+uninstall; the Windows runner answers every hook before starting Flutter, and the uninstall
+hook removes only the `Sesori` login value. Install never enables login launch. Uninstall
+deletes the whole install folder; shared credentials, runtimes, databases, history and
+projects outside it remain.
+
+Isolated runner probes install silently into a temporary folder, reinstall the same version,
+verify the `current\` inventory, and compare every staged relative file path and SHA-256
+with it; only `sq.version` and `velopack_libc.dll` are allowed as extra files. After silent uninstall no recorded
+payload, uninstall entry or login value remains, and a pre-existing login value survives
+install and reinstall. They do not start the product and prove silent fixture behavior only.
+Output remains private, unsigned CI evidence:
 it does not establish publisher trust, SmartScreen reputation, interactive behavior,
 account restoration, upgrades, or release readiness.
 
@@ -117,7 +155,8 @@ refuses. vpk generates the AppDir: the bundle in `usr/bin` beside `UpdateNix` an
 a shell `AppRun`, the `sesori-desktop` desktop entry (`Exec=sesori_desktop`,
 `Categories=Development;Utility;`) and the existing icon, packed as a root-owned gzip squashfs.
 The image is read back with `unsquashfs` at the runtime's ELF offset; its `usr/bin` must match
-the staged bundle exactly and its icon the application icon. Packaging never executes it. vpk's
+the staged bundle plus `lib/libvelopack_libc.so` (from the pinned library archive) exactly
+and its icon the application icon. Packaging never executes it. vpk's
 full `.nupkg` and `releases.<channel>.json` are kept as the unpublished
 `desktop-velopack-linux-<arch>` artifact.
 The AppImage is unchanged by signing and covered only by the signed checksums. It needs
@@ -665,8 +704,9 @@ historical evidence as shared-store qualification.
   previews, pre-desktop cleanup stays intact and current-release retries remain valid.
   The npm-cleanup shell separately preserves desktop previews with or without stable
   desktop assets while still deleting same-version core-only internal releases.
-  Windows fixtures cover identity/CPU refusal, complete native inventory, pinned
-  compiler arguments, bounded installer directives and no-overwrite diagnostics.
+  Windows fixtures cover identity/CPU refusal, complete native inventory, the pinned vpk
+  install and pack arguments, exact-bundle and embedded-package refusal, the runner's
+  hook handling and no-overwrite diagnostics.
   Linux publication fixtures cover compiled-channel/source/build refusal, real GPGV
   checksum verification, independent platform completion, anonymous delivery failure,
   immutable retries and separate core/macOS ownership. Package fixtures cover identity/CPU
@@ -707,9 +747,10 @@ Wrong channel/CPU fragment, guessed architecture for source builds, private or
 unshipped artifact links, permanently pinned previews, core-only releases hiding usable
 desktop downloads, stable schema borrowing preview availability, a dead Linux/self-update button, raw release-version
 inference, losing attention settings, startup network waits, or a download action
-that stops/restarts the app or helper. Windows setup/uninstall proceeding while GUI
-mutex exists, changing login intent during install, launching the app, forced close/
-restart, wrong-CPU payloads, or broad uninstall cleanup are failures. Linux package ownership of
+that stops/restarts the app or helper. On Windows, changing login intent during install,
+a hook that starts the GUI, a silent install that launches the app, wrong-CPU payloads,
+uninstall leaving the login value, or uninstall deleting shared user data outside the install folder
+are failures. Linux package ownership of
 `/usr/bin/sesori-bridge`, user homes or autostart entries; guessed runtime dependencies;
 non-native container execution; package scriptlets; altered staged payloads; or calling
 a same-version reinstall an N→N+1 upgrade are failures. Manual replacement must never

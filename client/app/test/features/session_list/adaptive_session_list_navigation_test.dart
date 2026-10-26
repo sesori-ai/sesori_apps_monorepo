@@ -1,9 +1,12 @@
+import "dart:math" as math;
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/features/home/home_sidebar_footer.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -65,6 +68,57 @@ void main() {
     expect(Uri.parse(harness.currentLocation).path, "/sessions/p1/session-1");
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
     expect(leftPane, findsNothing);
+  });
+
+  testWidgets("the narrow home's floating + stays put while the list scrolls, and the last row clears it", (
+    tester,
+  ) async {
+    // A phone's home indicator.
+    final homeIndicator = FakeViewPadding(bottom: 34 * tester.view.devicePixelRatio);
+    tester.view
+      ..padding = homeIndicator
+      ..viewPadding = homeIndicator;
+    addTearDown(tester.view.resetPadding);
+    addTearDown(tester.view.resetViewPadding);
+    final harness = await setUpHome(
+      tester: tester,
+      size: const Size(390, 800),
+      initialLocation: "/sessions",
+      currentRouteDef: AppRouteDef.home,
+      sessionsByProject: {
+        "p1": [
+          for (var index = 0; index < 20; index++)
+            adaptiveTestSession(projectId: "p1", id: "session-$index", title: "Session $index"),
+        ],
+      },
+    );
+    await tester.pumpWidget(harness.buildApp());
+    await tester.pumpAndSettle();
+
+    final plus = find.byKey(const Key("home-new-session"));
+    final resting = tester.getRect(plus);
+    // At the bottom right, above the home indicator.
+    expect(resting.right, lessThan(390));
+    expect(resting.bottom, lessThan(800 - 34));
+    expect(resting.center.dx, greaterThan(390 / 2));
+
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -300));
+    await tester.pump();
+    expect(tester.getRect(plus), resting);
+
+    // At the end of the list the last row rests above the +.
+    await tester.drag(find.byType(CustomScrollView), const Offset(0, -5000));
+    await tester.pumpAndSettle();
+    expect(tester.getRect(plus), resting);
+    final lastRowBottom = [
+      for (final row in find.byType(SessionTile).evaluate()) tester.getRect(find.byWidget(row.widget)).bottom,
+    ].reduce(math.max);
+    expect(lastRowBottom, lessThanOrEqualTo(resting.top));
+
+    // It opens the new-session page, as the bar's button did.
+    await tester.tap(plus);
+    await tester.pumpAndSettle();
+    expect(harness.router.state.uri.path, "/sessions/new");
   });
 
   testWidgets("a row opens its detail beside the wide home, selected", (tester) async {
@@ -139,7 +193,12 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byKey(const ValueKey("session-detail-session-1")), findsOneWidget);
-    expect(find.descendant(of: leftPane, matching: find.byKey(const Key("home-archived"))), findsOneWidget);
+    // The footer holds Settings and collapse; Archived opens from Settings.
+    expect(
+      find.descendant(of: find.byType(HomeSidebarFooter), matching: find.byType(PregoButtonsIconGlass)),
+      findsNWidgets(2),
+    );
+    expect(find.descendant(of: leftPane, matching: find.byKey(const Key("home-settings"))), findsOneWidget);
     expect(harness.router.canPop(), isTrue);
     expect(find.descendant(of: leftPane, matching: find.byType(BackButton)), findsNothing);
   });
@@ -296,7 +355,7 @@ void main() {
     // The picker opens by itself, with nothing chosen.
     expect(find.text("Project One"), findsOneWidget);
     expect(find.text("Project Two"), findsOneWidget);
-    expect(find.text("Open another folder…"), findsOneWidget);
+    expect(find.text("Open folder…"), findsOneWidget);
 
     await tester.tap(find.text("Project Two"));
     await tester.pumpAndSettle();

@@ -1,6 +1,8 @@
 import "dart:async";
 import "dart:convert";
+import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
@@ -655,6 +657,28 @@ void main() {
       expect(worktreeService.removeCallCount, equals(0));
       final persisted = await db.sessionDao.getSession(sessionId: "s1");
       expect(persisted?.archivedAt, isNotNull);
+    });
+
+    test("archiving a scratch session keeps its folder", () async {
+      final scratchRoot = Directory.systemTemp.createTempSync("archive-scratch-");
+      addTearDown(() => scratchRoot.delete(recursive: true));
+      final folder = Directory(p.join(scratchRoot.path, "2026-10-25-abc"))..createSync();
+      File(p.join(folder.path, "notes.txt")).writeAsStringSync("keep me");
+      await insertTestSessionInDirectory(db: db, sessionId: "s1", projectId: scratchRoot.path, directory: folder.path);
+
+      await handler.handle(
+        makeRequest("PATCH", "/session/update/archive"),
+        body: _archiveRequest(
+          sessionId: "s1",
+          archived: true,
+          deleteWorktree: true,
+          deleteBranch: false,
+          force: false,
+        ),
+      );
+
+      expect((await db.sessionDao.getSession(sessionId: "s1"))?.archivedAt, isNotNull);
+      expect(File(p.join(folder.path, "notes.txt")).readAsStringSync(), "keep me");
     });
 
     test("archive response has hasWorktree true when session has worktreePath", () async {

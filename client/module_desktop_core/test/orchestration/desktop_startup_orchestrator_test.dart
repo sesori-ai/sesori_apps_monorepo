@@ -135,17 +135,18 @@ void main() {
   });
 
   test("lets only the primary launch continue to UI construction", () async {
-    when(() => instanceService.claimLaunch()).thenAnswer((_) async => DesktopInstanceLaunchDisposition.primary);
+    when(() => instanceService.claimLaunch(afterUpdate: false))
+        .thenAnswer((_) async => DesktopInstanceLaunchDisposition.primary);
 
-    expect(await orchestrator.preparePrimaryLaunch(), isTrue);
+    expect(await orchestrator.preparePrimaryLaunch(afterUpdate: false), isTrue);
     verifyNever(() => applicationTerminator.terminate(exitCode: any(named: "exitCode")));
   });
 
   test("terminates a secondary launch before UI construction", () async {
-    when(() => instanceService.claimLaunch()).thenAnswer(
+    when(() => instanceService.claimLaunch(afterUpdate: false)).thenAnswer(
       (_) async => DesktopInstanceLaunchDisposition.secondaryActivated,
     );
-    expect(await orchestrator.preparePrimaryLaunch(), isFalse);
+    expect(await orchestrator.preparePrimaryLaunch(afterUpdate: false), isFalse);
     verify(() => applicationTerminator.terminate(exitCode: 0)).called(1);
   });
 

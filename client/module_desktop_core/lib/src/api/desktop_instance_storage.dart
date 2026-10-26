@@ -8,6 +8,7 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 
 import "../foundation/bridge_process_desired_state.dart";
 import "../foundation/desktop_attention_preference.dart";
+import "../foundation/desktop_automatic_updates.dart";
 import "../foundation/desktop_sidebar_layout.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
 import "../foundation/platform/window_host.dart";
@@ -24,6 +25,7 @@ class DesktopInstanceStorage._create({
   static const String _desiredStateFileName = "bridge-desired-state";
   static const String _windowBoundsFileName = "window-bounds";
   static const String _attentionPreferenceFileName = "attention-notifications";
+  static const String _automaticUpdatesFileName = "automatic-updates";
 
   Future<BridgeProcessDesiredState?> readBridgeDesiredState() async {
     final File file = await _desiredStateFile();
@@ -96,6 +98,28 @@ class DesktopInstanceStorage._create({
 
   Future<void> writeAttentionPreference({required DesktopAttentionPreference preference}) async {
     final File file = await _fileNamed(fileName: _attentionPreferenceFileName);
+    await file.parent.create(recursive: true);
+    await file.writeAsString(preference.name, flush: true);
+  }
+
+  Future<DesktopAutomaticUpdates> readAutomaticUpdates() async {
+    final File file = await _fileNamed(fileName: _automaticUpdatesFileName);
+    // ignore: avoid_slow_async_io, one startup read must not block the UI isolate
+    if (!await file.exists()) {
+      return DesktopAutomaticUpdates.enabled;
+    }
+    final value = (await file.readAsString()).trim();
+    for (final preference in DesktopAutomaticUpdates.values) {
+      if (preference.name == value) {
+        return preference;
+      }
+    }
+    logw("Ignoring an invalid persisted desktop automatic-updates preference");
+    return DesktopAutomaticUpdates.enabled;
+  }
+
+  Future<void> writeAutomaticUpdates({required DesktopAutomaticUpdates preference}) async {
+    final File file = await _fileNamed(fileName: _automaticUpdatesFileName);
     await file.parent.create(recursive: true);
     await file.writeAsString(preference.name, flush: true);
   }

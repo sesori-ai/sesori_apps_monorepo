@@ -32,6 +32,7 @@ class DeleteSessionHandler({required final SessionDeletionService _sessionDeleti
       sessionId: sessionId,
       deleteWorktree: body.deleteWorktree,
       force: body.force,
+      deleteSessionFolder: body.deleteSessionFolder,
     );
     if (cleanupResult case CleanupRejected(:final rejection)) {
       // IMPORTANT: Do not change this response structure — the mobile app

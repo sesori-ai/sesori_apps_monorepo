@@ -1,9 +1,10 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
+import 'provider_compatibility.g.dart';
 import 'provider_settings.g.dart';
 
 @immutable
@@ -15,6 +16,7 @@ class ProviderInfo {
     required this.name,
     required this.activation,
     required this.package,
+    required this.compatibility,
     required this.settings,
     required this.headers,
     required this.body,
@@ -28,6 +30,7 @@ class ProviderInfo {
       name: json["name"] as String,
       activation: ProviderInfoActivation.fromJson(json["activation"] as String),
       package: json["package"] as String,
+      compatibility: json["compatibility"] == null ? null : ProviderCompatibility.fromJson(json["compatibility"] as Map<String, dynamic>),
       settings: json["settings"] == null ? null : ProviderSettings.fromJson(json["settings"] as Map<String, dynamic>),
       headers: (json["headers"] as Map<String, dynamic>?)?.map((k, v) => MapEntry(k, v as String)),
       body: json["body"] as Map<String, dynamic>?,
@@ -42,6 +45,7 @@ class ProviderInfo {
       "name": name,
       "activation": activation.toJson(),
       "package": package,
+      "compatibility": ?compatibility?.toJson(),
       "settings": ?settings?.toJson(),
       "headers": ?headers,
       "body": ?body,
@@ -57,6 +61,7 @@ class ProviderInfo {
     String? name,
     ProviderInfoActivation? activation,
     String? package,
+    ProviderCompatibility? compatibility,
     ProviderSettings? settings,
     Map<String, String>? headers,
     Map<String, dynamic>? body,
@@ -68,6 +73,7 @@ class ProviderInfo {
       name: name ?? this.name,
       activation: activation ?? this.activation,
       package: package ?? this.package,
+      compatibility: compatibility ?? this.compatibility,
       settings: settings ?? this.settings,
       headers: headers ?? this.headers,
       body: body ?? this.body,
@@ -84,12 +90,13 @@ class ProviderInfo {
           other.name == name &&
           other.activation == activation &&
           other.package == package &&
+          other.compatibility == compatibility &&
           other.settings == settings &&
           const DeepCollectionEquality().equals(other.headers, headers) &&
           const DeepCollectionEquality().equals(other.body, body));
 
   @override
-  int get hashCode => Object.hash(id, canonical, integrationID, name, activation, package, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
+  int get hashCode => Object.hash(id, canonical, integrationID, name, activation, package, compatibility, settings, const DeepCollectionEquality().hash(headers), const DeepCollectionEquality().hash(body));
 
   final String id;
   final String? canonical;
@@ -97,6 +104,7 @@ class ProviderInfo {
   final String name;
   final ProviderInfoActivation activation;
   final String package;
+  final ProviderCompatibility? compatibility;
   final ProviderSettings? settings;
   final Map<String, String>? headers;
   final Map<String, dynamic>? body;

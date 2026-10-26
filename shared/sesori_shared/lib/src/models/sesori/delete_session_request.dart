@@ -11,6 +11,8 @@ sealed class DeleteSessionRequest with _$DeleteSessionRequest {
     required bool deleteWorktree,
     required bool deleteBranch,
     required bool force,
+    // COMPATIBILITY 2026-10-25 (v1.9.2): Older apps omit deleteSessionFolder and never warn that a session's files go with it, so their deletes keep the folder. Require the field once no supported app omits it.
+    @Default(false) bool deleteSessionFolder,
   }) = _DeleteSessionRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$DeleteSessionRequestFromJson(json);

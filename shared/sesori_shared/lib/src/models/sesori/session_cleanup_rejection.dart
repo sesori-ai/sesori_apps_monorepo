@@ -28,5 +28,10 @@ sealed class CleanupIssue with _$CleanupIssue {
   @FreezedUnionValue("shared_worktree")
   const factory sharedWorktree() = CleanupIssueSharedWorktree;
 
+  /// The worktree's HEAD has commits that no branch, tag or remote reaches, so
+  /// removing the worktree would lose them.
+  @FreezedUnionValue("commits_on_no_branch")
+  const factory commitsOnNoBranch() = CleanupIssueCommitsOnNoBranch;
+
   factory fromJson(Map<String, dynamic> json) => _$CleanupIssueFromJson(json);
 }

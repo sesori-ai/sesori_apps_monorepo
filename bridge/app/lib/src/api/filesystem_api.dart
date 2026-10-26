@@ -81,6 +81,25 @@ class const FilesystemApi() {
     Directory(path).deleteSync(recursive: true);
   }
 
+  /// Asynchronous [deleteDirectoryRecursively], so a large folder does not
+  /// block the isolate. Links inside [path] are removed, never followed.
+  Future<void> deleteDirectoryRecursivelyAsync({required String path}) async {
+    await Directory(path).delete(recursive: true);
+  }
+
+  /// Creates the directory at [path] and any missing parents; a no-op when it
+  /// already exists.
+  Future<void> createDirectoryRecursively({required String path}) async {
+    await Directory(path).create(recursive: true);
+  }
+
+  /// Creates a new directory in [parent] whose name is [prefix] followed by
+  /// random characters, and returns its path.
+  Future<String> createTemporaryDirectory({required String parent, required String prefix}) async {
+    final directory = await Directory(parent).createTemp(prefix);
+    return directory.path;
+  }
+
   String resolveFilePath(String path) {
     return File(path).resolveSymbolicLinksSync();
   }

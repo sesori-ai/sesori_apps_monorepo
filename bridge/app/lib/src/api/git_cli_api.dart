@@ -22,6 +22,7 @@ final class const GitCurrentBranchNotRepository() extends GitCurrentBranchResult
 class GitWorktreeSafetySnapshot({
   required final bool worktreeExists,
   required final bool hasUnstagedChanges,
+  required final bool hasCommitsOnNoBranch,
 });
 
 class GitCliApi({
@@ -492,9 +493,15 @@ class GitCliApi({
     return (ref: originRef, commit: originCommit);
   }
 
-  Future<GitWorktreeSafetySnapshot> inspectWorktreeSafety({required String worktreePath}) async {
+  /// [baseCommit] is the commit the worktree started from; commits it reaches
+  /// are not counted as on no branch, so a rewritten base branch raises no
+  /// false warning. It is null only for older rows that never stored it.
+  Future<GitWorktreeSafetySnapshot> inspectWorktreeSafety({
+    required String worktreePath,
+    required String? baseCommit,
+  }) async {
     if (!Directory(worktreePath).existsSync()) {
-      return GitWorktreeSafetySnapshot(worktreeExists: false, hasUnstagedChanges: false);
+      return GitWorktreeSafetySnapshot(worktreeExists: false, hasUnstagedChanges: false, hasCommitsOnNoBranch: false);
     }
 
     final statusResult = await _processRunner.run(
@@ -504,9 +511,30 @@ class GitCliApi({
     );
     final hasUnstagedChanges = statusResult.stdout.toString().trim().isNotEmpty;
 
+    // Prints a HEAD commit that no branch, tag or remote reaches. A HEAD on a
+    // branch is reached by that branch, so only a detached HEAD can match.
+    // --ignore-missing skips a base commit that garbage collection removed.
+    final noBranchArguments = [
+      "rev-list",
+      "--ignore-missing",
+      "-n",
+      "1",
+      "HEAD",
+      "--not",
+      ?baseCommit,
+      "--branches",
+      "--tags",
+      "--remotes",
+    ];
+    final noBranchResult = await _processRunner.run("git", noBranchArguments, workingDirectory: worktreePath);
+    if (noBranchResult.exitCode != 0) {
+      throw ProcessException("git", noBranchArguments, noBranchResult.stderr.toString(), noBranchResult.exitCode);
+    }
+
     return GitWorktreeSafetySnapshot(
       worktreeExists: true,
       hasUnstagedChanges: hasUnstagedChanges,
+      hasCommitsOnNoBranch: noBranchResult.stdout.toString().trim().isNotEmpty,
     );
   }
 

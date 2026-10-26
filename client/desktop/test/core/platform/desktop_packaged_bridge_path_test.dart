@@ -3,6 +3,7 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 import "package:path/path.dart" as path;
 import "package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart";
+import "package:sesori_desktop/core/platform/io_installed_desktop_bundle_source.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
 const DesktopBundleIdentity _identity = DesktopBundleIdentity(
@@ -154,23 +155,50 @@ void main() {
     );
     expect(resolver.resolve, throwsA(isA<DesktopBridgeBundleException>()));
   });
+
+  // Packaging places the library at these paths (VELOPACK_LIBRARIES in package_desktop_linux.py).
+  for (final (os, library) in [
+    (DesktopBundleOs.windows, "velopack_libc.dll"),
+    (DesktopBundleOs.linux, path.join("lib", "libvelopack_libc.so")),
+  ]) {
+    test("$os finds the bundled Velopack library beside the executable", () {
+      final IoInstalledDesktopBundleSource source = IoInstalledDesktopBundleSource.forTesting(
+        compiledIdentityJson: null,
+        channel: DesktopReleaseChannel.stable,
+        isAppImage: os == DesktopBundleOs.linux,
+        resolvedExecutable: path.absolute("Installed App", "sesori_desktop"),
+        os: os,
+        readManifest: ({required String manifestPath}) => throw StateError("unused"),
+      );
+      expect(source.velopackLibraryPath, path.absolute("Installed App", library));
+    });
+  }
 }
 
 DesktopBridgeExecutablePathResolver _resolver({
   required DesktopBundleIdentity host,
   required String? compiledIdentity,
-  required DesktopBridgeManifestReader readManifest,
+  required DesktopBundleManifestReader readManifest,
   required bool helperExists,
-}) => DesktopBridgeExecutablePathResolver.forTesting(
-  environment: const {DesktopBridgeExecutablePathResolver.environmentVariable: "/arbitrary/development/bridge"},
-  workingDirectory: path.absolute("different repo", "client", "desktop"),
-  resolvedExecutable: host.os == DesktopBundleOs.macos
+}) {
+  final String resolvedExecutable = host.os == DesktopBundleOs.macos
       ? path.absolute("Installed App", "Contents", "MacOS", "Sesori")
-      : path.absolute("Installed App", "sesori_desktop${host.os == DesktopBundleOs.windows ? '.exe' : ''}"),
-  os: host.os,
-  architecture: host.architecture,
-  isReleaseMode: true,
-  compiledIdentityJson: compiledIdentity,
-  executableExists: ({required String executablePath}) => helperExists,
-  readManifest: readManifest,
-);
+      : path.absolute("Installed App", "sesori_desktop${host.os == DesktopBundleOs.windows ? '.exe' : ''}");
+  return DesktopBridgeExecutablePathResolver.forTesting(
+    environment: const {DesktopBridgeExecutablePathResolver.environmentVariable: "/arbitrary/development/bridge"},
+    workingDirectory: path.absolute("different repo", "client", "desktop"),
+    resolvedExecutable: resolvedExecutable,
+    os: host.os,
+    architecture: host.architecture,
+    isReleaseMode: true,
+    bundleSource: IoInstalledDesktopBundleSource.forTesting(
+      compiledIdentityJson: compiledIdentity,
+      channel: DesktopReleaseChannel.stable,
+      isAppImage: false,
+      resolvedExecutable: resolvedExecutable,
+      os: host.os,
+      readManifest: readManifest,
+    ),
+    executableExists: ({required String executablePath}) => helperExists,
+  );
+}

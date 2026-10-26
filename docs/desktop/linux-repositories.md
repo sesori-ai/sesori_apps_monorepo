@@ -31,6 +31,12 @@ The registration is ordinary package-owned files, which removal deletes:
   These are the website's manual-setup paths and line, so an earlier manual setup
   is replaced in place rather than duplicated (a duplicate with a different
   `signed-by` path would make APT reject both).
+  `/etc/apt/apt.conf.d/52sesori-unattended-upgrades` adds `origin=Sesori` to
+  unattended-upgrades' allowed origins, so where it is enabled (Ubuntu's default)
+  updates install silently; the running app then offers "Restart to update".
+  The in-app "automatic updates" toggle controls only the app's own checks and its
+  "Restart to update" prompt; silent installs follow the system's unattended-upgrades
+  or `dnf-automatic` configuration, so turning the toggle off does not stop them.
 - RPM: `/etc/pki/rpm-gpg/RPM-GPG-KEY-sesori` and `/etc/yum.repos.d/sesori.repo`,
   with `skip_if_unavailable=1` so an unreachable Sesori repository never blocks
   the system's other updates. The repo file is `%config(noreplace)`, so a user's
@@ -80,8 +86,11 @@ The bucket uses uniform bucket-level access in `europe-west1`, project `sesori-a
 reset script. Inspect partial results before retrying a failed setup command.
 
 The dedicated `linux-packages` identity pool and its GitHub provider allow only the
-numeric Sesori repository/owner identities, `refs/heads/main`, and the repository
-workflow's direct or reusable workflow identity. Service account
+numeric Sesori repository/owner identities, `refs/heads/main`, and two direct or
+reusable workflow identities: `linux-repository.yml` and `desktop-update-feed.yml`.
+The second hosts the desktop update feeds under `desktop-updates/`
+([update signing](update-signing.md)). IAM grants both the whole bucket, so that
+prefix is enforced by the feed workflow's publisher, not by IAM. Service account
 `linux-package-publisher@sesori-ai.iam.gserviceaccount.com` has
 `roles/storage.objectUser` on this bucket only. `allUsers` gets only
 `roles/storage.objectViewer`. Existing Firebase federation, Cloud Run source storage

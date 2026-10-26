@@ -103,7 +103,10 @@ class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration 
         ),
         sessionDao: database.sessionDao,
         catalogHydrationsDao: database.catalogHydrationsDao,
-        projectCatalogIdentityCalculator: const ProjectCatalogIdentityCalculator(),
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
       );
       final importDone = Completer<void>();
       final publicationStopwatch = Stopwatch();

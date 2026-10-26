@@ -96,7 +96,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectPickerSearchHint => 'Search projects';
 
   @override
-  String get projectPickerOpenFolder => 'Open another folder…';
+  String get projectPickerOpenFolder => 'Open folder…';
 
   @override
   String get projectPickerNoMatches => 'No projects match';
@@ -178,6 +178,48 @@ class AppLocalizationsEn extends AppLocalizations {
   @override
   String get desktopSettingsLaunchAtLoginDescription =>
       'Start Sesori in the background when you sign in to this computer.';
+
+  @override
+  String get desktopUpdatesTitle => 'Desktop updates';
+
+  @override
+  String get desktopUpdatesViewDownloads => 'View downloads';
+
+  @override
+  String get desktopUpdatesViewDownloadsDescription =>
+      'See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.';
+
+  @override
+  String get desktopUpdatesDevelopmentBuild => 'Development build';
+
+  @override
+  String get desktopUpdatesDevelopmentBuildDescription =>
+      'Update from your source checkout. Automatic updates are unavailable for this build.';
+
+  @override
+  String get desktopUpdatesAutomatic => 'Automatic updates';
+
+  @override
+  String get desktopUpdatesAutomaticDescription => 'Look for new versions in the background.';
+
+  @override
+  String get desktopUpdatesCheck => 'Check for updates';
+
+  @override
+  String get desktopUpdatesCheckDescription =>
+      'Sesori downloads verified updates in the background and installs them when you quit or restart to update.';
+
+  @override
+  String get desktopUpdatesCheckPackageDescription =>
+      'Your system\'s software updater installs new versions from Sesori\'s signed repository.';
+
+  @override
+  String get desktopUpdatesRestart => 'Restart to update';
+
+  @override
+  String desktopUpdatesRestartDescription(String version) {
+    return 'Version $version is ready. Restart Sesori to start using it.';
+  }
 
   @override
   String get desktopSettingsConnectedBridge => 'Connected bridge';
@@ -507,6 +549,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsProjectsOffline => 'Connect to a bridge to manage projects.';
+
+  @override
+  String get settingsProjectsOpenFolder => 'Open another folder…';
 
   @override
   String settingsProjectActions(String name) {
@@ -2463,6 +2508,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListCleanupIssueSharedWorktree => 'Another active session uses this worktree';
+
+  @override
+  String get sessionListCleanupIssueCommitsOnNoBranch => 'Commits on no branch would be lost';
 
   @override
   String sessionListCleanupIssueBranchMismatch(String actual, String expected) {

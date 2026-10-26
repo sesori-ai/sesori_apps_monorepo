@@ -1,10 +1,12 @@
 import "dart:convert";
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/scratch_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/delete_session_handler.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
@@ -34,9 +36,17 @@ void main() {
     late DeleteSessionHandler handler;
     late List<String> operationLog;
     late TestChatHistory chatHistory;
+    late Directory scratchParent;
+    late String scratchRoot;
+    late _RecordingScratchRepository scratchRepository;
 
     setUp(() {
       db = createTestDatabase();
+      scratchParent = Directory.systemTemp.createTempSync("delete-session-scratch-");
+      scratchRoot = p.join(scratchParent.path, "scratch");
+      scratchRepository = _RecordingScratchRepository(
+        delegate: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: scratchRoot),
+      );
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
       worktreeService = DeletionWorktreeServiceFake(operationLog: operationLog);
@@ -74,6 +84,7 @@ void main() {
           sessionLifecycleService: sessionLifecycleService,
           sessionMutationDispatcher: sessionMutationDispatcher,
           chatHistoryService: chatHistory.service,
+          scratchRepository: scratchRepository,
         ),
       );
     });
@@ -83,6 +94,57 @@ void main() {
       await sessionMutationDispatcher.dispose();
       await plugin.close();
       await db.close();
+      await scratchParent.delete(recursive: true);
+    });
+
+    group("scratch session folder", () {
+      late Directory folder;
+
+      setUp(() async {
+        folder = Directory(p.join(scratchRoot, "2026-10-25-abc"))..createSync(recursive: true);
+        File(p.join(folder.path, "notes.txt")).writeAsStringSync("draft");
+        await insertTestSessionInDirectory(db: db, sessionId: "s1", projectId: scratchRoot, directory: folder.path);
+      });
+
+      Future<void> delete({required bool deleteSessionFolder}) async {
+        await handler.handle(
+          makeRequest("DELETE", "/session/delete"),
+          body: DeleteSessionRequest(
+            sessionId: "s1",
+            deleteWorktree: false,
+            deleteBranch: false,
+            force: false,
+            deleteSessionFolder: deleteSessionFolder,
+          ),
+        );
+        await Future.wait(scratchRepository.deletions);
+      }
+
+      test("is deleted with the session when the request asks for it", () async {
+        await delete(deleteSessionFolder: true);
+
+        expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+        expect(folder.existsSync(), isFalse);
+        expect(Directory(scratchRoot).existsSync(), isTrue);
+      });
+
+      test("is kept when the request does not ask for it", () async {
+        await delete(deleteSessionFolder: false);
+
+        expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+        expect(scratchRepository.deletions, isEmpty);
+        expect(File(p.join(folder.path, "notes.txt")).readAsStringSync(), "draft");
+      });
+
+      test("is kept while another session still runs in it", () async {
+        await insertTestSessionInDirectory(db: db, sessionId: "s2", projectId: scratchRoot, directory: folder.path);
+
+        await delete(deleteSessionFolder: true);
+
+        expect(await db.sessionDao.getSession(sessionId: "s1"), isNull);
+        expect(scratchRepository.deletions, hasLength(1));
+        expect(File(p.join(folder.path, "notes.txt")).readAsStringSync(), "draft");
+      });
     });
 
     test("throws 400 on empty session id", () async {
@@ -531,6 +593,22 @@ Future<void> _insertSession({
     lastAgent: null,
     lastAgentModel: null,
   );
+}
+
+/// Records each folder deletion so a test can await the work the deletion
+/// service leaves running.
+class _RecordingScratchRepository({required final ScratchRepository _delegate}) implements ScratchRepository {
+  final List<Future<void>> deletions = [];
+
+  @override
+  Future<String> createSessionDirectory() => _delegate.createSessionDirectory();
+
+  @override
+  Future<void> deleteSessionDirectoryIfUnused({required String path}) {
+    final deletion = _delegate.deleteSessionDirectoryIfUnused(path: path);
+    deletions.add(deletion);
+    return deletion;
+  }
 }
 
 class _TrackingFakeBridgePlugin({required final List<String> operationLog}) extends FakeBridgePlugin {

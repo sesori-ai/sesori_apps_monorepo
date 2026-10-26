@@ -822,21 +822,27 @@ void main() {
     test("clean worktree: returns WorktreeSafe", () async {
       // git status --porcelain → empty (clean)
       processRunner.enqueue(result: _ok(stdout: ""));
+      // git rev-list → empty (every commit is on a branch)
+      processRunner.enqueue(result: _ok(stdout: ""));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
+        baseCommit: "base123",
       );
 
       expect(result, isA<WorktreeSafe>());
-      expect(processRunner.invocations, hasLength(1));
+      expect(processRunner.invocations, hasLength(2));
+      expect(processRunner.invocations.last.arguments, contains("base123"));
     });
 
     test("dirty worktree: returns WorktreeUnsafe with UnstagedChanges", () async {
       // git status --porcelain → non-empty (dirty)
       processRunner.enqueue(result: _ok(stdout: "M file.txt\n"));
+      processRunner.enqueue(result: _ok(stdout: ""));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
+        baseCommit: "base123",
       );
 
       expect(result, isA<WorktreeUnsafe>());
@@ -845,29 +851,36 @@ void main() {
       expect(unsafe.issues.first, isA<UnstagedChanges>());
     });
 
-    test("different branch remains safe", () async {
-      // git status --porcelain → empty (clean)
+    test("commits on no branch: returns WorktreeUnsafe with CommitsOnNoBranch", () async {
       processRunner.enqueue(result: _ok(stdout: ""));
+      // git rev-list → a HEAD commit no branch, tag or remote reaches
+      processRunner.enqueue(result: _ok(stdout: "def456\n"));
 
       final result = await service.checkWorktreeSafety(
         worktreePath: tempDir.path,
-      );
-
-      expect(result, isA<WorktreeSafe>());
-    });
-
-    test("dirty worktree on a different branch returns UnstagedChanges", () async {
-      // git status --porcelain → non-empty (dirty)
-      processRunner.enqueue(result: _ok(stdout: "M file.txt\nA new.dart\n"));
-
-      final result = await service.checkWorktreeSafety(
-        worktreePath: tempDir.path,
+        baseCommit: "base123",
       );
 
       expect(result, isA<WorktreeUnsafe>());
       final unsafe = result as WorktreeUnsafe;
       expect(unsafe.issues, hasLength(1));
-      expect(unsafe.issues.whereType<UnstagedChanges>(), hasLength(1));
+      expect(unsafe.issues.single, isA<CommitsOnNoBranch>());
+    });
+
+    test("dirty worktree with commits on no branch reports both issues", () async {
+      processRunner.enqueue(result: _ok(stdout: "M file.txt\nA new.dart\n"));
+      processRunner.enqueue(result: _ok(stdout: "def456\n"));
+
+      final result = await service.checkWorktreeSafety(
+        worktreePath: tempDir.path,
+        baseCommit: null,
+      );
+
+      expect(result, isA<WorktreeUnsafe>());
+      final unsafe = result as WorktreeUnsafe;
+      expect(unsafe.issues, hasLength(2));
+      expect(unsafe.issues.first, isA<UnstagedChanges>());
+      expect(unsafe.issues.last, isA<CommitsOnNoBranch>());
     });
 
     test("non-existent path: returns WorktreeSafe (already cleaned up), no git commands called", () async {
@@ -875,6 +888,7 @@ void main() {
 
       final result = await service.checkWorktreeSafety(
         worktreePath: nonExistentPath,
+        baseCommit: "base123",
       );
 
       expect(result, isA<WorktreeSafe>());

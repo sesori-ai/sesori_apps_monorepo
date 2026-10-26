@@ -115,7 +115,7 @@ class SessionMutationDispatcher({
   Future<CleanupResult> deleteSession({
     required String sessionId,
     required Future<CleanupResult> Function() cleanup,
-    required Future<void> Function(List<String> deletedSessionIds) onDeleted,
+    required Future<void> Function(DeletedSessionSubtree deleted) onDeleted,
   }) {
     if (_disposed) throw StateError("SessionMutationDispatcher is disposed");
     return _sessionOperationDispatcher.dispatch(
@@ -138,7 +138,7 @@ class SessionMutationDispatcher({
           final deleted = await _sessionRepository.deleteSession(sessionId: sessionId);
           _sessionIdsSuppressedFromEvents.addAll(deleted.sessionIds);
           deletionCommitted = true;
-          await onDeleted(deleted.sessionIds);
+          await onDeleted(deleted);
           _mutationsController.add(LocalSessionMutation.deleted(session: deleted.session));
           return cleanupResult;
         } finally {

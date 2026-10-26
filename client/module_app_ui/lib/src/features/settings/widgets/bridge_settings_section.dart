@@ -35,6 +35,10 @@ class const BridgeSettingsSection({
   /// place of their own.
   required final VoidCallback? onOpenProjects,
 
+  /// Opens Archived, or null where the surface gives Archived a row of its
+  /// own.
+  required final VoidCallback? onOpenArchived,
+
   /// Switches to a computer picked from the computer entry's menu.
   required final ComputerSwitchCallback onSwitchComputer,
 
@@ -47,6 +51,7 @@ class const BridgeSettingsSection({
     final offline = state is BridgeSettingsDisconnected;
     final onOpenHarnesses = this.onOpenHarnesses;
     final onOpenProjects = this.onOpenProjects;
+    final onOpenArchived = this.onOpenArchived;
     final bridgeRows = <Widget>[
       if (onOpenHarnesses != null)
         PregoGroupedRow(
@@ -62,6 +67,14 @@ class const BridgeSettingsSection({
           title: Text(context.loc.settingsProjectsTitle),
           trailing: const Icon(TablerRegular.chevron_right),
           onTap: offline ? null : onOpenProjects,
+        ),
+      if (onOpenArchived != null)
+        PregoGroupedRow(
+          key: const Key("settings_archived"),
+          icon: TablerRegular.archive,
+          title: Text(context.loc.archivedSessionsTitle),
+          trailing: const Icon(TablerRegular.chevron_right),
+          onTap: offline ? null : onOpenArchived,
         ),
       const _YoloSettingsRow(),
       const _PluginWarmupSettingsRow(),
@@ -91,8 +104,9 @@ class const BridgeSettingsSection({
         },
       ),
     ];
-    // Offline, one line above the group says why every row, Harnesses and
-    // Projects included, is dimmed and disabled, in place of the rows each saying it.
+    // Offline, one line above the group says why every row, Harnesses,
+    // Projects and Archived included, is dimmed and disabled, in place of the
+    // rows each saying it.
     final description = offline ? context.loc.settingsBridgeOffline : this.description;
     return SettingsSection(
       title: title,

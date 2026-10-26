@@ -3,6 +3,7 @@ import json
 import struct
 import tempfile
 import unittest
+import zipfile
 from pathlib import Path
 from unittest import mock
 
@@ -127,7 +128,7 @@ class LinuxPackagingTests(unittest.TestCase):
         package_paths = ["/", "/opt", "/opt/sesori-desktop", "/usr", "/usr/bin", "/usr/share",
                          "/usr/share/applications", "/usr/share/icons", "/usr/share/icons/hicolor",
                          "/usr/share/icons/hicolor/512x512", "/usr/share/icons/hicolor/512x512/apps",
-                         "/etc", "/etc/apt", "/etc/apt/keyrings", "/etc/apt/sources.list.d"]
+                         "/etc", "/etc/apt", "/etc/apt/apt.conf.d", "/etc/apt/keyrings", "/etc/apt/sources.list.d"]
         package_paths.extend("/" + item["path"] for item in packaging.payload_inventory(root=package_root))
         self.assertTrue(packaging.verify_owned_paths(paths=package_paths, package_format="deb")["boundedSystemOwnership"])
         with self.assertRaisesRegex(ValueError, "unexpected=.*usr/bin/sesori-bridge"):
@@ -149,6 +150,8 @@ class LinuxPackagingTests(unittest.TestCase):
                                  "deb [signed-by=/etc/apt/keyrings/sesori.asc] "
                                  f"https://storage.googleapis.com/sesori-ai-linux-packages/apt {channel} main\n")
                 self.assertEqual((deb_root / packaging.APT_KEY).read_text(), key)
+                self.assertEqual((deb_root / packaging.APT_UNATTENDED).read_text(),
+                                 'Unattended-Upgrade::Origins-Pattern { "origin=Sesori"; };\n')
                 self.assertFalse((deb_root / "etc/yum.repos.d").exists())
                 repository = (rpm_root / packaging.RPM_REPOSITORY).read_text()
                 self.assertTrue(repository.startswith(f"[sesori-{channel}]\n"))
@@ -286,8 +289,10 @@ class LinuxPackagingTests(unittest.TestCase):
         self.assertEqual(evidence["dependencies"], ["libc.so.6()(64bit)"])
 
     def build_appimage(self, *, image_bundle: Path | None = None, nupkg: bytes = b"vpk package",
-                       image_icon: bytes | None = None):
-        """Run build_appimage with a fake vpk that writes a runtime-prefixed image of `image_bundle`."""
+                       image_icon: bytes | None = None, library_machine: int = 62,
+                       library_digest: str | None = None):
+        """Run build_appimage with a fake vpk that writes a runtime-prefixed image of `image_bundle`, or of the
+        directory it was asked to pack."""
         work, output = self.root / "appimage work", self.root / "appimage output"
         work.mkdir()
         output.mkdir()
@@ -297,11 +302,13 @@ class LinuxPackagingTests(unittest.TestCase):
         struct.pack_into("<Q", runtime, 0x28, 64)
         struct.pack_into("<HH", runtime, 0x3A, 64, 1)
         commands = []
+        packed = {}
 
         def fake_run(*, command, cwd, env=None):
             commands.append(command)
             if command[1] == "pack":
                 options = dict(zip(command[2::2], command[3::2]))
+                packed["dir"] = Path(options["--packDir"])
                 releases = Path(options["--outputDir"])
                 releases.mkdir()
                 channel, version = options["--channel"], options["--packVersion"]
@@ -311,7 +318,7 @@ class LinuxPackagingTests(unittest.TestCase):
                 (releases / f"assets.{channel}.json").write_text("[]")
             elif "-d" in command:
                 appdir = Path(command[command.index("-d") + 1])
-                packaging.shutil.copytree(image_bundle or self.bundle, appdir / "usr/bin", symlinks=True)
+                packaging.shutil.copytree(image_bundle or packed["dir"], appdir / "usr/bin", symlinks=True)
                 (appdir / "usr/bin/UpdateNix").write_bytes(elf(machine=62))
                 (appdir / "usr/bin/sq.version").write_text("<package/>")
                 packaging.shutil.copy2(packaging.ICON_SOURCE, appdir / "sesori-desktop.png")
@@ -319,10 +326,20 @@ class LinuxPackagingTests(unittest.TestCase):
                     (appdir / "sesori-desktop.png").write_bytes(image_icon)
             return "squashfs-root/AppRun\n"
 
-        response = mock.MagicMock()
-        response.__enter__.return_value = io.BytesIO(nupkg)
+        libraries = io.BytesIO()
+        with zipfile.ZipFile(libraries, "w") as archive:
+            archive.writestr("lib/velopack_libc_linux_x64_gnu.so", elf(machine=library_machine))
+        downloads = {packaging.VPK_PACKAGE_URL: nupkg, packaging.VELOPACK_LIBRARY_URL: libraries.getvalue()}
+
+        def fake_urlopen(url, timeout):
+            response = mock.MagicMock()
+            response.__enter__.return_value = io.BytesIO(downloads[url])
+            return response
+
         with mock.patch.object(packaging, "VPK_PACKAGE_SHA256", packaging.hashlib.sha256(b"vpk package").hexdigest()), \
-                mock.patch.object(packaging.urllib.request, "urlopen", return_value=response), \
+                mock.patch.object(packaging, "VELOPACK_LIBRARY_SHA256",
+                                  library_digest or packaging.hashlib.sha256(libraries.getvalue()).hexdigest()), \
+                mock.patch.object(packaging.urllib.request, "urlopen", side_effect=fake_urlopen), \
                 mock.patch.object(packaging, "run", side_effect=fake_run):
             artifact, evidence = packaging.build_appimage(
                 bundle=self.bundle, work=work, output=output, arch="x64",
@@ -341,7 +358,7 @@ class LinuxPackagingTests(unittest.TestCase):
         options = dict(zip(pack[2::2], pack[3::2]))
         self.assertEqual(options, {
             "--packId": "sesori-desktop", "--packVersion": f"{self.version}-internal.42",
-            "--packDir": str(self.bundle), "--mainExe": "sesori_desktop", "--packTitle": "Sesori",
+            "--packDir": str(self.root / "appimage work/pack"), "--mainExe": "sesori_desktop", "--packTitle": "Sesori",
             "--icon": str(packaging.ICON_SOURCE), "--categories": "Development;Utility", "--channel": "internal",
             "--outputDir": str(self.root / "appimage work/velopack"),
         })
@@ -362,6 +379,25 @@ class LinuxPackagingTests(unittest.TestCase):
     def test_vpk_package_digest_mismatch_refuses(self):
         with self.assertRaisesRegex(ValueError, "vpk package digest mismatch"):
             self.build_appimage(nupkg=b"tampered")
+
+    def test_appimage_packs_the_pinned_velopack_library_into_the_bundle(self):
+        _, evidence, _ = self.build_appimage()
+        pack_dir = self.root / "appimage work/pack"
+        self.assertEqual((pack_dir / "lib/libvelopack_libc.so").read_bytes(), elf(machine=62))
+        self.assertEqual(sorted(row["path"] for row in packaging.payload_inventory(root=pack_dir)),
+                         sorted([row["path"] for row in packaging.payload_inventory(root=self.bundle)]
+                                + ["lib/libvelopack_libc.so"]))
+        self.assertEqual(len(evidence["velopack"]["libraryArchiveSha256"]), 64)
+        # Only Velopack packages carry the library; the staged bundle that DEB and RPM install stays unchanged.
+        self.assertFalse((self.bundle / "lib/libvelopack_libc.so").exists())
+
+    def test_velopack_library_digest_mismatch_or_wrong_cpu_refuses(self):
+        with self.assertRaisesRegex(ValueError, "Velopack library archive digest mismatch"):
+            self.build_appimage(library_digest="0" * 64)
+        packaging.shutil.rmtree(self.root / "appimage work")
+        packaging.shutil.rmtree(self.root / "appimage output")
+        with self.assertRaisesRegex(ValueError, "Wrong native target"):
+            self.build_appimage(library_machine=183)
 
     def test_appimage_without_the_exact_bundle_refuses(self):
         changed = self.root / "changed bundle"

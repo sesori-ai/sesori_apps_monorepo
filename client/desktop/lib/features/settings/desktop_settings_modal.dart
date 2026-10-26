@@ -33,22 +33,30 @@ enum DesktopSettingsTab() {
 Future<void> showDesktopSettingsModal({
   required BuildContext context,
   required DesktopSettingsTab initialTab,
+
+  /// Opens the Archived pane once the window has closed.
+  required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) => _showDesktopSettings(
   context: context,
   initialTab: initialTab,
   opensComputers: false,
+  onOpenArchived: onOpenArchived,
   onLogoutCompleted: onLogoutCompleted,
 );
 
 /// The settings window on its Bridge tab with the Computers page already open.
 Future<void> showDesktopComputersSettings({
   required BuildContext context,
+
+  /// Opens the Archived pane once the window has closed.
+  required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) => _showDesktopSettings(
   context: context,
   initialTab: DesktopSettingsTab.bridge,
   opensComputers: true,
+  onOpenArchived: onOpenArchived,
   onLogoutCompleted: onLogoutCompleted,
 );
 
@@ -56,6 +64,7 @@ Future<void> _showDesktopSettings({
   required BuildContext context,
   required DesktopSettingsTab initialTab,
   required bool opensComputers,
+  required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) async {
   final authGate = context.read<AuthGateCubit>();
@@ -100,6 +109,11 @@ Future<void> _showDesktopSettings({
             initialTab: initialTab,
             opensComputers: opensComputers,
             onClose: close,
+            // Archived is a pane of the cockpit, so the window steps aside for it.
+            onOpenArchived: () {
+              close();
+              onOpenArchived();
+            },
             onLogoutCompleted: () {
               close();
               onLogoutCompleted();
@@ -115,6 +129,7 @@ class const _DesktopSettingsModal({
   required final DesktopSettingsTab initialTab,
   required final bool opensComputers,
   required final VoidCallback onClose,
+  required final VoidCallback onOpenArchived,
   required final VoidCallback onLogoutCompleted,
 }) extends StatefulWidget {
   @override
@@ -200,6 +215,15 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                                         _showsComputers = false;
                                       }),
                                     ),
+                                  // Not a tab, so set apart: it opens the Archived pane.
+                                  const SizedBox(height: PregoSpacing.lg),
+                                  _SettingsTabRow(
+                                    key: const Key("desktop-settings-archived"),
+                                    icon: TablerRegular.archive,
+                                    label: context.loc.archivedSessionsTitle,
+                                    selected: false,
+                                    onPressed: widget.onOpenArchived,
+                                  ),
                                 ],
                               ),
                             ),
@@ -245,7 +269,10 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
   }
 
   Widget _page() => switch (_tab) {
-    DesktopSettingsTab.general => const DesktopGeneralSettingsScreen(),
+    DesktopSettingsTab.general => BlocProvider(
+      create: (_) => DesktopUpdateCubit(service: getIt<DesktopUpdateService>()),
+      child: const DesktopGeneralSettingsScreen(),
+    ),
     DesktopSettingsTab.harnesses => _DesktopHarnessSettingsPage(onClose: widget.onClose),
     DesktopSettingsTab.projects => ProjectsSettingsView(chrome: SettingsPageInWindow()),
     DesktopSettingsTab.bridge => MultiBlocProvider(
@@ -440,6 +467,8 @@ class const _DesktopBridgeSettingsPage({
                   // Harnesses has a tab of its own.
                   onOpenHarnesses: null,
                   onOpenProjects: null,
+                  // The modal's tab list holds Archived.
+                  onOpenArchived: null,
                   onSwitchComputer: onSwitchComputer,
                   onManageComputers: onManageComputers,
                 ),

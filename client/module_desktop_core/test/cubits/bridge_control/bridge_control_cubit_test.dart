@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -26,6 +27,10 @@ void main() {
     late DesktopLogoutTracker logoutTracker;
     late _FakeUrlLauncher urlLauncher;
     late _FakeLaunchAtLogin launchAtLogin;
+    late _FakeInstalledDesktopBundleSource bundleSource;
+    late _FakeDesktopRelaunchApi relaunchApi;
+    late DesktopUpdateService updateService;
+    late DesktopExitOrchestrator exitOrchestrator;
     late BridgeControlCubit cubit;
 
     setUp(() {
@@ -42,6 +47,23 @@ void main() {
       logoutTracker = DesktopLogoutTracker();
       urlLauncher = _FakeUrlLauncher();
       launchAtLogin = _FakeLaunchAtLogin();
+      bundleSource = _FakeInstalledDesktopBundleSource();
+      relaunchApi = _FakeDesktopRelaunchApi();
+      updateService = DesktopUpdateService(
+        // A Linux package never reaches the Velopack engine.
+        updateRepository: DesktopUpdateRepository(
+          bundleSource: bundleSource,
+          relaunchApi: relaunchApi,
+          feedApi: DesktopUpdateFeedApi(client: http.Client(), bundleSource: bundleSource),
+          feedValidator: DesktopUpdateFeedValidator(),
+          velopackApi: VelopackUpdateApi(
+            bundleSource: bundleSource,
+            applicationSupportDirectory: _LogDirectory(root: Directory.systemTemp),
+          ),
+        ),
+        instanceRepository: _RecordingDesktopInstanceRepository(),
+      );
+      exitOrchestrator = DesktopExitOrchestrator(processService: processService, updateService: updateService);
       cubit = BridgeControlCubit(
         processService: processService,
         statusTracker: statusTracker,
@@ -56,6 +78,8 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: false,
       );
     });
@@ -69,6 +93,7 @@ void main() {
       await windowHost.disposeFake();
       await instanceService.disposeFake();
       await logoutTracker.dispose();
+      await updateService.dispose();
     });
 
     test("a live helper waiting for the server stays starting until readiness", () async {
@@ -272,6 +297,8 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: true,
       );
       addTearDown(hiddenCubit.close);
@@ -298,6 +325,8 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: true,
       );
       addTearDown(hiddenCubit.close);
@@ -632,6 +661,8 @@ void main() {
         logoutTracker: logoutTracker,
         urlLauncher: urlLauncher,
         launchAtLogin: launchAtLogin,
+        updateService: updateService,
+        exitOrchestrator: exitOrchestrator,
         hiddenLaunch: false,
       );
       addTearDown(quittingCubit.close);
@@ -690,6 +721,66 @@ void main() {
       await cubit.initialize();
       await cubit.quit();
       expect(applicationTerminator.exitCodes, [0]);
+    });
+
+    test("Restart to Update appears in the tray only once an update is installed", () async {
+      await cubit.initialize();
+      expect(
+        systemTray.menus.last.entries.whereType<SystemTrayCommandItem>().map((item) => item.command),
+        isNot(contains(SystemTrayCommand.restartToUpdate)),
+      );
+
+      bundleSource.installed = _installedUpdate;
+      await updateService.check();
+      await pumpEventQueue();
+
+      expect(
+        _command(menu: systemTray.menus.last, command: SystemTrayCommand.restartToUpdate).label,
+        "Restart to Update",
+      );
+    });
+
+    test("tray Restart to Update relaunches the package before stopping the helper, then exits", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopGate = Completer<void>();
+      bundleSource.installed = _installedUpdate;
+      await updateService.check();
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.restartToUpdate);
+      await pumpEventQueue(times: 2);
+      expect(relaunchApi.relaunches, 1);
+      expect(processService.stopCalls, 1);
+      expect(applicationTerminator.exitCodes, isEmpty);
+
+      processService.stopGate!.complete();
+      await pumpEventQueue(times: 3);
+
+      expect(relaunchApi.relaunches, 1);
+      expect(instanceService.writes, isEmpty);
+      expect(applicationTerminator.exitCodes, <int>[0]);
+    });
+
+    test("a failed relaunch keeps the app running with its helper untouched", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      relaunchApi.error = const ProcessException("/usr/bin/sesori-desktop", <String>[]);
+      bundleSource.installed = _installedUpdate;
+      await updateService.check();
+      await cubit.initialize();
+
+      await cubit.restartToUpdate();
+
+      expect(processService.stopCalls, 0);
+      expect(processService.startCalls, 0);
+      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(systemTray.disposeCalls, 0);
+      expect(cubit.state.activity, BridgeControlActivity.idle);
     });
 
     test("Quit leaves the app alive when expected bridge stop fails", () async {
@@ -892,6 +983,55 @@ class _FakeWindowBoundsService() implements WindowBoundsService {
   @override
   Future<void> dispose() async {
     disposeCalls++;
+  }
+}
+
+const DesktopBundleIdentity _runningIdentity = DesktopBundleIdentity(
+  version: "1.8.4",
+  buildNumber: 24,
+  sourceSha: "running",
+  os: DesktopBundleOs.linux,
+  architecture: DesktopBundleArchitecture.x64,
+);
+
+const DesktopBundleIdentity _installedUpdate = DesktopBundleIdentity(
+  version: "1.8.5",
+  buildNumber: 25,
+  sourceSha: "installed",
+  os: DesktopBundleOs.linux,
+  architecture: DesktopBundleArchitecture.x64,
+);
+
+class _FakeInstalledDesktopBundleSource() implements InstalledDesktopBundleSource {
+  DesktopBundleIdentity installed = _runningIdentity;
+
+  @override
+  DesktopBundleIdentity? get compiledIdentity => _runningIdentity;
+
+  @override
+  DesktopReleaseChannel get channel => DesktopReleaseChannel.stable;
+
+  @override
+  bool get isAppImage => false;
+
+  @override
+  String get velopackLibraryPath => "unused";
+
+  @override
+  DesktopBundleIdentity readInstalledIdentity() => installed;
+}
+
+class _FakeDesktopRelaunchApi() implements DesktopRelaunchApi {
+  int relaunches = 0;
+  Object? error;
+
+  @override
+  Future<void> relaunchInstalledPackage() async {
+    relaunches++;
+    final Object? failure = error;
+    if (failure != null) {
+      throw failure;
+    }
   }
 }
 

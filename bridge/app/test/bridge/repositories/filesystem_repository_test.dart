@@ -285,6 +285,16 @@ class _PermissionDeniedFilesystemApi() implements FilesystemApi {
   void deleteDirectoryRecursively(String path) {}
 
   @override
+  Future<void> deleteDirectoryRecursivelyAsync({required String path}) => throw UnimplementedError();
+
+  @override
+  Future<void> createDirectoryRecursively({required String path}) => throw UnimplementedError();
+
+  @override
+  Future<String> createTemporaryDirectory({required String parent, required String prefix}) =>
+      throw UnimplementedError();
+
+  @override
   bool directoryExists(String path) => true;
 
   @override

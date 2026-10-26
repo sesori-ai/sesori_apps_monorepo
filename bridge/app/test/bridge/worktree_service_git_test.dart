@@ -444,24 +444,72 @@ void main() {
       test("returns non-existent snapshot when worktree path is missing", () async {
         final snapshot = await service.inspectWorktreeSafety(
           worktreePath: "${tempDir.path}/missing",
+          baseCommit: "base123",
         );
 
         expect(snapshot.worktreeExists, isFalse);
         expect(snapshot.hasUnstagedChanges, isFalse);
+        expect(snapshot.hasCommitsOnNoBranch, isFalse);
         expect(processRunner.invocations, isEmpty);
       });
 
-      test("returns git status details for existing worktree", () async {
+      test("returns git status and no-branch details for existing worktree", () async {
         processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "M file.txt\n"));
+        processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "def456\n"));
 
         final snapshot = await service.inspectWorktreeSafety(
           worktreePath: tempDir.path,
+          baseCommit: "base123",
         );
 
         expect(snapshot.worktreeExists, isTrue);
         expect(snapshot.hasUnstagedChanges, isTrue);
-        expect(processRunner.invocations, hasLength(1));
+        expect(snapshot.hasCommitsOnNoBranch, isTrue);
+        expect(processRunner.invocations, hasLength(2));
         expect(processRunner.invocations.first.arguments, equals(["status", "--porcelain"]));
+        expect(
+          processRunner.invocations.last.arguments,
+          equals([
+            "rev-list",
+            "--ignore-missing",
+            "-n",
+            "1",
+            "HEAD",
+            "--not",
+            "base123",
+            "--branches",
+            "--tags",
+            "--remotes",
+          ]),
+        );
+        expect(processRunner.invocations.last.workingDirectory, tempDir.path);
+      });
+
+      test("omits the base exclusion for a row without a base commit", () async {
+        processRunner.enqueue(result: _processResult(exitCode: 0));
+        processRunner.enqueue(result: _processResult(exitCode: 0));
+
+        final snapshot = await service.inspectWorktreeSafety(worktreePath: tempDir.path, baseCommit: null);
+
+        expect(snapshot.hasCommitsOnNoBranch, isFalse);
+        expect(
+          processRunner.invocations.last.arguments,
+          equals(["rev-list", "--ignore-missing", "-n", "1", "HEAD", "--not", "--branches", "--tags", "--remotes"]),
+        );
+      });
+
+      test("preserves a failed no-branch check", () async {
+        processRunner.enqueue(result: _processResult(exitCode: 0));
+        processRunner.enqueue(result: _processResult(exitCode: 128, stderr: "fatal: bad revision"));
+
+        await expectLater(
+          service.inspectWorktreeSafety(worktreePath: tempDir.path, baseCommit: "base123"),
+          throwsA(
+            isA<ProcessException>()
+                .having((error) => error.errorCode, "errorCode", 128)
+                .having((error) => error.message, "message", "fatal: bad revision"),
+          ),
+        );
       });
     });
 

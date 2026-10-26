@@ -75,7 +75,7 @@ void main() {
   );
 
   for (final size in [const Size(440, 956), const Size(956, 440)]) {
-    testWidgets("the home's Archived opens under its filter and keeps the home through Back and X at $size", (
+    testWidgets("Archived opens over the home under its filter and keeps the home through Back and X at $size", (
       tester,
     ) async {
       const opener = "/sessions";
@@ -95,7 +95,8 @@ void main() {
       await tester.pumpAndSettle();
       expect(find.text("Live record"), findsOneWidget);
       expect(find.text("Archived record"), findsNothing);
-      await tester.tap(find.byKey(const Key("home-archived")));
+      // As Settings' Archived row pushes it.
+      unawaited(harness.router.push<void>(const AppRoute.archivedSessions().buildPath()));
       await tester.pumpAndSettle();
       expect(harness.router.state.uri.toString(), "/archived-sessions");
       expect(GetIt.instance<SessionListFilterTracker>().projectId.value, "p1");
@@ -273,7 +274,7 @@ void main() {
     openerCubit.saveComposerDraft(draft: draft);
     final viewingService = GetIt.instance<SessionViewingService>() as MockSessionViewingService;
     clearInteractions(viewingService);
-    await tester.tap(find.byKey(const Key("home-archived")));
+    unawaited(harness.router.push<void>(const AppRoute.archivedSessions().buildPath()));
     harness.routeSource.emitRoute(AppRouteDef.archivedSessions);
     await tester.pumpAndSettle();
     verify(() => viewingService.clearViewingSession("live")).called(1);

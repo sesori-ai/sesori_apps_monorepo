@@ -12,6 +12,7 @@ _DeleteSessionRequest _$DeleteSessionRequestFromJson(Map json) =>
       deleteWorktree: json['deleteWorktree'] as bool,
       deleteBranch: json['deleteBranch'] as bool,
       force: json['force'] as bool,
+      deleteSessionFolder: json['deleteSessionFolder'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$DeleteSessionRequestToJson(
@@ -21,4 +22,5 @@ Map<String, dynamic> _$DeleteSessionRequestToJson(
   'deleteWorktree': instance.deleteWorktree,
   'deleteBranch': instance.deleteBranch,
   'force': instance.force,
+  'deleteSessionFolder': instance.deleteSessionFolder,
 };

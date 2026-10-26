@@ -34,9 +34,9 @@ entirely along with its transcript and its dedicated worktree.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
   Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
   that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
-- When the bridge refuses the cleanup over work the user owns — uncommitted changes in the worktree, or, from
-  v1.7.1 and older bridges only, a branch other than the expected one — a modal
-  (a sheet on touch, a dialog on pointer) names those issues and offers exactly
+- When the bridge refuses the cleanup over work the user owns — uncommitted changes in the worktree, commits
+  on no branch ("Commits on no branch would be lost"), or, from v1.7.1 and older bridges only, a branch other
+  than the expected one — a modal (a sheet on touch, a dialog on pointer) names those issues and offers exactly
   two ways out: Cancel, which is also what dismissing it or Escape gives and which leaves the session in its
   lists, or a destructive Delete anyway that retries the same operation with force, so the worktree and the
   work inside it are really removed. That modal is the confirmation; nothing asks again. A forced archive
@@ -44,8 +44,8 @@ entirely along with its transcript and its dedicated worktree.
 - When a live session sharing the worktree is the only issue, nothing is asked. The app retries at once
   without worktree cleanup, so the session is archived or deleted while the other session keeps its
   worktree, and says so once through the ordinary alert surface rather than a modal. A shared worktree
-  reported together with uncommitted changes or a branch mismatch is treated as the refusal above, because
-  forcing there would remove a worktree another session is still using.
+  reported together with any of the issues above is treated as the refusal above, because forcing there
+  would remove a worktree another session is still using.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept.
@@ -95,20 +95,34 @@ entirely along with its transcript and its dedicated worktree.
   accepts that missing worktree and completes session retirement. The session is
   deleted only after cleanup succeeds, and both flows serialize against
   concurrent mutations of the same session family.
+- The unforced safety check reports commits on no branch when the worktree's HEAD has commits that no local
+  branch, tag or remote-tracking ref reaches. When the session stored its base commit, commits that base reaches
+  do not count, so a detached HEAD still at its base stays clean even after the base branch is rewritten; an
+  older session without one gets no such exclusion. A HEAD on a branch is reached by that branch, so the check
+  never fires for it. If this check itself fails, the cleanup fails visibly rather than passing.
 - Published requests retain the retired `deleteBranch` field for mixed-version
   compatibility. New clients always send `false`, and new bridges explicitly
   reject `true` before mutation so old clients cannot mistake unperformed branch
   cleanup for success.
+- A delete request with `deleteSessionFolder: true` also removes the deleted
+  session's own scratch folder, after the session rows are gone and without
+  holding the family lock. The bridge removes the folder only when it is a
+  direct child of `~/.sesori/scratch` spelled without `..`, no remaining session
+  row's directory is at or under it, and it is a real directory rather than a
+  link; the removal never follows links inside it. Any other path is kept and
+  the reason is logged, and a removal failure is logged with the path without
+  failing the delete. An omitted flag, as older apps send, keeps the folder.
+  Archiving never removes it.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions. Archived row menus omit Rename and Archive but retain
   permanent Delete and read-state actions.
 - Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
-  narrows the list to one project. The home's Archived button, in its bar or in
-  the sidebar footer from 700 pt, opens the modal under the home's filter
-  through the same filter the all-projects lists share; it adds no second
-  filter. The live
+  narrows the list to one project. Settings' Archived sessions row, after
+  Projects in the Bridge section and disabled offline, opens the modal over
+  Settings under the home's filter through the same filter the all-projects
+  lists share; it adds no second filter. The live
   list remains active-only. The modal has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
@@ -121,10 +135,11 @@ entirely along with its transcript and its dedicated worktree.
   failure alert. Archived lists never claim a viewed project. Swipe and menu
   actions run on a per-row action cubit; a deleted row leaves when the bridge's
   `session.deleted` event arrives.
-- Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the sidebar footer's
-  Archived under the sidebar's shared filter, with the archive empty state and no artwork. Its rows open the
-  ordinary session page read-only over it, Delete asks in the desktop dialog, and its close returns to the page
-  it opened over, or home when reached directly (see `desktop-cockpit-shell.md`). While the computer is disconnected it lists nothing.
+- Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the settings window's
+  Archived sessions row, which closes the window first. It uses the sidebar's shared filter, the archive empty
+  state and no artwork. Its rows open the ordinary session page read-only over it, Delete asks in the desktop
+  dialog, and its close returns to the page it opened over, or home when reached directly (see
+  `desktop-cockpit-shell.md`). While the computer is disconnected it lists nothing.
 - Archived detail (`/archived-sessions/<projectId>/<sessionId>`) is read-only
   from its first frame. In the composer's place it
   shows what the newest agent reply ran with as read-only pills (see
@@ -189,7 +204,7 @@ restart before explicit re-import.
 
 - Mobile mixes active rows into archives, shows a new-session floating button in
   the modal, loses the opener on X, or navigates out of the modal on detail Back.
-- The home's Archived button ignores the home's filter, filtered rows
+- Settings' Archived sessions row ignores the home's filter, filtered rows
   repeat the project name, an unfiltered row omits it, or a newly archived
   session is missing until a manual refresh.
 - Archived says “No archived sessions” while the project list is loading, has
@@ -209,6 +224,10 @@ restart before explicit re-import.
   retains live prompt defaults.
 - Deletion residue survives startup reconciliation without an observable failure
   and later retry, or cleanup removes a worktree or branch that was not requested.
+- Folder removal deletes anything outside a direct child of the scratch root,
+  the scratch root itself, a folder another session still runs in or under, a
+  link or its target, or a folder the request did not ask to remove; or
+  archiving removes a scratch folder.
 - Any archive or delete surface offers to keep the worktree, or a refusal modal
   presents a third way out beyond Cancel and the destructive force.
 - A shared-worktree-only refusal reaches the user as a question, or a refusal that
@@ -224,6 +243,8 @@ restart before explicit re-import.
   issues, session retirement deletes a branch, partial cleanup is reported as
   success or deletes the session, a concurrent mutation interleaves, or a client
   presents archiving as reversible.
+- An unforced cleanup removes a worktree whose detached HEAD has commits that no branch, tag or remote reaches,
+  or refuses one that is on a branch or detached at its base commit.
 
 ## Known Limitations
 
@@ -241,12 +262,20 @@ restart before explicit re-import.
 - A history purge failing after session-row deletion is logged and leaves storage
   residue for startup reconciliation rather than failing the deletion.
 - Attachment behavior here will change with unfinished lazy stored-image work.
-- The bridge returns one cleanup issue per refusal: the shared-worktree check
-  short-circuits before the git safety check, so a shared worktree never arrives
-  together with uncommitted changes. The client still treats that mixed
-  combination as a refusal to ask about, because forcing it would remove a
-  worktree another live session uses — the bridge's force bypasses every check,
-  including the shared one, and always removes the worktree.
+- The shared-worktree check short-circuits before the git safety check, so a
+  shared worktree never arrives together with another issue. The git safety
+  check can return uncommitted changes and commits on no branch together in one
+  refusal. The client still treats a shared worktree mixed with any other issue
+  as a refusal to ask about, because forcing it would remove a worktree another
+  live session uses — the bridge's force bypasses every check, including the
+  shared one, and always removes the worktree.
+- v1.9.1 and older apps cannot parse the commits-on-no-branch issue, so archiving
+  or deleting such a session from them shows the generic archive or delete
+  failure instead of the refusal modal. The worktree is kept, so nothing is lost;
+  a current app offers the forced retry.
+- Commits left behind by checking out away from them before archiving are not
+  detected, because only the current HEAD is inspected. They stay recoverable
+  with `git fsck` until garbage collection.
 - `branchMismatch` stays in the cleanup-rejection wire contract and is rendered
   by the client because v1.7.1 and older bridges still send it; current bridges
   never produce it.
@@ -282,5 +311,8 @@ delete and read state from a row, detail and unwinding, the offline page), share
 `all_sessions_cubit_test`, desktop `desktop_session_detail_screen_test`, shared
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
-confirmations, the forced refusal and the kept-worktree notice; and
-`session_cleanup_service_test`, the one owner of the shared-worktree retry.
+confirmations, the forced refusal and the kept-worktree notice;
+`session_cleanup_service_test`, the one owner of the shared-worktree retry;
+bridge `git_cli_api_test`, whose real-repository cases cover commits on no
+branch; and bridge `scratch_repository_test` plus the scratch-folder cases in
+`delete_session_handler_test` and `update_session_archive_status_handler_test`.
