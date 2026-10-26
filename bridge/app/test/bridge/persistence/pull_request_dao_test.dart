@@ -22,10 +22,7 @@ void main() {
 
     Future<void> insertProject({required String projectId}) async {
       await db.projectsDao.setBaseBranch(projectId: projectId, baseBranch: null);
-      await db.projectsDao.setPrCacheGithubLogin(
-        projectId: projectId,
-        githubLogin: githubLogin,
-      );
+      await setTestPrCacheGithubLogin(db: db, projectId: projectId, githubLogin: githubLogin);
     }
 
     Future<void> insertSession({
@@ -48,14 +45,11 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
-      await db.sessionDao.updatePullRequestScopes(
-        updates: [
-          (
-            sessionId: sessionId,
-            currentBranchName: branchName,
-            currentGithubRepositoryIdentity: githubRepositoryIdentity,
-          ),
-        ],
+      await setTestPullRequestScope(
+        db: db,
+        sessionId: sessionId,
+        currentBranchName: branchName,
+        currentGithubRepositoryIdentity: githubRepositoryIdentity,
       );
     }
 
@@ -215,10 +209,7 @@ void main() {
       final matchingAccount = await dao.getPrsByPersistedScopeSessionIds(sessionIds: ["session-1"]);
       expect(matchingAccount["session-1"]?.map((pr) => pr.prNumber), [100]);
 
-      await db.projectsDao.setPrCacheGithubLogin(
-        projectId: "proj-1",
-        githubLogin: "hubot",
-      );
+      await setTestPrCacheGithubLogin(db: db, projectId: "proj-1", githubLogin: "hubot");
       final switchedAccount = await dao.getPrsByPersistedScopeSessionIds(sessionIds: ["session-1"]);
       expect(switchedAccount["session-1"]?.map((pr) => pr.prNumber), [102]);
     });

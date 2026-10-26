@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 9/13 in review.
+- Current step: 10/13 in review.
 - User decisions:
   - remove all PR tracking (round 1, Q1 A, 2026-10-25);
   - D7, remove project-view presence (the user's follow-up the same day).
@@ -22,7 +22,7 @@
 | 7/13 | Bridge stops tracking the open project | Not started | — |
 | 8/13 | PR sync service removed | Done | #2095 |
 | 9/13 | PR source lookup removed | In review | #2097 |
-| 10/13 | Pull request repository removed | Not started | — |
+| 10/13 | Pull request repository removed | In review | — |
 | 11/13 | gh client removed | Not started | — |
 | 12/13 | Schema v21 drops stored PR data | Not started | — |
 | 13/13 | PR wire models removed; plan retired | Not started | — |

@@ -41,14 +41,11 @@ void main() {
       // The create flow inserts the same session under the original project id
       // (its project row exists first, satisfying the FK).
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
-      await db.sessionDao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "s1",
-            currentBranchName: "stale-branch",
-            currentGithubRepositoryIdentity: "stale/repository",
-          ),
-        ],
+      await setTestPullRequestScope(
+        db: db,
+        sessionId: "s1",
+        currentBranchName: "stale-branch",
+        currentGithubRepositoryIdentity: "stale/repository",
       );
       await dao.insertSession(
         fastMode: false,
@@ -92,14 +89,11 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
-      await dao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "s1",
-            currentBranchName: "feature/one",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
+      await setTestPullRequestScope(
+        db: db,
+        sessionId: "s1",
+        currentBranchName: "feature/one",
+        currentGithubRepositoryIdentity: "org/repo",
       );
 
       await dao.insertSession(

@@ -64,15 +64,6 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
     return row?.path;
   }
 
-  Future<void> setPrCacheGithubLogin({
-    required String projectId,
-    required String? githubLogin,
-  }) async {
-    await (update(projectsTable)..where((table) => table.projectId.equals(projectId))).write(
-      ProjectsTableCompanion(prCacheGithubLogin: Value(githubLogin)),
-    );
-  }
-
   /// Records [projectId] as an explicitly-opened folder by storing [path] and
   /// the exact timestamps, creating the row if missing. On conflict [path],
   /// [createdAt], [updatedAt], and the hidden flag are replaced with the
