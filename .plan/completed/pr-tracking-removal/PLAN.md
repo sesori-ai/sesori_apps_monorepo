@@ -399,8 +399,9 @@ any code, fixture or comment that the step makes obsolete.
     - navigating logs no relay parse warning.
   - **The new app on a v1.9.1 bridge:** lists load, the bridge-settings card works, and voice input still gets
     the glossary.
-- **Reductions.** Any reduction needs explicit user acceptance, recorded here before retirement. None is accepted
-  yet.
+- **Reductions.** Any reduction needs explicit user acceptance, recorded here before retirement. Accepted on
+  2026-10-26: voice input using the glossary (A4 and C6). Headless simulators have no microphone; the glossary
+  publication and key issuance before it passed.
 
 ## Risks and accepted behavior
 
