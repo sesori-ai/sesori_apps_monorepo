@@ -19,7 +19,7 @@
 | 4/13 | Client stops declaring the open project | Not started | — |
 | 5/13 | Session reads carry no PR data | Done | #2085 (5.i), #2086 (5.ii) |
 | 6/13 | Polling stopped | Done | #2090 |
-| 7/13 | Bridge stops tracking the open project | In review | — |
+| 7/13 | Bridge stops tracking the open project | In review | #2093 |
 | 8/13 | PR sync service removed | Not started | — |
 | 9/13 | PR source lookup removed | Not started | — |
 | 10/13 | Pull request repository removed | Not started | — |
