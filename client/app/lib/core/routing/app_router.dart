@@ -300,7 +300,6 @@ List<RouteBase> _buildAppRoutes({
           connectionService: getIt<ConnectionService>(),
           filterTracker: getIt<SessionListFilterTracker>(),
           sessionListService: getIt<SessionListService>(),
-          projectViewingService: getIt<ProjectViewingService>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
           // The home and Archived both name the computer they reach.
@@ -602,7 +601,6 @@ ShellRoute buildArchivedSessionsRoute() {
             mode: AllSessionsMode.archived,
             filterTracker: getIt<SessionListFilterTracker>(),
             sessionListService: getIt<SessionListService>(),
-            projectViewingService: getIt<ProjectViewingService>(),
           ),
           child: child,
         ),

@@ -52,7 +52,6 @@ import "../services/models/session_list_item_state.dart";
 import "../services/new_session_selection_tracker.dart";
 import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
-import "../services/project_viewing_service.dart";
 import "../services/registered_bridges_service.dart";
 import "../services/selected_computer_service.dart";
 import "../services/session_detail_load_service.dart";
@@ -118,38 +117,6 @@ MockSessionViewingService stubbedSessionViewingService() {
   final mock = MockSessionViewingService();
   when(() => mock.setViewingSession(any())).thenReturn(null);
   when(() => mock.clearViewingSession(any())).thenReturn(null);
-  return mock;
-}
-
-class MockProjectViewingService() extends Mock implements ProjectViewingService;
-
-MockProjectViewingService stubbedProjectViewingService() {
-  final mock = MockProjectViewingService();
-  when(
-    () => mock.beginListClaim(projectId: any(named: "projectId")),
-  ).thenAnswer((_) => ProjectViewClaim());
-  when(
-    () => mock.beginDetailClaim(projectId: any(named: "projectId")),
-  ).thenAnswer((_) => ProjectViewClaim());
-  when(mock.beginWideListPaneClaim).thenAnswer((_) => ProjectViewPaneClaim());
-  when(
-    () => mock.markClaimReady(
-      claim: any(named: "claim"),
-      projectId: any(named: "projectId"),
-    ),
-  ).thenReturn(null);
-  when(() => mock.markClaimFailed(claim: any(named: "claim"))).thenReturn(null);
-  when(() => mock.releaseClaim(claim: any(named: "claim"))).thenReturn(null);
-  when(
-    () => mock.setWideListPaneVisible(
-      claim: any(named: "claim"),
-      isVisible: any(named: "isVisible"),
-    ),
-  ).thenReturn(null);
-  when(
-    () => mock.releaseWideListPaneClaim(claim: any(named: "claim")),
-  ).thenReturn(null);
-  when(mock.onDispose).thenAnswer((_) async {});
   return mock;
 }
 
@@ -663,8 +630,6 @@ void registerCoreFallbackValues() {
   registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
   registerFallbackValue(AccountStatus.existing);
   registerFallbackValue(SessionOptionsRequestMode.dynamic);
-  registerFallbackValue(ProjectViewClaim());
-  registerFallbackValue(ProjectViewPaneClaim());
   registerFallbackValue(DateTime.utc(2026));
   registerFallbackValue(Duration.zero);
   registerFallbackValue(const <ComposerAttachment>[]);

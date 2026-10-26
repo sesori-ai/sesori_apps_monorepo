@@ -88,7 +88,6 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        claimProjectView: true,
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
@@ -98,7 +97,6 @@ void main() {
         promptDispatcher: mockSessionRepository,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: FakeLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: stubbedProductAnalyticsService(),
@@ -152,7 +150,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -213,7 +210,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: [],
@@ -304,7 +300,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -377,7 +372,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -435,7 +429,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -510,7 +503,6 @@ void main() {
         return SessionDetailSnapshot(
           areOptionsStale: false,
           bridgeQueuedPrompts: const [],
-          projectId: "project-1",
           pluginId: "codex",
           supportsPromptAttachments: supportsPromptAttachments,
           messages: const <MessageWithParts>[],
@@ -581,7 +573,6 @@ void main() {
       const snapshot = SessionDetailSnapshot(
         areOptionsStale: false,
         bridgeQueuedPrompts: [],
-        projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
         messages: <MessageWithParts>[],
@@ -703,7 +694,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -771,7 +761,6 @@ void main() {
       const snapshot = SessionDetailSnapshot(
         areOptionsStale: false,
         bridgeQueuedPrompts: [],
-        projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
@@ -862,7 +851,6 @@ void main() {
       const supportedSnapshot = SessionDetailSnapshot(
         areOptionsStale: false,
         bridgeQueuedPrompts: [],
-        projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
         messages: <MessageWithParts>[],
@@ -885,7 +873,6 @@ void main() {
       const unsupportedSnapshot = SessionDetailSnapshot(
         areOptionsStale: false,
         bridgeQueuedPrompts: [],
-        projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: false,
         messages: <MessageWithParts>[],
@@ -1015,7 +1002,6 @@ void main() {
       const snapshot = SessionDetailSnapshot(
         areOptionsStale: false,
         bridgeQueuedPrompts: [],
-        projectId: "project-1",
         pluginId: "codex",
         supportsPromptAttachments: true,
         messages: <MessageWithParts>[],
@@ -1145,7 +1131,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -1227,7 +1212,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -1269,7 +1253,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -1344,7 +1327,6 @@ void main() {
       SessionDetailSnapshot snapshot({required List<MessageWithParts> messages}) => SessionDetailSnapshot(
         areOptionsStale: false,
         bridgeQueuedPrompts: const [],
-        projectId: "project-1",
         pluginId: "opencode",
         supportsPromptAttachments: false,
         messages: messages,
@@ -1773,7 +1755,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -1839,7 +1820,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -1929,7 +1909,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[newest],
@@ -2008,7 +1987,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[assistant],
@@ -2087,7 +2065,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: messages,
@@ -2159,7 +2136,6 @@ void main() {
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             bridgeQueuedPrompts: [],
-            projectId: "project-1",
             pluginId: "opencode",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -2277,7 +2253,6 @@ SessionDetailSnapshot _snapshot({required List<MessageWithParts> messages, int? 
     SessionDetailSnapshot(
       areOptionsStale: false,
       bridgeQueuedPrompts: const [],
-      projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
       messages: messages,

@@ -825,7 +825,6 @@ SessionDetailCubit _buildCubit({
 }) {
   return SessionDetailCubit(
     connectionService,
-    claimProjectView: true,
     pluginManagementService: stubbedPluginManagementService(),
     interactionCalculator: const SessionInteractionCalculator(),
     loadService: loadService,
@@ -835,7 +834,6 @@ SessionDetailCubit _buildCubit({
     promptDispatcher: promptDispatcher,
     permissionRepository: permissionRepository,
     sessionViewingService: stubbedSessionViewingService(),
-    projectViewingService: stubbedProjectViewingService(),
     lifecycleSource: FakeLifecycleSource(),
     composerDraftRepository: inMemoryComposerDraftRepository(),
     productAnalyticsService: productAnalyticsService ?? stubbedProductAnalyticsService(),

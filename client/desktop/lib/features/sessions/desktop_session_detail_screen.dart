@@ -41,7 +41,6 @@ class const DesktopSessionDetailScreen({
       providers: [
         BlocProvider<SessionDetailCubit>(
           create: (_) => createSessionDetailCubit(
-            claimProjectView: true,
             locator: getIt,
             sessionId: sessionId,
             projectId: projectId,

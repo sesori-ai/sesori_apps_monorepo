@@ -484,24 +484,12 @@ class RelayClient._({
   /// Declares to the bridge which session this phone is currently viewing
   /// ([sessionId] == null when viewing nothing). Fire-and-forget control
   /// message; no-op when not connected.
-  Future<void> sendSessionView({required String? sessionId}) => _sendViewMessage(
-    message: RelayMessage.sessionView(sessionId: sessionId),
-    operation: "sendSessionView",
-  );
-
-  /// Declares to the bridge which project this client is currently viewing.
-  /// Best-effort control message; no-op when not connected.
-  Future<void> sendProjectView({required String? projectId}) => _sendViewMessage(
-    message: RelayMessage.projectView(projectId: projectId),
-    operation: "sendProjectView",
-  );
-
-  Future<void> _sendViewMessage({required RelayMessage message, required String operation}) async {
+  Future<void> sendSessionView({required String? sessionId}) async {
     if (!isConnected || _sessionEncryptor == null) return;
     try {
-      await _sendEncryptedMessage(message);
+      await _sendEncryptedMessage(RelayMessage.sessionView(sessionId: sessionId));
     } on Object catch (error, stackTrace) {
-      logw("$operation failed: disconnect race", error, stackTrace);
+      logw("sendSessionView failed: disconnect race", error, stackTrace);
     }
   }
 
