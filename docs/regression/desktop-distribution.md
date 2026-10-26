@@ -1,10 +1,10 @@
-# Desktop distribution and manual updates
+# Desktop distribution and updates
 
 ## Supported behavior
 
 Desktop Settings → General includes app-update controls, separate from bridge configuration and
-supervision. macOS (Sparkle), Windows and AppImage (Velopack) builds update in place (below). On `https://sesori.com/desktop/`, unshipped sections explicitly contain no public
-download; they never link private CI artifacts or infer desktop assets from Latest.
+supervision. macOS (Sparkle), Windows and AppImage (Velopack) builds update in place (below).
+On `https://sesori.com/desktop/`, unshipped sections explicitly contain no public download; they never link private CI artifacts or infer desktop assets from Latest.
 The website preserves all eight macOS/Windows channel/CPU anchors and `linux-package-managers`,
 plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors; the website step adds the
 `<channel>-linux-<x64|arm64>-appimage` anchors. Every generated app fragment
@@ -27,7 +27,7 @@ Preview navigation stays visible beside stable downloads. Linux-only availabilit
 claim macOS notarization; preview metadata never creates stable schema/offer availability.
 The preview group leaves 32px before the selector and wraps without mobile overflow.
 Linux rows link the experimental limitations note below the sticky header. They describe
-manual packages, not repository updates or qualified upgrades. Actual-widget demo imagery
+how each package format updates. Actual-widget demo imagery
 discloses native-control differences, not native account QA.
 
 Staging accepts `--channel stable|internal` (default stable) and emits
@@ -79,6 +79,23 @@ tray Quit: the helper stops before the app exits. A quit request during a runnin
 declined at once. A failed helper stop keeps the app running and declines the quit request.
 Failure signals: an unsigned or tampered archive installs, Cmd+Q leaves the helper running,
 an update prompt appears during a normal writable install, or Restart to update installs without relaunching.
+
+## Update feed publication
+
+`desktop-update-feed.yml` publishes the feeds the updaters read. The internal cycle
+(`release-all-platforms.yml`) and production `submit-release.yml` call it per platform after
+that platform's assets are public: Linux AppImage Velopack feeds after `publish-desktop-linux`,
+macOS appcasts after `publish-desktop` while `DESKTOP_MACOS_PUBLICATION_ENABLED` is `true`.
+Windows feeds wait for public Windows releases. A `sign` job in the main-only
+`desktop-update-signing` environment is the only holder of the update key; it refuses a key
+that is not the compiled public key, a feed whose version is not the release's, and a Linux set
+missing a CPU. Appcast items reuse the published, digest-checked release ZIP with its EdDSA
+signature and `Info.plist` versions. A separate `publish` job holds only the `linux-packages`
+federation, writes nothing outside `desktop-updates/k1/<channel>/`, re-verifies every `.sig`,
+uploads packages (generation-zero) before feeds and signatures, and reads every object back
+over anonymous HTTPS. Channels never mix; a source without Velopack output publishes nothing.
+Failure signals: an internal build in a stable feed, a feed signed by another key, an object
+outside the prefix, or a feed visible before its package.
 
 ## Client storage boundary
 
@@ -694,15 +711,18 @@ navigation, and confirmed both anonymous links/sizes and manifest/checksum agree
 Stable schema/platform boundaries, mobile width and zero browser exceptions were checked.
 Those checks do not claim new full-byte hashing, Apple trust or native execution.
 Stable production attachment remains separate. Windows signed N→N+1 and Linux
-signed-repository N→N+1 requirements remain open.
+signed-repository N→N+1 requirements remain open. No automatic N→N+1 update has run yet
+on any platform; the first internal cycle after the updaters merged is its first real feed.
 Shared-store native roundtrip, cold reopen, replacement and authorization remain
 unproved by pre-cutover package evidence; the retired gate does not relabel that
 historical evidence as shared-store qualification.
 
 ## Coverage
 
-- **L1:** Destination tests cover both channels and CPUs, Linux and source guidance;
-  widget tests exercise external-link dispatch without claiming release availability.
+- **L1:** Update service, cubit and repository tests cover each install kind, the toggle,
+  Check for updates, Ready mapping and exit ordering; the feed validator runs the shared
+  Ed25519 test vector; the Sparkle and termination adapters and the phone update sheet have
+  platform and widget tests.
 - **L2:** Offline preparation fixtures cover both CPUs, channel/source mismatches,
   altered payload/evidence, missing packages, deterministic output and no overwrite.
   The actual internal-rollover shell runs with a fake GitHub boundary to verify repeated
@@ -712,7 +732,9 @@ historical evidence as shared-store qualification.
   desktop assets while still deleting same-version core-only internal releases.
   Windows fixtures cover identity/CPU refusal, complete native inventory, the pinned vpk
   install and pack arguments, exact-bundle and embedded-package refusal, the runner's
-  hook handling and no-overwrite diagnostics.
+  hook handling and no-overwrite diagnostics. Feed-publication fixtures cover key, version,
+  CPU and prefix refusal, appcast fields and upload order; macOS packaging fixtures cover
+  Sparkle's inside-out signing and the plist key matching the compiled key.
   Linux publication fixtures cover compiled-channel/source/build refusal, real GPGV
   checksum verification, independent platform completion, anonymous delivery failure,
   immutable retries and separate core/macOS ownership. Package fixtures cover identity/CPU
@@ -729,13 +751,14 @@ historical evidence as shared-store qualification.
   channel isolation, malformed metadata, cache reuse/failure logging and all anchors.
   Crawler FAQ coverage prevents a correct platform summary from hiding a stale answer.
   These run in `sesori-ai/landingpage`, without live GitHub fixture dependencies.
-- **L3:** Real Settings navigation and external-browser dispatch on a packaged native
-  build. Verify the browser lands on the website section matching the build's channel,
-  OS and CPU. No published installer is needed to check browser dispatch.
+- **L3:** Check for updates and Restart to update on a packaged native build of each
+  install kind against a real feed.
   Linux repository delivery additionally requires production-key/federated publication,
   anonymous public files and real APT/DNF refresh against HTTPS.
-- **L4:** Actual publisher verification and signed N→N+1 manual replacement with
-  helper On/Off, failed-stop refusal, normal Quit/no relaunch, and data preservation.
+- **L4:** Actual publisher verification and a signed N→N+1 automatic update (Sparkle,
+  Velopack, unattended-upgrades/dnf-automatic) on Quit and on Restart to update, with
+  helper On/Off, failed-stop refusal, and data preservation; one manual replacement from a
+  pre-updater install.
 - **L5:** All recorded native platform/package/host gates in the active distribution
   plan, downloaded artifacts, trust checks and public links. The deployed website
   browser checks prove live preview selection, anchors, channel/platform presentation
@@ -752,8 +775,8 @@ and [download instructions](../desktop/downloads.md).
 Wrong channel/CPU fragment, guessed architecture for source builds, private or
 unshipped artifact links, permanently pinned previews, core-only releases hiding usable
 desktop downloads, stable schema borrowing preview availability, a dead Linux/self-update button, raw release-version
-inference, losing attention settings, startup network waits, or a download action
-that stops/restarts the app or helper. On Windows, changing login intent during install,
+inference, losing attention settings, startup network waits, or an update check that
+stops the helper or relaunches the app. On Windows, changing login intent during install,
 a hook that starts the GUI, a silent install that launches the app, wrong-CPU payloads,
 uninstall leaving the login value, or uninstall deleting shared user data outside the install folder
 are failures. Linux package ownership of
