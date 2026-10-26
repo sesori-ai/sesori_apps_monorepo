@@ -4,6 +4,8 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
 
+import "../../core/widgets/desktop_page_toolbar.dart";
+
 /// Optional local-computer guidance; never blocks the home pane or remote work.
 class const DesktopFileAccessCard({super.key}) extends StatelessWidget {
   @override
@@ -12,7 +14,13 @@ class const DesktopFileAccessCard({super.key}) extends StatelessWidget {
     final cubit = context.read<FileAccessCubit>();
     final loc = context.loc;
     return Padding(
-      padding: const EdgeInsets.all(PregoSpacing.xl),
+      // Clear of the top band, where the home's "Viewing:" line floats over it.
+      padding: const EdgeInsetsDirectional.fromSTEB(
+        PregoSpacing.xl,
+        DesktopPageToolbar.height,
+        PregoSpacing.xl,
+        PregoSpacing.xl,
+      ),
       child: DecoratedBox(
         key: const Key("desktop-file-access-card"),
         decoration: BoxDecoration(

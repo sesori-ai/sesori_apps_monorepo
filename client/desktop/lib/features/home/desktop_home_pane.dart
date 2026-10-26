@@ -16,8 +16,8 @@ import "../../core/widgets/desktop_sidebar_expansion.dart";
 import "../../core/widgets/desktop_transcript_width.dart";
 import "desktop_file_access_card.dart";
 
-/// How long the home's own changes take: the body crossfade, the header
-/// growing into place and the slow-start line fading in.
+/// How long the home's own changes take: the body crossfade and the header
+/// and the slow-start line fading in.
 const Duration _homeMotionDuration = Duration(milliseconds: 220);
 
 /// The desktop home: the cockpit's project list states, and otherwise a new
@@ -64,15 +64,24 @@ class _DesktopHomePaneState() extends State<DesktopHomePane> {
           ),
         ),
       ],
-      // The header stays put while the body below it changes state, so it
-      // never enters again with each load. The pane paints the page's
+      // The body fills the pane from launch, and the header floats over its
+      // top band, so the header appearing never moves the body, and it stays
+      // put while the body changes state. The pane paints the page's
       // background once, beneath every body.
       child: ColoredBox(
         color: Theme.of(context).scaffoldBackgroundColor,
-        child: Column(
+        child: Stack(
           children: [
-            _DesktopComputerHeader(onSwitchComputer: _switchComputer, onManageComputers: widget.onManageComputers),
-            Expanded(child: Builder(builder: _buildBody)),
+            Positioned.fill(child: Builder(builder: _buildBody)),
+            PositionedDirectional(
+              top: 0,
+              start: 0,
+              end: 0,
+              child: _DesktopComputerHeader(
+                onSwitchComputer: _switchComputer,
+                onManageComputers: widget.onManageComputers,
+              ),
+            ),
           ],
         ),
       ),
@@ -290,10 +299,10 @@ class _SlowStartLineState() extends State<_SlowStartLine> {
   }
 }
 
-/// "Viewing: …" above the home: which computer's projects the desktop shows,
-/// and the menu to switch. Hidden while the account's only computer is this
-/// one, where there is nothing to tell apart or switch to; it grows into
-/// place when the list says otherwise.
+/// "Viewing: …" over the home's top band: which computer's projects the
+/// desktop shows, and the menu to switch. Hidden while the account's only
+/// computer is this one, where there is nothing to tell apart or switch to; it
+/// fades in when the list says otherwise, and out if the list goes back.
 class const _DesktopComputerHeader({
   required final ComputerSwitchCallback onSwitchComputer,
   required final VoidCallback onManageComputers,
@@ -303,12 +312,15 @@ class const _DesktopComputerHeader({
     final state = context.watch<ComputerSwitcherCubit>().state;
     final current = state.computers.where((computer) => computer.id == state.currentId).firstOrNull;
     final remote = state.viewsAnotherComputer;
-    return AnimatedSize(
+    return AnimatedSwitcher(
       duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
-      curve: Curves.easeInOut,
-      alignment: AlignmentDirectional.topStart,
+      switchInCurve: Curves.easeOut,
+      switchOutCurve: Curves.easeIn,
+      // Unkeyed, as the body's, so a line back before its last one has faded
+      // out gets an entry of its own.
+      transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
       child: current == null || !(remote || state.computers.length > 1)
-          ? const SizedBox(width: double.infinity)
+          ? const SizedBox.shrink()
           : Padding(
               padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.lg, PregoSpacing.md, PregoSpacing.lg, 0),
               child: DesktopSidebarRestoreInset(
