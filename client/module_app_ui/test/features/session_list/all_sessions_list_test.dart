@@ -693,6 +693,28 @@ void main() {
         });
       }
 
+      testWidgets("the search field, chips and list placeholders fade in together", (tester) async {
+        await pumpList(tester, initial: loading, mode: AllSessionsMode.active, header: header);
+        final shimmers = find.byType(PregoShimmer);
+        expect(shimmers, findsNWidgets(3));
+        final seen = <double>{};
+        for (var elapsed = 0; elapsed < 600; elapsed += 5) {
+          await tester.pump(const Duration(milliseconds: 5));
+          final [search, chips, list] = [
+            for (var index = 0; index < 3; index++)
+              paintedOpacity(
+                tester,
+                find.descendant(of: shimmers.at(index), matching: find.byType(PregoSkeletonBar)).first,
+              ),
+          ];
+          expect([chips, list], everyElement(search));
+          seen.add(search);
+        }
+        // Through the whole fade, from unseen to shown.
+        expect(seen, containsAll([0.0, 1.0]));
+        expect(seen.length, greaterThan(10));
+      });
+
       testWidgets("a load that ends with no sessions folds the held room away smoothly", (tester) async {
         final updates = StreamController<AllSessionsState>();
         addTearDown(updates.close);
