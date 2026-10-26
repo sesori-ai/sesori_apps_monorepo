@@ -300,7 +300,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       return PregoShimmer(
         appearDelay: Duration.zero,
         semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
-        child: PregoSkeletonBar(height: _optionPillHeight, width: 140, color: context.prego.colors.bgQuaternary),
+        child: PregoSkeletonBar(
+          height: _optionPillHeight,
+          width: 140,
+          color: _placeholderColor(colors: context.prego.colors),
+        ),
       );
     }
     if (cubit.needsHarnessDiscovery) return null;
@@ -995,7 +999,7 @@ class const _DedicatedWorkspaceRow({
           null => PregoShimmer(
             appearDelay: Duration.zero,
             semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
-            child: PregoSkeletonBar(height: 20, width: 150, color: prego.colors.bgQuaternary),
+            child: PregoSkeletonBar(height: 20, width: 150, color: _placeholderColor(colors: prego.colors)),
           ),
           // The label names what the switch does, so they must reach a screen
           // reader as one control rather than as stray text beside a bare
@@ -1038,6 +1042,12 @@ class const _DedicatedWorkspaceRow({
 /// Height of an option pill over the composer, and of the harness pill.
 const double _optionPillHeight = 36;
 
+/// Colour of the bars that shimmer while the composer's options load: 30% of
+/// the way from the quaternary background to the quaternary foreground, so the
+/// bars read against the page itself and not only under the sweeping sheen.
+Color _placeholderColor({required PregoColors colors}) =>
+    Color.alphaBlend(colors.fgQuaternary.withValues(alpha: 0.3), colors.bgQuaternary);
+
 /// Lays option pills out the way [AgentModelButtons] does, so a placeholder or
 /// an action in their place takes exactly their room.
 class const _OptionPillRow({required final bool compact, required final List<Widget> pills}) extends StatelessWidget {
@@ -1076,7 +1086,10 @@ class const _OptionPillsPlaceholder({required final bool compact}) extends State
           for (final width in const [112.0, 160.0])
             SizedBox(
               width: compact ? width : null,
-              child: PregoSkeletonBar(height: _optionPillHeight, color: context.prego.colors.bgQuaternary),
+              child: PregoSkeletonBar(
+                height: _optionPillHeight,
+                color: _placeholderColor(colors: context.prego.colors),
+              ),
             ),
         ],
       ),
