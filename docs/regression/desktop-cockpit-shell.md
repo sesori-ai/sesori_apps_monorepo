@@ -210,8 +210,9 @@ The main pane hosts one full-width routed page.
   launch, so the heading, pills, composer and loader never move as the line comes or goes; beside the line, the band
   leaves clicks to the body, and the file-access card starts below the band, so the line never covers it. The line
   stays put while the body below changes state. The body cross-fades over 220 ms between the composer and the loader
-  or another status page, as when a switch loads the next computer's projects and lands on its composer. Each kind of status page (the loader, a failure, recovery, offline)
-  cross-fades into the next, while one whose own content changes, such as the slow-start line appearing under the
+  or another status page, as when a switch loads the next computer's projects and lands on its composer. Each kind
+  of status page (the loader, a failure, recovery, offline) cross-fades into the next, while one whose own content
+  changes, such as the slow-start line appearing under the
   loader, stays put. While the new computer's home project is still loading the loader holds, so it fades straight into
   the composer. Every body stays in place over the pane's one background, so nothing dims mid-fade; the swap is at once
   with reduced motion, and the body fading out takes no clicks, focus or announcements. The desktop starts on the stored
@@ -315,8 +316,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
 - Home computer header shown, hidden for a lone local computer, fading in over the top band without moving the
-  composer, and switching from its menu; disconnected home
-  for a remote target (offline body, other computers, no Start, also while this computer's bridge launches) versus
+  composer, and switching from its menu; disconnected home for a remote target (offline body, other computers, no Start,
+  also while this computer's bridge launches) versus
   this computer (supervised Start; the loader while its bridge launches, its still-starting line after 10 s,
   recovery once the start fails); the desktop target following a new or changed supervised bridge id unless
   another computer was picked in this sign-in; header and body agreeing on "this computer" before the
