@@ -36,7 +36,9 @@ final class RuntimeProbeFailed({required final Object innerError, required final
 class RuntimeVersionValidator({
   required final CommandExecutor _commandExecutor,
   required final RuntimeManifest _manifest,
-  final Duration _probeTimeout = const Duration(seconds: 10),
+  // The first launch of a just-installed binary can take ~10 s on Windows
+  // while antivirus scans it, although later launches take under a second.
+  final Duration _probeTimeout = const Duration(seconds: 30),
   required IoHostExecutableLocator executableLocator,
 }) implements RuntimeCandidateValidator {
   final IoHostExecutableLocator _executableLocator = executableLocator;
