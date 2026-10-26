@@ -3,7 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 13/13 in review.
+- Current step: 13/13 in review. Retirement waits for the user to accept or reject the unexecuted voice cells
+  A4 and C6 (see Retirement matrix).
 - User decisions:
   - remove all PR tracking (round 1, Q1 A, 2026-10-25);
   - D7, remove project-view presence (the user's follow-up the same day).
@@ -23,9 +24,9 @@
 | 8/13 | PR sync service removed | Done | #2095 |
 | 9/13 | PR source lookup removed | Done | #2097 |
 | 10/13 | Pull request repository removed | Done | #2098 |
-| 11/13 | gh client removed | In review | #2099 |
-| 12/13 | Schema v21 drops stored PR data | In review | #2100 |
-| 13/13 | PR wire models removed; plan retired | In review | — |
+| 11/13 | gh client removed | Done | #2099 |
+| 12/13 | Schema v21 drops stored PR data | Done | #2100 |
+| 13/13 | PR wire models removed; plan retired | In review | Retirement matrix below |
 
 ## Decision log
 
@@ -35,6 +36,31 @@
 - 2026-10-25: the user asked to remove the "active project" tracking too (D7). Steps 4 and 7 were added; the
   series grew from 11 to 13 steps. The voice glossary keeps its current-project trigger.
 - No reduction of the retirement matrix has been requested or accepted.
+
+## Retirement matrix
+
+Run 2026-10-25 on slot 1 with headless iOS simulators, a fixture HOME under `/tmp` and OpenCode 2.1.4. The run
+covered: the step 13 head (`4e1be7ce22`, which contains #2094) against v1.9.1 (`8bfeda9416`), apps and bridges
+mixed both ways; a `gh` shim that logs and fails every call; and a v20 data copy seeded with one fixture PR row
+before it was migrated.
+
+| Area | Cells | Result |
+|---|---|---|
+| A. New app on a v1.9.1 bridge | A1 lists, A2 settings card, A3 composer publishes the glossary | Pass |
+| | A4 voice uses the glossary | Not executed: no microphone on a headless simulator |
+| B. v20 data migrates | B1 copy kept, B2 v21 drops PR data with clean FKs, B3 sessions open, B4 worktrees, B5 archives, B6 dedicated branch | Pass |
+| C. New app on the new bridge | C1 no PR mark, C2 no PR row, C3 prompt pull, C4 no `gh` call in 15 minutes, C5 composers publish the glossary | Pass |
+| | C6 voice uses the glossary | Not executed: same reason as A4 |
+| D. v1.9.1 app on the new bridge | D1 card loads, D2 PR row save accepted and inert, D3 pull, D4 dedicated branch, D5 no relay parse warning | Pass |
+
+Findings, neither caused by this plan:
+
+- F1: the v1.9.1 bridge rejects a dedicated-worktree create with a model (409 `staleSessionOptions`). #2094
+  fixes it on main.
+- F2: on macOS, `/tmp` resolves to `/private/tmp`, and a rescan moves sessions to duplicate resolved-path
+  projects. This happens on v1.9.1 too. The symlink one-project follow-up (Q3 A) owns it.
+
+The new app logs and ignores `sessions.updated` from v1.9.1 bridges, and nothing is lost.
 
 ## Review record
 
