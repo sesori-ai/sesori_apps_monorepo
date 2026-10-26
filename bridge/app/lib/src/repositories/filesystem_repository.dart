@@ -262,7 +262,13 @@ class FilesystemRepository({
       if (type == FileSystemEntityType.notFound) {
         return FilesystemEntityKind.notFound;
       }
-      if (type != FileSystemEntityType.directory) {
+      // A link to a folder opens as that folder on macOS and Linux, where the
+      // project then stores the folder it resolves to. Windows stores a path
+      // as spelled, so a link there would open beside its target as a second
+      // project; it stays refused.
+      final isLinkedDirectory =
+          type == FileSystemEntityType.link && !Platform.isWindows && _filesystemApi.directoryExists(path);
+      if (type != FileSystemEntityType.directory && !isLinkedDirectory) {
         return FilesystemEntityKind.notDirectory;
       }
       // Probe readability: a stat-only success is not enough to open the

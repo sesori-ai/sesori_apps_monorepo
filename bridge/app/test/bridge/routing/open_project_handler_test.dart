@@ -17,7 +17,6 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-import "../../helpers/fake_filesystem_api.dart";
 import "../../helpers/fake_git_cli_api.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
@@ -38,7 +37,9 @@ void main() {
     setUp(() {
       plugin = FakeBridgePlugin();
       db = createTestDatabase();
-      tempDir = Directory.systemTemp.createTempSync("sesori_discover_test_");
+      // Resolved first, so opened paths read back as spelled even where the
+      // temporary directory itself is reached through a link (/var/folders on macOS).
+      tempDir = Directory(Directory.systemTemp.createTempSync("sesori_discover_test_").resolveSymbolicLinksSync());
       tempFile = File("${tempDir.path}/test_file.txt")..createSync();
       gitCliApi = _ConfigurableGitCliApi();
       final filesystemRepository = FilesystemRepository(
@@ -51,7 +52,7 @@ void main() {
         projectsDao: db.projectsDao,
         sessionDao: db.sessionDao,
         unseenCalculator: const SessionUnseenCalculator(),
-        filesystemApi: FakeFilesystemApi(),
+        filesystemApi: const FilesystemApi(),
       );
       projectActivityService = ProjectActivityService(
         projectRepository: projectRepository,
@@ -162,6 +163,25 @@ void main() {
         throwsA(isA<RelayResponse>().having((r) => r.status, "status", equals(400))),
       );
     });
+
+    test("opens a link to a folder as the folder it resolves to", () async {
+      final folder = Directory("${tempDir.path}/folder")..createSync();
+      final link = Link("${tempDir.path}/folder-link")..createSync(folder.path);
+
+      final throughLink = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(path: link.path),
+      );
+      final direct = await handler.handle(
+        makeRequest("POST", "/project/open"),
+        body: OpenProjectRequest(path: folder.path),
+      );
+
+      expect(throughLink.id, folder.path);
+      expect(throughLink.path, folder.path);
+      expect(direct.id, throughLink.id);
+      expect(await db.projectsDao.getAllProjects(), hasLength(1));
+    }, testOn: "!windows");
 
     // ── Git setup choice ─────────────────────────────────────────────────────
 

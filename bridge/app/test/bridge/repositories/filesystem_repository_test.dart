@@ -217,6 +217,18 @@ void main() {
       expect(repository.classifyPath(path: "${tempDir.path}/none"), FilesystemEntityKind.notFound);
     });
 
+    test("classifyPath follows a link to a folder", () {
+      final folder = Directory("${tempDir.path}/folder")..createSync();
+      final file = File("${tempDir.path}/a.txt")..createSync();
+      Link("${tempDir.path}/folder-link").createSync(folder.path);
+      Link("${tempDir.path}/file-link").createSync(file.path);
+      Link("${tempDir.path}/dangling-link").createSync("${tempDir.path}/none");
+
+      expect(repository.classifyPath(path: "${tempDir.path}/folder-link"), FilesystemEntityKind.directory);
+      expect(repository.classifyPath(path: "${tempDir.path}/file-link"), FilesystemEntityKind.notDirectory);
+      expect(repository.classifyPath(path: "${tempDir.path}/dangling-link"), FilesystemEntityKind.notDirectory);
+    }, testOn: "!windows");
+
     test("listSuggestions returns deterministic alphabetical top-N when truncating", () {
       for (final name in ["c", "a", "d", "b"]) {
         Directory("${tempDir.path}/$name").createSync();
