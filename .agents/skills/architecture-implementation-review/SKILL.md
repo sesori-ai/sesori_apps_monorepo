@@ -1012,7 +1012,7 @@ Code excerpt in `app/lib/src/routing/handlers/session_diff_handler.dart`:
 class SessionDiffHandler extends GetHandler {
   final GitCliApi _git;
   // ...
-  Future<Response> handle(Request req) => _git.getDiff(...);
+  Future<Response> handle(Request req) => _git.diffNumstat(...);
 }
 ```
 

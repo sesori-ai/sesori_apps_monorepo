@@ -134,7 +134,11 @@ Only create an interface if **at least one** of these is true:
 
 ### API Classes Are Per-Tool, Not Per-Use-Case
 
-One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GitCliApi` for `git`, `SesoriServerApi` for the Sesori server). Do not merge tool wrappers just because features are related. Within one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external providers — e.g., `GitHubReleasesApi` wrapping GitHub's web API is separate from `SesoriServerApi`, even though both use HTTP.
+One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GitCliApi` for
+`git`, `SesoriServerApi` for the Sesori server). Do not merge tool wrappers just because features are related. Within
+one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external
+providers — e.g., `GitHubReleasesApi` wrapping GitHub's web API is separate from `SesoriServerApi`, even though both
+use HTTP.
 
 The root sealed-platform-capability preference is the narrow exception. When
 one package-internal capability has mutually exclusive platform

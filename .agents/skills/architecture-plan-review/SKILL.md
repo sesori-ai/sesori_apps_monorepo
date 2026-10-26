@@ -950,7 +950,7 @@ Do not flag any of the following:
 ## Violation Examples
 
 ### Example 1: Layer skipping
-Plan excerpt: "Add a new handler `SessionDiffHandler` that calls `GitCliApi.getDiff()` to return the diff between worktree and base branch."
+Plan excerpt: "Add a new handler `SessionDiffHandler` that calls `GitCliApi.diffNumstat()` to return the diff between worktree and base branch."
 
 Correct review: REJECTED. B-B5 violation. Handlers are Layer 4 and MUST NOT call Layer 1 APIs. Required change: add `diff()` to `WorktreeRepository`; `SessionDiffHandler` calls the repository.
 
