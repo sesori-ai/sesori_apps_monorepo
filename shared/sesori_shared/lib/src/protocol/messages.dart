@@ -52,6 +52,8 @@ sealed class RelayMessage with _$RelayMessage {
   /// Connection-scoped declaration of which project the phone is currently
   /// viewing. [projectId] is null when the phone is not viewing any project.
   /// This is a fire-and-forget control message with no response.
+  // COMPATIBILITY 2026-10-25 (v1.10.0): Apps older than v1.10.0 still send project_view, and it no longer has any
+  // effect. Remove once public apps older than v1.10.0 are unsupported.
   @FreezedUnionValue("project_view")
   const factory projectView({required String? projectId}) = RelayProjectView;
 

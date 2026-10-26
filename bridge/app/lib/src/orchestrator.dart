@@ -46,7 +46,6 @@ import "listeners/session_continuation_timer_listener.dart";
 import "listeners/session_mutation_listener.dart";
 import "listeners/session_options_changed_refresh_listener.dart";
 import "listeners/session_options_creation_refresh_listener.dart";
-import "listeners/viewed_project_glossary_listener.dart";
 import "listeners/viewed_session_plugin_warmup_listener.dart";
 import "models/bridge_config.dart";
 import "push/completion_notifier.dart";
@@ -189,7 +188,6 @@ import "services/project_glossary_scope_tracker.dart";
 import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
-import "services/project_view_tracker.dart";
 import "services/pull_request_refresh_settings_service.dart";
 import "services/session_abort_service.dart";
 import "services/session_continuation_service.dart";
@@ -225,7 +223,6 @@ typedef OrchestratorComposition = ({
   SessionRepository sessionRepository,
   SessionUnseenService sessionUnseenService,
   SessionViewTracker sessionViewTracker,
-  ProjectViewTracker projectViewTracker,
 });
 
 /// Factory that creates [OrchestratorSession] instances with all runtime
@@ -308,7 +305,6 @@ class Orchestrator({
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
     );
     final sessionViewTracker = SessionViewTracker();
-    final projectViewTracker = ProjectViewTracker();
     final pluginWarmupSettingsService = PluginWarmupSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
     );
@@ -443,10 +439,6 @@ class Orchestrator({
     );
     final currentProjectGlossaryListener = CurrentProjectGlossaryListener(
       source: currentProjectService.loadedProjectIds,
-      service: projectGlossaryPopulationService,
-    );
-    final viewedProjectGlossaryListener = ViewedProjectGlossaryListener(
-      tracker: projectViewTracker,
       service: projectGlossaryPopulationService,
     );
     final projectActivityService = ProjectActivityService(
@@ -822,12 +814,10 @@ class Orchestrator({
       pluginWarmupSettingListener: pluginWarmupSettingListener,
       viewedSessionPluginWarmupListener: viewedSessionPluginWarmupListener,
       currentProjectGlossaryListener: currentProjectGlossaryListener,
-      viewedProjectGlossaryListener: viewedProjectGlossaryListener,
       projectGlossaryPopulationService: projectGlossaryPopulationService,
       currentProjectService: currentProjectService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
-      projectViewTracker: projectViewTracker,
       projectActivityService: projectActivityService,
       permissionAutoApprovalService: permissionAutoApprovalService,
       pendingInteractionService: pendingInteractionService,
@@ -855,7 +845,6 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
-      projectViewTracker: projectViewTracker,
     );
   }
 
@@ -941,12 +930,10 @@ class OrchestratorSession._({
   required final PluginWarmupSettingListener _pluginWarmupSettingListener,
   required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
   required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
-  required final ViewedProjectGlossaryListener _viewedProjectGlossaryListener,
   required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
   required final CurrentProjectService _currentProjectService,
   required final SessionUnseenService _sessionUnseenService,
   required final SessionViewTracker _sessionViewTracker,
-  required final ProjectViewTracker _projectViewTracker,
   required final ProjectActivityService _projectActivityService,
   required final PermissionAutoApprovalService _permissionAutoApprovalService,
   required final PendingInteractionService _pendingInteractionService,
@@ -1125,7 +1112,6 @@ class OrchestratorSession._({
     _pluginWarmupSettingListener.start();
     _viewedSessionPluginWarmupListener.start();
     _currentProjectGlossaryListener.start();
-    _viewedProjectGlossaryListener.start();
     _chatHistoryActivityListener.start();
     _sessionContinuationTimer.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
@@ -1304,7 +1290,6 @@ class OrchestratorSession._({
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
       attempt(_currentProjectGlossaryListener.dispose),
-      attempt(_viewedProjectGlossaryListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
@@ -1430,7 +1415,6 @@ class OrchestratorSession._({
       // declarations so no session stays "watched" by a ghost connection.
       // Phones re-assert their current view on reconnect.
       _sessionViewTracker.clearAll();
-      _projectViewTracker.clearAll();
 
       if (_client.closeCode(connection: connection) == RelayCloseCodes.bridgeRevoked) {
         Log.w("Relay reports this bridge as revoked — re-registering with a fresh bridge id");
@@ -2255,7 +2239,6 @@ class OrchestratorSession._({
               activePhoneIncarnations.remove(connID);
               _sseManager.unsubscribe(connID);
               _sessionViewTracker.releaseConnection(connID: connID);
-              _projectViewTracker.releaseConnection(connID: connID);
           }
           break processMessage;
         }
@@ -2503,8 +2486,10 @@ class OrchestratorSession._({
       case RelaySessionView(:final sessionId):
         Log.v("SessionView connID=$connID sessionId=$sessionId");
         _sessionViewTracker.setViewing(connID: connID, sessionId: sessionId);
-      case RelayProjectView(:final projectId):
-        _projectViewTracker.setViewing(connID: connID, projectId: projectId);
+      // COMPATIBILITY 2026-10-25 (v1.10.0): Apps older than v1.10.0 still send project_view, and it no longer has any
+      // effect. Remove once public apps older than v1.10.0 are unsupported.
+      case RelayProjectView():
+        break;
       default:
         Log.v("unhandled msg type: ${msg.runtimeType}");
     }

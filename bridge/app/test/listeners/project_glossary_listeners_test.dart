@@ -1,9 +1,7 @@
 import "dart:async";
 
 import "package:sesori_bridge/src/listeners/current_project_glossary_listener.dart";
-import "package:sesori_bridge/src/listeners/viewed_project_glossary_listener.dart";
 import "package:sesori_bridge/src/services/project_glossary_population_service.dart";
-import "package:sesori_bridge/src/services/project_view_tracker.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -42,44 +40,6 @@ void main() {
       await listener.dispose();
 
       expect(service.projectIds, ["project-1", "project-2"]);
-    });
-  });
-
-  group("ViewedProjectGlossaryListener", () {
-    late ProjectViewTracker tracker;
-    late _FakeProjectGlossaryPopulationService service;
-    late ViewedProjectGlossaryListener listener;
-
-    setUp(() {
-      tracker = ProjectViewTracker();
-      service = _FakeProjectGlossaryPopulationService();
-    });
-
-    tearDown(() async {
-      await listener.dispose();
-      await tracker.dispose();
-    });
-
-    test("populates active and newly viewed projects without viewer-count duplicates", () async {
-      tracker.setViewing(connID: 1, projectId: "project-1");
-      listener = ViewedProjectGlossaryListener(tracker: tracker, service: service)..start();
-
-      tracker.setViewing(connID: 2, projectId: "project-1");
-      tracker.setViewing(connID: 1, projectId: "project-2");
-      tracker.releaseConnection(connID: 2);
-      tracker.setViewing(connID: 2, projectId: "project-1");
-      await listener.dispose();
-
-      expect(service.projectIds, ["project-1", "project-2", "project-1"]);
-    });
-
-    test("does not populate projects after disposal", () async {
-      listener = ViewedProjectGlossaryListener(tracker: tracker, service: service)..start();
-      await listener.dispose();
-
-      tracker.setViewing(connID: 1, projectId: "project-1");
-
-      expect(service.projectIds, isEmpty);
     });
   });
 }
