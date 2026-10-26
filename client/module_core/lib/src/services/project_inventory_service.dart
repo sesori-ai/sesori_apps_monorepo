@@ -891,13 +891,23 @@ class ProjectInventoryService({
         case ErrorResponse(:final error):
           if (silent && state is! ProjectListLoading) {
             logw("Failed to refresh projects: ${error.toString()}");
-          } else if (_connectionService.currentStatus is ConnectionReconnecting) {
+            return _ProjectFetchOutcome.failed;
+          }
+          if (_connectionService.currentStatus is ConnectionReconnecting) {
             // The read raced a connection that is still coming up, such as
-            // right after switching computers. Wait for it and load again
-            // instead of failing the list.
+            // right after switching computers. Wait for it once and read
+            // again; a load already waiting on that connection (the switch's
+            // own) resumes first and supersedes this one.
             logw("Project list load failed while reconnecting; retrying once connected", error);
-            unawaited(_loadInitialProjects());
-          } else if (_isBridgeUnavailable) {
+            await _waitForInitialConnectionIfNeeded();
+            if (_state.isClosed || requestGeneration != _fetchGeneration) {
+              return _ProjectFetchOutcome.superseded;
+            }
+            if (_connectionService.currentStatus is! ConnectionReconnecting) {
+              return await _fetchProjects(silent: silent, catalogRefresh: catalogRefresh);
+            }
+          }
+          if (_isBridgeUnavailable) {
             // The fetch failed because the bridge isn't connected — show the
             // bridge-disconnected flow rather than a generic error.
             await _emitBridgeDisconnected(fetchGeneration: requestGeneration);

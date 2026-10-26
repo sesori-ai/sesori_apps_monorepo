@@ -232,7 +232,9 @@ void main() {
 
       statusController.add(ConnectionStatus.reconnecting(config: config(bridgeId: "b")));
       await Future<void>.delayed(Duration.zero);
-      await inventory.refreshProjects();
+      final refresh = inventory.refreshProjects();
+      await Future<void>.delayed(Duration.zero);
+      expect(reads, 2);
       expect(inventory.state, isA<ProjectListLoading>());
 
       statusController.add(
@@ -243,6 +245,8 @@ void main() {
       );
       await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
 
+      expect(await refresh, isTrue, reason: "the refresh follows the load that replaced it");
+      expect(reads, 3, reason: "the switch's own load supersedes the retry without a second read");
       expect((inventory.state as ProjectListLoaded).projects, [projectB]);
       expect(states.whereType<ProjectListFailed>(), isEmpty);
     });
