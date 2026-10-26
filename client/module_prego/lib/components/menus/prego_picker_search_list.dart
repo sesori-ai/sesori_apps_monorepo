@@ -25,10 +25,31 @@ class const PregoPickerSearchOption({
 /// matches. The highlight passes over it.
 class const PregoPickerSearchNote({required final String text}) extends PregoPickerSearchRow;
 
-/// A full-width secondary pill pinned below a [PregoPickerSearchList], such as
-/// one that clears a filter. A check after its label marks it as the current
-/// choice.
-class const PregoPickerSearchFooter({
+/// The secondary pills pinned below a [PregoPickerSearchList], which the
+/// search does not filter, such as one that clears a filter.
+sealed class const PregoPickerSearchFooter() {
+  /// One pill across the full width.
+  const factory single({required PregoPickerSearchFooterAction action}) = PregoPickerSearchSingleFooter;
+
+  /// Two pills side by side, sharing the width equally. Down from the last
+  /// option reaches `leading` first, then `trailing`.
+  const factory pair({
+    required PregoPickerSearchFooterAction leading,
+    required PregoPickerSearchFooterAction trailing,
+  }) = PregoPickerSearchPairFooter;
+}
+
+class const PregoPickerSearchSingleFooter({required final PregoPickerSearchFooterAction action})
+    extends PregoPickerSearchFooter;
+
+class const PregoPickerSearchPairFooter({
+  required final PregoPickerSearchFooterAction leading,
+  required final PregoPickerSearchFooterAction trailing,
+}) extends PregoPickerSearchFooter;
+
+/// A pill of a [PregoPickerSearchFooter]. A check after its label marks it as
+/// the current choice.
+class const PregoPickerSearchFooterAction({
   required final String label,
   required final IconData icon,
   required final bool isSelected,
@@ -67,16 +88,15 @@ class const PregoPickerPopover({
 }
 
 /// The body of a composer picker: a search field pinned above a list that
-/// scrolls itself, between an optional [header] and [footer] the search does
-/// not filter.
+/// scrolls itself, over an optional [footer] the search does not filter.
 ///
 /// Under a pointer the field takes focus, so typing filters at once. Up and
-/// Down move a highlight through the header, the options and the footer, and
+/// Down move a highlight through the options and then the footer's pills, and
 /// the mouse moves it across the options; Enter picks the highlighted entry,
 /// and Esc closes the picker. The highlight starts on the first matching
-/// option, so Enter after typing picks a match, and falls back to the header,
-/// never the footer, when nothing matches. Under touch the field waits for a
-/// tap, so opening a picker never raises the keyboard over the options.
+/// option, so Enter after typing picks a match, and never on the footer, so
+/// with nothing matching Enter picks nothing. Under touch the field waits for
+/// a tap, so opening a picker never raises the keyboard over the options.
 class const PregoPickerSearchList({
   super.key,
   required final String searchHint,
@@ -84,14 +104,9 @@ class const PregoPickerSearchList({
   /// Receives the trimmed, lowercased query.
   required final ValueChanged<String> onQueryChanged,
 
-  /// An option pinned above the search field, such as an action the query
-  /// does not filter, set off from the field by a hairline. Up from the first
-  /// option reaches it. Null shows the field first.
-  required final PregoPickerSearchOption? header,
-
-  /// A pill pinned below the list, outside its scroll and set off by a
-  /// hairline. Down from the last option reaches it. In a body of fixed
-  /// height, such as a phone sheet, it sits at the bottom edge, which rides
+  /// Pills pinned below the list, outside its scroll and set off by a
+  /// hairline. Down from the last option reaches them. In a body of fixed
+  /// height, such as a phone sheet, they sit at the bottom edge, which rides
   /// the keyboard up when that takes the body's room.
   required final PregoPickerSearchFooter? footer,
 
@@ -110,26 +125,24 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   final _scrollController = ScrollController();
   final _highlightedKey = GlobalKey();
 
-  /// The highlighted option's index in [_entries], or [_footerIndex] for the
-  /// footer; null when there is none.
+  /// The highlighted option's index in [_rows], or past them the footer pill's
+  /// index in [_footerActions] plus their length; null when there is none.
   late int? _highlighted = _firstHighlight();
 
-  /// What Up and Down move through: the header, then the rows, then the
-  /// footer at [_footerIndex].
-  List<PregoPickerSearchRow> get _entries => [?widget.header, ...?widget.rows];
+  List<PregoPickerSearchRow> get _rows => widget.rows ?? const [];
 
-  /// Where the rows start in [_entries].
-  int get _rowsStart => widget.header == null ? 0 : 1;
+  /// The footer's pills in highlight order, after the rows.
+  List<PregoPickerSearchFooterAction> get _footerActions => switch (widget.footer) {
+    null => const [],
+    PregoPickerSearchSingleFooter(:final action) => [action],
+    PregoPickerSearchPairFooter(:final leading, :final trailing) => [leading, trailing],
+  };
 
-  /// The footer's place in the highlight order, just past [_entries].
-  int get _footerIndex => _entries.length;
-
-  /// The first matching option, else the header; never the footer, so Enter
-  /// after typing cannot pick it.
+  /// The first matching option; never a footer pill, so Enter after typing
+  /// cannot pick one.
   int? _firstHighlight() {
-    final first = _nextOption(after: _rowsStart - 1, step: 1);
-    if (first != null && first < _footerIndex) return first;
-    return widget.header == null ? null : 0;
+    final first = _nextOption(after: -1, step: 1);
+    return first != null && first < _rows.length ? first : null;
   }
 
   @override
@@ -146,10 +159,10 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   }
 
   int? _nextOption({required int after, required int step}) {
-    final entries = _entries;
-    final end = widget.footer == null ? entries.length : entries.length + 1;
+    final rows = _rows;
+    final end = rows.length + _footerActions.length;
     for (var index = after + step; index >= 0 && index < end; index += step) {
-      if (index == entries.length || entries[index] is PregoPickerSearchOption) return index;
+      if (index >= rows.length || rows[index] is PregoPickerSearchOption) return index;
     }
     return null;
   }
@@ -160,7 +173,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
     if (next == null) return;
     setState(() => _highlighted = next);
     // The next option neighbours the last one, so the list has built it. The
-    // footer carries no key: it is outside the scroll.
+    // footer's pills carry no key: they are outside the scroll.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final row = _highlightedKey.currentContext;
       if (row == null) return;
@@ -176,10 +189,10 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   void _pickHighlighted() {
     final highlighted = _highlighted;
     if (highlighted == null) return;
-    final entries = _entries;
-    if (highlighted == entries.length) {
-      widget.footer?.onPick();
-    } else if (entries[highlighted] case final PregoPickerSearchOption option) {
+    final rows = _rows;
+    if (highlighted >= rows.length) {
+      _footerActions.elementAtOrNull(highlighted - rows.length)?.onPick();
+    } else if (rows[highlighted] case final PregoPickerSearchOption option) {
       option.onPick();
     }
   }
@@ -193,14 +206,13 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final pointer = PregoInteractionScope.of(context) == PregoInteractionMode.pointer;
-    final header = widget.header;
-    final footer = widget.footer;
-    final rowsStart = _rowsStart;
+    final footerActions = _footerActions;
+    final highlighted = _highlighted;
     Widget optionRow({required PregoPickerSearchOption option, required int entry}) => _OptionRow(
-      key: entry == _highlighted ? _highlightedKey : null,
+      key: entry == highlighted ? _highlightedKey : null,
       option: option,
       pointer: pointer,
-      isHighlighted: pointer && entry == _highlighted,
+      isHighlighted: pointer && entry == highlighted,
       onHover: () {
         if (_highlighted != entry) setState(() => _highlighted = entry);
       },
@@ -221,7 +233,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
         itemBuilder: (context, index) => switch (rows[index]) {
           PregoPickerSearchHeading(:final text) => _Heading(text: text, pointer: pointer),
           PregoPickerSearchNote(:final text) => _Note(text: text),
-          final PregoPickerSearchOption option => optionRow(option: option, entry: rowsStart + index),
+          final PregoPickerSearchOption option => optionRow(option: option, entry: index),
         },
       ),
     };
@@ -245,14 +257,6 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
-                if (header != null) ...[
-                  Padding(
-                    // The list's own inset, so the header lines up with its rows.
-                    padding: pointer ? const EdgeInsets.all(4) : const EdgeInsetsDirectional.only(top: 6),
-                    child: optionRow(option: header, entry: 0),
-                  ),
-                  Divider(height: 1, thickness: 0.5, color: prego.colors.borderSecondary),
-                ],
                 Padding(
                   padding: pointer
                       ? const EdgeInsetsDirectional.fromSTEB(4, 4, 4, 0)
@@ -291,55 +295,71 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
               ],
             ),
           ),
-          if (footer != null)
-            _Footer(footer: footer, pointer: pointer, isHighlighted: pointer && _highlighted == _footerIndex),
+          if (footerActions.isNotEmpty)
+            _Footer(
+              actions: footerActions,
+              pointer: pointer,
+              highlighted: pointer && highlighted != null ? highlighted - _rows.length : null,
+            ),
         ],
       ),
     );
   }
 }
 
-/// The footer's pill under a hairline. The search field keeps the focus, so
-/// the keyboard highlight draws the button's focus ring around it.
+/// The footer's pills in one row under a hairline, sharing its width equally.
+/// The search field keeps the focus, so the keyboard highlight draws a pill's
+/// focus ring around it.
 class const _Footer({
-  required final PregoPickerSearchFooter footer,
+  required final List<PregoPickerSearchFooterAction> actions,
   required final bool pointer,
-  required final bool isHighlighted,
+
+  /// The highlighted pill's index in [actions]; anything else highlights none.
+  required final int? highlighted,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final colors = context.prego.colors;
+    // Room for the focus ring inside the popover's clip and between the pills.
+    final gap = pointer ? 8.0 : 12.0;
     return DecoratedBox(
       decoration: BoxDecoration(
         border: Border(top: BorderSide(color: colors.borderSecondary, width: 0.5)),
       ),
       child: Padding(
-        // Room for the focus ring inside the popover's clip.
-        padding: EdgeInsets.all(pointer ? 8 : 12),
-        child: Semantics(
-          selected: footer.isSelected,
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(PregoRadius.full),
-              boxShadow: isHighlighted
-                  ? [
-                      BoxShadow(color: colors.focusRing, spreadRadius: 4),
-                      BoxShadow(color: colors.bgSurface1, spreadRadius: 2),
-                    ]
-                  : null,
-            ),
-            child: PregoButtonsSolid(
-              label: footer.label,
-              leadingIcon: footer.icon,
-              labelTrailing: footer.isSelected
-                  ? Icon(TablerRegular.check, size: PregoIconSize.md, color: colors.bgBrandSolid)
-                  : null,
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: pointer ? PregoButtonsSolidSize.sm : PregoButtonsSolidSize.lg,
-              fullWidth: true,
-              onPressed: footer.onPick,
-            ),
-          ),
+        padding: EdgeInsets.all(gap),
+        child: Row(
+          spacing: gap,
+          children: [
+            for (final (index, action) in actions.indexed)
+              Expanded(
+                child: Semantics(
+                  selected: action.isSelected,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(PregoRadius.full),
+                      boxShadow: index == highlighted
+                          ? [
+                              BoxShadow(color: colors.focusRing, spreadRadius: 4),
+                              BoxShadow(color: colors.bgSurface1, spreadRadius: 2),
+                            ]
+                          : null,
+                    ),
+                    child: PregoButtonsSolid(
+                      label: action.label,
+                      leadingIcon: action.icon,
+                      labelTrailing: action.isSelected
+                          ? Icon(TablerRegular.check, size: PregoIconSize.md, color: colors.bgBrandSolid)
+                          : null,
+                      hierarchy: PregoButtonsSolidHierarchy.secondary,
+                      size: pointer ? PregoButtonsSolidSize.sm : PregoButtonsSolidSize.lg,
+                      fullWidth: true,
+                      onPressed: action.onPick,
+                    ),
+                  ),
+                ),
+              ),
+          ],
         ),
       ),
     );

@@ -112,24 +112,38 @@ void main() {
     expect(find.text("demo-api"), findsNothing);
   });
 
-  testWidgets("Open another folder sits above the search, which leaves it alone", (tester) async {
-    // The phone sheet, whose fixed height keeps everything above the list
+  final openFolder = find.text("Open folder…");
+
+  testWidgets("the search is the first control under the title, and Open folder is pinned below the list", (
+    tester,
+  ) async {
+    // The phone sheet, whose fixed height keeps the search and the footer
     // still while the matches narrow.
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], size: const Size(390, 844));
-    final action = find.text("Open another folder…");
-    final actionTop = topOf(tester: tester, finder: action);
-    expect(actionTop, lessThan(topOf(tester: tester, finder: find.byType(TextField))));
-    expect(
-      topOf(tester: tester, finder: find.byType(TextField)),
-      lessThan(topOf(tester: tester, finder: find.text("demo-app"))),
+    final searchTop = topOf(tester: tester, finder: find.byType(TextField));
+    expect(topOf(tester: tester, finder: find.text("Projects")), lessThan(searchTop));
+    final controls = find.descendant(
+      of: find.byType(PregoPickerSearchList),
+      matching: find.byWidgetPredicate((widget) => widget is InkWell || widget is PregoButtonsSolid),
     );
+    // The two projects and the footer, whose pill holds an ink well too.
+    final count = controls.evaluate().length;
+    expect(count, greaterThanOrEqualTo(3));
+    for (var index = 0; index < count; index++) {
+      expect(topOf(tester: tester, finder: controls.at(index)), greaterThan(searchTop));
+    }
+    // Below every project and outside their scroll, not one of them.
+    final actionTop = topOf(tester: tester, finder: openFolder);
+    expect(actionTop, greaterThan(tester.getBottomLeft(find.text("demo-api")).dy));
+    expect(find.descendant(of: find.byType(ListView), matching: openFolder), findsNothing);
 
-    // No query filters it, and it stays put.
+    // No query filters it, and nothing moves.
     await search(tester: tester, query: "API");
-    expect(action, findsOneWidget);
-    expect(topOf(tester: tester, finder: action), actionTop);
+    expect(openFolder, findsOneWidget);
+    expect(topOf(tester: tester, finder: openFolder), actionTop);
+    expect(topOf(tester: tester, finder: find.byType(TextField)), searchTop);
     await search(tester: tester, query: "folder");
-    expect(action, findsOneWidget);
+    expect(openFolder, findsOneWidget);
     expect(find.text("No projects match"), findsOneWidget);
   });
 
@@ -137,7 +151,7 @@ void main() {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi]);
 
     await search(tester: tester, query: "zzz");
-    expect(find.text("Open another folder…"), findsOneWidget);
+    expect(openFolder, findsOneWidget);
     expect(find.text("No projects match"), findsOneWidget);
     expect(find.text("demo-app"), findsNothing);
   });
@@ -155,13 +169,13 @@ void main() {
   testWidgets("with no project the action is all the picker offers", (tester) async {
     await pumpPicker(tester: tester, projects: const []);
 
-    expect(find.text("Open another folder…"), findsOneWidget);
+    expect(openFolder, findsOneWidget);
     expect(find.text("No projects match"), findsNothing);
   });
 
   testWidgets("with one project, picking it again changes nothing and closes", (tester) async {
     await pumpPicker(tester: tester, projects: [_demoApp]);
-    expect(find.text("Open another folder…"), findsOneWidget);
+    expect(openFolder, findsOneWidget);
 
     await tester.tap(find.text("demo-app"));
     await tester.pumpAndSettle();
@@ -178,10 +192,10 @@ void main() {
     expect(find.text("Search projects"), findsNothing);
   });
 
-  testWidgets("Open another folder opens the browser and selects the project it adds", (tester) async {
+  testWidgets("the footer's Open folder opens the browser and selects the project it adds", (tester) async {
     await pumpPicker(tester: tester, projects: [_demoApp]);
 
-    await tester.tap(find.text("Open another folder…"));
+    await tester.tap(openFolder);
     await tester.pumpAndSettle();
     expect(find.text("Search projects"), findsNothing);
     final browser = find.byType(AddProjectDialog);
@@ -203,7 +217,7 @@ void main() {
   ) async {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true);
     expect(footer, findsOneWidget);
-    expect(find.text("Open another folder…"), findsNothing);
+    expect(openFolder, findsNothing);
     // Below every project and outside their scroll, not one of them.
     expect(topOf(tester: tester, finder: footer), greaterThan(tester.getBottomLeft(find.text("demo-api")).dy));
     expect(find.descendant(of: find.byType(ListView), matching: showAll), findsNothing);
@@ -315,7 +329,7 @@ void main() {
     expect(find.byType(AddProjectDialog), findsNothing);
   });
 
-  testWidgets("under a pointer Up from the first project reaches the action, which Enter opens", (tester) async {
+  testWidgets("under a pointer Down past the last project reaches the action, which Enter opens", (tester) async {
     await pumpPicker(
       tester: tester,
       projects: [_demoApp, _demoApi],
@@ -323,17 +337,23 @@ void main() {
       mode: PregoInteractionMode.pointer,
     );
 
-    await press(tester: tester, key: LogicalKeyboardKey.arrowUp);
+    // From the first project, past the second, onto the action.
+    await press(tester: tester, key: LogicalKeyboardKey.arrowDown);
+    await press(tester: tester, key: LogicalKeyboardKey.arrowDown);
     await press(tester: tester, key: LogicalKeyboardKey.enter);
     expect(selected, isEmpty);
     expect(find.text("Search projects"), findsNothing);
     expect(find.byType(AddProjectDialog), findsOneWidget);
   });
 
-  testWidgets("under a pointer with nothing matching, Enter opens the action", (tester) async {
+  testWidgets("under a pointer with nothing matching, Enter waits and Down reaches the action", (tester) async {
     await pumpPicker(tester: tester, projects: [_demoApp], mode: PregoInteractionMode.pointer);
 
     await search(tester: tester, query: "zzz");
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(find.text("Search projects"), findsOneWidget);
+    expect(find.byType(AddProjectDialog), findsNothing);
+    await press(tester: tester, key: LogicalKeyboardKey.arrowDown);
     await press(tester: tester, key: LogicalKeyboardKey.enter);
     expect(find.byType(AddProjectDialog), findsOneWidget);
   });

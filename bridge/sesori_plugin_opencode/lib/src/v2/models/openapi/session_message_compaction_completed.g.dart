@@ -1,13 +1,12 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:collection/collection.dart';
 import 'package:json_annotation/json_annotation.dart';
 import 'package:meta/meta.dart';
 import 'model_ref.g.dart';
 import 'session_message_compaction.g.dart';
-import 'session_message_provider_state_5.g.dart';
-import 'session_provider_context.g.dart';
+import 'session_message_native_4.g.dart';
 import 'token_usage_info.g.dart';
 
 @immutable
@@ -18,10 +17,8 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
     required this.time,
     required this.reason,
     required this.model,
-    required this.providerState,
+    required this.native,
     required this.summary,
-    required this.recent,
-    required this.providerContext,
     required this.cost,
     required this.tokens,
   });
@@ -33,10 +30,8 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
       time: SessionMessageCompactionCompletedTime.fromJson(json["time"] as Map<String, dynamic>),
       reason: SessionMessageCompactionCompletedReason.fromJson(json["reason"] as String),
       model: json["model"] == null ? null : ModelRef.fromJson(json["model"] as Map<String, dynamic>),
-      providerState: json["providerState"] == null ? null : SessionMessageProviderState5.fromJson(json["providerState"] as Map<String, dynamic>),
+      native: json["native"] == null ? null : SessionMessageNative4.fromJson(json["native"] as Map<String, dynamic>),
       summary: json["summary"] as String,
-      recent: json["recent"] as String,
-      providerContext: json["providerContext"] == null ? null : SessionProviderContext.fromJson(json["providerContext"] as Map<String, dynamic>),
       cost: (json["cost"] as num?)?.toDouble(),
       tokens: json["tokens"] == null ? null : TokenUsageInfo.fromJson(json["tokens"] as Map<String, dynamic>),
     );
@@ -52,10 +47,8 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
       "status": "completed",
       "reason": reason.toJson(),
       "model": ?model?.toJson(),
-      "providerState": ?providerState?.toJson(),
+      "native": ?native?.toJson(),
       "summary": summary,
-      "recent": recent,
-      "providerContext": ?providerContext?.toJson(),
       "cost": ?cost,
       "tokens": ?tokens?.toJson(),
     };
@@ -69,10 +62,8 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
     SessionMessageCompactionCompletedTime? time,
     SessionMessageCompactionCompletedReason? reason,
     ModelRef? model,
-    SessionMessageProviderState5? providerState,
+    SessionMessageNative4? native,
     String? summary,
-    String? recent,
-    SessionProviderContext? providerContext,
     double? cost,
     TokenUsageInfo? tokens,
   }) {
@@ -82,10 +73,8 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
       time: time ?? this.time,
       reason: reason ?? this.reason,
       model: model ?? this.model,
-      providerState: providerState ?? this.providerState,
+      native: native ?? this.native,
       summary: summary ?? this.summary,
-      recent: recent ?? this.recent,
-      providerContext: providerContext ?? this.providerContext,
       cost: cost ?? this.cost,
       tokens: tokens ?? this.tokens,
     );
@@ -100,25 +89,21 @@ class SessionMessageCompactionCompleted implements SessionMessageCompaction {
           other.time == time &&
           other.reason == reason &&
           other.model == model &&
-          other.providerState == providerState &&
+          other.native == native &&
           other.summary == summary &&
-          other.recent == recent &&
-          other.providerContext == providerContext &&
           other.cost == cost &&
           other.tokens == tokens);
 
   @override
-  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, reason, model, providerState, summary, recent, providerContext, cost, tokens);
+  int get hashCode => Object.hash(id, const DeepCollectionEquality().hash(metadata), time, reason, model, native, summary, cost, tokens);
 
   final String id;
   final Map<String, dynamic>? metadata;
   final SessionMessageCompactionCompletedTime time;
   final SessionMessageCompactionCompletedReason reason;
   final ModelRef? model;
-  final SessionMessageProviderState5? providerState;
+  final SessionMessageNative4? native;
   final String summary;
-  final String recent;
-  final SessionProviderContext? providerContext;
   final double? cost;
   final TokenUsageInfo? tokens;
 }

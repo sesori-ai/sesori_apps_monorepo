@@ -3169,12 +3169,14 @@ void _hoistInlineSchemas(Map<String, dynamic> schemas, Map<String, String> hoist
 
 /// Replaces `$ref`s to named primitive schemas (e.g. `Money.USD` =
 /// `{"type": "number"}`) with a copy of the primitive, so fields decode as
-/// Dart primitives instead of referencing a class that cannot exist.
+/// Dart primitives instead of referencing a class that cannot exist. An opaque
+/// "any non-null JSON" schema (`{"not": {"type": "null"}}`) is inlined too and
+/// decodes as `Object`.
 void _inlinePrimitiveRefs(Map<String, dynamic> spec, Map<String, dynamic> schemas) {
   bool isPrimitive(Object? schema) =>
       schema is Map &&
-      const {'string', 'number', 'integer', 'boolean'}.contains(schema['type']) &&
-      schema['enum'] == null;
+      ((const {'string', 'number', 'integer', 'boolean'}.contains(schema['type']) && schema['enum'] == null) ||
+          (schema.length == 1 && schema['not'] is Map && (schema['not'] as Map)['type'] == 'null'));
   void walk(Object? node) {
     if (node is Map<String, dynamic>) {
       final ref = node[r'$ref'];

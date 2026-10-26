@@ -1,5 +1,5 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:meta/meta.dart';
 
@@ -10,6 +10,7 @@ class SessionStructuredError {
     required this.message,
     required this.status,
     required this.response,
+    required this.retryAfterMs,
   });
 
   factory SessionStructuredError.fromJson(Map<String, dynamic> json) {
@@ -18,6 +19,7 @@ class SessionStructuredError {
       message: json["message"] as String,
       status: (json["status"] as num?)?.toInt(),
       response: json["response"] == null ? null : SessionStructuredErrorResponse.fromJson(json["response"] as Map<String, dynamic>),
+      retryAfterMs: (json["retryAfterMs"] as num?)?.toInt(),
     );
   }
 
@@ -27,6 +29,7 @@ class SessionStructuredError {
       "message": message,
       "status": ?status,
       "response": ?response?.toJson(),
+      "retryAfterMs": ?retryAfterMs,
     };
   }
 
@@ -37,12 +40,14 @@ class SessionStructuredError {
     String? message,
     int? status,
     SessionStructuredErrorResponse? response,
+    int? retryAfterMs,
   }) {
     return SessionStructuredError(
       type: type ?? this.type,
       message: message ?? this.message,
       status: status ?? this.status,
       response: response ?? this.response,
+      retryAfterMs: retryAfterMs ?? this.retryAfterMs,
     );
   }
 
@@ -53,15 +58,17 @@ class SessionStructuredError {
           other.type == type &&
           other.message == message &&
           other.status == status &&
-          other.response == response);
+          other.response == response &&
+          other.retryAfterMs == retryAfterMs);
 
   @override
-  int get hashCode => Object.hash(type, message, status, response);
+  int get hashCode => Object.hash(type, message, status, response, retryAfterMs);
 
   final String type;
   final String message;
   final int? status;
   final SessionStructuredErrorResponse? response;
+  final int? retryAfterMs;
 }
 
 @immutable

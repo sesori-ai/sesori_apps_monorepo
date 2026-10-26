@@ -96,7 +96,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectPickerSearchHint => 'Search projects';
 
   @override
-  String get projectPickerOpenFolder => 'Open another folder…';
+  String get projectPickerOpenFolder => 'Open folder…';
 
   @override
   String get projectPickerNoMatches => 'No projects match';
@@ -542,6 +542,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsProjectsOffline => 'Connect to a bridge to manage projects.';
+
+  @override
+  String get settingsProjectsOpenFolder => 'Open another folder…';
 
   @override
   String settingsProjectActions(String name) {
@@ -2498,6 +2501,9 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get sessionListCleanupIssueSharedWorktree => 'Another active session uses this worktree';
+
+  @override
+  String get sessionListCleanupIssueCommitsOnNoBranch => 'Commits on no branch would be lost';
 
   @override
   String sessionListCleanupIssueBranchMismatch(String actual, String expected) {

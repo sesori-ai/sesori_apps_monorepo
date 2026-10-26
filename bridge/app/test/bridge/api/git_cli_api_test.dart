@@ -316,6 +316,71 @@ void main() {
 
     expect(runner.runCount, 0);
   });
+
+  group("inspectWorktreeSafety in a real repository", () {
+    final api = GitCliApi(
+      streamingProcessRunner: const StreamingProcessRunner(),
+      processRunner: ProcessRunner(),
+      gitPathExists: ({required String gitPath}) => true,
+    );
+    late Directory root;
+    late String repoPath;
+    late String worktreePath;
+    late String baseCommit;
+
+    Future<String> git({required String cwd, required List<String> args}) async {
+      final result = await Process.run(
+        "git",
+        ["-c", "user.name=Test", "-c", "user.email=test@example.com", "-c", "commit.gpgSign=false", ...args],
+        workingDirectory: cwd,
+      );
+      if (result.exitCode != 0) fail("git ${args.join(" ")} failed: ${result.stderr}");
+      return result.stdout.toString().trim();
+    }
+
+    Future<void> commit({required String cwd, required String message}) =>
+        git(cwd: cwd, args: ["commit", "--quiet", "--allow-empty", "-m", message]);
+
+    setUp(() async {
+      root = await Directory.systemTemp.createTemp("git_no_branch_test_");
+      repoPath = "${root.path}/repo";
+      worktreePath = "${root.path}/worktree";
+      await git(cwd: root.path, args: ["init", "--quiet", repoPath]);
+      await commit(cwd: repoPath, message: "base");
+      baseCommit = await git(cwd: repoPath, args: ["rev-parse", "HEAD"]);
+    });
+
+    tearDown(() => root.delete(recursive: true));
+
+    test("flags a commit made on a detached HEAD", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);
+      await commit(cwd: worktreePath, message: "detached work");
+
+      final snapshot = await api.inspectWorktreeSafety(worktreePath: worktreePath, baseCommit: baseCommit);
+
+      expect(snapshot.hasCommitsOnNoBranch, isTrue);
+      expect(snapshot.hasUnstagedChanges, isFalse);
+    });
+
+    test("a detached HEAD at the base commit stays clean after the base branch is rewritten", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);
+      // No branch reaches the base commit any more; only its exclusion keeps it clean.
+      await git(cwd: repoPath, args: ["commit", "--quiet", "--allow-empty", "--amend", "-m", "rewritten base"]);
+
+      final snapshot = await api.inspectWorktreeSafety(worktreePath: worktreePath, baseCommit: baseCommit);
+
+      expect(snapshot.hasCommitsOnNoBranch, isFalse);
+    });
+
+    test("new commits on a branch are clean", () async {
+      await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "-b", "sesori/task", worktreePath, baseCommit]);
+      await commit(cwd: worktreePath, message: "branch work");
+
+      final snapshot = await api.inspectWorktreeSafety(worktreePath: worktreePath, baseCommit: baseCommit);
+
+      expect(snapshot.hasCommitsOnNoBranch, isFalse);
+    });
+  });
 }
 
 class _RecordingProcessRunner({

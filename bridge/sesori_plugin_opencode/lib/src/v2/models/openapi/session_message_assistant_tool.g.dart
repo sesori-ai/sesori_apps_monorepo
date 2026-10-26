@@ -1,10 +1,9 @@
 // GENERATED FILE - DO NOT EDIT BY HAND
-// Source: anomalyco/opencode@v2.0.24 (e7a34f09bfd9134dfade5a8ddb843f7030bc9a69)
+// Source: anomalyco/opencode@v2.1.4 (68bc26b7da1990ce10ffecfbc1e09eb13aa5d824)
 
 import 'package:meta/meta.dart';
 import 'session_message_assistant_content.g.dart';
-import 'session_message_provider_state_2.g.dart';
-import 'session_message_provider_state_3.g.dart';
+import 'session_message_native_2.g.dart';
 import 'session_message_tool_state.g.dart';
 
 @immutable
@@ -13,8 +12,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
     required this.id,
     required this.name,
     required this.executed,
-    required this.providerState,
-    required this.providerResultState,
+    required this.native,
     required this.state,
     required this.time,
   });
@@ -24,8 +22,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
       id: json["id"] as String,
       name: json["name"] as String,
       executed: json["executed"] as bool?,
-      providerState: json["providerState"] == null ? null : SessionMessageProviderState2.fromJson(json["providerState"] as Map<String, dynamic>),
-      providerResultState: json["providerResultState"] == null ? null : SessionMessageProviderState3.fromJson(json["providerResultState"] as Map<String, dynamic>),
+      native: json["native"] == null ? null : SessionMessageNative2.fromJson(json["native"] as Map<String, dynamic>),
       state: SessionMessageToolState.fromJson(json["state"] as Object),
       time: SessionMessageAssistantToolTime.fromJson(json["time"] as Map<String, dynamic>),
     );
@@ -38,8 +35,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
       "id": id,
       "name": name,
       "executed": ?executed,
-      "providerState": ?providerState?.toJson(),
-      "providerResultState": ?providerResultState?.toJson(),
+      "native": ?native?.toJson(),
       "state": state.toJson(),
       "time": time.toJson(),
     };
@@ -51,8 +47,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
     String? id,
     String? name,
     bool? executed,
-    SessionMessageProviderState2? providerState,
-    SessionMessageProviderState3? providerResultState,
+    SessionMessageNative2? native,
     SessionMessageToolState? state,
     SessionMessageAssistantToolTime? time,
   }) {
@@ -60,8 +55,7 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
       id: id ?? this.id,
       name: name ?? this.name,
       executed: executed ?? this.executed,
-      providerState: providerState ?? this.providerState,
-      providerResultState: providerResultState ?? this.providerResultState,
+      native: native ?? this.native,
       state: state ?? this.state,
       time: time ?? this.time,
     );
@@ -74,19 +68,17 @@ class SessionMessageAssistantTool implements SessionMessageAssistantContent {
           other.id == id &&
           other.name == name &&
           other.executed == executed &&
-          other.providerState == providerState &&
-          other.providerResultState == providerResultState &&
+          other.native == native &&
           other.state == state &&
           other.time == time);
 
   @override
-  int get hashCode => Object.hash(id, name, executed, providerState, providerResultState, state, time);
+  int get hashCode => Object.hash(id, name, executed, native, state, time);
 
   final String id;
   final String name;
   final bool? executed;
-  final SessionMessageProviderState2? providerState;
-  final SessionMessageProviderState3? providerResultState;
+  final SessionMessageNative2? native;
   final SessionMessageToolState state;
   final SessionMessageAssistantToolTime time;
 }

@@ -219,6 +219,52 @@ void main() {
       expect(worktreeService.lastRemoveForce, isTrue);
     });
 
+    test("commits on no branch reject together with unstaged changes, checked against the stored base", () async {
+      worktreeService.safetyResult = WorktreeUnsafe(issues: [UnstagedChanges(), CommitsOnNoBranch()]);
+      sessionRepository.storedSession = const StoredSession(
+        id: "s5",
+        backendSessionId: "backend-s5",
+        pluginId: "fake",
+        projectId: "/repo",
+        parentSessionId: null,
+        directory: "/repo/.worktrees/session-005",
+        worktreePath: "/repo/.worktrees/session-005",
+        branchName: null,
+        isDedicated: true,
+        archivedAt: null,
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
+
+      final result = await service.cleanupAlreadyReserved(sessionId: "s5", deleteWorktree: true, force: false);
+
+      expect(worktreeService.lastCheckBaseCommit, "abc123");
+      expect(
+        (result as CleanupRejected).rejection.issues,
+        const [CleanupIssue.unstagedChanges(), CleanupIssue.commitsOnNoBranch()],
+      );
+      expect(worktreeService.removeCallCount, equals(0));
+    });
+
+    test("commits on no branch with force skip the safety check and remove the worktree", () async {
+      worktreeService.safetyResult = WorktreeUnsafe(issues: [CommitsOnNoBranch()]);
+
+      final result = await _cleanup(
+        service: service,
+        sessionRepository: sessionRepository,
+        sessionId: "s5b",
+        worktreePath: "/repo/.worktrees/session-005b",
+        branchName: "session-005b",
+        deleteWorktree: true,
+        force: true,
+      );
+
+      expect(result, isA<CleanupSuccess>());
+      expect(worktreeService.checkCallCount, equals(0));
+      expect(worktreeService.removeCallCount, equals(1));
+      expect(worktreeService.lastRemoveForce, isTrue);
+    });
+
     test("shared worktree rejected when force=false", () async {
       sessionRepository.hasSharingResult = true;
 

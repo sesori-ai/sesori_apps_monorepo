@@ -355,7 +355,7 @@ void main() {
     // The picker opens by itself, with nothing chosen.
     expect(find.text("Project One"), findsOneWidget);
     expect(find.text("Project Two"), findsOneWidget);
-    expect(find.text("Open another folder…"), findsOneWidget);
+    expect(find.text("Open folder…"), findsOneWidget);
 
     await tester.tap(find.text("Project Two"));
     await tester.pumpAndSettle();

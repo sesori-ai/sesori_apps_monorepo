@@ -48,10 +48,10 @@
   "@projectPickerTitle": {"description": "Title of the phone's project picker sheet, opened from the new session page's project button."},
   "projectPickerSearchHint": "Search projects",
   "@projectPickerSearchHint": {"description": "Placeholder of the project picker's search field, which matches project names and paths."},
-  "projectPickerOpenFolder": "Open another folder…",
-  "@projectPickerOpenFolder": {"description": "First entry of the new-session project picker and of Settings › Projects. Opens the folder browser; the picker then selects the folder it adds as the project."},
+  "projectPickerOpenFolder": "Open folder…",
+  "@projectPickerOpenFolder": {"description": "Button pinned below the new-session project picker's list. Opens the folder browser; the picker then selects the folder it adds as the project."},
   "projectPickerNoMatches": "No projects match",
-  "@projectPickerNoMatches": {"description": "Shown under the project picker's first entry when no project name or path matches the search."},
+  "@projectPickerNoMatches": {"description": "Shown as the project picker's list when no project name or path matches the search."},
   "sessionChangesLabel": "Changes",
   "@sessionChangesLabel": {"description": "Control that opens the session's file changes: the desktop toolbar button and the phone's menu row."},
   "desktopSessionParentBreadcrumb": "Main session",
@@ -522,6 +522,8 @@
   "@settingsProjectsTitle": {"description": "Title of the Settings page that lists the connected computer's projects, and of the Settings row and desktop tab that open it."},
   "settingsProjectsOffline": "Connect to a bridge to manage projects.",
   "@settingsProjectsOffline": {"description": "One line above the Settings › Projects rows while no bridge is connected; the rows below it are dimmed."},
+  "settingsProjectsOpenFolder": "Open another folder…",
+  "@settingsProjectsOpenFolder": {"description": "First row of Settings › Projects, above the projects it lists. Opens the folder browser, which adds the folder as a project."},
   "settingsProjectActions": "Actions for {name}",
   "@settingsProjectActions": {
     "description": "Accessibility label of the '⋯' button on a row of Settings › Projects, which opens that project's actions. The name is the project's name.",
@@ -1725,6 +1727,7 @@
   "sessionListForceMessage": "The following issues were found:",
   "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
   "sessionListCleanupIssueSharedWorktree": "Another active session uses this worktree",
+  "sessionListCleanupIssueCommitsOnNoBranch": "Commits on no branch would be lost",
   "sessionListCleanupIssueBranchMismatch": "Worktree is on branch '{actual}' instead of expected '{expected}'",
   "@sessionListCleanupIssueBranchMismatch": {
     "placeholders": {

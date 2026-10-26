@@ -245,10 +245,10 @@ The bridge CLI updater stays: it serves CLI installs.
 
 ## Risks and accepted limits
 
-- **Operator authority needed for step 7:** the `linux-packages` federation provider
-  must allow the feed-publishing workflow identity on the existing bucket (a prefix such
-  as `desktop-updates/`). It is one condition edit, with no new bucket or service account.
-  We will ask for this concretely before step 7.
+- **Operator authority for step 7 (granted 2026-10-25):** the `linux-packages`
+  federation provider now also admits `desktop-update-feed.yml` on main, with no new
+  bucket or service account. IAM cannot scope it to `desktop-updates/`, so the feed
+  publisher enforces that prefix.
 - **User action for step 3:** generate the Ed25519 key and store it as the
   `DESKTOP_UPDATE_SIGNING_KEY` secret in a main-only environment
   (`desktop-update-signing`, no reviewers; production stays gated by `store-production`).

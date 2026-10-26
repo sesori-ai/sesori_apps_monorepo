@@ -86,9 +86,9 @@ concrete problem can justify a documented temporary hold with a resolution path.
   on previously accepted explicit/PATH pairs in the plan. Do not manufacture
   an independent minimum or silently change this exact-pin policy.
 - **Assets:** Sesori selects all six ZIPs from the
-  [official registry](https://github.com/agentclientprotocol/registry/blob/f6c0f4e8357c7f28e84e3b883695c387b04ed2b9/antigravity-acp/agent.json):
-  macOS arm64/x64, Linux arm64/x64 and Windows arm64/x64. Independently hash official downloads; do not portray
-  locally computed checksums as Google's signed provenance. Preserve sibling
+  [official registry](https://github.com/agentclientprotocol/registry/blob/06229c691d24d039e2363ba12abe5c9dfae5bc66/antigravity-acp/agent.json):
+  macOS arm64/x64, Linux arm64/x64 and Windows arm64/x64. Independently hash official downloads and compare them
+  with the registry's published per-archive `sha256` (present since 1.4.3); neither is Google's signed provenance. Preserve sibling
   `agy_acp_server.par` + `localharness_external` (Windows `.exe` counterparts),
   launch environment, Linux `--uid=`, permissions and archive limits.
 - **Probe:** `--version` prints a `Build label:` among unrelated build diagnostics;
@@ -106,8 +106,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   only generic parent-local subagent tool calls, not child identity/lifecycle or
   scoped-stop authority. Reassess on new evidence; do not infer support from
   native delegation or generic ACP features. Closed source limits remain explicit.
-  Inspect model selection's client-identity gates too: the official 1.3.0 package
-  keeps non-Gemini models only for recognized Zed/JetBrains/Xcode identities.
+  Inspect model selection's client-identity gates too: the official 1.3.0–1.4.3 packages
+  keep non-Gemini models only for recognized Zed/JetBrains/Android Studio/Xcode identities.
   Account entitlement alone does not prove what ACP advertises. Any explicitly
   approved compatibility identity stays inside the Antigravity plugin and must
   reach live, replay, login and validation initialization consistently; preserve
@@ -204,7 +204,8 @@ concrete problem can justify a documented temporary hold with a resolution path.
   `https://downloads.cursor.com/lab/<build>/<os>/<arch>/agent-cli-package.tar.gz`,
   for `darwin`/`linux` and `arm64`/`x64`. No Windows package. Download/hash all
   four; no upstream checksum manifest is currently published. Preserve
-  `dist-package/` and the `cursor-agent` entrypoint's siblings. Re-published bytes
+  `dist-package/` and the `cursor-agent` entrypoint's siblings. The CDN answers 403
+  to Python `urllib`'s default user agent; download with `curl`. Re-published bytes
   must fail the old pin rather than bypass checksum verification.
 - **Probe:** production current-host package placement, exact build identity and
   the descriptor's ACP launch. Verify initialization, advertised model/mode and
@@ -236,9 +237,11 @@ concrete problem can justify a documented temporary hold with a resolution path.
 
 ## Hermes Agent
 
-- **Source:** stable `NousResearch/hermes-agent` GitHub release. Calendar tag and
-  semantic CLI version differ: reconcile release name and tagged `pyproject.toml`.
-  PyPI may lag and is not the release authority.
+- **Source:** stable `NousResearch/hermes-agent` GitHub release. Tags are semantic
+  (`vX.Y.Z`) from v0.21.6; earlier releases used calendar tags. Tagged `pyproject.toml`
+  is an inert `0.0.0`: `hermes acp --version` prints a derived version from the install
+  stamp or git (`X.Y.Z`, `X.Y.Z+<n>.g<sha>` ahead of a tag, otherwise `git.<sha>` or
+  `unknown`). PyPI may lag and is not the release authority.
 - **Pin:** `bridge/sesori_plugin_hermes/lib/src/runtime/hermes_plugin_descriptor.dart`,
   independent `targetVersion` / `minVersion`; direct CLI, no managed artifacts.
 - **Probe:** acquire exact tagged source under the permitted disposable boundary,
@@ -317,7 +320,7 @@ concrete problem can justify a documented temporary hold with a resolution path.
   approval policy. Missing fixtures become final checks while the target moves
   forward. Current-host execution is the ordinary existing-platform scope.
   Also run the model-restore probe on a session whose saved model was removed.
-  From `18.6.3` (still in `18.8.0`), `session/load` and `session/resume` fail
+  From `18.6.3` (still in `18.12.6`), `session/load` and `session/resume` fail
   closed with JSON-RPC `-32603` and `details: "Could not restore model
   <provider/id>"`: ACP `#openStoredSession` calls `switchSession(path)` without
   `allowSessionModelFallback` (upstream PR #13689). The owner accepted this

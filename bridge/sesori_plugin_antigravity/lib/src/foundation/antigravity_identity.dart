@@ -6,7 +6,7 @@ abstract final class AntigravityIdentity() {
   static const String displayName = "Antigravity";
   static const String upstreamAgentName = "antigravity-acp";
 
-  /// Google 1.3.0 offers third-party account models only to recognized clients.
+  /// Google 1.3.0 through 1.4.3 offer third-party account models only to recognized clients.
   /// Use its Zed-compatible model selector while retaining Sesori in the title.
   static const acpClientIdentity = AcpClientIdentity(
     name: "zed",
