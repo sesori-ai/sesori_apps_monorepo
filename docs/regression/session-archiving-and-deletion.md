@@ -129,7 +129,9 @@ entirely along with its transcript and its dedicated worktree.
   list remains active-only. The page has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
-  the project list has loaded: while it loads the page shows a skeleton, a failed
+  the project list has loaded and the page's reload on open has answered, so a
+  session archived since the list loaded never flashes the empty state: until
+  then the page shows a skeleton, a failed
   project list shows its error with Retry, and a disconnected computer shows the
   same setup or offline page as the home. A project whose sessions failed to load
   gets its own Retry row instead of the empty state. The page reloads
