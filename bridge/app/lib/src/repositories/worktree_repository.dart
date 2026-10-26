@@ -230,9 +230,11 @@ class WorktreeRepository({
 
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
+    required String? baseCommit,
   }) async {
     final snapshot = await _gitApi.inspectWorktreeSafety(
       worktreePath: worktreePath,
+      baseCommit: baseCommit,
     );
 
     if (!snapshot.worktreeExists) {
@@ -242,6 +244,9 @@ class WorktreeRepository({
     final issues = <SafetyIssue>[];
     if (snapshot.hasUnstagedChanges) {
       issues.add(UnstagedChanges());
+    }
+    if (snapshot.hasCommitsOnNoBranch) {
+      issues.add(CommitsOnNoBranch());
     }
     if (issues.isEmpty) {
       return WorktreeSafe();

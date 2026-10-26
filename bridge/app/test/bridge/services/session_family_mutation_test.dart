@@ -534,6 +534,7 @@ class _FamilyWorktreeService() implements WorktreeService {
   @override
   Future<WorktreeSafetyResult> checkWorktreeSafety({
     required String worktreePath,
+    required String? baseCommit,
   }) async => safetyResult;
 
   @override

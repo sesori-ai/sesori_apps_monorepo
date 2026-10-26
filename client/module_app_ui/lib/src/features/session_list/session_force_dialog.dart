@@ -9,8 +9,8 @@ part of "session_list_action_dispatcher.dart";
 /// This dialog is itself the confirmation, so it asks once: Cancel, the safe
 /// default that dismissing or Escape also gives, or a destructive Delete
 /// anyway. Keeping the worktree is not on offer — the refusals that reach here
-/// are the user's own uncommitted work, or an unexpected branch, which only
-/// older bridges report.
+/// are the user's own uncommitted work, commits no branch keeps, or an
+/// unexpected branch, which only older bridges report.
 Future<void> _showForceDialog({
   required BuildContext context,
   required SessionListCubit cubit,
@@ -96,4 +96,5 @@ String _describeCleanupIssue({required AppLocalizations loc, required CleanupIss
     expected,
   ),
   CleanupIssueSharedWorktree() => loc.sessionListCleanupIssueSharedWorktree,
+  CleanupIssueCommitsOnNoBranch() => loc.sessionListCleanupIssueCommitsOnNoBranch,
 };

@@ -1729,6 +1729,7 @@
   "sessionListForceMessage": "The following issues were found:",
   "sessionListCleanupIssueUnstagedChanges": "Worktree has unstaged changes",
   "sessionListCleanupIssueSharedWorktree": "Another active session uses this worktree",
+  "sessionListCleanupIssueCommitsOnNoBranch": "Commits on no branch would be lost",
   "sessionListCleanupIssueBranchMismatch": "Worktree is on branch '{actual}' instead of expected '{expected}'",
   "@sessionListCleanupIssueBranchMismatch": {
     "placeholders": {

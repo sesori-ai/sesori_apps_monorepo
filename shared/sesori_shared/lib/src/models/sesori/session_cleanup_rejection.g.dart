@@ -49,3 +49,11 @@ CleanupIssueSharedWorktree _$CleanupIssueSharedWorktreeFromJson(Map json) =>
 Map<String, dynamic> _$CleanupIssueSharedWorktreeToJson(
   CleanupIssueSharedWorktree instance,
 ) => <String, dynamic>{'type': instance.$type};
+
+CleanupIssueCommitsOnNoBranch _$CleanupIssueCommitsOnNoBranchFromJson(
+  Map json,
+) => CleanupIssueCommitsOnNoBranch($type: json['type'] as String?);
+
+Map<String, dynamic> _$CleanupIssueCommitsOnNoBranchToJson(
+  CleanupIssueCommitsOnNoBranch instance,
+) => <String, dynamic>{'type': instance.$type};

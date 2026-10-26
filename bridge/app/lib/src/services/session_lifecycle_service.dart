@@ -93,6 +93,7 @@ class SessionLifecycleService({
     if (!force) {
       final safety = await _worktreeService.checkWorktreeSafety(
         worktreePath: worktreePath,
+        baseCommit: storedSession.baseCommit,
       );
       if (safety case WorktreeUnsafe(:final issues)) {
         return CleanupRejected(
@@ -280,6 +281,7 @@ class SessionLifecycleService({
         .map(
           (issue) => switch (issue) {
             UnstagedChanges() => const CleanupIssue.unstagedChanges(),
+            CommitsOnNoBranch() => const CleanupIssue.commitsOnNoBranch(),
           },
         )
         .toList();

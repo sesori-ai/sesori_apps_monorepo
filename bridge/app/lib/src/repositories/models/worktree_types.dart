@@ -8,6 +8,8 @@ sealed class SafetyIssue();
 
 class UnstagedChanges() extends SafetyIssue;
 
+class CommitsOnNoBranch() extends SafetyIssue;
+
 sealed class WorktreeResult();
 
 class WorktreeSuccess({
