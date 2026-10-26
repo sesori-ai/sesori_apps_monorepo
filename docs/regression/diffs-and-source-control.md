@@ -28,7 +28,9 @@ that baseline, and the branch and worktree facts a session carries.
   to later dedicated baselines, and the stable project identifier resolves to
   the live directory before git runs.
 - A session reports its dedicated-worktree facts. A new dedicated worktree starts on a detached HEAD with no
-  branch. A mutating tool emits the diff refresh signal; bursts during an in-flight read
+  branch. A session's reported branch is the one the bridge stored for its dedicated worktree, never the branch
+  checked out now, so a new dedicated worktree, a session in the project folder and a "No project" session report
+  none. No current client screen shows it; v1.9.1 apps show it on session rows. A mutating tool emits the diff refresh signal; bursts during an in-flight read
   coalesce into one trailing refresh, a failed event-driven refresh retries
   after a delay while the diff screen remains open, and diffs stay encrypted
   from the relay.
@@ -80,6 +82,7 @@ and in-place sessions, and default versus explicit base branches.
 ## Failure Signals
 
 - The diff omits working-tree changes or compares against the wrong base.
+- A session reports a branch the bridge did not store for its worktree, such as the project folder's checkout.
 - A skipped file appears as an empty change instead of a skip reason, an
   unreachable base or missing ancestor flattens into an empty diff or opaque
   error, or an archived or missing worktree errors instead of returning nothing.

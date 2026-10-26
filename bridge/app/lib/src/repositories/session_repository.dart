@@ -1200,11 +1200,6 @@ class SessionRepository({
     return selected;
   }
 
-  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
-    final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
-    return sessions.map((session) => session.toStoredSession()).toList(growable: false);
-  }
-
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
