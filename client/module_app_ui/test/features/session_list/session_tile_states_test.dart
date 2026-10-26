@@ -460,7 +460,7 @@ void main() {
   });
 
   group("in pointer mode", () {
-    testWidgets("a row has exactly the touch row's metrics: 12 px padding, the 16 pt title and the 2 px gap", (
+    testWidgets("a row keeps the touch row's 16 pt title and 2 px gap in 8 px padding rather than 12 px", (
       tester,
     ) async {
       final row = tile(
@@ -481,9 +481,9 @@ void main() {
       final touch = metrics();
       await pumpPointerTile(tester, row);
 
-      expect(metrics(), touch);
       // The 18 px meta text sits centred in its 20 px line, 1 px down.
       expect(touch, (height: rowHeight, titleSize: 16.0, titleTop: 12.0, metaTop: 12.0 + 24 + 2 + 1));
+      expect(metrics(), (height: rowHeight - 8, titleSize: 16.0, titleTop: 8.0, metaTop: 8.0 + 24 + 2 + 1));
       expect(find.text("now"), findsOneWidget);
     });
 

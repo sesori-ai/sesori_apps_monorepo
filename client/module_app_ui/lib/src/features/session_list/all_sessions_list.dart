@@ -618,6 +618,9 @@ class const SessionListSkeleton({super.key, required final bool leaving}) extend
   @override
   Widget build(BuildContext context) {
     final screenHeight = MediaQuery.sizeOf(context).height;
+    final rowHeight = SessionTileSkeleton.heightOf(
+      pointer: PregoInteractionScope.of(context) == PregoInteractionMode.pointer,
+    );
     final children = <Widget>[];
     var height = 0.0;
     var row = 0;
@@ -632,7 +635,7 @@ class const SessionListSkeleton({super.key, required final bool leaving}) extend
             detailsWidth: _detailsWidths[row % _detailsWidths.length],
           ),
         );
-        height += SessionTileSkeleton.height;
+        height += rowHeight;
       }
     }
     return PregoShimmer(

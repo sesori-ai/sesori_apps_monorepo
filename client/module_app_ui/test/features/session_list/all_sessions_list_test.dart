@@ -78,6 +78,7 @@ void main() {
     AllSessionsDisconnectedBuilder disconnectedBuilder = _offlinePage,
     Widget? header,
     TextDirection textDirection = TextDirection.ltr,
+    PregoInteractionMode interaction = PregoInteractionMode.touch,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -111,20 +112,24 @@ void main() {
             child: Scaffold(
               body: CustomScrollView(
                 slivers: [
-                  AllSessionsList(
-                    onSessionTap: ({required row}) {},
-                    actionDispatcher: const SessionListActionDispatcher(
-                      deleteConfirmation: SessionDeleteConfirmation.sheet,
-                      onSessionArchived: null,
-                      onSessionDeleted: null,
-                      onSessionMarkedUnread: null,
+                  PregoInteractionScope(
+                    mode: interaction,
+                    child: AllSessionsList(
+                      onSessionTap: ({required row}) {},
+                      actionDispatcher: const SessionListActionDispatcher(
+                        deleteConfirmation: SessionDeleteConfirmation.sheet,
+                        onSessionArchived: null,
+                        onSessionDeleted: null,
+                        onSessionMarkedUnread: null,
+                      ),
+                      createActionCubit: ({required projectId, required session}) =>
+                          throw StateError("no row to act on"),
+                      selectedSessionId: null,
+                      disconnectedBuilder: disconnectedBuilder,
+                      emptyState: const Text("Nothing here"),
+                      header: header,
+                      endClearance: 0,
                     ),
-                    createActionCubit: ({required projectId, required session}) => throw StateError("no row to act on"),
-                    selectedSessionId: null,
-                    disconnectedBuilder: disconnectedBuilder,
-                    emptyState: const Text("Nothing here"),
-                    header: header,
-                    endClearance: 0,
                   ),
                 ],
               ),
@@ -382,8 +387,9 @@ void main() {
       required Stream<AllSessionsState> updates,
       AllSessionsMode mode = AllSessionsMode.archived,
       Widget? header,
+      PregoInteractionMode interaction = PregoInteractionMode.touch,
     }) async {
-      await pumpList(tester, initial: loading, updates: updates, mode: mode, header: header);
+      await pumpList(tester, initial: loading, updates: updates, mode: mode, header: header, interaction: interaction);
       // Its 300 ms appearance delay, then its 200 ms fade in, timed from the
       // frame after the delay.
       await tester.pump(const Duration(milliseconds: 300));
@@ -697,47 +703,56 @@ void main() {
           if ((tops[frame - 1], tops[frame]) case (final from?, final to?)) to - from,
       ];
 
-      for (final withHeader in [true, false]) {
-        testWidgets("a load that ends with sessions moves nothing (${withHeader ? "header" : "no header"})", (
-          tester,
-        ) async {
-          final updates = StreamController<AllSessionsState>();
-          addTearDown(updates.close);
-          final skeletonTop = await pumpLoading(
-            tester,
-            updates: updates.stream,
-            mode: AllSessionsMode.active,
-            header: withHeader ? header : null,
-          );
-          final headerTop = withHeader ? tester.getTopLeft(headerBox).dy : null;
-          final fieldTop = tester.getTopLeft(searchField).dy;
-          final heading = find.byType(SessionListHeadingSkeleton).first;
-          final headingRect = tester.getRect(heading);
-          final headingStart = tester
-              .getTopLeft(find.descendant(of: heading, matching: find.byType(PregoSkeletonBar)))
-              .dx;
-          final rowRect = tester.getRect(find.byType(SessionTileSkeleton).first);
-          final pillRect = tester.getRect(
-            find.descendant(of: find.byType(PregoShimmer).first, matching: find.byType(PregoSkeletonBar)).first,
-          );
+      for (final interaction in PregoInteractionMode.values) {
+        for (final withHeader in [true, false]) {
+          testWidgets(
+            "a load that ends with sessions moves nothing (${interaction.name}, ${withHeader ? "header" : "no header"})",
+            (tester) async {
+              final updates = StreamController<AllSessionsState>();
+              addTearDown(updates.close);
+              final skeletonTop = await pumpLoading(
+                tester,
+                updates: updates.stream,
+                mode: AllSessionsMode.active,
+                header: withHeader ? header : null,
+                interaction: interaction,
+              );
+              final headerTop = withHeader ? tester.getTopLeft(headerBox).dy : null;
+              final fieldTop = tester.getTopLeft(searchField).dy;
+              final heading = find.byType(SessionListHeadingSkeleton).first;
+              final headingRect = tester.getRect(heading);
+              final headingStart = tester
+                  .getTopLeft(find.descendant(of: heading, matching: find.byType(PregoSkeletonBar)))
+                  .dx;
+              final rowRect = tester.getRect(find.byType(SessionTileSkeleton).first);
+              final pillRect = tester.getRect(
+                find.descendant(of: find.byType(PregoShimmer).first, matching: find.byType(PregoSkeletonBar)).first,
+              );
+              // The height the list sizes its placeholder by is the one it draws.
+              expect(
+                rowRect.height,
+                SessionTileSkeleton.heightOf(pointer: interaction == PregoInteractionMode.pointer),
+              );
 
-          final [headerTops, fieldTops, skeletonTops] = await topsAcross(
-            tester,
-            updates: updates,
-            update: loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"]),
-            finders: [headerBox, searchField, skeleton],
+              final [headerTops, fieldTops, skeletonTops] = await topsAcross(
+                tester,
+                updates: updates,
+                update: loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"]),
+                finders: [headerBox, searchField, skeleton],
+              );
+              expect(headerTops, everyElement(headerTop));
+              expect(fieldTops, everyElement(fieldTop));
+              expect(skeletonTops.nonNulls, everyElement(skeletonTop));
+              expect(skeleton, findsNothing);
+              // Each chip, heading and row stands where its placeholder stood.
+              expect(tester.getRect(find.byKey(const Key("session-list-filter-all"))), pillRect);
+              expect(tester.getRect(find.byType(SessionListHeading)).top, headingRect.top);
+              expect(tester.getRect(find.byType(SessionListHeading)).height, headingRect.height);
+              expect(tester.getTopLeft(find.text("Today")).dx, headingStart);
+              expect(tester.getRect(find.byType(SessionTile)), rowRect);
+            },
           );
-          expect(headerTops, everyElement(headerTop));
-          expect(fieldTops, everyElement(fieldTop));
-          expect(skeletonTops.nonNulls, everyElement(skeletonTop));
-          expect(skeleton, findsNothing);
-          // Each chip, heading and row stands where its placeholder stood.
-          expect(tester.getRect(find.byKey(const Key("session-list-filter-all"))), pillRect);
-          expect(tester.getRect(find.byType(SessionListHeading)).top, headingRect.top);
-          expect(tester.getRect(find.byType(SessionListHeading)).height, headingRect.height);
-          expect(tester.getTopLeft(find.text("Today")).dx, headingStart);
-          expect(tester.getRect(find.byType(SessionTile)), rowRect);
-        });
+        }
       }
 
       testWidgets("counts that wrap the chips onto another line ease the room open", (tester) async {
