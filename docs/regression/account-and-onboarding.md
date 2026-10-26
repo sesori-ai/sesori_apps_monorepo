@@ -78,7 +78,7 @@ participates.
   computer lands on its home; picking the current one only closes the
   menu. The entry appears only once
   the computer list names the current computer and grows in without a jump.
-  Offline, Harnesses and the YOLO, warm-up and refresh rows dim and do not respond to taps.
+  Offline, Harnesses and the YOLO and warm-up rows dim and do not respond to taps.
 - The desktop Bridge settings tab shows the same entry above its description;
   switching closes the settings window and then switches.
 - Auth-server URLs behave identically with or without trailing slashes, and
