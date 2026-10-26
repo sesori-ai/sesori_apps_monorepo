@@ -229,9 +229,7 @@ class RecentSessionInventoryService({
   void _onEvent({required SseEvent event}) {
     if (_state.isClosed) return;
     final data = event.data;
-    if (data case SesoriSessionsUpdated(:final projectID)) {
-      if (_state.value.containsKey(projectID)) unawaited(_load(projectId: projectID));
-    } else if (data
+    if (data
         case SesoriSessionCreated(:final info) ||
             SesoriSessionUpdated(:final info) ||
             SesoriSessionDeleted(:final info)) {

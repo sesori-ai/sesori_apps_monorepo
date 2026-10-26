@@ -339,7 +339,6 @@ Map<String, dynamic> _sessionInfo({required String sessionId, required String? p
     parentID: parentId,
     title: "title",
     time: null,
-    pullRequest: null,
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: null,

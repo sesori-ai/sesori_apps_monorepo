@@ -440,7 +440,6 @@ const _session = Session(
   directory: "/fixture",
   parentID: null,
   branchName: null,
-  pullRequest: null,
   promptDefaults: null,
   lastUserActivityAt: null,
   time: SessionTime(created: 1, updated: 2, archived: 3),

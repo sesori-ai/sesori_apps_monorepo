@@ -1444,7 +1444,6 @@ class SessionDetailCubit(
       SesoriPluginManagementChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
-      SesoriSessionsUpdated() ||
       SesoriSessionDeleted() ||
       SesoriSessionDiff() ||
       SesoriSessionError() ||
@@ -1521,7 +1520,6 @@ class SessionDetailCubit(
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
-            SesoriSessionsUpdated() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
             SesoriMessagePartUpdated() ||

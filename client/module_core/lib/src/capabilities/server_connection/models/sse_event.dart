@@ -46,7 +46,6 @@ class SseEvent({required final SesoriSseEvent data, final String? directory}) {
     SesoriProjectsSummary() ||
     SesoriProjectUpdated() ||
     SesoriVcsBranchUpdated() ||
-    SesoriSessionsUpdated() ||
     SesoriSessionUnseenChanged() ||
     SesoriFileEdited() ||
     SesoriInstallationUpdateAvailable() => null,

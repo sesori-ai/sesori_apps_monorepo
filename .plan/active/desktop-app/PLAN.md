@@ -667,7 +667,7 @@ scope to the affected feature docs (expected: account-and-onboarding,
 plugin-setup-and-lifecycle, plugin-runtime-installation, projects-and-sessions,
 session-creation-and-options, session-turns, questions-and-permissions,
 attachments-and-images, diffs-and-source-control, session-archiving-and-
-deletion, popup-alerts, navigation-transitions, pull-request-monitoring,
+deletion, popup-alerts, navigation-transitions,
 session-history-and-recovery, tools-and-file-changes, permission-auto-approval,
 notifications (desktop = local SSE-derived attention alerts, never push — D6),
 voice-input (mobile-only boundary restated), bridge-connectivity,

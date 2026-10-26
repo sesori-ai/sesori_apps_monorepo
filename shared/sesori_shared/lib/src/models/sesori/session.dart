@@ -3,7 +3,6 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "agent_info.dart";
 import "message_part.dart";
 import "plugin_identity.dart";
-import "pull_request_info.dart";
 import "session_approval_override.dart";
 import "session_auto_continuation.dart";
 
@@ -28,7 +27,6 @@ sealed class SessionListRequest with _$SessionListRequest {
     required String projectId,
     required int? start,
     required int? limit,
-    @Default(false) bool waitForPrData,
   }) = _SessionListRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionListRequestFromJson(json);
@@ -45,9 +43,6 @@ sealed class Session with _$Session {
     required String? parentID,
     required String? title,
     required SessionTime? time,
-    required PullRequestInfo? pullRequest,
-    // COMPATIBILITY 2026-07-15 (v1.5.0): Bridges before PR-history support omit pullRequestHistory, which means no legacy history beyond pullRequest. Remove @Default and make the field required after the minimum supported bridge always sends pullRequestHistory.
-    @Default(<PullRequestInfo>[]) List<PullRequestInfo> pullRequestHistory,
     required SessionPromptDefaults? promptDefaults,
     // The branch the bridge created for this session's dedicated worktree.
     // Null means the bridge created none: the session has no dedicated

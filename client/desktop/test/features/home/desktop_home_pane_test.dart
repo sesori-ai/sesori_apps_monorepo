@@ -606,7 +606,6 @@ Session _session({required String id, required String projectId, required int up
   directory: "/$projectId",
   parentID: null,
   branchName: null,
-  pullRequest: null,
   time: SessionTime(created: 1, updated: updated, archived: null),
   promptDefaults: null,
   lastUserActivityAt: null,

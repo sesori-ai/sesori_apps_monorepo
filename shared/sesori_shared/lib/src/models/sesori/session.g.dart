@@ -22,7 +22,6 @@ _SessionListRequest _$SessionListRequestFromJson(Map json) =>
       projectId: json['projectId'] as String,
       start: (json['start'] as num?)?.toInt(),
       limit: (json['limit'] as num?)?.toInt(),
-      waitForPrData: json['waitForPrData'] as bool? ?? false,
     );
 
 Map<String, dynamic> _$SessionListRequestToJson(_SessionListRequest instance) =>
@@ -30,7 +29,6 @@ Map<String, dynamic> _$SessionListRequestToJson(_SessionListRequest instance) =>
       'projectId': instance.projectId,
       'start': ?instance.start,
       'limit': ?instance.limit,
-      'waitForPrData': instance.waitForPrData,
     };
 
 _Session _$SessionFromJson(Map json) => _Session(
@@ -43,19 +41,6 @@ _Session _$SessionFromJson(Map json) => _Session(
   time: json['time'] == null
       ? null
       : SessionTime.fromJson(Map<String, dynamic>.from(json['time'] as Map)),
-  pullRequest: json['pullRequest'] == null
-      ? null
-      : PullRequestInfo.fromJson(
-          Map<String, dynamic>.from(json['pullRequest'] as Map),
-        ),
-  pullRequestHistory:
-      (json['pullRequestHistory'] as List<dynamic>?)
-          ?.map(
-            (e) =>
-                PullRequestInfo.fromJson(Map<String, dynamic>.from(e as Map)),
-          )
-          .toList() ??
-      const <PullRequestInfo>[],
   promptDefaults: json['promptDefaults'] == null
       ? null
       : SessionPromptDefaults.fromJson(
@@ -85,10 +70,6 @@ Map<String, dynamic> _$SessionToJson(_Session instance) => <String, dynamic>{
   'parentID': ?instance.parentID,
   'title': ?instance.title,
   'time': ?instance.time?.toJson(),
-  'pullRequest': ?instance.pullRequest?.toJson(),
-  'pullRequestHistory': instance.pullRequestHistory
-      .map((e) => e.toJson())
-      .toList(),
   'promptDefaults': ?instance.promptDefaults?.toJson(),
   'branchName': ?instance.branchName,
   'hasWorktree': instance.hasWorktree,

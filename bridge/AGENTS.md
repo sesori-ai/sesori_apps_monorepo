@@ -215,7 +215,7 @@ similar public methods on the Orchestrator.
 
 ### No Magic Strings for Known Enumerations
 
-If a concept has a fixed set of values (PR state, mergeable status, review decision, check status), **use an enum**. Never compare strings like `state.toUpperCase() == "OPEN"` in business logic. Map the raw string to an enum at the deserialization boundary (API/mapper layer), then use the enum everywhere else.
+If a concept has a fixed set of values (permission reply, session approval mode, archived-session completeness), **use an enum**. Never compare strings like `reply.toLowerCase() == "always"` in business logic. Map the raw string to an enum at the deserialization boundary (API/mapper layer), then use the enum everywhere else.
 
 ### No Swallowing Errors with Empty Defaults
 

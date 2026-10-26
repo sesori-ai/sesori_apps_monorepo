@@ -387,7 +387,6 @@ class _Sessions() implements SessionRepository {
     title: null,
     branchName: null,
     time: null,
-    pullRequest: null,
     promptDefaults: null,
     hasWorktree: false,
     unseen: false,

@@ -678,7 +678,6 @@ const Session testConstSession = Session(
   directory: "/project",
   parentID: null,
   title: null,
-  pullRequest: null,
   time: null,
   promptDefaults: null,
   lastUserActivityAt: null,
@@ -708,7 +707,6 @@ Session testSession({
     directory: "/home/user/my-project",
     parentID: parentID,
     title: title,
-    pullRequest: null,
     time: SessionTime(
       created: createdAt ?? 1700000000000,
       updated: updatedAt ?? 1700000000000,

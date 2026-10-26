@@ -635,7 +635,6 @@ void main() {
       );
 
       expect(result.hasWorktree, isTrue);
-      expect(result.pullRequest, isNull);
     });
 
     test("hasWorktree is false when dedicated=false", () async {

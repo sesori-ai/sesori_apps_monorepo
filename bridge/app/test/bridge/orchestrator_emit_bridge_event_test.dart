@@ -1217,7 +1217,6 @@ BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
       parentID: null,
       title: "Late title",
       time: const SessionTime(created: 1, updated: 2, archived: null),
-      pullRequest: null,
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,
