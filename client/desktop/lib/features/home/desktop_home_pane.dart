@@ -107,9 +107,9 @@ class const DesktopHomePane({
   }
 
   /// The loader centred as for any load, with equal room above and below it.
-  /// While this computer's bridge launches, [_SlowStartLine] waits in the room
-  /// below, so it fades in without moving the loader. Every load builds the
-  /// same tree, so a load turning into a launch keeps the running loader.
+  /// [_SlowStartLine] waits in the room below, so it fades in and out without
+  /// moving the loader. Every load builds the same tree, so a load turning into
+  /// a launch, or back, keeps the running loader and the line.
   static Widget _loading({required BuildContext context, required bool startingThisComputer}) => Column(
     children: [
       const Spacer(),
@@ -117,7 +117,7 @@ class const DesktopHomePane({
         label: context.loc.projectListLoadingSemantics,
         child: const PregoAiLoader(size: 32),
       ),
-      Expanded(child: startingThisComputer ? const _SlowStartLine() : const SizedBox.shrink()),
+      Expanded(child: _SlowStartLine(starting: startingThisComputer)),
     ],
   );
 
@@ -145,11 +145,12 @@ class const DesktopHomePane({
       unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
 }
 
-/// Under the loader of a launch of this computer's bridge: once the launch has
-/// gone on for [delay] without the app reaching it (a registration retry, say),
-/// a line fades in to say it is still under way. A normal start connects well
-/// before then, so it never shows.
-class const _SlowStartLine() extends StatefulWidget {
+/// Under the loader: once a launch of this computer's bridge has gone on for
+/// [delay] without the app reaching it (a registration retry, say), a line
+/// fades in to say it is still under way. A normal start connects well before
+/// then, so it never shows. When the launch gives way to an ordinary load, the
+/// line fades out and its wait is dropped; a later launch waits afresh.
+class const _SlowStartLine({required final bool starting}) extends StatefulWidget {
   static const Duration delay = Duration(seconds: 10);
 
   @override
@@ -157,19 +158,32 @@ class const _SlowStartLine() extends StatefulWidget {
 }
 
 class _SlowStartLineState() extends State<_SlowStartLine> {
-  late final Timer _timer;
+  Timer? _timer;
   bool _shown = false;
 
   @override
   void initState() {
     super.initState();
-    _timer = Timer(_SlowStartLine.delay, () => setState(() => _shown = true));
+    _wait();
+  }
+
+  @override
+  void didUpdateWidget(_SlowStartLine oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.starting != widget.starting) _wait();
   }
 
   @override
   void dispose() {
-    _timer.cancel();
+    _timer?.cancel();
     super.dispose();
+  }
+
+  /// Hides the line, and while [_SlowStartLine.starting] waits to show it.
+  void _wait() {
+    _timer?.cancel();
+    _shown = false;
+    _timer = widget.starting ? Timer(_SlowStartLine.delay, () => setState(() => _shown = true)) : null;
   }
 
   @override
