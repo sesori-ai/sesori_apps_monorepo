@@ -28,8 +28,10 @@ typedef ActionSessionListCubitFactory = SessionListCubit Function({
   required Session session,
 });
 
-/// The page, as a sliver, for a computer that is not connected.
-typedef AllSessionsDisconnectedBuilder = Widget Function({
+/// The page, as a sliver, for a computer that is not connected, or null while
+/// the surface knows it is about to connect: the list then shows its own
+/// loading, which hands off to the rows like any load.
+typedef AllSessionsDisconnectedBuilder = Widget? Function({
   required BuildContext context,
   required ProjectListBridgeDisconnected state,
 });
@@ -39,7 +41,8 @@ typedef AllSessionsDisconnectedBuilder = Widget Function({
 /// list is filtered to one (D3).
 ///
 /// The project list comes first: while it cannot load, or the computer is not
-/// connected, the list shows that in place of its rows.
+/// connected, the list shows that in place of its rows, unless the surface
+/// calls the disconnection a load.
 ///
 /// The active list adds the All / Running / Unread chips and every project's
 /// launches leading Today. It leaves out the sessions inside an archive's Undo
@@ -79,15 +82,30 @@ class const AllSessionsList({
         onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
       ),
     ),
-    final ProjectListBridgeDisconnected disconnected => disconnectedBuilder(context: context, state: disconnected),
-    ProjectListLoading() || ProjectListLoaded() => switch (context.read<AllSessionsCubit>().mode) {
-      AllSessionsMode.active => _ActiveSessions(list: this),
-      AllSessionsMode.archived => _Sessions(list: this, launchRows: const {}, hiddenSessionIds: const {}),
-    },
+    final ProjectListBridgeDisconnected disconnected =>
+      disconnectedBuilder(context: context, state: disconnected) ??
+          _sessions(context: context, awaitingConnection: true),
+    ProjectListLoading() || ProjectListLoaded() => _sessions(context: context, awaitingConnection: false),
   };
+
+  /// The same subtree whether it waits on the computer or on its projects, so
+  /// one loading skeleton stays from the one to the other.
+  Widget _sessions({required BuildContext context, required bool awaitingConnection}) =>
+      switch (context.read<AllSessionsCubit>().mode) {
+        AllSessionsMode.active => _ActiveSessions(list: this, awaitingConnection: awaitingConnection),
+        AllSessionsMode.archived => _Sessions(
+          list: this,
+          awaitingConnection: awaitingConnection,
+          launchRows: const {},
+          hiddenSessionIds: const {},
+        ),
+      };
 }
 
-class const _ActiveSessions({required final AllSessionsList list}) extends StatefulWidget {
+class const _ActiveSessions({
+  required final AllSessionsList list,
+  required final bool awaitingConnection,
+}) extends StatefulWidget {
   @override
   State<_ActiveSessions> createState() => _ActiveSessionsState();
 }
@@ -112,7 +130,12 @@ class _ActiveSessionsState() extends State<_ActiveSessions> {
           if (mounted) sessions.setHiddenSessionIds(sessionIds: hidden);
         });
       }
-      return _Sessions(list: widget.list, launchRows: launchRows, hiddenSessionIds: hidden);
+      return _Sessions(
+        list: widget.list,
+        awaitingConnection: widget.awaitingConnection,
+        launchRows: launchRows,
+        hiddenSessionIds: hidden,
+      );
     },
   );
 }
@@ -126,6 +149,10 @@ final class const _LaunchItem({required final LaunchingSession launch}) extends 
 
 class const _Sessions({
   required final AllSessionsList list,
+
+  /// Whether the list waits on a computer about to connect: a load, though
+  /// nothing loads yet.
+  required final bool awaitingConnection,
   required final Map<String, LaunchRows> launchRows,
   required final Set<String> hiddenSessionIds,
 }) extends StatefulWidget {
@@ -172,7 +199,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
 
   @override
   Widget build(BuildContext context) {
-    final _Sessions(:list, :launchRows, :hiddenSessionIds) = widget;
+    final _Sessions(:list, :awaitingConnection, :launchRows, :hiddenSessionIds) = widget;
     final loc = context.loc;
     final prego = context.prego;
     final cubit = context.read<AllSessionsCubit>();
@@ -215,7 +242,8 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     // A launching row counts, so the search field and chips are already in
     // place when a first session takes its row.
     final hasSessions = state.counts.all > 0 || launches.isNotEmpty || searching;
-    final loading = state.isLoading && entries.isEmpty;
+    final isLoading = awaitingConnection || state.isLoading;
+    final loading = isLoading && entries.isEmpty;
     if (_wasLoading && !loading && !context.isReducedMotion) {
       _handOff.value = 0;
       // Timed from the next frame: this one mounts the content and can be
@@ -228,7 +256,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     // The skeleton fades out from the top of the first box under the header,
     // where it stood. At most one box holds it.
     final skeletonLeaving = !loading && !_handOff.isCompleted;
-    final settled = !state.isLoading && state.failures.isEmpty && entries.isEmpty;
+    final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
     final note = switch (settled) {
       false => null,
       true when searching => loc.listSearchNoMatches,
