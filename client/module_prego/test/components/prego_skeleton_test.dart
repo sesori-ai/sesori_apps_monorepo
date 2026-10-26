@@ -33,6 +33,11 @@ void main() {
     await tester.pump(const Duration(milliseconds: 250));
   }
 
+  double shimmerOpacity(WidgetTester tester) => tester
+      .widget<FadeTransition>(find.descendant(of: find.byType(PregoShimmer), matching: find.byType(FadeTransition)))
+      .opacity
+      .value;
+
   Finder titleBars() => find.byWidgetPredicate((w) => w is PregoSkeletonBar && w.height == 20);
   Finder detailBars() => find.byWidgetPredicate((w) => w is PregoSkeletonBar && w.height == 14);
 
@@ -47,10 +52,7 @@ void main() {
       // Content width: 402 - 2*16 (list padding) - 2*12 (row padding) = 346.
       const contentWidth = 402.0 - 32.0 - 24.0;
       const fractions = [0.74, 0.51, 0.51, 0.83, 1.0, 0.51];
-      final widths = titleBars()
-          .evaluate()
-          .map((e) => (e.renderObject! as RenderBox).size.width)
-          .toList();
+      final widths = titleBars().evaluate().map((e) => (e.renderObject! as RenderBox).size.width).toList();
       for (var i = 0; i < fractions.length; i++) {
         expect(widths[i], moreOrLessEquals(fractions[i] * contentWidth, epsilon: 1.0));
       }
@@ -66,10 +68,7 @@ void main() {
       await pumpVisible(tester, const SingleChildScrollView(child: PregoSkeletonList(itemCount: 8)));
 
       expect(find.byType(PregoSkeletonListTile), findsNWidgets(8));
-      final widths = titleBars()
-          .evaluate()
-          .map((e) => (e.renderObject! as RenderBox).size.width)
-          .toList();
+      final widths = titleBars().evaluate().map((e) => (e.renderObject! as RenderBox).size.width).toList();
       expect(widths[6], moreOrLessEquals(widths[0], epsilon: 0.1));
       expect(widths[7], moreOrLessEquals(widths[1], epsilon: 0.1));
     });
@@ -89,18 +88,14 @@ void main() {
       await tester.pumpWidget(harness(const PregoSkeletonList()));
 
       // Before the appear delay: laid out but fully transparent, no sweep.
-      final opacityFinder = find.byWidgetPredicate((w) => w is AnimatedOpacity && w.opacity == 0.0);
-      expect(opacityFinder, findsOneWidget);
+      expect(shimmerOpacity(tester), 0);
       expect(find.byType(ShaderMask), findsNothing);
       expect(find.byType(PregoSkeletonListTile), findsNWidgets(6));
 
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 200));
 
-      expect(
-        find.byWidgetPredicate((w) => w is AnimatedOpacity && w.opacity == 1.0),
-        findsOneWidget,
-      );
+      expect(shimmerOpacity(tester), 1);
       // One mask for the whole region, and the sweep is running.
       expect(find.byType(ShaderMask), findsOneWidget);
       expect(tester.hasRunningAnimations, isTrue);
@@ -142,6 +137,68 @@ void main() {
       expect(find.byType(ShaderMask), findsNothing);
       expect(tester.hasRunningAnimations, isFalse);
     });
+
+    testWidgets("leaving before it shows keeps it hidden, with nothing animating", (tester) async {
+      await tester.pumpWidget(harness(const PregoSkeletonList()));
+      await tester.pump(const Duration(milliseconds: 250));
+      await tester.pumpWidget(harness(const PregoSkeletonList(leaving: true)));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(shimmerOpacity(tester), 0);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
+    for (final (name, shownFor) in [("still fading in", 20), ("fully shown", 300)]) {
+      testWidgets("leaving while $name fades out from there, never brightening, then stops", (tester) async {
+        await tester.pumpWidget(harness(const PregoSkeletonList()));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(Duration(milliseconds: shownFor));
+        final start = shimmerOpacity(tester);
+        expect(start, greaterThan(0));
+
+        await tester.pumpWidget(harness(const PregoSkeletonList(leaving: true)));
+        var last = start;
+        for (var elapsed = 0; elapsed < 200; elapsed += 10) {
+          await tester.pump(const Duration(milliseconds: 10));
+          final opacity = shimmerOpacity(tester);
+          expect(opacity, lessThanOrEqualTo(last));
+          last = opacity;
+        }
+        await tester.pump(const Duration(milliseconds: 10));
+
+        expect(shimmerOpacity(tester), 0);
+        // Gone, so the sweep has stopped too.
+        expect(tester.hasRunningAnimations, isFalse);
+      });
+    }
+
+    testWidgets("built leaving never appears", (tester) async {
+      await tester.pumpWidget(harness(const PregoSkeletonList(leaving: true)));
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+
+      expect(shimmerOpacity(tester), 0);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
+    for (final (name, shownFor) in [("before it showed", 0), ("mid fade-out", 500)]) {
+      testWidgets("needed again after leaving $name, it comes back and sweeps", (tester) async {
+        await tester.pumpWidget(harness(const PregoSkeletonList()));
+        await tester.pump(Duration(milliseconds: shownFor));
+        await tester.pumpWidget(harness(const PregoSkeletonList(leaving: true)));
+        await tester.pump(const Duration(milliseconds: 100));
+
+        await tester.pumpWidget(harness(const PregoSkeletonList()));
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 16));
+        await tester.pump(const Duration(milliseconds: 250));
+
+        expect(shimmerOpacity(tester), 1);
+        expect(find.byType(ShaderMask), findsOneWidget);
+        expect(tester.hasRunningAnimations, isTrue);
+      });
+    }
 
     testWidgets("sweeps under RTL without errors", (tester) async {
       await tester.pumpWidget(

@@ -44,6 +44,15 @@ class const PregoShimmer({
   /// finish quickly never flash it. [Duration.zero] shows it immediately.
   final Duration appearDelay = const Duration(milliseconds: 300),
 
+  /// Whether the skeleton is on its way out, as content takes its place.
+  /// Turning it on drops an appearance still pending and fades the skeleton
+  /// out from wherever it stands, decelerating over 200 ms, so one that never
+  /// showed stays hidden and one still fading in never brightens. It stops
+  /// sweeping once gone. One built leaving never appears, and turning it off
+  /// again, as the skeleton is needed after all, brings it back as if it had
+  /// never left.
+  final bool leaving = false,
+
   /// Peak colour of the sheen band. Defaults to a translucent white, which
   /// lightens the grey bars in both themes.
   final Color? highlightColor,
@@ -62,7 +71,7 @@ class const PregoShimmer({
 
 class _PregoShimmerState()
     extends State<PregoShimmer>
-    with SingleTickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
+    with TickerProviderStateMixin, WidgetsBindingObserver, PregoReducedMotionStateMixin {
   /// Sweep position in multiples of the child's width. The band (20% wide,
   /// centred at 0.5 + value) is fully off-screen outside [-0.6, 0.6]; the
   /// extra margin below/above gives it a clean entry and a short rest between
@@ -70,14 +79,27 @@ class _PregoShimmerState()
   static const double _slideMin = -0.7;
   static const double _slideMax = 1.1;
 
+  static const Duration _fadeDuration = Duration(milliseconds: 200);
+
   late final AnimationController _slide = AnimationController.unbounded(vsync: this)..value = _slideMin;
 
-  late bool _visible = widget.appearDelay == Duration.zero;
+  late bool _visible = widget.appearDelay == Duration.zero && !widget.leaving;
   Timer? _appearTimer;
 
-  /// Nothing to sweep before the skeleton has faded in.
+  /// Held at 0 (but laid out, so nothing jumps) until the appear delay
+  /// elapses, then faded in. Explicit rather than implicit: an implicit
+  /// animation re-evaluates where it stands under a changed curve, so a
+  /// skeleton caught fading in would jump brighter as it starts to leave.
+  late final AnimationController _opacity = AnimationController(
+    vsync: this,
+    duration: _fadeDuration,
+    value: _visible ? 1 : 0,
+  );
+
+  /// Nothing to sweep before the skeleton has faded in, or once it has faded
+  /// out.
   @override
-  bool get motionEnabled => widget.enabled && _visible;
+  bool get motionEnabled => widget.enabled && _visible && !_opacity.isDismissed;
 
   @override
   void startMotion() {
@@ -94,7 +116,11 @@ class _PregoShimmerState()
   @override
   void initState() {
     super.initState();
-    if (!_visible) _scheduleAppear();
+    _opacity.addStatusListener((status) {
+      // Faded out after leaving: nothing is left to sweep.
+      if (status.isDismissed) syncMotion();
+    });
+    if (!_visible && !widget.leaving) _scheduleAppear();
   }
 
   void _scheduleAppear() {
@@ -102,6 +128,7 @@ class _PregoShimmerState()
     _appearTimer = Timer(widget.appearDelay, () {
       if (!mounted) return;
       setState(() => _visible = true);
+      _opacity.forward();
       syncMotion();
     });
   }
@@ -110,10 +137,18 @@ class _PregoShimmerState()
   void didUpdateWidget(PregoShimmer oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.period != widget.period) _slide.stop();
-    if (oldWidget.appearDelay != widget.appearDelay && !_visible) {
+    if (widget.leaving && !oldWidget.leaving) {
+      _appearTimer?.cancel();
+      // Eased over whatever opacity is left, never rising.
+      _opacity.animateBack(0, duration: _fadeDuration, curve: Curves.easeOut);
+    } else if (!widget.leaving && oldWidget.leaving && _visible) {
+      // Needed again before it was gone: back up from where it faded to.
+      _opacity.forward();
+    } else if (!widget.leaving && (oldWidget.leaving || oldWidget.appearDelay != widget.appearDelay) && !_visible) {
       if (widget.appearDelay == Duration.zero) {
         _appearTimer?.cancel();
         _visible = true;
+        _opacity.value = 1;
       } else {
         _scheduleAppear();
       }
@@ -124,6 +159,7 @@ class _PregoShimmerState()
   @override
   void dispose() {
     _appearTimer?.cancel();
+    _opacity.dispose();
     _slide.dispose();
     super.dispose();
   }
@@ -165,13 +201,7 @@ class _PregoShimmerState()
       );
     }
 
-    // Held invisible (but laid out, so nothing jumps) until the appear delay
-    // elapses, then faded in.
-    result = AnimatedOpacity(
-      opacity: _visible ? 1.0 : 0.0,
-      duration: const Duration(milliseconds: 200),
-      child: result,
-    );
+    result = FadeTransition(opacity: _opacity, child: result);
 
     final semanticLabel = widget.semanticLabel;
     if (semanticLabel == null) return result;
@@ -276,6 +306,9 @@ class const PregoSkeletonList({
 
   /// Announced to screen readers in place of the decorative rows.
   final String? semanticLabel,
+
+  /// See [PregoShimmer.leaving].
+  final bool leaving = false,
 }) extends StatelessWidget {
   /// Title-bar width fractions cycled across rows; the variation keeps the
   /// placeholder from reading as a striped pattern.
@@ -285,6 +318,7 @@ class const PregoSkeletonList({
   Widget build(BuildContext context) {
     return PregoShimmer(
       semanticLabel: semanticLabel,
+      leaving: leaving,
       child: Padding(
         padding: padding,
         child: Column(

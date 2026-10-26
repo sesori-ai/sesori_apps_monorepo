@@ -987,7 +987,10 @@ void main() {
         projectUpdates.add(const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
         await tester.pump();
         expect(tester.element(skeleton), same(first));
-        await tester.pump(const Duration(milliseconds: 600));
+        // Its 300 ms appearance delay, then its 200 ms fade in, timed from the
+        // frame after the delay.
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(const Duration(milliseconds: 300));
         expect(tester.element(skeleton), same(first));
 
         // Reaching it ends the start.
@@ -1007,9 +1010,10 @@ void main() {
         await tester.pump(const Duration(milliseconds: 100));
         final row = find.descendant(of: list, matching: find.text("Fix the build"));
         expect(tester.element(skeleton), same(first));
+        // Fading itself out.
         expect(
           tester
-              .widget<FadeTransition>(find.ancestor(of: skeleton, matching: find.byType(FadeTransition)).first)
+              .widget<FadeTransition>(find.descendant(of: skeleton, matching: find.byType(FadeTransition)))
               .opacity
               .value,
           inExclusiveRange(0, 1),
