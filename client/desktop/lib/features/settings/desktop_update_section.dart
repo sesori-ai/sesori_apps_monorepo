@@ -3,11 +3,8 @@ import "dart:async";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:theme_prego/module_prego.dart";
-
-import "../../core/external_link.dart";
 
 /// Renders [DesktopUpdateCubit]. "Restart to update" exits through
 /// [BridgeControlCubit], which owns every quit.
@@ -21,16 +18,6 @@ class const DesktopUpdateSection({super.key}) extends StatelessWidget {
       child: switch (update) {
         DesktopUpdateIdle() || DesktopUpdateManagedBySystem() => const _AutomaticUpdateRows(readyVersion: null),
         DesktopUpdateReady(:final version) => _AutomaticUpdateRows(readyVersion: version),
-        DesktopUpdateManualDownload(:final downloadsUri) => PregoGroupedRows(
-          children: [
-            PregoGroupedRow(
-              icon: TablerRegular.download,
-              title: Text(loc.desktopUpdatesViewDownloads),
-              subtitle: Text(loc.desktopUpdatesViewDownloadsDescription),
-              onTap: () => unawaited(openDesktopExternalLink(url: downloadsUri, mode: UrlLaunchMode.externalApp)),
-            ),
-          ],
-        ),
         DesktopUpdateUnavailable(reason: DesktopUpdateUnavailableReason.developmentBuild) => PregoGroupedRows(
           children: [
             PregoGroupedRow(

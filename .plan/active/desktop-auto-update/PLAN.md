@@ -153,8 +153,9 @@ Only one quit runs at a time, and nothing re-enters it.
 - **macOS:** `appcast.xml` per channel and CPU. Each item's enclosure is the
   already-published, checksum-verified GitHub release ZIP, with a `sparkle:edSignature`
   over its bytes. The CI script signs with Python `cryptography` Ed25519, so we need no
-  Sparkle `sign_update` binary in CI. The runner Info.plist carries `SUFeedURL` (set from
-  the compiled channel and CPU) and `SUPublicEDKey`.
+  Sparkle `sign_update` binary in CI. The runner Info.plist carries `SUPublicEDKey`; Dart
+  passes the feed URL (compiled channel and CPU) to the runner's `start` call, which stores it
+  for Sparkle's `feedURLString(for:)`.
 - **Velopack:** `vpk pack` output per channel and OS/CPU, with
   `releases.<channel>.json` plus `.sig`, and the full `.nupkg` on GCS. Dart fetches the
   feed and signature, verifies Ed25519 against the compiled key, and downloads the

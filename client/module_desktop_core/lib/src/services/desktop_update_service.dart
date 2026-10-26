@@ -35,6 +35,7 @@ class DesktopUpdateService._create({
   );
   Timer? _checkTimer;
   Future<void>? _runningCheck;
+  StreamSubscription<DesktopUpdateState>? _sparkleSubscription;
 
   DesktopInstallKind get installKind => _updateRepository.installKind;
 
@@ -46,8 +47,11 @@ class DesktopUpdateService._create({
 
   DesktopAutomaticUpdates get currentAutomaticUpdates => _automaticUpdates.value;
 
-  /// macOS has no engine that can check until Sparkle lands.
-  bool get _canCheck => switch (_updateRepository.installKind) {
+  bool get _canCheck => installKind != DesktopInstallKind.development;
+
+  /// Sparkle schedules its own background checks; the other engines share this
+  /// service's timer.
+  bool get _ownsCheckTimer => switch (installKind) {
     DesktopInstallKind.linuxPackage || DesktopInstallKind.velopack => true,
     DesktopInstallKind.macosSparkle || DesktopInstallKind.development => false,
   };
@@ -58,7 +62,19 @@ class DesktopUpdateService._create({
     } on Object catch (error, stackTrace) {
       logw("Failed to read the desktop automatic-updates preference; using enabled", error, stackTrace);
     }
+    if (installKind == DesktopInstallKind.macosSparkle) {
+      await _startSparkle();
+    }
     _scheduleBackgroundChecks();
+  }
+
+  Future<void> _startSparkle() async {
+    _sparkleSubscription = _updateRepository.sparkleDownloads.listen(_states.add);
+    try {
+      await _updateRepository.startSparkle(automaticChecks: _automaticUpdates.value.isEnabled);
+    } on Object catch (error, stackTrace) {
+      logw("Failed to start Sparkle; macOS updates stay idle", error, stackTrace);
+    }
   }
 
   Future<void> setAutomaticUpdates({required DesktopAutomaticUpdates preference}) async {
@@ -67,6 +83,9 @@ class DesktopUpdateService._create({
     }
     await _instanceRepository.writeAutomaticUpdates(preference: preference);
     _automaticUpdates.add(preference);
+    if (installKind == DesktopInstallKind.macosSparkle) {
+      await _updateRepository.setSparkleAutomaticChecks(enabled: preference.isEnabled);
+    }
     _scheduleBackgroundChecks();
   }
 
@@ -82,7 +101,12 @@ class DesktopUpdateService._create({
 
   Future<void> _check() async {
     try {
-      _states.add(await _updateRepository.check());
+      if (installKind == DesktopInstallKind.macosSparkle) {
+        // Sparkle reports a downloaded update on its own stream.
+        await _updateRepository.checkSparkle();
+      } else {
+        _states.add(await _updateRepository.check());
+      }
     } on Object catch (error, stackTrace) {
       logw("Failed to check for desktop updates", error, stackTrace);
     }
@@ -92,7 +116,7 @@ class DesktopUpdateService._create({
   void _scheduleBackgroundChecks() {
     _checkTimer?.cancel();
     _checkTimer = null;
-    if (!_canCheck || !_automaticUpdates.value.isEnabled) {
+    if (!_ownsCheckTimer || !_automaticUpdates.value.isEnabled) {
       return;
     }
     unawaited(check());
@@ -102,8 +126,7 @@ class DesktopUpdateService._create({
   /// Runs the install kind's restart-to-update step before the helper stops.
   Future<void> prepareRestartToUpdate() => switch (_updateRepository.installKind) {
     DesktopInstallKind.linuxPackage => _updateRepository.relaunchInstalledPackage(),
-    // Velopack applies after the helper stops, in applyDownloadedUpdate. The
-    // macOS engine arrives in a later step; until then it is never Ready.
+    // Velopack and Sparkle apply after the helper stops, in applyDownloadedUpdate.
     DesktopInstallKind.macosSparkle ||
     DesktopInstallKind.velopack ||
     DesktopInstallKind.development => Future<void>.value(),
@@ -111,16 +134,26 @@ class DesktopUpdateService._create({
 
   /// Runs after the helper stopped. A Ready Velopack install starts the
   /// updater, which installs the downloaded package silently once this process
-  /// exits and, with [restart], opens the new version.
+  /// exits and, with [restart], opens the new version. Sparkle installs on
+  /// normal termination by itself; with [restart] it installs now and relaunches.
   Future<void> applyDownloadedUpdate({required bool restart}) async {
-    if (_updateRepository.installKind == DesktopInstallKind.velopack && _states.value is DesktopUpdateReady) {
-      await _updateRepository.applyDownloadedUpdate(restart: restart);
+    if (_states.value is! DesktopUpdateReady) {
+      return;
+    }
+    switch (installKind) {
+      case DesktopInstallKind.velopack:
+        await _updateRepository.applyDownloadedUpdate(restart: restart);
+      case DesktopInstallKind.macosSparkle when restart:
+        await _updateRepository.installSparkleUpdateAndRelaunch();
+      case DesktopInstallKind.macosSparkle || DesktopInstallKind.linuxPackage || DesktopInstallKind.development:
+        return;
     }
   }
 
   @disposeMethod
   Future<void> dispose() async {
     _checkTimer?.cancel();
+    await _sparkleSubscription?.cancel();
     await _automaticUpdates.close();
     await _states.close();
   }

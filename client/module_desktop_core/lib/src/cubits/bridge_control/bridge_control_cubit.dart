@@ -202,22 +202,28 @@ class BridgeControlCubit._create({
           unawaited(hideWindow());
           return;
         }
-        if (_logoutStatus.locksBridgeControls) {
-          _quitAfterActivity = true;
-          return;
-        }
-        switch (_activity) {
-          case BridgeControlActivity.idle:
-            unawaited(quit());
-          case BridgeControlActivity.toggling:
-            _quitAfterActivity = true;
-          case BridgeControlActivity.signingOut:
-            _quitAfterActivity = true;
-          case BridgeControlActivity.configuringLaunchAtLogin:
-            _quitAfterActivity = true;
-          case BridgeControlActivity.quitting:
-            return;
-        }
+        _quitWhenIdle();
+      case WindowHostEvent.quitRequested:
+        _quitWhenIdle();
+    }
+  }
+
+  /// Quits now, or after the running lifecycle operation; a running quit
+  /// already covers the request.
+  void _quitWhenIdle() {
+    if (_logoutStatus.locksBridgeControls) {
+      _quitAfterActivity = true;
+      return;
+    }
+    switch (_activity) {
+      case BridgeControlActivity.idle:
+        unawaited(quit());
+      case BridgeControlActivity.toggling ||
+          BridgeControlActivity.signingOut ||
+          BridgeControlActivity.configuringLaunchAtLogin:
+        _quitAfterActivity = true;
+      case BridgeControlActivity.quitting:
+        return;
     }
   }
 
@@ -226,7 +232,7 @@ class BridgeControlCubit._create({
     _rebuildMenu();
     if (!status.locksBridgeControls && _activity == BridgeControlActivity.idle && _quitAfterActivity) {
       _quitAfterActivity = false;
-      _onWindowEvent(event: WindowHostEvent.closeRequested);
+      _quitWhenIdle();
     }
   }
 
@@ -245,7 +251,7 @@ class BridgeControlCubit._create({
         _rebuildMenu();
         if (_quitAfterActivity) {
           _quitAfterActivity = false;
-          _onWindowEvent(event: WindowHostEvent.closeRequested);
+          _quitWhenIdle();
         }
       }
     }
@@ -314,7 +320,7 @@ class BridgeControlCubit._create({
         _rebuildMenu();
         if (_quitAfterActivity) {
           _quitAfterActivity = false;
-          _onWindowEvent(event: WindowHostEvent.closeRequested);
+          _quitWhenIdle();
         }
       }
     }
@@ -352,7 +358,7 @@ class BridgeControlCubit._create({
         _rebuildMenu();
         if (_quitAfterActivity) {
           _quitAfterActivity = false;
-          _onWindowEvent(event: WindowHostEvent.closeRequested);
+          _quitWhenIdle();
         }
       }
     }
@@ -381,7 +387,7 @@ class BridgeControlCubit._create({
         _rebuildMenu();
         if (_quitAfterActivity) {
           _quitAfterActivity = false;
-          _onWindowEvent(event: WindowHostEvent.closeRequested);
+          _quitWhenIdle();
         }
       }
     }
@@ -438,10 +444,11 @@ class BridgeControlCubit._create({
       logw("Failed to dispose the desktop window host during quit", error, stackTrace);
     }
     await flushLogs(timeout: const Duration(seconds: 2));
-    _applicationTerminator.terminate(exitCode: 0);
+    _applicationTerminator.terminate();
   }
 
   void _markQuitFailed() {
+    _applicationTerminator.cancelTermination();
     if (!isClosed) {
       _activity = BridgeControlActivity.idle;
       _rebuildMenu();
