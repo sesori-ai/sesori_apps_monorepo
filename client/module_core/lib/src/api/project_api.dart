@@ -45,7 +45,6 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
         projectId: projectId,
         start: null,
         limit: null,
-        waitForPrData: false,
       ),
     );
   }

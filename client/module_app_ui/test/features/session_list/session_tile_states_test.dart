@@ -9,7 +9,7 @@ import "package:theme_prego/module_prego.dart";
 
 /// A session row is the harness logo, the title with its status mark after it
 /// and when it last changed, over a tertiary meta line: any state that needs
-/// words, then project and pull request.
+/// words, then the project.
 ///
 /// A working row twinkles on an infinite repeating animation, so these tests
 /// pump fixed durations and never `pumpAndSettle` — it would pump to its
@@ -79,22 +79,6 @@ void main() {
 
   final colors = PregoDesignSystem.light.colors;
   final now = DateTime.now().millisecondsSinceEpoch;
-
-  PullRequestInfo pullRequest({
-    required PrState state,
-    PrMergeableStatus mergeableStatus = PrMergeableStatus.mergeable,
-    PrReviewDecision reviewDecision = PrReviewDecision.unknown,
-    PrCheckStatus checkStatus = PrCheckStatus.none,
-    int number = 42,
-  }) => PullRequestInfo(
-    number: number,
-    url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/$number",
-    title: "Add project search",
-    state: state,
-    mergeableStatus: mergeableStatus,
-    reviewDecision: reviewDecision,
-    checkStatus: checkStatus,
-  );
 
   // Every state on both apps: the mark follows the title, and the time stays.
   for (final pointer in [false, true]) {
@@ -270,7 +254,7 @@ void main() {
     expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
 
     // Nothing at all for the meta line: it still holds its height, so a row
-    // never jumps when a project or pull request arrives.
+    // never jumps when a project or a state label arrives.
     await pumpTile(
       tester,
       tile(
@@ -323,81 +307,19 @@ void main() {
     semantics.dispose();
   });
 
-  testWidgets("the pull request follows the project on the meta line", (tester) async {
-    final session = testSession(title: "My Session").copyWith(pullRequest: pullRequest(state: PrState.open));
-
-    await pumpTile(tester, tile(session: session, projectLabel: "demo-app"));
-
-    expect(tester.getTopRight(find.text("demo-app")).dx, lessThan(tester.getTopLeft(find.text("PR #42")).dx));
-    expect(find.text(" · "), findsOneWidget);
-    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
-  });
-
-  testWidgets("a pull request alone leads the meta line without a separator", (tester) async {
-    final session = testSession(title: "My Session").copyWith(pullRequest: pullRequest(state: PrState.open));
-
-    await pumpTile(tester, tile(session: session));
-
-    expect(find.text("PR #42"), findsOneWidget);
-    expect(find.text(" · "), findsNothing);
-  });
-
-  // GitHub's glyph and colour for each state, and no word for it.
-  for (final (state, icon, color, label, word) in [
-    (PrState.open, TablerRegular.git_pull_request, colors.fgSuccessPrimary, "Pull request open", "Open"),
-    (PrState.merged, TablerRegular.git_merge, const Color(0xFFA371F7), "Pull request merged", "Merged"),
-    (PrState.closed, TablerRegular.git_pull_request_closed, colors.fgErrorPrimary, "Pull request closed", "Closed"),
-  ]) {
-    testWidgets("a ${state.name} pull request shows its own glyph and colour and says nothing more", (tester) async {
-      final semantics = tester.ensureSemantics();
-      final session = testSession(title: "My Session").copyWith(pullRequest: pullRequest(state: state));
-
-      await pumpTile(tester, tile(session: session));
-
-      final glyph = find.descendant(of: find.byType(PrStatusRow), matching: find.byIcon(icon));
-      expect(tester.widget<Icon>(glyph).color, color);
-      expect(find.text("PR #42"), findsOneWidget);
-      expect(find.text(word), findsNothing);
-      expect(find.bySemanticsLabel(RegExp(label)), findsOneWidget);
-      semantics.dispose();
-    });
-  }
-
-  testWidgets("an open pull request with conflicts adds a red warning", (tester) async {
-    final session =
-        testSession(
-          title: "My Session",
-        ).copyWith(
-          pullRequest: pullRequest(state: PrState.open, mergeableStatus: PrMergeableStatus.conflicting),
-        );
-
-    await pumpTile(tester, tile(session: session));
-
-    final warning = find.descendant(of: find.byType(PrStatusRow), matching: find.byIcon(TablerRegular.alert_triangle));
-    expect(tester.widget<Icon>(warning).color, colors.fgErrorPrimary);
-    expect(find.byIcon(TablerRegular.git_pull_request), findsOneWidget);
-  });
-
-  testWidgets("a long project name leaves the pull request its full width", (tester) async {
-    tester.view.physicalSize = const Size(390, 800);
-    tester.view.devicePixelRatio = 1.0;
-    addTearDown(tester.view.reset);
-
-    final session = testSession(title: "My Session").copyWith(
-      pullRequest: pullRequest(
-        state: PrState.open,
-        number: 1631,
-        reviewDecision: PrReviewDecision.reviewRequired,
-        checkStatus: PrCheckStatus.pending,
+  testWidgets("a state label and the project follow each other across a middle dot", (tester) async {
+    await pumpTile(
+      tester,
+      tile(
+        session: testSession(title: "My Session"),
+        projectLabel: "demo-app",
+        awaitingInput: true,
       ),
     );
 
-    await pumpTile(tester, tile(session: session, projectLabel: "a-very-long-project-name-for-a-phone-row"));
-
-    // The status row clips only when squeezed below its own width.
-    final row = find.byType(PrStatusRow);
-    final content = find.descendant(of: row, matching: find.byType(Row)).first;
-    expect(tester.getSize(row).width, greaterThanOrEqualTo(tester.getSize(content).width));
+    expect(tester.getTopRight(find.text("Waiting")).dx, lessThan(tester.getTopLeft(find.text("demo-app")).dx));
+    expect(find.text(" · "), findsOneWidget);
+    expect(tester.getSize(find.byType(SessionTile)).height, rowHeight);
   });
 
   testWidgets("a full meta line fits the narrow landscape split pane", (tester) async {
@@ -405,17 +327,9 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final session = testSession(title: "My Session", updatedAt: now).copyWith(
-      pullRequest: pullRequest(
-        state: PrState.open,
-        number: 483,
-        mergeableStatus: PrMergeableStatus.conflicting,
-        reviewDecision: PrReviewDecision.changesRequested,
-        checkStatus: PrCheckStatus.failure,
-      ),
-    );
+    final session = testSession(title: "My Session", updatedAt: now);
 
-    await pumpTile(tester, tile(session: session, projectLabel: "demo-app", awaitingInput: true));
+    await pumpTile(tester, tile(session: session, projectLabel: "a-very-long-project-name", awaitingInput: true));
 
     expect(tester.takeException(), isNull);
   });
@@ -427,15 +341,7 @@ void main() {
     tester.view.devicePixelRatio = 1.0;
     addTearDown(tester.view.reset);
 
-    final session = testSession(title: "My Session", updatedAt: now).copyWith(
-      pullRequest: pullRequest(
-        state: PrState.open,
-        number: 483,
-        mergeableStatus: PrMergeableStatus.conflicting,
-        reviewDecision: PrReviewDecision.changesRequested,
-        checkStatus: PrCheckStatus.failure,
-      ),
-    );
+    final session = testSession(title: "My Session", updatedAt: now);
 
     await pumpTile(tester, tile(session: session, projectLabel: "demo-app", awaitingInput: true));
 

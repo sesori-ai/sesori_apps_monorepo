@@ -1743,25 +1743,6 @@
   },
   "sessionListDeleteFailed": "Failed to delete session",
   "sessionListArchiveFailed": "Failed to archive session",
-  "prLabel": "PR #{number}",
-  "@prLabel": {
-    "placeholders": {
-      "number": {
-        "type": "int"
-      }
-    }
-  },
-  "prStateOpen": "Pull request open",
-  "prStateMerged": "Pull request merged",
-  "prStateClosed": "Pull request closed",
-  "prStateUnknown": "Pull request",
-  "prReviewApproved": "Approved",
-  "prReviewChangesRequested": "Changes requested",
-  "prReviewRequired": "Review required",
-  "prChecksSuccess": "Checks passing",
-  "prChecksFailing": "Checks failing",
-  "prChecksPending": "Checks pending",
-  "prConflicting": "Has merge conflicts",
   "diffPermissionRequestTitle": "Allow this action?",
   "diffPermissionReject": "Don’t allow",
   "diffPermissionOnce": "Allow",
