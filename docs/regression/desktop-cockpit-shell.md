@@ -186,8 +186,8 @@ The main pane hosts one full-width routed page.
   floating glass bar and one full-width transcript and composer.
 - Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
   else the newest session's project), as `session-creation-and-options.md` details: the project holds once it
-  lands, another filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank,
-  and with no default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there
+  lands, another filter or a header pick moves it with its own draft, a still-loading list keeps the loader up
+  until it names the project or finishes loading, and with no default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there
   are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". After
   the bridge connects, the composer appears at its final layout at once, with the parts still loading
   shimmering in place, and its heading never moves as they fill in. A session started from home opens in its
@@ -209,8 +209,8 @@ The main pane hosts one full-width routed page.
 - Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
   menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
   computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
-  state. The body cross-fades between the composer and the loader or another status page, as when a switch loads the
-  next computer's projects and lands on its composer. Each kind of status page (the loader, a failure, recovery,
+  state. The body cross-fades over 220 ms between the composer and the loader or another status page, as when a
+  switch loads the next computer's projects and lands on its composer. Each kind of status page (the loader, a failure, recovery,
   offline) cross-fades into the next, while one whose own content changes, such as the slow-start line appearing
   under the loader, stays put. While the new computer's home project is still loading the loader holds, so it fades
   straight into the composer. Every body stays in place over the pane's one background, so nothing dims mid-fade;
