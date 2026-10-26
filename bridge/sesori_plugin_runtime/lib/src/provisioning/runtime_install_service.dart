@@ -214,10 +214,21 @@ class RuntimeInstallService({
             versionDir: versionDir,
             binaryFileName: binaryFileName,
             archiveBinaryName: asset.archiveBinaryName,
+            startAborted: startAborted,
           );
         case ArchiveRuntimeAsset(layout: RuntimeArchiveLayout.singleBinary) || DirectBinaryRuntimeAsset():
-          await _placeBinary(binaryInStaging: binaryInStaging, versionDir: versionDir, binaryFileName: binaryFileName);
+          await _placeBinary(
+            binaryInStaging: binaryInStaging,
+            versionDir: versionDir,
+            binaryFileName: binaryFileName,
+            startAborted: startAborted,
+          );
       }
+      // Placement can wait on Windows rename retries, so fence again before
+      // the sentinel activates the placed copy.
+      _throwIfAborted(startAborted);
+      await revalidateManagedMutation();
+      _throwIfAborted(startAborted);
 
       // Sentinel written last: its presence (with a matching hash) is the only
       // signal isInstalled() trusts, so a crash before this point is redone.
@@ -285,6 +296,7 @@ class RuntimeInstallService({
     required File binaryInStaging,
     required String versionDir,
     required String binaryFileName,
+    required StartAbortSignal startAborted,
   }) async {
     final Directory dir = Directory(versionDir);
     if (dir.existsSync()) {
@@ -296,7 +308,7 @@ class RuntimeInstallService({
     // normalizes a target-triple-named member to a plain binary.
     final File canonicalBinary = File(p.join(versionDir, binaryFileName));
     canonicalBinary.parent.createSync(recursive: true);
-    await _renameWithRetry(entity: binaryInStaging, newPath: canonicalBinary.path);
+    await _renameWithRetry(entity: binaryInStaging, newPath: canonicalBinary.path, startAborted: startAborted);
   }
 
   /// Places an entire extracted package tree at [versionDir], keeping the entry
@@ -309,6 +321,7 @@ class RuntimeInstallService({
     required String versionDir,
     required String binaryFileName,
     required String archiveBinaryName,
+    required StartAbortSignal startAborted,
   }) async {
     final String normalizedArchiveBinaryName = p.normalize(archiveBinaryName);
     final String normalizedBinaryFileName = p.normalize(binaryFileName);
@@ -324,11 +337,15 @@ class RuntimeInstallService({
     }
     dir.parent.createSync(recursive: true);
     // Same filesystem (both under managedDir), so this rename is atomic.
-    await _renameWithRetry(entity: packageInStaging, newPath: versionDir);
+    await _renameWithRetry(entity: packageInStaging, newPath: versionDir, startAborted: startAborted);
     if (normalizedArchiveBinaryName != normalizedBinaryFileName) {
       final File canonicalBinary = File(p.join(versionDir, normalizedBinaryFileName));
       canonicalBinary.parent.createSync(recursive: true);
-      File(p.join(versionDir, normalizedArchiveBinaryName)).renameSync(canonicalBinary.path);
+      await _renameWithRetry(
+        entity: File(p.join(versionDir, normalizedArchiveBinaryName)),
+        newPath: canonicalBinary.path,
+        startAborted: startAborted,
+      );
     }
   }
 
@@ -336,15 +353,20 @@ class RuntimeInstallService({
   /// just-validated executable open, so renaming it or its directory fails
   /// with access denied. Retry there for a few seconds; elsewhere an access
   /// error is a real permission problem and fails at once.
-  Future<void> _renameWithRetry({required FileSystemEntity entity, required String newPath}) async {
+  Future<void> _renameWithRetry({
+    required FileSystemEntity entity,
+    required String newPath,
+    required StartAbortSignal startAborted,
+  }) async {
     for (var attempt = 1; ; attempt++) {
       try {
         entity.renameSync(newPath);
         return;
-      } on PathAccessException catch (error) {
+      } on PathAccessException catch (error, stackTrace) {
         if (!Platform.isWindows || attempt >= _windowsRenameAttempts) rethrow;
-        Log.d("[$_runtimeId] rename of '${entity.path}' denied (attempt $attempt), retrying: ${error.toString()}");
+        Log.w("[$_runtimeId] rename of '${entity.path}' denied (attempt $attempt), retrying", error, stackTrace);
         await Future<void>.delayed(_windowsRenameRetryDelay);
+        _throwIfAborted(startAborted);
       }
     }
   }

@@ -230,7 +230,7 @@ void main() {
     expect(events.last, isA<ProvisionReady>());
     expect((events.last as ProvisionReady).binaryPath, binaryPath);
     expect(File(binaryPath).existsSync(), isTrue);
-    expect(authority.checks, 6, reason: "before cleanup, scratch work, validation, activation, and cleanup");
+    expect(authority.checks, 7, reason: "before cleanup, scratch work, validation, placement, activation, and cleanup");
   });
 
   test("PATH authority is revalidated before cleanup or download", () async {
