@@ -298,8 +298,8 @@ variant, and worktree mode, and creating the session with its first input.
   is missing. That folder is stored as the session directory. There is no
   repository to branch from, so a dedicated-worktree request is ignored: no
   worktree, branch, or base commit is recorded, and the backend receives no
-  worktree system context. The bridge does not register the scratch project
-  yet, so no client can reach this path.
+  worktree system context. The scratch project is the "No project" project
+  described in `projects-and-sessions.md`.
 - Base-branch refresh skips fetching when the repository has no `origin`, so
   local-only Git projects can create dedicated worktrees without a fetch warning.
   A configured origin that cannot be fetched still logs the failure and uses

@@ -1,6 +1,8 @@
 import "dart:async";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/services/project_activity_service.dart";
 import "package:sesori_bridge/src/services/project_initialization_service.dart";
@@ -122,6 +124,18 @@ void main() {
       ]);
     });
 
+    test("refuses to hide the No project project", () async {
+      final fixture = _Fixture();
+
+      await expectLater(
+        fixture.service.hideProject(projectId: "/scratch/"),
+        throwsA(isA<ScratchProjectHideRefusedException>()),
+      );
+      await fixture.service.hideProject(projectId: "/scratch/2026-10-25-abc");
+
+      expect(fixture.projects.hideCalls, ["/scratch/2026-10-25-abc"]);
+    });
+
     test("a failed workflow releases the FIFO for later work", () async {
       final fixture = _Fixture();
       final failure = StateError("Git setup failed");
@@ -152,6 +166,7 @@ class _Fixture() {
     projectInitializationService: initialization,
     projectActivityService: activity,
     projectRepository: projects,
+    projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
   );
 }
 

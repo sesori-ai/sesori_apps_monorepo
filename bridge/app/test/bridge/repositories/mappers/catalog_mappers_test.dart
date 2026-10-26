@@ -20,7 +20,7 @@ void main() {
     );
 
     expect(
-      mapper.mapSummary(row: base, hasUnseenChanges: true, directoryMissing: true),
+      mapper.mapSummary(row: base, hasUnseenChanges: true, directoryMissing: true, kind: ProjectKind.scratch),
       const ProjectSummary(
         id: "project-1",
         name: "repository",
@@ -28,11 +28,17 @@ void main() {
         time: ProjectTime(created: 10, updated: 20),
         hasUnseenChanges: true,
         directoryMissing: true,
+        kind: ProjectKind.scratch,
       ),
     );
     expect(
       mapper
-          .mapSummary(row: base.copyWith(displayName: "Renamed"), hasUnseenChanges: false, directoryMissing: false)
+          .mapSummary(
+            row: base.copyWith(displayName: "Renamed"),
+            hasUnseenChanges: false,
+            directoryMissing: false,
+            kind: ProjectKind.folder,
+          )
           .name,
       "Renamed",
     );

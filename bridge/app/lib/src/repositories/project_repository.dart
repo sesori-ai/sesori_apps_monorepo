@@ -4,7 +4,7 @@ import "dart:math" show max;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show Project, ProjectSummary, ProjectTime;
+import "package:sesori_shared/sesori_shared.dart" show Project, ProjectKind, ProjectSummary, ProjectTime;
 
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
@@ -47,6 +47,10 @@ class ProjectRepository({
           row: row,
           hasUnseenChanges: unseenById[row.projectId] ?? false,
           directoryMissing: directoryMissing[index],
+          // Keyed on the row's stable id rather than its path.
+          kind: _projectCatalogIdentityCalculator.isScratchRoot(path: row.projectId)
+              ? ProjectKind.scratch
+              : ProjectKind.folder,
         ),
     ];
   }

@@ -447,6 +447,143 @@ void main() {
       expect(await database.projectsDao.getCatalogProjects(), isEmpty);
     });
 
+    group("scratch folders", () {
+      const folderA = "/scratch/2026-10-25-a";
+      const folderB = "/scratch/2026-10-25-b";
+
+      Future<void> insertNoProjectRow() => database.projectsDao.insertProjectIfMissing(
+        projectId: "/scratch",
+        path: "/scratch",
+        hidden: false,
+        displayName: "No project",
+      );
+
+      Future<SessionDto?> binding({required BridgePluginApi plugin, required String backendSessionId}) =>
+          database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: backendSessionId);
+
+      test("a native per-folder project is not published and its sessions bind to No project", () async {
+        await insertNoProjectRow();
+        final plugin = _NativeImportPlugin(
+          projects: const [
+            PluginProject(id: "native-a", directory: folderA, name: "2026-10-25-a"),
+            PluginProject(id: "native-b", directory: folderB, name: "2026-10-25-b"),
+          ],
+          rootsByProject: {
+            folderA: [_pluginSession(id: "root-a", directory: folderA)],
+            folderB: [_pluginSession(id: "root-b", directory: folderB)],
+          },
+          childrenByParent: {
+            "root-a": [_pluginSession(id: "child-a", directory: folderA)],
+          },
+        );
+
+        final completed = await _importCompletion(database: database, plugin: plugin);
+
+        expect(completed.newItems, const CatalogImportNewItems(projects: 0, sessions: 3));
+        final projects = await database.projectsDao.getAllProjects();
+        expect(projects.map((project) => project.projectId), ["/scratch"]);
+        expect(projects.single.path, "/scratch");
+        expect(projects.single.hidden, isFalse);
+        expect(projects.single.displayName, "No project");
+        for (final id in ["root-a", "root-b", "child-a"]) {
+          expect(
+            (await binding(plugin: plugin, backendSessionId: id))?.projectId,
+            "/scratch",
+            reason: id,
+          );
+        }
+        expect((await binding(plugin: plugin, backendSessionId: "root-b"))?.directory, folderB);
+      });
+
+      test("without the No project row, scratch sessions stay out and the rest imports", () async {
+        final projectPath = "${directory.path}/project";
+        final plugin = _NativeImportPlugin(
+          projects: [
+            const PluginProject(id: "native-a", directory: folderA),
+            PluginProject(id: "ordinary", directory: projectPath),
+          ],
+          rootsByProject: {
+            folderA: [_pluginSession(id: "root-a", directory: folderA)],
+            projectPath: [_pluginSession(id: "ordinary-root", directory: projectPath)],
+          },
+          childrenByParent: {
+            "root-a": [_pluginSession(id: "child-a", directory: folderA)],
+          },
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect((await database.projectsDao.getAllProjects()).map((project) => project.projectId), ["ordinary"]);
+        expect(await binding(plugin: plugin, backendSessionId: "root-a"), isNull);
+        expect(await binding(plugin: plugin, backendSessionId: "child-a"), isNull);
+        expect((await binding(plugin: plugin, backendSessionId: "ordinary-root"))?.projectId, "ordinary");
+      });
+
+      test("a bridge-derived session inside the root binds to No project", () async {
+        await insertNoProjectRow();
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "${directory.path}/launch",
+          sessions: [_pluginSession(id: "derived-root", directory: folderB)],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals(["/scratch", "${directory.path}/launch"]),
+        );
+        expect((await binding(plugin: plugin, backendSessionId: "derived-root"))?.projectId, "/scratch");
+      });
+
+      test("a bridge-derived plugin launched from a scratch folder still imports", () async {
+        await insertNoProjectRow();
+        final projectPath = "${directory.path}/project";
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: folderA,
+          sessions: [
+            _pluginSession(id: "scratch-root", directory: folderA),
+            _pluginSession(id: "ordinary-root", directory: projectPath),
+          ],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals(["/scratch", projectPath]),
+        );
+        expect((await binding(plugin: plugin, backendSessionId: "scratch-root"))?.projectId, "/scratch");
+        expect((await binding(plugin: plugin, backendSessionId: "ordinary-root"))?.projectId, projectPath);
+      });
+
+      test("a plugin that lists only known directories finds its scratch sessions", () async {
+        await insertNoProjectRow();
+        await database.sessionDao.upsertSessionRows(
+          rows: [
+            _sessionRow(
+              sessionId: "ses_scratch",
+              backendSessionId: "scratch-root",
+              projectId: "/scratch",
+              directory: folderA,
+              pluginId: "derived",
+              projectionUpdatedAt: 1,
+            ),
+          ],
+        );
+        final plugin = _KnownDirectoriesOnlyPlugin(
+          launchDirectory: "${directory.path}/launch",
+          sessions: [_pluginSession(id: "scratch-root", directory: folderA, title: "Scratch work")],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(plugin.knownDirectories, contains(folderA));
+        final row = await binding(plugin: plugin, backendSessionId: "scratch-root");
+        expect(row?.projectId, "/scratch");
+        expect(row?.catalogTitle, "Scratch work");
+      });
+    });
+
     test("native import gives an exact project id precedence during a move", () async {
       final oldPath = "${directory.path}/old";
       final movedPath = "${directory.path}/moved";
@@ -1564,4 +1701,18 @@ class _DerivedImportPlugin({
   this : super(id: "derived", allSessions: sessions);
 
   Set<String>? get knownDirectories => receivedKnownDirectories;
+}
+
+/// Lists only sessions in a directory it was told about, as Pi's project-local
+/// storage and ACP agents without an unfiltered `session/list` do.
+class _KnownDirectoriesOnlyPlugin({required super.launchDirectory, required super.sessions})
+    extends _DerivedImportPlugin {
+  @override
+  Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
+    final sessions = await super.listAllSessions(knownDirectories: knownDirectories);
+    return [
+      for (final session in sessions)
+        if (knownDirectories.contains(session.directory)) session,
+    ];
+  }
 }
