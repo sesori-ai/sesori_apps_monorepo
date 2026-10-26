@@ -78,10 +78,18 @@ const double _optionsBottomPadding = PregoSpacing.md;
 /// composer moves to the bottom while the page around it cross-fades (D8).
 const _sendingMotionDuration = Duration(milliseconds: 240);
 
+/// Where the page keeps whether its composer last showed options, for the
+/// composer of the next project picked in its place.
+const _optionsShownStorageId = "new_session_options_shown";
+
 class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProviderStateMixin {
   /// Null until the stored choice loads; the toggle stays hidden until then.
   bool? _chosenDedicatedWorktree;
   bool get _dedicatedWorktree => _chosenDedicatedWorktree ?? true;
+
+  /// Whether the options showed when this composer last built; while the
+  /// project is checked again they hold that place.
+  late bool _optionsShown;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
 
@@ -110,6 +118,13 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       duration: _sendingMotionDuration,
       value: context.read<NewSessionCubit>().state.phase is NewSessionPhaseSending ? 1 : 0,
     )..addStatusListener((_) => setState(() {}));
+    // Picking another project builds a new composer in this one's place, so
+    // it starts with the options where the last one left them. A page's
+    // first composer holds the worktree row's room, which most projects fill.
+    _optionsShown = switch (PageStorage.maybeOf(context)?.readState(context, identifier: _optionsShownStorageId)) {
+      final bool shown => shown,
+      _ => true,
+    };
     // The row stays hidden until the project's worktree support is known,
     // which comes from the bridge, so the stored choice lands before it shows.
     unawaited(
@@ -240,8 +255,8 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   }
 
   /// The option below the header: whether the session gets a worktree of its
-  /// own. While the project is still being checked its row keeps its height,
-  /// so the toggle appearing does not shift the page.
+  /// own. While the project is still being checked the options hold the
+  /// place they last had, so nothing shifts until the answer arrives.
   ///
   /// With no harness there is nothing for the option to shape — no session
   /// can start. Say why when the bridge answered that itself; when discovery
@@ -250,17 +265,16 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   Widget? _buildOptions({required NewSessionCubit cubit, required AgentModelData? data}) {
     if (cubit.hasNoHarnesses) return NewSessionNoHarnessNotice(onSettingsPressed: widget.onOpenHarnessSettings);
     if (cubit.needsHarnessDiscovery) return null;
+    void choose(bool value) => setState(() => _chosenDedicatedWorktree = value);
     return switch (data?.projectWorktreeCapability) {
-      // The stored choice is still loading: hold the row's height so the
+      // Until the stored choice loads the row holds its room empty, so the
       // toggle never appears on and then flips off.
-      NewSessionProjectWorktreeCapability.supported when _chosenDedicatedWorktree == null => const SizedBox(
-        height: _DedicatedWorkspaceRow.height,
-      ),
       NewSessionProjectWorktreeCapability.supported => _DedicatedWorkspaceRow(
-        value: _dedicatedWorktree,
-        onChanged: (value) => setState(() => _chosenDedicatedWorktree = value),
+        value: _chosenDedicatedWorktree,
+        onChanged: choose,
       ),
-      NewSessionProjectWorktreeCapability.loading || null => const SizedBox(height: _DedicatedWorkspaceRow.height),
+      NewSessionProjectWorktreeCapability.loading ||
+      null => _optionsShown ? _DedicatedWorkspaceRow(value: null, onChanged: choose) : null,
       NewSessionProjectWorktreeCapability.unsupported || NewSessionProjectWorktreeCapability.unavailable => null,
     };
   }
@@ -355,8 +369,20 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       spacing: PregoSpacing.lg,
                       children: [
-                        fadingIdle(header),
-                        if (options != null) fadingIdle(options),
+                        fadingIdle(
+                          Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              header,
+                              _AnimatedOptions(
+                                key: const Key("new_session_options"),
+                                gap: PregoSpacing.lg,
+                                options: options,
+                              ),
+                            ],
+                          ),
+                        ),
                         if (isSending) SizedBox(height: composerHeight) else ?composer,
                       ],
                     ),
@@ -563,6 +589,8 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
       null => null,
     };
     final options = _buildOptions(cubit: cubit, data: composerData);
+    _optionsShown = options != null;
+    PageStorage.maybeOf(context)?.writeState(context, _optionsShown, identifier: _optionsShownStorageId);
     // Typing never waits on options; only sending waits on what it needs.
     final notice = _buildBlockedNotice(cubit: cubit);
     // A notice hides the composer rather than replacing it, so staged images,
@@ -685,6 +713,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     );
     if (chromePage != null) return listening(child: chromePage);
 
+    final headerShown = !_composerFocused || MediaQuery.viewInsetsOf(context).bottom == 0;
     return listening(
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
@@ -731,12 +760,15 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
-                        spacing: _optionRowSpacing,
                         children: [
                           // The keyboard leaves this pane a few rows tall;
                           // they belong to the options being typed against.
-                          if (!_composerFocused || MediaQuery.viewInsetsOf(context).bottom == 0) header,
-                          ?options,
+                          if (headerShown) header,
+                          _AnimatedOptions(
+                            key: const Key("new_session_options"),
+                            gap: headerShown ? _optionRowSpacing : 0,
+                            options: options,
+                          ),
                         ],
                       ),
                     ),
@@ -800,10 +832,43 @@ class _ComposerSurfaceStyleOwnerState() extends State<_ComposerSurfaceStyleOwner
   }
 }
 
+/// The options under the header, with the [gap] above them. They open as they
+/// fade in and fold away as they fade out, so the composer below glides
+/// rather than jumps as a project's answer adds or removes them. A first
+/// build shows them as they are, and reduced motion changes them at once.
+class const _AnimatedOptions({super.key, required final double gap, required final Widget? options})
+    extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    return AnimatedSwitcher(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionReverseCurve,
+      transitionBuilder: (child, animation) => SizeTransition(
+        sizeFactor: animation,
+        alignment: Alignment.topCenter,
+        child: FadeTransition(
+          opacity: animation,
+          child: Padding(
+            padding: EdgeInsetsDirectional.only(top: gap),
+            // As wide as the column, as the options were before they moved.
+            child: SizedBox(width: double.infinity, child: child),
+          ),
+        ),
+      ),
+      child: options,
+    );
+  }
+}
+
 /// Whether the session gets a git worktree of its own instead of working in
 /// the project checkout everyone shares.
-class const _DedicatedWorkspaceRow({required final bool value, required final ValueChanged<bool> onChanged})
-    extends StatelessWidget {
+class const _DedicatedWorkspaceRow({
+  /// Null holds the row's room empty while the project is checked or the
+  /// stored choice loads; the row fades in once both are known.
+  required final bool? value,
+  required final ValueChanged<bool> onChanged,
+}) extends StatelessWidget {
   static const double height = 28;
 
   @override
@@ -812,36 +877,45 @@ class const _DedicatedWorkspaceRow({required final bool value, required final Va
 
     return SizedBox(
       height: height,
-      // The label names what the switch does, so they must reach a screen
-      // reader as one control rather than as stray text beside a bare toggle.
-      child: MergeSemantics(
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(TablerRegular.git_branch, size: PregoIconSize.sm, color: prego.colors.textTertiary),
-            SizedBox(width: prego.spacing.xs),
-            Flexible(
-              child: Padding(
-                padding: EdgeInsetsDirectional.only(end: prego.spacing.sm),
-                child: Text(
-                  context.loc.newSessionDedicatedWorkspace,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+      child: AnimatedSwitcher(
+        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+        switchInCurve: transcriptMotionCurve,
+        switchOutCurve: transcriptMotionReverseCurve,
+        child: switch (value) {
+          null => null,
+          // The label names what the switch does, so they must reach a screen
+          // reader as one control rather than as stray text beside a bare
+          // toggle.
+          final value => MergeSemantics(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(TablerRegular.git_branch, size: PregoIconSize.sm, color: prego.colors.textTertiary),
+                SizedBox(width: prego.spacing.xs),
+                Flexible(
+                  child: Padding(
+                    padding: EdgeInsetsDirectional.only(end: prego.spacing.sm),
+                    child: Text(
+                      context.loc.newSessionDedicatedWorkspace,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                    ),
+                  ),
                 ),
-              ),
+                Transform.scale(
+                  scale: 0.75,
+                  child: PregoSwitch(
+                    key: const Key("new_session_dedicated_workspace"),
+                    value: value,
+                    onChanged: onChanged,
+                  ),
+                ),
+              ],
             ),
-            Transform.scale(
-              scale: 0.75,
-              child: PregoSwitch(
-                key: const Key("new_session_dedicated_workspace"),
-                value: value,
-                onChanged: onChanged,
-              ),
-            ),
-          ],
-        ),
+          ),
+        },
       ),
     );
   }

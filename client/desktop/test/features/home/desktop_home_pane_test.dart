@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -339,9 +340,12 @@ void main() {
     late List<({String projectId, String sessionId})> opened;
     late _MockChatInputModeCubit inputMode;
 
-    _MockNewSessionCubit newSessionCubit({required Stream<NewSessionState> states}) {
+    _MockNewSessionCubit newSessionCubit({
+      required Stream<NewSessionState> states,
+      NewSessionState initialState = _composing,
+    }) {
       final cubit = _MockNewSessionCubit();
-      whenListen(cubit, states, initialState: _composing);
+      whenListen(cubit, states, initialState: initialState);
       when(() => cubit.needsHarnessDiscovery).thenReturn(false);
       when(() => cubit.hasNoHarnesses).thenReturn(false);
       when(cubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
@@ -366,6 +370,10 @@ void main() {
       Stream<AllSessionsState> listUpdates = const Stream.empty(),
       Stream<NewSessionState> states = const Stream<NewSessionState>.empty(),
       List<ProjectSummary> projects = const [one, two],
+
+      /// Each composer's cubit in the order they are built; otherwise every
+      /// composer reads [states].
+      List<NewSessionCubit>? cubits,
     }) async {
       tester.view.physicalSize = const Size(1200, 1400);
       tester.view.devicePixelRatio = 1;
@@ -401,7 +409,7 @@ void main() {
               createNewSessionCubit: ({required projectId, required projectName, required projectKind}) {
                 createdFor.add(projectId);
                 createdKinds.add(projectKind);
-                return newSessionCubit(states: states);
+                return cubits?.removeAt(0) ?? newSessionCubit(states: states);
               },
               onOpenSession: ({required context, required project, required displayName, required session}) =>
                   opened.add((projectId: project.id, sessionId: session.id)),
@@ -527,6 +535,86 @@ void main() {
       expect(shownProject(tester), "two");
     });
 
+    testWidgets("the worktree row opens and folds as the project changes, so the composer glides", (tester) async {
+      const scratch = ProjectSummary(
+        id: "scratch",
+        name: null,
+        path: "/scratch",
+        time: null,
+        kind: ProjectKind.scratch,
+      );
+      final scratchAnswers = StreamController<NewSessionState>();
+      final oneAnswers = StreamController<NewSessionState>();
+      addTearDown(scratchAnswers.close);
+      addTearDown(oneAnswers.close);
+      final checking = _composingWith(capability: NewSessionProjectWorktreeCapability.loading);
+      await pumpStart(
+        tester: tester,
+        list: _list(defaultProjectId: "one"),
+        projects: const [one, scratch],
+        cubits: [
+          newSessionCubit(states: const Stream.empty()),
+          newSessionCubit(states: scratchAnswers.stream, initialState: checking),
+          newSessionCubit(states: oneAnswers.stream, initialState: checking),
+        ],
+      );
+      final options = find.byKey(const Key("new_session_options"));
+      double optionsHeight() => tester.getSize(options).height;
+      double composerTop() => tester.getTopLeft(find.byType(PromptInput)).dy;
+      Future<void> pick(String projectId) async {
+        tester
+            .widget<NewSessionView>(find.byType(NewSessionView))
+            .onProjectSelected
+            ?.call(projectId: projectId, projectName: projectId);
+        await tester.pump();
+        await crossfade(tester);
+      }
+
+      // The first build shows the row's room at once rather than opening it.
+      final rowHeight = optionsHeight();
+      final withRow = composerTop();
+      expect(rowHeight, greaterThan(0));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(optionsHeight(), rowHeight);
+      expect(composerTop(), withRow);
+      expect(find.byType(PregoSwitch), findsOneWidget);
+
+      // While No project is checked the room stays, then folds as it fades.
+      await pick("scratch");
+      expect(optionsHeight(), rowHeight);
+      expect(composerTop(), withRow);
+      expect(find.byType(PregoSwitch), findsNothing);
+      scratchAnswers.add(_composingWith(capability: NewSessionProjectWorktreeCapability.unsupported));
+      // The answer lands, then the frame it builds starts the transition.
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(optionsHeight(), allOf(greaterThan(0), lessThan(rowHeight)));
+      final foldingTop = composerTop();
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(optionsHeight(), 0);
+      final withoutRow = composerTop();
+      expect(withoutRow, isNot(withRow));
+      expect(foldingTop, inExclusiveRange(math.min(withRow, withoutRow), math.max(withRow, withoutRow)));
+
+      // Back in a project that supports worktrees, the composer starts where
+      // No project left it and the row opens as it fades in.
+      await pick("one");
+      expect(optionsHeight(), 0);
+      expect(composerTop(), withoutRow);
+      oneAnswers.add(_composingWith(capability: NewSessionProjectWorktreeCapability.supported));
+      // The answer lands, then the frame it builds starts the transition.
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(optionsHeight(), allOf(greaterThan(0), lessThan(rowHeight)));
+      expect(composerTop(), inExclusiveRange(math.min(withRow, withoutRow), math.max(withRow, withoutRow)));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(optionsHeight(), rowHeight);
+      expect(composerTop(), withRow);
+      expect(find.byType(PregoSwitch), findsOneWidget);
+    });
+
     testWidgets("a reordered project list keeps the project already shown", (tester) async {
       await pumpStart(
         tester: tester,
@@ -629,6 +717,18 @@ const _composing = NewSessionState.composing(
     projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
   ),
   phase: NewSessionPhase.idle(),
+);
+
+NewSessionState _composingWith({required NewSessionProjectWorktreeCapability capability}) => NewSessionState.composing(
+  config: NewSessionComposeConfig(
+    availablePlugins: const [],
+    selectedPlugin: null,
+    options: const NewSessionOptionsLoadState.unsupported(),
+    backendScope: const NewSessionBackendScope.verified(bridgeId: null),
+    isPluginDiscoveryInFlight: false,
+    projectWorktreeCapability: capability,
+  ),
+  phase: const NewSessionPhase.idle(),
 );
 
 Session _session({required String id, required String projectId, required int updated}) => Session(
