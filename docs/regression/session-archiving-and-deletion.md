@@ -96,10 +96,10 @@ entirely along with its transcript and its dedicated worktree.
   deleted only after cleanup succeeds, and both flows serialize against
   concurrent mutations of the same session family.
 - The unforced safety check reports commits on no branch when the worktree's HEAD has commits that no local
-  branch, tag or remote-tracking ref reaches. Commits the session's stored base commit reaches do not count, so
-  a detached HEAD still at its base stays clean even after the base branch is rewritten. A HEAD on a branch is
-  reached by that branch, so the check never fires for it. A failing check fails the cleanup visibly rather
-  than passing it.
+  branch, tag or remote-tracking ref reaches. When the session stored its base commit, commits that base reaches
+  do not count, so a detached HEAD still at its base stays clean even after the base branch is rewritten; an
+  older session without one gets no such exclusion. A HEAD on a branch is reached by that branch, so the check
+  never fires for it. If this check itself fails, the cleanup fails visibly rather than passing.
 - Published requests retain the retired `deleteBranch` field for mixed-version
   compatibility. New clients always send `false`, and new bridges explicitly
   reject `true` before mutation so old clients cannot mistake unperformed branch
@@ -244,7 +244,7 @@ restart before explicit re-import.
   success or deletes the session, a concurrent mutation interleaves, or a client
   presents archiving as reversible.
 - An unforced cleanup removes a worktree whose detached HEAD has commits that no branch, tag or remote reaches,
-  or refuses one on a branch, or detached at its base commit, with commits on no branch.
+  or refuses one that is on a branch or detached at its base commit.
 
 ## Known Limitations
 
