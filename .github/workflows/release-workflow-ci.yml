@@ -40,6 +40,11 @@ on:
       - 'client/app/android/fastlane/Fastfile'
       - '.github/scripts/publish_desktop_release.py'
       - '.github/scripts/test_publish_desktop_release.py'
+      - '.github/workflows/desktop-update-feed.yml'
+      - '.github/scripts/publish_desktop_update_feed.py'
+      - '.github/scripts/test_publish_desktop_update_feed.py'
+      - '.github/scripts/sign_desktop_update.py'
+      - '.github/scripts/test_sign_desktop_update.py'
   pull_request:
     paths:
       - '.github/workflows/linux-repository.yml'
@@ -78,6 +83,11 @@ on:
       - 'client/app/android/fastlane/Fastfile'
       - '.github/scripts/publish_desktop_release.py'
       - '.github/scripts/test_publish_desktop_release.py'
+      - '.github/workflows/desktop-update-feed.yml'
+      - '.github/scripts/publish_desktop_update_feed.py'
+      - '.github/scripts/test_publish_desktop_update_feed.py'
+      - '.github/scripts/sign_desktop_update.py'
+      - '.github/scripts/test_sign_desktop_update.py'
 
 permissions:
   contents: read
@@ -105,6 +115,10 @@ jobs:
           python -m unittest discover -s .github/scripts -p 'test_publish_desktop_release.py'
           python -m unittest discover -s .github/scripts -p 'test_publish_desktop_linux.py'
           python -m unittest discover -s .github/scripts -p 'test_publish_linux_repository.py'
+      - name: Test update feed signing, prefix guard and hosting order
+        run: |
+          python -m unittest discover -s .github/scripts -p 'test_sign_desktop_update.py'
+          python -m unittest discover -s .github/scripts -p 'test_publish_desktop_update_feed.py'
       - name: Lint release gate and scoped repository provisioning
         run: shellcheck .github/scripts/check_internal_release.sh .github/scripts/provision_linux_repository.sh
       - name: Test automatic release decisions and attempt recording

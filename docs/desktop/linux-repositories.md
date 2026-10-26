@@ -86,8 +86,11 @@ The bucket uses uniform bucket-level access in `europe-west1`, project `sesori-a
 reset script. Inspect partial results before retrying a failed setup command.
 
 The dedicated `linux-packages` identity pool and its GitHub provider allow only the
-numeric Sesori repository/owner identities, `refs/heads/main`, and the repository
-workflow's direct or reusable workflow identity. Service account
+numeric Sesori repository/owner identities, `refs/heads/main`, and two direct or
+reusable workflow identities: `linux-repository.yml` and `desktop-update-feed.yml`.
+The second hosts the desktop update feeds under `desktop-updates/`
+([update signing](update-signing.md)). IAM grants both the whole bucket, so that
+prefix is enforced by the feed workflow's publisher, not by IAM. Service account
 `linux-package-publisher@sesori-ai.iam.gserviceaccount.com` has
 `roles/storage.objectUser` on this bucket only. `allUsers` gets only
 `roles/storage.objectViewer`. Existing Firebase federation, Cloud Run source storage

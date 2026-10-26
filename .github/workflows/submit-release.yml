@@ -485,6 +485,39 @@ jobs:
       channel: stable
     secrets: inherit
 
+  # Stable feeds take only this run's stable-channel builds, after their assets are public on v<version>.
+  update-feed-linux:
+    name: Publish Linux AppImage update feeds (stable)
+    needs: [resolve, publish-desktop-linux]
+    if: always() && needs.publish-desktop-linux.result == 'success'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/desktop-update-feed.yml
+    with:
+      platform: linux
+      channel: stable
+      version: ${{ needs.resolve.outputs.version }}
+      build_number: ${{ needs.resolve.outputs.build_number }}
+    secrets: inherit
+
+  update-feed-macos:
+    name: Publish macOS update appcasts (stable)
+    needs: [resolve, publish-desktop]
+    if: >-
+      always() && needs.publish-desktop.result == 'success' &&
+      vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/desktop-update-feed.yml
+    with:
+      platform: macos
+      channel: stable
+      version: ${{ needs.resolve.outputs.version }}
+      build_number: ${{ needs.resolve.outputs.build_number }}
+    secrets: inherit
+
   # bridge-only submits skip both store jobs and with them the
   # store-production reviewer gate. This no-op job holds that gate BEFORE the
   # tag job, so a rejected approval leaves no v* tag behind (a stray stable
