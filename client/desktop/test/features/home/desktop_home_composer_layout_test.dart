@@ -36,6 +36,15 @@ const _openCode = PluginMetadata(
   supportsPromptAttachments: true,
 );
 
+const _claudeCode = PluginMetadata(
+  id: "claude",
+  displayName: "Claude Code",
+  isDefault: true,
+  state: PluginLifecycleState.ready,
+  actionHint: null,
+  supportsPromptAttachments: true,
+);
+
 const _folder = ProjectSummary(id: "one", name: "demo-app", path: "/one", time: null);
 const _scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
 
@@ -297,6 +306,29 @@ void main() {
     expect(pillsShimmer, findsNothing);
     expect(tester.getRect(find.byType(AgentModelButtons)), pillsRect);
     expect(attach, findsOneWidget);
+  });
+
+  testWidgets("the harness pill eases to its chooser's width, so the project pill glides to its new centre", (
+    tester,
+  ) async {
+    final answers = await pumpHome(tester: tester, project: _folder);
+    final project = find.byKey(const Key("new_session_project"));
+    final start = tester.getCenter(project).dx;
+
+    answers.discover(plugins: const [_claudeCode]);
+    await tester.pump();
+    await tester.pump();
+    expect(tester.getCenter(project).dx, start);
+
+    await tester.pump(const Duration(milliseconds: 100));
+    final midway = tester.getCenter(project).dx;
+    await tester.pump(const Duration(milliseconds: 300));
+    final end = tester.getCenter(project).dx;
+    expect(tester.getSize(harness).width, isNot(closeTo(140, 20)));
+    expect((end - start).abs(), greaterThan(10));
+    expect(midway, isNot(anyOf(start, end)));
+    expect((midway - start).sign, (end - start).sign);
+    expect((end - midway).sign, (end - start).sign);
   });
 
   testWidgets("No project holds no worktree room, so its answer moves nothing", (tester) async {

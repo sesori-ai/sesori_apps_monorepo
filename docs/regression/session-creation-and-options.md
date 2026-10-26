@@ -244,7 +244,8 @@ variant, and worktree mode, and creating the session with its first input.
   from the first frame, with no delay, and its value then fills in where it is, so
   neither the heading nor the composer moves as the bridge answers. The agent and
   model pills shimmer until options arrive, and the harness pill until discovery
-  answers. The attach button holds its place, inert, until the harness says
+  answers; its width then eases over about 200 ms to the chosen harness's, so the
+  centred project pill glides to its new place. The attach button holds its place, inert, until the harness says
   whether it takes images; only a harness that does not (Grok) folds it away. The
   "New worktree" row shimmers in the room the last project left it while a folder
   project is checked; a page's first composer gives a folder that room. "No project"

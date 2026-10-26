@@ -7,6 +7,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../extensions/build_context_x.dart";
 import "../project_list/project_path_labels.dart";
 import "../project_picker/project_picker.dart";
+import "../session_detail/widgets/transcript_motion.dart";
 
 /// [projectId]'s name in the live project list, which knows a rename the
 /// route's [projectName] can miss.
@@ -70,7 +71,14 @@ class const NewSessionHeader({
                 onAllProjects: null,
                 triggerBuilder: (_, open) => pill(onPressed: open),
               ),
-            ?harness,
+            // The harness's width eases as its shimmer turns into the
+            // chooser, so the centred row glides rather than jumps.
+            if (harness case final harness?)
+              AnimatedSize(
+                duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+                curve: transcriptMotionCurve,
+                child: harness,
+              ),
           ],
         ),
       ],
