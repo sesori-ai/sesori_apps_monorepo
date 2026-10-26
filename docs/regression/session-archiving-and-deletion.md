@@ -49,6 +49,9 @@ entirely along with its transcript and its dedicated worktree.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept.
+- Deleting a "No project" session, from any entry point, adds to that confirmation that its folder and every file
+  in it are deleted too, and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any
+  other session sends `false` and says nothing about a folder.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
@@ -228,6 +231,8 @@ restart before explicit re-import.
   the scratch root itself, a folder another session still runs in or under, a
   link or its target, or a folder the request did not ask to remove; or
   archiving removes a scratch folder.
+- The app sends `deleteSessionFolder: true` for a session outside "No project", or before a confirmation that
+  names the folder.
 - Any archive or delete surface offers to keep the worktree, or a refusal modal
   presents a third way out beyond Cancel and the destructive force.
 - A shared-worktree-only refusal reaches the user as a question, or a refusal that

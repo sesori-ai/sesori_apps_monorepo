@@ -92,6 +92,7 @@ void main() {
       () => cubit.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
+        deleteSessionFolder: any(named: "deleteSessionFolder"),
         force: any(named: "force"),
       ),
     );
@@ -155,6 +156,7 @@ void main() {
       () => cubit.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
+        deleteSessionFolder: any(named: "deleteSessionFolder"),
         force: any(named: "force"),
       ),
     );
@@ -176,6 +178,7 @@ void main() {
       () => cubit.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
+        deleteSessionFolder: any(named: "deleteSessionFolder"),
         force: any(named: "force"),
       ),
     );

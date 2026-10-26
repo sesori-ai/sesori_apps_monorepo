@@ -10,7 +10,15 @@ sealed class ProjectListState with _$ProjectListState {
   const factory loading() = ProjectListLoading;
 
   const factory loaded({
+    /// Every project, "No project" included: what a name lookup searches.
     required List<ProjectSummary> projects,
+
+    /// The folder projects of [projects], in its order: what a project list
+    /// shows.
+    required List<ProjectSummary> folderProjects,
+
+    /// The bridge's "No project" project, or null on a bridge without one.
+    required ProjectSummary? scratchProject,
 
     /// Map of project ID -> its running root sessions. Projects with none are
     /// absent; a session only waiting for input is not running.
@@ -45,4 +53,16 @@ sealed class ProjectListState with _$ProjectListState {
   const factory bridgeDisconnected({
     required bool hasRegisteredBridges,
   }) = ProjectListBridgeDisconnected;
+}
+
+extension ProjectListStateKind on ProjectListState {
+  /// [projectId]'s kind: a folder unless the loaded list names it as its
+  /// "No project" project.
+  ProjectKind kindOf({required String projectId}) => switch (this) {
+    ProjectListLoaded(:final scratchProject?) when scratchProject.id == projectId => ProjectKind.scratch,
+    ProjectListLoaded() ||
+    ProjectListLoading() ||
+    ProjectListFailed() ||
+    ProjectListBridgeDisconnected() => ProjectKind.folder,
+  };
 }

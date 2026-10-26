@@ -76,6 +76,7 @@ void main() {
       await service.deleteSession(
         sessionId: "s1",
         deleteWorktree: true,
+        deleteSessionFolder: true,
         force: false,
       );
 
@@ -88,6 +89,7 @@ void main() {
             deleteWorktree: true,
             deleteBranch: false,
             force: false,
+            deleteSessionFolder: true,
           ),
         ),
       ).called(1);
@@ -117,6 +119,7 @@ void main() {
         () => service.deleteSession(
           sessionId: "s1",
           deleteWorktree: true,
+          deleteSessionFolder: false,
           force: false,
         ),
         throwsA(

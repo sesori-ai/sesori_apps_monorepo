@@ -270,6 +270,7 @@ Widget sessionRowApp({
       counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
       failures: const [],
       isLoading: false,
+      scratchProjectId: null,
       defaultProjectId: null,
     ),
   );
@@ -281,7 +282,7 @@ Widget sessionRowApp({
   whenListen(
     projects,
     const Stream<ProjectListState>.empty(),
-    initialState: const ProjectListState.loaded(projects: [project]),
+    initialState: const ProjectListState.loaded(projects: [project], folderProjects: [project], scratchProject: null),
   );
   final router = GoRouter(
     routes: [

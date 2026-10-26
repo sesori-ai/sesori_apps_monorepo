@@ -13,13 +13,15 @@ variant, and worktree mode, and creating the session with its first input.
   project yet they open the Add project dialog, and the project it adds opens in setup.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
 - The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
-  project: the filtered project, else the project of the newest session, known once every project's session read
-  has settled (loaded or failed). With no default it opens a "New
+  project: the filtered project, else "No project" on a bridge that has it (at once, without waiting for any
+  session read), else the project of the newest session, known once every project's session read has settled
+  (loaded or failed). With no default it opens a "New
   session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
   selected: its search first, the known projects below and "Open folder…" pinned under them; with no projects
   it offers only that action. Choosing one replaces the page with that project's setup page.
 - The desktop home shows the setup composer in place, in the same default project: the sidebar list's filter,
-  else the newest session's project. The project holds once it lands, so a newer session elsewhere never moves
+  else "No project", else the newest session's project. A bridge whose only project is "No project" still shows
+  the composer, in "No project". The project holds once it lands, so a newer session elsewhere never moves
   a draft; another filter moves it. While the list is still loading the pane waits blank, so a project whose
   sessions load first never takes the draft. With no default it
   shows the same "What should we work on?" prompt with nothing selected, its picker waiting for a click; with
@@ -32,8 +34,9 @@ variant, and worktree mode, and creating the session with its first input.
   open with the keyboard down; tapping the search field raises it, and the sheet and its field stay still
   while the list shortens above the keyboard. Under a pointer the search takes focus as the popover opens, so typing
   filters at once. The home's title switcher is the same picker. The search is the first control under the
-  title, and the list holds only projects. A full-width button is pinned below the list, outside its scroll,
-  set off by a hairline. The search never filters or hides it, so it is there with one project, with none, and
+  title, and the list holds only folder projects, never "No project". A footer is pinned below the list, outside
+  its scroll, set off by a hairline: one full-width button, or, on a bridge with "No project", a "No project"
+  button beside it. The search never filters or hides it, so it is there with one project, with none, and
   when the search matches nothing ("No projects match"). On a phone it sits at the sheet's bottom edge and
   rides above the raised keyboard while the search stays still; in a popover it sits right under the rows.
   Under a pointer it has a hover state, and the keyboard highlight starts on the first matching project and
@@ -41,9 +44,11 @@ variant, and worktree mode, and creating the session with its first input.
   the first matching project, and with nothing matching Enter picks nothing. When the picker chooses a
   project rather than a filter, the button is "Open folder…": it closes the picker, opens the folder browser
   once the picker has closed, and
-  selects the project the browser adds. Filtering a list instead, it is "Show all projects": while every
+  selects the project the browser adds. Filtering a list instead, it is "All projects": while every
   project is shown it carries a check, no project is checked, and it only closes the picker; otherwise it
-  clears the filter.
+  clears the filter. "No project" picks like a project row in either picker: it closes the picker and selects
+  "No project", so the selector, or the home's title when filtering, then reads "No project", and it carries the
+  check while it is the choice.
   Search matches project names and paths; a path shows under a name only when another project shares that
   name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
   project's setup page, so a session is never created in the project that was left, and a draft stays with
@@ -563,10 +568,13 @@ startup-extension file failure, retry once the filesystem is usable.
   tapped, moves its search field as the keyboard rises, moves the page's header
   behind its sheet, or leaves the page on the old project after the folder
   browser adds one.
-- The filtering picker lists "Show all projects" among the projects, hides it
+- The filtering picker lists "All projects" among the projects, hides it
   behind a search or a scroll, leaves it out or unchecked while every project
   is shown, checks a project then, or lets Enter after a search pick it over a
   match.
+- Either picker lists "No project" among the projects, leaves it out of the footer on a bridge that has it, or
+  shows it on one without; a default skips "No project" for the newest session's project, or a bridge with only
+  "No project" shows no composer.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a

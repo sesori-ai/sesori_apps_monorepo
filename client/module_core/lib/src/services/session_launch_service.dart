@@ -110,6 +110,7 @@ class SessionLaunchService({
     required String pluginId,
     required DateTime startedAt,
     required String? projectName,
+    required ProjectKind projectKind,
     required NewSessionSubmissionSnapshot submission,
     required String? agent,
     required PromptModel? model,
@@ -151,9 +152,7 @@ class SessionLaunchService({
         _reportProductEvent(
           event: ProductAnalyticsEvent.sessionCreatedWithMessage(
             submission: _analyticsSubmission(submission: submission),
-            workspaceKind: session.hasWorktree
-                ? AnalyticsWorkspaceKind.dedicatedWorktree
-                : AnalyticsWorkspaceKind.project,
+            workspaceKind: _workspaceKind(projectKind: projectKind, dedicatedWorktree: session.hasWorktree),
           ),
         );
         unawaited(_feedbackPromptService.recordPositiveInteraction());
@@ -167,9 +166,7 @@ class SessionLaunchService({
         _reportProductEvent(
           event: ProductAnalyticsEvent.sessionCreationFailed(
             failureReason: _analyticsFailureReason(error.remoteFailureReason),
-            workspaceKind: dedicatedWorktree
-                ? AnalyticsWorkspaceKind.dedicatedWorktree
-                : AnalyticsWorkspaceKind.project,
+            workspaceKind: _workspaceKind(projectKind: projectKind, dedicatedWorktree: dedicatedWorktree),
           ),
         );
         _launchRepository.fail(launchId: launchId, reason: error.remoteFailureReason);
@@ -248,6 +245,13 @@ class SessionLaunchService({
       switch (submission) {
         NewSessionCommandSubmissionSnapshot() => const AnalyticsSubmission.command(),
         NewSessionTextSubmissionSnapshot(:final draft) => _analyticsTextSubmission(inputMode: draft.inputMode),
+      };
+
+  static AnalyticsWorkspaceKind _workspaceKind({required ProjectKind projectKind, required bool dedicatedWorktree}) =>
+      switch (projectKind) {
+        ProjectKind.scratch => AnalyticsWorkspaceKind.noProject,
+        ProjectKind.folder =>
+          dedicatedWorktree ? AnalyticsWorkspaceKind.dedicatedWorktree : AnalyticsWorkspaceKind.project,
       };
 
   static AnalyticsSessionCreationFailureReason _analyticsFailureReason(RemoteFailureReason reason) => switch (reason) {

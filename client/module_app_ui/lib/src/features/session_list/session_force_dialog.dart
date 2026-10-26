@@ -15,6 +15,7 @@ Future<void> _showForceDialog({
   required BuildContext context,
   required SessionListCubit cubit,
   required String sessionId,
+  required bool deleteSessionFolder,
   required SessionCleanupRejection rejection,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
@@ -76,6 +77,7 @@ Future<void> _showForceDialog({
                     cubit: cubit,
                     sessionId: sessionId,
                     deleteWorktree: true,
+                    deleteSessionFolder: deleteSessionFolder,
                     force: true,
                     onSessionDeleted: onSessionDeleted,
                   ).whenComplete(release),

@@ -41,6 +41,9 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
   the switch is made, before the new connection's outcome is known.
 - Renaming or removing a computer reports `computer_managed` with a pinned `action` (`renamed`, `removed`) only after
   the auth server confirms the change, never a name, nickname or identifier. A failed change reports nothing.
+- `session_created_with_message` and `session_creation_failed` report a pinned `workspace_kind`: `no_project` for a
+  session started in "No project", otherwise `dedicated_worktree` or `project`. It never carries the project or its
+  folder.
 - A successful Android production submission publishes its exact build number to Firebase Remote Config as the
   analytics release cutoff before stable tagging can proceed. The publisher is callable only from the production
   submission workflow, verifies the immutable build tag, preserves unrelated Remote Config parameters, validates with
@@ -122,6 +125,8 @@ account against a real property.
   consent reads precede import completion; enable activates before server success plus local persistence.
 - An event fires on a tap or failed operation, is duplicated after deferral, has a rewritten occurrence time, or
   carries a route path instead of a pinned screen, or the home reports a screen other than `sessions`.
+- A "No project" creation reports `workspace_kind` `project` or `dedicated_worktree`, or a folder project's reports
+  `no_project`.
 - A delayed Remote Config response holds the native splash or first product frame; automatic screen reporting is
   observed; an analytics failure blocks a product outcome; or copy overclaims.
 - Singular starts in debug/profile/unsupported builds or before successful interactive authentication while an

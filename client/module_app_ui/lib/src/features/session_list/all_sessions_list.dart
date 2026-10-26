@@ -275,7 +275,8 @@ class const _Sessions({
               row: row,
               bottomPadding: index == entries.length - 1 ? endPadding : 0,
               tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
-              labelsProject: state.projectId == null,
+              // A "No project" session has no project to name.
+              labelsProject: state.projectId == null && row.project.id != state.scratchProjectId,
             ),
           },
         ),

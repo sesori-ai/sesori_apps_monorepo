@@ -526,6 +526,22 @@ void main() {
       ],
     );
 
+    test("a loaded list splits folder projects from No project, keeping both in projects", () async {
+      final folder = testProjectSummary(id: "folder");
+      final scratch = testProjectSummary(id: "scratch").copyWith(kind: ProjectKind.scratch);
+      when(mockProjectRepository.listProjects).thenAnswer(
+        (_) async => ApiResponse.success(Projects(data: [folder, scratch])),
+      );
+      final inventory = buildInventory();
+      final loaded = await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded) as ProjectListLoaded;
+
+      expect(loaded.projects.map((project) => project.id), unorderedEquals(["folder", "scratch"]));
+      expect(loaded.folderProjects, [folder]);
+      expect(loaded.scratchProject, scratch);
+      expect(loaded.kindOf(projectId: "scratch"), ProjectKind.scratch);
+      expect(loaded.kindOf(projectId: "folder"), ProjectKind.folder);
+    });
+
     late Completer<bool> initialConnectCompleter;
 
     blocTest<ProjectListCubit, ProjectListState>(

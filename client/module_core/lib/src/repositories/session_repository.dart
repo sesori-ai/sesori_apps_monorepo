@@ -60,12 +60,14 @@ class SessionRepository({
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
+    required bool deleteSessionFolder,
     required bool force,
   }) async {
     try {
       return await _api.deleteSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
+        deleteSessionFolder: deleteSessionFolder,
         force: force,
       );
     } on SessionCleanupApiRejectedException catch (error, stackTrace) {

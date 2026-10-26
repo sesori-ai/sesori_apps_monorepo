@@ -24,7 +24,12 @@ class const DesktopNewSessionScreen({
   @override
   Widget build(BuildContext context) {
     return BlocProvider(
-      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
+      create: (context) => createNewSessionCubit(
+        locator: getIt,
+        projectId: projectId,
+        projectName: projectName,
+        projectKind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+      ),
       child: DesktopNewSessionView(
         projectId: projectId,
         projectName: projectName,

@@ -119,7 +119,7 @@ void main() {
         .thenAnswer((_) => states.add(const FileAccessState(status: FileAccessStatus.denied, dismissed: true)));
     await pumpHome(
       tester: tester,
-      state: const ProjectListState.loaded(projects: []),
+      state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
     );
     expect(find.text("Full Disk Access"), findsOneWidget);
     await tester.ensureVisible(find.text("Open System Settings"));
@@ -240,7 +240,7 @@ void main() {
       arrange(computers: [local, remote, gpu], targetId: remote.id, localId: local.id);
       await pumpHome(
         tester: tester,
-        state: const ProjectListState.loaded(projects: []),
+        state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
       );
       await tester.pumpAndSettle();
 
@@ -256,7 +256,7 @@ void main() {
       arrange(computers: [local], targetId: local.id, localId: local.id);
       await pumpHome(
         tester: tester,
-        state: const ProjectListState.loaded(projects: []),
+        state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
       );
       await tester.pumpAndSettle();
 
@@ -267,7 +267,7 @@ void main() {
   testWidgets("a home without projects asks for one, through the picker's Open folder", (tester) async {
     await pumpHome(
       tester: tester,
-      state: const ProjectListState.loaded(projects: []),
+      state: const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null),
     );
     expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
     final button = tester.widget<PregoButtonsSolid>(find.byKey(const Key("new_session_project")));
@@ -302,6 +302,7 @@ void main() {
     const one = ProjectSummary(id: "one", name: "One", path: "/one", time: null);
     const two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
     late List<String> createdFor;
+    late List<ProjectKind> createdKinds;
     late List<({String projectId, String sessionId})> opened;
     late _MockChatInputModeCubit inputMode;
 
@@ -320,6 +321,7 @@ void main() {
 
     setUp(() {
       createdFor = [];
+      createdKinds = [];
       opened = [];
       inputMode = _MockChatInputModeCubit();
       whenListen(inputMode, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
@@ -340,7 +342,14 @@ void main() {
       whenListen(
         projectList,
         const Stream<ProjectListState>.empty(),
-        initialState: ProjectListState.loaded(projects: projects),
+        initialState: ProjectListState.loaded(
+          projects: projects,
+          folderProjects: [
+            for (final project in projects)
+              if (project.kind == ProjectKind.folder) project,
+          ],
+          scratchProject: projects.where((project) => project.kind == ProjectKind.scratch).firstOrNull,
+        ),
       );
       await tester.pumpWidget(
         MaterialApp(
@@ -356,8 +365,9 @@ void main() {
             ],
             child: DesktopHomeStart(
               projects: projects,
-              createNewSessionCubit: ({required projectId, required projectName}) {
+              createNewSessionCubit: ({required projectId, required projectName, required projectKind}) {
                 createdFor.add(projectId);
+                createdKinds.add(projectKind);
                 return newSessionCubit(states: states);
               },
               onOpenSession: ({required context, required project, required displayName, required session}) =>
@@ -389,6 +399,26 @@ void main() {
       expect(createdFor, ["two"]);
       expect(find.byType(PromptInput), findsOneWidget);
       expect(shownProject(tester), "two");
+    });
+
+    testWidgets("a computer with only No project still starts a session, in No project", (tester) async {
+      const scratch = ProjectSummary(
+        id: "scratch",
+        name: null,
+        path: "/scratch",
+        time: null,
+        kind: ProjectKind.scratch,
+      );
+      await pumpStart(
+        tester: tester,
+        list: _list(defaultProjectId: "scratch"),
+        projects: const [scratch],
+      );
+
+      expect(createdFor, ["scratch"]);
+      expect(createdKinds, [ProjectKind.scratch]);
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(find.byKey(const Key("desktop-home-prompt")), findsNothing);
     });
 
     testWidgets("waits while the list loads, then takes up the first default", (tester) async {
@@ -548,6 +578,7 @@ AllSessionsState _list({String? projectId, required String? defaultProjectId, bo
       counts: const SessionListChipCounts(all: 0, running: 0, unread: 0),
       failures: const [],
       isLoading: isLoading,
+      scratchProjectId: null,
       defaultProjectId: defaultProjectId,
     );
 

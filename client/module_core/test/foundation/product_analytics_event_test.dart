@@ -56,6 +56,14 @@ void main() {
         const {"failure_reason": "network_down", "workspace_kind": "project"},
       ),
       (
+        const ProductAnalyticsEvent.sessionCreationFailed(
+          failureReason: AnalyticsSessionCreationFailureReason.unknown,
+          workspaceKind: AnalyticsWorkspaceKind.noProject,
+        ),
+        "session_creation_failed",
+        const {"failure_reason": "unknown", "workspace_kind": "no_project"},
+      ),
+      (
         const ProductAnalyticsEvent.voiceTranscriptionCompleted(),
         "voice_transcription_completed",
         const {},

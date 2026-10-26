@@ -242,19 +242,20 @@ state.
   [cockpit contract](desktop-cockpit-shell.md).
 - The phone opens signed in on the home (`/sessions`): one list of every listed project's active sessions in the
   shared session-row timeline below, with search and the All, Running and Unread chips. Each row names its
-  project. The large title reads "All projects" with a chevron, and a tap opens the project picker in filter mode:
-  the known projects, with a "Show all projects" button pinned below them. Picking a project narrows the list to
-  it: the title takes its name, rows stop naming the project, and an empty result names the project. "Show all
-  projects" restores the whole list; while it is already shown, the button carries the check and only closes.
+  project, except a "No project" row, which names none. The large title reads "All projects" with a chevron, and a
+  tap opens the project picker in filter mode: the folder projects, with "All projects" pinned below them, beside
+  "No project" when the bridge has it. Picking a project, or "No project", narrows the list to it: the title takes
+  its name ("No project" for "No project"), rows stop naming the project, and an empty result names the project.
+  "All projects" restores the whole list; while it is already shown, the button carries the check and only closes.
   This is the filter Archived shares; it resets on restart, on a computer switch, and when its project leaves the
   list. The bar holds the computer button and Settings, and a round glass + for New session floats at the bottom
   right, above the home indicator, holding still while the list scrolls under it. New session opens in the
-  filtered project, else the project of the newest session, else asks for a project
+  filtered project, else "No project", else the project of the newest session, else asks for a project
   ([session creation](session-creation-and-options.md)). Settings' Bridge section lists Archived after Projects
   (dimmed and disabled offline); it rises from the bottom and opens under the current filter. A pull refreshes
   every project and imports, as above. Until the project list loads the home shows a skeleton, a failed project
-  list shows its error with Retry, a computer with no projects shows the add-project call to action, and the
-  disconnected pages below replace the list.
+  list shows its error with Retry, a computer with no projects at all, "No project" included, shows the
+  add-project call to action, and the disconnected pages below replace the list.
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
   divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.
@@ -365,7 +366,8 @@ state.
 - Settings › Projects manages the connected computer's projects. The phone opens it from a Projects row after
   Harnesses in the Bridge settings, as a pushed page with its own bar; the desktop shows it as the Projects tab of
   the settings window. The page leads with "Open another folder…", which opens the folder browser; the added
-  project's row then enters the list. Each project row shows its name over its path label, or "Folder not
+  project's row then enters the list. It lists folder projects only: "No project" has no folder to rename or hide.
+  Each project row shows its name over its path label, or "Folder not
   found" in amber, and its "⋯" button or a secondary click opens the project row's menu: Rename, and Hide, or
   Remove when the folder is gone. Offline, one line says "Connect to a bridge to manage projects.", the rows dim
   to the bridge rows' opacity and stop acting, and the Projects row in the phone's Settings dims and stops
@@ -654,6 +656,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - A scratch session folder appears as a project, a scratch session lists outside "No project", "No project" is
   missing, hidden, or renamed back after startup, a hide request for it succeeds, or a scratch folder path reports
   kind `scratch`. An import fails because "No project" is missing instead of leaving scratch sessions out.
+- A "No project" row names a project, a project list or Settings › Projects lists "No project" as a folder, or
+  filtering to it titles the home with anything but "No project".
 - The computer menu checks a computer other than the one the header names, a switch leaves the previous
   computer's projects or a pushed page on screen, the header keeps the old name, or picking the current computer
   reconnects.

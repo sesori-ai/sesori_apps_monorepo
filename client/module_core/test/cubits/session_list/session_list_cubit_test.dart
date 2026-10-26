@@ -319,6 +319,7 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
+            deleteSessionFolder: true,
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -329,6 +330,7 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: false,
+          deleteSessionFolder: true,
           force: false,
         );
         expect(result, SessionCleanupOutcome.completed);
@@ -355,6 +357,7 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
+            deleteSessionFolder: any(named: "deleteSessionFolder"),
             force: any(named: "force"),
           ),
         ).thenThrow(
@@ -367,6 +370,7 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: true,
+          deleteSessionFolder: false,
           force: false,
         );
         expect(result, isNull);
@@ -1877,7 +1881,12 @@ void main() {
         () => mockSessionService.markSessionSeen(sessionId: session.id, read: true),
       ).thenAnswer((_) => markReply.future);
       when(
-        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+        () => mockSessionService.deleteSession(
+          sessionId: session.id,
+          deleteWorktree: true,
+          deleteSessionFolder: false,
+          force: false,
+        ),
       ).thenAnswer((_) => deleteReply.future);
       when(
         () => mockProjectRepository.listSessions(projectId: projectId),
@@ -1889,7 +1898,12 @@ void main() {
       expect(cubit.isClosed, isFalse);
       final rename = cubit.renameSession(sessionId: session.id, title: "Renamed");
       final mutation = cubit.markSessionSeen(sessionId: session.id, read: true);
-      final deletion = cubit.deleteSession(sessionId: session.id, deleteWorktree: true, force: false);
+      final deletion = cubit.deleteSession(
+        sessionId: session.id,
+        deleteWorktree: true,
+        deleteSessionFolder: false,
+        force: false,
+      );
       releaseDialog();
       releaseDialog();
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isFalse);
@@ -1908,7 +1922,12 @@ void main() {
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
       verify(() => mockProjectRepository.listSessions(projectId: projectId)).called(1);
       verify(
-        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+        () => mockSessionService.deleteSession(
+          sessionId: session.id,
+          deleteWorktree: true,
+          deleteSessionFolder: false,
+          force: false,
+        ),
       ).called(1);
     });
 
