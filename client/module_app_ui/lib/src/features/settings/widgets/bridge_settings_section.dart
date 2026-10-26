@@ -139,18 +139,18 @@ class const _YoloSettingsRow() extends StatelessWidget {
           BridgeSettingsReady(yoloMutation: YoloMutationInProgress()) => const PregoActivityIndicator(color: null),
           BridgeSettingsReady(yoloMutation: YoloMutationUnsupported()) ||
           BridgeSettingsUnsupported() => const BridgeUpdateRowTrailing(),
-          BridgeSettingsReady(:final yoloEnabled) => PregoSwitch(
-            key: const Key("yolo_switch"),
-            value: yoloEnabled,
-            onChanged: interactive ? (enabled) => toggle(enabled: enabled) : null,
-          ),
-          BridgeSettingsDisconnected() => null,
           BridgeSettingsFailure() || BridgeSettingsReady(yoloMutation: YoloMutationUncertain()) => IconButton(
             key: const Key("yolo_retry"),
             tooltip: context.loc.settingsYoloRetry,
             onPressed: context.read<BridgeSettingsCubit>().refresh,
             icon: const Icon(TablerRegular.refresh),
           ),
+          BridgeSettingsReady(:final yoloEnabled) => PregoSwitch(
+            key: const Key("yolo_switch"),
+            value: yoloEnabled,
+            onChanged: interactive ? (enabled) => toggle(enabled: enabled) : null,
+          ),
+          BridgeSettingsDisconnected() => null,
         },
         onTap: bridgeOutdated
             ? () => unawaited(showBridgeUpdateSheet(context: context))

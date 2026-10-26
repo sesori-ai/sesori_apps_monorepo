@@ -603,6 +603,37 @@ void main() {
     expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isTrue);
   });
 
+  testWidgets("an unreconciled YOLO mutation offers a retry that reloads", (tester) async {
+    _useTallSurface(tester);
+    var loads = 0;
+    when(bridgeSettingsService.load).thenAnswer((_) async {
+      loads++;
+      if (loads == 2) return BridgeSettingsLoadFailure(error: ApiError.generic());
+      return BridgeSettingsLoadSupported(
+        response: BridgeSettingsResponse(
+          pullRequestRefresh: const PullRequestRefreshSettingsResponse(intervalSeconds: 30),
+          yolo: YoloSettingsResponse(enabled: loads > 1),
+          warmUpPluginsOnSessionOpen: true,
+        ),
+      );
+    });
+    when(() => bridgeSettingsService.updateYolo(enabled: true)).thenAnswer(
+      (_) async => const YoloSettingsMutationUncertain(),
+    );
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("yolo_switch")));
+    await tester.pumpAndSettle();
+
+    expect(find.byKey(const Key("yolo_switch")), findsNothing);
+    await tester.tap(find.byKey(const Key("yolo_retry")));
+    await tester.pumpAndSettle();
+
+    expect(loads, 3);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).value, isTrue);
+  });
+
   testWidgets("shows a stable offline setting before a bridge connects", (tester) async {
     _useTallSurface(tester);
     connectionStatuses.add(const ConnectionStatus.disconnected());
