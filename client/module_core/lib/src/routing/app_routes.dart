@@ -105,6 +105,7 @@ sealed class const AppRoute() {
   const factory newSession({
     required String? projectId,
     required String? projectName,
+    required NewSessionEntry entry,
   }) = AppRouteNewSession;
   const factory sessionDetail({
     required String projectId,
@@ -284,29 +285,68 @@ class const AppRouteSettingsProfile() extends AppRoute {
   String buildPath() => def.path;
 }
 
+/// How the new-session page opens, which decides its page transition.
+sealed class const NewSessionEntry() {
+  const factory platform() = NewSessionPlatformEntry;
+  const factory reveal({required double x, required double y}) = NewSessionRevealEntry;
+}
+
+/// The platform page transition, as every other page opens.
+final class const NewSessionPlatformEntry() extends NewSessionEntry;
+
+/// A circle growing from the New session button that opened the page until it
+/// covers the screen, and shrinking back into it when the page leaves.
+///
+/// [x] and [y] place the button's centre as fractions of the screen's width and
+/// height, so a rotation keeps it in the same corner.
+final class const NewSessionRevealEntry({required final double x, required final double y}) extends NewSessionEntry;
+
 /// The new-session composer. A null [projectId] opens it with no project
 /// chosen yet.
-class const AppRouteNewSession({required final String? projectId, required final String? projectName})
-    extends AppRoute {
+class const AppRouteNewSession({
+  required final String? projectId,
+  required final String? projectName,
+  required final NewSessionEntry entry,
+}) extends AppRoute {
   static const _projectQueryParam = "project";
   static const _nameQueryParam = projectNameQueryParam;
+  static const _revealQueryParam = "reveal";
 
   /// Decodes from query parameter maps (inverse of [buildPath]).
   factory fromParams({required Map<String, String> queryParams}) {
     return AppRouteNewSession(
       projectId: queryParams[_projectQueryParam],
       projectName: queryParams[_nameQueryParam],
+      entry: _parseEntry(queryParams[_revealQueryParam]),
     );
+  }
+
+  /// Reads a reveal origin spelled "x,y", or the platform entry when it is
+  /// absent or not two fractions of the screen.
+  static NewSessionEntry _parseEntry(String? value) {
+    if (value?.split(",") case [final rawX, final rawY]) {
+      if ((double.tryParse(rawX), double.tryParse(rawY)) case (final x?, final y?)
+          when x >= 0 && x <= 1 && y >= 0 && y <= 1) {
+        return NewSessionEntry.reveal(x: x, y: y);
+      }
+    }
+    return const NewSessionEntry.platform();
   }
 
   @override
   AppRouteDef get def => AppRouteDef.newSession;
 
   @override
-  String buildPath() => _appendQuery(
-    path: def.path,
-    queryParameters: {_projectQueryParam: ?projectId, _nameQueryParam: ?projectName},
-  );
+  String buildPath() {
+    final reveal = switch (entry) {
+      NewSessionPlatformEntry() => null,
+      NewSessionRevealEntry(:final x, :final y) => "${x.toStringAsFixed(4)},${y.toStringAsFixed(4)}",
+    };
+    return _appendQuery(
+      path: def.path,
+      queryParameters: {_projectQueryParam: ?projectId, _nameQueryParam: ?projectName, _revealQueryParam: ?reveal},
+    );
+  }
 }
 
 class const AppRouteSessionDetail({

@@ -20,8 +20,8 @@ class const HomeScreen({super.key}) extends StatelessWidget {
       onSwitchComputer: switchComputer,
       onManageComputers: manageComputers,
     ),
-    onNewSession: ({required context, required projectId, required projectName}) =>
-        context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
+    onNewSession: ({required context, required projectId, required projectName, required entry}) =>
+        context.pushRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry)),
   );
 }
 
@@ -37,7 +37,7 @@ class const HomeSidebar({
   Widget build(BuildContext context) => _HomeView(
     presentation: SessionsHomeSidebar(selectedSessionId: selectedSessionId),
     // Beside the sidebar, the home's pane is the composer.
-    onNewSession: ({required context, required projectId, required projectName}) =>
+    onNewSession: ({required context, required projectId, required projectName, required entry}) =>
         context.goRoute(const AppRoute.home()),
   );
 }
@@ -80,8 +80,13 @@ class const _HomeView({
           showAddProjectDialog(
             context: context,
             // A first project's next step is its first session.
-            onProjectAdded: ({required context, required project, required displayName}) =>
-                context.pushRoute(AppRoute.newSession(projectId: project.id, projectName: displayName)),
+            onProjectAdded: ({required context, required project, required displayName}) => context.pushRoute(
+              AppRoute.newSession(
+                projectId: project.id,
+                projectName: displayName,
+                entry: const NewSessionEntry.platform(),
+              ),
+            ),
           ),
         ),
       ),

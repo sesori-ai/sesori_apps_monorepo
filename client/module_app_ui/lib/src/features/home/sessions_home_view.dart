@@ -18,6 +18,7 @@ typedef HomeNewSessionCallback = void Function({
   required BuildContext context,
   required String? projectId,
   required String? projectName,
+  required NewSessionEntry entry,
 });
 
 typedef HomeDisconnectedRefresh = Future<void> Function({
@@ -87,8 +88,12 @@ class const SessionsHomeView({
     final filterName = nameOf(projectId);
     final title = filterName ?? loc.projectPickerAllProjects;
     final isRefreshing = projects is ProjectListLoaded && projects.isRefreshing;
-    void newSession() =>
-        onNewSession(context: context, projectId: defaultProjectId, projectName: nameOf(defaultProjectId));
+    void newSession({required NewSessionEntry entry}) => onNewSession(
+      context: context,
+      projectId: defaultProjectId,
+      projectName: nameOf(defaultProjectId),
+      entry: entry,
+    );
     // The switcher picks the one project the list shows.
     Widget switcher({required PregoPopoverTriggerBuilder triggerBuilder}) => ProjectPicker(
       selectedProjectId: projectId,
@@ -139,7 +144,10 @@ class const SessionsHomeView({
             if (onRefresh != null)
               PregoSliverRefreshControl(onRefresh: onRefresh, decorate: null, onPulledExtentChanged: null),
             SliverToBoxAdapter(
-              child: _SidebarNewSession(key: const Key("home-new-session"), onPressed: newSession),
+              child: _SidebarNewSession(
+                key: const Key("home-new-session"),
+                onPressed: () => newSession(entry: const NewSessionEntry.platform()),
+              ),
             ),
             ...slivers(
               selectedSessionId: selectedSessionId,
@@ -176,14 +184,16 @@ class const SessionsHomeView({
         ),
       ],
       // The scaffold holds it still above the home indicator while the list
-      // scrolls under it.
-      floatingActionButton: PregoButtonsIconGlass(
-        key: const Key("home-new-session"),
-        icon: TablerRegular.plus,
-        size: _newSessionButtonSize,
-        iconSize: PregoIconSize.lg,
-        semanticLabel: loc.sessionListNewSession,
-        onPressed: newSession,
+      // scrolls under it. The page it opens grows out of it.
+      floatingActionButton: Builder(
+        builder: (buttonContext) => PregoButtonsIconGlass(
+          key: const Key("home-new-session"),
+          icon: TablerRegular.plus,
+          size: _newSessionButtonSize,
+          iconSize: PregoIconSize.lg,
+          semanticLabel: loc.sessionListNewSession,
+          onPressed: () => newSession(entry: _revealFrom(buttonContext: buttonContext)),
+        ),
       ),
       onRefresh: onRefresh,
       // An open session covers the page, so no row is selected.
@@ -361,6 +371,16 @@ class const _HomeComputerButton({
 
 /// The phone page's floating New session button.
 const PregoButtonsIconGlassSize _newSessionButtonSize = PregoButtonsIconGlassSize.xl;
+
+/// A reveal from the centre of the button at [buttonContext], placed on the
+/// navigator the page opens in.
+NewSessionEntry _revealFrom({required BuildContext buttonContext}) {
+  final button = buttonContext.findRenderObject();
+  final pages = Overlay.of(buttonContext).context.findRenderObject();
+  if (button is! RenderBox || pages is! RenderBox) throw StateError("The New session button is not laid out");
+  final centre = button.localToGlobal(button.size.center(Offset.zero), ancestor: pages);
+  return NewSessionEntry.reveal(x: centre.dx / pages.size.width, y: centre.dy / pages.size.height);
+}
 
 /// The sidebar's first row: a new session in the list's default project.
 class const _SidebarNewSession({super.key, required final VoidCallback onPressed}) extends StatelessWidget {

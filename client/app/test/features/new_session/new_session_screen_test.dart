@@ -182,6 +182,7 @@ Widget _buildApp({
             builder: (context, state) => NewSessionScreen(
               projectId: state.uri.queryParameters["project"],
               projectName: "Project One",
+              entry: const NewSessionEntry.platform(),
             ),
           ),
         ],

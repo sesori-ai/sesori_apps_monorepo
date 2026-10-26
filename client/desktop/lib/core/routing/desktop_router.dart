@@ -78,7 +78,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
             onNewSession: ({required context, required project, required displayName}) => _pushRoute(
               context: context,
-              route: AppRoute.newSession(projectId: project.id, projectName: displayName),
+              route: AppRoute.newSession(
+                projectId: project.id,
+                projectName: displayName,
+                entry: const NewSessionEntry.platform(),
+              ),
             ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
@@ -178,7 +182,11 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             key: ValueKey("desktop-new-session-$projectId"),
             onProjectSelected: ({required projectId, required projectName}) => _replaceRoute(
               context: context,
-              route: AppRoute.newSession(projectId: projectId, projectName: projectName),
+              route: AppRoute.newSession(
+                projectId: projectId,
+                projectName: projectName,
+                entry: const NewSessionEntry.platform(),
+              ),
             ),
             projectId: projectId,
             projectName: route.projectName,

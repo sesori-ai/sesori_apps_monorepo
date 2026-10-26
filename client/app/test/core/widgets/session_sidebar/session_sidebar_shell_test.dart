@@ -360,7 +360,13 @@ void main() {
 
       // A new session pushed over the open one, as from a first project.
       unawaited(
-        harness.router.push(const AppRoute.newSession(projectId: "p1", projectName: "Project One").buildPath()),
+        harness.router.push(
+          const AppRoute.newSession(
+            projectId: "p1",
+            projectName: "Project One",
+            entry: NewSessionEntry.platform(),
+          ).buildPath(),
+        ),
       );
       await tester.pumpAndSettle();
       final newSession = find.byType(NewSessionScreen);

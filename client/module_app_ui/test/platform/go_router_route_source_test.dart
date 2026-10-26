@@ -89,7 +89,11 @@ void main() {
     router.pop<void>();
     await tester.pumpAndSettle();
 
-    unawaited(router.push<void>(const AppRoute.newSession(projectId: null, projectName: null).buildPath()));
+    unawaited(
+      router.push<void>(
+        const AppRoute.newSession(projectId: null, projectName: null, entry: NewSessionEntry.platform()).buildPath(),
+      ),
+    );
     await tester.pumpAndSettle();
     router.pop<void>();
     await tester.pumpAndSettle();
@@ -143,7 +147,11 @@ void main() {
     router.go(const AppRoute.home().buildPath());
     await tester.pumpAndSettle();
 
-    unawaited(router.push<void>(const AppRoute.newSession(projectId: "p1", projectName: null).buildPath()));
+    unawaited(
+      router.push<void>(
+        const AppRoute.newSession(projectId: "p1", projectName: null, entry: NewSessionEntry.platform()).buildPath(),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(routeSource.currentRouteStream.value, AppRouteDef.newSession);
 

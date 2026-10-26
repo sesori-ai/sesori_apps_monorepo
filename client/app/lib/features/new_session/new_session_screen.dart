@@ -14,6 +14,10 @@ class const NewSessionScreen({
   /// Null asks for a project first.
   required final String? projectId,
   required final String? projectName,
+
+  /// How the page opened. Choosing another project replaces the page in place
+  /// and keeps it, so the page still leaves the way it came in.
+  required final NewSessionEntry entry,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -21,7 +25,7 @@ class const NewSessionScreen({
     if (projectId == null) {
       return NewSessionProjectPrompt(
         onProjectSelected: ({required projectId, required projectName}) =>
-            context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
+            context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry)),
         onBack: context.pop,
         banner: ConnectionBanner.maybeFor(context),
         opensPicker: true,
@@ -46,7 +50,7 @@ class const NewSessionScreen({
       // A different project is a different page: the route builds a fresh
       // cubit for it.
       onProjectSelected: ({required projectId, required projectName}) => context.replaceRoute(
-        AppRoute.newSession(projectId: projectId, projectName: projectName),
+        AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry),
       ),
       onBack: context.pop,
       onOpenHarnessSettings: () => context.pushRoute(
