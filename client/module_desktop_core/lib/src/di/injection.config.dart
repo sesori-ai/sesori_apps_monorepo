@@ -11,6 +11,7 @@
 // ignore_for_file: no_leading_underscores_for_library_prefixes
 
 import 'package:get_it/get_it.dart' as _i174;
+import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/logging.dart' as _i798;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
@@ -24,6 +25,9 @@ import 'package:sesori_desktop_core/src/api/desktop_instance_api.dart' as _i828;
 import 'package:sesori_desktop_core/src/api/desktop_instance_storage.dart'
     as _i155;
 import 'package:sesori_desktop_core/src/api/desktop_relaunch_api.dart' as _i67;
+import 'package:sesori_desktop_core/src/api/desktop_update_feed_api.dart'
+    as _i414;
+import 'package:sesori_desktop_core/src/api/velopack_update_api.dart' as _i862;
 import 'package:sesori_desktop_core/src/control/control_message_dispatcher.dart'
     as _i21;
 import 'package:sesori_desktop_core/src/foundation/control_channel_server.dart'
@@ -60,6 +64,8 @@ import 'package:sesori_desktop_core/src/repositories/control_command_repository.
     as _i171;
 import 'package:sesori_desktop_core/src/repositories/desktop_instance_repository.dart'
     as _i210;
+import 'package:sesori_desktop_core/src/repositories/desktop_update_feed_validator.dart'
+    as _i265;
 import 'package:sesori_desktop_core/src/repositories/desktop_update_repository.dart'
     as _i737;
 import 'package:sesori_desktop_core/src/services/bridge_process_service.dart'
@@ -97,6 +103,9 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i464.ControlChannelServer(),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i265.DesktopUpdateFeedValidator>(
+      () => _i265.DesktopUpdateFeedValidator(),
+    );
     gh.lazySingleton<_i686.BridgePromptTracker>(
       () => _i686.BridgePromptTracker(),
       dispose: (i) => i.dispose(),
@@ -116,10 +125,10 @@ extension GetItInjectableX on _i174.GetIt {
         processEnvironment: gh<_i961.BridgeProcessEnvironment>(),
       ),
     );
-    gh.lazySingleton<_i737.DesktopUpdateRepository>(
-      () => _i737.DesktopUpdateRepository(
+    gh.lazySingleton<_i414.DesktopUpdateFeedApi>(
+      () => _i414.DesktopUpdateFeedApi(
+        client: gh<_i519.Client>(),
         bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
-        relaunchApi: gh<_i67.DesktopRelaunchApi>(),
       ),
     );
     gh.lazySingleton<_i73.BridgeIdStorage>(
@@ -163,6 +172,13 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
+    gh.lazySingleton<_i862.VelopackUpdateApi>(
+      () => _i862.VelopackUpdateApi(
+        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
+        applicationSupportDirectory:
+            gh<_i695.DesktopApplicationSupportDirectory>(),
+      ),
+    );
     gh.lazySingleton<_i210.DesktopInstanceRepository>(
       () => _i210.DesktopInstanceRepository(
         api: gh<_i828.DesktopInstanceApi>(),
@@ -192,6 +208,15 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i948.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i737.DesktopUpdateRepository>(
+      () => _i737.DesktopUpdateRepository(
+        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
+        relaunchApi: gh<_i67.DesktopRelaunchApi>(),
+        feedApi: gh<_i414.DesktopUpdateFeedApi>(),
+        feedValidator: gh<_i265.DesktopUpdateFeedValidator>(),
+        velopackApi: gh<_i862.VelopackUpdateApi>(),
+      ),
     );
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),

@@ -38,6 +38,16 @@ class SignDesktopUpdateTest(unittest.TestCase):
         with self.assertRaisesRegex(RuntimeError, "could not check"):
             signing.verify(public_key_b64=public_key, payload=self.root / "missing.json", signature_b64=signature)
 
+    def test_verifies_the_vector_the_desktop_feed_validator_checks(self):
+        # client/module_desktop_core/test/repositories/desktop_update_feed_validator_test.dart checks the same files.
+        vector = Path(__file__).resolve().parents[2] / "client/module_desktop_core/test/fixtures/desktop_update_feed"
+        public_key = (vector / "public_key.txt").read_text().strip()
+        signature = (vector / "releases.stable.json.sig").read_text().strip()
+        self.assertTrue(signing.verify(public_key_b64=public_key, payload=vector / "releases.stable.json",
+                                       signature_b64=signature))
+        self.payload.write_bytes((vector / "releases.stable.json").read_bytes().replace(b"1.10.1", b"1.10.2"))
+        self.assertFalse(signing.verify(public_key_b64=public_key, payload=self.payload, signature_b64=signature))
+
     def test_refuses_a_key_that_is_not_ed25519(self):
         with self.assertRaisesRegex(ValueError, "not an Ed25519 key"):
             signing.sign(key=self._key("rsa.pem", "rsa"), payload=self.payload)

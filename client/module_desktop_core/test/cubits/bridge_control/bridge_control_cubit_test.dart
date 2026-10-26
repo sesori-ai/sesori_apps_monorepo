@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:io";
 
+import "package:http/http.dart" as http;
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -49,7 +50,17 @@ void main() {
       bundleSource = _FakeInstalledDesktopBundleSource();
       relaunchApi = _FakeDesktopRelaunchApi();
       updateService = DesktopUpdateService(
-        updateRepository: DesktopUpdateRepository(bundleSource: bundleSource, relaunchApi: relaunchApi),
+        // A Linux package never reaches the Velopack engine.
+        updateRepository: DesktopUpdateRepository(
+          bundleSource: bundleSource,
+          relaunchApi: relaunchApi,
+          feedApi: DesktopUpdateFeedApi(client: http.Client(), bundleSource: bundleSource),
+          feedValidator: DesktopUpdateFeedValidator(),
+          velopackApi: VelopackUpdateApi(
+            bundleSource: bundleSource,
+            applicationSupportDirectory: _LogDirectory(root: Directory.systemTemp),
+          ),
+        ),
         instanceRepository: _RecordingDesktopInstanceRepository(),
       );
       exitOrchestrator = DesktopExitOrchestrator(processService: processService, updateService: updateService);
@@ -720,7 +731,7 @@ void main() {
       );
 
       bundleSource.installed = _installedUpdate;
-      updateService.check();
+      await updateService.check();
       await pumpEventQueue();
 
       expect(
@@ -736,7 +747,7 @@ void main() {
       );
       processService.stopGate = Completer<void>();
       bundleSource.installed = _installedUpdate;
-      updateService.check();
+      await updateService.check();
       await cubit.initialize();
 
       systemTray.emit(command: SystemTrayCommand.restartToUpdate);
@@ -760,7 +771,7 @@ void main() {
       );
       relaunchApi.error = const ProcessException("/usr/bin/sesori-desktop", <String>[]);
       bundleSource.installed = _installedUpdate;
-      updateService.check();
+      await updateService.check();
       await cubit.initialize();
 
       await cubit.restartToUpdate();
@@ -1002,6 +1013,9 @@ class _FakeInstalledDesktopBundleSource() implements InstalledDesktopBundleSourc
 
   @override
   bool get isAppImage => false;
+
+  @override
+  String get velopackLibraryPath => "unused";
 
   @override
   DesktopBundleIdentity readInstalledIdentity() => installed;

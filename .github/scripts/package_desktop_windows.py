@@ -10,7 +10,8 @@ import urllib.request
 import zipfile
 from pathlib import Path
 
-from package_desktop_linux import VPK_PACKAGE_SHA256, VPK_PACKAGE_URL, VPK_VERSION, compiled_channel, velopack_version
+from package_desktop_linux import (VELOPACK_LIBRARY_SHA256, VPK_PACKAGE_SHA256, VPK_PACKAGE_URL, VPK_VERSION,
+                                   compiled_channel, velopack_pack_dir, velopack_version)
 from qualify_desktop import ROOT, inventory, native_arch, run
 
 PACK_ID = "sesori-desktop"
@@ -74,10 +75,12 @@ def package(*, bundle: Path, output: Path, arch: str, version: str) -> Path:
     with tempfile.TemporaryDirectory(prefix="sesori-windows-package-") as temporary:
         work = Path(temporary)
         vpk = install_vpk(work=work)
+        pack_dir = velopack_pack_dir(bundle=bundle, work=work, target_os="windows", arch=arch)
+        expected = payload_digests(root=pack_dir)
         releases = work / "releases"
         # The only shortcut is Start menu\Programs\Sesori\Sesori: StartMenu nests it in the authors folder,
         # and no desktop shortcut is created.
-        command = [str(vpk), "pack", "--packId", PACK_ID, "--packVersion", pack_version, "--packDir", str(bundle),
+        command = [str(vpk), "pack", "--packId", PACK_ID, "--packVersion", pack_version, "--packDir", str(pack_dir),
                    "--mainExe", "sesori_desktop.exe", "--packTitle", "Sesori", "--packAuthors", "Sesori",
                    "--icon", str(ICON_SOURCE), "--runtime", f"win-{arch}", "--channel", channel,
                    "--shortcuts", "StartMenu", "--outputDir", str(releases), "--noPortable"]
@@ -87,15 +90,15 @@ def package(*, bundle: Path, output: Path, arch: str, version: str) -> Path:
         # The full release package and its feed stay with the run's artifacts until feed publication.
         for name in (full_package.name, f"releases.{channel}.json"):
             shutil.copy2(releases / name, velopack / name)
-        # Setup is vpk's stub with the full package appended; that package must hold the exact bundle.
+        # Setup is vpk's stub with the full package appended; that package must hold the exact bundle and the
+        # Velopack library.
         extracted = work / "extracted"
         with zipfile.ZipFile(full_package) as archive:
             archive.extractall(extracted)
         packaged = payload_digests(root=extracted / "lib/app")
         # vpk ships a native updater and stub per CPU, so the whole package is held to the target CPU.
         inventory(root=extracted / "lib/app", target_os="windows", arch=arch)
-    if {path: digest for path, digest in packaged.items() if path not in VELOPACK_ADDED_FILES} != \
-            payload_digests(root=bundle):
+    if {path: digest for path, digest in packaged.items() if path not in VELOPACK_ADDED_FILES} != expected:
         raise ValueError("Velopack package does not contain the exact staged bundle")
     if native_arch(path=installer) != ("PE", [arch]):
         raise ValueError(f"Wrong native target: {installer}: {native_arch(path=installer)}; expected windows/{arch}")
@@ -104,8 +107,8 @@ def package(*, bundle: Path, output: Path, arch: str, version: str) -> Path:
     report = {
         "packagerSourceSha": run(command=["git", "rev-parse", "HEAD"]).strip(),
         "architecture": arch,
-        "velopack": {"vpkVersion": VPK_VERSION, "vpkPackageSha256": VPK_PACKAGE_SHA256, "packVersion": pack_version,
-                     "channel": channel,
+        "velopack": {"vpkVersion": VPK_VERSION, "vpkPackageSha256": VPK_PACKAGE_SHA256,
+                     "libraryArchiveSha256": VELOPACK_LIBRARY_SHA256, "packVersion": pack_version, "channel": channel,
                      "releaseFiles": [{"name": path.name, "sha256": sha256(path), "bytes": path.stat().st_size}
                                       for path in sorted(velopack.iterdir())]},
         "bundle": evidence,
