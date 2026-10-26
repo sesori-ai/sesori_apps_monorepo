@@ -3,8 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 7/7. The L3 run is recorded below. Its one failure (F1) is fixed in #2094. The four macOS cells are
-  pending, so the plan is not retired yet.
+- Status: complete. The L3 run is recorded below. Its one failure (F1) is fixed in #2094 and passed its re-check,
+  and the four macOS cells passed on 2026-10-26.
 - User decisions: D1–D15 in `PLAN.md`, agreed 2026-10-25 over two review rounds.
 
 ## Delivery
@@ -17,7 +17,7 @@
 | 4/7 | Sesori folder and per-session scratch folders (inert) | Done | #2069 |
 | 5/7 | No project project turned on | Done | #2074 |
 | 6/7 | No project in the apps | Done | #2087 |
-| 7/7 | L3 matrix run; plan retired | In progress: run recorded, F1 fixed (#2094), macOS pending | [L3 run](#l3-run-2026-10-25) |
+| 7/7 | L3 matrix run; plan retired | Done | [L3 run](#l3-run-2026-10-25) |
 
 ## L3 run (2026-10-25)
 
@@ -35,8 +35,8 @@
 | Two-button top bar | Pass | The computer button with its status dot, and Settings. |
 | + over a long list | Pass | The + stays fixed while the list scrolls; the last row clears it. |
 | Settings › Archived sessions | Pass | The row opens the Archived page. |
-| Send from + with no filter lands in "No project" | Fail (F1) | The composer opens on "No project", but the OpenCode send fails; see F1. A send without a model lands in "No project" in its own folder. |
-| A project filter starts there | Pass, with F1 | With `demo-api` as the filter, the composer opens on `demo-api`. With "New worktree" off, the send lands in `demo-api` and the reply arrives; with it on (the default), F1. |
+| Send from + with no filter lands in "No project" | Fail (F1), then Pass on the re-check | The composer opens on "No project", but the OpenCode send fails; see F1. A send without a model lands in "No project" in its own folder. |
+| A project filter starts there | Pass, with F1 (fixed, re-checked) | With `demo-api` as the filter, the composer opens on `demo-api`. With "New worktree" off, the send lands in `demo-api` and the reply arrives; with it on (the default), F1. |
 | Picker footer | Pass | "No project" (checked) beside "Open folder…"; "Open folder…" opens the folder browser. |
 | Row has no project name | Pass | "No project" rows show the title and the harness only. |
 | Switcher footer | Pass | "No project" beside "All projects"; picking "No project" titles the home "No project". |
@@ -52,14 +52,27 @@
 | iPad: sidebar footer without Archived | Pass | Same footer as landscape. |
 | iPad: composer defaults to "No project" | Pass | Same default as landscape. |
 
-### macOS desktop
+### macOS desktop (2026-10-26)
+
+The Mac was locked during the main run, so these ran on 2026-10-26 on `main` at 49858867924c, Flutter 3.47.7. The
+build carried an uncommitted test-only patch (bundle id `com.sesori.desktop.qa`, a file master key in place of the
+keychain) that was never committed or pushed. The QA app supervised a slot 1 dev bridge from the same commit, with a
+fixture HOME and OpenCode 2.1.4. Evidence is in `/tmp/macos-qa-media/` on the test machine and is not committed.
 
 | Cell | Result | Seen |
 |---|---|---|
-| Home composer defaults to "No project" | Pending | The Mac was locked; a separate macOS QA build runs them. |
-| Popover footers | Pending | The Mac was locked; a separate macOS QA build runs them. |
-| Sidebar footer without Archived | Pending | The Mac was locked; a separate macOS QA build runs them. |
-| Settings modal row opens Archived | Pending | The Mac was locked; a separate macOS QA build runs them. |
+| Home composer defaults to "No project" | Pass | Live and after a cold relaunch, with All projects and the newest session in `demo-api` (`pl-b1-relaunch-composer-no-project`). |
+| Popover footers | Pass | The filter footer is "No project" beside "All projects", and picking it titles the list "No project". The composer picker footer is "No project ✓" beside "Open folder…". "No project" is never a project row (`pl-b2-*`). |
+| Sidebar footer without Archived | Pass | "This computer" with its status dot, Settings and Collapse (`pl-b3-sidebar-footer-no-archived`). |
+| Settings modal row opens Archived | Pass | The "Archived sessions" row opens the Archived page (`pl-b4-*`, recorded). |
+| F1 re-check: "No project" with an explicit OpenCode model | Pass | DeepSeek V4.1 Flash Free picked explicitly; the session got its own scratch folder, bound to "No project", and the reply arrived (`pl-c-no-project-*`). |
+| F1 re-check: a project with "New worktree" on and an explicit model | Pass | `demo-app` with the same model; the session runs in a detached worktree and the reply arrived (`pl-c-worktree-*`). |
+
+The bridge log has no `stale session options`, `status 409` or `PluginStaleOptions` line over the whole run.
+
+Feel observations, offered to the user as follow-ups: the first Archived open in a run shows "No archived
+sessions" for about 270 ms; on send, a faded copy of the home composer slides over the pending session for about
+1.4 s; with "New worktree" on, the OpenCode user bubble grows to show the bridge's worktree instructions.
 
 ### Plugins (new bridge, debug API)
 
@@ -137,7 +150,7 @@ behaviour and stays out of scope.
   `{"data":[]}`, while `/api/model` already lists the models; a second call returns the providers.
   `OpenCodeV2Service._validateModel` (`opencode_v2_service.dart`, called from `createSession`) finds no provider
   and throws `PluginStaleOptionsException`.
-- **Status:** not fixed in this branch; reported for a fix PR.
+- **Status:** fixed in #2094; the macOS re-check above passed.
 
 ### Other observations
 
