@@ -45,7 +45,6 @@ void main() {
             path: projectPath,
             hidden: true,
             baseBranch: "main",
-            prCacheGithubLogin: null,
             displayName: "User project name",
             createdAt: 10,
             updatedAt: 20,
@@ -66,13 +65,6 @@ void main() {
             projectionUpdatedAt: 20,
           ),
         ],
-      );
-      await setTestPrCacheGithubLogin(db: database, projectId: "stored-project", githubLogin: "octocat");
-      await setTestPullRequestScope(
-        db: database,
-        sessionId: "ses_existing_root",
-        currentBranchName: "feature/current",
-        currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
       );
       await database.sessionDao.insertSessionTombstone(
         backendSessionId: "deleted",
@@ -119,7 +111,6 @@ void main() {
       expect(project?.hidden, isTrue);
       expect(project?.baseBranch, "main");
       expect(project?.displayName, "User project name");
-      expect(project?.prCacheGithubLogin, "octocat");
 
       final root = await database.sessionDao.getSessionByBinding(
         pluginId: "native",
@@ -137,11 +128,6 @@ void main() {
       expect(root?.title, "User session title");
       expect(root?.catalogTitle, "Fresh catalog title");
       expect(root?.archivedAt, isNull);
-      expect(root?.currentBranchName, "feature/current");
-      expect(
-        root?.currentGithubRepositoryIdentity,
-        "sesori-ai/sesori_apps_monorepo",
-      );
       expect(child?.sessionId, startsWith("ses_"));
       expect(child?.parentSessionId, root?.sessionId);
       expect(grandchild?.parentSessionId, child?.sessionId);
@@ -1579,7 +1565,6 @@ ProjectDto _projectRow({required String id, required String path, int updatedAt 
     path: path,
     hidden: false,
     baseBranch: null,
-    prCacheGithubLogin: null,
     displayName: null,
     createdAt: 10,
     updatedAt: updatedAt,
@@ -1609,8 +1594,6 @@ SessionDto _sessionRow({
     directory: directory,
     worktreePath: worktreePath,
     branchName: worktreePath == null ? null : "feature",
-    currentBranchName: null,
-    currentGithubRepositoryIdentity: null,
     isDedicated: worktreePath != null,
     archivedAt: archivedAt,
     baseBranch: "main",

@@ -33,7 +33,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-1",
         backendSessionId: "ses-1",
         projectId: "proj-1",
@@ -66,7 +65,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-simple",
         backendSessionId: "ses-simple",
         projectId: "proj-1",
@@ -129,7 +127,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-insert-defaults",
         backendSessionId: "ses-insert-defaults",
         projectId: "proj-1",
@@ -159,7 +156,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-update-defaults",
         backendSessionId: "ses-update-defaults",
         projectId: "proj-1",
@@ -199,7 +195,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-generated-title",
         backendSessionId: "ses-generated-title",
         projectId: "proj-1",
@@ -263,7 +258,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-2",
         backendSessionId: "ses-2",
         projectId: "proj-2",
@@ -287,7 +281,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-3",
         backendSessionId: "ses-3",
         projectId: "proj-3",
@@ -344,7 +337,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-4",
         backendSessionId: "ses-4",
         projectId: "proj-4",
@@ -372,7 +364,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-a",
         backendSessionId: "ses-a",
         projectId: "proj-x",
@@ -388,7 +379,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-b",
         backendSessionId: "ses-b",
         projectId: "proj-x",
@@ -404,7 +394,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "ses-c",
         backendSessionId: "ses-c",
         projectId: "proj-y",
@@ -431,7 +420,6 @@ void main() {
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
-          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -447,7 +435,6 @@ void main() {
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
-          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-1",
@@ -475,7 +462,6 @@ void main() {
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
-          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -502,7 +488,6 @@ void main() {
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
-          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -518,7 +503,6 @@ void main() {
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
-          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-1",
@@ -553,7 +537,6 @@ void main() {
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
-          preservePullRequestScope: false,
           sessionId: "ses-a",
           backendSessionId: "ses-a",
           projectId: "proj-1",
@@ -569,7 +552,6 @@ void main() {
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
-          preservePullRequestScope: false,
           sessionId: "ses-b",
           backendSessionId: "ses-b",
           projectId: "proj-2",
@@ -651,7 +633,6 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "sess-existing",
         backendSessionId: "sess-existing",
         projectId: "proj-1",
@@ -828,7 +809,6 @@ void main() {
           () async => await dao.insertSession(
             fastMode: false,
             pluginId: "opencode",
-            preservePullRequestScope: false,
             sessionId: "s2",
             backendSessionId: "s2",
             projectId: "nonexistent",

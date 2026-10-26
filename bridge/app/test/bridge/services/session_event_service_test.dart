@@ -1610,7 +1610,6 @@ Future<void> _insertRoot({
     lastAgent: null,
     lastAgentModel: null,
     pluginId: pluginId,
-    preservePullRequestScope: false,
   );
 }
 

@@ -22,7 +22,6 @@ class ProjectsTable() extends Table {
   TextColumn get path => text()();
   BoolColumn get hidden => boolean().withDefault(const Constant(false))();
   TextColumn get baseBranch => text().nullable()();
-  TextColumn get prCacheGithubLogin => text().nullable()();
 
   /// Bridge-owned display-name override for a renamed aggregate project. Null
   /// means fall back to the directory basename.
@@ -56,7 +55,6 @@ sealed class const ProjectDto._() with _$ProjectDto, $ProjectsTableTableToColumn
     required String path,
     @Default(false) bool hidden,
     String? baseBranch,
-    required String? prCacheGithubLogin,
     String? displayName,
     required int createdAt,
     required int updatedAt,
