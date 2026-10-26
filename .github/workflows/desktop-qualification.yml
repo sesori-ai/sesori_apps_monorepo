@@ -180,6 +180,13 @@ jobs:
         env:
           DEBIAN_FRONTEND: noninteractive
         run: |
+          # The runner's Azure mirror served this ~290 MB KDE install at about 50 KB/s,
+          # overrunning the job; Ubuntu's own archive keeps it within the session window.
+          for sources in /etc/apt/apt-mirrors.txt /etc/apt/sources.list.d/ubuntu.sources; do
+            [[ -f "$sources" ]] || continue
+            sudo sed -i -e 's|http://azure.archive.ubuntu.com/ubuntu|http://archive.ubuntu.com/ubuntu|g' \
+              -e 's|http://azure.ports.ubuntu.com/ubuntu-ports|http://ports.ubuntu.com/ubuntu-ports|g' "$sources"
+          done
           sudo apt-get update
           sudo apt-get install --yes --no-install-recommends \
             dbus-x11 python3-dbus python3-pyatspi gnome-keyring libsecret-tools gsettings-desktop-schemas \
