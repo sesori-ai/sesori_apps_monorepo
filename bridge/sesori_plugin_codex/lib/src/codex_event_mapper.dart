@@ -898,7 +898,6 @@ class CodexEventMapper({
       parentID: thread.parentId,
       title: thread.name,
       time: _threadTime(thread),
-      pullRequest: null,
       promptDefaults: null,
       lastUserActivityAt: null,
     );
@@ -949,7 +948,6 @@ class CodexEventMapper({
       parentID: _threadParent[id],
       title: title,
       time: time,
-      pullRequest: null,
       promptDefaults: null,
       lastUserActivityAt: null,
     );

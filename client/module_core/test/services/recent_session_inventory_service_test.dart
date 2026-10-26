@@ -301,7 +301,7 @@ void main() {
     verify(() => repository.listSessions(projectId: projectId)).called(2);
   });
 
-  test("failed entries retry on reconnect and project invalidation refreshes only known projects", () async {
+  test("failed entries retry on reconnect", () async {
     when(() => repository.listSessions(projectId: projectId))
         .thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
     await inventory.ensureLoaded(projectId: projectId);
@@ -309,11 +309,8 @@ void main() {
     stubSessions(sessions: [testSession()]);
     connection.emitDataMayBeStale();
     await inventory.state.skip(1).firstWhere((state) => state[projectId] is RecentSessionsLoaded);
-    events.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "other")));
-    events.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: projectId)));
-    await inventory.state.skip(1).firstWhere((state) => state[projectId] is RecentSessionsLoaded);
     await inventory.retry(projectId: projectId);
-    verify(() => repository.listSessions(projectId: any(named: "projectId"))).called(4);
+    verify(() => repository.listSessions(projectId: any(named: "projectId"))).called(3);
   });
 
   for (final invalidation in [

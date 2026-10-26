@@ -1112,7 +1112,6 @@ Session _session({
     parentID: parentID,
     title: title,
     time: null,
-    pullRequest: null,
     promptDefaults: null,
     lastUserActivityAt: null,
   );

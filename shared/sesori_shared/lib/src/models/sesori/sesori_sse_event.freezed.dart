@@ -164,10 +164,6 @@ SesoriSseEvent _$SesoriSseEventFromJson(
           return SesoriVcsBranchUpdated.fromJson(
             json
           );
-                case 'sessions.updated':
-          return SesoriSessionsUpdated.fromJson(
-            json
-          );
                 case 'session.unseen_changed':
           return SesoriSessionUnseenChanged.fromJson(
             json
@@ -2954,81 +2950,6 @@ String toString() {
 
 
 
-
-/// @nodoc
-@JsonSerializable()
-
-class SesoriSessionsUpdated implements SesoriSseEvent {
-  const SesoriSessionsUpdated({required this.projectID,  String? $type}): $type = $type ?? 'sessions.updated';
-  factory SesoriSessionsUpdated.fromJson(Map<String, dynamic> json) => _$SesoriSessionsUpdatedFromJson(json);
-
- final  String projectID;
-
-@JsonKey(name: 'type')
-final String $type;
-
-
-/// Create a copy of SesoriSseEvent
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$SesoriSessionsUpdatedCopyWith<SesoriSessionsUpdated> get copyWith => _$SesoriSessionsUpdatedCopyWithImpl<SesoriSessionsUpdated>(this, _$identity);
-
-@override
-Map<String, dynamic> toJson() {
-  return _$SesoriSessionsUpdatedToJson(this, );
-}
-
-@override
-bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SesoriSessionsUpdated&&(identical(other.projectID, projectID) || other.projectID == projectID));
-}
-
-@JsonKey(includeFromJson: false, includeToJson: false)
-@override
-int get hashCode {
-    return Object.hash(runtimeType,projectID);
-}
-
-@override
-String toString() {
-    return 'SesoriSseEvent.sessionsUpdated(projectID: $projectID)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $SesoriSessionsUpdatedCopyWith<$Res> implements $SesoriSseEventCopyWith<$Res> {
-  factory $SesoriSessionsUpdatedCopyWith(SesoriSessionsUpdated value, $Res Function(SesoriSessionsUpdated) _then) = _$SesoriSessionsUpdatedCopyWithImpl;
-@useResult
-$Res call({
- String projectID
-});
-
-
-
-
-}
-/// @nodoc
-class _$SesoriSessionsUpdatedCopyWithImpl<$Res>
-    implements $SesoriSessionsUpdatedCopyWith<$Res> {
-  _$SesoriSessionsUpdatedCopyWithImpl(this._self, this._then);
-
-  final SesoriSessionsUpdated _self;
-  final $Res Function(SesoriSessionsUpdated) _then;
-
-/// Create a copy of SesoriSseEvent
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? projectID = null,}) {
-  return _then(SesoriSessionsUpdated(
-projectID: null == projectID ? _self.projectID : projectID // ignore: cast_nullable_to_non_nullable
-as String,
-  ));
-}
-
-
-}
 
 /// @nodoc
 @JsonSerializable()

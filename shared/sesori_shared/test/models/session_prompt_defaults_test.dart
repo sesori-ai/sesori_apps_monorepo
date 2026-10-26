@@ -33,7 +33,6 @@ void main() {
         "parentID": null,
         "title": null,
         "time": null,
-        "pullRequest": null,
       });
 
       expect(session.lastUserActivityAt, isNull);
@@ -48,7 +47,6 @@ void main() {
         "parentID": null,
         "title": null,
         "time": null,
-        "pullRequest": null,
         "lastUserActivityAt": 1234,
       });
 
@@ -67,7 +65,6 @@ void main() {
         "title": null,
         "time": null,
         "summary": null,
-        "pullRequest": null,
       });
 
       expect(session.promptDefaults, isNull);
@@ -85,7 +82,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        pullRequest: null,
         lastUserActivityAt: null,
         promptDefaults: SessionPromptDefaults(
           agent: "agent-1",

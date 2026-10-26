@@ -137,7 +137,6 @@ class SseEventTracker(
             SesoriSessionPromptDefaultsChanged() ||
             SesoriSessionQueuedPrompts() ||
             SesoriVcsBranchUpdated() ||
-            SesoriSessionsUpdated() ||
             SesoriSessionUnseenChanged() ||
             SesoriFileEdited() ||
             SesoriInstallationUpdateAvailable() ||

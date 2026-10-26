@@ -384,7 +384,6 @@ Session adaptiveTestSession({
     directory: "/tmp/$projectId",
     parentID: null,
     title: title,
-    pullRequest: null,
     time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
     promptDefaults: null,
     lastUserActivityAt: null,

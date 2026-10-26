@@ -497,7 +497,6 @@ class AcpEventMapper({
                 updated: time.updated,
                 archived: time.archived,
               ),
-        pullRequest: null,
         promptDefaults: null,
         lastUserActivityAt: null,
       ).toJson(),
@@ -1378,7 +1377,6 @@ class AcpEventMapper({
               updated: updated ?? created!,
               archived: null,
             ),
-      pullRequest: null,
       promptDefaults: null,
       lastUserActivityAt: null,
     );

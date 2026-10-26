@@ -126,7 +126,7 @@ void main() {
       );
     });
 
-    test("maps session.created with provided enriched payload", () {
+    test("maps session.created with the provided payload", () {
       final result = mapEvent(
         const BridgeSseSessionCreated(
           info: {
@@ -137,15 +137,6 @@ void main() {
             "title": "session",
             "time": {"created": 1, "updated": 2, "archived": null},
             "summary": null,
-            "pullRequest": {
-              "number": 11,
-              "url": "https://github.com/org/repo/pull/11",
-              "title": "Newest open PR",
-              "state": "open",
-              "mergeableStatus": "mergeable",
-              "reviewDecision": "approved",
-              "checkStatus": "success",
-            },
             "hasWorktree": true,
           },
         ),
@@ -153,11 +144,10 @@ void main() {
 
       expect(result, isA<SesoriSessionCreated>());
       final event = result! as SesoriSessionCreated;
-      expect(event.info.pullRequest?.number, equals(11));
       expect(event.info.hasWorktree, isTrue);
     });
 
-    test("maps session.updated with provided enriched payload", () {
+    test("maps session.updated with the provided payload", () {
       final result = mapEvent(
         const BridgeSseSessionUpdated(
           info: {
@@ -168,15 +158,6 @@ void main() {
             "title": "replacement session",
             "time": {"created": 3, "updated": 4, "archived": null},
             "summary": null,
-            "pullRequest": {
-              "number": 19,
-              "url": "https://github.com/org/repo/pull/19",
-              "title": "Stored update PR",
-              "state": "open",
-              "mergeableStatus": "mergeable",
-              "reviewDecision": "reviewRequired",
-              "checkStatus": "pending",
-            },
           },
           titleChanged: false,
         ),
@@ -185,8 +166,6 @@ void main() {
       expect(result, isA<SesoriSessionUpdated>());
       final event = result! as SesoriSessionUpdated;
       expect(event.info.title, equals("replacement session"));
-      expect(event.info.pullRequest?.number, equals(19));
-      expect(event.info.pullRequest?.title, equals("Stored update PR"));
     });
 
     test("maps session.diff without diff payload", () async {

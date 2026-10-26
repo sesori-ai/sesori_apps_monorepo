@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 12/13 in review.
+- Current step: 13/13 in review.
 - User decisions:
   - remove all PR tracking (round 1, Q1 A, 2026-10-25);
   - D7, remove project-view presence (the user's follow-up the same day).
@@ -25,7 +25,7 @@
 | 10/13 | Pull request repository removed | Done | #2098 |
 | 11/13 | gh client removed | In review | #2099 |
 | 12/13 | Schema v21 drops stored PR data | In review | #2100 |
-| 13/13 | PR wire models removed; plan retired | Not started | — |
+| 13/13 | PR wire models removed; plan retired | In review | — |
 
 ## Decision log
 

@@ -82,7 +82,6 @@ Session _child(String id, {String? title}) => Session(
   parentID: "s",
   title: title,
   time: null,
-  pullRequest: null,
   promptDefaults: null,
   branchName: null,
   lastUserActivityAt: null,

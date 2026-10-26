@@ -12,7 +12,6 @@ void main() {
         "title": null,
         "time": null,
         "summary": null,
-        "pullRequest": null,
       });
 
       expect(session.hasWorktree, isFalse);
@@ -27,7 +26,6 @@ void main() {
         "title": null,
         "time": null,
         "summary": null,
-        "pullRequest": null,
         "hasWorktree": true,
       });
 
@@ -46,7 +44,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        pullRequest: null,
         promptDefaults: null,
         lastUserActivityAt: null,
         hasWorktree: true,

@@ -9,7 +9,6 @@ void main() {
     "parentID": null,
     "title": null,
     "time": null,
-    "pullRequest": null,
     ...extra,
   };
 

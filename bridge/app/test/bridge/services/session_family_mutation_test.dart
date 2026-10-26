@@ -519,7 +519,6 @@ class _SessionRecord({
     parentID: parentId,
     title: title,
     time: SessionTime(created: 1, updated: 1, archived: archivedAt),
-    pullRequest: null,
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: "branch-$id",

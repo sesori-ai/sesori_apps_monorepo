@@ -216,7 +216,6 @@ Session _deletedSessionInfo(String sessionId) => Session(
   parentID: null,
   title: null,
   time: null,
-  pullRequest: null,
   promptDefaults: null,
   lastUserActivityAt: null,
 );
@@ -281,7 +280,6 @@ Session _sharedSessionFromPlugin(PluginSession session, String pluginId) {
       ),
       null => null,
     },
-    pullRequest: null,
     promptDefaults: null,
     lastUserActivityAt: null,
   );
@@ -380,7 +378,6 @@ class FakeSessionRepository({
       parentID: stored.parentSessionId,
       title: title,
       time: SessionTime(created: stored.createdAt, updated: stored.updatedAt, archived: stored.archivedAt),
-      pullRequest: null,
       promptDefaults: null,
       lastUserActivityAt: stored.lastUserMessageAt,
     );
@@ -450,7 +447,6 @@ class FakeSessionRepository({
     parentID: null,
     title: null,
     time: null,
-    pullRequest: null,
     promptDefaults: null,
     lastUserActivityAt: null,
   );

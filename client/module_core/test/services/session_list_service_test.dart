@@ -173,7 +173,6 @@ Session _session({required String id, required String title, required int update
     parentID: null,
     title: title,
     time: SessionTime(created: 1, updated: updatedAt, archived: null),
-    pullRequest: null,
     promptDefaults: null,
     branchName: null,
     lastUserActivityAt: null,
