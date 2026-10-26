@@ -5,7 +5,6 @@ import "../../api/database/tables/session_table.dart";
 class const SessionCatalogMapper() {
   Session map({
     required SessionDto row,
-    required PullRequestInfo? pullRequest,
     required bool unseen,
   }) {
     return Session(
@@ -20,7 +19,7 @@ class const SessionCatalogMapper() {
       parentID: row.parentSessionId,
       title: row.title ?? row.catalogTitle,
       time: SessionTime(created: row.createdAt, updated: _latestActivityAt(row), archived: row.archivedAt),
-      pullRequest: pullRequest,
+      pullRequest: null,
       promptDefaults: row.lastAgent == null && row.lastAgentModel == null && !row.fastMode
           ? null
           : SessionPromptDefaults(agent: row.lastAgent, model: row.lastAgentModel, fastMode: row.fastMode),

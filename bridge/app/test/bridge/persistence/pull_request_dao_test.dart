@@ -153,7 +153,7 @@ void main() {
       expect(prs.map((pr) => pr.prNumber), unorderedEquals([10, 11]));
     });
 
-    test("getPrsBySessionIds returns rows in persisted project and session scope", () async {
+    test("getPrsByPersistedScopeSessionIds returns rows in persisted project and session scope", () async {
       await insertProject(projectId: "proj-1");
       await insertSession(
         sessionId: "session-1",
@@ -175,14 +175,11 @@ void main() {
         title: "Open PR",
       );
 
-      final result = await dao.getPrsBySessionIds(
-        sessionIds: ["session-1"],
-        verifiedGithubLogin: githubLogin,
-      );
+      final result = await dao.getPrsByPersistedScopeSessionIds(sessionIds: ["session-1"]);
       expect(result["session-1"]?.map((pr) => pr.prNumber), unorderedEquals([100, 101]));
     });
 
-    test("getPrsBySessionIds prevents cross-repository and account leakage", () async {
+    test("getPrsByPersistedScopeSessionIds prevents cross-repository and account leakage", () async {
       await insertProject(projectId: "proj-1");
       await insertSession(
         sessionId: "session-1",
@@ -215,26 +212,14 @@ void main() {
         title: "Other account",
       );
 
-      final matchingAccount = await dao.getPrsBySessionIds(
-        sessionIds: ["session-1"],
-        verifiedGithubLogin: githubLogin,
-      );
+      final matchingAccount = await dao.getPrsByPersistedScopeSessionIds(sessionIds: ["session-1"]);
       expect(matchingAccount["session-1"]?.map((pr) => pr.prNumber), [100]);
-
-      final unverifiedSwitch = await dao.getPrsBySessionIds(
-        sessionIds: ["session-1"],
-        verifiedGithubLogin: "hubot",
-      );
-      expect(unverifiedSwitch, isEmpty);
 
       await db.projectsDao.setPrCacheGithubLogin(
         projectId: "proj-1",
         githubLogin: "hubot",
       );
-      final switchedAccount = await dao.getPrsBySessionIds(
-        sessionIds: ["session-1"],
-        verifiedGithubLogin: "hubot",
-      );
+      final switchedAccount = await dao.getPrsByPersistedScopeSessionIds(sessionIds: ["session-1"]);
       expect(switchedAccount["session-1"]?.map((pr) => pr.prNumber), [102]);
     });
 

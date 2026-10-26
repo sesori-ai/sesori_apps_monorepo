@@ -93,7 +93,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
@@ -510,7 +509,6 @@ void main() {
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localOperationDispatcher = SessionOperationDispatcher(sessionRepository: localRepository);
@@ -1026,7 +1024,6 @@ void main() {
         plugin: orderedPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final orderedOperationDispatcher = SessionOperationDispatcher(sessionRepository: orderedRepository);
@@ -1218,7 +1215,6 @@ void main() {
         plugin: throwingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final throwingOperationDispatcher = SessionOperationDispatcher(sessionRepository: throwingRepository);

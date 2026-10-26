@@ -191,7 +191,6 @@ void main() {
           plugin: plugin,
           projectsDao: db.projectsDao,
           sessionDao: db.sessionDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
@@ -220,7 +219,6 @@ void main() {
           projectId: "sess-proj",
           start: null,
           limit: null,
-          verifiedGithubLogin: null,
         );
 
         // projects_table has "sess-proj".

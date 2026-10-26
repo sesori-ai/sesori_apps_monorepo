@@ -83,7 +83,6 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         runtime: runtime,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
-        pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",

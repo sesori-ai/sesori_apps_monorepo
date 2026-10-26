@@ -34,7 +34,6 @@ void main() {
       plugin: plugin,
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
     );
     addTearDown(sessionRepository.dispose);

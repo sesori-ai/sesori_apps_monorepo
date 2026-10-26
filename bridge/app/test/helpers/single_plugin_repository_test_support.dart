@@ -1,7 +1,6 @@
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/catalog_hydrations_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
-import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
@@ -102,7 +101,6 @@ SessionRepository singlePluginSessionRepository({
   required BridgePluginApi plugin,
   required SessionDao sessionDao,
   required ProjectsDao projectsDao,
-  required PullRequestDao pullRequestDao,
   required SessionUnseenCalculator unseenCalculator,
   Set<String>? eligiblePluginIds,
   TestPluginRuntime? runtime,
@@ -116,7 +114,6 @@ SessionRepository singlePluginSessionRepository({
         ),
     sessionDao: sessionDao,
     projectsDao: projectsDao,
-    pullRequestDao: pullRequestDao,
     unseenCalculator: unseenCalculator,
     projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
     aggregateSourceDeadline: const Duration(seconds: 5),

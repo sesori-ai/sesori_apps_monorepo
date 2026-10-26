@@ -434,7 +434,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
       runtime: createBenchmarkPluginRuntime(plugins: plugins.values),
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
       projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
         scratchRoot: "/scratch",
@@ -452,15 +451,10 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
     required String expectedFirstSessionId,
     required String expectedLastSessionId,
   }) async {
-    var sessions = await repository.getSessionsForProject(
+    final sessions = await repository.getSessionsForProject(
       projectId: projectId,
       start: start,
       limit: limit,
-      verifiedGithubLogin: null,
-    );
-    sessions = await repository.enrichSessions(
-      sessions: sessions,
-      verifiedGithubLogin: null,
     );
     _verifyBoundaries(
       name: "session catalog for $projectId",

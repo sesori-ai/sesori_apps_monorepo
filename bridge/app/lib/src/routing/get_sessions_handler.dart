@@ -31,7 +31,6 @@ class GetSessionsHandler({
           projectId: projectId,
           start: body.start,
           limit: body.limit,
-          verifiedGithubLogin: null,
         ),
       ),
     );

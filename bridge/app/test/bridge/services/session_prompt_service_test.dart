@@ -43,7 +43,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       dispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
