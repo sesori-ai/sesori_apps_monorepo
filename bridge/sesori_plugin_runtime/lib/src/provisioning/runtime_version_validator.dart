@@ -36,12 +36,14 @@ final class RuntimeProbeFailed({required final Object innerError, required final
 class RuntimeVersionValidator({
   required final CommandExecutor _commandExecutor,
   required final RuntimeManifest _manifest,
-  // The first launch of a just-installed binary can take ~10 s on Windows
-  // while antivirus scans it, although later launches take under a second.
-  final Duration _probeTimeout = const Duration(seconds: 30),
+  final Duration _probeTimeout = const Duration(seconds: 10),
   required IoHostExecutableLocator executableLocator,
 }) implements RuntimeCandidateValidator {
   final IoHostExecutableLocator _executableLocator = executableLocator;
+
+  // The first launch of a just-installed binary can take ~10 s on Windows
+  // while antivirus scans it, although later launches take under a second.
+  static const Duration _windowsMinimumProbeTimeout = Duration(seconds: 30);
 
   /// Runs `<executable> --version` and classifies the result without throwing.
   Future<RuntimeProbeOutcome> probe({
@@ -61,7 +63,9 @@ class RuntimeVersionValidator({
         const ["--version"],
         workingDirectory: workingDirectory,
         environment: environment,
-        timeout: _probeTimeout,
+        timeout: _executableLocator.isWindows && _probeTimeout < _windowsMinimumProbeTimeout
+            ? _windowsMinimumProbeTimeout
+            : _probeTimeout,
       );
     } on ProcessException catch (error, stackTrace) {
       if (_executableLocator.isProcessMissingError(error: error) &&

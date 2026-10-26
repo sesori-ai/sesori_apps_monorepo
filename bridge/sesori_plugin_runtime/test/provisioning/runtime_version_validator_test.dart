@@ -12,6 +12,7 @@ class _FakeCommandExecutor({final CommandResult? result, final Object? error}) i
   List<String>? ranArguments;
   String? ranWorkingDirectory;
   Map<String, String>? ranEnvironment;
+  Duration? ranTimeout;
 
   @override
   Future<CommandResult> run(
@@ -25,6 +26,7 @@ class _FakeCommandExecutor({final CommandResult? result, final Object? error}) i
     ranArguments = arguments;
     ranWorkingDirectory = workingDirectory;
     ranEnvironment = environment;
+    ranTimeout = timeout;
     if (error != null) {
       throw error!;
     }
@@ -126,6 +128,21 @@ void main() {
       expect(executor.ranExecutable, equals("opencode"));
       expect(executor.ranArguments, equals(const ["--version"]));
     });
+
+    for (final (isWindows, expected) in [(false, 10), (true, 30)]) {
+      test("gives a 10 s probe ${expected.toString()} s when Windows is $isWindows", () async {
+        final executor = _FakeCommandExecutor(
+          result: const CommandResult(exitCode: 0, stdout: "1.0.0", stderr: ""),
+        );
+        await RuntimeVersionValidator(
+          commandExecutor: executor,
+          manifest: const _SemverManifest(),
+          probeTimeout: const Duration(seconds: 10),
+          executableLocator: _Locator(presence: HostExecutablePresence.present, platformIsWindows: isWindows),
+        ).probe(executable: "opencode", environment: null);
+        expect(executor.ranTimeout, Duration(seconds: expected));
+      });
+    }
 
     test("returns null on a non-zero exit", () async {
       final version = await detect(
