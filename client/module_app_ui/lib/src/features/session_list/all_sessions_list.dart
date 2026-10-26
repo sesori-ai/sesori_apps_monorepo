@@ -262,31 +262,28 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     final heldUnderFailures =
         skeletonLeaving && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
     final heldAboveFailures = skeletonLeaving && !heldUnderFailures;
-    // While the list loads, the search field and chips hold their room with a
-    // skeleton, so nothing under them moves when they take it with the rows.
-    // Through the hand-off that skeleton fades out where it stands, one that
-    // never showed staying hidden, and a load that ends with no sessions
-    // folds the room away as the empty state fades in.
-    final roomHeld = (loading && !hasSessions) || skeletonLeaving;
+    // The search field shows from a load's first frame, so nothing under it
+    // moves when the rows arrive. A load that ends with nothing to search
+    // folds it and the chips' room away as the empty state fades in.
+    final searchShown = hasSessions || loading || skeletonLeaving;
     final roomFolds = skeletonLeaving && !hasSessions;
-    Widget room({required Widget content, required Widget skeleton}) => ListenableBuilder(
+    // The chips show counts, so until the load has some, a skeleton pill
+    // holds each chip's place. Through the hand-off it fades out where it
+    // stands as the chip fades in over it, one that never showed staying
+    // hidden.
+    final chipsShown = loading ? state.counts.all > 0 : hasSessions;
+    final chipsHeld = (loading && state.counts.all == 0) || skeletonLeaving;
+    Widget folding({required Widget child}) => ListenableBuilder(
       listenable: _contentOpacity,
       // The fade's ease-out, run backwards: an ease-in fold, as a transcript row's.
-      builder: (_, child) => _sized(size: roomFolds ? 1 - _contentOpacity.value : 1, child: child),
-      child: SizedBox(
-        width: double.infinity,
-        child: Stack(
-          fit: StackFit.passthrough,
-          children: [
-            if (hasSessions) FadeTransition(key: const ValueKey("content"), opacity: _contentOpacity, child: content),
-            if (roomHeld)
-              IgnorePointer(
-                key: const ValueKey("skeleton"),
-                child: PregoShimmer(leaving: !loading, child: skeleton),
-              ),
-          ],
-        ),
-      ),
+      builder: (_, child) {
+        final size = roomFolds ? 1 - _contentOpacity.value : 1.0;
+        return _sized(
+          size: size,
+          child: Opacity(opacity: size, child: child),
+        );
+      },
+      child: child,
     );
     final searchField = ListSearchField(
       query: state.query,
@@ -330,37 +327,53 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
 
     return SliverMainAxisGroup(
       slivers: [
-        // Keyed, so the header keeps its state as the rooms around it come and go.
-        if (hasSessions || roomHeld)
+        // Keyed, so the header keeps its state as the boxes around it come and go.
+        if (searchShown)
           SliverToBoxAdapter(
             key: const ValueKey("all-sessions-search"),
             child: _holding(
               // The archived list's last box above the failed projects: only
               // the active list has a header.
               skeleton: heldAboveFailures && !isActive,
-              child: room(
-                content: Padding(padding: _searchFieldPadding, child: searchField),
-                skeleton: Padding(
-                  padding: _searchFieldPadding,
-                  child: _barOver(shape: searchField),
-                ),
+              child: folding(
+                child: Padding(padding: _searchFieldPadding, child: searchField),
               ),
             ),
           ),
         if (list.header case final header?)
           SliverToBoxAdapter(key: const ValueKey("all-sessions-header"), child: header),
-        if (isActive && (hasSessions || roomHeld))
+        if (isActive && (chipsShown || chipsHeld))
           SliverToBoxAdapter(
             key: const ValueKey("all-sessions-chips"),
             child: _holding(
               // The active list's last box above the failed projects.
               skeleton: heldAboveFailures,
-              child: room(
-                content: chips(
-                  each: (filter) => chip(filter: filter, key: Key("session-list-filter-${filter.name}")),
-                ),
-                skeleton: chips(
-                  each: (filter) => _barOver(shape: chip(filter: filter, key: null)),
+              child: folding(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: Stack(
+                    fit: StackFit.passthrough,
+                    children: [
+                      if (chipsShown)
+                        FadeTransition(
+                          key: const ValueKey("content"),
+                          opacity: _contentOpacity,
+                          child: chips(
+                            each: (filter) => chip(filter: filter, key: Key("session-list-filter-${filter.name}")),
+                          ),
+                        ),
+                      if (chipsHeld)
+                        IgnorePointer(
+                          key: const ValueKey("skeleton"),
+                          child: PregoShimmer(
+                            leaving: !loading,
+                            child: chips(
+                              each: (filter) => _barOver(shape: chip(filter: filter, key: null)),
+                            ),
+                          ),
+                        ),
+                    ],
+                  ),
                 ),
               ),
             ),
@@ -469,11 +482,8 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
   }
 
-  Widget _skeleton({required BuildContext context, required bool leaving}) => PregoSkeletonList(
-    key: _skeletonKey,
-    semanticLabel: context.loc.sessionListLoadingSemantics,
-    leaving: leaving,
-  );
+  Widget _skeleton({required BuildContext context, required bool leaving}) =>
+      SessionListSkeleton(key: _skeletonKey, leaving: leaving);
 
   /// [child], with the leaving skeleton, if it holds the [skeleton], fading
   /// out over what follows, hanging from its bottom without taking room.
@@ -558,6 +568,48 @@ Widget _sized({required double size, required Widget? child}) => ClipRect(
   clipBehavior: size < 1 ? Clip.hardEdge : Clip.none,
   child: Align(alignment: AlignmentDirectional.topStart, heightFactor: size, child: child),
 );
+
+/// The session list's loading placeholder, shaped like the grouped list it
+/// stands for: a date heading over a few rows, in groups of 3, 2 and 4 rows
+/// repeated until the screen's height is covered. The pattern is fixed, so the
+/// groups never reshuffle as it rebuilds.
+class const SessionListSkeleton({super.key, required final bool leaving}) extends StatelessWidget {
+  static const List<int> _groupSizes = [3, 2, 4];
+
+  /// Close to the widths of "Today", "Yesterday" and a weekday.
+  static const List<double> _headingWidths = [40, 64, 56];
+  static const List<double> _titleWidths = [0.72, 0.5, 0.84, 0.6, 0.44, 0.78, 0.56, 0.66, 0.48];
+
+  /// Close to the widths of project names.
+  static const List<double> _detailsWidths = [88, 64, 76];
+
+  @override
+  Widget build(BuildContext context) {
+    final screenHeight = MediaQuery.sizeOf(context).height;
+    final children = <Widget>[];
+    var height = 0.0;
+    var row = 0;
+    for (var group = 0; height < screenHeight; group++) {
+      final isFirst = group == 0;
+      children.add(SessionListHeadingSkeleton(isFirst: isFirst, width: _headingWidths[group % _headingWidths.length]));
+      height += SessionListHeadingSkeleton.heightOf(isFirst: isFirst);
+      for (var index = 0; index < _groupSizes[group % _groupSizes.length]; index++, row++) {
+        children.add(
+          SessionTileSkeleton(
+            titleWidthFraction: _titleWidths[row % _titleWidths.length],
+            detailsWidth: _detailsWidths[row % _detailsWidths.length],
+          ),
+        );
+        height += SessionTileSkeleton.height;
+      }
+    }
+    return PregoShimmer(
+      semanticLabel: context.loc.sessionListLoadingSemantics,
+      leaving: leaving,
+      child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
+    );
+  }
+}
 
 /// [shape] laid out unseen, holding its room under a skeleton bar of its
 /// size.

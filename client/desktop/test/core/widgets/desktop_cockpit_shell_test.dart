@@ -952,14 +952,14 @@ void main() {
     whenListen(startup, starts, initialState: starts.value);
     await tester.pumpWidget(app(state: _state(processState: const BridgeProcessStarting())));
     await tester.pump(const Duration(milliseconds: 600));
-    expect(find.byType(PregoSkeletonList), findsOneWidget);
+    expect(find.byType(SessionListSkeleton), findsOneWidget);
     expect(find.byType(SessionEmptyState), findsNothing);
 
     // A failed or stopped start leaves the footer's recovery card to say so.
     starts.add(LocalBridgeStartupState.settled);
     await tester.pump();
     await tester.pump();
-    expect(find.byType(PregoSkeletonList), findsNothing);
+    expect(find.byType(SessionListSkeleton), findsNothing);
     expect(find.byType(SessionEmptyState), findsNothing);
   });
 
@@ -980,7 +980,7 @@ void main() {
         addTearDown(starts.close);
         whenListen(startup, starts, initialState: starts.value);
         await tester.pumpWidget(app(state: _state(processState: const BridgeProcessStarting())));
-        final skeleton = find.descendant(of: list, matching: find.byType(PregoSkeletonList));
+        final skeleton = find.descendant(of: list, matching: find.byType(SessionListSkeleton));
         final first = tester.element(skeleton);
 
         // A cold start finds this computer's bridge offline while it starts.
