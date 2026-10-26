@@ -792,7 +792,6 @@ void main() {
         await db.sessionDao.insertSession(
           fastMode: false,
           pluginId: plugin.id,
-          preservePullRequestScope: false,
           sessionId: "shared-session",
           backendSessionId: "shared-session",
           projectId: directory,
@@ -1201,7 +1200,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
       // The plugin, however, only knows the session by its worktree cwd.
       plugin.sessions = [

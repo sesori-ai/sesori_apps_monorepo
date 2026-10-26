@@ -262,7 +262,6 @@ class const _ImportConcurrencyBenchmark({required final _BenchmarkConfiguration 
             path: projectPaths[index],
             hidden: false,
             baseBranch: null,
-            prCacheGithubLogin: null,
             displayName: null,
             createdAt: _defaultTimestamp,
             updatedAt: _defaultTimestamp,

@@ -221,7 +221,6 @@ Future<void> _insertRoot({
     lastAgent: null,
     lastAgentModel: null,
     pluginId: pluginId,
-    preservePullRequestScope: false,
   );
   await database.sessionDao.updateObservedSessionProjection(
     sessionId: sessionId,

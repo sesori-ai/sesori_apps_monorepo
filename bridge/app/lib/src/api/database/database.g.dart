@@ -11,7 +11,6 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
   String get path;
   bool get hidden;
   String? get baseBranch;
-  String? get prCacheGithubLogin;
 
   /// Bridge-owned display-name override for a renamed aggregate project. Null
   /// means fall back to the directory basename.
@@ -37,9 +36,6 @@ mixin $ProjectsTableTableToColumns implements Insertable<ProjectDto> {
     map['hidden'] = Variable<bool>(hidden);
     if (!nullToAbsent || baseBranch != null) {
       map['base_branch'] = Variable<String>(baseBranch);
-    }
-    if (!nullToAbsent || prCacheGithubLogin != null) {
-      map['pr_cache_github_login'] = Variable<String>(prCacheGithubLogin);
     }
     if (!nullToAbsent || displayName != null) {
       map['display_name'] = Variable<String>(displayName);
@@ -101,17 +97,6 @@ class $ProjectsTableTable extends ProjectsTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _prCacheGithubLoginMeta =
-      const VerificationMeta('prCacheGithubLogin');
-  @override
-  late final GeneratedColumn<String> prCacheGithubLogin =
-      GeneratedColumn<String>(
-        'pr_cache_github_login',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
   static const VerificationMeta _displayNameMeta = const VerificationMeta(
     'displayName',
   );
@@ -163,7 +148,6 @@ class $ProjectsTableTable extends ProjectsTable
     path,
     hidden,
     baseBranch,
-    prCacheGithubLogin,
     displayName,
     createdAt,
     updatedAt,
@@ -207,15 +191,6 @@ class $ProjectsTableTable extends ProjectsTable
       context.handle(
         _baseBranchMeta,
         baseBranch.isAcceptableOrUnknown(data['base_branch']!, _baseBranchMeta),
-      );
-    }
-    if (data.containsKey('pr_cache_github_login')) {
-      context.handle(
-        _prCacheGithubLoginMeta,
-        prCacheGithubLogin.isAcceptableOrUnknown(
-          data['pr_cache_github_login']!,
-          _prCacheGithubLoginMeta,
-        ),
       );
     }
     if (data.containsKey('display_name')) {
@@ -275,10 +250,6 @@ class $ProjectsTableTable extends ProjectsTable
         DriftSqlType.string,
         data['${effectivePrefix}base_branch'],
       ),
-      prCacheGithubLogin: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}pr_cache_github_login'],
-      ),
       displayName: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}display_name'],
@@ -312,7 +283,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
   final Value<String> path;
   final Value<bool> hidden;
   final Value<String?> baseBranch;
-  final Value<String?> prCacheGithubLogin;
   final Value<String?> displayName;
   final Value<int> createdAt;
   final Value<int> updatedAt;
@@ -322,7 +292,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     this.path = const Value.absent(),
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
-    this.prCacheGithubLogin = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -333,7 +302,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     required String path,
     this.hidden = const Value.absent(),
     this.baseBranch = const Value.absent(),
-    this.prCacheGithubLogin = const Value.absent(),
     this.displayName = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
@@ -346,7 +314,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Expression<String>? path,
     Expression<bool>? hidden,
     Expression<String>? baseBranch,
-    Expression<String>? prCacheGithubLogin,
     Expression<String>? displayName,
     Expression<int>? createdAt,
     Expression<int>? updatedAt,
@@ -357,8 +324,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       if (path != null) 'path': path,
       if (hidden != null) 'hidden': hidden,
       if (baseBranch != null) 'base_branch': baseBranch,
-      if (prCacheGithubLogin != null)
-        'pr_cache_github_login': prCacheGithubLogin,
       if (displayName != null) 'display_name': displayName,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
@@ -372,7 +337,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     Value<String>? path,
     Value<bool>? hidden,
     Value<String?>? baseBranch,
-    Value<String?>? prCacheGithubLogin,
     Value<String?>? displayName,
     Value<int>? createdAt,
     Value<int>? updatedAt,
@@ -383,7 +347,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
       path: path ?? this.path,
       hidden: hidden ?? this.hidden,
       baseBranch: baseBranch ?? this.baseBranch,
-      prCacheGithubLogin: prCacheGithubLogin ?? this.prCacheGithubLogin,
       displayName: displayName ?? this.displayName,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
@@ -405,9 +368,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
     }
     if (baseBranch.present) {
       map['base_branch'] = Variable<String>(baseBranch.value);
-    }
-    if (prCacheGithubLogin.present) {
-      map['pr_cache_github_login'] = Variable<String>(prCacheGithubLogin.value);
     }
     if (displayName.present) {
       map['display_name'] = Variable<String>(displayName.value);
@@ -431,7 +391,6 @@ class ProjectsTableCompanion extends UpdateCompanion<ProjectDto> {
           ..write('path: $path, ')
           ..write('hidden: $hidden, ')
           ..write('baseBranch: $baseBranch, ')
-          ..write('prCacheGithubLogin: $prCacheGithubLogin, ')
           ..write('displayName: $displayName, ')
           ..write('createdAt: $createdAt, ')
           ..write('updatedAt: $updatedAt, ')
@@ -449,8 +408,6 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
   String get directory;
   String? get worktreePath;
   String? get branchName;
-  String? get currentBranchName;
-  String? get currentGithubRepositoryIdentity;
   bool get isDedicated;
   int? get archivedAt;
   String? get baseBranch;
@@ -498,14 +455,6 @@ mixin $SessionTableTableToColumns implements Insertable<SessionDto> {
     }
     if (!nullToAbsent || branchName != null) {
       map['branch_name'] = Variable<String>(branchName);
-    }
-    if (!nullToAbsent || currentBranchName != null) {
-      map['current_branch_name'] = Variable<String>(currentBranchName);
-    }
-    if (!nullToAbsent || currentGithubRepositoryIdentity != null) {
-      map['current_github_repository_identity'] = Variable<String>(
-        currentGithubRepositoryIdentity,
-      );
     }
     map['is_dedicated'] = Variable<bool>(isDedicated);
     if (!nullToAbsent || archivedAt != null) {
@@ -643,29 +592,6 @@ class $SessionTableTable extends SessionTable
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
-  static const VerificationMeta _currentBranchNameMeta = const VerificationMeta(
-    'currentBranchName',
-  );
-  @override
-  late final GeneratedColumn<String> currentBranchName =
-      GeneratedColumn<String>(
-        'current_branch_name',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
-  static const VerificationMeta _currentGithubRepositoryIdentityMeta =
-      const VerificationMeta('currentGithubRepositoryIdentity');
-  @override
-  late final GeneratedColumn<String> currentGithubRepositoryIdentity =
-      GeneratedColumn<String>(
-        'current_github_repository_identity',
-        aliasedName,
-        true,
-        type: DriftSqlType.string,
-        requiredDuringInsert: false,
-      );
   static const VerificationMeta _isDedicatedMeta = const VerificationMeta(
     'isDedicated',
   );
@@ -865,8 +791,6 @@ class $SessionTableTable extends SessionTable
     directory,
     worktreePath,
     branchName,
-    currentBranchName,
-    currentGithubRepositoryIdentity,
     isDedicated,
     archivedAt,
     baseBranch,
@@ -954,24 +878,6 @@ class $SessionTableTable extends SessionTable
       context.handle(
         _branchNameMeta,
         branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
-      );
-    }
-    if (data.containsKey('current_branch_name')) {
-      context.handle(
-        _currentBranchNameMeta,
-        currentBranchName.isAcceptableOrUnknown(
-          data['current_branch_name']!,
-          _currentBranchNameMeta,
-        ),
-      );
-    }
-    if (data.containsKey('current_github_repository_identity')) {
-      context.handle(
-        _currentGithubRepositoryIdentityMeta,
-        currentGithubRepositoryIdentity.isAcceptableOrUnknown(
-          data['current_github_repository_identity']!,
-          _currentGithubRepositoryIdentityMeta,
-        ),
       );
     }
     if (data.containsKey('is_dedicated')) {
@@ -1129,14 +1035,6 @@ class $SessionTableTable extends SessionTable
         DriftSqlType.string,
         data['${effectivePrefix}branch_name'],
       ),
-      currentBranchName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}current_branch_name'],
-      ),
-      currentGithubRepositoryIdentity: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}current_github_repository_identity'],
-      ),
       isDedicated: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}is_dedicated'],
@@ -1241,8 +1139,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
   final Value<String> directory;
   final Value<String?> worktreePath;
   final Value<String?> branchName;
-  final Value<String?> currentBranchName;
-  final Value<String?> currentGithubRepositoryIdentity;
   final Value<bool> isDedicated;
   final Value<int?> archivedAt;
   final Value<String?> baseBranch;
@@ -1268,8 +1164,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     this.directory = const Value.absent(),
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
-    this.currentBranchName = const Value.absent(),
-    this.currentGithubRepositoryIdentity = const Value.absent(),
     this.isDedicated = const Value.absent(),
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
@@ -1296,8 +1190,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     required String directory,
     this.worktreePath = const Value.absent(),
     this.branchName = const Value.absent(),
-    this.currentBranchName = const Value.absent(),
-    this.currentGithubRepositoryIdentity = const Value.absent(),
     required bool isDedicated,
     this.archivedAt = const Value.absent(),
     this.baseBranch = const Value.absent(),
@@ -1332,8 +1224,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Expression<String>? directory,
     Expression<String>? worktreePath,
     Expression<String>? branchName,
-    Expression<String>? currentBranchName,
-    Expression<String>? currentGithubRepositoryIdentity,
     Expression<bool>? isDedicated,
     Expression<int>? archivedAt,
     Expression<String>? baseBranch,
@@ -1360,9 +1250,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       if (directory != null) 'directory': directory,
       if (worktreePath != null) 'worktree_path': worktreePath,
       if (branchName != null) 'branch_name': branchName,
-      if (currentBranchName != null) 'current_branch_name': currentBranchName,
-      if (currentGithubRepositoryIdentity != null)
-        'current_github_repository_identity': currentGithubRepositoryIdentity,
       if (isDedicated != null) 'is_dedicated': isDedicated,
       if (archivedAt != null) 'archived_at': archivedAt,
       if (baseBranch != null) 'base_branch': baseBranch,
@@ -1392,8 +1279,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     Value<String>? directory,
     Value<String?>? worktreePath,
     Value<String?>? branchName,
-    Value<String?>? currentBranchName,
-    Value<String?>? currentGithubRepositoryIdentity,
     Value<bool>? isDedicated,
     Value<int?>? archivedAt,
     Value<String?>? baseBranch,
@@ -1420,10 +1305,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
       directory: directory ?? this.directory,
       worktreePath: worktreePath ?? this.worktreePath,
       branchName: branchName ?? this.branchName,
-      currentBranchName: currentBranchName ?? this.currentBranchName,
-      currentGithubRepositoryIdentity:
-          currentGithubRepositoryIdentity ??
-          this.currentGithubRepositoryIdentity,
       isDedicated: isDedicated ?? this.isDedicated,
       archivedAt: archivedAt ?? this.archivedAt,
       baseBranch: baseBranch ?? this.baseBranch,
@@ -1467,14 +1348,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
     }
     if (branchName.present) {
       map['branch_name'] = Variable<String>(branchName.value);
-    }
-    if (currentBranchName.present) {
-      map['current_branch_name'] = Variable<String>(currentBranchName.value);
-    }
-    if (currentGithubRepositoryIdentity.present) {
-      map['current_github_repository_identity'] = Variable<String>(
-        currentGithubRepositoryIdentity.value,
-      );
     }
     if (isDedicated.present) {
       map['is_dedicated'] = Variable<bool>(isDedicated.value);
@@ -1548,10 +1421,6 @@ class SessionTableCompanion extends UpdateCompanion<SessionDto> {
           ..write('directory: $directory, ')
           ..write('worktreePath: $worktreePath, ')
           ..write('branchName: $branchName, ')
-          ..write('currentBranchName: $currentBranchName, ')
-          ..write(
-            'currentGithubRepositoryIdentity: $currentGithubRepositoryIdentity, ',
-          )
           ..write('isDedicated: $isDedicated, ')
           ..write('archivedAt: $archivedAt, ')
           ..write('baseBranch: $baseBranch, ')
@@ -1815,617 +1684,6 @@ class DeletedSessionsTableCompanion extends UpdateCompanion<DeletedSessionDto> {
           ..write('backendSessionId: $backendSessionId, ')
           ..write('pluginId: $pluginId, ')
           ..write('deletedAt: $deletedAt')
-          ..write(')'))
-        .toString();
-  }
-}
-
-mixin $PullRequestsTableTableToColumns implements Insertable<PullRequestDto> {
-  String get projectId;
-  String get githubRepositoryIdentity;
-  String get githubLogin;
-  int get prNumber;
-  String get branchName;
-  String get url;
-  String get title;
-  PrState get state;
-  PrMergeableStatus get mergeableStatus;
-  PrReviewDecision get reviewDecision;
-  PrCheckStatus get checkStatus;
-  int get lastCheckedAt;
-  int get createdAt;
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['project_id'] = Variable<String>(projectId);
-    map['github_repository_identity'] = Variable<String>(
-      githubRepositoryIdentity,
-    );
-    map['github_login'] = Variable<String>(githubLogin);
-    map['pr_number'] = Variable<int>(prNumber);
-    map['branch_name'] = Variable<String>(branchName);
-    map['url'] = Variable<String>(url);
-    map['title'] = Variable<String>(title);
-    {
-      map['state'] = Variable<String>(
-        $PullRequestsTableTable.$converterstate.toSql(state),
-      );
-    }
-    {
-      map['mergeable_status'] = Variable<String>(
-        $PullRequestsTableTable.$convertermergeableStatus.toSql(
-          mergeableStatus,
-        ),
-      );
-    }
-    {
-      map['review_decision'] = Variable<String>(
-        $PullRequestsTableTable.$converterreviewDecision.toSql(reviewDecision),
-      );
-    }
-    {
-      map['check_status'] = Variable<String>(
-        $PullRequestsTableTable.$convertercheckStatus.toSql(checkStatus),
-      );
-    }
-    map['last_checked_at'] = Variable<int>(lastCheckedAt);
-    map['created_at'] = Variable<int>(createdAt);
-    return map;
-  }
-}
-
-class $PullRequestsTableTable extends PullRequestsTable
-    with TableInfo<$PullRequestsTableTable, PullRequestDto> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $PullRequestsTableTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _projectIdMeta = const VerificationMeta(
-    'projectId',
-  );
-  @override
-  late final GeneratedColumn<String> projectId = GeneratedColumn<String>(
-    'project_id',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'REFERENCES projects_table (project_id) ON DELETE CASCADE',
-    ),
-  );
-  static const VerificationMeta _githubRepositoryIdentityMeta =
-      const VerificationMeta('githubRepositoryIdentity');
-  @override
-  late final GeneratedColumn<String> githubRepositoryIdentity =
-      GeneratedColumn<String>(
-        'github_repository_identity',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      );
-  static const VerificationMeta _githubLoginMeta = const VerificationMeta(
-    'githubLogin',
-  );
-  @override
-  late final GeneratedColumn<String> githubLogin = GeneratedColumn<String>(
-    'github_login',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _prNumberMeta = const VerificationMeta(
-    'prNumber',
-  );
-  @override
-  late final GeneratedColumn<int> prNumber = GeneratedColumn<int>(
-    'pr_number',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _branchNameMeta = const VerificationMeta(
-    'branchName',
-  );
-  @override
-  late final GeneratedColumn<String> branchName = GeneratedColumn<String>(
-    'branch_name',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _urlMeta = const VerificationMeta('url');
-  @override
-  late final GeneratedColumn<String> url = GeneratedColumn<String>(
-    'url',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _titleMeta = const VerificationMeta('title');
-  @override
-  late final GeneratedColumn<String> title = GeneratedColumn<String>(
-    'title',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  @override
-  late final GeneratedColumnWithTypeConverter<PrState, String> state =
-      GeneratedColumn<String>(
-        'state',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<PrState>($PullRequestsTableTable.$converterstate);
-  @override
-  late final GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
-  mergeableStatus =
-      GeneratedColumn<String>(
-        'mergeable_status',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<PrMergeableStatus>(
-        $PullRequestsTableTable.$convertermergeableStatus,
-      );
-  @override
-  late final GeneratedColumnWithTypeConverter<PrReviewDecision, String>
-  reviewDecision =
-      GeneratedColumn<String>(
-        'review_decision',
-        aliasedName,
-        false,
-        type: DriftSqlType.string,
-        requiredDuringInsert: true,
-      ).withConverter<PrReviewDecision>(
-        $PullRequestsTableTable.$converterreviewDecision,
-      );
-  @override
-  late final GeneratedColumnWithTypeConverter<PrCheckStatus, String>
-  checkStatus = GeneratedColumn<String>(
-    'check_status',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  ).withConverter<PrCheckStatus>($PullRequestsTableTable.$convertercheckStatus);
-  static const VerificationMeta _lastCheckedAtMeta = const VerificationMeta(
-    'lastCheckedAt',
-  );
-  @override
-  late final GeneratedColumn<int> lastCheckedAt = GeneratedColumn<int>(
-    'last_checked_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _createdAtMeta = const VerificationMeta(
-    'createdAt',
-  );
-  @override
-  late final GeneratedColumn<int> createdAt = GeneratedColumn<int>(
-    'created_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: true,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    projectId,
-    githubRepositoryIdentity,
-    githubLogin,
-    prNumber,
-    branchName,
-    url,
-    title,
-    state,
-    mergeableStatus,
-    reviewDecision,
-    checkStatus,
-    lastCheckedAt,
-    createdAt,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'pull_requests_table';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<PullRequestDto> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('project_id')) {
-      context.handle(
-        _projectIdMeta,
-        projectId.isAcceptableOrUnknown(data['project_id']!, _projectIdMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_projectIdMeta);
-    }
-    if (data.containsKey('github_repository_identity')) {
-      context.handle(
-        _githubRepositoryIdentityMeta,
-        githubRepositoryIdentity.isAcceptableOrUnknown(
-          data['github_repository_identity']!,
-          _githubRepositoryIdentityMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_githubRepositoryIdentityMeta);
-    }
-    if (data.containsKey('github_login')) {
-      context.handle(
-        _githubLoginMeta,
-        githubLogin.isAcceptableOrUnknown(
-          data['github_login']!,
-          _githubLoginMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_githubLoginMeta);
-    }
-    if (data.containsKey('pr_number')) {
-      context.handle(
-        _prNumberMeta,
-        prNumber.isAcceptableOrUnknown(data['pr_number']!, _prNumberMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_prNumberMeta);
-    }
-    if (data.containsKey('branch_name')) {
-      context.handle(
-        _branchNameMeta,
-        branchName.isAcceptableOrUnknown(data['branch_name']!, _branchNameMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_branchNameMeta);
-    }
-    if (data.containsKey('url')) {
-      context.handle(
-        _urlMeta,
-        url.isAcceptableOrUnknown(data['url']!, _urlMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_urlMeta);
-    }
-    if (data.containsKey('title')) {
-      context.handle(
-        _titleMeta,
-        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
-    }
-    if (data.containsKey('last_checked_at')) {
-      context.handle(
-        _lastCheckedAtMeta,
-        lastCheckedAt.isAcceptableOrUnknown(
-          data['last_checked_at']!,
-          _lastCheckedAtMeta,
-        ),
-      );
-    } else if (isInserting) {
-      context.missing(_lastCheckedAtMeta);
-    }
-    if (data.containsKey('created_at')) {
-      context.handle(
-        _createdAtMeta,
-        createdAt.isAcceptableOrUnknown(data['created_at']!, _createdAtMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_createdAtMeta);
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {
-    projectId,
-    githubRepositoryIdentity,
-    prNumber,
-  };
-  @override
-  PullRequestDto map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return PullRequestDto(
-      projectId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}project_id'],
-      )!,
-      githubRepositoryIdentity: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}github_repository_identity'],
-      )!,
-      githubLogin: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}github_login'],
-      )!,
-      prNumber: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}pr_number'],
-      )!,
-      branchName: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}branch_name'],
-      )!,
-      url: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}url'],
-      )!,
-      title: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}title'],
-      )!,
-      state: $PullRequestsTableTable.$converterstate.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}state'],
-        )!,
-      ),
-      mergeableStatus: $PullRequestsTableTable.$convertermergeableStatus
-          .fromSql(
-            attachedDatabase.typeMapping.read(
-              DriftSqlType.string,
-              data['${effectivePrefix}mergeable_status'],
-            )!,
-          ),
-      reviewDecision: $PullRequestsTableTable.$converterreviewDecision.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}review_decision'],
-        )!,
-      ),
-      checkStatus: $PullRequestsTableTable.$convertercheckStatus.fromSql(
-        attachedDatabase.typeMapping.read(
-          DriftSqlType.string,
-          data['${effectivePrefix}check_status'],
-        )!,
-      ),
-      lastCheckedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}last_checked_at'],
-      )!,
-      createdAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}created_at'],
-      )!,
-    );
-  }
-
-  @override
-  $PullRequestsTableTable createAlias(String alias) {
-    return $PullRequestsTableTable(attachedDatabase, alias);
-  }
-
-  static JsonTypeConverter2<PrState, String, String> $converterstate =
-      const EnumNameConverter<PrState>(PrState.values);
-  static JsonTypeConverter2<PrMergeableStatus, String, String>
-  $convertermergeableStatus = const EnumNameConverter<PrMergeableStatus>(
-    PrMergeableStatus.values,
-  );
-  static JsonTypeConverter2<PrReviewDecision, String, String>
-  $converterreviewDecision = const EnumNameConverter<PrReviewDecision>(
-    PrReviewDecision.values,
-  );
-  static JsonTypeConverter2<PrCheckStatus, String, String>
-  $convertercheckStatus = const EnumNameConverter<PrCheckStatus>(
-    PrCheckStatus.values,
-  );
-  @override
-  bool get withoutRowId => true;
-}
-
-class PullRequestsTableCompanion extends UpdateCompanion<PullRequestDto> {
-  final Value<String> projectId;
-  final Value<String> githubRepositoryIdentity;
-  final Value<String> githubLogin;
-  final Value<int> prNumber;
-  final Value<String> branchName;
-  final Value<String> url;
-  final Value<String> title;
-  final Value<PrState> state;
-  final Value<PrMergeableStatus> mergeableStatus;
-  final Value<PrReviewDecision> reviewDecision;
-  final Value<PrCheckStatus> checkStatus;
-  final Value<int> lastCheckedAt;
-  final Value<int> createdAt;
-  const PullRequestsTableCompanion({
-    this.projectId = const Value.absent(),
-    this.githubRepositoryIdentity = const Value.absent(),
-    this.githubLogin = const Value.absent(),
-    this.prNumber = const Value.absent(),
-    this.branchName = const Value.absent(),
-    this.url = const Value.absent(),
-    this.title = const Value.absent(),
-    this.state = const Value.absent(),
-    this.mergeableStatus = const Value.absent(),
-    this.reviewDecision = const Value.absent(),
-    this.checkStatus = const Value.absent(),
-    this.lastCheckedAt = const Value.absent(),
-    this.createdAt = const Value.absent(),
-  });
-  PullRequestsTableCompanion.insert({
-    required String projectId,
-    required String githubRepositoryIdentity,
-    required String githubLogin,
-    required int prNumber,
-    required String branchName,
-    required String url,
-    required String title,
-    required PrState state,
-    required PrMergeableStatus mergeableStatus,
-    required PrReviewDecision reviewDecision,
-    required PrCheckStatus checkStatus,
-    required int lastCheckedAt,
-    required int createdAt,
-  }) : projectId = Value(projectId),
-       githubRepositoryIdentity = Value(githubRepositoryIdentity),
-       githubLogin = Value(githubLogin),
-       prNumber = Value(prNumber),
-       branchName = Value(branchName),
-       url = Value(url),
-       title = Value(title),
-       state = Value(state),
-       mergeableStatus = Value(mergeableStatus),
-       reviewDecision = Value(reviewDecision),
-       checkStatus = Value(checkStatus),
-       lastCheckedAt = Value(lastCheckedAt),
-       createdAt = Value(createdAt);
-  static Insertable<PullRequestDto> custom({
-    Expression<String>? projectId,
-    Expression<String>? githubRepositoryIdentity,
-    Expression<String>? githubLogin,
-    Expression<int>? prNumber,
-    Expression<String>? branchName,
-    Expression<String>? url,
-    Expression<String>? title,
-    Expression<String>? state,
-    Expression<String>? mergeableStatus,
-    Expression<String>? reviewDecision,
-    Expression<String>? checkStatus,
-    Expression<int>? lastCheckedAt,
-    Expression<int>? createdAt,
-  }) {
-    return RawValuesInsertable({
-      if (projectId != null) 'project_id': projectId,
-      if (githubRepositoryIdentity != null)
-        'github_repository_identity': githubRepositoryIdentity,
-      if (githubLogin != null) 'github_login': githubLogin,
-      if (prNumber != null) 'pr_number': prNumber,
-      if (branchName != null) 'branch_name': branchName,
-      if (url != null) 'url': url,
-      if (title != null) 'title': title,
-      if (state != null) 'state': state,
-      if (mergeableStatus != null) 'mergeable_status': mergeableStatus,
-      if (reviewDecision != null) 'review_decision': reviewDecision,
-      if (checkStatus != null) 'check_status': checkStatus,
-      if (lastCheckedAt != null) 'last_checked_at': lastCheckedAt,
-      if (createdAt != null) 'created_at': createdAt,
-    });
-  }
-
-  PullRequestsTableCompanion copyWith({
-    Value<String>? projectId,
-    Value<String>? githubRepositoryIdentity,
-    Value<String>? githubLogin,
-    Value<int>? prNumber,
-    Value<String>? branchName,
-    Value<String>? url,
-    Value<String>? title,
-    Value<PrState>? state,
-    Value<PrMergeableStatus>? mergeableStatus,
-    Value<PrReviewDecision>? reviewDecision,
-    Value<PrCheckStatus>? checkStatus,
-    Value<int>? lastCheckedAt,
-    Value<int>? createdAt,
-  }) {
-    return PullRequestsTableCompanion(
-      projectId: projectId ?? this.projectId,
-      githubRepositoryIdentity:
-          githubRepositoryIdentity ?? this.githubRepositoryIdentity,
-      githubLogin: githubLogin ?? this.githubLogin,
-      prNumber: prNumber ?? this.prNumber,
-      branchName: branchName ?? this.branchName,
-      url: url ?? this.url,
-      title: title ?? this.title,
-      state: state ?? this.state,
-      mergeableStatus: mergeableStatus ?? this.mergeableStatus,
-      reviewDecision: reviewDecision ?? this.reviewDecision,
-      checkStatus: checkStatus ?? this.checkStatus,
-      lastCheckedAt: lastCheckedAt ?? this.lastCheckedAt,
-      createdAt: createdAt ?? this.createdAt,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (projectId.present) {
-      map['project_id'] = Variable<String>(projectId.value);
-    }
-    if (githubRepositoryIdentity.present) {
-      map['github_repository_identity'] = Variable<String>(
-        githubRepositoryIdentity.value,
-      );
-    }
-    if (githubLogin.present) {
-      map['github_login'] = Variable<String>(githubLogin.value);
-    }
-    if (prNumber.present) {
-      map['pr_number'] = Variable<int>(prNumber.value);
-    }
-    if (branchName.present) {
-      map['branch_name'] = Variable<String>(branchName.value);
-    }
-    if (url.present) {
-      map['url'] = Variable<String>(url.value);
-    }
-    if (title.present) {
-      map['title'] = Variable<String>(title.value);
-    }
-    if (state.present) {
-      map['state'] = Variable<String>(
-        $PullRequestsTableTable.$converterstate.toSql(state.value),
-      );
-    }
-    if (mergeableStatus.present) {
-      map['mergeable_status'] = Variable<String>(
-        $PullRequestsTableTable.$convertermergeableStatus.toSql(
-          mergeableStatus.value,
-        ),
-      );
-    }
-    if (reviewDecision.present) {
-      map['review_decision'] = Variable<String>(
-        $PullRequestsTableTable.$converterreviewDecision.toSql(
-          reviewDecision.value,
-        ),
-      );
-    }
-    if (checkStatus.present) {
-      map['check_status'] = Variable<String>(
-        $PullRequestsTableTable.$convertercheckStatus.toSql(checkStatus.value),
-      );
-    }
-    if (lastCheckedAt.present) {
-      map['last_checked_at'] = Variable<int>(lastCheckedAt.value);
-    }
-    if (createdAt.present) {
-      map['created_at'] = Variable<int>(createdAt.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('PullRequestsTableCompanion(')
-          ..write('projectId: $projectId, ')
-          ..write('githubRepositoryIdentity: $githubRepositoryIdentity, ')
-          ..write('githubLogin: $githubLogin, ')
-          ..write('prNumber: $prNumber, ')
-          ..write('branchName: $branchName, ')
-          ..write('url: $url, ')
-          ..write('title: $title, ')
-          ..write('state: $state, ')
-          ..write('mergeableStatus: $mergeableStatus, ')
-          ..write('reviewDecision: $reviewDecision, ')
-          ..write('checkStatus: $checkStatus, ')
-          ..write('lastCheckedAt: $lastCheckedAt, ')
-          ..write('createdAt: $createdAt')
           ..write(')'))
         .toString();
   }
@@ -4216,8 +3474,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
   late final $SessionTableTable sessionTable = $SessionTableTable(this);
   late final $DeletedSessionsTableTable deletedSessionsTable =
       $DeletedSessionsTableTable(this);
-  late final $PullRequestsTableTable pullRequestsTable =
-      $PullRequestsTableTable(this);
   late final $CatalogHydrationsTableTable catalogHydrationsTable =
       $CatalogHydrationsTableTable(this);
   late final $SessionOptionsCacheTableTable sessionOptionsCacheTable =
@@ -4252,15 +3508,8 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_sessions_archive',
     'CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
   );
-  late final Index idxPullRequestsScope = Index(
-    'idx_pull_requests_scope',
-    'CREATE INDEX idx_pull_requests_scope ON pull_requests_table (project_id, github_repository_identity, branch_name, github_login)',
-  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
-  late final PullRequestDao pullRequestDao = PullRequestDao(
-    this as AppDatabase,
-  );
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
     this as AppDatabase,
   );
@@ -4272,7 +3521,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     projectsTable,
     sessionTable,
     deletedSessionsTable,
-    pullRequestsTable,
     catalogHydrationsTable,
     sessionOptionsCacheTable,
     newSessionDefaultsTable,
@@ -4284,7 +3532,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxSessionsRoots,
     idxSessionsChildren,
     idxSessionsArchive,
-    idxPullRequestsScope,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -4304,13 +3551,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     ),
     WritePropagation(
       on: TableUpdateQuery.onTableName(
-        'projects_table',
-        limitUpdateKind: UpdateKind.delete,
-      ),
-      result: [TableUpdate('pull_requests_table', kind: UpdateKind.delete)],
-    ),
-    WritePropagation(
-      on: TableUpdateQuery.onTableName(
         'sessions_table',
         limitUpdateKind: UpdateKind.delete,
       ),
@@ -4325,7 +3565,6 @@ typedef $$ProjectsTableTableCreateCompanionBuilder =
       required String path,
       Value<bool> hidden,
       Value<String?> baseBranch,
-      Value<String?> prCacheGithubLogin,
       Value<String?> displayName,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -4337,7 +3576,6 @@ typedef $$ProjectsTableTableUpdateCompanionBuilder =
       Value<String> path,
       Value<bool> hidden,
       Value<String?> baseBranch,
-      Value<String?> prCacheGithubLogin,
       Value<String?> displayName,
       Value<int> createdAt,
       Value<int> updatedAt,
@@ -4371,33 +3609,6 @@ final class $$ProjectsTableTableReferences
       manager.$state.copyWith(prefetchedData: cache),
     );
   }
-
-  static MultiTypedResultKey<$PullRequestsTableTable, List<PullRequestDto>>
-  _pullRequestsTableRefsTable(_$AppDatabase db) =>
-      MultiTypedResultKey.fromTable(
-        db.pullRequestsTable,
-        aliasName:
-            'projects_table__project_id__pull_requests_table__project_id',
-      );
-
-  $$PullRequestsTableTableProcessedTableManager get pullRequestsTableRefs {
-    final manager =
-        $$PullRequestsTableTableTableManager(
-          $_db,
-          $_db.pullRequestsTable,
-        ).filter(
-          (f) => f.projectId.projectId.sqlEquals(
-            $_itemColumn<String>('project_id')!,
-          ),
-        );
-
-    final cache = $_typedResult.readTableOrNull(
-      _pullRequestsTableRefsTable($_db),
-    );
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: cache),
-    );
-  }
 }
 
 class $$ProjectsTableTableFilterComposer
@@ -4426,11 +3637,6 @@ class $$ProjectsTableTableFilterComposer
 
   ColumnFilters<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get prCacheGithubLogin => $composableBuilder(
-    column: $table.prCacheGithubLogin,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -4478,31 +3684,6 @@ class $$ProjectsTableTableFilterComposer
     );
     return f(composer);
   }
-
-  Expression<bool> pullRequestsTableRefs(
-    Expression<bool> Function($$PullRequestsTableTableFilterComposer f) f,
-  ) {
-    final $$PullRequestsTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.projectId,
-      referencedTable: $db.pullRequestsTable,
-      getReferencedColumn: (t) => t.projectId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$PullRequestsTableTableFilterComposer(
-            $db: $db,
-            $table: $db.pullRequestsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return f(composer);
-  }
 }
 
 class $$ProjectsTableTableOrderingComposer
@@ -4531,11 +3712,6 @@ class $$ProjectsTableTableOrderingComposer
 
   ColumnOrderings<String> get baseBranch => $composableBuilder(
     column: $table.baseBranch,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get prCacheGithubLogin => $composableBuilder(
-    column: $table.prCacheGithubLogin,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -4583,11 +3759,6 @@ class $$ProjectsTableTableAnnotationComposer
     builder: (column) => column,
   );
 
-  GeneratedColumn<String> get prCacheGithubLogin => $composableBuilder(
-    column: $table.prCacheGithubLogin,
-    builder: (column) => column,
-  );
-
   GeneratedColumn<String> get displayName => $composableBuilder(
     column: $table.displayName,
     builder: (column) => column,
@@ -4628,32 +3799,6 @@ class $$ProjectsTableTableAnnotationComposer
     );
     return f(composer);
   }
-
-  Expression<T> pullRequestsTableRefs<T extends Object>(
-    Expression<T> Function($$PullRequestsTableTableAnnotationComposer a) f,
-  ) {
-    final $$PullRequestsTableTableAnnotationComposer composer =
-        $composerBuilder(
-          composer: this,
-          getCurrentColumn: (t) => t.projectId,
-          referencedTable: $db.pullRequestsTable,
-          getReferencedColumn: (t) => t.projectId,
-          builder:
-              (
-                joinBuilder, {
-                $addJoinBuilderToRootComposer,
-                $removeJoinBuilderFromRootComposer,
-              }) => $$PullRequestsTableTableAnnotationComposer(
-                $db: $db,
-                $table: $db.pullRequestsTable,
-                $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-                joinBuilder: joinBuilder,
-                $removeJoinBuilderFromRootComposer:
-                    $removeJoinBuilderFromRootComposer,
-              ),
-        );
-    return f(composer);
-  }
 }
 
 class $$ProjectsTableTableTableManager
@@ -4669,10 +3814,7 @@ class $$ProjectsTableTableTableManager
           $$ProjectsTableTableUpdateCompanionBuilder,
           (ProjectDto, $$ProjectsTableTableReferences),
           ProjectDto,
-          PrefetchHooks Function({
-            bool sessionTableRefs,
-            bool pullRequestsTableRefs,
-          })
+          PrefetchHooks Function({bool sessionTableRefs})
         > {
   $$ProjectsTableTableTableManager(_$AppDatabase db, $ProjectsTableTable table)
     : super(
@@ -4691,7 +3833,6 @@ class $$ProjectsTableTableTableManager
                 Value<String> path = const Value.absent(),
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
-                Value<String?> prCacheGithubLogin = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -4701,7 +3842,6 @@ class $$ProjectsTableTableTableManager
                 path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
-                prCacheGithubLogin: prCacheGithubLogin,
                 displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4713,7 +3853,6 @@ class $$ProjectsTableTableTableManager
                 required String path,
                 Value<bool> hidden = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
-                Value<String?> prCacheGithubLogin = const Value.absent(),
                 Value<String?> displayName = const Value.absent(),
                 Value<int> createdAt = const Value.absent(),
                 Value<int> updatedAt = const Value.absent(),
@@ -4723,7 +3862,6 @@ class $$ProjectsTableTableTableManager
                 path: path,
                 hidden: hidden,
                 baseBranch: baseBranch,
-                prCacheGithubLogin: prCacheGithubLogin,
                 displayName: displayName,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
@@ -4737,63 +3875,38 @@ class $$ProjectsTableTableTableManager
                 ),
               )
               .toList(),
-          prefetchHooksCallback:
-              ({sessionTableRefs = false, pullRequestsTableRefs = false}) {
-                return PrefetchHooks(
-                  db: db,
-                  explicitlyWatchedTables: [
-                    if (sessionTableRefs) db.sessionTable,
-                    if (pullRequestsTableRefs) db.pullRequestsTable,
-                  ],
-                  addJoins: null,
-                  getPrefetchedDataCallback: (items) async {
-                    return [
-                      if (sessionTableRefs)
-                        await $_getPrefetchedData<
-                          ProjectDto,
-                          $ProjectsTableTable,
-                          SessionDto
-                        >(
-                          currentTable: table,
-                          referencedTable: $$ProjectsTableTableReferences
-                              ._sessionTableRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$ProjectsTableTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).sessionTableRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.projectId == item.projectId,
-                              ),
-                          typedResults: items,
-                        ),
-                      if (pullRequestsTableRefs)
-                        await $_getPrefetchedData<
-                          ProjectDto,
-                          $ProjectsTableTable,
-                          PullRequestDto
-                        >(
-                          currentTable: table,
-                          referencedTable: $$ProjectsTableTableReferences
-                              ._pullRequestsTableRefsTable(db),
-                          managerFromTypedResult: (p0) =>
-                              $$ProjectsTableTableReferences(
-                                db,
-                                table,
-                                p0,
-                              ).pullRequestsTableRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.projectId == item.projectId,
-                              ),
-                          typedResults: items,
-                        ),
-                    ];
-                  },
-                );
+          prefetchHooksCallback: ({sessionTableRefs = false}) {
+            return PrefetchHooks(
+              db: db,
+              explicitlyWatchedTables: [if (sessionTableRefs) db.sessionTable],
+              addJoins: null,
+              getPrefetchedDataCallback: (items) async {
+                return [
+                  if (sessionTableRefs)
+                    await $_getPrefetchedData<
+                      ProjectDto,
+                      $ProjectsTableTable,
+                      SessionDto
+                    >(
+                      currentTable: table,
+                      referencedTable: $$ProjectsTableTableReferences
+                          ._sessionTableRefsTable(db),
+                      managerFromTypedResult: (p0) =>
+                          $$ProjectsTableTableReferences(
+                            db,
+                            table,
+                            p0,
+                          ).sessionTableRefs,
+                      referencedItemsForCurrentItem: (item, referencedItems) =>
+                          referencedItems.where(
+                            (e) => e.projectId == item.projectId,
+                          ),
+                      typedResults: items,
+                    ),
+                ];
               },
+            );
+          },
         ),
       );
 }
@@ -4810,10 +3923,7 @@ typedef $$ProjectsTableTableProcessedTableManager =
       $$ProjectsTableTableUpdateCompanionBuilder,
       (ProjectDto, $$ProjectsTableTableReferences),
       ProjectDto,
-      PrefetchHooks Function({
-        bool sessionTableRefs,
-        bool pullRequestsTableRefs,
-      })
+      PrefetchHooks Function({bool sessionTableRefs})
     >;
 typedef $$SessionTableTableCreateCompanionBuilder =
     SessionTableCompanion Function({
@@ -4824,8 +3934,6 @@ typedef $$SessionTableTableCreateCompanionBuilder =
       required String directory,
       Value<String?> worktreePath,
       Value<String?> branchName,
-      Value<String?> currentBranchName,
-      Value<String?> currentGithubRepositoryIdentity,
       required bool isDedicated,
       Value<int?> archivedAt,
       Value<String?> baseBranch,
@@ -4853,8 +3961,6 @@ typedef $$SessionTableTableUpdateCompanionBuilder =
       Value<String> directory,
       Value<String?> worktreePath,
       Value<String?> branchName,
-      Value<String?> currentBranchName,
-      Value<String?> currentGithubRepositoryIdentity,
       Value<bool> isDedicated,
       Value<int?> archivedAt,
       Value<String?> baseBranch,
@@ -4980,17 +4086,6 @@ class $$SessionTableTableFilterComposer
     column: $table.branchName,
     builder: (column) => ColumnFilters(column),
   );
-
-  ColumnFilters<String> get currentBranchName => $composableBuilder(
-    column: $table.currentBranchName,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get currentGithubRepositoryIdentity =>
-      $composableBuilder(
-        column: $table.currentGithubRepositoryIdentity,
-        builder: (column) => ColumnFilters(column),
-      );
 
   ColumnFilters<bool> get isDedicated => $composableBuilder(
     column: $table.isDedicated,
@@ -5191,17 +4286,6 @@ class $$SessionTableTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
-  ColumnOrderings<String> get currentBranchName => $composableBuilder(
-    column: $table.currentBranchName,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get currentGithubRepositoryIdentity =>
-      $composableBuilder(
-        column: $table.currentGithubRepositoryIdentity,
-        builder: (column) => ColumnOrderings(column),
-      );
-
   ColumnOrderings<bool> get isDedicated => $composableBuilder(
     column: $table.isDedicated,
     builder: (column) => ColumnOrderings(column),
@@ -5363,17 +4447,6 @@ class $$SessionTableTableAnnotationComposer
     column: $table.branchName,
     builder: (column) => column,
   );
-
-  GeneratedColumn<String> get currentBranchName => $composableBuilder(
-    column: $table.currentBranchName,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get currentGithubRepositoryIdentity =>
-      $composableBuilder(
-        column: $table.currentGithubRepositoryIdentity,
-        builder: (column) => column,
-      );
 
   GeneratedColumn<bool> get isDedicated => $composableBuilder(
     column: $table.isDedicated,
@@ -5563,9 +4636,6 @@ class $$SessionTableTableTableManager
                 Value<String> directory = const Value.absent(),
                 Value<String?> worktreePath = const Value.absent(),
                 Value<String?> branchName = const Value.absent(),
-                Value<String?> currentBranchName = const Value.absent(),
-                Value<String?> currentGithubRepositoryIdentity =
-                    const Value.absent(),
                 Value<bool> isDedicated = const Value.absent(),
                 Value<int?> archivedAt = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
@@ -5592,9 +4662,6 @@ class $$SessionTableTableTableManager
                 directory: directory,
                 worktreePath: worktreePath,
                 branchName: branchName,
-                currentBranchName: currentBranchName,
-                currentGithubRepositoryIdentity:
-                    currentGithubRepositoryIdentity,
                 isDedicated: isDedicated,
                 archivedAt: archivedAt,
                 baseBranch: baseBranch,
@@ -5622,9 +4689,6 @@ class $$SessionTableTableTableManager
                 required String directory,
                 Value<String?> worktreePath = const Value.absent(),
                 Value<String?> branchName = const Value.absent(),
-                Value<String?> currentBranchName = const Value.absent(),
-                Value<String?> currentGithubRepositoryIdentity =
-                    const Value.absent(),
                 required bool isDedicated,
                 Value<int?> archivedAt = const Value.absent(),
                 Value<String?> baseBranch = const Value.absent(),
@@ -5651,9 +4715,6 @@ class $$SessionTableTableTableManager
                 directory: directory,
                 worktreePath: worktreePath,
                 branchName: branchName,
-                currentBranchName: currentBranchName,
-                currentGithubRepositoryIdentity:
-                    currentGithubRepositoryIdentity,
                 isDedicated: isDedicated,
                 archivedAt: archivedAt,
                 baseBranch: baseBranch,
@@ -5987,500 +5048,6 @@ typedef $$DeletedSessionsTableTableProcessedTableManager =
       ),
       DeletedSessionDto,
       PrefetchHooks Function()
-    >;
-typedef $$PullRequestsTableTableCreateCompanionBuilder =
-    PullRequestsTableCompanion Function({
-      required String projectId,
-      required String githubRepositoryIdentity,
-      required String githubLogin,
-      required int prNumber,
-      required String branchName,
-      required String url,
-      required String title,
-      required PrState state,
-      required PrMergeableStatus mergeableStatus,
-      required PrReviewDecision reviewDecision,
-      required PrCheckStatus checkStatus,
-      required int lastCheckedAt,
-      required int createdAt,
-    });
-typedef $$PullRequestsTableTableUpdateCompanionBuilder =
-    PullRequestsTableCompanion Function({
-      Value<String> projectId,
-      Value<String> githubRepositoryIdentity,
-      Value<String> githubLogin,
-      Value<int> prNumber,
-      Value<String> branchName,
-      Value<String> url,
-      Value<String> title,
-      Value<PrState> state,
-      Value<PrMergeableStatus> mergeableStatus,
-      Value<PrReviewDecision> reviewDecision,
-      Value<PrCheckStatus> checkStatus,
-      Value<int> lastCheckedAt,
-      Value<int> createdAt,
-    });
-
-final class $$PullRequestsTableTableReferences
-    extends
-        BaseReferences<_$AppDatabase, $PullRequestsTableTable, PullRequestDto> {
-  $$PullRequestsTableTableReferences(
-    super.$_db,
-    super.$_table,
-    super.$_typedResult,
-  );
-
-  static $ProjectsTableTable _projectIdTable(_$AppDatabase db) =>
-      db.projectsTable.createAlias(
-        'pull_requests_table__project_id__projects_table__project_id',
-      );
-
-  $$ProjectsTableTableProcessedTableManager get projectId {
-    final $_column = $_itemColumn<String>('project_id')!;
-
-    final manager = $$ProjectsTableTableTableManager(
-      $_db,
-      $_db.projectsTable,
-    ).filter((f) => f.projectId.sqlEquals($_column));
-    final item = $_typedResult.readTableOrNull(_projectIdTable($_db));
-    if (item == null) return manager;
-    return ProcessedTableManager(
-      manager.$state.copyWith(prefetchedData: [item]),
-    );
-  }
-}
-
-class $$PullRequestsTableTableFilterComposer
-    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
-  $$PullRequestsTableTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<String> get githubRepositoryIdentity => $composableBuilder(
-    column: $table.githubRepositoryIdentity,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get githubLogin => $composableBuilder(
-    column: $table.githubLogin,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get prNumber => $composableBuilder(
-    column: $table.prNumber,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get branchName => $composableBuilder(
-    column: $table.branchName,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get url => $composableBuilder(
-    column: $table.url,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<PrState, PrState, String> get state =>
-      $composableBuilder(
-        column: $table.state,
-        builder: (column) => ColumnWithTypeConverterFilters(column),
-      );
-
-  ColumnWithTypeConverterFilters<PrMergeableStatus, PrMergeableStatus, String>
-  get mergeableStatus => $composableBuilder(
-    column: $table.mergeableStatus,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<PrReviewDecision, PrReviewDecision, String>
-  get reviewDecision => $composableBuilder(
-    column: $table.reviewDecision,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnWithTypeConverterFilters<PrCheckStatus, PrCheckStatus, String>
-  get checkStatus => $composableBuilder(
-    column: $table.checkStatus,
-    builder: (column) => ColumnWithTypeConverterFilters(column),
-  );
-
-  ColumnFilters<int> get lastCheckedAt => $composableBuilder(
-    column: $table.lastCheckedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  $$ProjectsTableTableFilterComposer get projectId {
-    final $$ProjectsTableTableFilterComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.projectId,
-      referencedTable: $db.projectsTable,
-      getReferencedColumn: (t) => t.projectId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ProjectsTableTableFilterComposer(
-            $db: $db,
-            $table: $db.projectsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$PullRequestsTableTableOrderingComposer
-    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
-  $$PullRequestsTableTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<String> get githubRepositoryIdentity => $composableBuilder(
-    column: $table.githubRepositoryIdentity,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get githubLogin => $composableBuilder(
-    column: $table.githubLogin,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get prNumber => $composableBuilder(
-    column: $table.prNumber,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get branchName => $composableBuilder(
-    column: $table.branchName,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get url => $composableBuilder(
-    column: $table.url,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get state => $composableBuilder(
-    column: $table.state,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get mergeableStatus => $composableBuilder(
-    column: $table.mergeableStatus,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get reviewDecision => $composableBuilder(
-    column: $table.reviewDecision,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get checkStatus => $composableBuilder(
-    column: $table.checkStatus,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get lastCheckedAt => $composableBuilder(
-    column: $table.lastCheckedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get createdAt => $composableBuilder(
-    column: $table.createdAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  $$ProjectsTableTableOrderingComposer get projectId {
-    final $$ProjectsTableTableOrderingComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.projectId,
-      referencedTable: $db.projectsTable,
-      getReferencedColumn: (t) => t.projectId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ProjectsTableTableOrderingComposer(
-            $db: $db,
-            $table: $db.projectsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$PullRequestsTableTableAnnotationComposer
-    extends Composer<_$AppDatabase, $PullRequestsTableTable> {
-  $$PullRequestsTableTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<String> get githubRepositoryIdentity => $composableBuilder(
-    column: $table.githubRepositoryIdentity,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get githubLogin => $composableBuilder(
-    column: $table.githubLogin,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get prNumber =>
-      $composableBuilder(column: $table.prNumber, builder: (column) => column);
-
-  GeneratedColumn<String> get branchName => $composableBuilder(
-    column: $table.branchName,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get url =>
-      $composableBuilder(column: $table.url, builder: (column) => column);
-
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<PrState, String> get state =>
-      $composableBuilder(column: $table.state, builder: (column) => column);
-
-  GeneratedColumnWithTypeConverter<PrMergeableStatus, String>
-  get mergeableStatus => $composableBuilder(
-    column: $table.mergeableStatus,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<PrReviewDecision, String>
-  get reviewDecision => $composableBuilder(
-    column: $table.reviewDecision,
-    builder: (column) => column,
-  );
-
-  GeneratedColumnWithTypeConverter<PrCheckStatus, String> get checkStatus =>
-      $composableBuilder(
-        column: $table.checkStatus,
-        builder: (column) => column,
-      );
-
-  GeneratedColumn<int> get lastCheckedAt => $composableBuilder(
-    column: $table.lastCheckedAt,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<int> get createdAt =>
-      $composableBuilder(column: $table.createdAt, builder: (column) => column);
-
-  $$ProjectsTableTableAnnotationComposer get projectId {
-    final $$ProjectsTableTableAnnotationComposer composer = $composerBuilder(
-      composer: this,
-      getCurrentColumn: (t) => t.projectId,
-      referencedTable: $db.projectsTable,
-      getReferencedColumn: (t) => t.projectId,
-      builder:
-          (
-            joinBuilder, {
-            $addJoinBuilderToRootComposer,
-            $removeJoinBuilderFromRootComposer,
-          }) => $$ProjectsTableTableAnnotationComposer(
-            $db: $db,
-            $table: $db.projectsTable,
-            $addJoinBuilderToRootComposer: $addJoinBuilderToRootComposer,
-            joinBuilder: joinBuilder,
-            $removeJoinBuilderFromRootComposer:
-                $removeJoinBuilderFromRootComposer,
-          ),
-    );
-    return composer;
-  }
-}
-
-class $$PullRequestsTableTableTableManager
-    extends
-        RootTableManager<
-          _$AppDatabase,
-          $PullRequestsTableTable,
-          PullRequestDto,
-          $$PullRequestsTableTableFilterComposer,
-          $$PullRequestsTableTableOrderingComposer,
-          $$PullRequestsTableTableAnnotationComposer,
-          $$PullRequestsTableTableCreateCompanionBuilder,
-          $$PullRequestsTableTableUpdateCompanionBuilder,
-          (PullRequestDto, $$PullRequestsTableTableReferences),
-          PullRequestDto,
-          PrefetchHooks Function({bool projectId})
-        > {
-  $$PullRequestsTableTableTableManager(
-    _$AppDatabase db,
-    $PullRequestsTableTable table,
-  ) : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$PullRequestsTableTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$PullRequestsTableTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$PullRequestsTableTableAnnotationComposer(
-                $db: db,
-                $table: table,
-              ),
-          updateCompanionCallback:
-              ({
-                Value<String> projectId = const Value.absent(),
-                Value<String> githubRepositoryIdentity = const Value.absent(),
-                Value<String> githubLogin = const Value.absent(),
-                Value<int> prNumber = const Value.absent(),
-                Value<String> branchName = const Value.absent(),
-                Value<String> url = const Value.absent(),
-                Value<String> title = const Value.absent(),
-                Value<PrState> state = const Value.absent(),
-                Value<PrMergeableStatus> mergeableStatus = const Value.absent(),
-                Value<PrReviewDecision> reviewDecision = const Value.absent(),
-                Value<PrCheckStatus> checkStatus = const Value.absent(),
-                Value<int> lastCheckedAt = const Value.absent(),
-                Value<int> createdAt = const Value.absent(),
-              }) => PullRequestsTableCompanion(
-                projectId: projectId,
-                githubRepositoryIdentity: githubRepositoryIdentity,
-                githubLogin: githubLogin,
-                prNumber: prNumber,
-                branchName: branchName,
-                url: url,
-                title: title,
-                state: state,
-                mergeableStatus: mergeableStatus,
-                reviewDecision: reviewDecision,
-                checkStatus: checkStatus,
-                lastCheckedAt: lastCheckedAt,
-                createdAt: createdAt,
-              ),
-          createCompanionCallback:
-              ({
-                required String projectId,
-                required String githubRepositoryIdentity,
-                required String githubLogin,
-                required int prNumber,
-                required String branchName,
-                required String url,
-                required String title,
-                required PrState state,
-                required PrMergeableStatus mergeableStatus,
-                required PrReviewDecision reviewDecision,
-                required PrCheckStatus checkStatus,
-                required int lastCheckedAt,
-                required int createdAt,
-              }) => PullRequestsTableCompanion.insert(
-                projectId: projectId,
-                githubRepositoryIdentity: githubRepositoryIdentity,
-                githubLogin: githubLogin,
-                prNumber: prNumber,
-                branchName: branchName,
-                url: url,
-                title: title,
-                state: state,
-                mergeableStatus: mergeableStatus,
-                reviewDecision: reviewDecision,
-                checkStatus: checkStatus,
-                lastCheckedAt: lastCheckedAt,
-                createdAt: createdAt,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map(
-                (e) => (
-                  e.readTable<$PullRequestsTableTable, PullRequestDto>(table),
-                  $$PullRequestsTableTableReferences(db, table, e),
-                ),
-              )
-              .toList(),
-          prefetchHooksCallback: ({projectId = false}) {
-            return PrefetchHooks(
-              db: db,
-              explicitlyWatchedTables: [],
-              addJoins:
-                  <
-                    T extends TableManagerState<
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic,
-                      dynamic
-                    >
-                  >(state) {
-                    if (projectId) {
-                      state = state.withJoin(
-                        currentTable: table,
-                        currentColumn: table.projectId,
-                        referencedTable: $$PullRequestsTableTableReferences
-                            ._projectIdTable(db),
-                        referencedColumn: $$PullRequestsTableTableReferences
-                            ._projectIdTable(db)
-                            .projectId,
-                      ) as T;
-                    }
-
-                    return state;
-                  },
-              getPrefetchedDataCallback: (items) async {
-                return [];
-              },
-            );
-          },
-        ),
-      );
-}
-
-typedef $$PullRequestsTableTableProcessedTableManager =
-    ProcessedTableManager<
-      _$AppDatabase,
-      $PullRequestsTableTable,
-      PullRequestDto,
-      $$PullRequestsTableTableFilterComposer,
-      $$PullRequestsTableTableOrderingComposer,
-      $$PullRequestsTableTableAnnotationComposer,
-      $$PullRequestsTableTableCreateCompanionBuilder,
-      $$PullRequestsTableTableUpdateCompanionBuilder,
-      (PullRequestDto, $$PullRequestsTableTableReferences),
-      PullRequestDto,
-      PrefetchHooks Function({bool projectId})
     >;
 typedef $$CatalogHydrationsTableTableCreateCompanionBuilder =
     CatalogHydrationsTableCompanion Function({
@@ -7715,8 +6282,6 @@ class $AppDatabaseManager {
       $$SessionTableTableTableManager(_db, _db.sessionTable);
   $$DeletedSessionsTableTableTableManager get deletedSessionsTable =>
       $$DeletedSessionsTableTableTableManager(_db, _db.deletedSessionsTable);
-  $$PullRequestsTableTableTableManager get pullRequestsTable =>
-      $$PullRequestsTableTableTableManager(_db, _db.pullRequestsTable);
   $$CatalogHydrationsTableTableTableManager get catalogHydrationsTable =>
       $$CatalogHydrationsTableTableTableManager(
         _db,

@@ -156,7 +156,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     required AgentModel? lastAgentModel,
     required bool fastMode,
     required String pluginId,
-    required bool preservePullRequestScope,
   }) async {
     final project = await (select(
       projectsTable,
@@ -201,8 +200,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
           // created_at or the unseen timestamps that a placeholder may have set.
           worktreePath: Value(worktreePath),
           branchName: const Value(null),
-          currentBranchName: preservePullRequestScope ? const Value.absent() : const Value(null),
-          currentGithubRepositoryIdentity: preservePullRequestScope ? const Value.absent() : const Value(null),
           isDedicated: Value(isDedicated),
           baseBranch: Value(baseBranch),
           baseCommit: Value(baseCommit),

@@ -3,7 +3,6 @@ import 'package:drift/drift.dart' hide isNull;
 import 'package:drift_dev/api/migrations_native.dart';
 import 'package:sesori_bridge/src/api/database/database.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart';
-import 'package:sesori_shared/sesori_shared.dart';
 import 'package:sqlite3/sqlite3.dart';
 import 'package:test/test.dart';
 
@@ -711,7 +710,7 @@ void main() {
   );
 
   test(
-    'deleting a project on the current schema cascades to sessions and PRs',
+    'deleting a project after the v5 rebuild cascades to its sessions',
     () async {
       final db = await _migrateFromV4(verifier: verifier);
       addTearDown(db.close);
@@ -755,44 +754,6 @@ void main() {
               pluginId: 'opencode',
             ),
           );
-      await db
-          .into(db.pullRequestsTable)
-          .insert(
-            PullRequestsTableCompanion.insert(
-              projectId: 'p1',
-              githubRepositoryIdentity: 'sesori-ai/sesori_apps_monorepo',
-              githubLogin: 'octocat',
-              prNumber: 1,
-              branchName: 'feat/one',
-              url: 'https://example.com/pr/1',
-              title: 'PR 1',
-              state: PrState.open,
-              mergeableStatus: PrMergeableStatus.mergeable,
-              reviewDecision: PrReviewDecision.approved,
-              checkStatus: PrCheckStatus.success,
-              lastCheckedAt: 3000,
-              createdAt: 4000,
-            ),
-          );
-      await db
-          .into(db.pullRequestsTable)
-          .insert(
-            PullRequestsTableCompanion.insert(
-              projectId: 'p1',
-              githubRepositoryIdentity: 'sesori-ai/sesori_apps_monorepo',
-              githubLogin: 'octocat',
-              prNumber: 2,
-              branchName: 'feat/two',
-              url: 'https://example.com/pr/2',
-              title: 'PR 2',
-              state: PrState.closed,
-              mergeableStatus: PrMergeableStatus.conflicting,
-              reviewDecision: PrReviewDecision.changesRequested,
-              checkStatus: PrCheckStatus.failure,
-              lastCheckedAt: 5000,
-              createdAt: 6000,
-            ),
-          );
 
       await (db.delete(
         db.projectsTable,
@@ -800,7 +761,6 @@ void main() {
 
       expect(await db.select(db.projectsTable).get(), isEmpty);
       expect(await db.select(db.sessionTable).get(), isEmpty);
-      expect(await db.select(db.pullRequestsTable).get(), isEmpty);
     },
   );
 
@@ -1525,10 +1485,12 @@ void main() {
       expect(project.projectId, 'project-1');
       expect(project.path, '/projects/one');
       expect(project.displayName, 'One');
-      expect(project.prCacheGithubLogin, isNull);
 
-      // Read raw columns: the current session row class also maps columns
-      // that later versions add.
+      // Read raw columns: the current row classes no longer map the PR scope
+      // columns that v21 drops, and also map columns that later versions add.
+      final projectRow =
+          (await db.customSelect('SELECT * FROM projects_table').get()).single;
+      expect(projectRow.read<String?>('pr_cache_github_login'), isNull);
       final session =
           (await db.customSelect('SELECT * FROM sessions_table').get()).single;
       expect(session.read<String>('session_id'), 'session-1');
@@ -1544,7 +1506,7 @@ void main() {
       expect(session.read<String>('plugin_id'), 'opencode');
       expect(session.read<String?>('title'), 'Bridge title');
       expect(session.read<String?>('catalog_title'), 'Catalog title');
-      expect(await db.select(db.pullRequestsTable).get(), isEmpty);
+      expect(await _pullRequestRows(db: db), isEmpty);
       expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
     },
   );
@@ -1824,7 +1786,7 @@ void main() {
     await (db.delete(
       db.projectsTable,
     )..where((table) => table.projectId.equals('p1'))).go();
-    expect(await db.select(db.pullRequestsTable).get(), isEmpty);
+    expect(await _pullRequestRows(db: db), isEmpty);
     expect(await db.customSelect('PRAGMA foreign_key_check').get(), isEmpty);
   });
 }
@@ -1866,6 +1828,8 @@ Future<AppDatabase> _migrateFromV12({required SchemaVerifier verifier}) async {
   return db;
 }
 
+/// Inserts with raw SQL: `pull_requests_table` existed only from v4 to v20,
+/// so the current database has no row class for it.
 Future<void> _insertScopedPullRequest({
   required AppDatabase db,
   required String projectId,
@@ -1873,25 +1837,32 @@ Future<void> _insertScopedPullRequest({
   required String githubLogin,
   required int prNumber,
 }) async {
-  await db
-      .into(db.pullRequestsTable)
-      .insert(
-        PullRequestsTableCompanion.insert(
-          projectId: projectId,
-          githubRepositoryIdentity: githubRepositoryIdentity,
-          githubLogin: githubLogin,
-          prNumber: prNumber,
-          branchName: 'feature-$prNumber',
-          url: 'https://example.com/pr/$prNumber',
-          title: 'PR $prNumber',
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 2,
-          createdAt: 1,
-        ),
-      );
+  await db.customStatement(
+    'INSERT INTO pull_requests_table '
+    '(project_id, github_repository_identity, github_login, pr_number, '
+    'branch_name, url, title, state, mergeable_status, review_decision, '
+    'check_status, last_checked_at, created_at) '
+    'VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
+    [
+      projectId,
+      githubRepositoryIdentity,
+      githubLogin,
+      prNumber,
+      'feature-$prNumber',
+      'https://example.com/pr/$prNumber',
+      'PR $prNumber',
+      'open',
+      'mergeable',
+      'approved',
+      'success',
+      2,
+      1,
+    ],
+  );
+}
+
+Future<List<QueryRow>> _pullRequestRows({required AppDatabase db}) {
+  return db.customSelect('SELECT * FROM pull_requests_table').get();
 }
 
 final Matcher _isForeignKeyViolation = isA<SqliteException>().having(

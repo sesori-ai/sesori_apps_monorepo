@@ -129,7 +129,7 @@ Only create an interface if **at least one** of these is true:
 
 **Forbidden:**
 - Creating an interface just so tests can fake it (when `implements` would work)
-- `PullRequestDaoLike` wrapping `PullRequestDao`
+- `SessionDaoLike` wrapping `SessionDao`
 - `SessionRepositoryLike`
 
 ### API Classes Are Per-Tool, Not Per-Use-Case
