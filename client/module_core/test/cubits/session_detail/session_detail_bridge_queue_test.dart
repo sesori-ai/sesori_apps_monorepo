@@ -188,7 +188,6 @@ void main() {
         return SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             areOptionsStale: areOptionsStale,
-            projectId: "project-1",
             pluginId: "claude",
             supportsPromptAttachments: supportsPromptAttachments,
             messages: snapshotMessages,
@@ -221,7 +220,6 @@ void main() {
         return const SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
-            projectId: "project-1",
             pluginId: "plugin-1",
             supportsPromptAttachments: false,
             messages: <MessageWithParts>[],
@@ -263,7 +261,6 @@ void main() {
         (_) async => SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
-            projectId: "project-1",
             pluginId: "claude",
             supportsPromptAttachments: supportsPromptAttachments,
             messages: reloadSnapshotMessages,
@@ -293,7 +290,6 @@ void main() {
 
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        claimProjectView: true,
         pluginManagementService: pluginManagementService,
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: mockLoadService,
@@ -303,7 +299,6 @@ void main() {
         promptDispatcher: mockSessionRepository,
         permissionRepository: MockPermissionRepository(),
         sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: FakeLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: stubbedProductAnalyticsService(),

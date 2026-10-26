@@ -34,7 +34,6 @@ import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
-import "package:sesori_dart_core/src/services/project_viewing_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_approval_calculator.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
@@ -149,12 +148,10 @@ void main() {
 
     /// Builds the cubit under test with the collaborators every case shares.
     ///
-    /// Only the viewing services and the lifecycle source differ between cases,
+    /// Only the viewing service and the lifecycle source differ between cases,
     /// so each test names just the seam it exercises.
     SessionDetailCubit buildCubit({
-      bool claimProjectView = true,
       SessionViewingService? sessionViewingService,
-      ProjectViewingService? projectViewingService,
       LifecycleSource? lifecycleSource,
       PluginManagementService? pluginManagementService,
       BridgeSettingsService? bridgeSettingsService,
@@ -163,7 +160,6 @@ void main() {
       String pageSessionId = sessionId,
     }) => SessionDetailCubit(
       mockConnectionService,
-      claimProjectView: claimProjectView,
       pluginManagementService: pluginManagementService ?? stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
@@ -173,7 +169,6 @@ void main() {
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: sessionViewingService ?? stubbedSessionViewingService(),
-      projectViewingService: projectViewingService ?? stubbedProjectViewingService(),
       lifecycleSource: lifecycleSource ?? MockLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: mockProductAnalyticsService,
@@ -2023,7 +2018,6 @@ void main() {
     test("clearNotifications is a no-op when the shell has no notification integration", () async {
       final cubit = SessionDetailCubit(
         mockConnectionService,
-        claimProjectView: true,
         pluginManagementService: stubbedPluginManagementService(),
         interactionCalculator: const SessionInteractionCalculator(),
         loadService: loadService,
@@ -2033,7 +2027,6 @@ void main() {
         promptDispatcher: promptDispatcher,
         permissionRepository: mockPermissionRepository,
         sessionViewingService: stubbedSessionViewingService(),
-        projectViewingService: stubbedProjectViewingService(),
         lifecycleSource: MockLifecycleSource(),
         composerDraftRepository: inMemoryComposerDraftRepository(),
         productAnalyticsService: mockProductAnalyticsService,
@@ -3312,44 +3305,15 @@ void main() {
     );
 
     group("viewing declaration", () {
-      test("audit detail loads without acquiring, readying or releasing a live project claim", () async {
-        final projectViewing = stubbedProjectViewingService();
-        final cubit = buildCubit(projectViewingService: projectViewing, claimProjectView: false);
-        await _awaitLoaded(cubit);
-        await cubit.close();
-        verifyNever(() => projectViewing.beginDetailClaim(projectId: any(named: "projectId")));
-        verifyNever(
-          () => projectViewing.markClaimReady(
-            claim: any(named: "claim"),
-            projectId: any(named: "projectId"),
-          ),
-        );
-        verifyNever(() => projectViewing.releaseClaim(claim: any(named: "claim")));
-      });
       test("declares the view once the transcript loads and clears it on close", () async {
         final viewingService = stubbedSessionViewingService();
-        final projectViewingService = stubbedProjectViewingService();
-        final projectClaim = ProjectViewClaim();
-        when(
-          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
-        ).thenReturn(projectClaim);
-        final cubit = buildCubit(sessionViewingService: viewingService, projectViewingService: projectViewingService);
+        final cubit = buildCubit(sessionViewingService: viewingService);
         await _awaitLoaded(cubit);
 
         verify(() => viewingService.setViewingSession(sessionId)).called(1);
-        verify(
-          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
-        ).called(1);
-        verify(
-          () => projectViewingService.markClaimReady(
-            claim: projectClaim,
-            projectId: "project-1",
-          ),
-        ).called(1);
 
         await cubit.close();
         verify(() => viewingService.clearViewingSession(sessionId)).called(1);
-        verify(() => projectViewingService.releaseClaim(claim: projectClaim)).called(1);
       });
 
       test("a failed load never declares the view", () async {
@@ -3362,12 +3326,7 @@ void main() {
           ),
         ).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
         final viewingService = stubbedSessionViewingService();
-        final projectViewingService = stubbedProjectViewingService();
-        final projectClaim = ProjectViewClaim();
-        when(
-          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
-        ).thenReturn(projectClaim);
-        final cubit = buildCubit(sessionViewingService: viewingService, projectViewingService: projectViewingService);
+        final cubit = buildCubit(sessionViewingService: viewingService);
         addTearDown(cubit.close);
         await awaitState(
           cubit: cubit,
@@ -3376,10 +3335,6 @@ void main() {
         );
 
         verifyNever(() => viewingService.setViewingSession(any()));
-        verify(
-          () => projectViewingService.beginDetailClaim(projectId: "project-1"),
-        ).called(1);
-        verify(() => projectViewingService.markClaimFailed(claim: projectClaim)).called(1);
       });
 
       test("a stale reconnect refreshes AND re-asserts the view", () async {

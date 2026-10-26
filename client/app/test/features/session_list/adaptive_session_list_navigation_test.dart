@@ -332,7 +332,6 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Session One"), findsNothing);
     expect(find.text("Session Two"), findsOneWidget);
-    verify(() => harness.projectViewingService.beginListClaim(projectId: "p2")).called(1);
 
     final reveal = _revealFrom(tester: tester);
     await tester.tap(find.byKey(const Key("home-new-session")));

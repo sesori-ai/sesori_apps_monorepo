@@ -28,7 +28,7 @@ enum _RecentReadOutcome() {
   superseded,
 }
 
-/// Scoped recent-session inventory: never acquires a project-view claim.
+/// Scoped recent-session inventory.
 /// The caller owns this factory instance and disposes it with its signed-in scope.
 @injectable
 class RecentSessionInventoryService({
