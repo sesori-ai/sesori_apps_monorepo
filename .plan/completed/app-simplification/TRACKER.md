@@ -3,9 +3,9 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 13/13. Both Fail cells passed on the 2026-10-25 re-run after #2077, and the two all-harness cells
-  are an accepted reduction (Q2 A). The seven Linux desktop cells (Q1 C) could not run, so the plan stays active
-  until they pass or the user accepts another reduction. See [Re-run](#re-run-2026-10-25).
+- Status: complete. Both Fail cells passed on the 2026-10-25 re-run after #2077, the seven desktop cells passed on
+  macOS on 2026-10-26, and the two all-harness cells are an accepted reduction (Q2 A). See
+  [Re-run](#re-run-2026-10-25) and [macOS desktop run](#macos-desktop-run-2026-10-26).
 - User decisions: D1–D16 in `PLAN.md`, agreed 2026-10-24 over two review rounds.
 
 ## Delivery
@@ -34,7 +34,7 @@
 | 11.iv/13 | Project-sessions route and list-claim stack removed | Done | #2062 |
 | 12/13 | Regression documents reconciled | Done | #2064 |
 | 13.i/13 | Collapsed landscape inset, the composer's default project and the offline dot fixed | Done | #2077 |
-| 13/13 | L3 matrix run; plan retired | Blocked: desktop cells not run | [L3 matrix (2026-10-25)](#l3-matrix-2026-10-25) |
+| 13/13 | L3 matrix run; plan retired | Done | [L3 matrix (2026-10-25)](#l3-matrix-2026-10-25) |
 
 ## Evidence and decisions
 
@@ -88,7 +88,8 @@
 - 2026-10-25: the user decided the open L3 questions (final):
   - **Q1 C:** the seven desktop cells run on a clean GitHub Actions Linux runner with the Linux desktop build and
     the dev account, not on the owner's Mac. The macOS debug build shares its bundle id with the owner's real
-    Sesori.app, so no desktop build runs on that Mac.
+    Sesori.app, so no desktop build runs on that Mac. Superseded on 2026-10-26: the user approved a macOS run with
+    a separate QA bundle id and the keychain bypassed by an uncommitted test-only patch.
   - **Q2 A:** the two all-harness cells (refresh across every installed harness; a failing harness shows the
     degradation) are an accepted reduction. Unit tests and the live OpenCode pass cover them.
   - **Q3 A:** a folder opened through a symlink splitting into two projects becomes a standalone bridge PR after
@@ -142,13 +143,13 @@ sheets.
 | iPad portrait and landscape | Collapse and restore | Pass | `ipad-05` (mp4), `ipad-07` |
 | iPad portrait and landscape | Rotation with a session open | Pass | `ipad-08`; collapse survives rotation in `ipad-09` |
 | iPad portrait and landscape | Picker popover | Pass | `ipad-02` (portrait), `ipad-10` (landscape) |
-| Linux desktop (Q1 C) | The sidebar list and its project filter | Not executed | See reason 1 |
-| Linux desktop (Q1 C) | Collapse and resize | Not executed | See reason 1 |
-| Linux desktop (Q1 C) | Launch on the composer (an empty pane is a new session) | Not executed | See reason 1 |
-| Linux desktop (Q1 C) | The palette filter | Not executed | See reason 1 |
-| Linux desktop (Q1 C) | Archived, reached from the settings window since #2070 | Not executed | See reason 1 |
-| Linux desktop (Q1 C) | The folder picker, with its actions in a footer since #2071 | Not executed | See reason 1 |
-| Linux desktop (Q1 C) | Settings › Projects | Not executed | See reason 1 |
+| Desktop | The sidebar list and its project filter | Not executed here; Pass on macOS (2026-10-26) | See reason 1 |
+| Desktop | Collapse and resize | Not executed here; Pass on macOS (2026-10-26) | See reason 1 |
+| Desktop | Launch on the composer (an empty pane is a new session) | Not executed here; Pass on macOS (2026-10-26) | See reason 1 |
+| Desktop | The palette filter | Not executed here; Pass on macOS (2026-10-26) | See reason 1 |
+| Desktop | Archived, reached from the settings window since #2070 | Not executed here; Pass on macOS (2026-10-26) | See reason 1 |
+| Desktop | The folder picker, with its actions in a footer since #2071 | Not executed here; Pass on macOS (2026-10-26) | See reason 1 |
+| Desktop | Settings › Projects | Not executed here; Pass on macOS (2026-10-26) | See reason 1 |
 | Plugins | Refresh across every installed harness | Accepted reduction (Q2 A), not executed | See reason 2; the OpenCode refresh passed in the pull refresh cell |
 | Plugins | A failing harness shows the documented degradation | Accepted reduction (Q2 A), not executed | See reason 3 |
 | Plugins | A bridge older than v1.7.0 shows the documented degradation | Pass | `iphone-21` (mp4), `iphone-22`: a v1.6.0 bridge's pull is a plain reload with no scan row |
@@ -185,6 +186,7 @@ sheets.
      moved these cells to a clean GitHub Actions Linux runner (Q1 C).
    - The Linux attempt on the re-run did not reach the desktop. See [Re-run](#re-run-2026-10-25), *Desktop
      blocker*.
+   - The cells passed on macOS on 2026-10-26 instead. See [macOS desktop run](#macos-desktop-run-2026-10-26).
 2. **Refresh across every installed harness.** Accepted reduction (Q2 A). Unit tests and the live OpenCode pass
    cover it. The first run did not execute it for this reason:
    - The isolated bridge home routes only OpenCode:
@@ -204,12 +206,12 @@ sheets.
 - Opening a fixture project through the symlinked `/tmp` path and then pulling re-homed its sessions to the
   `/private/tmp` project. The run opened projects through `/private/tmp` instead. This is bridge path
   handling, outside this plan. The re-run's picker listed both forms again (`ios-b-ipad-picker-project-order`).
-  Follow-up (Q3 A): a standalone bridge PR after the current plans.
+  Follow-up (Q3 A): fixed in #2103.
 - After a mid-session bridge loss, a loaded list stays browsable under the “Bridge disconnected” banner, with the
   computer button reading connecting. The offline page appears when the picked computer is offline. This matches
   `ProjectInventoryService`. The user confirmed this is intended.
 - A project opened again through the bridge debug API while the phone home was showing did not appear until a later
-  refresh. The list stayed on All · 7. Follow-up (Q4 A): a standalone PR after the current plans.
+  refresh. The list stayed on All · 7. Follow-up (Q4 A): fixed in #2101.
 - While switching to an offline computer, the computer button's status dot was green during the skeleton, before
   the offline page replaced it (`iphone-23`). Fixed in #2077.
 - The `computer_switched` analytics event was not verified on the device, because the Flutter log of that run was
@@ -251,6 +253,43 @@ sheets.
   it.
 - Running the cells needs a runner whose tool install fits the ready window, and an operator Tailscale client that
   can stay up without breaking that machine's DNS.
+
+### macOS desktop run (2026-10-26)
+
+**Setup:**
+
+- The build is `main` at 49858867924c (#2104) with Flutter 3.47.7, a profile build, ad hoc signed.
+- It carried an uncommitted test-only patch: bundle id `com.sesori.desktop.qa` and a file master key in place of
+  the keychain. The patch was never committed or pushed. The owner's real Sesori.app and its bridge kept running
+  untouched.
+- The QA app supervised a slot 1 dev bridge built from the same commit, with an isolated home directory and
+  OpenCode 2.1.4.
+- The fixture projects were demo-api, demo-app, alpha-app and beta-api.
+
+**Evidence** is in `/tmp/macos-qa-media/` on the test machine and is not committed.
+
+| Cell | Result | Evidence |
+|---|---|---|
+| The sidebar list and its project filter | Pass | `as-a1-filter-demo-app`, `as-a1-filter-back-to-all` |
+| Collapse and resize | Pass | `as-a2-collapse-button` (mp4), `as-a2-restore-button` (mp4), `as-a2-cmd-b-toggle` (mp4), `as-a2-resize-drag` (mp4), `as-a2-double-click-reset` (mp4), `as-a2-resized-360` |
+| Launch on the composer | Pass | Two cold relaunches; see `pl-b1-relaunch-composer-no-project` in the project-less run |
+| The palette filter | Pass | `as-a4-palette-open`, `as-a4-palette-narrowed`, `as-a4-palette-pick-filters-beta-api` |
+| Archived, reached from the settings window | Pass | `as-a5-archived-row-read-only`, `as-a5-close-returns-to-opener` |
+| The folder picker, with its actions in a footer | Pass | `as-a6-folder-picker-footer` |
+| Settings › Projects | Pass | `as-a7-settings-projects`, `as-a7-renamed-beta-service`, `as-a7-hidden-alpha-app` |
+
+- Collapse, restore and Cmd+B slide over about 200 ms with no page jump. A double-click resets the width at once,
+  as specified.
+- Both cold relaunches landed on the composer with "No project" and All projects. Since project-less sessions,
+  "No project" is always available, so D15's newest-session fallback no longer applies on launch.
+
+**Feel observations** (not failures; offered to the user as follow-ups):
+
+- On cold relaunch the main area shows "Disconnected" for about 2.3 s while the supervised bridge starts.
+- Dragging the sidebar past about 310 px reflows the chips, and the list jumps 44 px.
+- Picking a project adds the "New worktree" row, and the composer jumps 20 px.
+- The first Archived open in a run shows "No archived sessions" for about 270 ms.
+- The Settings › Projects ⋯ menu opens centred on the row, about 300 px from its button (`as-a7-project-menu-misplaced-beta-api`).
 
 ## Review record
 

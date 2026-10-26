@@ -679,9 +679,9 @@ Run the matrix below, record the results in `TRACKER.md`, and move the plan to
 - **Platforms.** Android, Windows and Linux are covered by shared widget and unit tests. Nothing here is
   platform-specific beyond the macOS desktop shell.
 - **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement.
-  - Accepted (user, 2026-10-25, Q1 C): the seven macOS desktop cells run on a clean GitHub Actions Linux runner
-    with the Linux desktop build and the dev account, because the macOS debug build shares its bundle id with the
-    owner's real Sesori.app.
+  - Superseded (user, 2026-10-26): the seven desktop cells ran on the owner's Mac after all, with a separate QA
+    bundle id and the keychain bypassed by an uncommitted test-only patch. Q1 C had moved them to a GitHub Actions
+    Linux runner, which never reached the desktop.
   - Accepted (user, 2026-10-25, Q2 A): the two all-harness Plugins cells (refresh across every installed harness;
     a failing harness) are not executed. Unit tests and the live OpenCode pass cover them.
 
