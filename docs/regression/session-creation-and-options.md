@@ -241,8 +241,10 @@ variant, and worktree mode, and creating the session with its first input.
   bridge, a routable harness, and the project's worktree check.
 - The page never describes where options came from. While they load, the agent and
   model pills shimmer at their final height, the harness pill shimmers until
-  discovery answers, and the "New worktree" row keeps its height while the project
-  is checked, so nothing shifts as answers arrive. When options cannot be loaded,
+  discovery answers, and the "New worktree" row keeps the room the last project left
+  it while the project is checked. When the answer adds or removes the row, it opens
+  or folds as it fades over about 200 ms, so the composer glides instead of jumping;
+  the page's first composer shows the row's room at once. When options cannot be loaded,
   one "Retry loading models" button stands in the pills' place; a bridge that can
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
