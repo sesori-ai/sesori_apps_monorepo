@@ -87,11 +87,12 @@ void main() {
     required WidgetTester tester,
     required ProjectListState state,
     Stream<ProjectListState> updates = const Stream.empty(),
+    Brightness brightness = Brightness.light,
   }) async {
     whenListen(projects, updates, initialState: state);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildPregoThemeData(brightness: Brightness.light),
+        theme: buildPregoThemeData(brightness: brightness),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiBlocProvider(
@@ -495,6 +496,314 @@ void main() {
     });
   });
 
+  group("a computer switch", () {
+    const project = ProjectSummary(id: "one", name: "demo-app", path: "/one", time: null);
+    const ready = ProjectListState.loaded(projects: [project], folderProjects: [project], scratchProject: null);
+    final composer = find.byType(PromptInput);
+    final loader = find.byType(PregoAiLoader);
+    late StreamController<ProjectListState> updates;
+
+    setUp(() {
+      // The composer's own services, on a bridge that never answers.
+      final plugins = _MockPluginService();
+      when(
+        () => plugins.discover(
+          currentSelectedPluginId: any(named: "currentSelectedPluginId"),
+          currentSelectionBridgeId: any(named: "currentSelectionBridgeId"),
+        ),
+      ).thenAnswer((_) => Completer<ApiResponse<NewSessionPluginDiscovery>>().future);
+      final projectRepository = MockProjectRepository();
+      when(
+        () => projectRepository.getProject(projectId: any(named: "projectId")),
+      ).thenAnswer((_) => Completer<ApiResponse<Project>>().future);
+      final analytics = MockProductAnalyticsService();
+      final tracker = NewSessionSelectionTracker();
+      getIt
+        ..registerSingleton<NewSessionPluginService>(plugins)
+        ..registerSingleton<NewSessionOptionsService>(_MockOptionsService())
+        ..registerSingleton<ProjectRepository>(projectRepository)
+        ..registerSingleton<NewSessionSelectionTracker>(tracker)
+        ..registerSingleton<ComposerDraftRepository>(inMemoryComposerDraftRepository())
+        ..registerSingleton<ProductAnalyticsService>(analytics)
+        ..registerSingleton<SessionLaunchService>(
+          SessionLaunchService(
+            sessionRepository: MockSessionRepository(),
+            launchRepository: inMemorySessionLaunchRepository(),
+            feedbackPromptService: FakeFeedbackPromptService(),
+            productAnalyticsService: analytics,
+            selectionTracker: tracker,
+            authSession: FakeAuthSession(initialState: const AuthState.initial()),
+          ),
+        )
+        ..registerSingleton<DedicatedWorktreePreferenceStore>(FakeDedicatedWorktreePreferenceStore());
+      whenListen(sessions, const Stream<AllSessionsState>.empty(), initialState: _list(defaultProjectId: project.id));
+      updates = StreamController<ProjectListState>();
+      addTearDown(updates.close);
+    });
+
+    Future<void> pumpReadyHome({required WidgetTester tester, Brightness brightness = Brightness.light}) async {
+      tester.view.physicalSize = const Size(1200, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await pumpHome(tester: tester, state: ready, updates: updates.stream, brightness: brightness);
+    }
+
+    // The state lands, then the frame it schedules starts the cross-fade.
+    Future<void> land({required WidgetTester tester, required ProjectListState state}) async {
+      updates.add(state);
+      await tester.pump();
+      await tester.pump();
+    }
+
+    // The opacity [finder] is painted with: every fade above it, multiplied.
+    double opacityOf({required WidgetTester tester, required Finder finder}) => tester
+        .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
+        .fold<double>(1, (opacity, fade) => opacity * fade.opacity.value);
+
+    testWidgets("cross-fades from the composer to the loader and back, each staying in its place", (tester) async {
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+
+      // Switching away: the composer fades out as the next computer loads.
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: composer), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(tester.getRect(composer), composerRect);
+      final loaderRect = tester.getRect(loader);
+
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(composer, findsNothing);
+      expect(opacityOf(tester: tester, finder: loader), 1);
+      expect(tester.getRect(loader), loaderRect);
+
+      // Its projects arrive: the composer fades in over the leaving loader.
+      await land(tester: tester, state: ready);
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: composer), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(tester.getRect(composer), composerRect);
+      expect(tester.getRect(loader), loaderRect);
+      // The arriving composer takes clicks while it fades in.
+      expect(composer.hitTestable(), findsOneWidget);
+
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.getRect(composer), composerRect);
+    });
+
+    testWidgets("the leaving body takes no clicks, focus or announcements as it fades", (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        await pumpReadyHome(tester: tester);
+        // A draft keeps the field open once it loses focus.
+        await tester.tap(composer);
+        await tester.pump();
+        await tester.enterText(find.byType(EditableText), "Fix the flaky test");
+        await tester.pump(const Duration(milliseconds: 300));
+        final field = tester.widget<EditableText>(find.byType(EditableText)).focusNode;
+        expect(field.hasFocus, isTrue);
+
+        await land(tester: tester, state: const ProjectListState.loading());
+        await tester.pump(const Duration(milliseconds: 110));
+        expect(find.byType(EditableText), findsOneWidget);
+        expect(field.hasFocus, isFalse);
+        field.requestFocus();
+        await tester.pump();
+        expect(field.hasFocus, isFalse);
+        expect(find.semantics.byLabel("Loading projects"), findsOne);
+
+        await tester.pump(const Duration(milliseconds: 230));
+        await land(tester: tester, state: ready);
+        await tester.pump(const Duration(milliseconds: 110));
+        expect(loader, findsOneWidget);
+        expect(find.semantics.byLabel("Loading projects"), findsNothing);
+        expect(composer.hitTestable(), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+      } finally {
+        semantics.dispose();
+      }
+    });
+
+    testWidgets("with reduced motion, swaps at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await pumpReadyHome(tester: tester);
+
+      await land(tester: tester, state: const ProjectListState.loading());
+      expect(composer, findsNothing);
+      expect(opacityOf(tester: tester, finder: loader), 1);
+
+      await land(tester: tester, state: ready);
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+    });
+
+    testWidgets("switching back and forth faster than the fade settles on the last body alone", (tester) async {
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 60));
+      final leaving = opacityOf(tester: tester, finder: composer);
+      await land(tester: tester, state: ready);
+      // The composer coming back is a new one: the one leaving goes on fading
+      // from where it was, under the leaving loader and the new composer.
+      expect(find.byType(DesktopHomeStart), findsNWidgets(2));
+      expect(opacityOf(tester: tester, finder: composer.first), leaving);
+      expect(opacityOf(tester: tester, finder: composer.last), 0);
+      expect(loader, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 60));
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 60));
+      await land(tester: tester, state: ready);
+
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(tester.takeException(), isNull);
+      expect(find.byType(DesktopHomeStart), findsOneWidget);
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.getRect(composer), composerRect);
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets("only the pane paints the page, beneath both bodies as they cross (${brightness.name})", (
+        tester,
+      ) async {
+        await pumpReadyHome(tester: tester, brightness: brightness);
+        final page = Theme.of(tester.element(find.byType(DesktopHomePane))).scaffoldBackgroundColor;
+        expect(page, buildPregoThemeData(brightness: brightness).scaffoldBackgroundColor);
+        // Whatever in the pane paints the page's color.
+        final painted = find.descendant(
+          of: find.byType(DesktopHomePane),
+          matching: find.byWidgetPredicate(
+            (widget) => switch (widget) {
+              ColoredBox(:final color) => color == page,
+              Scaffold(:final backgroundColor) => (backgroundColor ?? page) == page,
+              _ => false,
+            },
+          ),
+        );
+        const noProjects = ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null);
+
+        // Halfway through each cross: the composer leaving, then arriving,
+        // then the project prompt arriving.
+        for (final state in [const ProjectListState.loading(), ready, const ProjectListState.loading(), noProjects]) {
+          await land(tester: tester, state: state);
+          await tester.pump(const Duration(milliseconds: 110));
+          expect(find.byType(FadeTransition), findsWidgets);
+          expect(painted, findsOneWidget);
+          expect(find.ancestor(of: find.byType(AnimatedSwitcher).first, matching: painted), findsOneWidget);
+          await tester.pump(const Duration(milliseconds: 120));
+        }
+        expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
+      });
+    }
+
+    testWidgets("a status page of another kind cross-fades in; one whose content changes stays put", (tester) async {
+      final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+      addTearDown(starts.close);
+      whenListen(startup, starts, initialState: starts.value);
+      final retry = find.text("Retry");
+      final start = find.text("Start the bridge");
+      await pumpHome(tester: tester, state: const ProjectListState.loading(), updates: updates.stream);
+      final running = tester.state(loader);
+
+      // The load turns into a launch of this computer's bridge: the same page.
+      await land(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: false));
+      expect(tester.state(loader), same(running));
+      expect(opacityOf(tester: tester, finder: loader), 1);
+
+      // The launch stops, so recovery cross-fades in over the loader.
+      starts.add(LocalBridgeStartupState.settled);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: start), inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(loader, findsNothing);
+
+      await land(
+        tester: tester,
+        state: const ProjectListState.failed(reason: RemoteFailureReason.networkDown),
+      );
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: start), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: retry), inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(start, findsNothing);
+
+      // Another failure only changes what the page says.
+      await land(
+        tester: tester,
+        state: const ProjectListState.failed(reason: RemoteFailureReason.serverRejected),
+      );
+      expect(retry, findsOneWidget);
+      expect(opacityOf(tester: tester, finder: retry), 1);
+
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: retry), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(retry, findsNothing);
+      expect(opacityOf(tester: tester, finder: loader), 1);
+    });
+
+    testWidgets("the loader holds until the list names the home's project, then fades into its composer", (
+      tester,
+    ) async {
+      const other = ProjectSummary(id: "two", name: "api", path: "/two", time: null);
+      final lists = StreamController<AllSessionsState>();
+      addTearDown(lists.close);
+      whenListen(sessions, lists.stream, initialState: _list(defaultProjectId: project.id));
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+
+      // The next computer has no project for new sessions until its sessions
+      // load, after its projects.
+      lists.add(_list(defaultProjectId: null, isLoading: true));
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 230));
+      final running = tester.state(loader);
+      await land(tester: tester, state: ready);
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(tester.state(loader), same(running));
+      expect(opacityOf(tester: tester, finder: loader), 1);
+      expect(find.byType(DesktopHomeStart), findsNothing);
+
+      lists.add(_list(defaultProjectId: project.id, isLoading: true));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: composer), inExclusiveRange(0, 1));
+      expect(find.byKey(const Key("desktop-home-waiting")), findsNothing);
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.getRect(composer), composerRect);
+
+      // A project added later loads without taking the home back to the loader.
+      lists.add(_list(defaultProjectId: null, isLoading: true));
+      await land(
+        tester: tester,
+        state: const ProjectListState.loaded(
+          projects: [project, other],
+          folderProjects: [project, other],
+          scratchProject: null,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, project.id);
+    });
+  });
+
   testWidgets("a home without projects asks for one, through the picker's Open folder", (tester) async {
     await pumpHome(
       tester: tester,
@@ -893,6 +1202,10 @@ class _MockComputerSwitchDispatcher() extends Mock implements ComputerSwitchDisp
 class _MockConnectionService() extends Mock implements ConnectionService;
 
 class _MockNewSessionCubit() extends MockCubit<NewSessionState> implements NewSessionCubit;
+
+class _MockPluginService() extends Mock implements NewSessionPluginService;
+
+class _MockOptionsService() extends Mock implements NewSessionOptionsService;
 
 class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements AllSessionsCubit;
 

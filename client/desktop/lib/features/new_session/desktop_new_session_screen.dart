@@ -79,6 +79,8 @@ class const DesktopNewSessionView({
           subtitle: null,
           actions: const [],
         ),
+        // A page of its own, so opaque as it fades in over the one below.
+        backgroundColor: null,
       ),
     );
   }

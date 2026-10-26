@@ -21,7 +21,8 @@ class const NewSessionProjectPrompt({
   required final bool opensPicker,
 
   /// A pointer surface's bar in place of the glass one; the prompt then sits
-  /// in the centred column the composer page uses. Null keeps the glass bar.
+  /// in the centred column the composer page uses, over its pane's background
+  /// as it paints none. Null keeps the glass bar.
   required final Widget? topBar,
 }) extends StatefulWidget {
   @override
@@ -85,6 +86,7 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
     );
     if (widget.topBar case final topBar?) {
       return Scaffold(
+        backgroundColor: Colors.transparent,
         // A short window scrolls the bar and the prompt together.
         body: CustomScrollView(
           slivers: [

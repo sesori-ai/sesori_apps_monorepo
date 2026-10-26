@@ -184,37 +184,39 @@ The main pane hosts one full-width routed page.
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
   floating glass bar and one full-width transcript and composer.
-- Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
-  else the newest session's project), as `session-creation-and-options.md` details: the project holds once it
-  lands, another filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank,
-  and with no default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there
-  are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". After
-  the bridge connects, the composer appears at its final layout at once, with the parts still loading
-  shimmering in place, and its heading never moves as they fill in. A session started from home opens in its
-  project. Loading projects is labelled and failures retry the shared
-  inventory. A disconnected home branches on
-  the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
-  CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
-  "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the
-  bridge on that computer, and the shared Other computers card, with no Start button. While the desktop is
-  launching this computer's bridge (including a cold start) and has not reached it yet, this computer's offline
-  bridge is a load: the home shows the same loader as any load and the sidebar list shows its loading skeleton,
-  one skeleton from launch that hands off to the rows or the empty state like any load. After 10 s, "Still
-  starting this computer's bridge…" fades in under the loader (at once with reduced motion) without moving it,
-  and fades out the same way if the launch gives way to an ordinary load; a normal start never shows it, and no
-  other load does. Recovery appears only once the
-  supervisor leaves starting and running (a failed start, a stop, login required, contention), or a bridge the
-  app had reached is lost (a crash restart stays disconnected); another computer's offline state shows
-  immediately.
-- Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored
-  menu switches computers through the shared switch flow (source `menu`). It is hidden while the account's only
-  computer is this one, grows into place when the list says otherwise, and stays put while the body below changes
-  state. The desktop starts on the stored pick, else this computer when its bridge id is known; a fresh install
-  connects to the relay's default computer until its helper registers. Each sign-in pins this computer again when
-  nothing is stored. The desktop follows this computer's supervised bridge when its id appears or changes (a fresh
-  install, a new login, a re-registration) unless the user picked another computer in this sign-in; picking this
-  computer, or signing out, ends that. The local bridge keeps running while another computer is viewed. The
-  capability as a whole is in [multi-computer](multi-computer.md).
+- Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project", else the
+  newest session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
+  filter or a header pick moves it with its own draft, a still-loading list keeps the loader up until it names the
+  project or finishes loading, and with no default the shared "Choose a project" prompt shows instead, offering only
+  "Open folder…" when there are no projects; a bridge whose only project is "No project" still shows the composer, in
+  "No project". After the bridge connects, the composer appears at its final layout at once, with the parts still
+  loading shimmering in place, and its heading never moves as they fill in. A session started from home opens in its
+  project. Loading projects is labelled and failures retry the shared inventory. A disconnected home branches on the
+  computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without CLI setup;
+  another computer shows the phone's offline body instead: "<computer> is offline" (the generic "Bridge offline" until
+  the list names it), its last-seen time when the list has one, a line to start the bridge on that computer, and the
+  shared Other computers card, with no Start button. While the desktop is launching this computer's bridge (including a
+  cold start) and has not reached it yet, this computer's offline bridge is a load: the home shows the same loader as
+  any load and the sidebar list shows its loading skeleton, one skeleton from launch that hands off to the rows or the
+  empty state like any load. After 10 s, "Still starting this computer's bridge…" fades in under the loader (at once
+  with reduced motion) without moving it, and fades out the same way if the launch gives way to an ordinary load; a
+  normal start never shows it, and no other load does. Recovery appears only once the supervisor leaves starting and
+  running (a failed start, a stop, login required, contention), or a bridge the app had reached is lost (a crash restart
+  stays disconnected); another computer's offline state shows immediately.
+- Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored menu
+  switches computers through the shared switch flow (source `menu`). It is hidden while the account's only computer is
+  this one, grows into place when the list says otherwise, and stays put while the body below changes state. The body
+  cross-fades over 220 ms between the composer and the loader or another status page, as when a switch loads the next
+  computer's projects and lands on its composer. Each kind of status page (the loader, a failure, recovery, offline)
+  cross-fades into the next, while one whose own content changes, such as the slow-start line appearing under the
+  loader, stays put. While the new computer's home project is still loading the loader holds, so it fades straight into
+  the composer. Every body stays in place over the pane's one background, so nothing dims mid-fade; the swap is at once
+  with reduced motion, and the body fading out takes no clicks, focus or announcements. The desktop starts on the stored
+  pick, else this computer when its bridge id is known; a fresh install connects to the relay's default computer until
+  its helper registers. Each sign-in pins this computer again when nothing is stored. The desktop follows this
+  computer's supervised bridge when its id appears or changes (a fresh install, a new login, a re-registration) unless
+  the user picked another computer in this sign-in; picking this computer, or signing out, ends that. The local bridge
+  keeps running while another computer is viewed. The capability as a whole is in [multi-computer](multi-computer.md).
   Shared Prego text styles and Material themes resolve the bundled package font.
 - Connection status floats over the main pane without changing its bounds.
   Reconnecting appears after the shared grace period; connection lost retains

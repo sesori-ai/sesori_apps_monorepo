@@ -35,6 +35,10 @@ class const NewSessionPageChrome({
   required final Widget topBar,
   required final double maxContentWidth,
   required final double transcriptWidth,
+
+  /// As [Scaffold.backgroundColor], null for the theme's. A pane painting its
+  /// own beneath bodies it cross-fades passes a transparent one.
+  required final Color? backgroundColor,
 });
 
 /// Shared new-session presentation below shell-owned routing, DI, and platform
@@ -443,6 +447,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             ),
           );
     return Scaffold(
+      backgroundColor: chrome.backgroundColor,
       body: Column(
         children: [
           ?widget.banner,

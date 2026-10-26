@@ -31,7 +31,15 @@ class const DesktopHomePane({
 
   /// Opens the Computers page from the "Viewing:" menu.
   required final VoidCallback onManageComputers,
-}) extends StatelessWidget {
+}) extends StatefulWidget {
+  @override
+  State<DesktopHomePane> createState() => _DesktopHomePaneState();
+}
+
+class _DesktopHomePaneState() extends State<DesktopHomePane> {
+  /// Whether the ready home has started since the projects last loaded.
+  bool _homeStarted = false;
+
   @override
   Widget build(BuildContext context) {
     return MultiBlocProvider(
@@ -57,21 +65,71 @@ class const DesktopHomePane({
         ),
       ],
       // The header stays put while the body below it changes state, so it
-      // never enters again with each load.
-      child: Column(
-        children: [
-          _DesktopComputerHeader(onSwitchComputer: _switchComputer, onManageComputers: onManageComputers),
-          Expanded(child: Builder(builder: _buildBody)),
-        ],
+      // never enters again with each load. The pane paints the page's
+      // background once, beneath every body.
+      child: ColoredBox(
+        color: Theme.of(context).scaffoldBackgroundColor,
+        child: Column(
+          children: [
+            _DesktopComputerHeader(onSwitchComputer: _switchComputer, onManageComputers: widget.onManageComputers),
+            Expanded(child: Builder(builder: _buildBody)),
+          ],
+        ),
       ),
     );
   }
 
-  Widget _buildBody(BuildContext context) {
-    final Widget status;
-    switch (context.watch<ProjectListCubit>().state) {
-      case ProjectListLoaded(:final projects):
+  /// The ready home and each kind of status page cross-fade, as when a
+  /// computer switch loads and then lands. Each fills the body and paints no
+  /// background of its own, so neither moves or covers the other while they
+  /// cross, and the one leaving takes no clicks, focus or announcements.
+  Widget _buildBody(BuildContext context) => AnimatedSwitcher(
+    duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
+    switchInCurve: Curves.easeOut,
+    switchOutCurve: Curves.easeIn,
+    // Unkeyed, unlike the default, so each switch gets an entry of its own: a
+    // body back before its last one has faded out would otherwise replace that
+    // one at once, which then vanishes mid-fade.
+    transitionBuilder: (child, animation) => FadeTransition(opacity: animation, child: child),
+    layoutBuilder: (current, previous) => Stack(
+      fit: StackFit.expand,
+      children: [
+        for (final child in previous) _crossing(child: child, leaving: true),
+        if (current != null) _crossing(child: current, leaving: false),
+      ],
+    ),
+    child: _body(context),
+  );
+
+  /// Wraps a body under its entry's key, so a body that starts leaving keeps
+  /// its state.
+  static Widget _crossing({required Widget child, required bool leaving}) => IgnorePointer(
+    key: child.key,
+    ignoring: leaving,
+    child: ExcludeFocus(
+      excluding: leaving,
+      child: ExcludeSemantics(excluding: leaving, child: child),
+    ),
+  );
+
+  /// The ready home, or a status page keyed by its kind: another kind
+  /// cross-fades in, while a page whose own content changes stays put.
+  Widget _body(BuildContext context) {
+    final state = context.watch<ProjectListCubit>().state;
+    // Once the projects load, the loader holds until the list names the
+    // project the home starts in, or loads without one, so it fades straight
+    // into the composer. Once started, the home stays: a project added later
+    // loads without taking it back to the loader.
+    _homeStarted =
+        state is ProjectListLoaded &&
+        (_homeStarted ||
+            context.select(
+              (AllSessionsCubit cubit) => !cubit.state.isLoading || cubit.state.defaultProjectId != null,
+            ));
+    switch (state) {
+      case ProjectListLoaded(:final projects) when _homeStarted:
         return DesktopHomeStart(
+          key: const Key("desktop-home-ready"),
           projects: projects,
           createNewSessionCubit: ({required projectId, required projectName, required projectKind}) =>
               createNewSessionCubit(
@@ -80,52 +138,58 @@ class const DesktopHomePane({
                 projectName: projectName,
                 projectKind: projectKind,
               ),
-          onOpenSession: onOpenSession,
-          onOpenHarnessSettings: onOpenHarnessSettings,
+          onOpenSession: widget.onOpenSession,
+          onOpenHarnessSettings: widget.onOpenHarnessSettings,
         );
-      case ProjectListLoading():
+      case ProjectListLoaded() || ProjectListLoading():
         // The relay can still be connecting as the launch begins, so the
         // line's wait starts with the launch, not with its offline report.
-        status = _loading(
+        return _loading(
           context: context,
           startingThisComputer: context.select(
             (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
           ),
         );
       case ProjectListFailed(:final reason):
-        status = RemoteFailureView(
-          reason: reason,
-          title: context.loc.projectListErrorTitle,
-          retryLabel: context.loc.projectListRetry,
-          onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
+        return _statusPage(
+          key: const Key("desktop-home-failed"),
+          status: RemoteFailureView(
+            reason: reason,
+            title: context.loc.projectListErrorTitle,
+            retryLabel: context.loc.projectListRetry,
+            onRetry: () => context.read<ProjectListCubit>().retryLoadProjects(),
+          ),
         );
       case ProjectListBridgeDisconnected():
-        status = _disconnectedView(context: context);
+        return _disconnectedView(context: context);
     }
-    return ColoredBox(
-      color: Theme.of(context).scaffoldBackgroundColor,
-      child: CustomScrollView(
-        slivers: [
-          const SliverToBoxAdapter(child: SafeArea(bottom: false, child: DesktopFileAccessCard())),
-          SliverFillRemaining(hasScrollBody: false, child: SafeArea(child: status)),
-        ],
-      ),
-    );
   }
+
+  /// A status page under the file-access card, as the composer's page has it.
+  static Widget _statusPage({required Key key, required Widget status}) => CustomScrollView(
+    key: key,
+    slivers: [
+      const SliverToBoxAdapter(child: SafeArea(bottom: false, child: DesktopFileAccessCard())),
+      SliverFillRemaining(hasScrollBody: false, child: SafeArea(child: status)),
+    ],
+  );
 
   /// The loader centred as for any load, with equal room above and below it.
   /// [_SlowStartLine] waits in the room below, so it fades in and out without
-  /// moving the loader. Every load builds the same tree, so a load turning into
-  /// a launch, or back, keeps the running loader and the line.
-  static Widget _loading({required BuildContext context, required bool startingThisComputer}) => Column(
-    children: [
-      const Spacer(),
-      Semantics(
-        label: context.loc.projectListLoadingSemantics,
-        child: const PregoAiLoader(size: 32),
-      ),
-      Expanded(child: _SlowStartLine(starting: startingThisComputer)),
-    ],
+  /// moving the loader. Every load builds the same page, so a load turning
+  /// into a launch, or back, keeps the running loader and the line.
+  static Widget _loading({required BuildContext context, required bool startingThisComputer}) => _statusPage(
+    key: const Key("desktop-home-loading"),
+    status: Column(
+      children: [
+        const Spacer(),
+        Semantics(
+          label: context.loc.projectListLoadingSemantics,
+          child: const PregoAiLoader(size: 32),
+        ),
+        Expanded(child: _SlowStartLine(starting: startingThisComputer)),
+      ],
+    ),
   );
 
   /// Another computer's bridge is out of this desktop's reach, so its
@@ -137,14 +201,20 @@ class const DesktopHomePane({
       BridgeIdentityPending() || BridgeIdentityUnnamed() => null,
     };
     if (context.select((ComputerSwitcherCubit cubit) => cubit.state.viewsAnotherComputer)) {
-      return DesktopRemoteComputerOfflineView(bridge: bridge, onSwitchComputer: _switchComputer);
+      return _statusPage(
+        key: const Key("desktop-home-offline"),
+        status: DesktopRemoteComputerOfflineView(bridge: bridge, onSwitchComputer: _switchComputer),
+      );
     }
     if (context.select((LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting)) {
       return _loading(context: context, startingThisComputer: true);
     }
-    return DesktopBridgeRecoveryView(
-      bridge: bridge,
-      onStartBridge: context.read<BridgeControlCubit>().recoverConnection,
+    return _statusPage(
+      key: const Key("desktop-home-recovery"),
+      status: DesktopBridgeRecoveryView(
+        bridge: bridge,
+        onStartBridge: context.read<BridgeControlCubit>().recoverConnection,
+      ),
     );
   }
 
@@ -509,6 +579,8 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
           maxContentWidth: 760,
           transcriptWidth: desktopTranscriptWidth,
           topBar: SafeArea(bottom: false, child: DesktopFileAccessCard()),
+          // The pane paints the background, beneath the bodies it cross-fades.
+          backgroundColor: Colors.transparent,
         ),
       ),
     );
