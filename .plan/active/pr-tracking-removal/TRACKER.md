@@ -16,7 +16,7 @@
 | 1/13 | Publish the plan | Done | #2068 |
 | 2/13 | Row PR mark removed | Done | #2089 |
 | 3/13 | PR refresh setting removed | Not started | — |
-| 4/13 | Client stops declaring the open project | In review | — |
+| 4/13 | Client stops declaring the open project | In review | #2091 |
 | 5/13 | Session reads carry no PR data | Done | #2085 (5.i), #2086 (5.ii) |
 | 6/13 | Polling stopped | Not started | — |
 | 7/13 | Bridge stops tracking the open project | Not started | — |
