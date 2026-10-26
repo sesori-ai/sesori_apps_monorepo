@@ -80,7 +80,7 @@ foundation/  (Layer 0, dumb seams)
 
 api/  (Layer 1)
   DesktopUpdateFeedApi              unauthenticated GET of feed, .sig and package
-  VelopackPackagesStorage           writes the verified feed + package into Velopack's packages dir
+  VelopackUpdateApi                 API over Velopack's update manager; owns the staging dir it reads
   DesktopRelaunchApi                spawns /usr/bin/sesori-desktop --after-update (detached)
   DesktopInstanceStorage            + read/writeAutomaticUpdates (same shape as the attention preference)
 
@@ -158,8 +158,8 @@ Only one quit runs at a time, and nothing re-enters it.
 - **Velopack:** `vpk pack` output per channel and OS/CPU, with
   `releases.<channel>.json` plus `.sig`, and the full `.nupkg` on GCS. Dart fetches the
   feed and signature, verifies Ed25519 against the compiled key, and downloads the
-  referenced full package. It writes both into Velopack's packages directory and runs
-  `vpkc_new_source_file` on that directory. Velopack then checks the package SHA-256
+  referenced full package. `VelopackUpdateApi` writes both into its own `velopack-feed/`
+  staging directory and points Velopack's file source at it. Velopack then checks the package SHA-256
   against the now-trusted feed. No sync FFI callbacks cross threads.
 - Signing runs in a main-only job holding only the update-key secret. Upload is a
   separate job with the existing bucket-scoped federation, following the
@@ -186,7 +186,7 @@ PR titles: `<emoji> [desktop-auto-update] <description> [step x/10]`.
 | 3 | ⚙️ Update-key signing tooling | `sign_desktop_update_feed.py` (Sparkle enclosure signature and Velopack feed `.sig`), the public key file, a feed-verification test vector shared with the Dart verifier, and the key-generation and secret-setup guide for the user. |
 | 4 | 🚧 Sparkle on macOS | Sparkle 2.10.x through SwiftPM in the runner, the Info.plist keys, the `SparkleUpdateEngine` method-channel adapter, the `applicationShouldTerminate` → `quitRequested` seam with its channel-replying terminator, and Sparkle's XPC and helpers signed with hardened runtime in `package_desktop_macos.py`. Deletes `probe_sparkle.swift` and its job. |
 | 5 | 🚧 Velopack packaging for Windows and AppImage | `vpk pack`, pinned to the same exact Velopack version as the step-6 runtime library in `desktop-qualification.yml`, replacing ISCC and `build_appimage`, on both CPUs. Removes the Inno script and the mutex marker. Reruns the existing AppImage and private Windows install fixtures against the new artifacts. |
-| 6 | 🚧 Velopack updater in the app | The prebuilt `velopack_libc` at step 5's exact `vpk` version (checksum-verified, owned by packaging) bundled for win/linux x64/arm64, `vpkc_app_run` through `VelopackBindings` at the top of `main` before DI, `DesktopUpdateFeedApi`, `DesktopUpdateFeedValidator`, `VelopackPackagesStorage`, the velopack branch of `DesktopUpdateRepository` and `prepareExit`. |
+| 6 | 🚧 Velopack updater in the app | The prebuilt `velopack_libc` at step 5's exact `vpk` version (checksum-verified, owned by packaging) bundled for win/linux x64/arm64, `vpkc_app_run` through `runDesktopUpdateStartupHooks` at the top of `main` before DI, `DesktopUpdateFeedApi`, `DesktopUpdateFeedValidator`, `VelopackUpdateApi`, the velopack branch of `DesktopUpdateRepository` and `prepareExit`. |
 | 7 | ⚙️ Publish update feeds | Release workflows (internal cycle and production `submit-release`) sign and upload the appcasts and Velopack feeds after the GitHub release publishes. Needs the operator authority listed under Risks. |
 | 8 | 🌿 Phone sheet and download docs | Rewrites `bridgeUpdateDesktop*` to "updates automatically; open Sesori and choose Restart to update", keeping the download link for pre-updater installs (U9). Also covers `docs/desktop/downloads.md` and a companion landingpage copy PR. |
 | 9 | 🌱 Reconcile regression docs | `docs/regression/desktop-distribution.md`: the update behaviour, failure signals and coverage. |

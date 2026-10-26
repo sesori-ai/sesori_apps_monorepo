@@ -7,7 +7,7 @@
 | 3 | Update-key signing tooling | pending (needs user key setup) |
 | 4 | Sparkle on macOS | pending |
 | 5 | Velopack packaging for Windows and AppImage | pending |
-| 6 | Velopack updater in the app | pending |
+| 6 | Velopack updater in the app | in-progress |
 | 7 | Publish update feeds | pending (needs operator authority) |
 | 8 | Phone sheet and download docs | pending |
 | 9 | Reconcile regression docs | pending |

@@ -1,4 +1,6 @@
 import "dart:async";
+import "dart:io";
+import "dart:typed_data";
 
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
@@ -8,11 +10,19 @@ import "package:test/test.dart";
 void main() {
   setUpAll(() {
     registerFallbackValue(DesktopAutomaticUpdates.enabled);
+    registerFallbackValue(_linuxBuild);
+    registerFallbackValue(_feed);
+    registerFallbackValue(_release);
+    registerFallbackValue(Uint8List(0));
+    registerFallbackValue(File("fallback"));
   });
 
   late _FakeInstalledDesktopBundleSource bundleSource;
   late _MockDesktopRelaunchApi relaunchApi;
   late _MockDesktopInstanceRepository instanceRepository;
+  late _MockDesktopUpdateFeedApi feedApi;
+  late _MockDesktopUpdateFeedValidator feedValidator;
+  late _MockVelopackUpdateApi velopackApi;
 
   setUp(() {
     bundleSource = _FakeInstalledDesktopBundleSource(
@@ -27,10 +37,19 @@ void main() {
       () => instanceRepository.writeAutomaticUpdates(preference: any(named: "preference")),
     ).thenAnswer((_) async {});
     when(() => relaunchApi.relaunchInstalledPackage()).thenAnswer((_) async {});
+    feedApi = _MockDesktopUpdateFeedApi();
+    feedValidator = _MockDesktopUpdateFeedValidator();
+    velopackApi = _MockVelopackUpdateApi();
   });
 
   DesktopUpdateService service() => DesktopUpdateService(
-    updateRepository: DesktopUpdateRepository(bundleSource: bundleSource, relaunchApi: relaunchApi),
+    updateRepository: DesktopUpdateRepository(
+      bundleSource: bundleSource,
+      relaunchApi: relaunchApi,
+      feedApi: feedApi,
+      feedValidator: feedValidator,
+      velopackApi: velopackApi,
+    ),
     instanceRepository: instanceRepository,
   );
 
@@ -55,23 +74,31 @@ void main() {
       expect(service().currentState, isA<DesktopUpdateManagedBySystem>());
     });
 
-    for (final (os, isAppImage, fragment) in [
-      (DesktopBundleOs.macos, false, "internal-macos-arm64"),
-      (DesktopBundleOs.windows, false, "internal-windows-arm64"),
-      (DesktopBundleOs.linux, true, "internal-linux-arm64-appimage"),
-    ]) {
-      test("${os.name}${isAppImage ? " AppImage" : ""} keeps the manual download for its channel and CPU", () {
+    test("macOS keeps the manual download for its channel and CPU", () {
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: _linuxBuild.copyWith(
+          os: DesktopBundleOs.macos,
+          architecture: DesktopBundleArchitecture.arm64,
+        ),
+        isAppImage: false,
+        channel: DesktopReleaseChannel.internal,
+      );
+      final state = service().currentState;
+      expect(state, isA<DesktopUpdateManualDownload>());
+      expect(
+        (state as DesktopUpdateManualDownload).downloadsUri,
+        Uri.parse("https://sesori.com/desktop/#internal-macos-arm64"),
+      );
+    });
+
+    for (final (os, isAppImage) in [(DesktopBundleOs.windows, false), (DesktopBundleOs.linux, true)]) {
+      test("${os.name}${isAppImage ? " AppImage" : ""} updates itself and starts idle", () {
         bundleSource = _FakeInstalledDesktopBundleSource(
-          compiledIdentity: _linuxBuild.copyWith(os: os, architecture: DesktopBundleArchitecture.arm64),
+          compiledIdentity: _linuxBuild.copyWith(os: os),
           isAppImage: isAppImage,
-          channel: DesktopReleaseChannel.internal,
+          channel: DesktopReleaseChannel.stable,
         );
-        final state = service().currentState;
-        expect(state, isA<DesktopUpdateManualDownload>());
-        expect(
-          (state as DesktopUpdateManualDownload).downloadsUri,
-          Uri.parse("https://sesori.com/desktop/#$fragment"),
-        );
+        expect(service().currentState, isA<DesktopUpdateIdle>());
       });
     }
   });
@@ -108,7 +135,8 @@ void main() {
         expect(bundleSource.reads, 1);
 
         bundleSource.installed = _linuxBuild.copyWith(sourceSha: "rebuilt");
-        updates.check();
+        unawaited(updates.check());
+        async.flushMicrotasks();
         expect(bundleSource.reads, 2);
         expect(updates.currentState, isA<DesktopUpdateReady>());
         unawaited(updates.dispose());
@@ -130,7 +158,7 @@ void main() {
       final updates = service();
       addTearDown(updates.dispose);
       bundleSource.readError = const FormatException("partial manifest");
-      updates.check();
+      await updates.check();
       expect(updates.currentState, isA<DesktopUpdateManagedBySystem>());
     });
 
@@ -143,9 +171,144 @@ void main() {
       final updates = service();
       addTearDown(updates.dispose);
       await updates.start();
-      updates.check();
+      await updates.check();
       expect(bundleSource.reads, 0);
       expect(updates.currentState, isA<DesktopUpdateManualDownload>());
+    });
+  });
+
+  group("Velopack checks", () {
+    final File stagedPackage = File("staged/sesori-desktop-1.8.5-stable-full.nupkg");
+
+    setUp(() {
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: _windowsBuild,
+        isAppImage: false,
+        channel: DesktopReleaseChannel.stable,
+      );
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => null);
+      when(() => feedApi.fetchFeed(identity: any(named: "identity"))).thenAnswer((_) async => _feed);
+      when(() => feedValidator.verify(feed: any(named: "feed"))).thenAnswer((_) async {});
+      when(() => velopackApi.stageFeed(feed: any(named: "feed"))).thenAnswer((_) async => _release);
+      when(() => velopackApi.stagedPackageFile(release: any(named: "release"))).thenAnswer((_) async => stagedPackage);
+      when(
+        () => feedApi.downloadPackage(
+          identity: any(named: "identity"),
+          fileName: any(named: "fileName"),
+          destination: any(named: "destination"),
+        ),
+      ).thenAnswer((_) async {});
+      when(() => velopackApi.downloadStagedRelease()).thenAnswer((_) async => "1.8.5");
+    });
+
+    test("verify the signed feed before Velopack stages it, then download the package it names", () async {
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.check();
+
+      expect(updates.currentState, isA<DesktopUpdateReady>().having((state) => state.version, "version", "1.8.5"));
+      verifyInOrder([
+        () => feedApi.fetchFeed(identity: _windowsBuild),
+        () => feedValidator.verify(feed: _feed),
+        () => velopackApi.stageFeed(feed: _feed.bytes),
+        () => feedApi.downloadPackage(identity: _windowsBuild, fileName: _release.fileName, destination: stagedPackage),
+        () => velopackApi.downloadStagedRelease(),
+      ]);
+    });
+
+    test("a package Velopack already downloaded is Ready without fetching", () async {
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.5");
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.check();
+
+      expect(updates.currentState, isA<DesktopUpdateReady>());
+      verifyNever(() => feedApi.fetchFeed(identity: any(named: "identity")));
+    });
+
+    test("a feed with nothing newer stays idle and downloads nothing", () async {
+      when(() => velopackApi.stageFeed(feed: any(named: "feed"))).thenAnswer((_) async => null);
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.check();
+
+      expect(updates.currentState, isA<DesktopUpdateIdle>());
+      verifyNever(() => velopackApi.downloadStagedRelease());
+    });
+
+    test("a refused signature stays idle without staging the feed", () async {
+      when(() => feedValidator.verify(feed: any(named: "feed"))).thenThrow(const FormatException("bad signature"));
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.check();
+
+      expect(updates.currentState, isA<DesktopUpdateIdle>());
+      verifyNever(() => velopackApi.stageFeed(feed: any(named: "feed")));
+    });
+
+    test("a check that starts while one runs joins it", () async {
+      final Completer<DesktopUpdateFeed> feed = Completer<DesktopUpdateFeed>();
+      when(() => feedApi.fetchFeed(identity: any(named: "identity"))).thenAnswer((_) => feed.future);
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      final Future<void> first = updates.check();
+      final Future<void> second = updates.check();
+      feed.complete(_feed);
+      await Future.wait([first, second]);
+
+      verify(() => feedApi.fetchFeed(identity: any(named: "identity"))).called(1);
+    });
+  });
+
+  group("applyDownloadedUpdate", () {
+    setUp(() {
+      when(() => velopackApi.applyPendingRelease(restart: any(named: "restart"))).thenAnswer((_) async {});
+    });
+
+    test("a Ready Velopack install starts the updater", () async {
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: _windowsBuild,
+        isAppImage: false,
+        channel: DesktopReleaseChannel.stable,
+      );
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.5");
+      final updates = service();
+      addTearDown(updates.dispose);
+      await updates.check();
+
+      await updates.applyDownloadedUpdate(restart: true);
+
+      verify(() => velopackApi.applyPendingRelease(restart: true)).called(1);
+    });
+
+    test("an idle Velopack install and a Ready Linux package start nothing", () async {
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: _windowsBuild,
+        isAppImage: false,
+        channel: DesktopReleaseChannel.stable,
+      );
+      final idle = service();
+      addTearDown(idle.dispose);
+      await idle.applyDownloadedUpdate(restart: false);
+
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: _linuxBuild,
+        isAppImage: false,
+        channel: DesktopReleaseChannel.stable,
+      );
+      bundleSource.installed = _linuxBuild.copyWith(version: "1.8.5");
+      final package = service();
+      addTearDown(package.dispose);
+      await package.check();
+      expect(package.currentState, isA<DesktopUpdateReady>());
+      await package.applyDownloadedUpdate(restart: true);
+
+      verifyNever(() => velopackApi.applyPendingRelease(restart: any(named: "restart")));
     });
   });
 
@@ -179,6 +342,15 @@ const DesktopBundleIdentity _linuxBuild = DesktopBundleIdentity(
   architecture: DesktopBundleArchitecture.x64,
 );
 
+final DesktopBundleIdentity _windowsBuild = _linuxBuild.copyWith(os: DesktopBundleOs.windows);
+
+final DesktopUpdateFeed _feed = DesktopUpdateFeed(bytes: Uint8List.fromList([1, 2, 3]), signature: "signature");
+
+const VelopackStagedRelease _release = VelopackStagedRelease(
+  fileName: "sesori-desktop-1.8.5-stable-full.nupkg",
+  version: "1.8.5",
+);
+
 class _FakeInstalledDesktopBundleSource({
   @override required final DesktopBundleIdentity? compiledIdentity,
   @override required final bool isAppImage,
@@ -187,6 +359,9 @@ class _FakeInstalledDesktopBundleSource({
   late DesktopBundleIdentity installed = compiledIdentity ?? _linuxBuild;
   Object? readError;
   int reads = 0;
+
+  @override
+  String get velopackLibraryPath => "velopack_libc.dll";
 
   @override
   DesktopBundleIdentity readInstalledIdentity() {
@@ -202,3 +377,9 @@ class _FakeInstalledDesktopBundleSource({
 class _MockDesktopRelaunchApi() extends Mock implements DesktopRelaunchApi;
 
 class _MockDesktopInstanceRepository() extends Mock implements DesktopInstanceRepository;
+
+class _MockDesktopUpdateFeedApi() extends Mock implements DesktopUpdateFeedApi;
+
+class _MockDesktopUpdateFeedValidator() extends Mock implements DesktopUpdateFeedValidator;
+
+class _MockVelopackUpdateApi() extends Mock implements VelopackUpdateApi;

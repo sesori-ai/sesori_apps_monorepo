@@ -224,6 +224,7 @@ typedef OrchestratorComposition = ({
   PluginCatalogHydrationListener catalogHydrationListener,
   DeletedSessionStorageCleanupService deletedSessionStorageCleanupService,
   ChatHistoryReconcileService chatHistoryReconcileService,
+  ScratchRepository scratchRepository,
   BridgeRestartDispatcher restartDispatcher,
   RoutedRequestDispatcher routedRequestDispatcher,
   SessionRepository sessionRepository,
@@ -358,6 +359,7 @@ class Orchestrator({
     final worktreeService = WorktreeService(worktreeRepository: worktreeRepository);
     final scratchRepository = ScratchRepository(
       filesystemApi: const FilesystemApi(),
+      projectsDao: _database.projectsDao,
       sessionDao: _database.sessionDao,
       projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
     );
@@ -547,6 +549,7 @@ class Orchestrator({
       projectInitializationService: projectInitializationService,
       projectActivityService: projectActivityService,
       projectRepository: projectRepository,
+      projectCatalogIdentityCalculator: projectCatalogIdentityCalculator,
     );
     final roomKey = _generateRoomKey();
     final cryptoService = RelayCryptoService();
@@ -882,6 +885,7 @@ class Orchestrator({
         sessionRepository: sessionRepository,
         chatHistoryService: chatHistoryService,
       ),
+      scratchRepository: scratchRepository,
       restartDispatcher: restartDispatcher,
       routedRequestDispatcher: routedRequestDispatcher,
       sessionRepository: sessionRepository,

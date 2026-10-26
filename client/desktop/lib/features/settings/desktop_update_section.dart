@@ -19,7 +19,7 @@ class const DesktopUpdateSection({super.key}) extends StatelessWidget {
     return SettingsSection(
       title: loc.desktopUpdatesTitle,
       child: switch (update) {
-        DesktopUpdateManagedBySystem() => const _AutomaticUpdateRows(readyVersion: null),
+        DesktopUpdateIdle() || DesktopUpdateManagedBySystem() => const _AutomaticUpdateRows(readyVersion: null),
         DesktopUpdateReady(:final version) => _AutomaticUpdateRows(readyVersion: version),
         DesktopUpdateManualDownload(:final downloadsUri) => PregoGroupedRows(
           children: [
@@ -77,7 +77,11 @@ class const _AutomaticUpdateRows({required final String? readyVersion}) extends 
           child: PregoGroupedRow(
             icon: TablerRegular.search,
             title: Text(loc.desktopUpdatesCheck),
-            subtitle: Text(loc.desktopUpdatesCheckPackageDescription),
+            subtitle: Text(
+              cubit.installKind == DesktopInstallKind.linuxPackage
+                  ? loc.desktopUpdatesCheckPackageDescription
+                  : loc.desktopUpdatesCheckDescription,
+            ),
             onTap: cubit.checkForUpdates,
           ),
         ),

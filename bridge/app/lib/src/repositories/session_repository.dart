@@ -945,7 +945,7 @@ class SessionRepository({
     }
   }
 
-  Future<ProjectDto> _persistNativeRootSessions({
+  Future<void> _persistNativeRootSessions({
     required String pluginId,
     required int generation,
     required String preferredProjectId,
@@ -954,25 +954,37 @@ class SessionRepository({
   }) async {
     final projectionUpdatedAt = captureProjectionTimestamp();
     final backendSessionIds = [for (final session in pluginSessions) session.id];
+    final inScratch = _projectCatalogIdentityCalculator.isWithinScratch(path: projectDirectory);
     final result = await _sessionDao.attachedDatabase.transaction(() async {
       final storedProjects = await _projectsDao.getAllProjects();
-      final existingProject = _projectCatalogIdentityCalculator.calculate(
-        projectsById: {
-          for (final project in storedProjects) project.projectId: project,
-        },
-        projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
-          projects: storedProjects,
-        ),
-        preferredProjectId: preferredProjectId,
-        observedPath: projectDirectory,
-      );
-      final hydratedProject =
-          existingProject ?? _projectPlaceholder(projectId: preferredProjectId, path: projectDirectory);
-      await _projectsDao.insertProjectIfMissing(
-        projectId: hydratedProject.projectId,
-        path: projectDirectory,
-        hidden: false,
-      );
+      final projectsById = {
+        for (final project in storedProjects) project.projectId: project,
+      };
+      final ProjectDto hydratedProject;
+      if (inScratch) {
+        // A scratch folder never becomes a project: its sessions bind to the
+        // "No project" row, and without that row they stay unbound.
+        final scratchProject = projectsById[_projectCatalogIdentityCalculator.scratchRoot];
+        if (scratchProject == null) return null;
+        hydratedProject = scratchProject;
+      } else {
+        hydratedProject =
+            _projectCatalogIdentityCalculator.calculate(
+              projectsById: projectsById,
+              projectsByNormalizedPath: _projectCatalogIdentityCalculator.buildProjectsByNormalizedPath(
+                projects: storedProjects,
+              ),
+              preferredProjectId: preferredProjectId,
+              observedPath: projectDirectory,
+            ) ??
+            _projectPlaceholder(projectId: preferredProjectId, path: projectDirectory);
+        await _projectsDao.insertProjectIfMissing(
+          projectId: hydratedProject.projectId,
+          path: projectDirectory,
+          hidden: false,
+          displayName: null,
+        );
+      }
       final existingByBackendId = await _sessionDao.getSessionsByBackendIds(
         pluginId: pluginId,
         backendSessionIds: backendSessionIds,
@@ -1009,6 +1021,7 @@ class SessionRepository({
       );
       return (project: hydratedProject, committedByBackendId: committedByBackendId);
     });
+    if (result == null) return;
     _publishBindingsCommitted(
       pluginId: pluginId,
       projectId: result.project.projectId,
@@ -1016,7 +1029,6 @@ class SessionRepository({
       kind: SessionBindingCommitKind.catalogSync,
       backendSessionIds: result.committedByBackendId.keys.toList(growable: false),
     );
-    return result.project;
   }
 
   ({String providerID, String modelID})? _toPluginModel(PromptModel? model) => switch (model) {

@@ -49,7 +49,7 @@ void main() {
       scratchParent = await Directory.systemTemp.createTemp("session-creation-scratch-");
       scratchRoot = p.join(scratchParent.path, "scratch");
       calculator = ProjectCatalogIdentityCalculator(scratchRoot: scratchRoot, pathContext: p.context);
-      scratchRepository = testScratchRepository(sessionDao: db.sessionDao, scratchRoot: scratchRoot);
+      scratchRepository = testScratchRepository(db: db, scratchRoot: scratchRoot);
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo", scratchRoot]);
       defaultsRepository = NewSessionDefaultsRepository(
         dao: NewSessionDefaultsDao(database: db),

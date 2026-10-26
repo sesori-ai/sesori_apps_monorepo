@@ -53,6 +53,7 @@ void main() {
   });
 
   test("Check for updates runs the service's single check", () {
+    when(() => service.check()).thenAnswer((_) async {});
     cubit.checkForUpdates();
     verify(() => service.check()).called(1);
   });

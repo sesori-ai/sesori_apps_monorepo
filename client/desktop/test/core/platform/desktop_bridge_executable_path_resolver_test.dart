@@ -198,6 +198,9 @@ class const _DevelopmentBundleSource() implements InstalledDesktopBundleSource {
   bool get isAppImage => false;
 
   @override
+  String get velopackLibraryPath => throw StateError("Development builds bundle no Velopack library");
+
+  @override
   DesktopBundleIdentity readInstalledIdentity() => throw StateError("Development builds read no manifest");
 }
 

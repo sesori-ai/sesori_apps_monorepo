@@ -42,6 +42,13 @@ class IoInstalledDesktopBundleSource.forTesting({
     final encoded => DesktopBundleIdentity.decode(encoded: encoded),
   };
 
+  /// Matches `VELOPACK_LIBRARIES` in `.github/scripts/package_desktop_linux.py`.
+  @override
+  String get velopackLibraryPath => path.join(
+    path.dirname(_resolvedExecutable),
+    _os == DesktopBundleOs.windows ? "velopack_libc.dll" : path.join("lib", "libvelopack_libc.so"),
+  );
+
   @override
   DesktopBundleIdentity readInstalledIdentity() {
     final String executableDirectory = path.dirname(_resolvedExecutable);

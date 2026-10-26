@@ -155,6 +155,24 @@ void main() {
     );
     expect(resolver.resolve, throwsA(isA<DesktopBridgeBundleException>()));
   });
+
+  // Packaging places the library at these paths (VELOPACK_LIBRARIES in package_desktop_linux.py).
+  for (final (os, library) in [
+    (DesktopBundleOs.windows, "velopack_libc.dll"),
+    (DesktopBundleOs.linux, path.join("lib", "libvelopack_libc.so")),
+  ]) {
+    test("$os finds the bundled Velopack library beside the executable", () {
+      final IoInstalledDesktopBundleSource source = IoInstalledDesktopBundleSource.forTesting(
+        compiledIdentityJson: null,
+        channel: DesktopReleaseChannel.stable,
+        isAppImage: os == DesktopBundleOs.linux,
+        resolvedExecutable: path.absolute("Installed App", "sesori_desktop"),
+        os: os,
+        readManifest: ({required String manifestPath}) => throw StateError("unused"),
+      );
+      expect(source.velopackLibraryPath, path.absolute("Installed App", library));
+    });
+  }
 }
 
 DesktopBridgeExecutablePathResolver _resolver({

@@ -19,7 +19,7 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
 - A branch or repository change invalidates the prior selection before any network
   work and never falls back to a previous branch's PR.
 - A new dedicated worktree starts on a detached HEAD, so it shows no branch and no PR until the agent creates a
-  branch there; the next refresh then shows that branch and its PR.
+  branch there; the next refresh then shows that branch, and its PR once a matching one exists.
 - Every PR-bearing read is gated on a gh identity check at most one hour old,
   shared with concurrent reads; gh availability and authentication are cached on
   the same terms. Only successes are cached, so a fresh gh login is picked up on
@@ -43,7 +43,7 @@ change. Bridge-owned, plugin-agnostic, backed by the user's local gh CLI.
 |---|---|
 | L1 Smoke | Headless bridge, no plugin: a session in a GitHub repository with a matching open PR returns its branch and one PR; a missing or unauthenticated gh still serves sessions and branches. |
 | L2 Routine | Automated and headless bridge over fake gh/Git: open-before-terminal ordering, fork-head rejection, coworker PR acceptance, branch switch clearing a stale PR, detached/non-Git/non-GitHub outcomes, root-versus-child scope, and a new dedicated worktree showing no branch until its agent creates one. |
-| L3 Release | Client end to end on the release-target client platform: branch and PR rendered in the session list; a branch the agent creates in a new dedicated worktree appears with its PR after the next refresh; presence-driven refresh without manual pull; bounded explicit refresh; cadence read and changed from settings including out-of-range rejection. |
+| L3 Release | Client end to end on the release-target client platform: branch and PR rendered in the session list; a branch the agent creates in a new dedicated worktree appears after the next refresh, with its PR once a matching one exists; presence-driven refresh without manual pull; bounded explicit refresh; cadence read and changed from settings including out-of-range rejection. |
 | L4 Extended | Relay integration with multiple clients: presence union across two devices and projects, release on background/disconnect, relay loss clearing claims, identity switch failing closed, transient GitHub failure retained versus invalidated, old bridge/client degrading. |
 | L5 Full | Real authenticated GitHub account: batched targets beyond the per-command bound, pagination past newer fork heads, terminal fallback on a real merged PR, and a recheck that installed gh still returns the required fields. |
 

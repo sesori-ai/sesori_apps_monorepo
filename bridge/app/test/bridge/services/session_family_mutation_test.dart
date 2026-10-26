@@ -560,6 +560,9 @@ class _MissingFilesystemRepository() implements FilesystemRepository {
 
 class _UnusedScratchRepository() implements ScratchRepository {
   @override
+  Future<void> ensureScratchProject() => throw UnimplementedError();
+
+  @override
   Future<String> createSessionDirectory() => throw UnimplementedError();
 
   @override

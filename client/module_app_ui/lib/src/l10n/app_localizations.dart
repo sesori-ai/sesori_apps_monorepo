@@ -457,6 +457,12 @@ abstract class AppLocalizations {
   /// **'Check for updates'**
   String get desktopUpdatesCheck;
 
+  /// Windows and AppImage installs download signed updates and install them on Quit or Restart to update.
+  ///
+  /// In en, this message translates to:
+  /// **'Sesori downloads verified updates in the background and installs them when you quit or restart to update.'**
+  String get desktopUpdatesCheckDescription;
+
   /// Linux package installs receive updates from the system package manager.
   ///
   /// In en, this message translates to:
@@ -469,10 +475,10 @@ abstract class AppLocalizations {
   /// **'Restart to update'**
   String get desktopUpdatesRestart;
 
-  /// Shown when a newer installed version waits for a restart.
+  /// Shown when a newer installed or downloaded version waits for a restart.
   ///
   /// In en, this message translates to:
-  /// **'Version {version} is installed. Restart Sesori to start using it.'**
+  /// **'Version {version} is ready. Restart Sesori to start using it.'**
   String desktopUpdatesRestartDescription(String version);
 
   /// Settings owned by the connected bridge, which may be on another computer.

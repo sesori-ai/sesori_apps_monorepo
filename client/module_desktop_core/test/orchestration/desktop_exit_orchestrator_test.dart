@@ -16,19 +16,39 @@ void main() {
     when(() => processService.stop()).thenAnswer((_) async {});
     when(() => processService.start()).thenAnswer((_) async {});
     when(() => updateService.prepareRestartToUpdate()).thenAnswer((_) async {});
+    when(() => updateService.applyDownloadedUpdate(restart: any(named: "restart"))).thenAnswer((_) async {});
     orchestrator = DesktopExitOrchestrator(processService: processService, updateService: updateService);
   });
 
-  test("quit only stops the helper", () async {
+  test("quit stops the helper, then applies a downloaded update without restarting", () async {
     await orchestrator.prepareExit(intent: DesktopExitIntent.quit);
-    verify(() => processService.stop()).called(1);
+    verifyInOrder([() => processService.stop(), () => updateService.applyDownloadedUpdate(restart: false)]);
     verifyNever(() => updateService.prepareRestartToUpdate());
   });
 
-  test("restart to update starts the new desktop before stopping the helper", () async {
+  test("restart to update relaunches a package before the helper stops and applies a download after", () async {
     await orchestrator.prepareExit(intent: DesktopExitIntent.restartToUpdate);
-    verifyInOrder([() => updateService.prepareRestartToUpdate(), () => processService.stop()]);
+    verifyInOrder([
+      () => updateService.prepareRestartToUpdate(),
+      () => processService.stop(),
+      () => updateService.applyDownloadedUpdate(restart: true),
+    ]);
     verifyNever(() => processService.start());
+  });
+
+  test("a quit whose updater fails to start still exits", () async {
+    when(() => updateService.applyDownloadedUpdate(restart: false)).thenThrow(StateError("updater missing"));
+    await orchestrator.prepareExit(intent: DesktopExitIntent.quit);
+    verifyNever(() => processService.start());
+  });
+
+  test("a restart whose updater fails to start restores the helper and reports the failure", () async {
+    when(() => updateService.applyDownloadedUpdate(restart: true)).thenThrow(StateError("updater missing"));
+    await expectLater(
+      orchestrator.prepareExit(intent: DesktopExitIntent.restartToUpdate),
+      throwsA(isA<StateError>()),
+    );
+    verify(() => processService.start()).called(1);
   });
 
   test("a failed update step leaves the running helper untouched and reports the failure", () async {
@@ -44,7 +64,7 @@ void main() {
   test("a failed stop restores a helper that was on and reports the failure", () async {
     when(() => processService.stop()).thenThrow(StateError("stop failed"));
     await expectLater(orchestrator.prepareExit(intent: DesktopExitIntent.quit), throwsA(isA<StateError>()));
-    verifyNever(() => updateService.prepareRestartToUpdate());
+    verifyNever(() => updateService.applyDownloadedUpdate(restart: any(named: "restart")));
     verify(() => processService.start()).called(1);
   });
 
