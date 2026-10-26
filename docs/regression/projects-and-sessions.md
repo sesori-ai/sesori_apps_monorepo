@@ -272,7 +272,9 @@ state.
   (dimmed and disabled offline); it pushes like the other Settings pages and opens under the current filter. A pull
   refreshes every project and imports, as above. Until the project list loads the home shows a skeleton, a failed
   project list shows its error with Retry, a computer with no projects at all, "No project" included, shows the
-  add-project call to action, and the disconnected pages below replace the list.
+  add-project call to action, and the disconnected pages below replace the list. The first rows or the empty state
+  fade in where the skeleton stood, search field and chips with them, as it fades out over them; reduced motion swaps
+  them at once, and a later refresh, search or filter never repeats the hand-off.
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
   divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.

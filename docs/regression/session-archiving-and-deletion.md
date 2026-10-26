@@ -131,7 +131,8 @@ entirely along with its transcript and its dedicated worktree.
   archived it shows the archive artwork and “No archived sessions”, but only once
   the project list has loaded and the page's reload on open has answered, so a
   session archived since the list loaded never flashes the empty state: until
-  then the page shows a skeleton, a failed
+  then the page shows a skeleton, which hands off to the rows or the empty state
+  as the home's does ([projects and sessions](projects-and-sessions.md)), a failed
   project list shows its error with Retry, and a disconnected computer shows the
   same setup or offline page as the home. A project whose sessions failed to load
   gets its own Retry row instead of the empty state. The page reloads
