@@ -73,6 +73,8 @@ void main() {
       folderProjects: [project],
       scratchProject: null,
     ),
+    Stream<ProjectListState> projectUpdates = const Stream.empty(),
+    AllSessionsDisconnectedBuilder disconnectedBuilder = _offlinePage,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -80,7 +82,7 @@ void main() {
     when(() => cubit.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
     when(() => cubit.setHiddenSessionIds(sessionIds: any(named: "sessionIds"))).thenReturn(null);
     projects = _MockProjectListCubit();
-    whenListen(projects, const Stream<ProjectListState>.empty(), initialState: projectList);
+    whenListen(projects, projectUpdates, initialState: projectList);
     when(() => projects.retryLoadProjects()).thenAnswer((_) async {});
     final inventory = _MockRecentSessionInventoryService();
     when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(const {}));
@@ -114,8 +116,7 @@ void main() {
                   ),
                   createActionCubit: ({required projectId, required session}) => throw StateError("no row to act on"),
                   selectedSessionId: null,
-                  disconnectedBuilder: ({required context, required state}) =>
-                      const SliverToBoxAdapter(child: Text("Computer offline")),
+                  disconnectedBuilder: disconnectedBuilder,
                   emptyState: const Text("Nothing here"),
                   header: null,
                   endClearance: 0,
@@ -205,15 +206,20 @@ void main() {
     verify(() => projects.retryLoadProjects()).called(1);
   });
 
-  testWidgets("Archived shows the disconnected computer, not the empty state", (tester) async {
-    await pumpList(
-      tester,
-      initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
-      projectList: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
-    );
-    expect(find.text("Computer offline"), findsOneWidget);
-    expect(find.text("Nothing here"), findsNothing);
-  });
+  for (final mode in AllSessionsMode.values) {
+    testWidgets("${mode.name} shows the disconnected computer, not the empty state", (tester) async {
+      await pumpList(
+        tester,
+        mode: mode,
+        initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
+        projectList: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
+      );
+      await tester.pump(const Duration(milliseconds: 600));
+      expect(find.text("Computer offline"), findsOneWidget);
+      expect(find.text("Nothing here"), findsNothing);
+      expect(find.byType(PregoSkeletonList), findsNothing);
+    });
+  }
 
   testWidgets("the active list adds the status chips over its rows", (tester) async {
     final now = DateTime.now();
@@ -422,5 +428,70 @@ void main() {
         expect(rowsOpacity(tester), 1);
       }
     });
+
+    final skeleton = find.byType(PregoSkeletonList);
+    bool skeletonShown(WidgetTester tester) =>
+        tester.widget<AnimatedOpacity>(find.descendant(of: skeleton, matching: find.byType(AnimatedOpacity))).opacity ==
+        1;
+    for (final mode in AllSessionsMode.values) {
+      for (final throughProjectLoad in [true, false]) {
+        testWidgets(
+          "a computer about to connect is a load whose one skeleton hands off to the rows "
+          "(${mode.name}${throughProjectLoad ? ", through the project load" : ""})",
+          (tester) async {
+            final projectUpdates = StreamController<ProjectListState>();
+            final updates = StreamController<AllSessionsState>();
+            addTearDown(projectUpdates.close);
+            addTearDown(updates.close);
+            // Disconnected, the cubit has nothing to load: only the surface knows.
+            await pumpList(
+              tester,
+              mode: mode,
+              initial: empty,
+              updates: updates.stream,
+              projectList: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
+              projectUpdates: projectUpdates.stream,
+              disconnectedBuilder: _aboutToConnect,
+            );
+            final first = tester.element(skeleton);
+            expect(find.text("Nothing here"), findsNothing);
+            await tester.pump(const Duration(milliseconds: 200));
+            expect(skeletonShown(tester), isFalse);
+
+            if (throughProjectLoad) {
+              projectUpdates.add(const ProjectListState.loading());
+              updates.add(loading);
+              await tester.pump();
+              expect(tester.element(skeleton), same(first));
+            }
+            // Its appearance delay runs on from the start rather than again.
+            await tester.pump(const Duration(milliseconds: 150));
+            expect(skeletonShown(tester), isTrue);
+            await tester.pump(const Duration(milliseconds: 250));
+
+            projectUpdates.add(
+              const ProjectListState.loaded(projects: [project], folderProjects: [project], scratchProject: null),
+            );
+            updates.add(loaded(mode: mode, titles: ["Fix the parser"]));
+            await tester.pump();
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 100));
+            expect(tester.element(skeleton), same(first));
+            expect(opacityAbove(tester, skeleton), inExclusiveRange(0, 1));
+            expect(rowsOpacity(tester), inExclusiveRange(0, 1));
+
+            await tester.pump(const Duration(milliseconds: 150));
+            expect(skeleton, findsNothing);
+            expect(rowsOpacity(tester), 1);
+          },
+        );
+      }
+    }
   });
 }
+
+Widget _offlinePage({required BuildContext context, required ProjectListBridgeDisconnected state}) =>
+    const SliverToBoxAdapter(child: Text("Computer offline"));
+
+/// A surface that knows the computer is about to connect.
+Widget? _aboutToConnect({required BuildContext context, required ProjectListBridgeDisconnected state}) => null;

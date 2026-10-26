@@ -951,14 +951,83 @@ void main() {
     addTearDown(starts.close);
     whenListen(startup, starts, initialState: starts.value);
     await tester.pumpWidget(app(state: _state(processState: const BridgeProcessStarting())));
-    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
     expect(find.byType(PregoSkeletonList), findsOneWidget);
+    expect(find.byType(SessionEmptyState), findsNothing);
 
+    // A failed or stopped start leaves the footer's recovery card to say so.
     starts.add(LocalBridgeStartupState.settled);
     await tester.pump();
     await tester.pump();
     expect(find.byType(PregoSkeletonList), findsNothing);
+    expect(find.byType(SessionEmptyState), findsNothing);
   });
+
+  for (final throughProjectLoad in [true, false]) {
+    testWidgets(
+      "from launch to its rows the sidebar list shows one skeleton, which hands off to them"
+      "${throughProjectLoad ? ", through the project load" : ""}",
+      (tester) async {
+        recent = {
+          "project-1": _loaded(
+            sessions: [testSession(id: "s1", title: "Fix the build")],
+          ),
+        };
+        final projectUpdates = StreamController<ProjectListState>();
+        addTearDown(projectUpdates.close);
+        whenListen(projects, projectUpdates.stream, initialState: const ProjectListState.loading());
+        final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+        addTearDown(starts.close);
+        whenListen(startup, starts, initialState: starts.value);
+        await tester.pumpWidget(app(state: _state(processState: const BridgeProcessStarting())));
+        final skeleton = find.descendant(of: list, matching: find.byType(PregoSkeletonList));
+        final first = tester.element(skeleton);
+
+        // A cold start finds this computer's bridge offline while it starts.
+        projectUpdates.add(const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true));
+        await tester.pump();
+        expect(tester.element(skeleton), same(first));
+        await tester.pump(const Duration(milliseconds: 600));
+        expect(tester.element(skeleton), same(first));
+
+        // Reaching it ends the start.
+        starts.add(LocalBridgeStartupState.settled);
+        if (throughProjectLoad) {
+          projectUpdates.add(const ProjectListState.loading());
+          await tester.pump();
+          expect(tester.element(skeleton), same(first));
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(tester.element(skeleton), same(first));
+        }
+        projectUpdates.add(
+          const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
+        );
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 100));
+        final row = find.descendant(of: list, matching: find.text("Fix the build"));
+        expect(tester.element(skeleton), same(first));
+        expect(
+          tester
+              .widget<FadeTransition>(find.ancestor(of: skeleton, matching: find.byType(FadeTransition)).first)
+              .opacity
+              .value,
+          inExclusiveRange(0, 1),
+        );
+        expect(
+          tester
+              .widget<SliverFadeTransition>(find.ancestor(of: row, matching: find.byType(SliverFadeTransition)))
+              .opacity
+              .value,
+          inExclusiveRange(0, 1),
+        );
+
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(skeleton, findsNothing);
+        expect(row, findsOneWidget);
+      },
+    );
+  }
 
   testWidgets("Retry works and a departing pill lets content receive the click", (tester) async {
     final root = app(state: running);

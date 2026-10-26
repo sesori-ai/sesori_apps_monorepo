@@ -196,8 +196,8 @@ The main pane hosts one full-width routed page.
   "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the
   bridge on that computer, and the shared Other computers card, with no Start button. While the desktop is
   launching this computer's bridge (including a cold start) and has not reached it yet, this computer's offline
-  bridge is a load: the home shows the same loader as any load and the sidebar list shows its loading skeleton.
-  After 10 s, "Still starting this computer's bridge…" fades in under the loader (at once with reduced motion)
+  bridge is a load: the home shows the same loader as any load and the sidebar list shows its loading skeleton,
+  one skeleton from launch that hands off to the rows or the empty state like any load. After 10 s, "Still starting this computer's bridge…" fades in under the loader (at once with reduced motion)
   without moving it, and fades out the same way if the launch gives way to an ordinary load; a normal start never
   shows it, and no other load does. Recovery appears only once the
   supervisor leaves starting and running (a failed start, a stop, login required, contention), or a bridge the
@@ -330,7 +330,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   narrowing the list and returning to All projects, and project-local retry (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks; no bridge-offline pill and a sidebar skeleton while this computer's bridge
-  launches.
+  launches, the same skeleton element through the project load and its hand-off to the rows.
 - The launch window (`local_bridge_startup_cubit_test`): opens on a cold start or one already under way, holds
   through Running and the relay's reconnect, ends on connecting to this computer or any failed, stopped or crashed
   supervisor state, does not reopen on a crash restart, ignores another computer as the target, and follows the
