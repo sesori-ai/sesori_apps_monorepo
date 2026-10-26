@@ -20,8 +20,8 @@ without cross-owner cancellation; exercise both start orders in the
 ## Runtime Target Coverage
 
 Targets audited on **2026-10-25**, covering all eleven registered harnesses; ten targets moved
-and DeepSeek stayed on its latest adapter release `0.2.0`. Managed assets were independently
-downloaded and hashed: OpenCode 6, Antigravity 6, Codex 6, Copilot 6, Cursor 4, Pi 6 and OMP 8.
+and DeepSeek followed the same day with owned adapter release `0.2.1`. Managed assets were independently
+downloaded and hashed: OpenCode 6, Antigravity 6, Codex 6, Copilot 6, Cursor 4, Pi 6, OMP 8 and DeepSeek 6.
 GitHub digests, npm integrity and available checksum lists agree; the Antigravity registry
 now publishes archive hashes that match too. Cursor hashes are locally computed, not publisher
 attestations. Direct-CLI targets (Claude, Hermes, Grok) are recommendation metadata, not forced
@@ -39,7 +39,7 @@ Antigravity retains its exact-pair policy rather than an independent floor.
 | Hermes Agent | `0.22.5` | `0.20.0` | Release tags are semantic again from `v0.21.6`; `hermes acp --version` now prints a derived version (`0.22.5`, or `0.22.5+<n>.g<sha>` ahead of a tag), which the existing parser accepts. Current-target real CLI ACP initialize/list, configured new/load/replay and persisted deletion remain unverified. |
 | Pi | `1.4.0` | `0.99.0` | Six archive hashes match the published `SHA256SUMS` and GitHub digests. A 2026-10-25 sandboxed macOS arm64 run (no credentials, network denied) reported `1.4.0` and answered RPC `get_state`; managed install and the catalog probe were not rerun. A 2026-10-06 sandboxed macOS arm64 production install (digest sentinel), `--version`, inspect-setup, RPC command listing and the production catalog probe passed with no credentials and network denied after download; `/llama` is hidden. An authenticated Pi 1.0.4 session completed during the startup-dialog work (see `HARNESS_CAPABILITIES.md`). Settlement/retry/compaction, queue and fresh-process reuse on the current target remain unverified. |
 | Oh My Pi | `18.12.6` | `17.2.13` | Eight direct-binary hashes match `SHA256SUMS.txt` and the GitHub digests; the sandboxed macOS arm64 binary reports `omp/18.12.6`. **Known limitation (accepted):** from `18.6.3`, `session/load` and `session/resume` fail closed with "Could not restore model `<provider/id>`" when the session's saved model is no longer usable (renamed id, removed credentials or local model). Such a session cannot be continued: a prompt fails with an inline error naming the model and stating that the session can't be continued, without dispatching the prompt. Opening its history while the bridge store is stale serves the stored history with a can't-continue banner, and resume-then-delete cleanup cannot remove it, so the bridge logs and retries that cleanup at startup. Current-target native ACP, configured lifecycle/cleanup and Windows ARM64 execution remain unverified. |
-| DeepSeek | `0.2.0` | `0.1.5` | Owned adapter release v0.2.0, embedding DeepSeek Harness `0.2.0-rc.2` (upstream `next`). Six hashes computed from downloads and matched against `checksums.txt`; the macOS arm64 asset reports `sesori-deepseek-acp/0.2.0 deepseek-harness/0.2.0-rc.2 acp/1` and `check` returns ok. The producer's packaged fake-provider smoke passed on all six platforms; no authenticated turn. |
+| DeepSeek | `0.2.1` | `0.1.5` | Owned adapter release v0.2.1, embedding DeepSeek Harness `0.2.1-rc.3` (upstream `next`). Six hashes computed from downloads match both `checksums.txt` and the GitHub digests. A 2026-10-25 network-denied macOS arm64 run reported `sesori-deepseek-acp/0.2.1 deepseek-harness/0.2.1-rc.3 acp/1`, and `check` returned ok. The producer's packaged fake-provider smoke passed on all six platforms. Without a provider credential the harness lists no models, so discovery fails with setup guidance. No authenticated turn was run. |
 | Grok Build | `1.0.70` | `1.0.5` | Official stable-channel evidence only; native branded identity/exact launch and authenticated new/prompt/replay/model-selection/close remain unverified. |
 
 Target/asset/descriptor unit coverage does not prove native or authenticated
@@ -117,7 +117,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
 - DeepSeek is an ACP harness with six-platform managed package archives. Its
   descriptor honors an explicit `--deepseek-bin` path before a compatible PATH
   release (`>=0.1.5`) and then a managed release at or above that minimum,
-  preferring the pinned `0.2.0` target. An outdated explicit
+  preferring the pinned `0.2.1` target. An outdated explicit
   binary is rejected; an old or malformed PATH candidate falls through to managed
   selection. It performs bounded parseable-version and
   side-effect-free `check --state-dir` probes, advertises install only on a
@@ -131,7 +131,7 @@ credentials; a completed helper must not hide failed load, replay or teardown.
   0.1.4 verified that the bridge and native runtime survived atomic cancellation
   of an independently resumed child and its grandchild after #1379, and accepted
   a successful follow-up turn. That evidence does not requalify current managed
-  target 0.2.0 or cover setup selection, crash reconnect, idle suspension/reap,
+  target 0.2.1 or cover setup selection, crash reconnect, idle suspension/reap,
   bridge restart, desktop, or another platform.
 - Standard ACP owns DeepSeek lifecycle, prompts, config options, and permissions;
   `deepseek/*` adds catalog, detached history, rename, questions, bounded statuses,

@@ -347,24 +347,40 @@ concrete problem can justify a documented temporary hold with a resolution path.
 ## DeepSeek
 
 - **Sources:** stable adapter releases from `sesori-ai/sesori-deepseek-acp` plus
-  the DeepSeek Harness dependencies actually pinned by that producer. Audit both;
-  updating only the existing adapter tag can miss a newer upstream harness.
+  upstream DeepSeek Harness (`deepseek-ai/deepseek-harness`, npm `@deepseek-ai/dsh-*`).
+  Upstream publishes only prereleases (`dsh-vX.Y.Z-rc.N` tags); its npm `latest`
+  tag is stale. **The harness target is the npm `next` dist-tag** (an RC, never an
+  alpha), checked with `npm view @deepseek-ai/dsh-agent dist-tags`. Take the
+  `@deepseek-ai/cordis*` versions from that RC's own dependencies.
+- **Always update:** every refresh compares `next` with the producer's
+  `release/config.json` `deepSeekHarnessVersion`. When `next` is newer, the refresh
+  **must** migrate the adapter, release it and pin the consumer. A refresh that
+  leaves DeepSeek behind upstream is incomplete. Updating only the existing adapter
+  tag misses a newer upstream harness.
 - **Consumer pin:** `bridge/sesori_plugin_deepseek/lib/src/runtime/deepseek_runtime_manifest.dart`.
   Keep `minimumVersion` / `minPathVersion` separate from `targetVersion`. Record
   adapter version, embedded `@deepseek-ai/*` harness pins and extension protocol
-  independently. An upstream RC pin is not a stable adapter version or approval
-  to start tracking arbitrary prereleases.
-- **Producer work:** inspect its `release/config.json`, package/lockfile,
-  extension protocol, packaging workflow and conformance tests. When an adapter
-  change/release is needed, plan that repository's PR and approved release before
-  the consumer bump. `consumerCommit` must identify an exact pushed consumer
+  independently. The adapter version is stable even when its embedded harness pin
+  is an RC; give each harness migration a new adapter version.
+- **Producer work:** work in a fresh worktree of the local
+  `~/sesori-ai/sesori-deepseek-acp` clone, branched from `origin/main`. Inspect its
+  `release/config.json`, package/lockfile, extension protocol, packaging workflow and
+  conformance tests. Use the previous migration (PR #22, 0.2.0-rc.2) as the template:
+  dsh pins, lockfile, `deepSeekHarnessVersion`, package version, runtime/session
+  source, smoke script, README and fixtures. Audit the upstream
+  `dsh-v<old>...dsh-v<new>` delta for APIs the adapter uses. Run `npm run check`
+  and the current-host packaged smoke before opening its PR. `consumerCommit` must identify an exact pushed consumer
   conformance snapshot; preserve frozen protocol baselines unless their contract
   changes. Keep a dependent consumer PR draft or unopened until assets exist.
 - **Publication:** use the producer's existing tagged release workflow, six native
   package/smoke jobs, consumer conformance, complete-set verification and publish
-  gates. Verify tag/approved source correspondence. This private npm package is
-  distributed via GitHub Releases, not `npm publish`. Release/merge authority
-  remains the user's; a plan is not permission to tag or merge another repo.
+  gates. Verify the tag points at the merged producer commit. This private npm package is
+  distributed via GitHub Releases, not `npm publish`. A runtime-refresh request
+  authorizes this routine release without a human approval: merge the producer PR
+  through `monitor-pr` readiness once its checks and automated reviews settle with
+  every finding handled, then push tag `v<version>` on that merge commit so the
+  workflow publishes. It does not
+  authorize other producer changes, protocol changes or releases.
 - **Assets:** six `sesori-deepseek-acp-v<version>-<platform>-<arch>` archives:
   `darwin`/`linux` arm64/x64 `.tar.gz`, `windows` arm64/x64 `.zip`, plus
   `checksums.txt`. Reconcile GitHub/list/download hashes. Preserve launchers,

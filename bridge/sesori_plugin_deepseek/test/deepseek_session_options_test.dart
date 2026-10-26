@@ -93,7 +93,7 @@ void main() {
     expect(mapper.map(catalog(failures: const [])).completeness, PluginSessionOptionsCompleteness.complete);
   });
 
-  test("total provider failure is an explicit failed discovery", () async {
+  test("no listed models asks for provider setup instead of failing discovery", () async {
     final tracker = AcpSessionConfigurationTracker();
     final service = DeepSeekSessionOptionsService(
       repository: _FakeCatalogRepository(
@@ -123,7 +123,11 @@ void main() {
 
     expect(
       await service.getSessionOptions(client: client, cwd: "/project"),
-      isA<PluginSessionOptionsDiscoveryFailed>(),
+      isA<PluginSessionOptionsDiscoveryAuthenticationRequired>().having(
+        (r) => r.actionHint,
+        "actionHint",
+        contains("API key"),
+      ),
     );
     expect(tracker.processDefaults.modelId, isNull);
   });
