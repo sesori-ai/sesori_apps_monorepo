@@ -1,0 +1,119 @@
+name: Publish desktop update feeds
+
+# Called by the shared release workflows once a platform's assets are public on its GitHub release.
+# Signing holds only the update key; hosting holds only the bucket federation, whose provider admits
+# this file's main identity. That federation can write the whole bucket, so the publisher script
+# refuses every object outside desktop-updates/k1/<channel>/.
+on:
+  workflow_call:
+    inputs:
+      platform:
+        description: 'linux (Velopack AppImage feeds) or macos (Sparkle appcasts)'
+        required: true
+        type: string
+      channel:
+        required: true
+        type: string
+      version:
+        required: true
+        type: string
+      build_number:
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  sign:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    environment: desktop-update-signing
+    outputs:
+      feed: ${{ steps.sign.outputs.feed }}
+    steps:
+      - name: Require trusted main
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Update feed signing requires main'; exit 1; }
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      # Pre-Velopack sources upload none; signing then leaves the Linux feeds unchanged.
+      - name: Collect this run's Velopack release packages
+        if: inputs.platform == 'linux'
+        uses: actions/download-artifact@v4
+        with:
+          pattern: desktop-velopack-linux-*
+          path: build/desktop-update-input
+      - name: Download the published macOS ZIPs and check them against their release manifest
+        if: inputs.platform == 'macos'
+        env:
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          python .github/scripts/publish_desktop_update_feed.py download-macos --channel "$CHANNEL" \
+            --version "$VERSION" --build-number "$BUILD_NUMBER" --output build/desktop-update-input
+      - name: Sign the feeds with the update key
+        id: sign
+        env:
+          DESKTOP_UPDATE_SIGNING_KEY: ${{ secrets.DESKTOP_UPDATE_SIGNING_KEY }}
+          PLATFORM: ${{ inputs.platform }}
+          CHANNEL: ${{ inputs.channel }}
+          VERSION: ${{ inputs.version }}
+          BUILD_NUMBER: ${{ inputs.build_number }}
+        run: |
+          set -euo pipefail
+          key="$RUNNER_TEMP/desktop-update-signing-key.pem"
+          trap 'rm -f "$key"' EXIT
+          (umask 077 && printf '%s\n' "$DESKTOP_UPDATE_SIGNING_KEY" > "$key")
+          unset DESKTOP_UPDATE_SIGNING_KEY
+          python .github/scripts/publish_desktop_update_feed.py sign --key "$key" --platform "$PLATFORM" \
+            --channel "$CHANNEL" --version "$VERSION" --build-number "$BUILD_NUMBER" \
+            --root build/desktop-update-input --output build/desktop-update-feed
+          if [[ -d build/desktop-update-feed ]]; then echo feed=true; else echo feed=false; fi >> "$GITHUB_OUTPUT"
+      - uses: actions/upload-artifact@v4
+        if: steps.sign.outputs.feed == 'true'
+        with:
+          name: desktop-update-feed-${{ inputs.platform }}-${{ inputs.channel }}
+          path: build/desktop-update-feed/
+          if-no-files-found: error
+          retention-days: 14
+
+  publish:
+    needs: sign
+    if: needs.sign.outputs.feed == 'true'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      id-token: write
+    steps:
+      - name: Require trusted main
+        run: |
+          [[ "$GITHUB_REF" == refs/heads/main ]] || { echo 'Update feed hosting requires main'; exit 1; }
+      - uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.13'
+      - uses: actions/download-artifact@v4
+        with:
+          name: desktop-update-feed-${{ inputs.platform }}-${{ inputs.channel }}
+          path: build/desktop-update-publication
+      - uses: google-github-actions/auth@v3
+        with:
+          workload_identity_provider: >-
+            projects/1068630921159/locations/global/workloadIdentityPools/linux-packages/providers/github
+          service_account: linux-package-publisher@sesori-ai.iam.gserviceaccount.com
+      - uses: google-github-actions/setup-gcloud@v3
+      - name: Publish packages before signed feeds and verify anonymous bytes
+        env:
+          CHANNEL: ${{ inputs.channel }}
+        run: |
+          python .github/scripts/publish_desktop_update_feed.py publish --channel "$CHANNEL" \
+            --root build/desktop-update-publication

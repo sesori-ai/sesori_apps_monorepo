@@ -6,12 +6,16 @@ number=1068630921159
 bucket=sesori-ai-linux-packages
 pool=linux-packages
 account="linux-package-publisher@$project.iam.gserviceaccount.com"
-workflow='sesori-ai/sesori_apps_monorepo/.github/workflows/linux-repository.yml@refs/heads/main'
+repository_workflow='sesori-ai/sesori_apps_monorepo/.github/workflows/linux-repository.yml@refs/heads/main'
+# Added to the existing provider's condition by the operator on 2026-10-25 for desktop update feeds;
+# nothing else changed. IAM cannot limit it to desktop-updates/, so that workflow enforces the prefix.
+feed_workflow='sesori-ai/sesori_apps_monorepo/.github/workflows/desktop-update-feed.yml@refs/heads/main'
 
 # Numeric identities prevent a renamed/recreated repository from inheriting this grant.
+workflow_ref="('job_workflow_ref' in assertion ? assertion.job_workflow_ref : assertion.workflow_ref)"
 condition="assertion.repository_id == '1187455604' && assertion.repository_owner_id == '267088852'"
 condition+=" && assertion.ref == 'refs/heads/main'"
-condition+=" && ('job_workflow_ref' in assertion ? assertion.job_workflow_ref : assertion.workflow_ref) == '$workflow'"
+condition+=" && ($workflow_ref == '$repository_workflow' || $workflow_ref == '$feed_workflow')"
 
 gcloud storage buckets create "gs://$bucket" --project="$project" --location=europe-west1 \
   --uniform-bucket-level-access --quiet

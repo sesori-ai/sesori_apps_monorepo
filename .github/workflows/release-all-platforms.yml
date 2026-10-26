@@ -213,6 +213,36 @@ jobs:
       build_number: ${{ needs.next-build-number.outputs.build_number }}
       channel: internal
 
+  # Update feeds follow each platform's own public assets, so one platform's failure leaves the other's feed current.
+  update-feed-linux:
+    name: Publish Linux AppImage update feeds (internal)
+    needs: [preflight, next-build-number, publish-desktop-linux]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/desktop-update-feed.yml
+    with:
+      platform: linux
+      channel: internal
+      version: ${{ needs.preflight.outputs.version }}
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
+    secrets: inherit
+
+  update-feed-macos:
+    name: Publish macOS update appcasts (internal)
+    if: vars.DESKTOP_MACOS_PUBLICATION_ENABLED == 'true'
+    needs: [preflight, next-build-number, publish-desktop]
+    permissions:
+      contents: read
+      id-token: write
+    uses: ./.github/workflows/desktop-update-feed.yml
+    with:
+      platform: macos
+      channel: internal
+      version: ${{ needs.preflight.outputs.version }}
+      build_number: ${{ needs.next-build-number.outputs.build_number }}
+    secrets: inherit
+
   # All-or-nothing for mobile/bridge: runs only when iOS, Android AND all six bridge targets
   # succeeded, so every internal tag maps to a complete set (both store builds
   # + all bridge binaries). On failure no release tag or release is published;

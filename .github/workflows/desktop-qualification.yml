@@ -90,6 +90,8 @@ on:
       - '.github/scripts/test_sign_desktop_linux.py'
       - '.github/scripts/sign_desktop_update.py'
       - '.github/scripts/test_sign_desktop_update.py'
+      - '.github/scripts/publish_desktop_update_feed.py'
+      - '.github/scripts/test_publish_desktop_update_feed.py'
       - '.github/scripts/build_linux_repository.py'
       - '.github/scripts/test_build_linux_repository.py'
       - '.github/scripts/publish_linux_repository.py'
