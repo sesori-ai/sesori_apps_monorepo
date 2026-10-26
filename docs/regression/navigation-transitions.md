@@ -27,20 +27,21 @@ desktop main-pane transitions distinct.
   deep link, transitions as usual.
 - Below 700 pt the home's floating + opens New session as a circle that grows
   out of the + to the farthest corner (400 ms, ease-in-out cubic) while the home
-  holds still under it. The circle lifts off the home: the home dims slightly as
-  it grows, and its rim casts a soft shadow that grows in at the start and fades
-  out before the end; on a dark page the circle also lightens faintly, easing
-  back over the second half. Fully open, the page paints alone, with no dim or
-  shadow left. The + puts its centre in the URL (`reveal=<x>,<y>`, fractions of
-  the screen), and the page keeps it when it changes project. Back, the page's
-  own and Android's, shrinks the circle back into the +. On iOS a swipe from the
-  left edge shrinks the circle, and its dim and shadow, with the finger;
-  released past halfway or flicked it closes, otherwise it springs back open,
-  carrying the swipe's speed. With no default project the project picker rises
-  once the circle has settled. Every other way into New session, deep links
-  included, keeps the platform transition, and the wide layout's sidebar button
-  still returns the pane to the composer; under reduced motion the + page moves
-  as the platform transition does, with no circle.
+  holds still under it. The circle lifts off the home: the home dims as it
+  grows, lightly on a light page and more deeply on a dark one, and its rim
+  casts a soft shadow that grows in at the start and fades out before the end;
+  on a dark page the circle also lightens faintly, easing back over the second
+  half. Fully open, the page paints alone, with no dim or shadow left. The +
+  puts its centre in the URL (`reveal=<x>,<y>`, fractions of the screen), and
+  the page keeps it when it changes project. Back, the page's own and Android's,
+  shrinks the circle back into the +. On iOS a swipe from the left edge shrinks
+  the circle, and its dim, shadow and dark-page lift, with the finger; released
+  past halfway or flicked it closes, otherwise it springs back open, carrying
+  the swipe's speed. With no default project the project picker rises once the
+  circle has settled. Every other way into New session, deep links included,
+  keeps the platform transition, and the wide layout's sidebar button still
+  returns the pane to the composer; under reduced motion the + page moves as the
+  platform transition does, with no circle.
 - The base compact session-detail toolbar returns to the home. A child or
   background-task detail opened with a push still pops to its parent detail.
   Typed routes keep path-like project identifiers percent-encoded, so a
@@ -74,7 +75,7 @@ desktop main-pane transitions distinct.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; sidebar shell coverage proves the 700 pt breakpoint, the floating panel's inset past the safe area, the pane's page kept clear of the side insets through the collapse, the collapse motion and restore, and that rotating keeps the open session and the list; reveal page coverage proves the circle follows the route animation out of its origin over a still page and back into it, dims the page below and shadows its rim (also lightening it on a dark page) while it moves and leaves the open page painting alone, tracks an iOS edge swipe linearly, closes past halfway or on a flick and otherwise springs back open, ignores the edge off iOS and gives way to the fallback under reduced motion, and route and home navigation coverage prove only the + selects it and choosing a project keeps it; the notification-open and computer-switch dispatcher tests prove a notification opens its session over the home (switching computers first) and a switch replaces the stack with the home; session deletion navigation coverage proves deleting the open session returns home; desktop router coverage proves the desktop exits to the home; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; archive navigation coverage proves an archived session's edge swipe and system Back return to the Archived list and the list's leave the flow; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
+| L2 Routine | Automated route-table coverage proves every route supplies a standalone page and preserves each custom page type; sidebar shell coverage proves the 700 pt breakpoint, the floating panel's inset past the safe area, the pane's page kept clear of the side insets through the collapse, the collapse motion and restore, and that rotating keeps the open session and the list; reveal page coverage proves the circle follows the route animation out of its origin over a still page and back into it, paints the dim and the rim's shadow under the circle (and the lift over it on a dark page) mid-reveal and on pop and leaves the open page painting alone, without checking their colours, tracks an iOS edge swipe linearly, closes past halfway or on a flick and otherwise springs back open, ignores the edge off iOS and gives way to the fallback under reduced motion, and route and home navigation coverage prove only the + selects it and choosing a project keeps it; the notification-open and computer-switch dispatcher tests prove a notification opens its session over the home (switching computers first) and a switch replaces the stack with the home; session deletion navigation coverage proves deleting the open session returns home; desktop router coverage proves the desktop exits to the home; desktop router coverage proves the 150 ms main-pane fade and the instant reduced-motion switch; archive navigation coverage proves an archived session's edge swipe and system Back return to the Archived list and the list's leave the flow; Prego modal coverage proves the phone sheet, the desktop dialog, stacked dialogs closing top first on Escape, and the instant reduced-motion open. |
 | L3 Release | Client end to end on iOS and Android: exercise a standard push/pop, compact session navigation, a settings child, the settings modal, the + revealing New session and Back shrinking it (on iOS also a partial and a completed edge swipe, slow and flicked, with the list scrolled), and the phone's Archived page pushing over Settings with an archived session's detail pushing over it, leaving each by an edge swipe released mid-gesture (the page springs back) and completed, and by Back. |
 | L4 Extended | Client end to end on macOS and with reduced motion enabled: repeat the transition matrix and exercise sidebar pane fading and the collapse and restore motion where the viewport supports it. |
 | L5 Full | No additional coverage. |
@@ -99,11 +100,12 @@ desktop main-pane transitions distinct.
 - A notification's Back skips the home, or a computer switch leaves a page from
   the previous computer on the stack.
 - The + opens New session without the circle, or the circle grows from or
-  shrinks into anywhere but the +; the home moves under it; the dim or the
-  shadow is missing mid-reveal or lingers once the page is open; Back or an iOS
-  edge swipe does not shrink it back, a released swipe snaps instead of
-  settling, or touches stay blocked after one; or the circle shows from another
-  entry or under reduced motion.
+  shrinks into anywhere but the +; the home moves under it; the dim, the shadow
+  or the dark-page lift is missing mid-reveal or lingers once the page is open,
+  or one of them stays put while a swipe shrinks the circle; Back or an iOS edge
+  swipe does not shrink it back, a released swipe snaps instead of settling, or
+  touches stay blocked after one; or the circle shows from another entry or
+  under reduced motion.
 
 ## Sources
 
