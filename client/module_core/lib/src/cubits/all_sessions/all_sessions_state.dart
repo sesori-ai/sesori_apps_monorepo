@@ -64,9 +64,12 @@ final class const AllSessionsState({
   /// loading for the first time.
   required final bool isLoading,
 
-  /// The new-session default: the filter, otherwise the project of the newest
-  /// session, otherwise null. Without a filter it stays null while
-  /// [isLoading], so a consumer that holds the first default it sees never
-  /// holds a project that merely answered first.
+  /// The bridge's "No project" project, or null on a bridge without one.
+  required final String? scratchProjectId,
+
+  /// The new-session default: the filter, otherwise [scratchProjectId],
+  /// otherwise the project of the newest session, otherwise null. Without
+  /// either it stays null while [isLoading], so a consumer that holds the
+  /// first default it sees never holds a project that merely answered first.
   required final String? defaultProjectId,
 });

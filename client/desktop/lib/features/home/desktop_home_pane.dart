@@ -69,8 +69,13 @@ class const DesktopHomePane({
       case ProjectListLoaded(:final projects):
         return DesktopHomeStart(
           projects: projects,
-          createNewSessionCubit: ({required projectId, required projectName}) =>
-              createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
+          createNewSessionCubit: ({required projectId, required projectName, required projectKind}) =>
+              createNewSessionCubit(
+                locator: getIt,
+                projectId: projectId,
+                projectName: projectName,
+                projectKind: projectKind,
+              ),
           onOpenSession: onOpenSession,
           onOpenHarnessSettings: onOpenHarnessSettings,
         );
@@ -328,7 +333,11 @@ class const DesktopBridgeRecoveryView({
 class const DesktopHomeStart({
   super.key,
   required final List<ProjectSummary> projects,
-  required final NewSessionCubit Function({required String projectId, required String? projectName})
+  required final NewSessionCubit Function({
+    required String projectId,
+    required String? projectName,
+    required ProjectKind projectKind,
+  })
   createNewSessionCubit,
   required final SidebarSessionOpenedCallback onOpenSession,
   required final VoidCallback onOpenHarnessSettings,
@@ -388,7 +397,8 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
     // session page does when its route changes project.
     return BlocProvider(
       key: ValueKey("desktop-home-new-session-${project.id}"),
-      create: (_) => widget.createNewSessionCubit(projectId: project.id, projectName: displayName),
+      create: (_) =>
+          widget.createNewSessionCubit(projectId: project.id, projectName: displayName, projectKind: project.kind),
       child: NewSessionView(
         projectId: project.id,
         projectName: displayName,

@@ -213,15 +213,14 @@ Widget _buildApp({
   );
 
   final projectList = _MockProjectListCubit();
+  final projects = [
+    testProjectSummary(id: "project-1", name: "Project One"),
+    testProjectSummary(id: "project-2", name: "Project Two"),
+  ];
   whenListen(
     projectList,
     const Stream<ProjectListState>.empty(),
-    initialState: ProjectListState.loaded(
-      projects: [
-        testProjectSummary(id: "project-1", name: "Project One"),
-        testProjectSummary(id: "project-2", name: "Project Two"),
-      ],
-    ),
+    initialState: ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null),
   );
   return MultiBlocProvider(
     providers: [

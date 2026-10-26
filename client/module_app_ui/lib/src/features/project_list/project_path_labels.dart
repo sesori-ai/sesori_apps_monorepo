@@ -3,8 +3,11 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../l10n/app_localizations.dart";
 
-/// The name shown for [project]: its stored name, else its directory.
+/// The name shown for [project]: "No project" for the bridge's project of
+/// folderless sessions, whatever an older app renamed it to; otherwise its
+/// stored name, else its directory.
 String projectDisplayName({required AppLocalizations loc, required ProjectSummary project}) {
+  if (project.kind == ProjectKind.scratch) return loc.projectPickerNoProject;
   final basename = hostPathBasename(path: project.path);
   return project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
 }

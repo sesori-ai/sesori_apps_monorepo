@@ -577,11 +577,21 @@ class ProjectInventoryService({
     _emit(
       state: loaded.copyWith(
         projects: ordered,
+        folderProjects: _folderProjects(projects: ordered),
+        scratchProject: _scratchProject(projects: ordered),
         runningByProjectId: runningByProjectId,
         unseenByProjectId: _unseenByProjectId(projects: ordered),
       ),
     );
   }
+
+  static List<ProjectSummary> _folderProjects({required List<ProjectSummary> projects}) => [
+    for (final project in projects)
+      if (project.kind == ProjectKind.folder) project,
+  ];
+
+  static ProjectSummary? _scratchProject({required List<ProjectSummary> projects}) =>
+      projects.where((project) => project.kind == ProjectKind.scratch).firstOrNull;
 
   Iterable<ProjectSummary> _withOptimisticProjectNames({required Iterable<ProjectSummary> projects}) {
     return projects.map((project) {
@@ -837,6 +847,8 @@ class ProjectInventoryService({
           _emit(
             state: ProjectListState.loaded(
               projects: sortedProjects,
+              folderProjects: _folderProjects(projects: sortedProjects),
+              scratchProject: _scratchProject(projects: sortedProjects),
               runningByProjectId: runningByProjectId,
               unseenByProjectId: _unseenByProjectId(projects: sortedProjects),
             ),

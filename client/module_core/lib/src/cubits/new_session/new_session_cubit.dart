@@ -52,6 +52,10 @@ class NewSessionCubit({
   /// The project as the composer names it, for an alert about a creation
   /// that fails after the user left; null when the composer has no name.
   required final String? _projectName,
+
+  /// Whether the session starts in a folder project or in "No project", for
+  /// the creation analytics.
+  required final ProjectKind _projectKind,
 }) extends Cubit<NewSessionState> {
   this
     : super(
@@ -994,6 +998,7 @@ class NewSessionCubit({
       pluginId: pluginId,
       startedAt: startedAt,
       projectName: _projectName,
+      projectKind: _projectKind,
       submission: submission,
       agent: options?.selectedAgent,
       model: selectedAgentModel == null

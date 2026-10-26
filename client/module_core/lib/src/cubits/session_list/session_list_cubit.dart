@@ -392,14 +392,17 @@ class SessionListCubit({
 
   /// Deletes a session permanently. Null when it was not deleted; then
   /// [lastCleanupRejection] says whether the bridge refused the cleanup.
+  /// [deleteSessionFolder] also removes a "No project" session's own folder.
   Future<SessionCleanupOutcome?> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
+    required bool deleteSessionFolder,
     required bool force,
   }) => _runActionScopeOperation(
     operation: () => _deleteSession(
       sessionId: sessionId,
       deleteWorktree: deleteWorktree,
+      deleteSessionFolder: deleteSessionFolder,
       force: force,
     ),
   );
@@ -407,6 +410,7 @@ class SessionListCubit({
   Future<SessionCleanupOutcome?> _deleteSession({
     required String sessionId,
     required bool deleteWorktree,
+    required bool deleteSessionFolder,
     required bool force,
   }) async {
     final index = _allSessions.indexWhere((s) => s.id == sessionId);
@@ -428,6 +432,7 @@ class SessionListCubit({
       response = await _sessionCleanupService.deleteSession(
         sessionId: sessionId,
         deleteWorktree: deleteWorktree,
+        deleteSessionFolder: deleteSessionFolder,
         force: force,
       );
     } on SessionCleanupRejectedException catch (error) {

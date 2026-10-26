@@ -62,12 +62,13 @@ void main() {
     addTearDown(subscription.cancel);
   });
 
-  Future<void> launch() => service.launch(
+  Future<void> launch({ProjectKind projectKind = ProjectKind.folder}) => service.launch(
     launchId: "launch-1",
     projectId: "project-1",
     pluginId: "plugin-1",
     startedAt: DateTime.utc(2026, 9, 27),
     projectName: null,
+    projectKind: projectKind,
     submission: submission,
     agent: null,
     model: null,
@@ -149,6 +150,34 @@ void main() {
     ).called(1);
     expect(selectionTracker.read(projectId: "project-1", pluginId: "plugin-1"), isNotNull);
     expect(storage.readAll(), isEmpty);
+  });
+
+  test("a No project launch reports no_project whether it succeeds or fails", () async {
+    response.complete(ApiResponse.success(testSession(id: "session-1")));
+    await launch(projectKind: ProjectKind.scratch);
+    response = Completer();
+    response.complete(ApiResponse.error(ApiError.generic()));
+    await launch(projectKind: ProjectKind.scratch);
+    await Future<void>.delayed(Duration.zero);
+
+    verify(
+      () => productAnalyticsService.logEvent(
+        event: const ProductAnalyticsEvent.sessionCreatedWithMessage(
+          submission: AnalyticsSubmission.text(inputMode: AnalyticsInputMode.typed),
+          workspaceKind: AnalyticsWorkspaceKind.noProject,
+        ),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).called(1);
+    verify(
+      () => productAnalyticsService.logEvent(
+        event: const ProductAnalyticsEvent.sessionCreationFailed(
+          failureReason: AnalyticsSessionCreationFailureReason.unknown,
+          workspaceKind: AnalyticsWorkspaceKind.noProject,
+        ),
+        occurredAtUtc: any(named: "occurredAtUtc"),
+      ),
+    ).called(1);
   });
 
   test("signing out drops every launch, so a create that fails afterwards reaches no one", () async {

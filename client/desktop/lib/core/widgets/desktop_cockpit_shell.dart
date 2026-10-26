@@ -84,10 +84,10 @@ class const DesktopCockpitShell({
       showAddProjectDialog(context: context, onProjectAdded: onNewSession),
     );
     // The open project, else the list's new-session default (the filter, else
-    // the newest session's project), else the first listed one; with no
-    // project yet, adding one is the only useful next step. A chosen project
-    // missing from the inventory (hidden meanwhile) is never swapped for
-    // another one.
+    // "No project", else the newest session's project), else the first listed
+    // one; with no project yet, adding one is the only useful next step. A
+    // chosen project missing from the inventory (hidden meanwhile) is never
+    // swapped for another one.
     void startNewSession() {
       final projects = context.read<ProjectListCubit>().state;
       if (projects is! ProjectListLoaded) return;

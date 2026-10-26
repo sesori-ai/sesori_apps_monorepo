@@ -18,6 +18,13 @@ final _demoApp = testProjectSummary(id: "app", name: "demo-app", path: "/work/de
 final _demoApi = testProjectSummary(id: "api", name: "demo-api", path: "/work/demo-api");
 final _clientWeb = testProjectSummary(id: "client-web", name: "web", path: "/work/client/web");
 final _serverWeb = testProjectSummary(id: "server-web", name: "web", path: "/work/server/web");
+const _scratch = ProjectSummary(
+  id: "scratch",
+  name: null,
+  path: "/work/scratch",
+  time: null,
+  kind: ProjectKind.scratch,
+);
 
 void main() {
   late List<String> selected;
@@ -34,6 +41,7 @@ void main() {
     Size size = const Size(1200, 800),
     String? selectedProjectId = "app",
     bool filters = false,
+    ProjectSummary? scratchProject,
     PregoInteractionMode mode = PregoInteractionMode.touch,
   }) async {
     tester.view.physicalSize = size;
@@ -43,7 +51,11 @@ void main() {
     whenListen(
       cubit,
       const Stream<ProjectListState>.empty(),
-      initialState: ProjectListState.loaded(projects: projects),
+      initialState: ProjectListState.loaded(
+        projects: [...projects, ?scratchProject],
+        folderProjects: projects,
+        scratchProject: scratchProject,
+      ),
     );
     // What the folder browser reads once it opens.
     when(() => cubit.fetchFilesystemSuggestions(prefix: any(named: "prefix"))).thenAnswer(
@@ -207,12 +219,12 @@ void main() {
     expect(selected, ["api demo-api"]);
   });
 
-  final showAll = find.text("Show all projects");
+  final showAll = find.text("All projects");
   final footer = find.ancestor(of: showAll, matching: find.byType(PregoButtonsSolid));
   Finder checkIn(Finder scope) => find.descendant(of: scope, matching: find.byIcon(TablerRegular.check));
   Finder row(String name) => find.ancestor(of: find.text(name), matching: find.byType(InkWell)).first;
 
-  testWidgets("filtering, Show all projects is pinned below the list in place of the action and clears the filter", (
+  testWidgets("filtering, All projects is pinned below the list in place of the action and clears the filter", (
     tester,
   ) async {
     await pumpPicker(tester: tester, projects: [_demoApp, _demoApi], filters: true);
@@ -253,6 +265,40 @@ void main() {
     await search(tester: tester, query: "all projects");
     expect(footer, findsOneWidget);
     expect(find.text("No projects match"), findsOneWidget);
+  });
+
+  final noProject = find.text("No project");
+
+  testWidgets("with No project the footer pairs it with Open folder, and picking it closes and selects it", (
+    tester,
+  ) async {
+    await pumpPicker(tester: tester, projects: [_demoApp], scratchProject: _scratch);
+    expect(noProject, findsOneWidget);
+    expect(openFolder, findsOneWidget);
+    // In the footer, not a row of the list.
+    expect(find.descendant(of: find.byType(ListView), matching: noProject), findsNothing);
+
+    await tester.tap(noProject);
+    await tester.pumpAndSettle();
+    expect(selected, ["scratch No project"]);
+    expect(find.text("Search projects"), findsNothing);
+  });
+
+  testWidgets("filtering with No project the footer pairs it with All projects, checked while it is the filter", (
+    tester,
+  ) async {
+    await pumpPicker(
+      tester: tester,
+      projects: [_demoApp],
+      scratchProject: _scratch,
+      selectedProjectId: "scratch",
+      filters: true,
+    );
+    expect(showAll, findsOneWidget);
+    expect(openFolder, findsNothing);
+    expect(checkIn(find.ancestor(of: noProject, matching: find.byType(PregoButtonsSolid))), findsOneWidget);
+    expect(checkIn(footer), findsNothing);
+    expect(checkIn(find.byType(ListView)), findsNothing);
   });
 
   testWidgets("a phone sheet keeps the footer at its bottom, riding the keyboard up without moving the search", (

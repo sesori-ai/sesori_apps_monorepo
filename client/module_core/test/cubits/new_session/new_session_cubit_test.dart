@@ -174,6 +174,7 @@ void main() {
       dedicatedWorktreePreferenceStore: dedicatedWorktreePreferenceStore ?? FakeDedicatedWorktreePreferenceStore(),
       projectId: "project-1",
       projectName: null,
+      projectKind: ProjectKind.folder,
     );
 
     Future<void> waitForComposer(NewSessionCubit cubit) async {
@@ -607,6 +608,7 @@ void main() {
           dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
           projectId: "project-1",
           projectName: null,
+          projectKind: ProjectKind.folder,
         );
       },
       act: (cubit) async {

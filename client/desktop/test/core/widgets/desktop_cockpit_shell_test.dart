@@ -72,9 +72,7 @@ void main() {
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(
-        projects: [ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null)],
-      ),
+      initialState: const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
     );
     // The inventories behind the mocked cubits, as the shared list reads them.
     recentInventory = _MockRecentSessionInventoryService();
@@ -171,10 +169,9 @@ void main() {
       projects,
       const Stream<ProjectListState>.empty(),
       initialState: const ProjectListState.loaded(
-        projects: [
-          ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null),
-          ProjectSummary(id: "project-2", name: "Landing page", path: "/work/landing", time: null),
-        ],
+        projects: [_sesori, _landing],
+        folderProjects: [_sesori, _landing],
+        scratchProject: null,
       ),
     );
     recent = {
@@ -328,7 +325,7 @@ void main() {
     expect(find.descendant(of: list, matching: find.text("Fix the build")), findsNothing);
     await tester.tap(filterTrigger);
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(of: picker, matching: find.text("Show all projects")));
+    await tester.tap(find.descendant(of: picker, matching: find.text("All projects")));
     await tester.pumpAndSettle();
     expect(filter.value, isNull);
     expect(find.descendant(of: filterTrigger, matching: find.text("All projects")), findsOneWidget);
@@ -644,7 +641,7 @@ void main() {
     for (final state in <ProjectListState>[
       const ProjectListState.loading(),
       const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
-      const ProjectListState.loaded(projects: [], isRefreshing: true),
+      const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null, isRefreshing: true),
     ]) {
       whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
       await tester.pumpWidget(app(state: running));
@@ -829,7 +826,7 @@ void main() {
       whenListen(
         projects,
         const Stream<ProjectListState>.empty(),
-        initialState: ProjectListState.loaded(projects: available),
+        initialState: ProjectListState.loaded(projects: available, folderProjects: available, scratchProject: null),
       );
       recent = {for (final project in available) project.id: _loaded(sessions: const [])};
       return app(
@@ -1296,6 +1293,9 @@ RecentSessionsLoaded _loaded({required List<Session> sessions}) => RecentSession
   activityBySessionId: const {},
   listStateBySessionId: const {},
 );
+
+const _sesori = ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null);
+const _landing = ProjectSummary(id: "project-2", name: "Landing page", path: "/work/landing", time: null);
 
 const _sessionActions = SessionListActionDispatcher(
   deleteConfirmation: SessionDeleteConfirmation.sheet,
