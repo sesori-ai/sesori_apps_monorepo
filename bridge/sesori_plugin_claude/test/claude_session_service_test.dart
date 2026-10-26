@@ -880,6 +880,43 @@ void main() {
       expect(harness.service.currentWorkState, PluginWorkState.busy);
     });
 
+    test("a sub-agent's own shell finishing through a <task-notification> opens no main-agent turn", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+      process.emit({
+        "type": "system",
+        "subtype": "task_started",
+        "session_id": testSessionId,
+        "task_id": "sub-agent-shell",
+        "tool_use_id": "toolu-sub-agent-bash",
+        "description": "Run the build",
+        "task_type": "local_bash",
+        "owned_by_subagent": true,
+        "is_backgrounded": true,
+        "parent_task_id": "agent-task-1",
+      });
+      await pump();
+
+      process.emit({
+        "type": "user",
+        "session_id": testSessionId,
+        "message": {
+          "role": "user",
+          "content":
+              "<task-notification>\n<task-id>sub-agent-shell</task-id>\n<tool-use-id>toolu-sub-agent-bash</tool-use-id>\n"
+              "<status>completed</status>\n<summary>Background command finished</summary>\n</task-notification>",
+        },
+      });
+      await pump();
+
+      expect(harness.service.isMainAgentRunning(sessionId: testSessionId), isFalse);
+      expect(await _status(harness), isA<PluginSessionStatusBusy>(), reason: "the sub-agent still runs");
+    });
+
     test("a forwarded sub-agent frame after the root result does not open a root turn", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
