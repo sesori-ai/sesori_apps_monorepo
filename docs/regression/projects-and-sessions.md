@@ -384,8 +384,8 @@ state.
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, retrying, background tasks), then the project
-  when the list gives one; it names neither the harness nor the branch, which
-  session detail still shows. The home and Archived while filtered to one
+  when the list gives one; it names neither the harness, which session detail
+  still shows, nor the branch. The home and Archived while filtered to one
   project give no project; across
   every project the home and Archived name each row's. Screen
   readers hear the waiting state once, from the status mark. The meta line
