@@ -250,6 +250,31 @@ void main() {
     expect(server.streams, hasLength(1));
   });
 
+  test("a folder OpenCode is still loading accepts a model it offers", () async {
+    server.folderLoaded = false;
+    await plugin.createSession(
+      directory: _directory,
+      parentSessionId: null,
+      parts: const [],
+      userVisibleText: null,
+      variant: null,
+      fastMode: false,
+      agent: null,
+      model: (providerID: "opencode", modelID: "mimo-v2.6-flash-free"),
+    );
+    expect(server.createBody?["model"], containsPair("id", "mimo-v2.6-flash-free"));
+  });
+
+  test("options for a folder OpenCode is still loading include its providers and agents", () async {
+    server.folderLoaded = false;
+    final options = await plugin.getSessionOptions(
+      projectId: _directory,
+      discoveryMode: PluginSessionOptionsDiscoveryMode.refresh,
+    );
+    expect((options as PluginSessionOptionsDiscoveryObserved).options.agents.single.name, "Build");
+    expect(options.options.providers.providers.single.models.single.id, "mimo-v2.6-flash-free");
+  });
+
   test("cold start asks many loaded folders for pending input without exceeding the socket cap", () async {
     server.extraDirectories = [for (var index = 0; index < 20; index++) "/fixture/folder-$index"];
     server.pendingInputGate = Completer<void>();
@@ -303,10 +328,14 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
   bool failReplies = false;
   bool allowClosedResponse = false;
   String? missingDirectory;
+  // While OpenCode loads a folder, its provider and agent routes answer empty;
+  // only the model routes wait for the load to finish.
+  bool folderLoaded = true;
   List<Map<String, Object?>> forms = [];
   List<Map<String, Object?>> permissions = [];
   Map<String, dynamic>? promptBody;
   Map<String, dynamic>? replyBody;
+  Map<String, dynamic>? createBody;
 
   this {
     _subscription = server.listen(_handle);
@@ -350,7 +379,8 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
         await request.response.flush();
         return;
       }
-      if (path == "/api/session") {
+      if (path == "/api/model" || path == "/api/model/default") folderLoaded = true;
+      if (path == "/api/session" && request.method == "GET") {
         if (++snapshotReads == 1) snapshotEntered.complete();
         if (snapshotReads == 2) secondSnapshotEntered.complete();
         if (snapshotReads == 1 && failFirstSnapshot) {
@@ -377,6 +407,9 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
           request.uri.queryParameters["location[directory]"] == missingDirectory) {
         request.response.statusCode = 404;
         request.response.write(jsonEncode({"_tag": "LocationNotFoundError", "message": "Location not found"}));
+      } else if (path == "/api/session" && request.method == "POST") {
+        createBody = jsonDecodeMap(await utf8.decoder.bind(request).join());
+        request.response.write(jsonEncode({"data": v2SessionFixture}));
       } else if (path.endsWith("/prompt")) {
         promptBody = jsonDecodeMap(await utf8.decoder.bind(request).join());
         promptEntered.complete();
@@ -436,13 +469,13 @@ class _ServerFixture({required final HttpServer server, required final Map<Strin
           "/api/session/active" => {"data": <String, Object?>{}},
           "/api/session/$_sessionId" => {"data": v2SessionFixture},
           "/api/agent" => {
-            "data": [native["agent"]],
+            "data": [if (folderLoaded) native["agent"]],
           },
           "/api/model" => {
             "data": [native["model"]],
           },
           "/api/provider" => {
-            "data": [native["provider"]],
+            "data": [if (folderLoaded) native["provider"]],
           },
           "/api/model/default" => {"data": native["model"]},
           "/api/form" => {"data": forms},

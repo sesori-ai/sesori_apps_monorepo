@@ -182,9 +182,12 @@ class OpenCodeV2Service({
   }
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({required String projectId}) async {
-    final (agents, (providers, commands)) = await shared.wait2(
+    // Providers go first because reading them waits for OpenCode to load the
+    // folder; until then its agents and commands read back empty.
+    final providers = await _repository.getProviders(directory: projectId);
+    final (agents, commands) = await shared.wait2(
       _repository.getAgents(directory: projectId),
-      shared.wait2(_repository.getProviders(directory: projectId), getCommands(projectId: projectId)),
+      getCommands(projectId: projectId),
     );
     return PluginSessionOptionsDiscoveryResult.observed(
       options: PluginSessionOptions(

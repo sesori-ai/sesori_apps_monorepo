@@ -29,13 +29,6 @@ class BridgeSettingsCubit({
   bool _operationInProgress = false;
   bool _refreshPending = false;
 
-  PullRequestRefreshInputValidation validatePullRequestRefreshInput({required String input}) {
-    return switch (_planPullRequestRefreshUpdate(input: input)) {
-      PullRequestRefreshSettingsUpdateInvalid() => PullRequestRefreshInputValidation.invalid,
-      PullRequestRefreshSettingsUpdateRequest() => PullRequestRefreshInputValidation.valid,
-    };
-  }
-
   Future<void> refresh() async {
     if (!_connected || isClosed) return;
     if (_operationInProgress) {
@@ -45,121 +38,23 @@ class BridgeSettingsCubit({
     _operationInProgress = true;
     _refreshPending = false;
     final operationEpoch = _connectionEpoch;
-    final validationBounds = _validationBoundsFor(state: state);
     emit(const BridgeSettingsLoading());
     try {
       final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
-      _publishLoad(result: result, validationBounds: validationBounds);
+      _publishLoad(result: result);
     } on Object catch (error) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
-      emit(BridgeSettingsFailure(error: ApiError.dartHttpClient(error), validationBounds: validationBounds));
+      emit(BridgeSettingsFailure(error: ApiError.dartHttpClient(error)));
     } finally {
       _finishOperation();
     }
   }
 
-  Future<BridgeSettingsUpdateAcceptance> updatePullRequestRefresh({
-    required String input,
-    required BridgeSettingsReady expectedState,
-  }) async {
-    if (_operationInProgress || !_connected || isClosed) return BridgeSettingsUpdateAcceptance.rejected;
-    final current = state;
-    if (current is! BridgeSettingsReady ||
-        !identical(current, expectedState) ||
-        current.pullRequestRefreshMutation is PullRequestRefreshMutationInProgress ||
-        current.pullRequestRefreshMutation is PullRequestRefreshMutationUncertain ||
-        current.pullRequestRefreshMutation is PullRequestRefreshMutationUnsupported) {
-      return BridgeSettingsUpdateAcceptance.rejected;
-    }
-
-    switch (_planPullRequestRefreshUpdate(input: input)) {
-      case PullRequestRefreshSettingsUpdateInvalid():
-        emit(
-          _withPullRequestRefresh(
-            state: current,
-            intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-            mutation: PullRequestRefreshMutationFailed(
-              error: const PullRequestRefreshInvalidInput(),
-              validationBounds: current.validationBounds,
-            ),
-          ),
-        );
-      case PullRequestRefreshSettingsUpdateRequest(:final intervalSeconds):
-        _operationInProgress = true;
-        final operationEpoch = _connectionEpoch;
-        emit(
-          _withPullRequestRefresh(
-            state: current,
-            intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-            mutation: PullRequestRefreshMutationInProgress(validationBounds: current.validationBounds),
-          ),
-        );
-        try {
-          final result = await _service.updatePullRequestRefresh(intervalSeconds: intervalSeconds);
-          if (!_canPublish(operationEpoch: operationEpoch)) return BridgeSettingsUpdateAcceptance.accepted;
-          switch (result) {
-            case PullRequestRefreshSettingsMutationCommitted(:final response):
-              emit(
-                _withPullRequestRefresh(
-                  state: current,
-                  intervalSeconds: response.intervalSeconds,
-                  mutation: PullRequestRefreshMutationIdle(validationBounds: current.validationBounds),
-                ),
-              );
-            case PullRequestRefreshSettingsMutationUnsupported():
-              emit(
-                _withPullRequestRefresh(
-                  state: current,
-                  intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-                  mutation: PullRequestRefreshMutationUnsupported(validationBounds: current.validationBounds),
-                ),
-              );
-            case PullRequestRefreshSettingsMutationRejected(:final bounds):
-              emit(
-                _withPullRequestRefresh(
-                  state: current,
-                  intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-                  mutation: PullRequestRefreshMutationRangeRejected(bounds: bounds),
-                ),
-              );
-            case PullRequestRefreshSettingsMutationFailure(:final error):
-              emit(
-                _withPullRequestRefresh(
-                  state: current,
-                  intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-                  mutation: PullRequestRefreshMutationFailed(
-                    error: PullRequestRefreshRequestFailed(error: error),
-                    validationBounds: current.validationBounds,
-                  ),
-                ),
-              );
-            case PullRequestRefreshSettingsMutationUncertain():
-              await _reconcilePullRequestRefresh(current: current, operationEpoch: operationEpoch);
-          }
-        } on Object catch (error) {
-          if (!_canPublish(operationEpoch: operationEpoch)) return BridgeSettingsUpdateAcceptance.accepted;
-          emit(
-            _withPullRequestRefresh(
-              state: current,
-              intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-              mutation: PullRequestRefreshMutationFailed(
-                error: PullRequestRefreshRequestFailed(error: ApiError.dartHttpClient(error)),
-                validationBounds: current.validationBounds,
-              ),
-            ),
-          );
-        } finally {
-          _finishOperation();
-        }
-    }
-    return BridgeSettingsUpdateAcceptance.accepted;
-  }
-
-  Future<void> updateYolo({required bool enabled, required BridgeSettingsReadyFull expectedState}) async {
+  Future<void> updateYolo({required bool enabled, required BridgeSettingsReady expectedState}) async {
     if (_operationInProgress || !_connected || isClosed) return;
     final current = state;
-    if (current is! BridgeSettingsReadyFull ||
+    if (current is! BridgeSettingsReady ||
         !identical(current, expectedState) ||
         current.yoloMutation is YoloMutationInProgress ||
         current.yoloMutation is YoloMutationUncertain ||
@@ -203,10 +98,10 @@ class BridgeSettingsCubit({
     }
   }
 
-  Future<void> updatePluginWarmup({required bool enabled, required BridgeSettingsReadyFull expectedState}) async {
+  Future<void> updatePluginWarmup({required bool enabled, required BridgeSettingsReady expectedState}) async {
     if (_operationInProgress || !_connected || isClosed) return;
     final current = state;
-    if (current is! BridgeSettingsReadyFull || !identical(current, expectedState)) return;
+    if (current is! BridgeSettingsReady || !identical(current, expectedState)) return;
     final currentEnabled = switch (current.pluginWarmupMutation) {
       PluginWarmupMutationIdle(:final enabled) || PluginWarmupMutationFailed(:final enabled) => enabled,
       PluginWarmupMutationInProgress() || PluginWarmupMutationUncertain() || PluginWarmupMutationUnsupported() => null,
@@ -264,43 +159,7 @@ class BridgeSettingsCubit({
     }
   }
 
-  Future<void> _reconcilePullRequestRefresh({
-    required BridgeSettingsReady current,
-    required int operationEpoch,
-  }) async {
-    try {
-      final result = await _service.load();
-      if (!_canPublish(operationEpoch: operationEpoch)) return;
-      if (result case BridgeSettingsLoadFailure(:final error)) {
-        emit(
-          _withPullRequestRefresh(
-            state: current,
-            intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-            mutation: PullRequestRefreshMutationUncertain(
-              refreshError: error,
-              validationBounds: current.validationBounds,
-            ),
-          ),
-        );
-      } else {
-        _publishLoad(result: result, validationBounds: current.validationBounds);
-      }
-    } on Object catch (error) {
-      if (!_canPublish(operationEpoch: operationEpoch)) return;
-      emit(
-        _withPullRequestRefresh(
-          state: current,
-          intervalSeconds: current.pullRequestRefreshIntervalSeconds,
-          mutation: PullRequestRefreshMutationUncertain(
-            refreshError: ApiError.dartHttpClient(error),
-            validationBounds: current.validationBounds,
-          ),
-        ),
-      );
-    }
-  }
-
-  Future<void> _reconcileYolo({required BridgeSettingsReadyFull current, required int operationEpoch}) async {
+  Future<void> _reconcileYolo({required BridgeSettingsReady current, required int operationEpoch}) async {
     try {
       final result = await _service.load();
       if (!_canPublish(operationEpoch: operationEpoch)) return;
@@ -313,7 +172,7 @@ class BridgeSettingsCubit({
           ),
         );
       } else {
-        _publishLoad(result: result, validationBounds: current.validationBounds);
+        _publishLoad(result: result);
       }
     } on Object catch (error) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
@@ -328,7 +187,7 @@ class BridgeSettingsCubit({
   }
 
   Future<void> _reconcilePluginWarmup({
-    required BridgeSettingsReadyFull current,
+    required BridgeSettingsReady current,
     required bool currentEnabled,
     required int operationEpoch,
   }) async {
@@ -343,7 +202,7 @@ class BridgeSettingsCubit({
           ),
         );
       } else {
-        _publishLoad(result: result, validationBounds: current.validationBounds);
+        _publishLoad(result: result);
       }
     } on Object catch (error) {
       if (!_canPublish(operationEpoch: operationEpoch)) return;
@@ -359,31 +218,11 @@ class BridgeSettingsCubit({
     }
   }
 
-  PullRequestRefreshSettingsUpdatePlan _planPullRequestRefreshUpdate({required String input}) {
-    return PullRequestRefreshSettingsUpdatePlan.parse(
-      input: input,
-      bounds: _validationBoundsFor(state: state),
-    );
-  }
-
-  PullRequestRefreshSettingsBounds? _validationBoundsFor({required BridgeSettingsState state}) {
-    return switch (state) {
-      BridgeSettingsReady(:final validationBounds) => validationBounds,
-      BridgeSettingsFailure(:final validationBounds) => validationBounds,
-      BridgeSettingsLoading() || BridgeSettingsDisconnected() || BridgeSettingsUnsupported() => null,
-    };
-  }
-
-  void _publishLoad({
-    required BridgeSettingsLoadResult result,
-    required PullRequestRefreshSettingsBounds? validationBounds,
-  }) {
+  void _publishLoad({required BridgeSettingsLoadResult result}) {
     switch (result) {
       case BridgeSettingsLoadSupported(:final response):
         emit(
-          BridgeSettingsReadyFull(
-            pullRequestRefreshIntervalSeconds: response.pullRequestRefresh.intervalSeconds,
-            pullRequestRefreshMutation: PullRequestRefreshMutationIdle(validationBounds: validationBounds),
+          BridgeSettingsReady(
             yoloEnabled: response.yolo.enabled,
             yoloMutation: const YoloMutationIdle(),
             pluginWarmupMutation: switch (response.warmUpPluginsOnSessionOpen) {
@@ -392,66 +231,30 @@ class BridgeSettingsCubit({
             },
           ),
         );
-      case BridgeSettingsLoadLegacyPartial(:final pullRequestRefresh):
-        emit(
-          BridgeSettingsReadyLegacyPartial(
-            pullRequestRefreshIntervalSeconds: pullRequestRefresh.intervalSeconds,
-            pullRequestRefreshMutation: PullRequestRefreshMutationIdle(validationBounds: validationBounds),
-          ),
-        );
       case BridgeSettingsLoadUnsupported():
         emit(const BridgeSettingsUnsupported());
       case BridgeSettingsLoadFailure(:final error):
-        emit(BridgeSettingsFailure(error: error, validationBounds: validationBounds));
+        emit(BridgeSettingsFailure(error: error));
     }
   }
 
-  BridgeSettingsReady _withPullRequestRefresh({
+  BridgeSettingsReady _withYolo({
     required BridgeSettingsReady state,
-    required int intervalSeconds,
-    required PullRequestRefreshMutationState mutation,
-  }) {
-    return switch (state) {
-      BridgeSettingsReadyFull(
-        :final yoloEnabled,
-        :final yoloMutation,
-        :final pluginWarmupMutation,
-      ) =>
-        BridgeSettingsReadyFull(
-          pullRequestRefreshIntervalSeconds: intervalSeconds,
-          pullRequestRefreshMutation: mutation,
-          yoloEnabled: yoloEnabled,
-          yoloMutation: yoloMutation,
-          pluginWarmupMutation: pluginWarmupMutation,
-        ),
-      BridgeSettingsReadyLegacyPartial() => BridgeSettingsReadyLegacyPartial(
-        pullRequestRefreshIntervalSeconds: intervalSeconds,
-        pullRequestRefreshMutation: mutation,
-      ),
-    };
-  }
-
-  BridgeSettingsReadyFull _withYolo({
-    required BridgeSettingsReadyFull state,
     required bool enabled,
     required YoloMutationState mutation,
   }) {
-    return BridgeSettingsReadyFull(
-      pullRequestRefreshIntervalSeconds: state.pullRequestRefreshIntervalSeconds,
-      pullRequestRefreshMutation: state.pullRequestRefreshMutation,
+    return BridgeSettingsReady(
       yoloEnabled: enabled,
       yoloMutation: mutation,
       pluginWarmupMutation: state.pluginWarmupMutation,
     );
   }
 
-  BridgeSettingsReadyFull _withPluginWarmup({
-    required BridgeSettingsReadyFull state,
+  BridgeSettingsReady _withPluginWarmup({
+    required BridgeSettingsReady state,
     required PluginWarmupMutationState mutation,
   }) {
-    return BridgeSettingsReadyFull(
-      pullRequestRefreshIntervalSeconds: state.pullRequestRefreshIntervalSeconds,
-      pullRequestRefreshMutation: state.pullRequestRefreshMutation,
+    return BridgeSettingsReady(
       yoloEnabled: state.yoloEnabled,
       yoloMutation: state.yoloMutation,
       pluginWarmupMutation: mutation,
@@ -483,14 +286,4 @@ class BridgeSettingsCubit({
     await _connectionStatusSubscription.cancel();
     return await super.close();
   }
-}
-
-enum PullRequestRefreshInputValidation() {
-  valid,
-  invalid,
-}
-
-enum BridgeSettingsUpdateAcceptance() {
-  accepted,
-  rejected,
 }
