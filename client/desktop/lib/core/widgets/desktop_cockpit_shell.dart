@@ -31,7 +31,6 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     connectionService: getIt<ConnectionService>(),
     filterTracker: getIt<SessionListFilterTracker>(),
     sessionListService: getIt<SessionListService>(),
-    projectViewingService: getIt<ProjectViewingService>(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [
@@ -204,18 +203,12 @@ class const DesktopCockpitShell({
         // from it, so the panel's rows are not rebuilt to start one.
         final scaffold = Scaffold(
           body: Builder(
-            builder: (context) {
-              final isCollapsed = collapsed(context);
-              return _ListPaneReporter(
-                visible: !isCollapsed,
-                child: _SidebarExpansionAnimator(
-                  target: isCollapsed ? 0 : 1,
-                  duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
-                  curve: Curves.easeOutCubic,
-                  child: row,
-                ),
-              );
-            },
+            builder: (context) => _SidebarExpansionAnimator(
+              target: collapsed(context) ? 0 : 1,
+              duration: prefersReducedMotion(context) ? Duration.zero : const Duration(milliseconds: 220),
+              curve: Curves.easeOutCubic,
+              child: row,
+            ),
           ),
         );
         return CallbackShortcuts(
@@ -228,29 +221,6 @@ class const DesktopCockpitShell({
       },
     );
   }
-}
-
-/// Tells the shared list whether the open sidebar shows it beside the page.
-class const _ListPaneReporter({required final bool visible, required final Widget child}) extends StatefulWidget {
-  @override
-  State<_ListPaneReporter> createState() => _ListPaneReporterState();
-}
-
-class _ListPaneReporterState() extends State<_ListPaneReporter> {
-  @override
-  void initState() {
-    super.initState();
-    context.read<AllSessionsCubit>().setPaneVisible(isVisible: widget.visible);
-  }
-
-  @override
-  void didUpdateWidget(_ListPaneReporter oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.visible != widget.visible) context.read<AllSessionsCubit>().setPaneVisible(isVisible: widget.visible);
-  }
-
-  @override
-  Widget build(BuildContext context) => widget.child;
 }
 
 /// Animates the sidebar's expansion like a [TweenAnimationBuilder], but hands

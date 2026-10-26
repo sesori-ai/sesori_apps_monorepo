@@ -22,7 +22,6 @@ void main() {
   late SessionListFilterTracker tracker;
   late _MockRecentInventory recentInventory;
   late _MockProjectInventory projectInventory;
-  late MockProjectViewingService viewing;
 
   ConnectionStatus connected({required String bridgeId}) => ConnectionStatus.connected(
     config: ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: bridgeId),
@@ -52,7 +51,6 @@ void main() {
     projectInventory = _MockProjectInventory();
     when(() => projectInventory.state).thenAnswer((_) => projects.value);
     when(() => projectInventory.stateStream).thenAnswer((_) => projects.stream);
-    viewing = stubbedProjectViewingService();
   });
   tearDown(() async {
     await tracker.dispose();
@@ -67,7 +65,6 @@ void main() {
       projectInventory: projectInventory,
       filterTracker: tracker,
       sessionListService: sessionListService,
-      projectViewingService: viewing,
     );
     addTearDown(() async {
       if (!cubit.isClosed) await cubit.close();
@@ -244,7 +241,7 @@ void main() {
     expect(emitted, [one.id, two.id]);
   });
 
-  test("archived mode lists every project's archived sessions, most recently archived first", () async {
+  test("archived mode lists every project's archived sessions, most recently archived first", () {
     entries.add({
       one.id: loaded(
         sessions: [
@@ -266,10 +263,6 @@ void main() {
 
     cubit.selectProject(projectId: one.id);
     expect(ids(cubit: cubit), ["newest", "oldest"]);
-    cubit.setPaneVisible(isVisible: true);
-    await cubit.close();
-    verifyNever(() => viewing.beginListClaim(projectId: any(named: "projectId")));
-    verifyNever(viewing.beginWideListPaneClaim);
   });
 
   test("the default project is the filter, otherwise the newest session's, otherwise none", () async {
@@ -348,65 +341,6 @@ void main() {
 
     cubit.selectProject(projectId: one.id);
     expect(cubit.state.defaultProjectId, one.id);
-  });
-
-  test("the list claim follows the filter, is made ready or failed by its entry, and is released", () async {
-    final claimOne = ProjectViewClaim();
-    final claimTwo = ProjectViewClaim();
-    when(() => viewing.beginListClaim(projectId: one.id)).thenReturn(claimOne);
-    when(() => viewing.beginListClaim(projectId: two.id)).thenReturn(claimTwo);
-    const failed = RecentSessionsFailed(reason: RemoteFailureReason.networkDown);
-    entries.add({one.id: RecentSessionsLoading(), two.id: failed});
-    final cubit = create(mode: AllSessionsMode.active);
-    verifyNever(() => viewing.beginListClaim(projectId: any(named: "projectId")));
-
-    cubit.selectProject(projectId: one.id);
-    await settle();
-    verify(() => viewing.beginListClaim(projectId: one.id)).called(1);
-    verifyNever(
-      () => viewing.markClaimReady(
-        claim: any(named: "claim"),
-        projectId: any(named: "projectId"),
-      ),
-    );
-
-    final sessions = [session(id: "a", project: one, updatedAt: 10)];
-    entries.add({one.id: loaded(sessions: sessions, activity: const {}), two.id: failed});
-    await settle();
-    entries.add({
-      one.id: loaded(sessions: sessions, activity: const {"a": running}),
-      two.id: failed,
-    });
-    await settle();
-    verify(() => viewing.markClaimReady(claim: claimOne, projectId: one.id)).called(1);
-
-    cubit.selectProject(projectId: two.id);
-    await settle();
-    verify(() => viewing.releaseClaim(claim: claimOne)).called(1);
-    verify(() => viewing.beginListClaim(projectId: two.id)).called(1);
-    verify(() => viewing.markClaimFailed(claim: claimTwo)).called(1);
-
-    cubit.selectProject(projectId: null);
-    await settle();
-    verify(() => viewing.releaseClaim(claim: claimTwo)).called(1);
-    verifyNever(() => viewing.beginListClaim(projectId: any(named: "projectId")));
-
-    cubit.selectProject(projectId: one.id);
-    await settle();
-    await cubit.close();
-    verify(() => viewing.releaseClaim(claim: claimOne)).called(1);
-  });
-
-  test("the pane claim reports the shell's pane and ends with the cubit", () async {
-    final pane = ProjectViewPaneClaim();
-    when(viewing.beginWideListPaneClaim).thenReturn(pane);
-    final cubit = create(mode: AllSessionsMode.active)..setPaneVisible(isVisible: true);
-    verify(() => viewing.setWideListPaneVisible(claim: pane, isVisible: true)).called(1);
-
-    cubit.setPaneVisible(isVisible: false);
-    verify(() => viewing.setWideListPaneVisible(claim: pane, isVisible: false)).called(1);
-    await cubit.close();
-    verify(() => viewing.releaseWideListPaneClaim(claim: pane)).called(1);
   });
 
   test("a project that failed to load is a retry row beside the projects that loaded", () async {

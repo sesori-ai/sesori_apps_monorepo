@@ -118,7 +118,6 @@ void main() {
       Duration eventRefreshMinInterval = const Duration(seconds: 5),
     }) => SessionDetailCubit(
       mockConnectionService,
-      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
@@ -128,7 +127,6 @@ void main() {
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
-      projectViewingService: stubbedProjectViewingService(),
       lifecycleSource: lifecycleSource ?? FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),

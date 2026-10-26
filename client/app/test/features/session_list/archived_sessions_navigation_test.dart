@@ -118,7 +118,6 @@ void main() {
       expect(harness.router.state.uri.path, "/archived-sessions/p1/audit");
       expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
       expect(find.byIcon(TablerRegular.git_compare), findsNothing);
-      verifyNever(() => harness.projectViewingService.beginDetailClaim(projectId: any(named: "projectId")));
       await tester.tap(find.byIcon(TablerRegular.chevron_left));
       await tester.pumpAndSettle();
       expect(tester.element(find.byType(ArchivedSessionsView)), same(listElement));
@@ -127,7 +126,6 @@ void main() {
       expect(harness.router.state.uri.toString(), opener);
       expect(find.text("Live record"), findsOneWidget);
       expect(find.text("Archived record"), findsNothing);
-      verify(() => harness.projectViewingService.beginListClaim(projectId: "p1")).called(1);
     });
   }
 
@@ -153,9 +151,6 @@ void main() {
       tester.getTopLeft(tile(title: "Archived record")).dy,
       lessThan(tester.getTopLeft(tile(title: "Other archive")).dy),
     );
-    // Archived mode never claims a viewed project.
-    verifyNever(() => harness.projectViewingService.beginListClaim(projectId: any(named: "projectId")));
-
     // A row opens its own project's audit record.
     await tester.tap(find.text("Other archive"));
     await tester.pumpAndSettle();
@@ -350,7 +345,6 @@ void main() {
     harness.routeSource.emitRoute(AppRouteDef.sessionDetail);
     await tester.pumpAndSettle();
     verify(() => viewingService.setViewingSession("live")).called(1);
-    verify(() => harness.projectViewingService.beginDetailClaim(projectId: "p1")).called(1);
   });
 
   testWidgets("with nothing archived the archive is empty; direct detail has only Back", (tester) async {

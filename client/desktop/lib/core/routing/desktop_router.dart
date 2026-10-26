@@ -45,8 +45,7 @@ const _desktopSessionActions = SessionListActionDispatcher(
 );
 
 /// One routed main pane beside the sidebar, under a single authenticated shell.
-/// The sidebar's shared list stays mounted across main-pane navigation, and a
-/// filtered list claims its project as viewed.
+/// The sidebar's shared list stays mounted across main-pane navigation.
 final GoRouter desktopRouter = GoRouter(
   navigatorKey: desktopRootNavigatorKey,
   initialLocation: AppRouteDef.splash.path,
@@ -135,7 +134,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             mode: AllSessionsMode.archived,
             filterTracker: getIt<SessionListFilterTracker>(),
             sessionListService: getIt<SessionListService>(),
-            projectViewingService: getIt<ProjectViewingService>(),
           ),
           child: ArchivedSessionsView(
             emptyState: const SessionArchivedEmptyState(artwork: null),
