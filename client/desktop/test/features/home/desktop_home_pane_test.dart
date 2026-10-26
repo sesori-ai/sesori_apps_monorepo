@@ -246,7 +246,7 @@ void main() {
         await tester.pump(const Duration(milliseconds: 9900));
         expect(lineOpacity(tester), 0);
         expect(find.bySemanticsLabel(line), findsNothing);
-        expect(find.semantics.byLabel("Loading projects"), findsOne);
+        expect(find.bySemanticsLabel("Loading projects"), findsOneWidget);
 
         // The app reaches the bridge and loads the projects: the launch's wait
         // is dropped, so its 10 s pass without the line.
@@ -283,7 +283,7 @@ void main() {
         expect(tester.getRect(loader), place);
         expect(tester.getRect(find.text(line)).top, greaterThan(place.bottom));
         expect(find.bySemanticsLabel(line), findsOneWidget);
-        expect(find.semantics.byLabel("Loading projects"), findsOne);
+        expect(find.bySemanticsLabel("Loading projects"), findsOneWidget);
         await tester.pumpWidget(const SizedBox.shrink());
       } finally {
         semantics.dispose();
