@@ -165,25 +165,41 @@ class const SessionListActionDispatcher({
   }
 
   void _delete({required BuildContext context, required SessionListCubit cubit, required Session session}) {
+    final deletesFolder = _isNoProject(context: context, cubit: cubit);
     switch (deleteConfirmation) {
       case SessionDeleteConfirmation.sheet:
-        _showDeleteSheet(context: context, cubit: cubit, session: session, onSessionDeleted: onSessionDeleted);
+        _showDeleteSheet(
+          context: context,
+          cubit: cubit,
+          session: session,
+          deletesFolder: deletesFolder,
+          onSessionDeleted: onSessionDeleted,
+        );
       case SessionDeleteConfirmation.alert:
         _showRetainedActionDialog(
           cubit: cubit,
           show: () async {
-            if (!await _confirmDelete(context: context, session: session) || !context.mounted) return;
+            if (!await _confirmDelete(context: context, session: session, deletesFolder: deletesFolder) ||
+                !context.mounted) {
+              return;
+            }
             await _deleteSession(
               context: context,
               cubit: cubit,
               sessionId: session.id,
               deleteWorktree: session.hasWorktree,
+              deleteSessionFolder: deletesFolder,
               onSessionDeleted: onSessionDeleted,
             );
           },
         );
     }
   }
+
+  /// Whether [cubit]'s sessions are "No project" ones, each in its own folder
+  /// that deleting the session removes with its files.
+  bool _isNoProject({required BuildContext context, required SessionListCubit cubit}) =>
+      context.read<ProjectListCubit>().state.kindOf(projectId: cubit.projectId) == ProjectKind.scratch;
 
   /// Flips [session]'s read state, from the row's leading swipe.
   void handleSessionToggleUnread({

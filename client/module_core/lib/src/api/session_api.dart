@@ -282,6 +282,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<void>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
+    required bool deleteSessionFolder,
     required bool force,
   }) async {
     final response = await _client.delete(
@@ -294,6 +295,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         // retired field. Remove it when v1.7.1 bridges are unsupported.
         deleteBranch: false,
         force: force,
+        deleteSessionFolder: deleteSessionFolder,
       ),
     );
 

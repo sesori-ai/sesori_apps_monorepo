@@ -170,9 +170,11 @@ class AllSessionsCubit({
     required Set<String> hiddenSessionIds,
     required SessionListService sessionListService,
   }) {
-    final known = switch (projects) {
-      ProjectListLoaded(:final projects) => projects,
-      ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <ProjectSummary>[],
+    final (known, scratchProjectId) = switch (projects) {
+      ProjectListLoaded(:final projects, :final scratchProject) => (projects, scratchProject?.id),
+      ProjectListLoading() ||
+      ProjectListFailed() ||
+      ProjectListBridgeDisconnected() => (const <ProjectSummary>[], null),
     };
     final listed = [
       for (final project in known)
@@ -242,9 +244,10 @@ class AllSessionsCubit({
             AllSessionsFailure(project: project, reason: reason),
       ]),
       isLoading: isLoading,
+      scratchProjectId: scratchProjectId,
       // The newest session is only known once every project's sessions have
       // loaded: the first project to answer is not the default.
-      defaultProjectId: projectId ?? (isLoading ? null : merged.firstOrNull?.project.id),
+      defaultProjectId: projectId ?? scratchProjectId ?? (isLoading ? null : merged.firstOrNull?.project.id),
     );
   }
 

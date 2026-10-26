@@ -3475,6 +3475,12 @@ abstract class AppLocalizations {
   /// **'Its worktree will be deleted too. The branch is kept.'**
   String get sessionListDeleteWorktreeNotice;
 
+  /// Line in the delete confirmation, on both shells, stating that a session started without a project loses the folder it worked in, with the files the agent wrote there. Deletion never offers a choice about this.
+  ///
+  /// In en, this message translates to:
+  /// **'Its folder and every file in it will be deleted too.'**
+  String get sessionListDeleteFolderNotice;
+
   /// No description provided for @sessionListDeleted.
   ///
   /// In en, this message translates to:
@@ -5233,17 +5239,17 @@ abstract class AppLocalizations {
   /// **'Couldn’t load {projectName}'**
   String allSessionsProjectFailed(String projectName);
 
-  /// The home's title and the desktop sidebar's project filter while the list shows every project's sessions.
+  /// The home's title and the desktop sidebar's project filter while the list shows every project's sessions, and the button pinned below the project filter's list that clears the filter; checked while it already does.
   ///
   /// In en, this message translates to:
   /// **'All projects'**
   String get projectPickerAllProjects;
 
-  /// Button pinned below the project filter's list that clears the filter, so the list shows every project's sessions; checked while it already does.
+  /// Name of the project that holds sessions started without a project folder: the button pinned below the project pickers' lists, the new-session project chip, and the home's title while filtered to it.
   ///
   /// In en, this message translates to:
-  /// **'Show all projects'**
-  String get projectPickerShowAllProjects;
+  /// **'No project'**
+  String get projectPickerNoProject;
 
   /// The new-session project pill while no project is chosen yet.
   ///

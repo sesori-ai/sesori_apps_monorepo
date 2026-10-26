@@ -1953,6 +1953,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteWorktreeNotice => 'Its worktree will be deleted too. The branch is kept.';
 
   @override
+  String get sessionListDeleteFolderNotice => 'Its folder and every file in it will be deleted too.';
+
+  @override
   String get sessionListDeleted => 'Session deleted';
 
   @override
@@ -3018,7 +3021,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectPickerAllProjects => 'All projects';
 
   @override
-  String get projectPickerShowAllProjects => 'Show all projects';
+  String get projectPickerNoProject => 'No project';
 
   @override
   String get projectPickerChooseProject => 'Choose a project';

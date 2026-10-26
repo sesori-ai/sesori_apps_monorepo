@@ -53,6 +53,8 @@ class const _LocalBridge({required final String bridgeId}) implements ActiveBrid
   bool isLocalBridge({required String bridgeId}) => bridgeId == this.bridgeId;
 }
 
+const _demo = ProjectSummary(id: "demo", name: "demo-app", path: "/work/demo-app", time: null);
+
 const AuthUser _user = AuthUser(
   id: "user-1",
   provider: AuthProvider.github,
@@ -265,9 +267,7 @@ void main() {
     whenListen(
       projectList,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(
-        projects: [ProjectSummary(id: "demo", name: "demo-app", path: "/work/demo-app", time: null)],
-      ),
+      initialState: const ProjectListState.loaded(projects: [_demo], folderProjects: [_demo], scratchProject: null),
     );
     connectionOverlay = _MockConnectionOverlayCubit();
     whenListen(

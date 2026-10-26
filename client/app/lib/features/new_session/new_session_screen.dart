@@ -36,7 +36,12 @@ class const NewSessionScreen({
       // Replacing the route keeps its page, so the project keys the provider:
       // another project gets a fresh cubit and never the one that was left.
       key: ValueKey(projectId),
-      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
+      create: (context) => createNewSessionCubit(
+        locator: getIt,
+        projectId: projectId,
+        projectName: projectName,
+        projectKind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+      ),
       child: Builder(
         builder: (context) => _build(context: context, projectId: projectId),
       ),

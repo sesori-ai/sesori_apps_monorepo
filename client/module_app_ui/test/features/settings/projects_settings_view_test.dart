@@ -21,6 +21,13 @@ class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> im
 const _demoApp = ProjectSummary(id: "app", name: "demo-app", path: "/work/demo-app", time: null);
 const _demoApi = ProjectSummary(id: "api", name: "demo-api", path: "/work/demo-api", time: null);
 const _gone = ProjectSummary(id: "gone", name: "old-tool", path: "/work/old-tool", time: null, directoryMissing: true);
+const _scratch = ProjectSummary(
+  id: "scratch",
+  name: null,
+  path: "/work/scratch",
+  time: null,
+  kind: ProjectKind.scratch,
+);
 
 Finder _actions(String projectId) => find.byKey(ValueKey("projects-settings-actions-$projectId"));
 
@@ -36,7 +43,11 @@ void main() {
     whenListen(
       cubit,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(projects: [_demoApp, _demoApi, _gone]),
+      initialState: const ProjectListState.loaded(
+        projects: [_demoApp, _demoApi, _gone, _scratch],
+        folderProjects: [_demoApp, _demoApi, _gone],
+        scratchProject: _scratch,
+      ),
     );
     when(() => cubit.hideProject(projectId: any(named: "projectId"))).thenAnswer((_) async => true);
     when(
@@ -97,7 +108,7 @@ void main() {
     await tester.pumpAndSettle();
   }
 
-  testWidgets("lists every project under Open another folder, each over its path or its missing folder", (
+  testWidgets("lists every folder project under Open another folder, each over its path or its missing folder", (
     tester,
   ) async {
     await pumpView(tester: tester, connected: true);
@@ -107,6 +118,9 @@ void main() {
     expect(find.text("demo-api"), findsOneWidget);
     expect(find.text("old-tool"), findsOneWidget);
     expect(find.text("Folder not found"), findsOneWidget);
+    // "No project" has no folder to rename or hide.
+    expect(find.text("No project"), findsNothing);
+    expect(_actions("scratch"), findsNothing);
     expect(find.text("Connect to a bridge to manage projects."), findsNothing);
     expect(tester.getTopLeft(_openFolder).dy, lessThan(tester.getTopLeft(find.text("demo-app")).dy));
   });

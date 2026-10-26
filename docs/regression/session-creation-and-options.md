@@ -13,13 +13,15 @@ variant, and worktree mode, and creating the session with its first input.
   project yet they open the Add project dialog, and the project it adds opens in setup.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
 - The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
-  project: the filtered project, else the project of the newest session, known once every project's session read
-  has settled (loaded or failed). With no default it opens a "New
+  project: the filtered project, else "No project" on a bridge that has it (at once, without waiting for any
+  session read), else the project of the newest session, known once every project's session read has settled
+  (loaded or failed). With no default it opens a "New
   session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
   selected: its search first, the known projects below and "Open folder…" pinned under them; with no projects
   it offers only that action. Choosing one replaces the page with that project's setup page.
 - The desktop home shows the setup composer in place, in the same default project: the sidebar list's filter,
-  else the newest session's project. The project holds once it lands, so a newer session elsewhere never moves
+  else "No project", else the newest session's project. A bridge whose only project is "No project" still shows
+  the composer, in "No project". The project holds once it lands, so a newer session elsewhere never moves
   a draft; another filter moves it. While the list is still loading the pane waits blank, so a project whose
   sessions load first never takes the draft. With no default it
   shows the same "What should we work on?" prompt with nothing selected, its picker waiting for a click; with
@@ -32,8 +34,9 @@ variant, and worktree mode, and creating the session with its first input.
   open with the keyboard down; tapping the search field raises it, and the sheet and its field stay still
   while the list shortens above the keyboard. Under a pointer the search takes focus as the popover opens, so typing
   filters at once. The home's title switcher is the same picker. The search is the first control under the
-  title, and the list holds only projects. A full-width button is pinned below the list, outside its scroll,
-  set off by a hairline. The search never filters or hides it, so it is there with one project, with none, and
+  title, and the list holds only folder projects, never "No project". A footer is pinned below the list, outside
+  its scroll, set off by a hairline: one full-width button, or, on a bridge with "No project", a "No project"
+  button beside it. The search never filters or hides it, so it is there with one project, with none, and
   when the search matches nothing ("No projects match"). On a phone it sits at the sheet's bottom edge and
   rides above the raised keyboard while the search stays still; in a popover it sits right under the rows.
   Under a pointer it has a hover state, and the keyboard highlight starts on the first matching project and
@@ -41,9 +44,11 @@ variant, and worktree mode, and creating the session with its first input.
   the first matching project, and with nothing matching Enter picks nothing. When the picker chooses a
   project rather than a filter, the button is "Open folder…": it closes the picker, opens the folder browser
   once the picker has closed, and
-  selects the project the browser adds. Filtering a list instead, it is "Show all projects": while every
+  selects the project the browser adds. Filtering a list instead, it is "All projects": while every
   project is shown it carries a check, no project is checked, and it only closes the picker; otherwise it
-  clears the filter.
+  clears the filter. "No project" picks like a project row in either picker: it closes the picker and selects
+  "No project", so the selector, or the home's title when filtering, then reads "No project", and it carries the
+  check while it is the choice.
   Search matches project names and paths; a path shows under a name only when another project shares that
   name, shortened to the folders that tell them apart. Choosing another project replaces the page with that
   project's setup page, so a session is never created in the project that was left, and a draft stays with
@@ -478,7 +483,7 @@ variant, and worktree mode, and creating the session with its first input.
 |---|---|
 | L1 Smoke | Headless bridge, representative plugin: a session is created with a first prompt and has attribution and a working directory. |
 | L2 Routine | Headless bridge, representative plugin: options return agents, models, commands, and the last successful plugin-scoped creation selection; explicit refresh forces discovery; cache-only reports unavailable without discovering; a cache past the freshness window or captured before the bridge process started is served at once and reported stale; a committed snapshot emits `session.options_updated` with the right project scope while an uncommitted refresh emits nothing; a session-less backend catalog change refreshes only the plugin's already-cached projects; dedicated mode produces a lowercase `color-animal` worktree on a detached HEAD at the base tip, no branch, and a baseline; a gated metadata request does not gate a queryable create response. Hermes discovery accepts only the exact absent scratch ID after process exit; real deletion/database errors remain visible. Pi startup dialog fixtures: answer questions before initial history, cancel catalog-probe dialogs without granting access, and preserve queued commands and partial UTF-8 bytes when native RPC takes over. |
-| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message, and a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title arrives through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. |
+| L3 Release | Client end to end (phone), plus desktop automated/routing coverage, every supporting production plugin: Send immediately renders the submitted message as a sending bubble at the unresolved route above the same live composer (on desktop moved to the bottom edge), a second Send queues a follow-up below it instead of a second session, waits up to 180 s for a cold create, and replaces with the durable session with the composer and every bubble in place; a success or failure landing mid-recording, during an image pick or paste, or mid-word on an Android keyboard waits for it to settle, and the session screen's draft or the restored draft then holds the result with the caret where it was; the option pills keep their size while read-only; follow-ups send in press order after the first message, and a message sent from the session screen before its first load sends after them, or stays in view for Retry when that load fails, or under the blocked notice with Cancel and Remove when that load finds the harness blocked; Back leaves creation running; each declared option scope is honored and usable; chosen agent, model, and variant apply; slash-command start dispatches without rendering bridge context; generated title arrives through `session.updated`; a stale-reported cache refreshes in the background with no loading state; the composer is typeable and Send works before options arrive; loading keeps the layout with shimmering pills and a failure shows one retry; a New Session options refresh (background, Retry, Load, or Recheck) updates an already-open session's commands, agents, and models for the same plugin and project without reopening it; pickers, plugin chooser, detail loading, and no-harness states render; the project picker opens as a phone sheet with the keyboard down until its search is tapped, then searches over the keyboard, and as an iPad and desktop popover, and its "Open folder…" adds a folder and switches the page to it; a sub-agent's page and an archived session show only the run details their harness knows, as read-only pills. Scoped authentication-required discovery replaces the composer with the login card, keeps Recheck available, blocks Create, and presents only plugin-owned bounded guidance without globally blocking the harness. Mobile retains hold-to-talk voice capture; desktop remains text-first with a click-to-talk mic and its native attachment picker used only where declared. Copilot uses only the model, mode, model-specific reasoning, and command values advertised to the entitled account, including a healthy no-mode catalog. Grok shows its current default, sends exact advertised model/effort values, rejects a stale tuple, refreshes, and preserves the last successful plugin-scoped choice. On a bridge with "No project", both pickers offer it only in their footer and pick it, the home defaults to it after a filter and before the newest session's project, and a desktop bridge with only "No project" shows the composer in it; a bridge without it shows neither. |
 | L4 Extended | Client end to end and live plugin, every supporting production plugin: definitive rejection and response-loss/timeout restore the exact in-route draft with duplicate-risk warning, with queued follow-ups and unsent composer content appended in typed order, reconnect/options refresh cannot erase it, and background failure does not restore an abandoned draft; occupied worktree paths are skipped and path exhaustion uses a suffix; a dedicated worktree starts on a detached HEAD at the base tip with no branch created; non-git, empty-repository, worktree-failure, metadata-failure, plugin-title-rename-failure, persistence failure, and shutdown cases retain a usable session; user rename/deletion wins over late title; failure with a retained cache still serves options while failure without one errors; concurrent requests coalesce; automatic refresh does not start a stopped plugin; a moved project invalidates its options. |
 | L5 Full | Client end to end, every supporting production plugin: cache expiry and an undecodable entry recover without wrong options; creation is refused for a non-routable plugin and an unknown project; attachment creation works only where declared; unattributed payloads resolve to the historical identity. |
 
@@ -521,9 +526,9 @@ startup-extension file failure, retry once the filesystem is usable.
 
 ## Failure Signals
 
-- The phone home's New session opens a project other than the filtered one or the newest session's, or, with no
-  default, preselects a project, creates a session before one is chosen, or hides the known projects behind the
-  zero-project state.
+- The phone home's New session opens a project other than its default (the filtered one, else "No project" on a
+  bridge that has it, else the newest session's), or, with no default, preselects a project, creates a session
+  before one is chosen, or hides the known projects behind the zero-project state.
 - Pi exits or hangs on an extension's startup question, a catalog refresh leaves
   newly available models missing for that reason, or an early command is lost,
   duplicated, or corrupted when native RPC starts reading input; startup
@@ -552,10 +557,13 @@ startup-extension file failure, retry once the filesystem is usable.
   tapped, moves its search field as the keyboard rises, moves the page's header
   behind its sheet, or leaves the page on the old project after the folder
   browser adds one.
-- The filtering picker lists "Show all projects" among the projects, hides it
+- The filtering picker lists "All projects" among the projects, hides it
   behind a search or a scroll, leaves it out or unchecked while every project
   is shown, checks a project then, or lets Enter after a search pick it over a
   match.
+- Either picker lists "No project" among the projects, leaves it out of the footer on a bridge that has it, or
+  shows it on one without; a default skips "No project" for the newest session's project, or a bridge with only
+  "No project" shows no composer.
 - A model the backend reports unavailable is selectable or offers variants on
   one surface but not another, an agent's declared model is adopted without
   being checked against the catalog, or a screen's variant list describes a

@@ -41,8 +41,9 @@ class const ProjectsSettingsView({super.key, required final SettingsPageChrome c
         ConnectionOverlayBridgeOffline() => false,
       },
     );
+    // "No project" is the bridge's own, with no folder to rename or hide.
     final projects = switch (state) {
-      ProjectListLoaded(:final projects) => projects,
+      ProjectListLoaded(:final folderProjects) => folderProjects,
       ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <ProjectSummary>[],
     };
     String nameOf(ProjectSummary project) => projectDisplayName(loc: loc, project: project);

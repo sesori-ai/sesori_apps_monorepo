@@ -157,6 +157,7 @@ void main() {
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
       projectId: "project-1",
       projectName: null,
+      projectKind: ProjectKind.folder,
     );
 
     void establishSelectionScope({required String bridgeId}) {

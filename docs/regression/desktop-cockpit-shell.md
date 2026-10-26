@@ -49,13 +49,15 @@ The main pane hosts one full-width routed page.
 - Windows narrower than 760 pixels temporarily hide the sidebar without changing saved preferences; the
   restore button shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
   restores the user's choice. The native minimum window remains 560 × 480.
-- New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects it
-  reads Add project and opens the shared folder dialog, and the project it adds opens in New session. Search under it opens the command palette. Below them
-  the project filter, "All projects ▾" or the chosen project's name, heads the shared all-projects session list
-  beside Refresh: it opens the shared project picker, and its pick is the shared filter that lasts for the app's
-  run. The list is the phone's (see `projects-and-sessions.md`): its search field, All, Running and Unread
-  chips, date headings with running sessions under Today, launching rows, the catalog scan row and
-  project-local retry. Each row names its project while the filter shows all of them, and opens its session in
+- New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects at
+  all, "No project" included, it reads Add project and opens the shared folder dialog, and the project it adds
+  opens in New session. Search under it opens the command palette. Below them the project filter, "All projects
+  ▾", "No project ▾" or the chosen project's name, heads the shared all-projects session list beside Refresh: it
+  opens the shared project picker, whose footer always holds "All projects" (beside "No project" when the bridge
+  has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see
+  `projects-and-sessions.md`): its search field, All, Running and Unread chips, date headings with running sessions
+  under Today, launching rows, the catalog scan row and project-local retry. Each row names its project while the
+  filter shows all of them ("No project" rows name none), and opens its session in
   that project; the open session is highlighted. Adding a project otherwise lives on home and in Settings ›
   Projects. Icon/status hints and truncated-label hints remain useful, while fully visible labels need no
   duplicate tooltip.
@@ -187,12 +189,13 @@ The main pane hosts one full-width routed page.
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
   floating glass bar and one full-width transcript and composer.
-- Home is the new-session composer alone, in the sidebar list's default project (its filter, else the newest
-  session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
-  filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank, and with no
-  default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there are
-  no projects. A session started from home opens in its project. Loading projects is labelled and failures retry
-  the shared inventory. A disconnected home branches on
+- Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
+  else the newest session's project), as `session-creation-and-options.md` details: the project holds once it
+  lands, another filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank,
+  and with no default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there
+  are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". A
+  session started from home opens in its project. Loading projects is labelled and failures retry the shared
+  inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
   CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
   "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the

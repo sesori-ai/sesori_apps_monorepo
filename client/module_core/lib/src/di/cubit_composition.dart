@@ -96,6 +96,7 @@ NewSessionCubit createNewSessionCubit({
   required GetIt locator,
   required String projectId,
   required String? projectName,
+  required ProjectKind projectKind,
 }) {
   return NewSessionCubit(
     connectionService: locator<ConnectionService>(),
@@ -109,5 +110,6 @@ NewSessionCubit createNewSessionCubit({
     dedicatedWorktreePreferenceStore: locator<DedicatedWorktreePreferenceStore>(),
     projectId: projectId,
     projectName: projectName,
+    projectKind: projectKind,
   );
 }

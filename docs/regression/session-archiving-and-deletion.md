@@ -49,6 +49,9 @@ entirely along with its transcript and its dedicated worktree.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept.
+- Deleting a "No project" session, from any entry point, adds to that confirmation that its folder and every file
+  in it are deleted too, and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any
+  other session sends `false` and adds no such sentence.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
@@ -182,7 +185,7 @@ entirely along with its transcript and its dedicated worktree.
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
 | L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. Deleting a "No project" session warns that its folder goes too and removes it. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
 
@@ -230,6 +233,8 @@ restart before explicit re-import.
   the scratch root itself, a folder another session still runs in or under, a
   link or its target, or a folder the request did not ask to remove; or
   archiving removes a scratch folder.
+- The app sends `deleteSessionFolder: true` for a session outside "No project", or before a confirmation that
+  names the folder.
 - Any archive or delete surface offers to keep the worktree, or a refusal modal
   presents a third way out beyond Cancel and the destructive force.
 - A shared-worktree-only refusal reaches the user as a question, or a refusal that

@@ -32,7 +32,10 @@ void main() {
   setUpAll(registerAllFallbackValues);
   setUp(() {
     entries = BehaviorSubject.seeded(const {});
-    projects = BehaviorSubject.seeded(const ProjectListState.loaded(projects: [one, two]), sync: true);
+    projects = BehaviorSubject.seeded(
+      const ProjectListState.loaded(projects: [one, two], folderProjects: [one, two], scratchProject: null),
+      sync: true,
+    );
     status = BehaviorSubject.seeded(connected(bridgeId: "a"));
     final connection = MockConnectionService();
     when(() => connection.status).thenAnswer((_) => status.stream);
@@ -212,7 +215,7 @@ void main() {
     expect(ids(cubit: cubit), ["b"]);
 
     projectListService.removeProjectAndPublish(projects: const [one, two], projectId: two.id);
-    projects.add(const ProjectListState.loaded(projects: [one]));
+    projects.add(const ProjectListState.loaded(projects: [one], folderProjects: [one], scratchProject: null));
     await settle();
     expect(cubit.state.projectId, isNull);
     expect(ids(cubit: cubit), ["a"]);
@@ -323,6 +326,27 @@ void main() {
     // A project that failed to load does not hold the default back.
     entries.add({one.id: older, two.id: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown)});
     await settle();
+    expect(cubit.state.defaultProjectId, one.id);
+  });
+
+  test("with No project the default is the filter, otherwise No project, even while sessions load", () async {
+    const scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
+    projects.add(
+      const ProjectListState.loaded(projects: [one, scratch], folderProjects: [one], scratchProject: scratch),
+    );
+    entries.add({
+      one.id: loaded(
+        sessions: [session(id: "a", project: one, updatedAt: 10)],
+        activity: const {},
+      ),
+      scratch.id: RecentSessionsLoading(),
+    });
+    final cubit = create(mode: AllSessionsMode.active);
+    expect(cubit.state.isLoading, isTrue);
+    expect(cubit.state.scratchProjectId, scratch.id);
+    expect(cubit.state.defaultProjectId, scratch.id, reason: "the newest session's project is not the default");
+
+    cubit.selectProject(projectId: one.id);
     expect(cubit.state.defaultProjectId, one.id);
   });
 
