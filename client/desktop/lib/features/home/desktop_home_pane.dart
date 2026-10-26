@@ -84,7 +84,14 @@ class const DesktopHomePane({
           onOpenHarnessSettings: onOpenHarnessSettings,
         );
       case ProjectListLoading():
-        status = _loading(context: context, startingThisComputer: false);
+        // The relay can still be connecting as the launch begins, so the
+        // line's wait starts with the launch, not with its offline report.
+        status = _loading(
+          context: context,
+          startingThisComputer: context.select(
+            (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
+          ),
+        );
       case ProjectListFailed(:final reason):
         status = RemoteFailureView(
           reason: reason,

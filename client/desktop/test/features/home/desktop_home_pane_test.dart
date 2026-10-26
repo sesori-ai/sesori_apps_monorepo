@@ -225,7 +225,9 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
       try {
-        arrangeStarting();
+        final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+        addTearDown(starts.close);
+        whenListen(startup, starts, initialState: starts.value);
         final updates = StreamController<ProjectListState>();
         addTearDown(updates.close);
         // The relay is still connecting as the launch begins: a load.
@@ -249,6 +251,7 @@ void main() {
         // The app reaches the bridge and loads the projects: the launch's wait
         // is dropped, so its 10 s pass without the line.
         updates.add(const ProjectListState.loading());
+        starts.add(LocalBridgeStartupState.settled);
         await tester.pump();
         await tester.pump();
         await tester.pump(const Duration(seconds: 1));
@@ -330,7 +333,9 @@ void main() {
     testWidgets("with reduced motion, the line shows and leaves at once", (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
-      arrangeStarting();
+      final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+      addTearDown(starts.close);
+      whenListen(startup, starts, initialState: starts.value);
       final updates = StreamController<ProjectListState>();
       addTearDown(updates.close);
       await pumpHome(tester: tester, state: disconnected, updates: updates.stream);
@@ -341,6 +346,7 @@ void main() {
       expect(lineOpacity(tester), 1);
 
       updates.add(const ProjectListState.loading());
+      starts.add(LocalBridgeStartupState.settled);
       await tester.pump();
       await tester.pump();
       expect(lineOpacity(tester), 0);
@@ -361,6 +367,25 @@ void main() {
       expect(find.text(line), findsNothing);
       expect(loader, findsNothing);
       expect(find.text("Start the bridge"), findsOneWidget);
+    });
+
+    testWidgets("a launch still waiting on the relay counts from its start, through its offline report", (
+      tester,
+    ) async {
+      arrangeStarting();
+      final updates = StreamController<ProjectListState>();
+      addTearDown(updates.close);
+      await pumpHome(tester: tester, state: const ProjectListState.loading(), updates: updates.stream);
+      await tester.pump(const Duration(seconds: 6));
+      updates.add(disconnected);
+      await tester.pump();
+      await tester.pump();
+      expect(lineOpacity(tester), 0);
+
+      // 10 s after the launch began, not after the offline report.
+      await tester.pump(const Duration(seconds: 4));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(lineOpacity(tester), 1);
     });
 
     testWidgets("an ordinary load never shows the line", (tester) async {
