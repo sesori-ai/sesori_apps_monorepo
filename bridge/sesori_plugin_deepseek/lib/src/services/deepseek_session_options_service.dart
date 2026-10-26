@@ -11,15 +11,19 @@ class DeepSeekSessionOptionsService({
 }) {
   static const String modelConfigId = "deepseek.model";
   static const String reasoningConfigId = "deepseek.reasoning_effort";
+  static const String _noModelsActionHint =
+      "DeepSeek reported no models. Complete DeepSeek provider setup, such as an API key, then retry.";
 
   Future<PluginSessionOptionsDiscoveryResult> getSessionOptions({
     required AcpStdioClient client,
     required String cwd,
   }) async {
     try {
-      return PluginSessionOptionsDiscoveryResult.observed(
-        options: await _discover(client: client, cwd: cwd),
-      );
+      final options = await _tryDiscover(client: client, cwd: cwd);
+      if (options == null) {
+        return const PluginSessionOptionsDiscoveryResult.authenticationRequired(actionHint: _noModelsActionHint);
+      }
+      return PluginSessionOptionsDiscoveryResult.observed(options: options);
     } on Object catch (error, stackTrace) {
       Log.w("[$pluginId] session option discovery failed", error, stackTrace);
       return const PluginSessionOptionsDiscoveryResult.failed();
@@ -97,15 +101,14 @@ class DeepSeekSessionOptionsService({
     }
   }
 
-  Future<PluginSessionOptions> _discover({required AcpStdioClient client, required String cwd}) async {
+  Future<PluginSessionOptions> _discover({required AcpStdioClient client, required String cwd}) async =>
+      await _tryDiscover(client: client, cwd: cwd) ??
+      (throw const PluginOperationException("deepseek/catalog", message: _noModelsActionHint));
+
+  /// Returns null when DeepSeek lists no models, which it does until a provider credential is configured.
+  Future<PluginSessionOptions?> _tryDiscover({required AcpStdioClient client, required String cwd}) async {
     final options = await repository.discover(client: client, cwd: cwd, timeout: discoveryTimeout);
-    if (options.providers.providers.isEmpty) {
-      throw const PluginOperationException(
-        "deepseek/catalog",
-        // DeepSeek Harness lists no models until a provider credential is configured.
-        message: "DeepSeek reported no models. Complete DeepSeek provider setup, such as an API key, then retry.",
-      );
-    }
+    if (options.providers.providers.isEmpty) return null;
     final selected = options.agents.single.model;
     configurationTracker.setProcessDefaults(
       modelId: selected?.modelID,

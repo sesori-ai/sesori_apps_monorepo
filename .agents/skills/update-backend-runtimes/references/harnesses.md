@@ -374,10 +374,12 @@ concrete problem can justify a documented temporary hold with a resolution path.
   changes. Keep a dependent consumer PR draft or unopened until assets exist.
 - **Publication:** use the producer's existing tagged release workflow, six native
   package/smoke jobs, consumer conformance, complete-set verification and publish
-  gates. Verify tag/approved source correspondence. This private npm package is
+  gates. Verify the tag points at the merged producer commit. This private npm package is
   distributed via GitHub Releases, not `npm publish`. A runtime-refresh request
-  authorizes this routine release: merge the producer PR once its checks pass, then
-  push tag `v<version>` on that merge commit so the workflow publishes. It does not
+  authorizes this routine release without a human approval: merge the producer PR
+  through `monitor-pr` readiness once its checks and automated reviews settle with
+  every finding handled, then push tag `v<version>` on that merge commit so the
+  workflow publishes. It does not
   authorize other producer changes, protocol changes or releases.
 - **Assets:** six `sesori-deepseek-acp-v<version>-<platform>-<arch>` archives:
   `darwin`/`linux` arm64/x64 `.tar.gz`, `windows` arm64/x64 `.zip`, plus

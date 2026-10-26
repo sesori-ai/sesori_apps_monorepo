@@ -97,9 +97,9 @@ identify the release channel; query it afresh rather than copying example pins.
 - Prefer official stable releases. Do not silently substitute `main`, a
   prerelease, a fork, a different package, or a community adapter. Report channel
   disagreement or missing stable releases. Existing prerelease dependencies
-  inside an adapter are recorded honestly, not silently replaced. The one
-  standing exception is DeepSeek Harness, which publishes only prereleases:
-  its newest `next` RC is the target (see the reference).
+  inside an adapter are recorded honestly, not silently replaced or upgraded. The
+  one standing exception is DeepSeek Harness, which publishes only prereleases:
+  the npm `next` dist-tag of `@deepseek-ai/dsh-agent` is the target (see the reference).
 - Distinguish upstream harness version, adapter version, protocol version,
   registry package version, and branded build identity. They need not match.
 - For GitHub releases check draft/prerelease flags, tag, date, assets and digests.
