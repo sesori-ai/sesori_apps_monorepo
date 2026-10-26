@@ -7,8 +7,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 
-/// The macOS runner's quit seam; see `ApplicationTermination.swift`.
-const MethodChannel macosTerminationChannel = MethodChannel("sesori/termination");
+import "macos_termination_channel.dart";
 
 /// Ends the process. On macOS the runner terminates through AppKit, so a
 /// pending system quit request is answered and Sparkle can install on quit.

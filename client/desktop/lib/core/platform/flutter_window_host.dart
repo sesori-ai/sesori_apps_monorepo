@@ -8,7 +8,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:window_manager/window_manager.dart";
 
-import "io_desktop_application_terminator.dart";
+import "macos_termination_channel.dart";
 
 /// Dumb `window_manager` adapter for the Sesori desktop window. It also
 /// relays the macOS runner's system quit requests.
