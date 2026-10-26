@@ -15,8 +15,7 @@ import "widgets/settings_window_page.dart";
 /// Vertical inset between the nav bar and the list.
 const double _contentTopPadding = 10.0;
 
-/// Wide enough for the longest action and the hint under a disabled Remove…
-/// without the menu covering its row.
+/// Wide enough for the longest action and the hint under a disabled Remove….
 const double _menuWidth = 300;
 
 /// Every computer on the account, in the computer menu's order, each with its
@@ -144,50 +143,51 @@ class const _ComputerRow({
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
+    List<PregoMenuEntry> entries() => [
+      if (!isCurrent)
+        PregoMenuItem(
+          key: ValueKey("computers-switch-${computer.id}"),
+          title: loc.computersSwitch,
+          subtitle: null,
+          leadingIcon: TablerRegular.switch_horizontal,
+          isSelected: false,
+          shortcutLabel: null,
+          onTap: onSwitch,
+        ),
+      PregoMenuItem(
+        key: ValueKey("computers-rename-${computer.id}"),
+        title: loc.computersRename,
+        subtitle: null,
+        leadingIcon: TablerRegular.pencil,
+        isSelected: false,
+        shortcutLabel: null,
+        isEnabled: !isActionRunning,
+        // The menu has closed by now; the row it hung off is still here.
+        onTap: () => unawaited(_rename(context: context)),
+      ),
+      PregoMenuItem(
+        key: ValueKey("computers-remove-${computer.id}"),
+        title: loc.computersRemove,
+        // Only an online computer other than this one waits, and says why.
+        subtitle: isThisComputer || canRemove ? null : loc.computersRemoveOnlineHint(computer.name),
+        leadingIcon: TablerRegular.trash,
+        isSelected: false,
+        shortcutLabel: null,
+        isEnabled: isThisComputer || (canRemove && !isActionRunning),
+        isDestructive: canRemove,
+        onTap: () =>
+            unawaited(isThisComputer ? _explainThisComputer(context: context) : _confirmRemove(context: context)),
+      ),
+    ];
+    // Flat panels, as a glass popup would morph out of the whole row. A
+    // secondary click anywhere on the row drops this one from the pointer.
     return PregoAnchorMenu(
-      // A flat panel beside the row; a glass popup would morph out of the
-      // whole row.
       flat: true,
       acquireOpenLease: null,
       menuWidth: _menuWidth,
-      entriesBuilder: () => [
-        if (!isCurrent)
-          PregoMenuItem(
-            key: ValueKey("computers-switch-${computer.id}"),
-            title: loc.computersSwitch,
-            subtitle: null,
-            leadingIcon: TablerRegular.switch_horizontal,
-            isSelected: false,
-            shortcutLabel: null,
-            onTap: onSwitch,
-          ),
-        PregoMenuItem(
-          key: ValueKey("computers-rename-${computer.id}"),
-          title: loc.computersRename,
-          subtitle: null,
-          leadingIcon: TablerRegular.pencil,
-          isSelected: false,
-          shortcutLabel: null,
-          isEnabled: !isActionRunning,
-          // The menu has closed by now; the row it hung off is still here.
-          onTap: () => unawaited(_rename(context: context)),
-        ),
-        PregoMenuItem(
-          key: ValueKey("computers-remove-${computer.id}"),
-          title: loc.computersRemove,
-          // Only an online computer other than this one waits, and says why.
-          subtitle: isThisComputer || canRemove ? null : loc.computersRemoveOnlineHint(computer.name),
-          leadingIcon: TablerRegular.trash,
-          isSelected: false,
-          shortcutLabel: null,
-          isEnabled: isThisComputer || (canRemove && !isActionRunning),
-          isDestructive: canRemove,
-          onTap: () =>
-              unawaited(isThisComputer ? _explainThisComputer(context: context) : _confirmRemove(context: context)),
-        ),
-      ],
-      triggerBuilder: (context, openMenu) => GestureDetector(
-        onSecondaryTap: isBusy ? null : openMenu,
+      entriesBuilder: entries,
+      triggerBuilder: (context, openRowMenu) => GestureDetector(
+        onSecondaryTap: isBusy ? null : openRowMenu,
         child: PregoGroupedRow(
           icon: ComputerMenu.platformIcon(platform: computer.platform),
           title: Row(
@@ -217,19 +217,27 @@ class const _ComputerRow({
             spacing: PregoSpacing.xs,
             children: [
               if (isCurrent) Icon(TablerRegular.check, size: PregoIconSize.sm, color: prego.colors.bgBrandSolid),
-              Semantics(
-                label: loc.computersActions(computer.name),
-                child: Tooltip(
-                  message: loc.computersActions(computer.name),
-                  excludeFromSemantics: true,
-                  child: PregoButtonsSolid.iconOnly(
-                    key: ValueKey("computers-actions-${computer.id}"),
-                    leadingIcon: TablerRegular.dots,
-                    hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                    size: PregoButtonsSolidSize.sm,
-                    // The spinner takes the button's place, so the row keeps its size.
-                    isLoading: isBusy,
-                    onPressed: isBusy ? null : openMenu,
+              // The "⋯" button hangs the same menu off itself.
+              PregoAnchorMenu(
+                flat: true,
+                placement: PregoMenuPlacement.belowRightAligned,
+                acquireOpenLease: null,
+                menuWidth: _menuWidth,
+                entriesBuilder: entries,
+                triggerBuilder: (context, openMenu) => Semantics(
+                  label: loc.computersActions(computer.name),
+                  child: Tooltip(
+                    message: loc.computersActions(computer.name),
+                    excludeFromSemantics: true,
+                    child: PregoButtonsSolid.iconOnly(
+                      key: ValueKey("computers-actions-${computer.id}"),
+                      leadingIcon: TablerRegular.dots,
+                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                      size: PregoButtonsSolidSize.sm,
+                      // The spinner takes the button's place, so the row keeps its size.
+                      isLoading: isBusy,
+                      onPressed: isBusy ? null : openMenu,
+                    ),
                   ),
                 ),
               ),
