@@ -102,7 +102,8 @@ class DeepSeekSessionOptionsService({
     if (options.providers.providers.isEmpty) {
       throw const PluginOperationException(
         "deepseek/catalog",
-        message: "DeepSeek reported no usable providers",
+        // DeepSeek Harness lists no models until a provider credential is configured.
+        message: "DeepSeek reported no models. Complete DeepSeek provider setup, such as an API key, then retry.",
       );
     }
     final selected = options.agents.single.model;

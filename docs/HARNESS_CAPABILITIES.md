@@ -1126,13 +1126,16 @@ generic `tool_call` with no ids or lifecycle notifications; those exist only in
 `--mode rpc`, which Sesori does not drive. `session/cancel` aborts the whole
 turn.
 
-⁹ DeepSeek's published adapter 0.2.0 over dsh 0.2.0-rc.2 is the managed target;
+⁹ DeepSeek's published adapter 0.2.1 over dsh 0.2.1-rc.3 is the managed target;
 adapter 0.1.5 remains the minimum accepted runtime. From dsh 0.2.0 a sub-agent
 may delegate only one level by default (previously three), with at most eight
 active; users raise `subagent.config.maxDepth` in their DeepSeek profile. Provider
 settings live in `$DSH_HOME/profiles/sesori/cordis.patch.yml`; `settings.yaml` is
 ignored with no automatic import, and a custom provider `baseURL` must speak the
-Anthropic Messages API. ACP uses native subtree stop for the named scope
+Anthropic Messages API. From dsh 0.2.1 every `subagent` and `subagent_fork`
+delegation starts a background child, and the harness lists no models until a
+provider credential is configured, so session-option discovery fails with setup
+guidance instead of a later failed prompt. ACP uses native subtree stop for the named scope
 and every independently resident descendant root, while ordered input cancel,
 exact-child authority, lifecycle, tiles, and child catalogs remain native-backed.
 Released clients retain their own child fanout. Phone QA on unchanged published
@@ -1145,7 +1148,7 @@ and surviving root-owned shell jobs do not imply failed descendant cancellation 
 broader process-stop support. Cold tile/history reload, read-only child navigation,
 push delivery, restart/reconnect, multiple clients, alternate mobile platforms,
 and macOS desktop remain unexecuted in this gate; desktop was deferred by explicit
-user choice. This 0.1.4 evidence does not requalify the current 0.2.0 managed target.
+user choice. This 0.1.4 evidence does not requalify the current 0.2.1 managed target.
 The adapter loads explicitly installed local plugins from only the application-owned
 `$DSH_HOME/profiles/sesori` profile on startup, including after `dsh --profile sesori`
 rewrites the profile root, then reapplies Sesori's mandatory
