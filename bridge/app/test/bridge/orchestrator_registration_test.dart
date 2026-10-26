@@ -376,6 +376,51 @@ void main() {
       expect(output, contains("SseSubscribe: path=/events/private-subscription-path"));
       expect(output, contains("GET /global/health?private-route-query=yes"));
     });
+
+    test("a project_view from an older app is accepted and changes nothing", () async {
+      late _RegistrationHarness harness;
+      final output = await _captureLogOutput(() async {
+        harness = await _RegistrationHarness.start(
+          repository: FakeBridgeRegistrationRepository()..nextBridgeId = "br_view0001",
+        );
+        try {
+          final phone = await _activatePhone(harness: harness, connId: 9);
+          for (final projectId in ["fixture-project", null]) {
+            await _sendEncrypted(
+              socket: phone.socket,
+              connId: 9,
+              encryptor: phone.encryptor,
+              message: RelayMessage.projectView(projectId: projectId),
+            );
+          }
+          await _sendEncrypted(
+            socket: phone.socket,
+            connId: 9,
+            encryptor: phone.encryptor,
+            message: const RelayMessage.request(
+              id: "after-project-view",
+              method: "GET",
+              path: "/global/health",
+              headers: {},
+              body: null,
+            ),
+          );
+
+          // The bridge handles relay frames in order, so a reply to either project_view would arrive first.
+          expect(await phone.messages.moveNext(), isTrue);
+          final wire = phone.messages.current as List<int>;
+          final decrypted = await unframe(wire.sublist(2), encryptor: phone.encryptor);
+          final reply = RelayMessage.fromJson(jsonDecodeMap(utf8.decode(decrypted)));
+          expect(reply, isA<RelayResponse>().having((response) => response.id, "id", "after-project-view"));
+        } finally {
+          await harness.close();
+        }
+      });
+
+      expect(output, contains("decrypted msg type: RelayProjectView"));
+      expect(output, isNot(contains("failed to parse encrypted relay message")));
+      expect(output, isNot(contains("unhandled msg type")));
+    });
   });
 
   group("OrchestratorSession relay takeover (ADR A22)", () {

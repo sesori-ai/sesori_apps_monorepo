@@ -38,7 +38,6 @@ Future<void> insertTestSession({
     lastAgent: agent,
     lastAgentModel: agentModel,
     pluginId: pluginId,
-    preservePullRequestScope: false,
   );
 }
 

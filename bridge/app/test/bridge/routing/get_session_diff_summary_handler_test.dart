@@ -34,7 +34,6 @@ void main() {
             plugin: FakeBridgePlugin(),
             sessionDao: db.sessionDao,
             projectsDao: db.projectsDao,
-            pullRequestDao: db.pullRequestDao,
             unseenCalculator: const SessionUnseenCalculator(),
           ),
           sessionDiffRepository: SessionDiffRepository(
@@ -80,7 +79,6 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",

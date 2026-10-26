@@ -26,11 +26,9 @@ import "package:sesori_shared/sesori_shared.dart"
         CommandListResponse,
         MessagePartSubtask,
         MessageWithParts,
-        PrState,
         ProjectActivitySummary,
         PromptModel,
         PromptPart,
-        PullRequestInfo,
         QueuedSessionPrompt,
         Session,
         SessionAbortNotPerformedRefusal,
@@ -42,10 +40,8 @@ import "package:sesori_shared/sesori_shared.dart"
         SessionVariant;
 
 import "../api/database/daos/projects_dao.dart";
-import "../api/database/daos/pull_request_dao.dart";
 import "../api/database/daos/session_dao.dart";
 import "../api/database/tables/projects_table.dart" show ProjectDto;
-import "../api/database/tables/pull_requests_table.dart";
 import "../api/database/tables/session_table.dart" show SessionDto;
 import "../runtime/plugin_runtime.dart";
 import "mappers/plugin_activity_summary_mapper.dart";
@@ -54,7 +50,6 @@ import "mappers/plugin_message_mapper.dart";
 import "mappers/plugin_session_status_mapper.dart";
 import "mappers/plugin_to_shared_mapping.dart";
 import "mappers/prompt_part_mapper.dart";
-import "mappers/pull_request_mapper.dart";
 import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
 import "models/project_not_found_exception.dart";
@@ -62,7 +57,6 @@ import "models/session_abort_result.dart";
 import "models/session_continuation_record.dart";
 import "models/session_operation.dart";
 import "models/stored_session.dart";
-import "models/verified_github_login.dart";
 import "project_catalog_identity_calculator.dart";
 import "random_hex_id.dart";
 import "session_unseen_calculator.dart";
@@ -94,7 +88,6 @@ class SessionRepository({
   required final PluginRuntime _runtime,
   required final SessionDao _sessionDao,
   required final ProjectsDao _projectsDao,
-  required final PullRequestDao _pullRequestDao,
   required final SessionUnseenCalculator _unseenCalculator,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
   required final Duration _aggregateSourceDeadline,
@@ -159,19 +152,17 @@ class SessionRepository({
     required String projectId,
     required int? start,
     required int? limit,
-    required VerifiedGithubLogin? verifiedGithubLogin,
   }) async {
     if (await _projectsDao.getProject(projectId: projectId) == null) {
       throw ProjectNotFoundException(projectId: projectId);
     }
     final effectiveLimit = limit == null || limit <= 0 ? null : limit;
-    return await _mapCatalogSessions(
+    return _mapCatalogSessions(
       rows: await _sessionDao.getRootCatalogSessions(
         projectId: projectId,
         offset: start ?? 0,
         limit: effectiveLimit,
       ),
-      verifiedGithubLogin: verifiedGithubLogin,
     );
   }
 
@@ -255,7 +246,6 @@ class SessionRepository({
             lastAgentModel: lastAgentModel,
             fastMode: fastMode,
             pluginId: pluginId,
-            preservePullRequestScope: existingBinding?.projectId == projectId && existingBinding?.branchName == null,
           );
           if (parentBinding != null) {
             await _sessionDao.setParentSessionId(
@@ -285,7 +275,6 @@ class SessionRepository({
     );
     return _sessionCatalogMapper.map(
       row: result.row,
-      pullRequest: null,
       unseen: _unseenCalculator.isUnseen(
         activity: result.row.lastActivityAt,
         userMessage: result.row.lastUserMessageAt,
@@ -639,10 +628,7 @@ class SessionRepository({
       operation: SessionOperation.deleteSession,
     );
     final subtree = await _getSessionSubtree(root: binding);
-    final deletionSnapshot = (await _mapCatalogSessions(
-      rows: [binding],
-      verifiedGithubLogin: null,
-    )).single;
+    final deletionSnapshot = _mapCatalogSessions(rows: [binding]).single;
     // An unreachable backend must not strand the session in the catalog: an
     // uninstalled or unstartable plugin would otherwise leave the user with a
     // row they can never remove. The tombstone below keeps a surviving backend
@@ -1144,51 +1130,11 @@ class SessionRepository({
     }
   }
 
-  Future<List<Session>> enrichSessions({
-    required List<Session> sessions,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    final sessionIds = sessions.map((session) => session.id).toList(growable: false);
-
-    final prsBySessionId = await _getVisiblePrsBySessionIds(
-      sessionIds: sessionIds,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
-
-    final pullRequestsBySessionId = <String, PullRequestInfo>{};
-    for (final session in sessions) {
-      final selectedPr = _selectBestPr(prsBySessionId[session.id]);
-      if (selectedPr != null) {
-        pullRequestsBySessionId[session.id] = pullRequestInfoFromDto(selectedPr);
-      }
-    }
-
-    return [
-      for (final session in sessions)
-        session.copyWith(
-          pullRequest: pullRequestsBySessionId[session.id],
-          pullRequestHistory: const <PullRequestInfo>[],
-        ),
-    ];
-  }
-
-  Future<List<Session>> _mapCatalogSessions({
-    required List<SessionDto> rows,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async {
-    final sessionIds = [for (final row in rows) row.sessionId];
-    final prsBySessionId = await _getVisiblePrsBySessionIds(
-      sessionIds: sessionIds,
-      verifiedGithubLogin: verifiedGithubLogin,
-    );
+  List<Session> _mapCatalogSessions({required List<SessionDto> rows}) {
     return [
       for (final row in rows)
         _sessionCatalogMapper.map(
           row: row,
-          pullRequest: switch (_selectBestPr(prsBySessionId[row.sessionId])) {
-            final pullRequest? => pullRequestInfoFromDto(pullRequest),
-            null => null,
-          },
           unseen: _unseenCalculator.isUnseen(
             activity: row.lastActivityAt,
             userMessage: row.lastUserMessageAt,
@@ -1198,47 +1144,6 @@ class SessionRepository({
     ];
   }
 
-  Future<Map<String, List<PullRequestDto>>> _getVisiblePrsBySessionIds({
-    required List<String> sessionIds,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) {
-    if (verifiedGithubLogin == null) {
-      return Future.value(<String, List<PullRequestDto>>{});
-    }
-    return _pullRequestDao.getPrsBySessionIds(
-      sessionIds: sessionIds,
-      verifiedGithubLogin: verifiedGithubLogin.login,
-    );
-  }
-
-  /// Selects the most relevant PR from a list of candidates.
-  /// Prefers OPEN PRs, then breaks ties by highest PR number.
-  static PullRequestDto? _selectBestPr(List<PullRequestDto>? prs) {
-    if (prs == null || prs.isEmpty) return null;
-
-    PullRequestDto? selected;
-    for (final pr in prs) {
-      if (selected == null) {
-        selected = pr;
-        continue;
-      }
-
-      final selectedIsOpen = selected.state == PrState.open;
-      final currentIsOpen = pr.state == PrState.open;
-
-      if (currentIsOpen && !selectedIsOpen) {
-        selected = pr;
-        continue;
-      }
-
-      if (currentIsOpen == selectedIsOpen && pr.prNumber > selected.prNumber) {
-        selected = pr;
-      }
-    }
-
-    return selected;
-  }
-
   Future<List<Session>> getChildSessions({required String sessionId}) async {
     if (await _sessionDao.getSession(sessionId: sessionId) == null) {
       throw PluginOperationException.notFound(
@@ -1246,9 +1151,8 @@ class SessionRepository({
         message: "session $sessionId was not found",
       );
     }
-    return await _mapCatalogSessions(
+    return _mapCatalogSessions(
       rows: await _sessionDao.getChildCatalogSessions(parentSessionId: sessionId),
-      verifiedGithubLogin: null,
     );
   }
 
@@ -1293,11 +1197,6 @@ class SessionRepository({
       selected.addAll(rows.entries.where((entry) => include(entry.value)).map((entry) => entry.key));
     }
     return selected;
-  }
-
-  Future<List<StoredSession>> getStoredSessionsByProjectId({required String projectId}) async {
-    final sessions = await _sessionDao.getSessionsByProject(projectId: projectId);
-    return sessions.map((session) => session.toStoredSession()).toList(growable: false);
   }
 
   Future<bool> hasOtherActiveSessionsSharing({
@@ -1542,10 +1441,7 @@ class SessionRepository({
   Future<Session?> getCatalogSession({required String sessionId}) async {
     final row = await _sessionDao.getSession(sessionId: sessionId);
     if (row == null) return null;
-    return (await _mapCatalogSessions(
-      rows: [row],
-      verifiedGithubLogin: null,
-    )).single;
+    return _mapCatalogSessions(rows: [row]).single;
   }
 
   Future<void> archiveStoredSession({
@@ -1693,7 +1589,6 @@ class SessionRepository({
   }) => ProjectDto(
     projectId: projectId,
     path: path,
-    prCacheGithubLogin: null,
     createdAt: 0,
     updatedAt: 0,
     projectionUpdatedAt: 0,

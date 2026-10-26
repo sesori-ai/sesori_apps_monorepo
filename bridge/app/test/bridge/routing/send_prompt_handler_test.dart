@@ -35,7 +35,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       handler = SendPromptHandler(
@@ -367,7 +366,6 @@ void main() {
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
@@ -417,7 +415,6 @@ void main() {
         plugin: failingPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final localHandler = SendPromptHandler(
@@ -695,7 +692,6 @@ class _ThrowingUpdateSessionRepository({
         runtime: createTestPluginRuntime(plugins: [plugin]),
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
-        pullRequestDao: database.pullRequestDao,
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,

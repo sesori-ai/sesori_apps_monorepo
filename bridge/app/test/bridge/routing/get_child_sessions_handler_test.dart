@@ -97,25 +97,5 @@ void main() {
       expect(session.time?.updated, equals(20));
       expect(session.time?.archived, isNull);
     });
-
-    test("keeps pullRequest null for child sessions", () async {
-      plugin.childSessionsResult = const [
-        PluginSession(
-          id: "child-1",
-          projectID: "project-1",
-          directory: "/tmp/project",
-          parentID: "parent-1",
-          title: "Child Session",
-          time: null,
-        ),
-      ];
-
-      final response = await handler.handle(
-        makeRequest("POST", "/session/children"),
-        body: const SessionIdRequest(sessionId: "parent-1"),
-      );
-
-      expect(response.items.single.pullRequest, isNull);
-    });
   });
 }

@@ -60,7 +60,6 @@ SessionDetailLoadResult _loadedResult({required bool isArchived}) {
     snapshot: SessionDetailSnapshot(
       areOptionsStale: false,
       bridgeQueuedPrompts: const [],
-      projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
       messages: const [],
@@ -88,7 +87,6 @@ SessionDetailLoadResult _loadedResultWithCanonicalTitle(String title) {
     snapshot: SessionDetailSnapshot(
       areOptionsStale: false,
       bridgeQueuedPrompts: const [],
-      projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
       messages: const [],
@@ -116,7 +114,6 @@ SessionDetailLoadResult _loadedResultWithPendingQuestion() {
     snapshot: SessionDetailSnapshot(
       areOptionsStale: false,
       bridgeQueuedPrompts: [],
-      projectId: "project-1",
       pluginId: "opencode",
       supportsPromptAttachments: false,
       messages: [],
@@ -173,7 +170,6 @@ void _registerDependencies({
   getIt.registerSingleton<SessionApprovalService>(SessionApprovalService(repository: promptDispatcher));
   getIt.registerSingleton<PermissionRepository>(permissionRepository);
   getIt.registerSingleton<SessionViewingService>(sessionViewingService);
-  getIt.registerSingleton<ProjectViewingService>(stubbedProjectViewingService());
   getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
   final routeSource = MockRouteSource(initialRoute: AppRouteDef.sessionDetail);
   getIt.registerSingleton<RouteSource>(routeSource, dispose: (_) => routeSource.dispose());

@@ -129,10 +129,6 @@ class SessionListCubit({
             // Unseen changes are consumed via the SessionUnseenTracker stream.
             SesoriSessionUnseenChanged():
           break;
-        case SesoriSessionsUpdated(:final projectID):
-          if (projectID == _projectId) {
-            unawaited(refreshSessions());
-          }
       }
     } catch (e, st) {
       loge("SSE event handler error", e, st);

@@ -1,7 +1,6 @@
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/rename_session_handler.dart";
@@ -31,7 +30,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       sessionOperationDispatcher = SessionOperationDispatcher(sessionRepository: sessionRepository);
@@ -102,12 +100,11 @@ void main() {
       expect(plugin.lastRenameSessionTitle, equals("New Title"));
     });
 
-    test("returns the authoritative catalog Session without ungated PR metadata", () async {
+    test("returns the authoritative catalog Session", () async {
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "fake",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "p1",
@@ -119,36 +116,6 @@ void main() {
 
         lastAgent: null,
         lastAgentModel: null,
-      );
-      await db.projectsDao.setPrCacheGithubLogin(
-        projectId: "p1",
-        githubLogin: "octocat",
-      );
-      await db.sessionDao.updatePullRequestScopes(
-        updates: [
-          (
-            sessionId: "s1",
-            currentBranchName: "feature/rename",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/rename",
-          prNumber: 13,
-          url: "https://github.com/org/repo/pull/13",
-          title: "Rename PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.unknown,
-          reviewDecision: PrReviewDecision.unknown,
-          checkStatus: PrCheckStatus.unknown,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
       );
 
       plugin.renameSessionResult = const PluginSession(
@@ -173,7 +140,6 @@ void main() {
       expect(result.time?.created, equals(1));
       expect(result.time?.updated, greaterThan(1));
       expect(result.time?.archived, isNull);
-      expect(result.pullRequest, isNull);
       await sessionMutationDispatcher.dispose();
       expect(plugin.lastRenameSessionId, equals("backend-s1"));
     });

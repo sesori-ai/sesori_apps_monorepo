@@ -29,7 +29,6 @@ class const SessionDetailScreen({
       providers: [
         BlocProvider(
           create: (_) => createSessionDetailCubit(
-            claimProjectView: !auditView,
             locator: getIt,
             sessionId: sessionId,
             projectId: projectId,

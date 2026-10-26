@@ -7,9 +7,11 @@ import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/runtime/plugin_runtime.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
     show normalizeProjectDirectory, resolveUserHomeDirectory, sesoriWorktreesDirectory;
@@ -17,6 +19,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
+import "../helpers/fake_git_cli_api.dart";
 import "../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_database.dart";
@@ -45,7 +48,6 @@ void main() {
             path: projectPath,
             hidden: true,
             baseBranch: "main",
-            prCacheGithubLogin: null,
             displayName: "User project name",
             createdAt: 10,
             updatedAt: 20,
@@ -64,19 +66,6 @@ void main() {
             title: "User session title",
             catalogTitle: "Old catalog title",
             projectionUpdatedAt: 20,
-          ),
-        ],
-      );
-      await database.projectsDao.setPrCacheGithubLogin(
-        projectId: "stored-project",
-        githubLogin: "octocat",
-      );
-      await database.sessionDao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "ses_existing_root",
-            currentBranchName: "feature/current",
-            currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
           ),
         ],
       );
@@ -125,7 +114,6 @@ void main() {
       expect(project?.hidden, isTrue);
       expect(project?.baseBranch, "main");
       expect(project?.displayName, "User project name");
-      expect(project?.prCacheGithubLogin, "octocat");
 
       final root = await database.sessionDao.getSessionByBinding(
         pluginId: "native",
@@ -143,11 +131,6 @@ void main() {
       expect(root?.title, "User session title");
       expect(root?.catalogTitle, "Fresh catalog title");
       expect(root?.archivedAt, isNull);
-      expect(root?.currentBranchName, "feature/current");
-      expect(
-        root?.currentGithubRepositoryIdentity,
-        "sesori-ai/sesori_apps_monorepo",
-      );
       expect(child?.sessionId, startsWith("ses_"));
       expect(child?.parentSessionId, root?.sessionId);
       expect(grandchild?.parentSessionId, child?.sessionId);
@@ -445,6 +428,87 @@ void main() {
 
       expect(await database.projectsDao.getAllProjects(), isNotEmpty);
       expect(await database.projectsDao.getCatalogProjects(), isEmpty);
+    });
+
+    group("a folder opened through a symbolic link", () {
+      late String folder;
+      late String link;
+
+      setUp(() {
+        // Resolved first, so the folder is spelled without links even where
+        // the temporary directory itself is one (/var/folders on macOS).
+        final root = Directory.systemTemp.createTempSync("sesori-symlink-").resolveSymbolicLinksSync();
+        addTearDown(() => Directory(root).deleteSync(recursive: true));
+        folder = p.join(root, "project");
+        Directory(folder).createSync();
+        link = p.join(root, "link");
+        Link(link).createSync(folder);
+      });
+
+      Future<Project> openThroughLink() async {
+        final projects = singlePluginProjectRepository(
+          projectsDao: database.projectsDao,
+          sessionDao: database.sessionDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+          filesystemApi: const FilesystemApi(),
+          gitCliApi: FakeGitCliApi(),
+        );
+        final target = await projects.resolveProjectOpenTarget(path: link);
+        return (await projects.persistOpenedProject(target: target, observedAt: 20)).committedProject;
+      }
+
+      test("stays one project when a native import reports the resolved folder", () async {
+        final opened = await openThroughLink();
+        await database.sessionDao.upsertSessionRows(
+          rows: [
+            _sessionRow(
+              sessionId: "ses_opened",
+              backendSessionId: "root",
+              projectId: opened.id,
+              directory: opened.path,
+              projectionUpdatedAt: 20,
+            ),
+          ],
+        );
+        final plugin = _NativeImportPlugin(
+          projects: [PluginProject(id: "backend-project", directory: folder)],
+          rootsByProject: {
+            folder: [_pluginSession(id: "root", directory: folder)],
+          },
+          childrenByParent: const {},
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect((await database.projectsDao.getAllProjects()).map((project) => project.projectId), [opened.id]);
+        expect(
+          (await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "root"))?.projectId,
+          opened.id,
+        );
+        expect(opened.path, folder);
+      });
+
+      test("stays one project when a derived import reports a session in the resolved folder", () async {
+        final opened = await openThroughLink();
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: "/tmp/launch",
+          sessions: [_pluginSession(id: "terminal-root", directory: folder)],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals([opened.id, "/tmp/launch"]),
+        );
+        expect(
+          (await database.sessionDao.getSessionByBinding(
+            pluginId: plugin.id,
+            backendSessionId: "terminal-root",
+          ))?.projectId,
+          opened.id,
+        );
+      });
     });
 
     group("scratch folders", () {
@@ -1585,7 +1649,6 @@ ProjectDto _projectRow({required String id, required String path, int updatedAt 
     path: path,
     hidden: false,
     baseBranch: null,
-    prCacheGithubLogin: null,
     displayName: null,
     createdAt: 10,
     updatedAt: updatedAt,
@@ -1615,8 +1678,6 @@ SessionDto _sessionRow({
     directory: directory,
     worktreePath: worktreePath,
     branchName: worktreePath == null ? null : "feature",
-    currentBranchName: null,
-    currentGithubRepositoryIdentity: null,
     isDedicated: worktreePath != null,
     archivedAt: archivedAt,
     baseBranch: "main",

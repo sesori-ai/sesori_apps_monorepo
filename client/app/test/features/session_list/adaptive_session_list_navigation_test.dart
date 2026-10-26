@@ -13,6 +13,13 @@ import "package:theme_prego/module_prego.dart";
 import "../../core/routing/adaptive_session_router_test_harness.dart";
 import "../../helpers/test_helpers.dart";
 
+/// The reveal origin the + puts in the URL: its centre as fractions of the
+/// 390 x 800 phone.
+String _revealFrom({required WidgetTester tester}) {
+  final centre = tester.getCenter(find.byKey(const Key("home-new-session")));
+  return "${(centre.dx / 390).toStringAsFixed(4)},${(centre.dy / 800).toStringAsFixed(4)}";
+}
+
 Future<void> _pumpRouteFrames(WidgetTester tester) async {
   await tester.pump();
   await tester.pump(const Duration(milliseconds: 100));
@@ -325,11 +332,11 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("Session One"), findsNothing);
     expect(find.text("Session Two"), findsOneWidget);
-    verify(() => harness.projectViewingService.beginListClaim(projectId: "p2")).called(1);
 
+    final reveal = _revealFrom(tester: tester);
     await tester.tap(find.byKey(const Key("home-new-session")));
     await tester.pumpAndSettle();
-    expect(harness.router.state.uri.toString(), "/sessions/new?project=p2&name=Project+Two");
+    expect(harness.router.state.uri.queryParameters, {"project": "p2", "name": "Project Two", "reveal": reveal});
     harness.router.pop();
     await tester.pumpAndSettle();
 
@@ -350,17 +357,20 @@ void main() {
     await tester.pumpWidget(harness.buildApp());
     await tester.pumpAndSettle();
 
+    final reveal = _revealFrom(tester: tester);
     await tester.tap(find.byKey(const Key("home-new-session")));
     await tester.pumpAndSettle();
-    expect(harness.router.state.uri.toString(), "/sessions/new");
+    expect(harness.router.state.uri.path, "/sessions/new");
+    expect(harness.router.state.uri.queryParameters, {"reveal": reveal});
     // The picker opens by itself, with nothing chosen.
     expect(find.text("Project One"), findsOneWidget);
     expect(find.text("Project Two"), findsOneWidget);
     expect(find.text("Open folder…"), findsOneWidget);
 
+    // The chosen project replaces the page in place, still leaving by the +.
     await tester.tap(find.text("Project Two"));
     await tester.pumpAndSettle();
-    expect(harness.router.state.uri.toString(), "/sessions/new?project=p2&name=Project+Two");
+    expect(harness.router.state.uri.queryParameters, {"project": "p2", "name": "Project Two", "reveal": reveal});
   });
 
   testWidgets("the wide pane's draft follows the filter and the header", (tester) async {

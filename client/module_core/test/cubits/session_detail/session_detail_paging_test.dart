@@ -96,7 +96,6 @@ void main() {
 
     cubit = SessionDetailCubit(
       connectionService,
-      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
@@ -106,7 +105,6 @@ void main() {
       promptDispatcher: sessionRepository,
       permissionRepository: MockPermissionRepository(),
       sessionViewingService: stubbedSessionViewingService(),
-      projectViewingService: stubbedProjectViewingService(),
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
@@ -607,7 +605,6 @@ SessionDetailSnapshot _snapshot({
 }) => SessionDetailSnapshot(
   areOptionsStale: false,
   bridgeQueuedPrompts: const [],
-  projectId: "project-1",
   pluginId: "plugin-1",
   supportsPromptAttachments: true,
   messages: messages,

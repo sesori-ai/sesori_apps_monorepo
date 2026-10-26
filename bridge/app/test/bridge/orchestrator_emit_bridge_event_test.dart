@@ -120,133 +120,6 @@ void main() {
     expect(conflict.reasons, [PluginLifecycleConflictReason.unsupported]);
   });
 
-  test("orchestrator owns encrypted project-view claims across relay lifecycles", () async {
-    final relayServer = await TestRelayServer.start();
-    final harness = await _OrchestratorHarness.create(
-      pluginIds: const ["one"],
-      relayUrl: "ws://127.0.0.1:${relayServer.port}",
-    );
-    addTearDown(() async {
-      await harness.close();
-      await relayServer.close();
-    });
-
-    final running = await startTestOrchestratorSession(session: harness.composition.session);
-    final runFuture = running.stopped;
-    final firstSocket = await relayServer.nextClient();
-    final firstMessages = StreamIterator<dynamic>(firstSocket);
-    const firstConnection = 101;
-    const secondConnection = 202;
-    const firstProject = "test-project-x";
-    const secondProject = "test-project-y";
-
-    final roomKey = await _exchangeRoomKey(
-      socket: firstSocket,
-      messages: firstMessages,
-      connID: firstConnection,
-    );
-    await _sendEncryptedRelayMessage(
-      socket: firstSocket,
-      connID: firstConnection,
-      roomKey: roomKey,
-      message: const RelayMessage.projectView(projectId: firstProject),
-    );
-    await _resumePhone(
-      socket: firstSocket,
-      messages: firstMessages,
-      connID: secondConnection,
-      roomKey: roomKey,
-    );
-    await _sendEncryptedRelayMessage(
-      socket: firstSocket,
-      connID: secondConnection,
-      roomKey: roomKey,
-      message: const RelayMessage.projectView(projectId: secondProject),
-    );
-
-    await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.length == 2,
-      reason: "both project-view claims",
-    );
-    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject, secondProject});
-
-    await _sendEncryptedRelayMessage(
-      socket: firstSocket,
-      connID: secondConnection,
-      roomKey: roomKey,
-      message: const RelayMessage.projectView(projectId: null),
-    );
-    await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.length == 1,
-      reason: "null project-view declaration",
-    );
-    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject});
-
-    await _sendEncryptedRelayMessage(
-      socket: firstSocket,
-      connID: secondConnection,
-      roomKey: roomKey,
-      message: const RelayMessage.projectView(projectId: secondProject),
-    );
-    await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.length == 2,
-      reason: "project-view reassertion",
-    );
-    firstSocket.add(jsonEncode({"type": "phone_disconnected", "connId": firstConnection}));
-    await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.length == 1,
-      reason: "single phone disconnect",
-    );
-    expect(harness.composition.projectViewTracker.activeProjectIds, {secondProject});
-
-    await firstSocket.close();
-    await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.isEmpty,
-      reason: "relay-drop project-view cleanup",
-    );
-    await firstMessages.cancel();
-
-    final secondSocket = await relayServer.nextClient();
-    final secondMessages = StreamIterator<dynamic>(secondSocket);
-    const reconnectedConnection = 303;
-    await _resumePhone(
-      socket: secondSocket,
-      messages: secondMessages,
-      connID: reconnectedConnection,
-      roomKey: roomKey,
-    );
-    await _sendEncryptedRelayMessage(
-      socket: secondSocket,
-      connID: reconnectedConnection,
-      roomKey: roomKey,
-      message: const RelayMessage.projectView(projectId: firstProject),
-    );
-    await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.isNotEmpty,
-      reason: "reconnected project-view reassertion",
-    );
-    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject});
-
-    secondSocket.add(jsonEncode({"type": "phone_disconnected", "connId": secondConnection}));
-    await Future<void>.delayed(const Duration(milliseconds: 50));
-    expect(harness.composition.projectViewTracker.activeProjectIds, {firstProject});
-
-    await _sendEncryptedRelayMessage(
-      socket: secondSocket,
-      connID: reconnectedConnection,
-      roomKey: roomKey,
-      message: const RelayMessage.projectView(projectId: null),
-    );
-    await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.isEmpty,
-      reason: "reconnected null declaration",
-    );
-
-    await harness.composition.session.cancel();
-    await runFuture.timeout(const Duration(seconds: 5));
-    await secondMessages.cancel();
-  });
-
   test("committed user activity emits its durable marker in the unseen patch", () async {
     final relayServer = await TestRelayServer.start();
     final harness = await _OrchestratorHarness.create(
@@ -275,7 +148,6 @@ void main() {
       lastAgent: null,
       lastAgentModel: null,
       pluginId: "one",
-      preservePullRequestScope: false,
     );
     final patch = harness.composition.session.localWireEvents
         .where((event) => event is SesoriSessionUnseenChanged)
@@ -505,15 +377,16 @@ void main() {
         roomKey: roomKey,
         message: const RelayMessage.sseSubscribe(path: "/events"),
       );
+      // Viewing a session that is not stored has no side effect; the tracker shows when the relay handled the frames.
       await _sendEncryptedRelayMessage(
         socket: socket,
         connID: connId,
         roomKey: roomKey,
-        message: const RelayMessage.projectView(projectId: "project"),
+        message: const RelayMessage.sessionView(sessionId: "unstored-session"),
       );
     }
     await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.contains("project"),
+      () => harness.composition.sessionViewTracker.isViewed(sessionId: "unstored-session"),
       reason: "relay clients subscribed",
     );
     final updates = harness.composition.session.localWireEvents
@@ -602,7 +475,7 @@ void main() {
     socket.add(jsonEncode({"type": "phone_disconnected", "connId": 101}));
     socket.add(jsonEncode({"type": "phone_disconnected", "connId": 202}));
     await _waitFor(
-      () => harness.composition.projectViewTracker.activeProjectIds.isEmpty,
+      () => harness.composition.sessionViewTracker.activeSessionIds.isEmpty,
       reason: "both clients disconnected before quota reset",
     );
     final submitted = updates.firstWhere(
@@ -1099,12 +972,12 @@ void main() {
         socket: socket,
         connID: 404,
         roomKey: roomKey,
-        message: const RelayMessage.projectView(projectId: "relay-remains-responsive"),
+        message: const RelayMessage.sessionView(sessionId: "relay-remains-responsive"),
       );
 
       try {
         await _waitFor(
-          () => harness.composition.projectViewTracker.activeProjectIds.contains("relay-remains-responsive"),
+          () => harness.composition.sessionViewTracker.isViewed(sessionId: "relay-remains-responsive"),
           reason: "relay control while initial summary is blocked",
           timeout: const Duration(milliseconds: 500),
         );
@@ -1319,7 +1192,6 @@ Future<void> _insertEventSession({required AppDatabase database, required String
   await database.sessionDao.insertSession(
     fastMode: false,
     pluginId: pluginId,
-    preservePullRequestScope: false,
     sessionId: "stable-session",
     backendSessionId: "backend-session",
     projectId: "project",
@@ -1345,7 +1217,6 @@ BridgeSseSessionUpdated _lateSessionUpdate({required String pluginId}) {
       parentID: null,
       title: "Late title",
       time: const SessionTime(created: 1, updated: 2, archived: null),
-      pullRequest: null,
       promptDefaults: null,
       lastUserActivityAt: null,
       branchName: null,

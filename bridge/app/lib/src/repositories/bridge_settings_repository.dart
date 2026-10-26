@@ -43,6 +43,8 @@ class BridgeSettingsRepository({
   Future<BridgeSettingsResponse> readCommittedResponse() async {
     final settings = await readCommittedSettings();
     return BridgeSettingsResponse(
+      // COMPATIBILITY 2026-10-25 (v1.10.0): v1.9.1 apps fail to load the whole bridge-settings card without this
+      // inert interval. Remove once public apps older than v1.9.2 are unsupported.
       pullRequestRefresh: PullRequestRefreshSettingsResponse(
         intervalSeconds: settings.pullRequestRefreshIntervalSeconds,
       ),

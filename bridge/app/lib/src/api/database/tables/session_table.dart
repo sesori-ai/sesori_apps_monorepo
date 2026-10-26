@@ -38,8 +38,6 @@ class SessionTable() extends Table {
   TextColumn get directory => text()();
   TextColumn get worktreePath => text().nullable()();
   TextColumn get branchName => text().nullable()();
-  TextColumn get currentBranchName => text().nullable()();
-  TextColumn get currentGithubRepositoryIdentity => text().nullable()();
   BoolColumn get isDedicated => boolean()();
   IntColumn get archivedAt => integer().nullable()();
   TextColumn get baseBranch => text().nullable()();
@@ -100,8 +98,6 @@ sealed class const SessionDto._() with _$SessionDto, $SessionTableTableToColumns
     required String directory,
     required String? worktreePath,
     required String? branchName,
-    required String? currentBranchName,
-    required String? currentGithubRepositoryIdentity,
     required bool isDedicated,
     required int? archivedAt,
     required String? baseBranch,

@@ -73,7 +73,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
@@ -140,7 +139,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         runtime: runtime,
       );
@@ -274,7 +272,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         runtime: runtime,
       );
@@ -402,7 +399,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         ),
         newSessionDefaultsRepository: gatedDefaultsRepository,
@@ -448,7 +444,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         ),
         newSessionDefaultsRepository: _ThrowingNewSessionDefaultsRepository(),
@@ -655,7 +650,6 @@ void main() {
         sessionId: "backend-session",
         backendSessionId: "backend-session",
         pluginId: "other",
-        preservePullRequestScope: false,
         projectId: "/retained",
         isDedicated: false,
         createdAt: 1,

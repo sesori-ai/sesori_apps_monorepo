@@ -42,7 +42,6 @@ Session _child({required String id, required int? createdAt}) => Session(
   parentID: "s",
   title: null,
   time: createdAt == null ? null : SessionTime(created: createdAt, updated: createdAt, archived: null),
-  pullRequest: null,
   promptDefaults: null,
   branchName: null,
   lastUserActivityAt: null,

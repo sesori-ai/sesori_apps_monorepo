@@ -20,7 +20,6 @@ import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
 import "../services/plugin_management_service.dart";
 import "../services/product_analytics_service.dart";
-import "../services/project_viewing_service.dart";
 import "../services/session_abort_service.dart";
 import "../services/session_approval_service.dart";
 import "../services/session_auto_continuation_service.dart";
@@ -41,14 +40,12 @@ import "../services/sse_event_tracker.dart";
 /// collaborator list lives here, so the two shells cannot drift apart.
 
 SessionDetailCubit createSessionDetailCubit({
-  required bool claimProjectView,
   required GetIt locator,
   required String sessionId,
   required String projectId,
 }) {
   return SessionDetailCubit(
     locator<ConnectionService>(),
-    claimProjectView: claimProjectView,
     loadService: locator<SessionDetailLoadService>(),
     pluginManagementService: locator<PluginManagementService>(),
     interactionCalculator: locator<SessionInteractionCalculator>(),
@@ -58,7 +55,6 @@ SessionDetailCubit createSessionDetailCubit({
     promptDispatcher: locator<SessionRepository>(),
     permissionRepository: locator<PermissionRepository>(),
     sessionViewingService: locator<SessionViewingService>(),
-    projectViewingService: locator<ProjectViewingService>(),
     lifecycleSource: locator<LifecycleSource>(),
     composerDraftRepository: locator<ComposerDraftRepository>(),
     productAnalyticsService: locator<ProductAnalyticsService>(),

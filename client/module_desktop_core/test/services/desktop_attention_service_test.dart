@@ -31,7 +31,6 @@ const _session = Session(
   parentID: null,
   title: "Fix the build",
   time: null,
-  pullRequest: null,
   promptDefaults: null,
   branchName: null,
   lastUserActivityAt: null,

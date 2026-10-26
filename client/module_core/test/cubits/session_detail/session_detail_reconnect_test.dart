@@ -83,7 +83,6 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
-      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: loadService,
@@ -93,7 +92,6 @@ void main() {
       promptDispatcher: promptDispatcher,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
-      projectViewingService: stubbedProjectViewingService(),
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
@@ -133,7 +131,6 @@ void main() {
     final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
     final globalEvents = StreamController<SseEvent>.broadcast();
     final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
-    final projectViewingService = stubbedProjectViewingService();
 
     addTearDown(sessionEvents.close);
     addTearDown(globalEvents.close);
@@ -173,7 +170,6 @@ void main() {
         snapshot: SessionDetailSnapshot(
           areOptionsStale: false,
           bridgeQueuedPrompts: [],
-          projectId: "project-1",
           pluginId: "opencode",
           supportsPromptAttachments: false,
           messages: <MessageWithParts>[],
@@ -198,7 +194,6 @@ void main() {
 
     final cubit = SessionDetailCubit(
       mockConnectionService,
-      claimProjectView: true,
       pluginManagementService: stubbedPluginManagementService(),
       interactionCalculator: const SessionInteractionCalculator(),
       loadService: mockLoadService,
@@ -208,7 +203,6 @@ void main() {
       promptDispatcher: mockSessionRepository,
       permissionRepository: mockPermissionRepository,
       sessionViewingService: stubbedSessionViewingService(),
-      projectViewingService: projectViewingService,
       lifecycleSource: FakeLifecycleSource(),
       composerDraftRepository: inMemoryComposerDraftRepository(),
       productAnalyticsService: stubbedProductAnalyticsService(),
@@ -236,140 +230,8 @@ void main() {
         session: any(named: "session"),
         projectId: "project-1",
       ),
-    ).called(1);
-    verify(
-      () => projectViewingService.markClaimFailed(claim: any(named: "claim")),
     ).called(1);
     expect(cubit.state, isA<SessionDetailLoaded>());
-  });
-
-  test("does not treat sessions.updated as a session-detail invalidation", () async {
-    final mockLoadService = MockSessionDetailLoadService();
-    final mockSessionRepository = MockSessionRepository();
-    final mockConnectionService = MockConnectionService();
-    final mockNotificationCanceller = MockNotificationCanceller();
-    final mockPermissionRepository = MockPermissionRepository();
-    final sessionEvents = StreamController<SesoriSessionEvent>.broadcast();
-    final globalEvents = StreamController<SseEvent>.broadcast();
-    final connectionStatus = BehaviorSubject<ConnectionStatus>.seeded(connectedStatus);
-
-    addTearDown(sessionEvents.close);
-    addTearDown(globalEvents.close);
-    addTearDown(connectionStatus.close);
-
-    when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
-    when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
-    when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
-    when(() => mockConnectionService.currentStatus).thenAnswer((_) => connectionStatus.value);
-    when(
-      () => mockNotificationCanceller.cancelForSession(
-        sessionId: any(named: "sessionId"),
-      ),
-    ).thenAnswer((_) async {});
-    when(
-      () => mockPermissionRepository.replyToPermission(
-        requestId: any(named: "requestId"),
-        sessionId: any(named: "sessionId"),
-        reply: any(named: "reply"),
-      ),
-    ).thenAnswer((_) async => ApiResponse.success(null));
-
-    const loadedResult = SessionDetailLoadResult.loaded(
-      snapshot: SessionDetailSnapshot(
-        areOptionsStale: false,
-        bridgeQueuedPrompts: [],
-        projectId: "project-1",
-        pluginId: "opencode",
-        supportsPromptAttachments: false,
-        messages: <MessageWithParts>[],
-        olderMessagesCursor: null,
-        userMessagesBefore: null,
-        awaitingHarnessSync: false,
-        pendingQuestions: <PendingQuestion>[],
-        pendingPermissions: <PendingPermission>[],
-        childSessions: <Session>[],
-        statuses: <String, SessionStatus>{},
-        agents: <AgentInfo>[],
-        providerData: null,
-        commands: <CommandInfo>[],
-        canonicalSessionTitle: null,
-        promptDefaults: null,
-        isRootSession: true,
-        isArchived: false,
-        cannotContinueMessage: null,
-      ),
-    );
-
-    when(
-      () => mockLoadService.load(
-        session: any(named: "session"),
-        projectId: any(named: "projectId"),
-      ),
-    ).thenAnswer(
-      (_) async => loadedResult,
-    );
-    when(
-      () => mockLoadService.reload(
-        session: any(named: "session"),
-        projectId: any(named: "projectId"),
-      ),
-    ).thenAnswer(
-      (_) async => loadedResult,
-    );
-
-    final cubit = SessionDetailCubit(
-      mockConnectionService,
-      claimProjectView: true,
-      pluginManagementService: stubbedPluginManagementService(),
-      interactionCalculator: const SessionInteractionCalculator(),
-      loadService: mockLoadService,
-      sessionAbortService: SessionAbortService(repository: mockSessionRepository),
-      autoContinuationService: SessionAutoContinuationService(repository: mockSessionRepository),
-      approvalService: SessionApprovalService(repository: mockSessionRepository),
-      promptDispatcher: mockSessionRepository,
-      permissionRepository: mockPermissionRepository,
-      sessionViewingService: stubbedSessionViewingService(),
-      projectViewingService: stubbedProjectViewingService(),
-      lifecycleSource: FakeLifecycleSource(),
-      composerDraftRepository: inMemoryComposerDraftRepository(),
-      productAnalyticsService: stubbedProductAnalyticsService(),
-      feedbackPromptService: FakeFeedbackPromptService(),
-      sessionId: _sessionId,
-      projectId: "project-1",
-      notificationCanceller: mockNotificationCanceller,
-      failureReporter: MockFailureReporter(),
-      bridgeSettingsService: stubbedBridgeSettingsService(),
-      sseEventTracker: MockSseEventTracker(),
-      sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
-    );
-    addTearDown(cubit.close);
-
-    await _awaitLoaded(cubit);
-    verify(
-      () => mockLoadService.load(
-        session: any(named: "session"),
-        projectId: "project-1",
-      ),
-    ).called(1);
-
-    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-2")));
-    await Future<void>.delayed(Duration.zero);
-
-    verifyNever(
-      () => mockLoadService.reload(
-        session: any(named: "session"),
-        projectId: any(named: "projectId"),
-      ),
-    );
-    globalEvents.add(SseEvent(data: const SesoriSseEvent.sessionsUpdated(projectID: "project-1")));
-    await Future<void>.delayed(Duration.zero);
-
-    verifyNever(
-      () => mockLoadService.reload(
-        session: any(named: "session"),
-        projectId: any(named: "projectId"),
-      ),
-    );
   });
 }
 

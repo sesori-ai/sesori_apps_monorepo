@@ -11,7 +11,6 @@ void main() {
         "parentID": null,
         "title": null,
         "time": null,
-        "pullRequest": null,
       });
 
       expect(session.branchName, isNull);
@@ -25,7 +24,6 @@ void main() {
         "parentID": null,
         "title": null,
         "time": null,
-        "pullRequest": null,
         "branchName": "sesori/add-search",
         "hasWorktree": true,
       });
@@ -45,7 +43,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        pullRequest: null,
         promptDefaults: null,
         lastUserActivityAt: null,
         hasWorktree: true,

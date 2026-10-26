@@ -22,7 +22,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         ),
       );
@@ -48,7 +47,6 @@ void main() {
         sessionId: "stable-root",
         backendSessionId: "backend-root",
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         projectId: "project",
         isDedicated: false,
         createdAt: 1,
@@ -78,7 +76,6 @@ void main() {
           sessionId: "stable-$id",
           backendSessionId: id,
           pluginId: plugin.id,
-          preservePullRequestScope: false,
           projectId: "project",
           isDedicated: false,
           createdAt: 1,

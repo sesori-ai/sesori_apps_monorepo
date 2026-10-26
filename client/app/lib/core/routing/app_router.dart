@@ -24,6 +24,7 @@ import "../../features/settings/projects_settings_screen.dart";
 import "../../features/settings/settings_screen.dart";
 import "../../features/splash/splash_screen.dart";
 import "../di/injection.dart";
+import "circular_reveal_page.dart";
 import "imperative_pane_route.dart";
 
 final _rootNavigatorKey = GlobalKey<NavigatorState>();
@@ -119,9 +120,10 @@ extension on AppRoute {
       AppRouteSettingsProfile() => const ProfileScreen(),
       AppRouteSettingsComputers() => const ComputersScreen(),
       AppRouteSettingsProjects() => const ProjectsSettingsScreen(),
-      AppRouteNewSession(:final projectId, :final projectName) => NewSessionScreen(
+      AppRouteNewSession(:final projectId, :final projectName, :final entry) => NewSessionScreen(
         projectId: projectId,
         projectName: projectName,
+        entry: entry,
       ),
       AppRouteSessionDetail(
         :final projectId,
@@ -163,26 +165,36 @@ Page<void> buildSessionPaneTransitionPage({
     key: pageKey,
     transitionDuration: skipsEntryTransition ? Duration.zero : duration,
     reverseTransitionDuration: duration,
-    transitionsBuilder: (context, animation, secondaryAnimation, child) {
-      if (SessionSidebarShell.layoutOf(context) == SessionShellLayout.pane) {
-        return FadeTransition(
-          opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
-          child: child,
-        );
-      }
-      final modalRoute = ModalRoute.of(context);
-      if (modalRoute is! PageRoute<void>) {
-        throw StateError("Session pane transitions require a PageRoute");
-      }
-      return Theme.of(context).pageTransitionsTheme.buildTransitions<void>(
-        modalRoute,
-        context,
-        animation,
-        secondaryAnimation,
-        child,
-      );
-    },
+    transitionsBuilder: _sessionPaneTransitions,
     child: ImperativePaneRouteScope(isImperative: isImperative, child: child),
+  );
+}
+
+/// Beside the sidebar a pane page fades; as a page of its own it moves as the
+/// platform's pages do.
+// ignore: no_slop_linter/prefer_required_named_parameters, matches Flutter's RouteTransitionsBuilder
+Widget _sessionPaneTransitions(
+  BuildContext context,
+  Animation<double> animation,
+  Animation<double> secondaryAnimation,
+  Widget child,
+) {
+  if (SessionSidebarShell.layoutOf(context) == SessionShellLayout.pane) {
+    return FadeTransition(
+      opacity: CurveTween(curve: Curves.easeInOut).animate(animation),
+      child: child,
+    );
+  }
+  final modalRoute = ModalRoute.of(context);
+  if (modalRoute is! PageRoute<void>) {
+    throw StateError("Session pane transitions require a PageRoute");
+  }
+  return Theme.of(context).pageTransitionsTheme.buildTransitions<void>(
+    modalRoute,
+    context,
+    animation,
+    secondaryAnimation,
+    child,
   );
 }
 
@@ -288,7 +300,6 @@ List<RouteBase> _buildAppRoutes({
           connectionService: getIt<ConnectionService>(),
           filterTracker: getIt<SessionListFilterTracker>(),
           sessionListService: getIt<SessionListService>(),
-          projectViewingService: getIt<ProjectViewingService>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
           // The home and Archived both name the computer they reach.
@@ -360,16 +371,27 @@ List<RouteBase> _buildSignedInRoutes({required GlobalKey<NavigatorState> session
                   final AppRouteNewSession route => route,
                   final route => throw StateError("Route ${route.def.name} is not a new-session route"),
                 };
-                return buildSessionPaneTransitionPage(
-                  context: context,
-                  state: state,
-                  pageKey: state.pageKey,
-                  skipsEntryTransition: false,
-                  child: NewSessionScreen(
-                    projectId: route.projectId,
-                    projectName: route.projectName,
-                  ),
+                final screen = NewSessionScreen(
+                  projectId: route.projectId,
+                  projectName: route.projectName,
+                  entry: route.entry,
                 );
+                return switch (route.entry) {
+                  NewSessionPlatformEntry() => buildSessionPaneTransitionPage(
+                    context: context,
+                    state: state,
+                    pageKey: state.pageKey,
+                    skipsEntryTransition: false,
+                    child: screen,
+                  ),
+                  // Only the phone's + opens it this way, out of itself.
+                  NewSessionRevealEntry(:final x, :final y) => CircularRevealPage(
+                    key: state.pageKey,
+                    origin: FractionalOffset(x, y),
+                    fallbackTransitionsBuilder: _sessionPaneTransitions,
+                    child: screen,
+                  ),
+                };
               },
             ),
             GoRoute(
@@ -579,7 +601,6 @@ ShellRoute buildArchivedSessionsRoute() {
             mode: AllSessionsMode.archived,
             filterTracker: getIt<SessionListFilterTracker>(),
             sessionListService: getIt<SessionListService>(),
-            projectViewingService: getIt<ProjectViewingService>(),
           ),
           child: child,
         ),

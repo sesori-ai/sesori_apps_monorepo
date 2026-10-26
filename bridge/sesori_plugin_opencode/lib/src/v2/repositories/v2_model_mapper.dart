@@ -54,7 +54,6 @@ class const V2ModelMapper({required final String _pluginId}) {
       archived: session.time.archived?.toInt(),
     ),
     promptDefaults: null,
-    pullRequest: null,
     branchName: null,
     lastUserActivityAt: null,
     autoContinuation: null,

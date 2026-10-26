@@ -28,7 +28,6 @@ void main() {
         plugin: plugin,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
-        pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await database.projectsDao.recordOpenedProject(
@@ -51,7 +50,6 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "offline-plugin",
-        preservePullRequestScope: false,
       );
       await database.sessionDao.insertObservedChild(
         sessionId: "child",

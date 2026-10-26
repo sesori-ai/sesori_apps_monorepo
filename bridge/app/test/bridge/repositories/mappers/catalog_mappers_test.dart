@@ -13,7 +13,6 @@ void main() {
       projectId: "project-1",
       path: "/projects/repository",
       displayName: null,
-      prCacheGithubLogin: null,
       createdAt: 10,
       updatedAt: 20,
       projectionUpdatedAt: 20,
@@ -50,7 +49,6 @@ void main() {
       projectId: "project-1",
       path: "/projects/repository",
       displayName: null,
-      prCacheGithubLogin: null,
       createdAt: 10,
       updatedAt: 20,
       projectionUpdatedAt: 20,
@@ -80,8 +78,6 @@ void main() {
       directory: "/projects/one",
       worktreePath: "/worktrees/one",
       branchName: "feature",
-      currentBranchName: "current-feature",
-      currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
       isDedicated: true,
       archivedAt: null,
       baseBranch: "main",
@@ -100,17 +96,22 @@ void main() {
       approvalOverride: null,
     );
 
-    final session = mapper.map(row: row, pullRequest: null, unseen: true);
+    final session = mapper.map(row: row, unseen: true);
 
     expect(session.id, "sesori-id");
     expect(session.pluginId, "codex");
     expect(session.parentID, "parent-id");
     expect(session.title, "Observed title");
     expect(session.promptDefaults?.agent, "build");
-    expect(session.branchName, "current-feature");
+    expect(session.branchName, "feature");
     expect(session.hasWorktree, isTrue);
     expect(session.unseen, isTrue);
     expect(session.lastUserActivityAt, 12);
+
+    // A session in the project folder, a "No project" session and a detached
+    // worktree store no branch, so none is reported, whatever branch was last
+    // seen live.
+    expect(mapper.map(row: row.copyWith(branchName: null), unseen: true).branchName, isNull);
   });
 
   test("SessionCatalogMapper reports live activity newer than the backend's updated time", () {
@@ -124,8 +125,6 @@ void main() {
       directory: "/projects/one",
       worktreePath: null,
       branchName: null,
-      currentBranchName: null,
-      currentGithubRepositoryIdentity: null,
       isDedicated: false,
       archivedAt: null,
       baseBranch: null,
@@ -144,7 +143,7 @@ void main() {
       approvalOverride: null,
     );
 
-    Session mapped(SessionDto row) => mapper.map(row: row, pullRequest: null, unseen: false);
+    Session mapped(SessionDto row) => mapper.map(row: row, unseen: false);
 
     // A plugin that never emits an activity-bearing `session.updated` leaves
     // `updated_at` at the last imported transcript time; the live user-message
@@ -170,8 +169,6 @@ void main() {
       directory: "/projects/one",
       worktreePath: "/worktrees/one",
       branchName: "feature",
-      currentBranchName: "current-feature",
-      currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
       isDedicated: true,
       archivedAt: 30,
       baseBranch: "main",

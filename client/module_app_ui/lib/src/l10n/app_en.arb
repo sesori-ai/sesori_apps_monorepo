@@ -552,41 +552,6 @@
   "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPluginWarmupUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPluginWarmupRetry": "Retry harness warm-up setting",
-  "settingsPullRequestRefreshTitle": "Pull request refresh",
-  "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
-  "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
-  "settingsPullRequestRefreshUnsupported": "Update the connected bridge to configure this setting.",
-  "settingsPullRequestRefreshLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
-  "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
-  "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
-  "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
-  "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
-  "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
-  "settingsPullRequestRefreshSecondsLabel": "Seconds",
-  "settingsPullRequestRefreshInvalid": "Enter a whole number of seconds.",
-  "settingsPullRequestRefreshRangeInvalid": "Enter a whole number from {minimumSeconds} to {maximumSeconds}.",
-  "@settingsPullRequestRefreshRangeInvalid": {
-    "placeholders": {
-      "minimumSeconds": {
-        "type": "int",
-        "format": "decimalPattern"
-      },
-      "maximumSeconds": {
-        "type": "int",
-        "format": "decimalPattern"
-      }
-    }
-  },
-  "settingsPullRequestRefreshCancel": "Cancel",
-  "settingsPullRequestRefreshSave": "Save",
-  "settingsPullRequestRefreshSeconds": "{seconds, plural, =1{1 second} other{{seconds} seconds}}",
-  "@settingsPullRequestRefreshSeconds": {
-    "placeholders": {
-      "seconds": {
-        "type": "int"
-      }
-    }
-  },
   "harnessManagementDescription": "Control the harnesses that support management through Sesori.",
   "harnessManagementDefaultsSection": "Global harness settings",
   "harnessManagementDefaultTimeout": "Default idle timeout",
@@ -1743,25 +1708,6 @@
   },
   "sessionListDeleteFailed": "Failed to delete session",
   "sessionListArchiveFailed": "Failed to archive session",
-  "prLabel": "PR #{number}",
-  "@prLabel": {
-    "placeholders": {
-      "number": {
-        "type": "int"
-      }
-    }
-  },
-  "prStateOpen": "Pull request open",
-  "prStateMerged": "Pull request merged",
-  "prStateClosed": "Pull request closed",
-  "prStateUnknown": "Pull request",
-  "prReviewApproved": "Approved",
-  "prReviewChangesRequested": "Changes requested",
-  "prReviewRequired": "Review required",
-  "prChecksSuccess": "Checks passing",
-  "prChecksFailing": "Checks failing",
-  "prChecksPending": "Checks pending",
-  "prConflicting": "Has merge conflicts",
   "diffPermissionRequestTitle": "Allow this action?",
   "diffPermissionReject": "Don’t allow",
   "diffPermissionOnce": "Allow",

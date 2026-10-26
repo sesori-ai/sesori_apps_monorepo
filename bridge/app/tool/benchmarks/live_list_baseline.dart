@@ -347,7 +347,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           path: _projectId(index: index),
           hidden: false,
           baseBranch: null,
-          prCacheGithubLogin: null,
           displayName: "project-${index.toString().padLeft(4, "0")}",
           createdAt: _defaultTimestamp + index,
           updatedAt: _defaultTimestamp + index,
@@ -361,7 +360,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           path: _smallProjectDirectory,
           hidden: true,
           baseBranch: null,
-          prCacheGithubLogin: null,
           displayName: "project-0001",
           createdAt: _defaultTimestamp + 1,
           updatedAt: _defaultTimestamp + 1,
@@ -403,8 +401,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
           directory: _projectDirectory,
           worktreePath: null,
           branchName: null,
-          currentBranchName: null,
-          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -434,7 +430,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
       runtime: createBenchmarkPluginRuntime(plugins: plugins.values),
       sessionDao: database.sessionDao,
       projectsDao: database.projectsDao,
-      pullRequestDao: database.pullRequestDao,
       unseenCalculator: const SessionUnseenCalculator(),
       projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
         scratchRoot: "/scratch",
@@ -452,15 +447,10 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
     required String expectedFirstSessionId,
     required String expectedLastSessionId,
   }) async {
-    var sessions = await repository.getSessionsForProject(
+    final sessions = await repository.getSessionsForProject(
       projectId: projectId,
       start: start,
       limit: limit,
-      verifiedGithubLogin: null,
-    );
-    sessions = await repository.enrichSessions(
-      sessions: sessions,
-      verifiedGithubLogin: null,
     );
     _verifyBoundaries(
       name: "session catalog for $projectId",
@@ -570,8 +560,6 @@ class const _LiveListBenchmark({required final _BenchmarkConfiguration _configur
         directory: projectId,
         worktreePath: null,
         branchName: null,
-        currentBranchName: null,
-        currentGithubRepositoryIdentity: null,
         isDedicated: false,
         archivedAt: null,
         baseBranch: null,

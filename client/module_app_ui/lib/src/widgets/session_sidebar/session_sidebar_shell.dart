@@ -1,8 +1,6 @@
 import "dart:math" as math;
 
-import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
@@ -33,9 +31,6 @@ typedef SessionSidebarFooterBuilder = Widget Function({required VoidCallback onC
 /// out while the content pane widens, and a restore button grows in before the
 /// leading of every page in the pane (D9). The collapsed flag lives only as
 /// long as the shell.
-///
-/// It reports whether the sidebar shows to the scope's [AllSessionsCubit],
-/// which owns the wide-pane claim.
 class const SessionSidebarShell({
   super.key,
 
@@ -62,8 +57,6 @@ class _SessionSidebarShellState() extends State<SessionSidebarShell> with Single
   static const double _sidebarWidth = 320;
   static const Duration _motion = Duration(milliseconds: 260);
 
-  late final AllSessionsCubit _sessions;
-
   /// 1 while the sidebar shows, 0 once it is collapsed.
   late final AnimationController _sidebar = AnimationController(vsync: this, duration: _motion, value: 1)
     ..addStatusListener((_) => setState(() {}));
@@ -72,30 +65,14 @@ class _SessionSidebarShellState() extends State<SessionSidebarShell> with Single
     sidebar: _sidebarCurve,
     onPressed: () => _setCollapsed(collapsed: false),
   );
-  bool _collapsed = false;
-  bool _paneVisible = false;
-
-  @override
-  void initState() {
-    super.initState();
-    _sessions = context.read<AllSessionsCubit>();
-  }
 
   void _setCollapsed({required bool collapsed}) {
-    setState(() => _collapsed = collapsed);
     _sidebar.duration = context.isReducedMotion ? Duration.zero : _motion;
     collapsed ? _sidebar.reverse() : _sidebar.forward();
   }
 
-  void _reportPaneVisibility({required bool isVisible}) {
-    if (_paneVisible == isVisible) return;
-    _paneVisible = isVisible;
-    _sessions.setPaneVisible(isVisible: isVisible);
-  }
-
   @override
   void dispose() {
-    _reportPaneVisibility(isVisible: false);
     _sidebar.dispose();
     super.dispose();
   }
@@ -105,7 +82,6 @@ class _SessionSidebarShellState() extends State<SessionSidebarShell> with Single
     return LayoutBuilder(
       builder: (context, constraints) {
         final isWide = constraints.maxWidth >= wideLayoutBreakpoint;
-        _reportPaneVisibility(isVisible: isWide && !_collapsed);
         if (!isWide) {
           return _SessionShellLayoutScope(layout: SessionShellLayout.pages, child: widget.child);
         }

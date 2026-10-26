@@ -54,7 +54,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       chatHistory = createTestChatHistory();
@@ -576,7 +575,6 @@ Future<void> _insertSession({
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: pluginId,
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
