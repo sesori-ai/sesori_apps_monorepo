@@ -34,9 +34,9 @@ entirely along with its transcript and its dedicated worktree.
 - Neither shell ever asks whether the worktree survives, and no menu, checkbox or button offers to keep it.
   Archive and Delete both request removal of a dedicated worktree, and send no worktree request for a session
   that has none. The bridge's cleanup refusal is the only thing that protects unfinished work.
-- When the bridge refuses the cleanup over work the user owns — uncommitted changes in the worktree, or, from
-  v1.7.1 and older bridges only, a branch other than the expected one — a modal
-  (a sheet on touch, a dialog on pointer) names those issues and offers exactly
+- When the bridge refuses the cleanup over work the user owns — uncommitted changes in the worktree, commits
+  on no branch ("Commits on no branch would be lost"), or, from v1.7.1 and older bridges only, a branch other
+  than the expected one — a modal (a sheet on touch, a dialog on pointer) names those issues and offers exactly
   two ways out: Cancel, which is also what dismissing it or Escape gives and which leaves the session in its
   lists, or a destructive Delete anyway that retries the same operation with force, so the worktree and the
   work inside it are really removed. That modal is the confirmation; nothing asks again. A forced archive
@@ -44,8 +44,8 @@ entirely along with its transcript and its dedicated worktree.
 - When a live session sharing the worktree is the only issue, nothing is asked. The app retries at once
   without worktree cleanup, so the session is archived or deleted while the other session keeps its
   worktree, and says so once through the ordinary alert surface rather than a modal. A shared worktree
-  reported together with uncommitted changes or a branch mismatch is treated as the refusal above, because
-  forcing there would remove a worktree another session is still using.
+  reported together with any of the issues above is treated as the refusal above, because forcing there
+  would remove a worktree another session is still using.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept.
@@ -95,6 +95,11 @@ entirely along with its transcript and its dedicated worktree.
   accepts that missing worktree and completes session retirement. The session is
   deleted only after cleanup succeeds, and both flows serialize against
   concurrent mutations of the same session family.
+- The unforced safety check reports commits on no branch when the worktree's HEAD has commits that no local
+  branch, tag or remote-tracking ref reaches. Commits the session's stored base commit reaches do not count, so
+  a detached HEAD still at its base stays clean even after the base branch is rewritten. A HEAD on a branch is
+  reached by that branch, so the check never fires for it. A failing check fails the cleanup visibly rather
+  than passing it.
 - Published requests retain the retired `deleteBranch` field for mixed-version
   compatibility. New clients always send `false`, and new bridges explicitly
   reject `true` before mutation so old clients cannot mistake unperformed branch
@@ -238,6 +243,8 @@ restart before explicit re-import.
   issues, session retirement deletes a branch, partial cleanup is reported as
   success or deletes the session, a concurrent mutation interleaves, or a client
   presents archiving as reversible.
+- An unforced cleanup removes a worktree whose detached HEAD has commits that no branch, tag or remote reaches,
+  or refuses one on a branch, or detached at its base commit, with commits on no branch.
 
 ## Known Limitations
 
@@ -255,12 +262,20 @@ restart before explicit re-import.
 - A history purge failing after session-row deletion is logged and leaves storage
   residue for startup reconciliation rather than failing the deletion.
 - Attachment behavior here will change with unfinished lazy stored-image work.
-- The bridge returns one cleanup issue per refusal: the shared-worktree check
-  short-circuits before the git safety check, so a shared worktree never arrives
-  together with uncommitted changes. The client still treats that mixed
-  combination as a refusal to ask about, because forcing it would remove a
-  worktree another live session uses — the bridge's force bypasses every check,
-  including the shared one, and always removes the worktree.
+- The shared-worktree check short-circuits before the git safety check, so a
+  shared worktree never arrives together with another issue. The git safety
+  check can return uncommitted changes and commits on no branch together in one
+  refusal. The client still treats a shared worktree mixed with any other issue
+  as a refusal to ask about, because forcing it would remove a worktree another
+  live session uses — the bridge's force bypasses every check, including the
+  shared one, and always removes the worktree.
+- v1.9.1 and older apps cannot parse the commits-on-no-branch issue, so archiving
+  or deleting such a session from them shows the generic archive or delete
+  failure instead of the refusal modal. The worktree is kept, so nothing is lost;
+  a current app offers the forced retry.
+- Commits left behind by checking out away from them before archiving are not
+  detected, because only the current HEAD is inspected. They stay recoverable
+  with `git fsck` until garbage collection.
 - `branchMismatch` stays in the cleanup-rejection wire contract and is rendered
   by the client because v1.7.1 and older bridges still send it; current bridges
   never produce it.
@@ -297,6 +312,7 @@ delete and read state from a row, detail and unwinding, the offline page), share
 `pending_archive_alerts_test`, `pending_session_archive_cubit_test` and
 `session_cleanup_flow_test`, which covers the row menu, both shells' delete
 confirmations, the forced refusal and the kept-worktree notice;
-`session_cleanup_service_test`, the one owner of the shared-worktree retry; and
-bridge `scratch_repository_test` plus the scratch-folder cases in
+`session_cleanup_service_test`, the one owner of the shared-worktree retry;
+bridge `git_cli_api_test`, whose real-repository cases cover commits on no
+branch; and bridge `scratch_repository_test` plus the scratch-folder cases in
 `delete_session_handler_test` and `update_session_archive_status_handler_test`.

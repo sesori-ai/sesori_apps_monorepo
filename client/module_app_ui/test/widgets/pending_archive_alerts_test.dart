@@ -165,6 +165,16 @@ void main() {
     expect(cubit.state.hiddenIds, isEmpty);
   });
 
+  testWidgets("commits on no branch are named beside unstaged changes and still offer Delete anyway", (tester) async {
+    await pumpAlerts(tester);
+    refuseCleanupWith(const [shared.CleanupIssue.unstagedChanges(), shared.CleanupIssue.commitsOnNoBranch()]);
+    await commitArchive(tester);
+
+    expect(find.text("Worktree has unstaged changes"), findsOneWidget);
+    expect(find.text("Commits on no branch would be lost"), findsOneWidget);
+    expect(find.widgetWithText(PregoButtonsSolid, "Delete anyway"), findsOneWidget);
+  });
+
   testWidgets("a worktree another session shares is kept without asking, and said so once", (tester) async {
     await pumpAlerts(tester);
     refuseCleanupWith(const [shared.CleanupIssue.sharedWorktree()]);

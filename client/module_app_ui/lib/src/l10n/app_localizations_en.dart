@@ -2506,6 +2506,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListCleanupIssueSharedWorktree => 'Another active session uses this worktree';
 
   @override
+  String get sessionListCleanupIssueCommitsOnNoBranch => 'Commits on no branch would be lost';
+
+  @override
   String sessionListCleanupIssueBranchMismatch(String actual, String expected) {
     return 'Worktree is on branch \'$actual\' instead of expected \'$expected\'';
   }

@@ -175,6 +175,10 @@ CleanupIssue _$CleanupIssueFromJson(
           return CleanupIssueSharedWorktree.fromJson(
             json
           );
+                case 'commits_on_no_branch':
+          return CleanupIssueCommitsOnNoBranch.fromJson(
+            json
+          );
         
           default:
             throw CheckedFromJsonException(
@@ -367,6 +371,45 @@ int get hashCode => runtimeType.hashCode;
 @override
 String toString() {
     return 'CleanupIssue.sharedWorktree()';
+}
+
+
+}
+
+
+
+
+/// @nodoc
+@JsonSerializable()
+
+class CleanupIssueCommitsOnNoBranch implements CleanupIssue {
+  const CleanupIssueCommitsOnNoBranch({ String? $type}): $type = $type ?? 'commits_on_no_branch';
+  factory CleanupIssueCommitsOnNoBranch.fromJson(Map<String, dynamic> json) => _$CleanupIssueCommitsOnNoBranchFromJson(json);
+
+
+
+@JsonKey(name: 'type')
+final String $type;
+
+
+
+@override
+Map<String, dynamic> toJson() {
+  return _$CleanupIssueCommitsOnNoBranchToJson(this, );
+}
+
+@override
+bool operator ==(Object other) {
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is CleanupIssueCommitsOnNoBranch);
+}
+
+@JsonKey(includeFromJson: false, includeToJson: false)
+@override
+int get hashCode => runtimeType.hashCode;
+
+@override
+String toString() {
+    return 'CleanupIssue.commitsOnNoBranch()';
 }
 
 

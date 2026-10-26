@@ -69,4 +69,12 @@ void main() {
       expect(json["type"], "shared_worktree");
     });
   });
+
+  group("CleanupIssue.commitsOnNoBranch", () {
+    test("round-trips through the commits_on_no_branch wire type", () {
+      const issue = CleanupIssue.commitsOnNoBranch();
+      expect(issue.toJson(), {"type": "commits_on_no_branch"});
+      expect(CleanupIssue.fromJson({"type": "commits_on_no_branch"}), isA<CleanupIssueCommitsOnNoBranch>());
+    });
+  });
 }
