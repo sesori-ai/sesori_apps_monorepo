@@ -3161,19 +3161,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bridgeUpdateDesktopTitle => 'Update Sesori Desktop';
 
   @override
-  String get bridgeUpdateDesktopIntro => 'This bridge runs inside Sesori Desktop. On that computer:';
+  String get bridgeUpdateDesktopIntro => 'This bridge runs inside Sesori Desktop, which updates itself.';
 
   @override
-  String get bridgeUpdateDesktopStepDownload => '1. Download the latest version:';
+  String get bridgeUpdateDesktopRestart =>
+      'On that computer, choose Restart to update in Sesori\'s tray menu or Settings.';
 
   @override
-  String get bridgeUpdateDesktopStepQuit => '2. Quit Sesori Desktop (closing the window may not quit it).';
-
-  @override
-  String get bridgeUpdateDesktopStepInstall => '3. Install the new version, then open Sesori Desktop again.';
-
-  @override
-  String get bridgeUpdateCopyLink => 'Copy link';
+  String get bridgeUpdateDesktopCheck =>
+      'Not there yet? Choose Check for updates in Settings. Linux DEB and RPM installs get new versions through the system\'s software updates.';
 
   @override
   String get mcpTitle => 'MCP servers and connectors';

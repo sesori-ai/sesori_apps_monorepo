@@ -5491,7 +5491,7 @@ abstract class AppLocalizations {
   /// **'Copy command'**
   String get bridgeUpdateCopyCommand;
 
-  /// Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which is updated by installing a newer Sesori Desktop.
+  /// Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which updates the bridge together with itself.
   ///
   /// In en, this message translates to:
   /// **'Update Sesori Desktop'**
@@ -5500,32 +5500,20 @@ abstract class AppLocalizations {
   /// No description provided for @bridgeUpdateDesktopIntro.
   ///
   /// In en, this message translates to:
-  /// **'This bridge runs inside Sesori Desktop. On that computer:'**
+  /// **'This bridge runs inside Sesori Desktop, which updates itself.'**
   String get bridgeUpdateDesktopIntro;
 
-  /// No description provided for @bridgeUpdateDesktopStepDownload.
+  /// 'Restart to update' and 'Settings' are the desktop app's own labels; keep them matching.
   ///
   /// In en, this message translates to:
-  /// **'1. Download the latest version:'**
-  String get bridgeUpdateDesktopStepDownload;
+  /// **'On that computer, choose Restart to update in Sesori\'s tray menu or Settings.'**
+  String get bridgeUpdateDesktopRestart;
 
-  /// No description provided for @bridgeUpdateDesktopStepQuit.
+  /// 'Check for updates' is the desktop app's own Settings label. DEB and RPM are Linux package formats; keep them as is.
   ///
   /// In en, this message translates to:
-  /// **'2. Quit Sesori Desktop (closing the window may not quit it).'**
-  String get bridgeUpdateDesktopStepQuit;
-
-  /// Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager.
-  ///
-  /// In en, this message translates to:
-  /// **'3. Install the new version, then open Sesori Desktop again.'**
-  String get bridgeUpdateDesktopStepInstall;
-
-  /// No description provided for @bridgeUpdateCopyLink.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy link'**
-  String get bridgeUpdateCopyLink;
+  /// **'Not there yet? Choose Check for updates in Settings. Linux DEB and RPM installs get new versions through the system\'s software updates.'**
+  String get bridgeUpdateDesktopCheck;
 
   /// No description provided for @mcpTitle.
   ///
