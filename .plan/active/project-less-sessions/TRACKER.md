@@ -14,7 +14,7 @@
 | 2/7 | Floating new-session button; Archived in Settings | Done | #2070 |
 | 3/7 | Picker actions in a footer | In review | #2071 |
 | 4/7 | Sesori folder and per-session scratch folders (inert) | Done | #2069 |
-| 5/7 | No project project turned on | Not started | — |
+| 5/7 | No project project turned on | In progress | — |
 | 6/7 | No project in the apps | Not started | — |
 | 7/7 | L3 matrix run; plan retired | Not started | — |
 
