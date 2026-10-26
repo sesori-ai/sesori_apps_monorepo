@@ -678,8 +678,12 @@ Run the matrix below, record the results in `TRACKER.md`, and move the plan to
   v1.7.0, show the documented degradation. No plugin behavior changes.
 - **Platforms.** Android, Windows and Linux are covered by shared widget and unit tests. Nothing here is
   platform-specific beyond the macOS desktop shell.
-- **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement. None has been
-  accepted.
+- **Reductions.** Any reduction needs explicit user acceptance recorded here before retirement.
+  - Superseded (user, 2026-10-26): the seven desktop cells ran on the owner's Mac after all, with a separate QA
+    bundle id and the keychain bypassed by an uncommitted test-only patch. Q1 C had moved them to a GitHub Actions
+    Linux runner, which never reached the desktop.
+  - Accepted (user, 2026-10-25, Q2 A): the two all-harness Plugins cells (refresh across every installed harness;
+    a failing harness) are not executed. Unit tests and the live OpenCode pass cover them.
 
 ## Risks and accepted behavior
 
