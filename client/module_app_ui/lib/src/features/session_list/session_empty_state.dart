@@ -129,7 +129,9 @@ class const _CursorBar({required final Color color}) extends StatelessWidget {
   }
 }
 
-/// Non-interactive pill naming the project the first session will run in.
+/// Non-interactive pill naming the project the first session will run in,
+/// with the folder the composer's project pill shows for every project,
+/// "No project" included.
 class const _ProjectChip({required final String name}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -147,7 +149,7 @@ class const _ProjectChip({required final String name}) extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(TablerSolid.brand_github, size: PregoIconSize.sm, color: prego.colors.textPrimary),
+            Icon(TablerRegular.folder, size: PregoIconSize.sm, color: prego.colors.textPrimary),
             SizedBox(width: prego.spacing.sm),
             Flexible(
               child: Text(

@@ -49,9 +49,22 @@ void main() {
 
     expect(find.text(emptyTitle(tester)), findsOneWidget);
     expect(find.byKey(const Key("session-empty-terminal")), findsOneWidget);
-    expect(find.byIcon(TablerSolid.brand_github), findsOneWidget);
+    expect(find.byIcon(TablerRegular.folder), findsOneWidget);
     expect(find.text("Sesori_app_monorepo"), findsOneWidget);
     expect(tester.takeException(), isNull);
+  });
+
+  // The composer's project pill shows the folder for every project, "No
+  // project" included, which has no repository behind it.
+  testWidgets("the chip shows the composer's folder for No project too", (tester) async {
+    await pumpEmptyState(tester, projectName: null);
+    final noProject = tester.element(find.byType(SessionEmptyState)).loc.projectPickerNoProject;
+
+    await pumpEmptyState(tester, projectName: noProject);
+
+    expect(find.text(noProject), findsOneWidget);
+    expect(find.byIcon(TablerRegular.folder), findsOneWidget);
+    expect(find.byIcon(TablerSolid.brand_github), findsNothing);
   });
 
   testWidgets("hides the project chip when there is no project name", (tester) async {
@@ -59,7 +72,7 @@ void main() {
 
     expect(find.text(emptyTitle(tester)), findsOneWidget);
     expect(find.byKey(const Key("session-empty-terminal")), findsOneWidget);
-    expect(find.byIcon(TablerSolid.brand_github), findsNothing);
+    expect(find.byIcon(TablerRegular.folder), findsNothing);
   });
 
   testWidgets("terminal glyph prompt ignores system text scaling", (tester) async {
