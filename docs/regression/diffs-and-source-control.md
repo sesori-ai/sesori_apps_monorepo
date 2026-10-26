@@ -28,8 +28,7 @@ that baseline, and the branch and worktree facts a session carries.
   to later dedicated baselines, and the stable project identifier resolves to
   the live directory before git runs.
 - A session reports its dedicated-worktree facts. A new dedicated worktree starts on a detached HEAD with no
-  branch, so the agent's own branch appears only through the live current-branch refresh, which belongs to pull
-  request monitoring with the PR refresh. A mutating tool emits the diff refresh signal; bursts during an in-flight read
+  branch. A mutating tool emits the diff refresh signal; bursts during an in-flight read
   coalesce into one trailing refresh, a failed event-driven refresh retries
   after a delay while the diff screen remains open, and diffs stay encrypted
   from the relay.
@@ -68,7 +67,7 @@ that baseline, and the branch and worktree facts a session carries.
 |---|---|
 | L1 Smoke | Not included because a meaningful diff requires a mutating live turn. |
 | L2 Routine | Headless bridge, representative plugin: after a session edits files the diff lists them with before/after content and line counts; dedicated uses its base branch and in-place its creation-time commit. |
-| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; a dedicated worktree reports a detached HEAD until its agent creates a branch, and that branch then appears in the source-control facts; the diff list, per-file view, and refresh on the file-change signal render. Desktop automated coverage proves the typed route, Back behavior, and shared rendering; shared UI coverage proves selectable source lines. |
+| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; a new dedicated worktree reports a detached HEAD with no branch; the diff list, per-file view, and refresh on the file-change signal render. Desktop automated coverage proves the typed route, Back behavior, and shared rendering; shared UI coverage proves selectable source lines. |
 | L4 Extended | Relay integration, every supporting production plugin: unreachable base and no-common-ancestor are distinct client-visible failures; archived sessions and removed worktrees return no diffs without erroring; a moved project still resolves git correctly; each plugin's file-change signal triggers a refresh reflecting the real change set. |
 | L5 Full | Headless bridge for large mixed changes, non-git or commitless sessions returning no diffs, and invalid base branches; relay integration to prove diff payload encryption. Representative plugin. |
 
