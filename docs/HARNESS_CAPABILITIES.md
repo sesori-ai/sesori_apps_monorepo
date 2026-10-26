@@ -81,6 +81,18 @@ residue is cosmetic and is not migrated.
 | OpenCode, Codex, Pi | Skills exposed as `PluginCommandSource.skill` commands, no injected body record | Not applicable: no harness-authored user turn to hide. |
 | Grok, Antigravity, Copilot, Cursor, OMP, Hermes, DeepSeek | None | Not applicable: the ACP seam has no skill concept and no harness-authored user turn. |
 
+## Bridge worktree note
+
+A dedicated-worktree session's first prompt or command arguments open with a
+note the bridge writes for the agent. The bridge strips it from every text part
+it receives, live and from history, when the note opens the text, optionally
+after one command token such as `/review`.
+
+| Harness | Sesori availability |
+|---|---|
+| Claude Code, Codex, Pi, ACP family | ✅ Hidden from prompts and commands, live and after history load. |
+| OpenCode | ✅ Hidden from prompts. ⬜ Still visible after a native command whose template puts `$ARGUMENTS` after other text: the server expands the note into the middle of the message. Checked in code on 2026-10-26. |
+
 ## Transcript turn boundaries
 
 The client groups a transcript into turns from its messages alone, so a

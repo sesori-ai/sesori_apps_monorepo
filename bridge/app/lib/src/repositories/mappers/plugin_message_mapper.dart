@@ -1,3 +1,4 @@
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -73,11 +74,26 @@ extension PluginMessageWithPartsMapper on PluginMessageWithParts {
       info: info.toSharedMessage(sessionId: sessionId),
       // Backends emit unknown parts for content blocks they cannot model
       // (e.g. Claude's server_tool_use); skip them like the live event path.
-      parts: parts
-          .where((part) => part is! PluginMessagePartUnknown)
-          .map((part) => part.toShared(sessionId: sessionId))
-          .toList(),
+      parts: [
+        for (final part in parts)
+          if (part is! PluginMessagePartUnknown)
+            if (part.withoutWorktreeContext() case final visible?) visible.toShared(sessionId: sessionId),
+      ],
     );
+  }
+}
+
+extension PluginMessagePartWorktreeContext on PluginMessagePart {
+  /// This part without the bridge's worktree note, or `null` when the note was
+  /// all it held. Live parts carry no role, so history and the live path strip
+  /// every text part by the same rule and the stored transcript matches the
+  /// live event.
+  PluginMessagePart? withoutWorktreeContext() {
+    final part = this;
+    if (part is! PluginMessagePartText) return part;
+    final text = stripWorktreeSystemContext(text: part.text);
+    if (text == null) return null;
+    return identical(text, part.text) ? part : part.copyWith(text: text);
   }
 }
 

@@ -10,6 +10,7 @@ import "package:sesori_bridge/src/orchestrator.dart";
 import "package:sesori_bridge/src/runtime/bridge_runtime.dart";
 import "package:sesori_bridge/src/services/bridge_startup_retry_service.dart";
 import "package:sesori_bridge/src/services/plugin_lifecycle_service.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -150,6 +151,35 @@ void main() {
     final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
     expect(rows.map((row) => row.partId), equals(["p_text"]));
     expect(harness.deliveredPartIds, isNot(contains("p_unknown")));
+  });
+
+  test("the bridge worktree note is stripped before capture and delivery", () async {
+    final harness = await _LiveAttachmentHarness.create();
+    addTearDown(harness.close);
+    final note = buildWorktreeSystemContext(worktreePath: "/tmp/worktrees/blue-otter", baseBranch: "main");
+
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(id: "p_note", text: note),
+      ),
+    );
+    final delivered = harness.nextMessagePartUpdated(partId: "p_joined");
+    harness.plugin.emitEvent(
+      BridgeSseMessagePartUpdated(
+        part: _pluginPart(id: "p_joined", text: "$note\nFix the login bug"),
+      ),
+    );
+    final event = await delivered;
+
+    expect((event.part as MessagePartText).text, "Fix the login bug");
+    await _waitFor(
+      () async => (await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId)).isNotEmpty,
+      reason: "the joined part to be stored",
+    );
+    final rows = await harness.chatHistory.database.chatHistoryDao.getParts(sessionId: _sessionId);
+    expect(rows.map((row) => row.partId), equals(["p_joined"]));
+    expect(rows.single.partJson, isNot(contains("SYSTEM CONTEXT")));
+    expect(harness.deliveredPartIds, isNot(contains("p_note")));
   });
 
   test("a part removal stays ordered after an immediately preceding update", () async {

@@ -1,5 +1,7 @@
 import "package:sesori_bridge/src/repositories/mappers/plugin_message_mapper.dart";
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -34,6 +36,48 @@ void main() {
       expect(shared, hasLength(1));
       expect(shared.single.parts.map((part) => part.id), ["p1", "p3"]);
       expect(shared.single.parts.every((part) => part.sessionID == "s1"), isTrue);
+    });
+
+    test("strips the bridge worktree note from user text", () {
+      final note = buildWorktreeSystemContext(worktreePath: "/tmp/worktrees/blue-otter", baseBranch: "main");
+      final messages = [
+        PluginMessageWithParts(
+          info: const PluginMessage.user(
+            id: "m1",
+            sessionID: "backend-session",
+            agent: null,
+            time: null,
+            promptId: null,
+          ),
+          parts: [
+            PluginMessagePart.text(id: "p1", sessionID: "backend-session", messageID: "m1", text: note),
+            const PluginMessagePart.text(id: "p2", sessionID: "backend-session", messageID: "m1", text: "Fix it"),
+          ],
+        ),
+        PluginMessageWithParts(
+          info: const PluginMessage.user(
+            id: "m2",
+            sessionID: "backend-session",
+            agent: null,
+            time: null,
+            promptId: null,
+          ),
+          parts: [
+            PluginMessagePart.text(id: "p3", sessionID: "backend-session", messageID: "m2", text: "$note\nFix it"),
+          ],
+        ),
+      ];
+
+      final shared = messages.toSharedMessageWithParts(sessionId: "s1");
+
+      expect(shared.map((message) => message.parts.map((part) => part.id)), [
+        ["p2"],
+        ["p3"],
+      ]);
+      expect(shared.expand((message) => message.parts).map((part) => (part as MessagePartText).text), [
+        "Fix it",
+        "Fix it",
+      ]);
     });
   });
 }

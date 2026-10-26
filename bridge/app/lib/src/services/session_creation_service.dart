@@ -174,7 +174,7 @@ class SessionCreationService({
     if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch)) {
       final promptParts = <PromptPart>[
         PromptPart.text(
-          text: _buildWorktreeSystemPrompt(
+          text: buildWorktreeSystemContext(
             worktreePath: path,
             baseBranch: baseBranch,
           ),
@@ -240,7 +240,7 @@ class SessionCreationService({
     required WorktreeResult? worktreeResult,
   }) {
     if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch)) {
-      final systemContext = _buildWorktreeSystemPrompt(
+      final systemContext = buildWorktreeSystemContext(
         worktreePath: path,
         baseBranch: baseBranch,
       ).trimRight();
@@ -282,24 +282,6 @@ class SessionCreationService({
       directory: directory,
       baseCommit: startCommit,
     );
-  }
-
-  String _buildWorktreeSystemPrompt({
-    required String worktreePath,
-    required String baseBranch,
-  }) {
-    return '''
-[SYSTEM CONTEXT — IMPORTANT]
-A dedicated git worktree has been created for this session:
-- Worktree path: $worktreePath
-- Based on: $baseBranch
-
-This worktree is on a detached HEAD at the latest commit of $baseBranch. Before your first commit, create a branch for this task, named as this repository's instructions say, or after the work.
-
-IMPORTANT: Perform all work for this task in this dedicated worktree. You may switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
-
----
-''';
   }
 
   void _startLateMetadata({required Session session, required String? firstText}) {

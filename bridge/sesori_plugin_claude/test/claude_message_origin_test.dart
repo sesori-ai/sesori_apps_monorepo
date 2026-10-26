@@ -80,14 +80,6 @@ void main() {
       expect(stored.parts.single.text, _peerText);
     });
 
-    test("peer content is not stripped as bridge-authored user execution context", () async {
-      const text = "[SYSTEM CONTEXT — IMPORTANT]\nSynthetic plugin content\n---\nRemaining content";
-      final frame = _user(content: text, origin: {"kind": "peer"});
-      final events = live.map(message: ClaudeStreamMessage.parse(frame));
-      expect(events.whereType<BridgeSseMessagePartUpdated>().single.part.text, text);
-      expect((await replay(records: [frame])).single.parts.single.text, text);
-    });
-
     test("text and external userType never turn ordinary prompts into automation", () async {
       for (final origin in [
         null,

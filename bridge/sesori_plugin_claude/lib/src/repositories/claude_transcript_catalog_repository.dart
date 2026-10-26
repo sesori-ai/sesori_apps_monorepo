@@ -1,7 +1,8 @@
 import "dart:isolate";
 
 import "package:path/path.dart" as p;
-import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
+    show normalizeProjectDirectory, stripWorktreeSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
 
 import "../api/claude_transcript_api.dart";
@@ -336,14 +337,18 @@ String? _promptTitle(ClaudeTranscriptUserRecord record) {
   if (record.isMeta || record.isCompactSummary || record.isVisibleInTranscriptOnly) return null;
   if (record.originKind != ClaudeMessageOriginKind.unknown) return null;
   const mapper = ClaudeContentMapper();
-  final blocks = mapper.map(content: mapper.visibleUserContent(content: record.content));
+  final blocks = mapper.map(content: record.content);
   if (mapper.containsInternalCommandOutput(blocks: blocks) ||
       mapper.isTaskNotification(blocks: blocks, originKind: record.originKind)) {
     return null;
   }
   for (final block in blocks) {
     if (block is! ClaudeMappedTextContentBlock) continue;
-    final text = block.text.replaceAll(_whitespace, " ").trim();
+    // The bridge strips its worktree note from messages, but not from a title
+    // already truncated here, so this one use strips it locally.
+    final visible = stripWorktreeSystemContext(text: block.text);
+    if (visible == null) continue;
+    final text = visible.replaceAll(_whitespace, " ").trim();
     if (text.isEmpty) continue;
     final runes = text.runes;
     if (runes.length <= _promptTitleLength) return text;

@@ -109,7 +109,7 @@ void main() {
       await subscription.cancel();
     });
 
-    test("shows only the user-authored text from a replayed execution context", () async {
+    test("a replayed execution context keeps its replay identity for the bridge to strip", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
 
@@ -136,8 +136,10 @@ void main() {
       final visibleParts = events.whereType<BridgeSseMessagePartUpdated>().where(
         (event) => event.part.type == PluginMessagePartType.text,
       );
-      expect(visibleParts.single.part.text, "visible prompt");
-      expect(visibleParts.single.part.messageID, "replay-user-1");
+      // The bridge hides the worktree note at its own seams; the plugin
+      // forwards the replayed frame as written.
+      expect(visibleParts.map((event) => event.part.text), [_worktreeContext, "visible prompt"]);
+      expect(visibleParts.map((event) => event.part.messageID), everyElement("replay-user-1"));
       final user = events.whereType<BridgeSseMessageUpdated>().where(
         (event) => event.info is PluginMessageUser,
       );

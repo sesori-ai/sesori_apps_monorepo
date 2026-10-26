@@ -68,6 +68,7 @@ import "repositories/filesystem_repository.dart";
 import "repositories/form_repository.dart";
 import "repositories/health_repository.dart";
 import "repositories/mappers/git_diff_output_mapper.dart";
+import "repositories/mappers/plugin_message_mapper.dart";
 import "repositories/mappers/session_event_mapper.dart";
 import "repositories/mcp_repository.dart";
 import "repositories/models/normalized_bridge_event.dart";
@@ -1857,8 +1858,10 @@ class OrchestratorSession._({
     required bool Function() shouldCapture,
   }) async {
     if (part.type == PluginMessagePartType.unknown) return null;
-    final sharedPart = _mapper.mapMessagePart(part: part);
-    final visible = _mapper.isMessagePartVisible(part: part);
+    final visiblePart = part.withoutWorktreeContext();
+    if (visiblePart == null) return null;
+    final sharedPart = _mapper.mapMessagePart(part: visiblePart);
+    final visible = _mapper.isMessagePartVisible(part: visiblePart);
     if (!_chatHistoryService.requiresAwaitedAttachmentCapture(part: sharedPart)) {
       // Deliberately not awaited: an ordinary part's wire shape does not depend
       // on its write, and the queue it just joined preserves the order.

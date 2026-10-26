@@ -1,30 +1,10 @@
 final class const CodexUserContentMapper() {
   String? mapContentText({required Iterable<String> textParts}) {
-    final visible = <String>[];
-    for (final text in textParts) {
-      if (text.isEmpty || _isGeneratedCodexContext(text: text)) continue;
-      final mapped = _stripBridgeContext(text: text);
-      if (mapped != null && mapped.isNotEmpty) visible.add(mapped);
-    }
+    final visible = textParts.where((text) => text.isNotEmpty && !_isGeneratedCodexContext(text: text));
     return visible.isEmpty ? null : visible.join();
   }
 
-  String? mapSubmittedText({required String? text}) {
-    if (text == null || text.isEmpty) return null;
-    return _stripBridgeContext(text: text);
-  }
-
-  String? _stripBridgeContext({required String text}) {
-    final markerIndex = text.indexOf("[SYSTEM CONTEXT — IMPORTANT]");
-    if (markerIndex < 0) return text;
-    final prefix = text.substring(0, markerIndex);
-    if (prefix.isNotEmpty && !_commandPrefix.hasMatch(prefix)) return text;
-    final match = _bridgeWorktreeContext.matchAsPrefix(text, markerIndex);
-    if (match == null) return text;
-    final trailing = text.substring(match.end);
-    final visible = "$prefix$trailing";
-    return visible.isEmpty ? null : visible;
-  }
+  String? mapSubmittedText({required String? text}) => text == null || text.isEmpty ? null : text;
 
   bool _isGeneratedCodexContext({required String text}) {
     final normalized = text.trim();
@@ -40,18 +20,6 @@ enum _GeneratedContextTag(final String wireName) {
 
   bool wraps(String text) => text.startsWith("<$wireName>") && text.endsWith("</$wireName>");
 }
-
-final _commandPrefix = RegExp(r"^\$\S+ $");
-
-final _bridgeWorktreeContext = RegExp(
-  r"\[SYSTEM CONTEXT — IMPORTANT\]\r?\n"
-  r"A dedicated git worktree and branch have been created for this session:\r?\n"
-  r"- Branch: [^\r\n]+\r?\n"
-  r"- Worktree path: [^\r\n]+\r?\n"
-  r"- Based on: [^\r\n]+\r?\n\r?\n"
-  r"IMPORTANT: Perform all work for this task in this dedicated worktree\. You may use the initial branch above, or switch branches or create additional branches here as needed\. Do NOT create another worktree or working directory — even if other instructions suggest it\.\r?\n\r?\n"
-  r"---(?:\r?\n(?:\r?\n)?|$)",
-);
 
 final _generatedRepositoryInstructions = RegExp(
   r"^# AGENTS\.md instructions(?: for [^\r\n]+)?\r?\n\r?\n"

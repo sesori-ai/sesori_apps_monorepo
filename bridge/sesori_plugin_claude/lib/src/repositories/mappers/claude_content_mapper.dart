@@ -107,44 +107,6 @@ final class const ClaudeContentMapper() {
     required ClaudeMessageOriginKind originKind,
   }) => isHarnessGenerated && originKind != ClaudeMessageOriginKind.peer;
 
-  /// Strips the bridge-owned worktree context envelope from user [content], so
-  /// both the live replay echo and the persisted transcript render only the
-  /// user-authored text.
-  Object? visibleUserContent({required Object? content}) {
-    if (content is String) {
-      final text = _stripBridgeContext(content);
-      return text == null || text.isEmpty
-          ? const <Object?>[]
-          : [
-              {"type": "text", "text": text},
-            ];
-    }
-    if (content is! List) return content;
-    final visible = <Object?>[];
-    for (final block in content) {
-      if (block is Map && block["type"] == "text" && block["text"] is String) {
-        final text = _stripBridgeContext(block["text"]! as String);
-        if (text != null && text.isNotEmpty) visible.add({...block.cast<String, Object?>(), "text": text});
-      } else {
-        visible.add(block);
-      }
-    }
-    return visible;
-  }
-
-  String? _stripBridgeContext(String text) {
-    const marker = "[SYSTEM CONTEXT \u2014 IMPORTANT]";
-    final markerIndex = text.indexOf(marker);
-    if (markerIndex < 0) return text;
-    final envelopeEnd = text.indexOf("\n---", markerIndex);
-    if (envelopeEnd < 0) return text;
-    final trailing = text.substring(envelopeEnd + "\n---".length).trim();
-    final prefix = text.substring(0, markerIndex).trim();
-    if (prefix.isEmpty) return trailing.isEmpty ? null : trailing;
-    if (!prefix.startsWith("/")) return text;
-    return trailing.isEmpty ? prefix : "$prefix $trailing";
-  }
-
   /// Projects visible user-role content consistently for live and stored rows.
   /// Explicit peer provenance identifies automation regardless of prompt hints;
   /// only ordinary stdin replays can replace a queued human prompt.
@@ -157,11 +119,7 @@ final class const ClaudeContentMapper() {
     required String? promptId,
   }) {
     final isPeer = originKind == ClaudeMessageOriginKind.peer;
-    final parts = mapParts(
-      content: isPeer ? content : visibleUserContent(content: content),
-      sessionId: sessionId,
-      messageId: messageId,
-    );
+    final parts = mapParts(content: content, sessionId: sessionId, messageId: messageId);
     if (!_hasVisibleContent(parts: parts)) return null;
     return PluginMessageWithParts(
       info: isPeer
