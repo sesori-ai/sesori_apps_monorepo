@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 3/7 in review; step 5 in progress.
+- Current step: 5/7 in review.
 - User decisions: D1–D15 in `PLAN.md`, agreed 2026-10-25 over two review rounds.
 
 ## Delivery
@@ -12,9 +12,9 @@
 |---|---|---|---|
 | 1/7 | Publish the plan | Done | #2067 |
 | 2/7 | Floating new-session button; Archived in Settings | Done | #2070 |
-| 3/7 | Picker actions in a footer | In review | #2071 |
+| 3/7 | Picker actions in a footer | Done | #2071 |
 | 4/7 | Sesori folder and per-session scratch folders (inert) | Done | #2069 |
-| 5/7 | No project project turned on | In progress | — |
+| 5/7 | No project project turned on | In review | — |
 | 6/7 | No project in the apps | Not started | — |
 | 7/7 | L3 matrix run; plan retired | Not started | — |
 
