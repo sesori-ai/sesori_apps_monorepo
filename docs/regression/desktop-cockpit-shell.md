@@ -208,8 +208,9 @@ The main pane hosts one full-width routed page.
   this one. When the list says otherwise it fades in over 220 ms on its own layer over the pane's 54-pixel top band
   (at once with reduced motion), and fades out the same way if the list goes back to one. The body fills the pane from
   launch, so the heading, pills, composer and loader never move as the line comes or goes; beside the line, the band
-  leaves clicks to the body, and the file-access card starts below the band, so the line never covers it. The line
-  stays put while the body below changes state. The body cross-fades over 220 ms between the composer and the loader
+  leaves clicks to the body, and the file-access card starts below the band, so the line clears it up to 150% text
+  (from about 200% the line's lower edge reaches over the card's top padding, not its text). The line stays put
+  while the body below changes state. The body cross-fades over 220 ms between the composer and the loader
   or another status page, as when a switch loads the next computer's projects and lands on its composer. Each kind
   of status page (the loader, a failure, recovery, offline) cross-fades into the next, while one whose own content
   changes, such as the slow-start line appearing under the
@@ -315,9 +316,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
-- Home computer header shown, hidden for a lone local computer, fading in over the top band without moving the
-  composer, and switching from its menu; disconnected home for a remote target (offline body, other computers, no Start,
-  also while this computer's bridge launches) versus
+- Home computer header shown, hidden for a lone local computer, fading in and out over the top band without moving the
+  composer (at once with reduced motion), and switching from its menu; disconnected home for a remote target (offline
+  body, other computers, no Start, also while this computer's bridge launches) versus
   this computer (supervised Start; the loader while its bridge launches, its still-starting line after 10 s,
   recovery once the start fails); the desktop target following a new or changed supervised bridge id unless
   another computer was picked in this sign-in; header and body agreeing on "this computer" before the
