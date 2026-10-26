@@ -3,8 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 7/7. The L3 run is recorded below. It found one failure (F1), and the four macOS cells are pending,
-  so the plan is not retired yet.
+- Current step: 7/7. The L3 run is recorded below. Its one failure (F1) is fixed in #2094. The four macOS cells are
+  pending, so the plan is not retired yet.
 - User decisions: D1–D15 in `PLAN.md`, agreed 2026-10-25 over two review rounds.
 
 ## Delivery
@@ -17,7 +17,7 @@
 | 4/7 | Sesori folder and per-session scratch folders (inert) | Done | #2069 |
 | 5/7 | No project project turned on | Done | #2074 |
 | 6/7 | No project in the apps | Done | #2087 |
-| 7/7 | L3 matrix run; plan retired | In progress: run recorded, F1 open, macOS pending | [L3 run](#l3-run-2026-10-25) |
+| 7/7 | L3 matrix run; plan retired | In progress: run recorded, F1 fixed (#2094), macOS pending | [L3 run](#l3-run-2026-10-25) |
 
 ## L3 run (2026-10-25)
 
@@ -110,6 +110,11 @@ Not run:
 | New app on the v1.9.1 bridge: no "No project", defaults as today | Pass | There is no "No project" anywhere, and the switcher footer is "All projects" alone. With no sessions, + asks "Choose a project", and the picker footer is "Open folder…" alone. Once a `demo-app` session exists, + defaults to `demo-app`. |
 
 ### F1: OpenCode create with a model fails in a new folder
+
+Fixed in #2094. OpenCode 2 registers a newly loaded folder's providers asynchronously, and only its model routes wait
+for that. The plugin now reads the models before the providers, which gave a complete catalog in 60 of 60 new
+folders against a live OpenCode 2.1.4. The empty folder a failed create leaves behind is pre-existing cleanup
+behaviour and stays out of scope.
 
 - **Steps:** on the new bridge, start an OpenCode session with an explicit model in a folder OpenCode has not loaded
   yet. That covers every "No project" send and every send with "New worktree" on. From the app this means + with no
