@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$BridgeSettingsResponse {
 
- PullRequestRefreshSettingsResponse get pullRequestRefresh; YoloSettingsResponse get yolo; bool? get warmUpPluginsOnSessionOpen;
+ PullRequestRefreshSettingsResponse? get pullRequestRefresh; YoloSettingsResponse get yolo; bool? get warmUpPluginsOnSessionOpen;
 /// Create a copy of BridgeSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -54,11 +54,11 @@ abstract mixin class $BridgeSettingsResponseCopyWith<$Res>  {
   factory $BridgeSettingsResponseCopyWith(BridgeSettingsResponse value, $Res Function(BridgeSettingsResponse) _then) = _$BridgeSettingsResponseCopyWithImpl;
 @useResult
 $Res call({
- PullRequestRefreshSettingsResponse pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen
+ PullRequestRefreshSettingsResponse? pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen
 });
 
 
-$PullRequestRefreshSettingsResponseCopyWith<$Res> get pullRequestRefresh;$YoloSettingsResponseCopyWith<$Res> get yolo;
+$PullRequestRefreshSettingsResponseCopyWith<$Res>? get pullRequestRefresh;$YoloSettingsResponseCopyWith<$Res> get yolo;
 
 }
 /// @nodoc
@@ -71,10 +71,10 @@ class _$BridgeSettingsResponseCopyWithImpl<$Res>
 
 /// Create a copy of BridgeSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? pullRequestRefresh = null,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? pullRequestRefresh = freezed,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,}) {
   return _then(BridgeSettingsResponse(
-pullRequestRefresh: null == pullRequestRefresh ? _self.pullRequestRefresh : pullRequestRefresh // ignore: cast_nullable_to_non_nullable
-as PullRequestRefreshSettingsResponse,yolo: null == yolo ? _self.yolo : yolo // ignore: cast_nullable_to_non_nullable
+pullRequestRefresh: freezed == pullRequestRefresh ? _self.pullRequestRefresh : pullRequestRefresh // ignore: cast_nullable_to_non_nullable
+as PullRequestRefreshSettingsResponse?,yolo: null == yolo ? _self.yolo : yolo // ignore: cast_nullable_to_non_nullable
 as YoloSettingsResponse,warmUpPluginsOnSessionOpen: freezed == warmUpPluginsOnSessionOpen ? _self.warmUpPluginsOnSessionOpen : warmUpPluginsOnSessionOpen // ignore: cast_nullable_to_non_nullable
 as bool?,
   ));
@@ -83,9 +83,12 @@ as bool?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PullRequestRefreshSettingsResponseCopyWith<$Res> get pullRequestRefresh {
-  
-  return $PullRequestRefreshSettingsResponseCopyWith<$Res>(_self.pullRequestRefresh, (value) {
+$PullRequestRefreshSettingsResponseCopyWith<$Res>? get pullRequestRefresh {
+    if (_self.pullRequestRefresh == null) {
+    return null;
+  }
+
+  return $PullRequestRefreshSettingsResponseCopyWith<$Res>(_self.pullRequestRefresh!, (value) {
     return _then(_self.copyWith(pullRequestRefresh: value));
   });
 }/// Create a copy of BridgeSettingsResponse
@@ -109,7 +112,7 @@ class _BridgeSettingsResponse implements BridgeSettingsResponse {
   const _BridgeSettingsResponse({required this.pullRequestRefresh, required this.yolo, required this.warmUpPluginsOnSessionOpen});
   factory _BridgeSettingsResponse.fromJson(Map<String, dynamic> json) => _$BridgeSettingsResponseFromJson(json);
 
-@override final  PullRequestRefreshSettingsResponse pullRequestRefresh;
+@override final  PullRequestRefreshSettingsResponse? pullRequestRefresh;
 @override final  YoloSettingsResponse yolo;
 @override final  bool? warmUpPluginsOnSessionOpen;
 
@@ -148,11 +151,11 @@ abstract mixin class _$BridgeSettingsResponseCopyWith<$Res> implements $BridgeSe
   factory _$BridgeSettingsResponseCopyWith(_BridgeSettingsResponse value, $Res Function(_BridgeSettingsResponse) _then) = __$BridgeSettingsResponseCopyWithImpl;
 @override @useResult
 $Res call({
- PullRequestRefreshSettingsResponse pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen
+ PullRequestRefreshSettingsResponse? pullRequestRefresh, YoloSettingsResponse yolo, bool? warmUpPluginsOnSessionOpen
 });
 
 
-@override $PullRequestRefreshSettingsResponseCopyWith<$Res> get pullRequestRefresh;@override $YoloSettingsResponseCopyWith<$Res> get yolo;
+@override $PullRequestRefreshSettingsResponseCopyWith<$Res>? get pullRequestRefresh;@override $YoloSettingsResponseCopyWith<$Res> get yolo;
 
 }
 /// @nodoc
@@ -165,10 +168,10 @@ class __$BridgeSettingsResponseCopyWithImpl<$Res>
 
 /// Create a copy of BridgeSettingsResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? pullRequestRefresh = null,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? pullRequestRefresh = freezed,Object? yolo = null,Object? warmUpPluginsOnSessionOpen = freezed,}) {
   return _then(_BridgeSettingsResponse(
-pullRequestRefresh: null == pullRequestRefresh ? _self.pullRequestRefresh : pullRequestRefresh // ignore: cast_nullable_to_non_nullable
-as PullRequestRefreshSettingsResponse,yolo: null == yolo ? _self.yolo : yolo // ignore: cast_nullable_to_non_nullable
+pullRequestRefresh: freezed == pullRequestRefresh ? _self.pullRequestRefresh : pullRequestRefresh // ignore: cast_nullable_to_non_nullable
+as PullRequestRefreshSettingsResponse?,yolo: null == yolo ? _self.yolo : yolo // ignore: cast_nullable_to_non_nullable
 as YoloSettingsResponse,warmUpPluginsOnSessionOpen: freezed == warmUpPluginsOnSessionOpen ? _self.warmUpPluginsOnSessionOpen : warmUpPluginsOnSessionOpen // ignore: cast_nullable_to_non_nullable
 as bool?,
   ));
@@ -178,9 +181,12 @@ as bool?,
 /// with the given fields replaced by the non-null parameter values.
 @override
 @pragma('vm:prefer-inline')
-$PullRequestRefreshSettingsResponseCopyWith<$Res> get pullRequestRefresh {
-  
-  return $PullRequestRefreshSettingsResponseCopyWith<$Res>(_self.pullRequestRefresh, (value) {
+$PullRequestRefreshSettingsResponseCopyWith<$Res>? get pullRequestRefresh {
+    if (_self.pullRequestRefresh == null) {
+    return null;
+  }
+
+  return $PullRequestRefreshSettingsResponseCopyWith<$Res>(_self.pullRequestRefresh!, (value) {
     return _then(_self.copyWith(pullRequestRefresh: value));
   });
 }/// Create a copy of BridgeSettingsResponse
