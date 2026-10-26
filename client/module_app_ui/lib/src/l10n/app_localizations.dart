@@ -460,7 +460,7 @@ abstract class AppLocalizations {
   /// Windows and AppImage installs download signed updates and install them on Quit or Restart to update.
   ///
   /// In en, this message translates to:
-  /// **'Sesori downloads verified updates in the background and installs them when you quit.'**
+  /// **'Sesori downloads verified updates in the background and installs them when you quit or restart to update.'**
   String get desktopUpdatesCheckDescription;
 
   /// Linux package installs receive updates from the system package manager.

@@ -158,8 +158,8 @@ Only one quit runs at a time, and nothing re-enters it.
 - **Velopack:** `vpk pack` output per channel and OS/CPU, with
   `releases.<channel>.json` plus `.sig`, and the full `.nupkg` on GCS. Dart fetches the
   feed and signature, verifies Ed25519 against the compiled key, and downloads the
-  referenced full package. It writes both into Velopack's packages directory and runs
-  `vpkc_new_source_file` on that directory. Velopack then checks the package SHA-256
+  referenced full package. `VelopackUpdateApi` writes both into its own `velopack-feed/`
+  staging directory and points Velopack's file source at it. Velopack then checks the package SHA-256
   against the now-trusted feed. No sync FFI callbacks cross threads.
 - Signing runs in a main-only job holding only the update-key secret. Upload is a
   separate job with the existing bucket-scoped federation, following the

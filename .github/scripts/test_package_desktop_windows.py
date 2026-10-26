@@ -86,6 +86,8 @@ class WindowsPackagingTests(unittest.TestCase):
             return response
 
         with mock.patch.object(packaging, "VPK_PACKAGE_SHA256", packaging.hashlib.sha256(b"vpk package").hexdigest()), \
+                mock.patch.object(packaging, "VELOPACK_LIBRARY_SHA256",
+                                  packaging.hashlib.sha256(libraries.getvalue()).hexdigest()), \
                 mock.patch.object(packaging_linux, "VELOPACK_LIBRARY_SHA256",
                                   packaging.hashlib.sha256(libraries.getvalue()).hexdigest()), \
                 mock.patch.object(packaging.urllib.request, "urlopen", side_effect=fake_urlopen), \

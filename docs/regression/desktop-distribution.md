@@ -155,7 +155,8 @@ refuses. vpk generates the AppDir: the bundle in `usr/bin` beside `UpdateNix` an
 a shell `AppRun`, the `sesori-desktop` desktop entry (`Exec=sesori_desktop`,
 `Categories=Development;Utility;`) and the existing icon, packed as a root-owned gzip squashfs.
 The image is read back with `unsquashfs` at the runtime's ELF offset; its `usr/bin` must match
-the staged bundle plus `lib/libvelopack_libc.so` (from the pinned library archive) exactly and its icon the application icon. Packaging never executes it. vpk's
+the staged bundle plus `lib/libvelopack_libc.so` (from the pinned library archive) exactly
+and its icon the application icon. Packaging never executes it. vpk's
 full `.nupkg` and `releases.<channel>.json` are kept as the unpublished
 `desktop-velopack-linux-<arch>` artifact.
 The AppImage is unchanged by signing and covered only by the signed checksums. It needs
