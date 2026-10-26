@@ -205,7 +205,9 @@ dependency cycle.
 
 ### Orchestrator Owns SSE Decisions
 
-No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `projectActivityService.changes`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.
+No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams
+(`plugin.events`, `projectActivityService.changes`) and decides what to emit to phones. No `emitBridgeEvent()` or
+similar public methods on the Orchestrator.
 
 ### No Magic Strings for Known Enumerations
 

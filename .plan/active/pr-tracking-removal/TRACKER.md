@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current steps: 2/13 and 5/13 in review.
+- Current step: 6/13 in review.
 - User decisions:
   - remove all PR tracking (round 1, Q1 A, 2026-10-25);
   - D7, remove project-view presence (the user's follow-up the same day).
@@ -14,10 +14,10 @@
 | Step | Outcome | State | PR/evidence |
 |---|---|---|---|
 | 1/13 | Publish the plan | Done | #2068 |
-| 2/13 | Row PR mark removed | In review | #2089 |
+| 2/13 | Row PR mark removed | Done | #2089 |
 | 3/13 | PR refresh setting removed | Not started | — |
 | 4/13 | Client stops declaring the open project | Not started | — |
-| 5/13 | Session reads carry no PR data | In review | #2085 (5.i), #2086 (5.ii) |
+| 5/13 | Session reads carry no PR data | Done | #2085 (5.i), #2086 (5.ii) |
 | 6/13 | Polling stopped | In review | #2090 |
 | 7/13 | Bridge stops tracking the open project | Not started | — |
 | 8/13 | PR sync service removed | Not started | — |
