@@ -114,7 +114,8 @@ class FlutterWindowHost.forTesting({
   }
 
   Future<void> _onRunnerCall(MethodCall call) async {
-    if (call.method != "quitRequested") {
+    // No exit owner listens yet during startup; the runner then quits as before.
+    if (call.method != "quitRequested" || !_events.hasListener) {
       throw MissingPluginException();
     }
     _emitEvent(event: WindowHostEvent.quitRequested);

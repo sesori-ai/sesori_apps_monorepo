@@ -91,6 +91,8 @@ void main() {
 
     final host = createHost();
     await host.initialize(hidden: true, initialBounds: null, minimumSize: _minimumSize);
+    // Before the exit owner listens, the runner is told to quit on its own.
+    final ByteData? beforeListening = await runnerCall(method: "quitRequested");
     final events = <WindowHostEvent>[];
     host.events.listen(events.add);
 
@@ -100,6 +102,7 @@ void main() {
     final ByteData? afterDispose = await runnerCall(method: "quitRequested");
 
     expect(events, <WindowHostEvent>[WindowHostEvent.quitRequested]);
+    expect(beforeListening, isNull);
     expect(handled, isNotNull);
     expect(unknown, isNull);
     expect(afterDispose, isNull);

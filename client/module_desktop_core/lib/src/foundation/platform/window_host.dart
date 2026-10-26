@@ -5,8 +5,8 @@ enum WindowHostEvent() {
   closeRequested,
 
   /// The system asked the whole app to quit (macOS Cmd+Q, Dock Quit, logout).
-  /// The host waits until `DesktopApplicationTerminator` terminates or
-  /// cancels the termination.
+  /// The native runner keeps the termination pending until
+  /// `DesktopApplicationTerminator` terminates or cancels it.
   quitRequested,
   moved,
   resized,

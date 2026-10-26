@@ -1,6 +1,7 @@
 /// Layer-0 seam over Sparkle in the macOS runner. Sparkle schedules its own
 /// background checks, downloads silently and verifies each update's EdDSA
-/// signature against the runner's `SUPublicEDKey`; it never shows its own UI.
+/// signature against the runner's `SUPublicEDKey`; normal updates show no
+/// Sparkle UI.
 abstract interface class SparkleUpdateEngine() {
   /// Starts Sparkle on [feedUri]. Runs once, before any other call.
   Future<void> start({required Uri feedUri, required bool automaticChecks});

@@ -32,6 +32,8 @@
 	<string>NSApplication</string>
 	<key>SUAutomaticallyUpdate</key>
 	<true/>
+	<key>SUAllowsAutomaticUpdates</key>
+	<true/>
 	<key>SUEnableAutomaticChecks</key>
 	<true/>
 	<key>SUPublicEDKey</key>

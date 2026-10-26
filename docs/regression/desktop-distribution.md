@@ -3,8 +3,7 @@
 ## Supported behavior
 
 Desktop Settings → General includes app-update controls, separate from bridge configuration and
-supervision. Every packaged build updates in place (below); the app no longer links a manual
-download page. On `https://sesori.com/desktop/`, unshipped sections explicitly contain no public
+supervision. macOS (Sparkle), Windows and AppImage (Velopack) builds update in place (below). On `https://sesori.com/desktop/`, unshipped sections explicitly contain no public
 download; they never link private CI artifacts or infer desktop assets from Latest.
 The website preserves all eight macOS/Windows channel/CPU anchors and `linux-package-managers`,
 plus four `internal-linux-<x64|arm64>-<deb|rpm>` preview anchors; the website step adds the
@@ -79,7 +78,7 @@ Every system quit (Cmd+Q, Dock Quit, logout, Sparkle's own quit request) runs th
 tray Quit: the helper stops before the app exits. A quit request during a running quit is
 declined at once. A failed helper stop keeps the app running and declines the quit request.
 Failure signals: an unsigned or tampered archive installs, Cmd+Q leaves the helper running,
-Sparkle shows a prompt, or Restart to update installs without relaunching.
+an update prompt appears during a normal writable install, or Restart to update installs without relaunching.
 
 ## Client storage boundary
 
