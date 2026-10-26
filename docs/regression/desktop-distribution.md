@@ -751,14 +751,15 @@ historical evidence as shared-store qualification.
   channel isolation, malformed metadata, cache reuse/failure logging and all anchors.
   Crawler FAQ coverage prevents a correct platform summary from hiding a stale answer.
   These run in `sesori-ai/landingpage`, without live GitHub fixture dependencies.
-- **L3:** Check for updates and Restart to update on a packaged native build of each
-  install kind against a real feed.
-  Linux repository delivery additionally requires production-key/federated publication,
-  anonymous public files and real APT/DNF refresh against HTTPS.
-- **L4:** Actual publisher verification and a signed N→N+1 automatic update (Sparkle,
-  Velopack, unattended-upgrades/dnf-automatic) on Quit and on Restart to update, with
-  helper On/Off, failed-stop refusal, and data preservation; one manual replacement from a
-  pre-updater install.
+- **L3:** Check for updates and Restart to update on packaged macOS (Sparkle) and AppImage
+  (Velopack) builds against their public feeds, and on Windows once its feed is public.
+  For DEB/RPM: a package-manager update, then the app's Restart to update. Linux repository
+  delivery additionally requires production-key/federated publication, anonymous public
+  files and real APT/DNF refresh against HTTPS.
+- **L4:** Actual publisher verification and a signed N→N+1 Sparkle or Velopack update on
+  Quit and on Restart to update; for DEB/RPM, an unattended-upgrades/dnf-automatic install
+  followed by Restart to update. Each with helper On/Off, failed-stop refusal and data
+  preservation, plus one manual replacement from a pre-updater install.
 - **L5:** All recorded native platform/package/host gates in the active distribution
   plan, downloaded artifacts, trust checks and public links. The deployed website
   browser checks prove live preview selection, anchors, channel/platform presentation

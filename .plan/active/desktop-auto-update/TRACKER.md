@@ -9,6 +9,6 @@
 | 5 | Velopack packaging for Windows and AppImage | done (5.a #2060, 5.b #2063) |
 | 6 | Velopack updater in the app | done (#2072) |
 | 7 | Publish update feeds | done (#2076) |
-| 8 | Phone sheet and download docs | in-review (#2082; landingpage companion) |
-| 9 | Reconcile regression docs | in-review |
+| 8 | Phone sheet and download docs | in-progress (#2082, landingpage#114) |
+| 9 | Reconcile regression docs | in-progress (#2083) |
 | 10 | Verify and retire | pending |
