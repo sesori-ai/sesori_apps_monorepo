@@ -644,7 +644,6 @@ Future<void> _insertStoredSession({
     isDedicated: false,
     createdAt: 1,
     worktreePath: null,
-    branchName: null,
     baseBranch: null,
     baseCommit: null,
     agent: agent,

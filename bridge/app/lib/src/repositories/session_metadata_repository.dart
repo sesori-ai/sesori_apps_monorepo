@@ -6,7 +6,7 @@ import "package:sesori_shared/sesori_shared.dart" show GenerateSessionMetadataRe
 import "../api/sesori_server_api.dart";
 import "../foundation/abortable_request.dart";
 
-typedef GeneratedSessionMetadata = ({String title, String branchName});
+typedef GeneratedSessionMetadata = ({String title});
 
 class SessionMetadataRequestAbortedException({
   required final Object innerError,
@@ -33,7 +33,7 @@ class SessionMetadataRepository({required final SesoriServerApi _api}) {
         request: GenerateSessionMetadataRequest(firstMessage: normalizedFirstMessage),
         abortSignal: _abortSignal,
       );
-      return (title: response.title, branchName: response.branchName);
+      return (title: response.title);
     } on http.RequestAbortedException catch (error, stackTrace) {
       throw SessionMetadataRequestAbortedException(innerError: error, innerStackTrace: stackTrace);
     } on SesoriServerApiResponseException catch (error, stackTrace) {

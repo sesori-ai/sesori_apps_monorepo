@@ -8,7 +8,6 @@ import "package:sesori_bridge/src/repositories/session_metadata_repository.dart"
 
 class FakeSessionMetadataRepository() implements SessionMetadataRepository {
   String? generateResult = "Generated title";
-  String generatedBranchName = "generated-branch";
   String? lastGenerateMessage;
 
   @override
@@ -17,10 +16,7 @@ class FakeSessionMetadataRepository() implements SessionMetadataRepository {
   @override
   Future<GeneratedSessionMetadata> generateMetadata({required String firstMessage}) async {
     lastGenerateMessage = firstMessage;
-    return (
-      title: generateResult ?? (throw StateError("metadata unavailable")),
-      branchName: generatedBranchName,
-    );
+    return (title: generateResult ?? (throw StateError("metadata unavailable")));
   }
 }
 

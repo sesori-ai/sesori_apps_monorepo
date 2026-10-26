@@ -100,7 +100,6 @@ void main() {
       sessionMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
-        worktreeService: worktreeService,
       );
       sessionCreationService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
@@ -518,7 +517,6 @@ void main() {
       final localMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: localRepository,
         sessionOperationDispatcher: localOperationDispatcher,
-        worktreeService: worktreeService,
       );
       final localCreationService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
@@ -1035,7 +1033,6 @@ void main() {
       final orderedMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: orderedRepository,
         sessionOperationDispatcher: orderedOperationDispatcher,
-        worktreeService: worktreeService,
       );
       final orderedCreationService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
@@ -1228,7 +1225,6 @@ void main() {
       final throwingDispatcher = SessionMutationDispatcher(
         sessionRepository: throwingRepository,
         sessionOperationDispatcher: throwingOperationDispatcher,
-        worktreeService: worktreeService,
       );
       final localCreationService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,

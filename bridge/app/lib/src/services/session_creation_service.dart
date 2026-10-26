@@ -105,7 +105,6 @@ class SessionCreationService({
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
       isDedicated: worktreeState.isDedicated,
       worktreePath: worktreeState.worktreePath,
-      branchName: null,
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
       lastAgent: promptDefaults.agent,

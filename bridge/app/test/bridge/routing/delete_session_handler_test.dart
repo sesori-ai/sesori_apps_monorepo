@@ -62,7 +62,6 @@ void main() {
       sessionMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
-        worktreeService: worktreeService,
       );
       final sessionLifecycleService = SessionLifecycleService(
         continuations: const EmptySessionContinuations(),
@@ -168,7 +167,6 @@ void main() {
         sessionId: "s1",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
-        branchName: "session-001",
       );
 
       final response = await handler.handle(
@@ -217,7 +215,6 @@ void main() {
         sessionId: "s2",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-002",
-        branchName: "session-002",
       );
       worktreeService.safetyResult = WorktreeSafe();
 
@@ -253,7 +250,6 @@ void main() {
         sessionId: "s2-failed",
         projectId: "/repo",
         worktreePath: worktree.path,
-        branchName: "session-002-failed",
       );
       worktreeService.safetyResult = WorktreeSafe();
       worktreeService.removeResult = false;
@@ -282,7 +278,6 @@ void main() {
         sessionId: "s3",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-003",
-        branchName: "session-003",
       );
 
       await expectLater(
@@ -311,7 +306,6 @@ void main() {
         sessionId: "s4",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-004",
-        branchName: "session-004",
       );
       worktreeService.safetyResult = WorktreeSafe();
 
@@ -341,7 +335,6 @@ void main() {
         sessionId: "s5",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-005",
-        branchName: "session-005",
       );
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
@@ -373,7 +366,6 @@ void main() {
         sessionId: "s6",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-006",
-        branchName: "session-006",
       );
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [UnstagedChanges()],
@@ -404,7 +396,6 @@ void main() {
         sessionId: "s7",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
 
       final response = await handler.handle(
@@ -431,7 +422,6 @@ void main() {
         sessionId: "s9",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-009",
-        branchName: "session-009",
         pluginId: "uninstalled-plugin",
       );
 
@@ -467,7 +457,6 @@ void main() {
         sessionId: "s10",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-010",
-        branchName: "session-010",
       );
       worktreeService.safetyResult = WorktreeSafe();
       plugin.throwOnDeleteSessionError = PluginApiException("/session/s10", 500);
@@ -497,7 +486,6 @@ void main() {
         sessionId: "s10-unavailable",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
       plugin.throwOnDeleteSessionError = PluginApiException("/session/s10-unavailable", 503);
 
@@ -523,7 +511,6 @@ void main() {
         sessionId: "s11",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
       plugin.throwOnDeleteSessionError = PluginApiException("/session/s11", 404);
 
@@ -547,7 +534,6 @@ void main() {
         sessionId: "s12",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
       plugin.throwOnDeleteSessionError = const PluginOperationException.notFound("deleteSession");
 
@@ -572,7 +558,6 @@ Future<void> _insertSession({
   required String sessionId,
   required String projectId,
   required String? worktreePath,
-  required String? branchName,
   String pluginId = "fake",
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
@@ -586,7 +571,6 @@ Future<void> _insertSession({
     isDedicated: true,
     createdAt: 1,
     worktreePath: worktreePath,
-    branchName: branchName,
     baseBranch: null,
     baseCommit: null,
 

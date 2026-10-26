@@ -326,7 +326,6 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       isDedicated: false,
       createdAt: _defaultTimestamp,
       worktreePath: null,
-      branchName: null,
       baseBranch: null,
       baseCommit: null,
       lastAgent: null,

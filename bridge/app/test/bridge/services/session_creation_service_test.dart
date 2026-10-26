@@ -80,7 +80,6 @@ void main() {
       mutationDispatcher = SessionMutationDispatcher(
         sessionRepository: repository,
         sessionOperationDispatcher: operationDispatcher,
-        worktreeService: worktreeService,
       );
       service = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
@@ -149,7 +148,6 @@ void main() {
       final localMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: repository,
         sessionOperationDispatcher: localOperationDispatcher,
-        worktreeService: worktreeService,
       );
       final localService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
@@ -284,7 +282,6 @@ void main() {
       final localMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: repository,
         sessionOperationDispatcher: localOperationDispatcher,
-        worktreeService: worktreeService,
       );
       final localService = SessionCreationService(
         sessionMetadataRepository: metadataRepository,
@@ -663,7 +660,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -725,10 +721,7 @@ class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
     }
     if (generateGate case final gate?) await gate;
     if (failure case final error?) throw error;
-    return (
-      title: "Generated title",
-      branchName: "generated-branch",
-    );
+    return (title: "Generated title");
   }
 }
 

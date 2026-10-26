@@ -17,7 +17,7 @@ void main() {
 
       final metadata = await repository.generateMetadata(firstMessage: message);
 
-      expect(metadata, (title: "Generated title", branchName: "generated-branch"));
+      expect(metadata, (title: "Generated title"));
       expect(api.requests.single, equals(GenerateSessionMetadataRequest(firstMessage: message)));
       expect(api.abortSignals.single.isAborted, isFalse);
     });
@@ -115,7 +115,7 @@ class _FakeSesoriServerApi({final Object? failure}) implements SesoriServerApi {
     requests.add(request);
     abortSignals.add(abortSignal);
     if (error case final error?) throw error;
-    return const GenerateSessionMetadataResponse(title: "Generated title", branchName: "generated-branch");
+    return const GenerateSessionMetadataResponse(title: "Generated title");
   }
 
   @override

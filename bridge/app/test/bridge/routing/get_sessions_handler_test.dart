@@ -767,7 +767,6 @@ void main() {
         isDedicated: true,
         createdAt: 10,
         worktreePath: "/tmp/worktree",
-        branchName: "feature/preserved-pr",
         baseBranch: null,
         baseCommit: null,
 
@@ -844,7 +843,6 @@ void main() {
       expect(stored?.updatedAt, 200);
       expect(stored?.projectionUpdatedAt, 200);
       expect(stored?.worktreePath, "/tmp/worktree");
-      expect(stored?.branchName, "feature/preserved-pr");
       expect(stored?.isDedicated, isTrue);
       expect(plugin.lastGetSessionsWorktree, isNull);
     });

@@ -82,7 +82,6 @@ void main() {
           isDedicated: false,
           createdAt: 1,
           worktreePath: null,
-          branchName: "created-branch",
           baseBranch: null,
           baseCommit: null,
           lastAgent: null,

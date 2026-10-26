@@ -271,7 +271,6 @@ class _Fixture() {
     mutations = SessionMutationDispatcher(
       sessionRepository: repository,
       sessionOperationDispatcher: operations,
-      worktreeService: worktree,
     );
     lifecycle = SessionLifecycleService(
       continuations: const EmptySessionContinuations(),
@@ -543,9 +542,6 @@ class _FamilyWorktreeService() implements WorktreeService {
     required String worktreePath,
     required bool force,
   }) async => true;
-
-  @override
-  Future<bool> branchExists({required String projectId, required String branchName}) async => false;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GenerateSessionMetadataResponse {
 
- String get title; String get branchName;
+ String get title;
 /// Create a copy of GenerateSessionMetadataResponse
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -28,20 +28,20 @@ $GenerateSessionMetadataResponseCopyWith<GenerateSessionMetadataResponse> get co
 @override
 bool operator ==(Object other) {
   final _this = this as GenerateSessionMetadataResponse;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataResponse&&(identical(other.title, _this.title) || other.title == _this.title)&&(identical(other.branchName, _this.branchName) || other.branchName == _this.branchName));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataResponse&&(identical(other.title, _this.title) || other.title == _this.title));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as GenerateSessionMetadataResponse;
-  return Object.hash(runtimeType,_this.title,_this.branchName);
+  return Object.hash(runtimeType,_this.title);
 }
 
 @override
 String toString() {
   final _this = this as GenerateSessionMetadataResponse;
-  return 'GenerateSessionMetadataResponse(title: ${_this.title}, branchName: ${_this.branchName})';
+  return 'GenerateSessionMetadataResponse(title: ${_this.title})';
 }
 
 
@@ -52,7 +52,7 @@ abstract mixin class $GenerateSessionMetadataResponseCopyWith<$Res>  {
   factory $GenerateSessionMetadataResponseCopyWith(GenerateSessionMetadataResponse value, $Res Function(GenerateSessionMetadataResponse) _then) = _$GenerateSessionMetadataResponseCopyWithImpl;
 @useResult
 $Res call({
- String title, String branchName
+ String title
 });
 
 
@@ -69,10 +69,9 @@ class _$GenerateSessionMetadataResponseCopyWithImpl<$Res>
 
 /// Create a copy of GenerateSessionMetadataResponse
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? title = null,Object? branchName = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? title = null,}) {
   return _then(GenerateSessionMetadataResponse(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String,branchName: null == branchName ? _self.branchName : branchName // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
@@ -85,11 +84,10 @@ as String,
 @JsonSerializable(createToJson: false)
 
 class _GenerateSessionMetadataResponse implements GenerateSessionMetadataResponse {
-  const _GenerateSessionMetadataResponse({required this.title, required this.branchName});
+  const _GenerateSessionMetadataResponse({required this.title});
   factory _GenerateSessionMetadataResponse.fromJson(Map<String, dynamic> json) => _$GenerateSessionMetadataResponseFromJson(json);
 
 @override final  String title;
-@override final  String branchName;
 
 /// Create a copy of GenerateSessionMetadataResponse
 /// with the given fields replaced by the non-null parameter values.
@@ -101,18 +99,18 @@ _$GenerateSessionMetadataResponseCopyWith<_GenerateSessionMetadataResponse> get 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataResponse&&(identical(other.title, title) || other.title == title)&&(identical(other.branchName, branchName) || other.branchName == branchName));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataResponse&&(identical(other.title, title) || other.title == title));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,title,branchName);
+    return Object.hash(runtimeType,title);
 }
 
 @override
 String toString() {
-    return 'GenerateSessionMetadataResponse(title: $title, branchName: $branchName)';
+    return 'GenerateSessionMetadataResponse(title: $title)';
 }
 
 
@@ -123,7 +121,7 @@ abstract mixin class _$GenerateSessionMetadataResponseCopyWith<$Res> implements 
   factory _$GenerateSessionMetadataResponseCopyWith(_GenerateSessionMetadataResponse value, $Res Function(_GenerateSessionMetadataResponse) _then) = __$GenerateSessionMetadataResponseCopyWithImpl;
 @override @useResult
 $Res call({
- String title, String branchName
+ String title
 });
 
 
@@ -140,10 +138,9 @@ class __$GenerateSessionMetadataResponseCopyWithImpl<$Res>
 
 /// Create a copy of GenerateSessionMetadataResponse
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? title = null,Object? branchName = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? title = null,}) {
   return _then(_GenerateSessionMetadataResponse(
 title: null == title ? _self.title : title // ignore: cast_nullable_to_non_nullable
-as String,branchName: null == branchName ? _self.branchName : branchName // ignore: cast_nullable_to_non_nullable
 as String,
   ));
 }
