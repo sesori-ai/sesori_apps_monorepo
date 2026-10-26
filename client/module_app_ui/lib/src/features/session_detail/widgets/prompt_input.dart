@@ -1851,12 +1851,14 @@ class _PromptInputState() extends State<PromptInput> {
         actionsEnabled: _voicePresentation == _VoicePresentation.idle,
         alwaysOpen: ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer,
         isTyping: _hasText,
-        showAttachImage: widget.attachmentsSupported ?? false,
+        // Nearly every harness takes images, so the action holds its place
+        // while support is unknown instead of growing in once it is known.
+        showAttachImage: widget.attachmentsSupported ?? true,
         onSlashCommandsTap: () {
           _typingPinnedByPicker = _layout == ComposerSurfaceLayout.typing;
           toggle();
         },
-        onAttachImageTap: _handleAttachImage,
+        onAttachImageTap: (widget.attachmentsSupported ?? false) ? _handleAttachImage : null,
       ),
       contentBuilder: (context, close) => CommandPicker(
         commands: widget.availableCommands,

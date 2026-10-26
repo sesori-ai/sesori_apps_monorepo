@@ -30,7 +30,10 @@ class const ComposerOptionsAccordion({
   /// field gets the room; the chevron still reopens them.
   required final bool isTyping,
   required final VoidCallback onSlashCommandsTap,
-  required final VoidCallback onAttachImageTap,
+
+  /// Null holds the attach action's place disabled, while the harness'
+  /// support is still unknown.
+  required final VoidCallback? onAttachImageTap,
 }) extends StatefulWidget {
   @override
   State<ComposerOptionsAccordion> createState() => _ComposerOptionsAccordionState();
@@ -58,6 +61,7 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
     final prego = context.prego;
     final loc = context.loc;
     final isOpen = _isOpen || _isOpenByDefault;
+    final onAttachImageTap = widget.onAttachImageTap;
 
     return DecoratedBox(
       decoration: BoxDecoration(
@@ -90,10 +94,10 @@ class _ComposerOptionsAccordionState() extends State<ComposerOptionsAccordion> {
                       _AccordionIconButton(
                         icon: TablerRegular.plus,
                         tooltip: loc.sessionDetailAttachImage,
-                        onTap: widget.actionsEnabled
+                        onTap: widget.actionsEnabled && onAttachImageTap != null
                             ? () {
                                 _collapse();
-                                widget.onAttachImageTap();
+                                onAttachImageTap();
                               }
                             : null,
                       ),

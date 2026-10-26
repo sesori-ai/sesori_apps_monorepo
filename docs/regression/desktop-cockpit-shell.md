@@ -188,8 +188,10 @@ The main pane hosts one full-width routed page.
   else the newest session's project), as `session-creation-and-options.md` details: the project holds once it
   lands, another filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank,
   and with no default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there
-  are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". A
-  session started from home opens in its project. Loading projects is labelled and failures retry the shared
+  are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". After
+  the bridge connects, the composer appears at its final layout at once, with the parts still loading
+  shimmering in place, and its heading never moves as they fill in. A session started from home opens in its
+  project. Loading projects is labelled and failures retry the shared
   inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
   CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
@@ -349,6 +351,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   and deleting or archiving the open session all returning to the home (`desktop_router_test`).
 - The new session page: toolbar above a centred, width-capped column with room left below it, no project crumb,
   and the project selector reporting the chosen project (`desktop_new_session_screen_test`).
+- The home composer after connect (`desktop_home_composer_layout_test`): its final geometry from the first frame,
+  the harness pill, options row and worktree row shimmering in place from that frame, and the heading and composer
+  unchanged while discovery, the project check and the options resolve; "No project" holding no worktree room; the
+  retry and the no-harness notice still taking the options' place. A switch to "No project" folds the room it is
+  left from the next frame, with no shimmer or row in it (`desktop_home_pane_test`).
 - Flat typed route registration, archived read-only navigation,
   new-session replacement, Changes file selection, home states, package-font resolution.
 - Add project from the sidebar's empty New session row opening New session in the added project
@@ -420,7 +427,8 @@ bridge during UI-only checks.
 
 On home, watch for a session starting in a project other than the one picked, a draft following a project
 reorder or surviving a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
-the prompt while the list loads on launch, a Start button
+the prompt while the list loads on launch, the composer building up part by part or its heading shifting
+after the bridge connects, a Start button
 offered for another computer, a header that pops in on each load, or the desktop jumping back to this computer
 after the user picked another one.
 

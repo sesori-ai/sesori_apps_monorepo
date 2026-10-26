@@ -120,11 +120,20 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     )..addStatusListener((_) => setState(() {}));
     // Picking another project builds a new composer in this one's place, so
     // it starts with the options where the last one left them. A page's
-    // first composer holds the worktree row's room, which most projects fill.
+    // first composer holds the worktree row's room for a folder, which most
+    // fill; "No project" never shows the row.
+    final projectKind = context.read<NewSessionCubit>().projectKind;
     _optionsShown = switch (PageStorage.maybeOf(context)?.readState(context, identifier: _optionsShownStorageId)) {
       final bool shown => shown,
-      _ => true,
+      _ => projectKind == ProjectKind.folder,
     };
+    // "No project" is known up front, so room a folder left it folds from the
+    // next frame instead of waiting for the bridge's check.
+    if (projectKind == ProjectKind.scratch && _optionsShown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _optionsShown = false);
+      });
+    }
     // The row stays hidden until the project's worktree support is known,
     // which comes from the bridge, so the stored choice lands before it shows.
     unawaited(
@@ -265,9 +274,14 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   Widget? _buildOptions({required NewSessionCubit cubit, required AgentModelData? data}) {
     if (cubit.hasNoHarnesses) return NewSessionNoHarnessNotice(onSettingsPressed: widget.onOpenHarnessSettings);
     if (cubit.needsHarnessDiscovery) return null;
+    // "No project" never has the row. Room a folder left it stays empty for
+    // the first frame only, so it folds rather than snaps.
+    if (cubit.projectKind == ProjectKind.scratch) {
+      return _optionsShown ? const SizedBox(height: _DedicatedWorkspaceRow.height) : null;
+    }
     void choose(bool value) => setState(() => _chosenDedicatedWorktree = value);
     return switch (data?.projectWorktreeCapability) {
-      // Until the stored choice loads the row holds its room empty, so the
+      // Until the stored choice loads the row shimmers in its room, so the
       // toggle never appears on and then flips off.
       NewSessionProjectWorktreeCapability.supported => _DedicatedWorkspaceRow(
         value: _chosenDedicatedWorktree,
@@ -284,6 +298,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   Widget? _buildHarnessPill({required NewSessionCubit cubit, required AgentModelData? data}) {
     if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
       return PregoShimmer(
+        appearDelay: Duration.zero,
         semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
         child: PregoSkeletonBar(height: _optionPillHeight, width: 140, color: context.prego.colors.bgQuaternary),
       );
@@ -864,7 +879,7 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
 /// Whether the session gets a git worktree of its own instead of working in
 /// the project checkout everyone shares.
 class const _DedicatedWorkspaceRow({
-  /// Null holds the row's room empty while the project is checked or the
+  /// Null shimmers in the row's place while the project is checked or the
   /// stored choice loads; the row fades in once both are known.
   required final bool? value,
   required final ValueChanged<bool> onChanged,
@@ -882,7 +897,11 @@ class const _DedicatedWorkspaceRow({
         switchInCurve: transcriptMotionCurve,
         switchOutCurve: transcriptMotionReverseCurve,
         child: switch (value) {
-          null => null,
+          null => PregoShimmer(
+            appearDelay: Duration.zero,
+            semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
+            child: PregoSkeletonBar(height: 20, width: 150, color: prego.colors.bgQuaternary),
+          ),
           // The label names what the switch does, so they must reach a screen
           // reader as one control rather than as stray text beside a bare
           // toggle.
@@ -954,6 +973,7 @@ class const _OptionPillsPlaceholder({required final bool compact}) extends State
   @override
   Widget build(BuildContext context) {
     return PregoShimmer(
+      appearDelay: Duration.zero,
       semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
       child: _OptionPillRow(
         compact: compact,

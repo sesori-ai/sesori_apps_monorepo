@@ -67,6 +67,7 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.voiceFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.voiceFirst);
 
@@ -124,6 +125,7 @@ void main() {
     when(() => newSessionCubit.canRefreshOptions).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
     final selected = <String>[];
@@ -212,6 +214,7 @@ void main() {
     when(() => newSessionCubit.canSubmit).thenReturn(true);
     when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
     when(() => newSessionCubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+    when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
     when(() => inputModeCubit.state).thenReturn(ChatInputMode.textFirst);
     whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
 
@@ -298,6 +301,7 @@ void main() {
       when(() => newSessionCubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       var draft = ComposerDraft.typed(text: "");
       when(() => newSessionCubit.composerDraft).thenAnswer((_) => draft);
+      when(() => newSessionCubit.projectKind).thenReturn(ProjectKind.folder);
       when(() => newSessionCubit.saveComposerDraft(draft: any(named: "draft"))).thenAnswer((invocation) {
         draft = invocation.namedArguments[#draft]! as ComposerDraft;
       });
