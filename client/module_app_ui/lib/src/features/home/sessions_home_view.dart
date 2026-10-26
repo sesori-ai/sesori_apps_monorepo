@@ -115,7 +115,11 @@ class const SessionsHomeView({
       required double endClearance,
     }) => [
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
-      if (projects is ProjectListLoaded)
+      // Mounted with the loading skeleton, so a scan already running is there
+      // from the first frame and the projects arriving move nothing. A pull
+      // to reconnect keeps the disconnected page up until the list loads, and
+      // a scan it recovers waits for the list rather than shifting that page.
+      if (projects is! ProjectListBridgeDisconnected)
         SliverToBoxAdapter(
           child: CatalogScanRow(scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan)),
         ),

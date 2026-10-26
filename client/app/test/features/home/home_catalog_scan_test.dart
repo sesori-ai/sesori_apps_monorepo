@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -145,6 +147,37 @@ void main() {
     expect(find.text(loc.catalogScanRunningTitle(0, 1)), findsOneWidget);
     expect(find.text("Codex — 148 sessions found"), findsOneWidget);
     expect(find.text("My Project"), findsOneWidget);
+  });
+
+  // A scan already running when the home opens is no news: the row stands
+  // with the loading skeleton, so the projects arriving move nothing.
+  testWidgets("a load that starts mid-scan shows the row from its first frame and keeps the list still", (
+    tester,
+  ) async {
+    final projectsArrive = Completer<ApiResponse<Projects>>();
+    when(() => mockProjectRepository.listProjects()).thenAnswer((_) => projectsArrive.future);
+    rescanService.emit(
+      const CatalogRescanState.reading(
+        activePluginName: "Codex",
+        sessionsSeen: 12,
+        finishedHarnessCount: 0,
+        pluginIds: {"codex"},
+      ),
+    );
+    final loc = await AppLocalizations.delegate.load(const Locale("en"));
+
+    await tester.pumpWidget(app());
+    expect(find.text(loc.catalogScanRunningTitle(0, 1)), findsOneWidget);
+    await tester.pump(_rowSettled);
+    final search = find.byType(EditableText);
+    final searchTop = tester.getTopLeft(search).dy;
+
+    projectsArrive.complete(ApiResponse.success(Projects(data: [testProjectSummary(name: "My Project")])));
+    await tester.pump();
+    await tester.pump(_rowSettled);
+
+    expect(find.text("Fix the parser"), findsOneWidget);
+    expect(tester.getTopLeft(search).dy, searchTop);
   });
 
   testWidgets("folds the row away once the scan clears itself", (tester) async {

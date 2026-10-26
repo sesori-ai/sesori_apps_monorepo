@@ -89,12 +89,15 @@ class const DesktopSidebar({
                 child: CustomScrollView(
                   key: const Key("desktop-sidebar-session-list"),
                   slivers: [
-                    if (state is ProjectListLoaded)
-                      SliverToBoxAdapter(
-                        child: CatalogScanRow(
-                          scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan),
-                        ),
+                    // Mounted with the loading skeleton, so a scan already
+                    // running is there from the first frame and the projects
+                    // arriving move nothing. A lost connection clears the scan,
+                    // so the row is empty while this computer is unreachable.
+                    SliverToBoxAdapter(
+                      child: CatalogScanRow(
+                        scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan),
                       ),
+                    ),
                     AllSessionsList(
                       onSessionTap: ({required row}) => onOpenSession(
                         context: context,

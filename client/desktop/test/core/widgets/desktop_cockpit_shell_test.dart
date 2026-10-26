@@ -1033,6 +1033,46 @@ void main() {
     );
   }
 
+  // A scan already running when the sidebar opens is no news: the row stands
+  // with the loading skeleton, so the projects arriving move nothing.
+  testWidgets("a load that starts mid-scan shows the scan row from its first frame and keeps the list still", (
+    tester,
+  ) async {
+    recent = {
+      "project-1": _loaded(
+        sessions: [testSession(id: "s1", title: "Fix the build")],
+      ),
+    };
+    when(() => refreshService.scan).thenAnswer(
+      (_) => BehaviorSubject.seeded(
+        const CatalogRescanState.reading(
+          activePluginName: "Codex",
+          sessionsSeen: 12,
+          finishedHarnessCount: 0,
+          pluginIds: {"codex"},
+        ),
+      ),
+    );
+    final projectUpdates = StreamController<ProjectListState>();
+    addTearDown(projectUpdates.close);
+    whenListen(projects, projectUpdates.stream, initialState: const ProjectListState.loading());
+
+    await tester.pumpWidget(app(state: running));
+    expect(find.descendant(of: list, matching: find.byKey(const ValueKey("prego-deep-scan-card"))), findsOneWidget);
+    await tester.pump(const Duration(milliseconds: 600));
+    final search = find.descendant(of: list, matching: find.byType(EditableText));
+    final searchTop = tester.getTopLeft(search).dy;
+
+    projectUpdates.add(
+      const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
+    );
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 600));
+
+    expect(find.descendant(of: list, matching: find.text("Fix the build")), findsOneWidget);
+    expect(tester.getTopLeft(search).dy, searchTop);
+  });
+
   testWidgets("Retry works and a departing pill lets content receive the click", (tester) async {
     final root = app(state: running);
     final updates = StreamController<ConnectionOverlayState>();
