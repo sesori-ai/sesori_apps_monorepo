@@ -126,12 +126,6 @@ void main() {
   });
 
   testWidgets("a bridge inside Sesori Desktop points to Restart to update and no terminal commands", (tester) async {
-    final copied = <String>[];
-    tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, (call) async {
-      if (call.method == "Clipboard.setData") copied.add((call.arguments as Map)["text"] as String);
-      return null;
-    });
-    addTearDown(() => tester.binding.defaultBinaryMessenger.setMockMethodCallHandler(SystemChannels.platform, null));
     await tester.pumpWidget(_openButton(bridgeKind: BridgeKind.desktop));
     await tester.tap(find.text("open"));
     await tester.pumpAndSettle();
@@ -143,18 +137,8 @@ void main() {
       find.text("On that computer, choose Restart to update in Sesori's tray menu or Settings."),
       findsOneWidget,
     );
-    expect(
-      find.text("No Check for updates in Settings? That version predates automatic updates. Update it once by hand:"),
-      findsOneWidget,
-    );
     expect(find.text(BridgeInstall.updateCommand), findsNothing);
     expect(find.text(BridgeInstall.macLinuxCommand), findsNothing);
     expect(find.byTooltip("Copy command"), findsNothing);
-
-    await tester.tap(find.byTooltip("Copy link"));
-    await tester.pump();
-
-    expect(copied, ["sesori.com/desktop"]);
-    await tester.pump(const Duration(seconds: 2));
   });
 }

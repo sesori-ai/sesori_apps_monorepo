@@ -90,8 +90,7 @@ class const _BridgeUpdateSteps() extends StatelessWidget {
 }
 
 /// Sesori Desktop updates itself and the bridge it bundles, so there is no
-/// command to run: restart into the update. Builds from before the updater keep
-/// the download link, since they need one last manual update.
+/// command to run: restart into the update.
 class const _DesktopUpdateSteps() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -110,12 +109,6 @@ class const _DesktopUpdateSteps() extends StatelessWidget {
           Text(loc.bridgeUpdateDesktopRestart, style: heading),
           const SizedBox(height: PregoSpacing.md),
           Text(loc.bridgeUpdateDesktopCheck, style: body),
-          const SizedBox(height: PregoSpacing.x3l),
-          Text(loc.bridgeUpdateDesktopManualIntro, style: heading),
-          const SizedBox(height: PregoSpacing.md),
-          _CommandBox(command: BridgeInstall.desktopDownloadPage, copyTooltip: loc.bridgeUpdateCopyLink),
-          const SizedBox(height: PregoSpacing.md),
-          Text(loc.bridgeUpdateDesktopManualInstall, style: body),
         ],
       ),
     );

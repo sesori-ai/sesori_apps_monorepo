@@ -3172,17 +3172,6 @@ class AppLocalizationsEn extends AppLocalizations {
       'Not there yet? Choose Check for updates in Settings. Linux DEB and RPM installs get new versions through the system\'s software updates.';
 
   @override
-  String get bridgeUpdateDesktopManualIntro =>
-      'No Check for updates in Settings? That version predates automatic updates. Update it once by hand:';
-
-  @override
-  String get bridgeUpdateDesktopManualInstall =>
-      'Quit Sesori (closing the window may not quit it), then install the new version.';
-
-  @override
-  String get bridgeUpdateCopyLink => 'Copy link';
-
-  @override
   String get mcpTitle => 'MCP servers and connectors';
 
   @override

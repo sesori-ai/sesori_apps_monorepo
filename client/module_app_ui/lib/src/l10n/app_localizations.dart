@@ -5515,24 +5515,6 @@ abstract class AppLocalizations {
   /// **'Not there yet? Choose Check for updates in Settings. Linux DEB and RPM installs get new versions through the system\'s software updates.'**
   String get bridgeUpdateDesktopCheck;
 
-  /// Introduces the download link. Desktop builds released before automatic updates need one last manual update.
-  ///
-  /// In en, this message translates to:
-  /// **'No Check for updates in Settings? That version predates automatic updates. Update it once by hand:'**
-  String get bridgeUpdateDesktopManualIntro;
-
-  /// Platform-neutral: macOS replaces the app, Linux replaces the AppImage or installs the package.
-  ///
-  /// In en, this message translates to:
-  /// **'Quit Sesori (closing the window may not quit it), then install the new version.'**
-  String get bridgeUpdateDesktopManualInstall;
-
-  /// No description provided for @bridgeUpdateCopyLink.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy link'**
-  String get bridgeUpdateCopyLink;
-
   /// No description provided for @mcpTitle.
   ///
   /// In en, this message translates to:

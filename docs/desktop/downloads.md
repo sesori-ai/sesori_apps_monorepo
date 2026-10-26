@@ -60,25 +60,10 @@ toggle covers only the app's own check and prompt; silent installs follow the sy
 updater's configuration. Signing keys and feed locations are in
 [desktop update signing](update-signing.md).
 
-### Installs from before automatic updates
-
-macOS builds from before Sparkle, AppImages from before Velopack, and DEB/RPM packages
-from before repository registration need one last manual update. Their Settings shows
-**View downloads** instead of **Check for updates**. Every later version updates itself.
-
-Download the package for your existing channel and CPU. Select **Quit** in Sesori and
-wait for it to exit; closing the window may only hide it to the tray. If Quit reports
-a helper-stop failure, do not replace the running app; resolve that failure first.
-Then install it: on macOS, copy the complete Sesori app from the DMG into Applications;
-replace an AppImage at the same path and file name; install a DEB or RPM with the
-package manager. Reopen Sesori manually; last-On/Off intent is preserved by ordinary
-startup.
-
 On macOS, verify the publisher **DigitalBlock Labs LTD (AQNCF7663C)** and normal
-Gatekeeper acceptance. Do not replace just the helper or run daily use from the mounted
-DMG. Never bypass Gatekeeper or delete Keychain items to make an update work. Shared CLI
-credentials, harness runtimes, databases, session history and projects are not update
-cleanup.
+Gatekeeper acceptance. Do not run daily use from the mounted DMG. Never bypass
+Gatekeeper or delete Keychain items to make an update work. Shared CLI credentials,
+harness runtimes, databases, session history and projects are not update cleanup.
 
 Windows publisher and installation instructions will accompany a signed public
 release. Private unsigned per-user installers have passed isolated native package
@@ -86,10 +71,6 @@ fixtures, but they are not downloads and do not establish SmartScreen, interacti
 GUI/account behavior or a signed N→N+1 update.
 
 Internal is an explicit test channel, not an automatic promotion to stable.
-Internal build 987 uses the older per-value native storage format. Before replacing
-that build with a shared-store preview, sign out in the old app, Quit, install the
-new package, then sign in again. Internal format changes do not carry a production
-migration promise; old-format replacement proof does not qualify the new format.
 The sections below do not imply every platform/channel has a release. Do not use
 GitHub's generic Latest release to choose a desktop installer.
 
