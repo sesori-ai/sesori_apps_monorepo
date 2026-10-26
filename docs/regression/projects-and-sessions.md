@@ -199,8 +199,7 @@ state.
   change remains pending for the next ordinary, reconnect, or staleness refresh
   rather than being discarded. A failed forced snapshot replaces a full-screen
   load it superseded instead of leaving a spinner, and a superseded pull waits
-  for the winning snapshot's result; a session read returns the cached PR data
-  at once and leaves the PR refresh to run in the background. A stale
+  for the winning snapshot's result. A stale
   superseded read cannot rearm a failed change. A run that another client
   cancels settles its row quietly, without a failure.
 - Project inventory reads, mutations, live projection and catalog/reconnect behavior run in a scoped

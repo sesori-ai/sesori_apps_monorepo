@@ -2,8 +2,6 @@ import "dart:async";
 import "dart:convert";
 
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
-import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/get_child_sessions_handler.dart";
@@ -79,12 +77,10 @@ void main() {
       final sessionsHandler = GetSessionsHandler(
         sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
-        prSyncService: FakePrSyncService(),
       );
       final detailHandler = GetSessionHandler(
         sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
-        prSyncService: FakePrSyncService(),
       );
       final childrenHandler = GetChildSessionsHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -116,120 +112,10 @@ void main() {
       expect(plugin.calls, 0);
     });
 
-    test("session detail gates cached PR metadata with a fresh identity", () async {
-      await database.projectsDao.setPrCacheGithubLogin(
-        projectId: "project",
-        githubLogin: "octocat",
-      );
-      await database.sessionDao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "root",
-            currentBranchName: "feature/private",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
-      );
-      await database.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "project",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          prNumber: 44,
-          branchName: "feature/private",
-          url: "https://github.com/org/repo/pull/44",
-          title: "Private PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-      final prSyncService = FakePrSyncService();
-      final detailHandler = GetSessionHandler(
-        sessionViews: const PassThroughSessionViews(),
-        sessionRepository: repository,
-        prSyncService: prSyncService,
-      );
-
-      Future<Session> readDetail() {
-        return detailHandler.handle(
-          makeRequest("POST", "/session/detail"),
-          body: const SessionIdRequest(sessionId: "root"),
-        );
-      }
-
-      final matching = await readDetail();
-      prSyncService.verifiedGithubLogin = VerifiedGithubLogin.tryParse(rawLogin: "hubot");
-      final switched = await readDetail();
-      prSyncService.verifiedGithubLogin = null;
-      final unknown = await readDetail();
-
-      expect(matching.pullRequest?.number, 44);
-      expect(switched.pullRequest, isNull);
-      expect(unknown.pullRequest, isNull);
-      expect(plugin.calls, 0);
-    });
-
-    test("session detail bounds identity verification and returns PR-free data", () async {
-      await database.projectsDao.setPrCacheGithubLogin(
-        projectId: "project",
-        githubLogin: "octocat",
-      );
-      await database.sessionDao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "root",
-            currentBranchName: "feature/private",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
-      );
-      await database.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "project",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          prNumber: 45,
-          branchName: "feature/private",
-          url: "https://github.com/org/repo/pull/45",
-          title: "Private PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-      final detailHandler = GetSessionHandler(
-        sessionViews: const PassThroughSessionViews(),
-        sessionRepository: repository,
-        prSyncService: FakePrSyncService(
-          identityVerificationDelays: const [Duration(milliseconds: 100)],
-        ),
-        identityVerificationTimeout: const Duration(milliseconds: 10),
-      );
-
-      final detail = await detailHandler.handle(
-        makeRequest("POST", "/session/detail"),
-        body: const SessionIdRequest(sessionId: "root"),
-      );
-
-      expect(detail.id, "root");
-      expect(detail.pullRequest, isNull);
-      expect(detail.pullRequestHistory, isEmpty);
-      await Future<void>.delayed(const Duration(milliseconds: 110));
-    });
-
     test("unknown detail and parent ids remain 404s without plugin calls", () async {
-      final prSyncService = FakePrSyncService();
       final detailHandler = GetSessionHandler(
         sessionViews: const PassThroughSessionViews(),
         sessionRepository: repository,
-        prSyncService: prSyncService,
       );
       final childrenHandler = GetChildSessionsHandler(
         sessionViews: const PassThroughSessionViews(),
@@ -253,7 +139,6 @@ void main() {
 
       expect(detail.status, 404);
       expect(children.status, 404);
-      expect(prSyncService.identityVerificationCallCount, 0);
       expect(plugin.calls, 0);
     });
   });
