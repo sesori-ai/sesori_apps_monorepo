@@ -36,7 +36,8 @@ area documents linked below own the detail.
   user's own, presence, a check on the current one, and "This computer" on the desktop's own. Each row's "⋯" (or a
   desktop secondary click on the row) opens Switch, absent on the current computer, Rename… and Remove…. The "⋯" drops
   it just below itself, right edges aligned, above only when there is no room below; a secondary click drops it from
-  the pointer. Switch goes
+  the pointer. Either way it springs out of the "⋯" or the pointer toward the side it opens on, and only fades in
+  under reduced motion. Switch goes
   through the dispatcher with source `computers_page`; on desktop the Settings window closes first. Rename… prefills
   the name; a blank field, exactly the hostname, or "Use hostname" (offered only under a name of the user's own)
   clears it. The row shows a spinner in place of its "⋯" while a rename or removal runs, and until it finishes

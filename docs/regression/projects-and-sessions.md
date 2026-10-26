@@ -389,9 +389,11 @@ state.
   Each project row shows its name over its path label, or "Folder not
   found" in amber, and its "⋯" button or a secondary click opens the project row's menu: Rename, and Hide, or
   Remove when the folder is gone. The "⋯" drops it just below itself, right edges aligned, above only when there
-  is no room below; a secondary click with a mouse drops it from the pointer. Offline, one line says "Connect to a bridge to manage projects.", the rows dim
-  to the bridge rows' opacity and stop acting, and the Projects row in the phone's Settings dims and stops
-  acting too. The line and the dimming ease in and out, so nothing jumps when the bridge drops or returns.
+  is no room below; a secondary click with a mouse drops it from the pointer. Either way it springs out of the "⋯"
+  or the pointer toward the side it opens on, and only fades in under reduced motion. Offline, one line says
+  "Connect to a bridge to manage projects.", the rows dim to the bridge rows' opacity and stop acting, and the
+  Projects row in the phone's Settings dims and stops acting too. The line and the dimming ease in and out, so
+  nothing jumps when the bridge drops or returns.
 - A session row leads with the harness logo, in a square of the same size for
   every harness, so titles line up; screen readers hear the harness name from
   it. Right after the title's text comes its status mark: a turning sparkle
