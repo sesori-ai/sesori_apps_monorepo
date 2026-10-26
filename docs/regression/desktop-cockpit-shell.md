@@ -100,9 +100,9 @@ The main pane hosts one full-width routed page.
 - Every anchored menu in the desktop app is a pointer menu, because the app installs the design system's
   pointer scope at its root: a tight rounded panel of 30-pixel rows, no dimmed window and no lifted row. A
   right-click drops the panel's top-left corner on the pointer and flips it above only when it does not fit
-  below, springing out of the pointer either way (only fading in under reduced motion); a button press or the keyboard hangs the menu off its trigger as before. A row shows a shortcut only
-  where the desktop registers a real binding for the same action. The phone installs no scope and keeps its
-  long-press presentation.
+  below, springing out of the pointer either way (only fading in under reduced motion); a button press or the
+  keyboard hangs the menu off its trigger as before. A row shows a shortcut only where the desktop registers a
+  real binding for the same action. The phone installs no scope and keeps its long-press presentation.
 - Session mutations use the existing action controller and a stable sidebar presentation
   context. Opening a session menu first retains its
   action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
@@ -319,9 +319,10 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   lights while the sidebar is hidden, the top band's drag that leaves a jiggling click alone and fires once under a
   zooming region, the signed-out window moved from the app's root, logged host failures, the list's clipped
   highlights, and the native brightness pushed once per effective change, including a system switch.
-- Pointer menus: no spotlight, the panel's corner on the pointer and its flip above it, 30-pixel rows with the
-  shortcut label, a button-opened menu still hung off its trigger, the touch presentation where no scope
-  exists, and the desktop app installing the pointer scope.
+- Pointer menus: no spotlight, the panel's corner on the pointer and its flip above it, its spring out of the
+  pointer's corner on either side and fade alone under reduced motion, 30-pixel rows with the shortcut label, a
+  button-opened menu still hung off its trigger, the touch presentation where no scope exists, and the desktop
+  app installing the pointer scope.
 - The sidebar's shared list across projects, a row opening its session in its own project, the filter
   narrowing the list and returning to All projects, and project-local retry (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
