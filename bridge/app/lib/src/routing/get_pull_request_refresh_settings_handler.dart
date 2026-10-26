@@ -6,7 +6,7 @@ import "request_handler.dart";
 class GetPullRequestRefreshSettingsHandler({required final PullRequestRefreshSettingsService _settingsService})
     extends GetRequestHandler<PullRequestRefreshSettingsResponse> {
   // COMPATIBILITY 2026-10-25 (v1.10.0): Apps older than v1.8.0 read the pull request refresh interval here, and it
-  // no longer has any effect. Remove once public apps older than v1.9.2 are unsupported.
+  // no longer has any effect. Remove once public apps older than v1.8.0 are unsupported.
   this : super("/settings/pull-request-refresh");
 
   @override
