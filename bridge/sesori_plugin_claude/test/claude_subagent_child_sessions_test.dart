@@ -139,10 +139,12 @@ void main() {
       expect(dispatcher.busyChildSessionIds(sessionId: _root), [_child]);
 
       dispatcher.completeTurn(sessionId: _root);
-      final started = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame()));
+      final started = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: _toolUseId)));
       expect(started.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated], reason: "already announced");
 
-      final finished = dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame()));
+      final finished = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)),
+      );
       expect(finished.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
       final idle = finished.last as BridgeSseSessionStatus;
       expect(idle.sessionID, _child);
@@ -150,7 +152,7 @@ void main() {
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
       expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
 
-      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame()));
+      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: _toolUseId)));
       expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus, BridgeSseMessagePartUpdated]);
       expect(
         (resumed.first as BridgeSseSessionStatus).status,
@@ -161,9 +163,67 @@ void main() {
       expect(resumedPart.taskState?.output, isNull);
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
 
-      final finishedAgain = dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame()));
+      final finishedAgain = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)),
+      );
       expect(finishedAgain.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
       expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
+    });
+
+    test("a SendMessage resume, whose task frames name the SendMessage call, keeps the child busy until it ends", () {
+      // Claude Code 2.1.310 registers a SendMessage-resumed agent under the
+      // SendMessage call, so its task frames carry that tool-use id.
+      const sendToolUseId = "toolu-send";
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.completeTurn(sessionId: _root);
+      dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)));
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
+
+      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)));
+
+      expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus, BridgeSseMessagePartUpdated]);
+      final busy = resumed.first as BridgeSseSessionStatus;
+      expect(busy.sessionID, _child);
+      expect(busy.status, isA<PluginSessionStatusBusy>());
+      final reopened = (resumed.last as BridgeSseMessagePartUpdated).part as PluginMessagePartSubtask;
+      expect(reopened.id, _toolUseId, reason: "the resume reopens the launching call's tile");
+      expect(reopened.taskState?.status, PluginToolStatus.running);
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
+      expect(dispatcher.busyChildSessionIds(sessionId: _root), [_child]);
+
+      final finished = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: sendToolUseId)),
+      );
+
+      expect(finished.map((event) => event.runtimeType), [BridgeSseMessagePartUpdated, BridgeSseSessionStatus]);
+      expect((finished.first as BridgeSseMessagePartUpdated).part.id, _toolUseId);
+      expect((finished.last as BridgeSseSessionStatus).status, isA<PluginSessionStatusIdle>());
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
+
+      // The wake-up envelope names the SendMessage call too. It stays its own
+      // Automation row, as on replay, instead of rewriting the tile.
+      final envelope = dispatcher.map(
+        message: ClaudeStreamMessage.parse({
+          "type": "user",
+          "session_id": _root,
+          "uuid": "resumed-notification",
+          "origin": {"kind": "task-notification"},
+          "message": {
+            "role": "user",
+            "content":
+                "<task-notification>\n<task-id>$_agentId</task-id>\n<tool-use-id>$sendToolUseId</tool-use-id>\n"
+                "<status>completed</status>\n<summary>Agent finished</summary>\n<result>done</result>\n"
+                "</task-notification>",
+          },
+        }),
+      );
+      expect(envelope.whereType<BridgeSseMessageUpdated>(), hasLength(1));
+      expect(
+        envelope.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.id),
+        isNot(contains(_toolUseId)),
+      );
+      expect(envelope.whereType<BridgeSseSessionStatus>(), isEmpty);
     });
 
     test("routes forwarded sub-agent frames into the child session once its id is known", () {
@@ -361,21 +421,21 @@ Map<String, Object?> _childTextFrame({required String text}) => {
   },
 };
 
-Map<String, Object?> _taskStartedFrame() => {
+Map<String, Object?> _taskStartedFrame({required String toolUseId}) => {
   "type": "system",
   "subtype": "task_started",
   "session_id": _root,
   "task_id": _agentId,
-  "tool_use_id": _toolUseId,
+  "tool_use_id": toolUseId,
   "task_type": "local_agent",
 };
 
-Map<String, Object?> _taskNotificationFrame() => {
+Map<String, Object?> _taskNotificationFrame({required String toolUseId}) => {
   "type": "system",
   "subtype": "task_notification",
   "session_id": _root,
   "task_id": _agentId,
-  "tool_use_id": _toolUseId,
+  "tool_use_id": toolUseId,
   "status": "completed",
   "summary": "hi",
 };
