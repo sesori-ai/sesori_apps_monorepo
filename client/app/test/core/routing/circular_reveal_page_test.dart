@@ -39,9 +39,19 @@ Future<GoRouter> _pumpApp({required WidgetTester tester}) async {
     ],
   );
   addTearDown(router.dispose);
-  await tester.pumpWidget(MaterialApp.router(routerConfig: router));
+  await tester.pumpWidget(
+    MaterialApp.router(
+      darkTheme: ThemeData(brightness: Brightness.dark),
+      routerConfig: router,
+    ),
+  );
   return router;
 }
+
+/// What paints around the page: the page below's dim, the circle's shadow and
+/// tint, and the clipped page itself.
+RenderObject _reveal({required WidgetTester tester}) =>
+    tester.renderObject(find.ancestor(of: find.byKey(_page), matching: find.byType(CustomPaint)).first);
 
 /// The bounds of the circle the page shows through.
 Rect _circle({required WidgetTester tester}) {
@@ -95,6 +105,62 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byKey(_page), findsNothing);
     expect(find.byKey(_fallback), findsNothing);
+  });
+
+  testWidgets("the page below dims and the circle casts a shadow while it grows, gone once open", (tester) async {
+    final router = await _pumpApp(tester: tester);
+
+    unawaited(router.push("/new"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      _reveal(tester: tester),
+      paints
+        ..rect(rect: Offset.zero & _screen)
+        ..circle(x: _centre.dx, y: _centre.dy + 2, hasMaskFilter: true)
+        ..clipPath()
+        ..rect(rect: Offset.zero & _screen, color: const Color(0xFFFFFFFF)),
+    );
+    // A light page gets no tint over the circle.
+    expect(_reveal(tester: tester), paintsExactlyCountTimes(#drawCircle, 1));
+
+    await tester.pumpAndSettle();
+    // Fully open, only the page paints.
+    expect(_reveal(tester: tester), paintsExactlyCountTimes(#drawRect, 1));
+    expect(_reveal(tester: tester), paintsExactlyCountTimes(#drawCircle, 0));
+
+    router.pop();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
+    expect(
+      _reveal(tester: tester),
+      paints
+        ..rect(rect: Offset.zero & _screen)
+        ..circle(x: _centre.dx, y: _centre.dy + 2, hasMaskFilter: true)
+        ..clipPath(),
+    );
+  });
+
+  testWidgets("on a dark page the circle also lightens while it grows", (tester) async {
+    tester.platformDispatcher.platformBrightnessTestValue = Brightness.dark;
+    addTearDown(tester.platformDispatcher.clearPlatformBrightnessTestValue);
+    final router = await _pumpApp(tester: tester);
+
+    unawaited(router.push("/new"));
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 200));
+    expect(
+      _reveal(tester: tester),
+      paints
+        ..rect(rect: Offset.zero & _screen)
+        ..circle(x: _centre.dx, y: _centre.dy, hasMaskFilter: true)
+        ..clipPath()
+        ..rect(rect: Offset.zero & _screen, color: const Color(0xFFFFFFFF))
+        ..circle(x: _centre.dx, y: _centre.dy, hasMaskFilter: false),
+    );
+
+    await tester.pumpAndSettle();
+    expect(_reveal(tester: tester), paintsExactlyCountTimes(#drawCircle, 0));
   });
 
   testWidgets("under reduced motion the page moves as its fallback does, with no circle", (tester) async {
