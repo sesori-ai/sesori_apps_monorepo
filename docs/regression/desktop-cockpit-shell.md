@@ -347,6 +347,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   and deleting or archiving the open session all returning to the home (`desktop_router_test`).
 - The new session page: toolbar above a centred, width-capped column with room left below it, no project crumb,
   and the project selector reporting the chosen project (`desktop_new_session_screen_test`).
+- The home composer after connect (`desktop_home_composer_layout_test`): its final geometry from the first frame,
+  the harness pill, options row and worktree row shimmering in place from that frame, and the heading and composer
+  unchanged while discovery, the project check and the options resolve; "No project" holding no worktree room; the
+  retry and the no-harness notice still taking the options' place. A switch to "No project" folds the room it is
+  left from the next frame, with no shimmer or row in it (`desktop_home_pane_test`).
 - Flat typed route registration, archived read-only navigation,
   new-session replacement, Changes file selection, home states, package-font resolution.
 - Add project from the sidebar's empty New session row opening New session in the added project

@@ -122,10 +122,18 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     // it starts with the options where the last one left them. A page's
     // first composer holds the worktree row's room for a folder, which most
     // fill; "No project" never shows the row.
+    final projectKind = context.read<NewSessionCubit>().projectKind;
     _optionsShown = switch (PageStorage.maybeOf(context)?.readState(context, identifier: _optionsShownStorageId)) {
       final bool shown => shown,
-      _ => context.read<NewSessionCubit>().projectKind == ProjectKind.folder,
+      _ => projectKind == ProjectKind.folder,
     };
+    // "No project" is known up front, so room a folder left it folds from the
+    // next frame instead of waiting for the bridge's check.
+    if (projectKind == ProjectKind.scratch && _optionsShown) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _optionsShown = false);
+      });
+    }
     // The row stays hidden until the project's worktree support is known,
     // which comes from the bridge, so the stored choice lands before it shows.
     unawaited(
@@ -266,6 +274,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   Widget? _buildOptions({required NewSessionCubit cubit, required AgentModelData? data}) {
     if (cubit.hasNoHarnesses) return NewSessionNoHarnessNotice(onSettingsPressed: widget.onOpenHarnessSettings);
     if (cubit.needsHarnessDiscovery) return null;
+    // "No project" never has the row. Room a folder left it stays empty for
+    // the first frame only, so it folds rather than snaps.
+    if (cubit.projectKind == ProjectKind.scratch) {
+      return _optionsShown ? const SizedBox(height: _DedicatedWorkspaceRow.height) : null;
+    }
     void choose(bool value) => setState(() => _chosenDedicatedWorktree = value);
     return switch (data?.projectWorktreeCapability) {
       // Until the stored choice loads the row shimmers in its room, so the
@@ -886,6 +899,7 @@ class const _DedicatedWorkspaceRow({
         child: switch (value) {
           null => PregoShimmer(
             appearDelay: Duration.zero,
+            semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
             child: PregoSkeletonBar(height: 20, width: 150, color: prego.colors.bgQuaternary),
           ),
           // The label names what the switch does, so they must reach a screen

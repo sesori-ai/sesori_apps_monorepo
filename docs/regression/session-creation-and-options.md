@@ -246,10 +246,12 @@ variant, and worktree mode, and creating the session with its first input.
   model pills shimmer until options arrive, and the harness pill until discovery
   answers. The attach button holds its place, inert, until the harness says
   whether it takes images; only a harness that does not (Grok) folds it away. The
-  "New worktree" row shimmers in the room the last project left it while the
-  project is checked; a page's first composer gives a folder project that room and
-  "No project" none. When the answer adds or removes the row, it opens or folds as
-  it fades over about 200 ms, so the composer glides instead of jumping. When options cannot be loaded,
+  "New worktree" row shimmers in the room the last project left it while a folder
+  project is checked; a page's first composer gives a folder that room. "No project"
+  never has the row: it gets no room on a first composer, and room the last project
+  left it folds from the next frame without waiting for the check. When the answer
+  adds or removes the row, it opens or folds as it fades over about 200 ms, so the
+  composer glides instead of jumping. When options cannot be loaded,
   one "Retry loading models" button stands in the pills' place; a bridge that can
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options

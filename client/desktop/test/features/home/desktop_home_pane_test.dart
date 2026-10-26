@@ -343,6 +343,7 @@ void main() {
     _MockNewSessionCubit newSessionCubit({
       required Stream<NewSessionState> states,
       NewSessionState initialState = _composing,
+      ProjectKind projectKind = ProjectKind.folder,
     }) {
       final cubit = _MockNewSessionCubit();
       whenListen(cubit, states, initialState: initialState);
@@ -353,7 +354,7 @@ void main() {
       when(() => cubit.canRefreshOptions).thenReturn(false);
       when(() => cubit.composerPresentation).thenReturn(const NewSessionComposerReady());
       when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
-      when(() => cubit.projectKind).thenReturn(ProjectKind.folder);
+      when(() => cubit.projectKind).thenReturn(projectKind);
       return cubit;
     }
 
@@ -544,9 +545,7 @@ void main() {
         time: null,
         kind: ProjectKind.scratch,
       );
-      final scratchAnswers = StreamController<NewSessionState>();
       final oneAnswers = StreamController<NewSessionState>();
-      addTearDown(scratchAnswers.close);
       addTearDown(oneAnswers.close);
       final checking = _composingWith(capability: NewSessionProjectWorktreeCapability.loading);
       await pumpStart(
@@ -555,20 +554,28 @@ void main() {
         projects: const [one, scratch],
         cubits: [
           newSessionCubit(states: const Stream.empty()),
-          newSessionCubit(states: scratchAnswers.stream, initialState: checking),
+          // The bridge's check never answers: No project needs none.
+          newSessionCubit(states: const Stream.empty(), initialState: checking, projectKind: ProjectKind.scratch),
           newSessionCubit(states: oneAnswers.stream, initialState: checking),
         ],
       );
-      final options = find.byKey(const Key("new_session_options"));
+      // While the panes cross-fade the composer picked is the last one.
+      final options = find.byKey(const Key("new_session_options")).last;
       double optionsHeight() => tester.getSize(options).height;
-      double composerTop() => tester.getTopLeft(find.byType(PromptInput)).dy;
+      double composerTop() => tester.getTopLeft(find.byType(PromptInput).last).dy;
+      void select(String projectId) => tester
+          .widget<NewSessionView>(find.byType(NewSessionView))
+          .onProjectSelected
+          ?.call(projectId: projectId, projectName: projectId);
       Future<void> pick(String projectId) async {
-        tester
-            .widget<NewSessionView>(find.byType(NewSessionView))
-            .onProjectSelected
-            ?.call(projectId: projectId, projectName: projectId);
+        select(projectId);
         await tester.pump();
         await crossfade(tester);
+      }
+
+      void expectNothingInTheRoom() {
+        expect(find.descendant(of: options, matching: find.byType(PregoShimmer)), findsNothing);
+        expect(find.descendant(of: options, matching: find.byType(PregoSwitch)), findsNothing);
       }
 
       // The first build shows the row's room at once rather than opening it.
@@ -580,20 +587,22 @@ void main() {
       expect(composerTop(), withRow);
       expect(find.byType(PregoSwitch), findsOneWidget);
 
-      // While No project is checked the room stays, then folds as it fades.
-      await pick("scratch");
+      // No project never has the row, so the room it is left starts where it
+      // was, then folds as it fades without waiting for the bridge's check.
+      select("scratch");
+      await tester.pump();
       expect(optionsHeight(), rowHeight);
       expect(composerTop(), withRow);
-      expect(find.byType(PregoSwitch), findsNothing);
-      scratchAnswers.add(_composingWith(capability: NewSessionProjectWorktreeCapability.unsupported));
-      // The answer lands, then the frame it builds starts the transition.
-      await tester.pump();
+      expectNothingInTheRoom();
+      // The next frame starts the fold.
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       expect(optionsHeight(), allOf(greaterThan(0), lessThan(rowHeight)));
+      expectNothingInTheRoom();
       final foldingTop = composerTop();
       await tester.pump(const Duration(milliseconds: 200));
       expect(optionsHeight(), 0);
+      expectNothingInTheRoom();
       final withoutRow = composerTop();
       expect(withoutRow, isNot(withRow));
       expect(foldingTop, inExclusiveRange(math.min(withRow, withoutRow), math.max(withRow, withoutRow)));
