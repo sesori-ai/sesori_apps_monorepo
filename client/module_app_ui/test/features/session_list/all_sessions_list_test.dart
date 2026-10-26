@@ -77,6 +77,7 @@ void main() {
     Stream<ProjectListState> projectUpdates = const Stream.empty(),
     AllSessionsDisconnectedBuilder disconnectedBuilder = _offlinePage,
     Widget? header,
+    TextDirection textDirection = TextDirection.ltr,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -93,37 +94,40 @@ void main() {
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<AllSessionsCubit>.value(value: cubit),
-            BlocProvider<ProjectListCubit>.value(value: projects),
-            BlocProvider(
-              create: (_) => PendingSessionArchiveCubit(
-                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
-              ),
-            ),
-            RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
-            RepositoryProvider(create: (_) => idleSessionLaunchService()),
-          ],
-          child: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                AllSessionsList(
-                  onSessionTap: ({required row}) {},
-                  actionDispatcher: const SessionListActionDispatcher(
-                    deleteConfirmation: SessionDeleteConfirmation.sheet,
-                    onSessionArchived: null,
-                    onSessionDeleted: null,
-                    onSessionMarkedUnread: null,
-                  ),
-                  createActionCubit: ({required projectId, required session}) => throw StateError("no row to act on"),
-                  selectedSessionId: null,
-                  disconnectedBuilder: disconnectedBuilder,
-                  emptyState: const Text("Nothing here"),
-                  header: header,
-                  endClearance: 0,
+        home: Directionality(
+          textDirection: textDirection,
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider<AllSessionsCubit>.value(value: cubit),
+              BlocProvider<ProjectListCubit>.value(value: projects),
+              BlocProvider(
+                create: (_) => PendingSessionArchiveCubit(
+                  cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                 ),
-              ],
+              ),
+              RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
+              RepositoryProvider(create: (_) => idleSessionLaunchService()),
+            ],
+            child: Scaffold(
+              body: CustomScrollView(
+                slivers: [
+                  AllSessionsList(
+                    onSessionTap: ({required row}) {},
+                    actionDispatcher: const SessionListActionDispatcher(
+                      deleteConfirmation: SessionDeleteConfirmation.sheet,
+                      onSessionArchived: null,
+                      onSessionDeleted: null,
+                      onSessionMarkedUnread: null,
+                    ),
+                    createActionCubit: ({required projectId, required session}) => throw StateError("no row to act on"),
+                    selectedSessionId: null,
+                    disconnectedBuilder: disconnectedBuilder,
+                    emptyState: const Text("Nothing here"),
+                    header: header,
+                    endClearance: 0,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -186,6 +190,31 @@ void main() {
     // Archived has no status chips.
     expect(find.byKey(const Key("session-list-filter-all")), findsNothing);
   });
+
+  for (final textDirection in TextDirection.values) {
+    testWidgets("a date heading starts at the list's start inset, as its rows do (${textDirection.name})", (
+      tester,
+    ) async {
+      final today = DateTime.now();
+      await pumpList(
+        tester,
+        textDirection: textDirection,
+        initial: state(
+          query: "",
+          failures: const [],
+          rows: [row(title: "Archived today", archivedAt: today, updatedAt: today, isRunning: false)],
+          scratchProjectId: null,
+        ),
+      );
+      final heading = tester.getRect(find.text("Today"));
+      switch (textDirection) {
+        case TextDirection.ltr:
+          expect(heading.left, 16);
+        case TextDirection.rtl:
+          expect(heading.right, 800 - 16);
+      }
+    });
+  }
 
   testWidgets("with nothing to show the empty state fills the list", (tester) async {
     await pumpList(
@@ -683,8 +712,8 @@ void main() {
           final fieldTop = tester.getTopLeft(searchField).dy;
           final heading = find.byType(SessionListHeadingSkeleton).first;
           final headingRect = tester.getRect(heading);
-          final headingCentre = tester
-              .getCenter(find.descendant(of: heading, matching: find.byType(PregoSkeletonBar)))
+          final headingStart = tester
+              .getTopLeft(find.descendant(of: heading, matching: find.byType(PregoSkeletonBar)))
               .dx;
           final rowRect = tester.getRect(find.byType(SessionTileSkeleton).first);
           final pillRect = tester.getRect(
@@ -705,7 +734,7 @@ void main() {
           expect(tester.getRect(find.byKey(const Key("session-list-filter-all"))), pillRect);
           expect(tester.getRect(find.byType(SessionListHeading)).top, headingRect.top);
           expect(tester.getRect(find.byType(SessionListHeading)).height, headingRect.height);
-          expect(tester.getCenter(find.text("Today")).dx, headingCentre);
+          expect(tester.getTopLeft(find.text("Today")).dx, headingStart);
           expect(tester.getRect(find.byType(SessionTile)), rowRect);
         });
       }
@@ -732,7 +761,7 @@ void main() {
         expect(seen.length, greaterThan(10));
       });
 
-      testWidgets("the list's placeholder is date groups of 3, 2 and 4 rows, enough to cover the screen", (
+      testWidgets("the list's placeholder is date groups of 3, 2 and 4 rows", (
         tester,
       ) async {
         await pumpLoading(tester, updates: const Stream.empty());
@@ -749,7 +778,25 @@ void main() {
             element.widget is SessionListHeadingSkeleton ? "heading" : "row",
         ].join(" ");
         expect(pattern, "heading row row row heading row row heading row row row row");
-        expect(tester.getSize(skeleton).height, greaterThanOrEqualTo(600));
+      });
+
+      testWidgets("the list's placeholder fills the room left on screen, leaving nothing to scroll", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpLoading(tester, updates: updates.stream, mode: AllSessionsMode.active, header: header);
+        ScrollPosition position() => tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+        Rect shown() => tester.getRect(find.ancestor(of: skeleton, matching: find.byType(ClipRect)).first);
+        expect(position().maxScrollExtent, 0);
+        expect(shown().bottom, 600);
+
+        // Nor once a Retry row has opened above it.
+        updates.add(
+          state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(position().maxScrollExtent, 0);
+        expect(shown().bottom, 600);
       });
 
       testWidgets("a load that ends with no sessions folds the search field and chips away smoothly", (tester) async {

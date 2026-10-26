@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:flutter/foundation.dart" show setEquals;
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -421,7 +422,23 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
             ),
           ),
         if (loading)
-          SliverToBoxAdapter(child: _skeleton(context: context, leaving: false))
+          // Only the room left in the viewport, cut off at its bottom edge, so
+          // a loading list has nothing to scroll and its scroll range does not
+          // shrink as the rows arrive.
+          SliverLayoutBuilder(
+            builder: (context, constraints) => SliverToBoxAdapter(
+              child: SizedBox(
+                height: math.max(0, constraints.viewportMainAxisExtent - constraints.precedingScrollExtent),
+                child: ClipRect(
+                  child: OverflowBox(
+                    alignment: Alignment.topCenter,
+                    maxHeight: double.infinity,
+                    child: _skeleton(context: context, leaving: false),
+                  ),
+                ),
+              ),
+            ),
+          )
         else
           // Mounted with the first rows at full size, which fade in with the
           // hand-off. It stays mounted when the list becomes empty, giving the
@@ -571,8 +588,9 @@ Widget _sized({required double size, required Widget? child}) => ClipRect(
 
 /// The session list's loading placeholder, shaped like the grouped list it
 /// stands for: a date heading over a few rows, in groups of 3, 2 and 4 rows
-/// repeated until the screen's height is covered. The pattern is fixed, so the
-/// groups never reshuffle as it rebuilds.
+/// repeated until the screen's height is covered, for the list to cut off at
+/// its viewport's bottom edge. The pattern is fixed, so the groups never
+/// reshuffle as it rebuilds.
 class const SessionListSkeleton({super.key, required final bool leaving}) extends StatelessWidget {
   static const List<int> _groupSizes = [3, 2, 4];
 
