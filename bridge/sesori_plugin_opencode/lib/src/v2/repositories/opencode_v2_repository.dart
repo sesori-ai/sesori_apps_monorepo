@@ -315,10 +315,14 @@ class OpenCodeV2Repository({
   Future<V2AgentNames> getAgentNames({required String directory}) async =>
       V2AgentNames.fromAgents(agents: await _api.listAgents(directory: directory));
 
+  /// OpenCode loads a folder on its first request and registers the folder's
+  /// providers, agents and commands asynchronously. Only the model routes wait
+  /// for that, so they are read first: the provider route answers at once and
+  /// lists no providers for a folder that is still loading.
   Future<PluginProvidersResult> getProviders({required String directory}) async {
-    final providers = await _api.listProviders(directory: directory);
     final models = await _api.listModels(directory: directory);
     final defaultModel = await _api.getDefaultModel(directory: directory);
+    final providers = await _api.listProviders(directory: directory);
     return _modelMapper.mapProviders(providers: providers, models: models, defaultModel: defaultModel);
   }
 
