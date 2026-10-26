@@ -183,13 +183,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopUpdatesTitle => 'Desktop updates';
 
   @override
-  String get desktopUpdatesViewDownloads => 'View downloads';
-
-  @override
-  String get desktopUpdatesViewDownloadsDescription =>
-      'See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.';
-
-  @override
   String get desktopUpdatesDevelopmentBuild => 'Development build';
 
   @override

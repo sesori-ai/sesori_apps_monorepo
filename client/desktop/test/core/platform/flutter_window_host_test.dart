@@ -1,6 +1,7 @@
-import "dart:ui" show Brightness, Offset, Rect, Size;
+import "dart:async";
 
 import "package:flutter/foundation.dart" show TargetPlatform, debugDefaultTargetPlatformOverride;
+import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:screen_retriever/screen_retriever.dart";
@@ -11,6 +12,9 @@ import "package:window_manager/window_manager.dart";
 const _minimumSize = WindowSize(width: 560, height: 480);
 
 void main() {
+  TestWidgetsFlutterBinding.ensureInitialized();
+  const MethodChannel terminationChannel = MethodChannel("sesori/termination/test");
+
   setUpAll(() {
     registerFallbackValue(const WindowOptions());
     registerFallbackValue(Rect.zero);
@@ -22,6 +26,7 @@ void main() {
   FlutterWindowHost createHost() => FlutterWindowHost.forTesting(
     manager: manager,
     screenRetriever: screenRetriever,
+    terminationChannel: terminationChannel,
   );
 
   setUp(() {
@@ -71,6 +76,36 @@ void main() {
     expect(options.title, "Sesori");
     expect(host.currentState, WindowHostState.focused);
     expect(await event, WindowHostEvent.closeRequested);
+  });
+
+  test("relays the macOS runner's quit requests until disposed", () async {
+    Future<ByteData?> runnerCall({required String method}) {
+      final Completer<ByteData?> reply = Completer<ByteData?>();
+      TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger.handlePlatformMessage(
+        terminationChannel.name,
+        terminationChannel.codec.encodeMethodCall(MethodCall(method)),
+        reply.complete,
+      );
+      return reply.future;
+    }
+
+    final host = createHost();
+    await host.initialize(hidden: true, initialBounds: null, minimumSize: _minimumSize);
+    // Before the exit owner listens, the runner is told to quit on its own.
+    final ByteData? beforeListening = await runnerCall(method: "quitRequested");
+    final events = <WindowHostEvent>[];
+    host.events.listen(events.add);
+
+    final ByteData? handled = await runnerCall(method: "quitRequested");
+    final ByteData? unknown = await runnerCall(method: "somethingElse");
+    await host.dispose();
+    final ByteData? afterDispose = await runnerCall(method: "quitRequested");
+
+    expect(events, <WindowHostEvent>[WindowHostEvent.quitRequested]);
+    expect(beforeListening, isNull);
+    expect(handled, isNotNull);
+    expect(unknown, isNull);
+    expect(afterDispose, isNull);
   });
 
   test("applies restored bounds before the first visible show", () async {
