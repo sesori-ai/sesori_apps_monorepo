@@ -18,7 +18,7 @@ final class const OpenProjectPathNotDirectory() extends OpenProjectOutcome;
 final class const OpenProjectGitChoiceRequired() extends OpenProjectOutcome;
 
 /// Thrown when a peer asks to hide the "No project" project. Hiding it would
-/// take "No project" away from every app on the bridge, with no way back.
+/// take "No project" away from every app on the bridge until it is opened again.
 class ScratchProjectHideRefusedException({required final String projectId}) implements Exception {
   @override
   String toString() => "ScratchProjectHideRefusedException: the No project project cannot be hidden: $projectId";

@@ -535,6 +535,27 @@ void main() {
         expect((await binding(plugin: plugin, backendSessionId: "derived-root"))?.projectId, "/scratch");
       });
 
+      test("a bridge-derived plugin launched from a scratch folder still imports", () async {
+        await insertNoProjectRow();
+        final projectPath = "${directory.path}/project";
+        final plugin = _DerivedImportPlugin(
+          launchDirectory: folderA,
+          sessions: [
+            _pluginSession(id: "scratch-root", directory: folderA),
+            _pluginSession(id: "ordinary-root", directory: projectPath),
+          ],
+        );
+
+        await _importCompletion(database: database, plugin: plugin);
+
+        expect(
+          (await database.projectsDao.getAllProjects()).map((project) => project.projectId),
+          unorderedEquals(["/scratch", projectPath]),
+        );
+        expect((await binding(plugin: plugin, backendSessionId: "scratch-root"))?.projectId, "/scratch");
+        expect((await binding(plugin: plugin, backendSessionId: "ordinary-root"))?.projectId, projectPath);
+      });
+
       test("a plugin that lists only known directories finds its scratch sessions", () async {
         await insertNoProjectRow();
         await database.sessionDao.upsertSessionRows(

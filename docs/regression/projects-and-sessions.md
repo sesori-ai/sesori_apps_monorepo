@@ -70,7 +70,7 @@ state.
   except temporary and home dot-directory folders (#1834); a project the user
   had removed reappears and can be removed again. Catalog scans are per plugin,
   atomic, non-destructive, cancellable, and attribute progress.
-- Every bridge has one "No project" project of kind `scratch`; its id and path are the scratch root
+- A bridge normally has one "No project" project of kind `scratch`; its id and path are the scratch root
   `~/.sesori/scratch`, and every other project is kind `folder`. The kind follows the project id, not its path.
   Startup creates the root and a visible "No project" row before the first catalog hydration, and keeps an existing
   row's name and visibility. When the root cannot be created, startup logs it and continues without the row. Hiding

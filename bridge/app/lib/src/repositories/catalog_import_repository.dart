@@ -437,7 +437,7 @@ class CatalogImportRepository({
         final publicationProjects = <String, _ObservedProject>{};
         if (observation.projectOwnership == PluginProjectOwnership.bridgeDerived) {
           final launchDirectory = derivedLaunchDirectory!;
-          _mergeObservedProject(publicationProjects, observedProjects[launchDirectory]!);
+          _mergeObservedProject(publicationProjects, observedProjects[_publishedProjectPath(launchDirectory)]!);
           for (final observation in orderedSessions) {
             if (observation.session.parentID != null) continue;
             final existing = currentBindings[observation.session.id];
@@ -516,7 +516,8 @@ class CatalogImportRepository({
           final parent = session.parentID == null ? null : finalBindingsByBackendId[session.parentID];
           final rootProjectPath = observation.rootProjectPath;
           final publishedPath = rootProjectPath == null ? null : _publishedProjectPath(rootProjectPath);
-          final projectId = parent?.projectId ?? (publishedPath == null ? null : importedProjectIdByPath[publishedPath]);
+          final projectId =
+              parent?.projectId ?? (publishedPath == null ? null : importedProjectIdByPath[publishedPath]);
           if (projectId == null) {
             if (publishedPath == scratchRoot) continue;
             throw StateError("plugin $pluginId returned session ${session.id} without a publishable project");
