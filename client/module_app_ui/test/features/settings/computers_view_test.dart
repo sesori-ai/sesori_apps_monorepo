@@ -1,6 +1,7 @@
 import "dart:async";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart" show PointerDeviceKind, kSecondaryButton;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
@@ -9,6 +10,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/menus/anchored_flat_panel.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockComputerSwitcherCubit() extends MockCubit<ComputerSwitcherState> implements ComputerSwitcherCubit;
@@ -77,6 +79,7 @@ void main() {
     WidgetTester tester, {
     String targetId = "b",
     WidgetBuilder? localBridgeTurnOffActionBuilder,
+    required bool pointer,
   }) async {
     final switcherCubit = _MockComputerSwitcherCubit();
     whenListen(
@@ -107,17 +110,18 @@ void main() {
       ],
     );
     addTearDown(router.dispose);
-    await tester.pumpWidget(
-      MaterialApp.router(
-        routerConfig: router,
-        theme: ThemeData(extensions: [PregoDesignSystem.light]),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-      ),
+    final app = MaterialApp.router(
+      routerConfig: router,
+      theme: ThemeData(extensions: [PregoDesignSystem.light]),
+      localizationsDelegates: AppLocalizations.localizationsDelegates,
+      supportedLocales: AppLocalizations.supportedLocales,
     );
+    await tester.pumpWidget(pointer ? PregoInteractionScope(mode: PregoInteractionMode.pointer, child: app) : app);
     await tester.pumpAndSettle();
     return switcherCubit;
   }
+
+  final Finder menuPanel = find.descendant(of: find.byType(AnchoredFlatPanel), matching: find.byType(Material)).first;
 
   Future<void> openActions(WidgetTester tester, {required String id}) async {
     await tester.tap(find.byKey(ValueKey("computers-actions-$id")));
@@ -131,7 +135,7 @@ void main() {
   }
 
   testWidgets("shows the hostname only under a name of its own and marks this computer", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
 
     expect(find.text("studio-mac.local"), findsOneWidget);
     expect(find.text("work-laptop"), findsOneWidget);
@@ -150,7 +154,7 @@ void main() {
   });
 
   testWidgets("offers Switch and Rename, but no Switch on the current computer", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
 
     await openActions(tester, id: "a");
     expect(find.byKey(const ValueKey("computers-switch-a")), findsOneWidget);
@@ -163,8 +167,33 @@ void main() {
     expect(find.byKey(const ValueKey("computers-rename-b")), findsOneWidget);
   });
 
+  testWidgets("a row's ⋯ drops the menu just below itself, right edges aligned, down to the last row", (
+    tester,
+  ) async {
+    await pumpView(tester, pointer: false);
+
+    for (final id in ["b", "c"]) {
+      await openActions(tester, id: id);
+      final actions = tester.getRect(find.byKey(ValueKey("computers-actions-$id")));
+      expect(tester.getRect(menuPanel).topRight, actions.bottomRight + const Offset(0, 8));
+      await tester.tapAt(Offset.zero);
+      await tester.pumpAndSettle();
+    }
+  });
+
+  testWidgets("a secondary click on a row drops the menu from the pointer", (tester) async {
+    await pumpView(tester, pointer: true);
+
+    final click = tester.getCenter(find.text("Studio"));
+    await tester.tapAt(click, buttons: kSecondaryButton, kind: PointerDeviceKind.mouse);
+    await tester.pumpAndSettle();
+
+    expect(tester.getTopLeft(menuPanel), click);
+    expect(find.byKey(const ValueKey("computers-rename-a")), findsOneWidget);
+  });
+
   testWidgets("Switch reports the computers page as its source", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
 
     await openActions(tester, id: "a");
     await tester.tap(find.byKey(const ValueKey("computers-switch-a")));
@@ -174,7 +203,7 @@ void main() {
   });
 
   testWidgets("rename prefills the name and saves what was typed", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
     await openRename(tester, id: "a");
 
     expect(find.widgetWithText(TextField, "Studio"), findsOneWidget);
@@ -186,7 +215,7 @@ void main() {
   });
 
   testWidgets("Use hostname saves the hostname", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
     await openRename(tester, id: "a");
 
     await tester.tap(find.byKey(const Key("computers-rename-use-hostname")));
@@ -199,7 +228,7 @@ void main() {
     final actions = StreamController<ComputersState>();
     addTearDown(actions.close);
     whenListen(computersCubit, actions.stream, initialState: const ComputersIdle());
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
     // The busy row's spinner never settles, so frames are pumped by hand: one
     // delivers the action, the next rebuilds the rows with it.
     actions.add(const ComputersRemoving(bridgeId: "c"));
@@ -215,7 +244,7 @@ void main() {
   });
 
   testWidgets("a computer named by its hostname offers no Use hostname", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
     await openRename(tester, id: "b");
 
     expect(find.byKey(const Key("computers-rename-use-hostname")), findsNothing);
@@ -228,7 +257,7 @@ void main() {
   }
 
   testWidgets("an online computer's Remove is disabled and says to quit Sesori there", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
     await tapRemove(tester, id: "b");
 
     expect(find.text("Quit Sesori on work-laptop to remove it"), findsOneWidget);
@@ -242,7 +271,7 @@ void main() {
   });
 
   testWidgets("removing an offline computer asks first, and Cancel keeps it", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
     await tapRemove(tester, id: "c");
 
     expect(find.text("Remove build-box?"), findsOneWidget);
@@ -268,7 +297,7 @@ void main() {
 
   testWidgets("removing the computer the app works on switches to the replacement", (tester) async {
     when(() => computersCubit.remove(bridgeId: "c", isCurrent: true)).thenAnswer((_) async => "a");
-    await pumpView(tester, targetId: "c");
+    await pumpView(tester, targetId: "c", pointer: false);
     await tapRemove(tester, id: "c");
     await tester.tap(find.byKey(const Key("computers-remove-confirm")));
     await tester.pumpAndSettle();
@@ -277,7 +306,7 @@ void main() {
   });
 
   testWidgets("a computer that came online while the user confirmed is kept", (tester) async {
-    final switcherCubit = await pumpView(tester);
+    final switcherCubit = await pumpView(tester, pointer: false);
     await tapRemove(tester, id: "c");
     when(() => switcherCubit.state).thenReturn(
       ComputerSwitcherState(
@@ -302,7 +331,7 @@ void main() {
   });
 
   testWidgets("Remove on this computer explains instead, with the shell's turn-off action", (tester) async {
-    await pumpView(tester, localBridgeTurnOffActionBuilder: (_) => const Text("Turn off bridge"));
+    await pumpView(tester, localBridgeTurnOffActionBuilder: (_) => const Text("Turn off bridge"), pointer: false);
     await tapRemove(tester, id: "a");
 
     expect(find.text("This computer can't be removed"), findsOneWidget);
@@ -319,7 +348,7 @@ void main() {
   });
 
   testWidgets("the explanation has no turn-off action without one from the shell", (tester) async {
-    await pumpView(tester);
+    await pumpView(tester, pointer: false);
     await tapRemove(tester, id: "a");
 
     expect(find.text("This computer can't be removed"), findsOneWidget);
