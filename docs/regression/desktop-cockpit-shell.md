@@ -197,8 +197,8 @@ The main pane hosts one full-width routed page.
   bridge on that computer, and the shared Other computers card, with no Start button. While the desktop is
   launching this computer's bridge (including a cold start) and has not reached it yet, this computer's offline
   bridge is a load: the home shows the same loader as any load and the sidebar list shows its loading skeleton,
-  one skeleton from launch that hands off to the rows or the empty state like any load. After 10 s, "Still starting this computer's bridge…" fades in under the loader (at once with reduced motion)
-  without moving it, and fades out the same way if the launch gives way to an ordinary load; a normal start never
+  one skeleton from launch that hands off to the rows or the empty state like any load. After 10 s, "Still
+  starting this computer's bridge…" fades in under the loader (at once with reduced motion) without moving it, and fades out the same way if the launch gives way to an ordinary load; a normal start never
   shows it, and no other load does. Recovery appears only once the
   supervisor leaves starting and running (a failed start, a stop, login required, contention), or a bridge the
   app had reached is lost (a crash restart stays disconnected); another computer's offline state shows
