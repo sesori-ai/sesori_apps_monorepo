@@ -125,7 +125,6 @@ SessionRepository singlePluginSessionRepository({
 
 WorktreeRepository singlePluginWorktreeRepository({
   required ProjectsDao projectsDao,
-  required SessionDao sessionDao,
   required GitCliApi gitApi,
   required BridgePluginApi plugin,
   required String worktreesDirectory,
@@ -133,7 +132,6 @@ WorktreeRepository singlePluginWorktreeRepository({
   return WorktreeRepository(
     worktreesDirectory: worktreesDirectory,
     projectsDao: projectsDao,
-    sessionDao: sessionDao,
     filesystemApi: const FilesystemApi(),
     gitApi: gitApi,
     runtime: createTestPluginRuntime(plugins: [plugin]),

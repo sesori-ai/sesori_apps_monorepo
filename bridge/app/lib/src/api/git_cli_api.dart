@@ -306,15 +306,16 @@ class GitCliApi({
     }
   }
 
+  /// Adds a worktree at [worktreePath] on a detached HEAD at [startPoint].
+  /// The agent working there creates its own branch.
   Future<bool> createWorktree({
     required String projectPath,
     required String worktreePath,
-    required String branchName,
     required String startPoint,
   }) async {
     final result = await runGit(
       projectPath: projectPath,
-      arguments: ["worktree", "add", "-b", branchName, "--no-track", "--", worktreePath, startPoint],
+      arguments: ["worktree", "add", "--detach", "--", worktreePath, startPoint],
     );
     return result.exitCode == 0;
   }

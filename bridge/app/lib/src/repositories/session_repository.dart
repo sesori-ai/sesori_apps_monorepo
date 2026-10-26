@@ -1318,14 +1318,12 @@ class SessionRepository({
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async {
     final sessions = await _sessionDao.getOtherActiveSessionsSharing(
       sessionId: sessionId,
       projectId: projectId,
       worktreePath: worktreePath,
-      branchName: branchName,
     );
     return sessions.isNotEmpty;
   }

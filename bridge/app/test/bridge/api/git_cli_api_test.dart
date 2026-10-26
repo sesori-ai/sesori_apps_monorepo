@@ -317,7 +317,7 @@ void main() {
     expect(runner.runCount, 0);
   });
 
-  group("inspectWorktreeSafety in a real repository", () {
+  group("worktrees in a real repository", () {
     final api = GitCliApi(
       streamingProcessRunner: const StreamingProcessRunner(),
       processRunner: ProcessRunner(),
@@ -351,6 +351,24 @@ void main() {
     });
 
     tearDown(() => root.delete(recursive: true));
+
+    test("createWorktree starts a detached HEAD at the start point without creating a branch", () async {
+      final baseBranch = await git(cwd: repoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"]);
+      await commit(cwd: repoPath, message: "tip");
+      final tipCommit = await git(cwd: repoPath, args: ["rev-parse", "HEAD"]);
+
+      final created = await api.createWorktree(
+        projectPath: repoPath,
+        worktreePath: worktreePath,
+        startPoint: baseBranch,
+      );
+
+      expect(created, isTrue);
+      final symbolicRef = await Process.run("git", ["symbolic-ref", "-q", "HEAD"], workingDirectory: worktreePath);
+      expect(symbolicRef.exitCode, isNot(0), reason: "HEAD must be detached");
+      expect(await git(cwd: worktreePath, args: ["rev-parse", "HEAD"]), tipCommit);
+      expect(await git(cwd: repoPath, args: ["for-each-ref", "--format=%(refname:short)", "refs/heads"]), baseBranch);
+    });
 
     test("flags a commit made on a detached HEAD", () async {
       await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);

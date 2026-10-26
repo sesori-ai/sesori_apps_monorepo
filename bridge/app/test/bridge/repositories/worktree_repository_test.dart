@@ -29,7 +29,6 @@ void main() {
     WorktreeRepository repository({required bool isGitRepository}) => singlePluginWorktreeRepository(
       worktreesDirectory: "/worktrees",
       projectsDao: db.projectsDao,
-      sessionDao: db.sessionDao,
       gitApi: GitCliApi(
         streamingProcessRunner: const StreamingProcessRunner(),
         processRunner: processRunner,
@@ -110,7 +109,6 @@ void main() {
     WorktreeRepository repository() => singlePluginWorktreeRepository(
       worktreesDirectory: "/worktrees",
       projectsDao: db.projectsDao,
-      sessionDao: db.sessionDao,
       gitApi: GitCliApi(
         streamingProcessRunner: const StreamingProcessRunner(),
         processRunner: processRunner,
@@ -174,7 +172,6 @@ void main() {
       final repo = singlePluginWorktreeRepository(
         worktreesDirectory: worktreesDirectory.path,
         projectsDao: db.projectsDao,
-        sessionDao: db.sessionDao,
         gitApi: GitCliApi(
           streamingProcessRunner: const StreamingProcessRunner(),
           processRunner: processRunner,
@@ -202,7 +199,6 @@ void main() {
     WorktreeRepository repository() => singlePluginWorktreeRepository(
       worktreesDirectory: "/worktrees",
       projectsDao: db.projectsDao,
-      sessionDao: db.sessionDao,
       gitApi: GitCliApi(
         streamingProcessRunner: const StreamingProcessRunner(),
         processRunner: _FakeProcessRunner(),

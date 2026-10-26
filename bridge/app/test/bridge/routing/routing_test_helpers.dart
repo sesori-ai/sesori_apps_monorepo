@@ -529,8 +529,7 @@ class _NoopSessionRepository() implements SessionRepository {
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async => false;
   @override
   Future<String?> getProjectPath({required String projectId}) async => null;
@@ -1036,8 +1035,7 @@ class FakeSessionRepository({
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async => false;
 
   @override

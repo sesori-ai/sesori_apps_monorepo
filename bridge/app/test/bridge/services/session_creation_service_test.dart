@@ -61,7 +61,6 @@ void main() {
         worktreeRepository: singlePluginWorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
           gitApi: GitCliApi(
             streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: NoopProcessRunner(),
@@ -358,7 +357,6 @@ void main() {
     test("stores the created root and remembers its complete plugin-scoped selection", () async {
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",
-        branchName: "session-one",
         baseBranch: "main",
         baseCommit: "abc123",
       );
@@ -486,56 +484,12 @@ void main() {
       await localService.drain();
     });
 
-    test("applies dedicated-session metadata after returning the initial branch", () async {
-      final metadataGate = Completer<void>();
-      metadataRepository.generateGate = metadataGate.future;
-      worktreeService
-        ..prepareResult = WorktreeSuccess(
-          path: "/repo/.worktrees/blue-otter",
-          branchName: "blue-otter",
-          baseBranch: "main",
-          baseCommit: "abc123",
-        )
-        ..renameResult = GeneratedBranchRenamed(branchName: "generated-branch");
-
-      final created = await service
-          .createSession(
-            request: const CreateSessionRequest(
-              projectId: "/repo",
-              pluginId: "fake",
-              dedicatedWorktree: true,
-              parts: [PromptPart.text(text: "Build it")],
-              variant: null,
-              agent: null,
-              model: null,
-              command: null,
-            ),
-          )
-          .timeout(const Duration(seconds: 1));
-
-      expect((await db.sessionDao.getSession(sessionId: created.id))?.branchName, "blue-otter");
-      expect(worktreeService.renameCalls, isZero);
-
-      metadataGate.complete();
-      await service.drain();
-
-      final stored = await db.sessionDao.getSession(sessionId: created.id);
-      expect(stored?.branchName, "generated-branch");
-      expect(stored?.currentBranchName, "generated-branch");
-      expect(stored?.title, "Generated title");
-      expect(worktreeService.renamedWorktreePath, "/repo/.worktrees/blue-otter");
-      expect(worktreeService.renamedInitialBranchName, "blue-otter");
-    });
-
-    test("still applies the generated title when branch rename fails", () async {
-      worktreeService
-        ..prepareResult = WorktreeSuccess(
-          path: "/repo/.worktrees/blue-otter",
-          branchName: "blue-otter",
-          baseBranch: "main",
-          baseCommit: "abc123",
-        )
-        ..renameError = StateError("branch rename failed");
+    test("stores no branch for a dedicated session and tells the agent to create one", () async {
+      worktreeService.prepareResult = WorktreeSuccess(
+        path: "/repo/.worktrees/blue-otter",
+        baseBranch: "main",
+        baseCommit: "abc123",
+      );
 
       final created = await service.createSession(
         request: const CreateSessionRequest(
@@ -552,51 +506,30 @@ void main() {
       await service.drain();
 
       final stored = await db.sessionDao.getSession(sessionId: created.id);
-      expect(stored?.branchName, "blue-otter");
+      expect(stored?.isDedicated, isTrue);
+      expect(stored?.worktreePath, "/repo/.worktrees/blue-otter");
+      expect(stored?.branchName, isNull);
+      expect(stored?.baseBranch, "main");
       expect(stored?.title, "Generated title");
-    });
-
-    test("applies the generated title without waiting for branch refinement", () async {
-      final renameStarted = Completer<void>();
-      final renameGate = Completer<void>();
-      worktreeService
-        ..prepareResult = WorktreeSuccess(
-          path: "/repo/.worktrees/blue-otter",
-          branchName: "blue-otter",
-          baseBranch: "main",
-          baseCommit: "abc123",
-        )
-        ..renameStarted = renameStarted
-        ..renameGate = renameGate.future;
-
-      final created = await service.createSession(
-        request: const CreateSessionRequest(
-          projectId: "/repo",
-          pluginId: "fake",
-          dedicatedWorktree: true,
-          parts: [PromptPart.text(text: "Build it")],
-          variant: null,
-          agent: null,
-          model: null,
-          command: null,
+      expect(
+        plugin.lastCreateParts?.first,
+        isA<PluginPromptPartText>().having(
+          (part) => part.text,
+          "text",
+          allOf(
+            contains("- Worktree path: /repo/.worktrees/blue-otter"),
+            contains("This worktree is on a detached HEAD at the latest commit of main."),
+            contains("Before your first commit, create a branch for this task"),
+            contains("Do NOT create another worktree or working directory"),
+            isNot(contains("Branch:")),
+          ),
         ),
       );
-      await renameStarted.future;
-
-      try {
-        final whileBranchBlocked = await db.sessionDao.getSession(sessionId: created.id);
-        expect(whileBranchBlocked?.title, "Generated title");
-        expect(whileBranchBlocked?.branchName, "blue-otter");
-      } finally {
-        renameGate.complete();
-        await service.drain();
-      }
     });
 
     test("projects every nonblank user text part without bridge-owned context", () async {
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-one",
-        branchName: "session-one",
         baseBranch: "main",
         baseCommit: "abc123",
       );
@@ -817,22 +750,10 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
   Completer<void>? prepareStarted;
   WorktreeResult prepareResult = WorktreeFallback(originalPath: "/repo", reason: "fallback");
   String? headCommit;
-  GeneratedBranchRenameResult renameResult = GeneratedBranchRenameSkipped(
-    reason: GeneratedBranchRenameSkipReason.initialBranchChanged,
-  );
-  Object? renameError;
-  int renameCalls = 0;
-  int rollbackCalls = 0;
-  String? renamedWorktreePath;
-  String? renamedInitialBranchName;
-  String? renamedGeneratedBranchName;
-  Completer<void>? renameStarted;
-  Future<void>? renameGate;
 
   @override
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
-    required String? parentSessionId,
   }) async {
     prepareCalls++;
     if (prepareStarted case final started? when !started.isCompleted) started.complete();
@@ -845,31 +766,6 @@ class _FakeWorktreeService({required super.worktreeRepository}) extends Worktree
   }) async {
     resolveCalls++;
     return headCommit;
-  }
-
-  @override
-  Future<GeneratedBranchRenameResult> renameGeneratedBranch({
-    required String worktreePath,
-    required String initialBranchName,
-    required String generatedBranchName,
-  }) async {
-    renameCalls++;
-    renamedWorktreePath = worktreePath;
-    renamedInitialBranchName = initialBranchName;
-    renamedGeneratedBranchName = generatedBranchName;
-    renameStarted?.complete();
-    if (renameGate case final gate?) await gate;
-    if (renameError case final error?) throw error;
-    return renameResult;
-  }
-
-  @override
-  Future<void> rollbackGeneratedBranchRename({
-    required String worktreePath,
-    required String generatedBranchName,
-    required String initialBranchName,
-  }) async {
-    rollbackCalls++;
   }
 }
 

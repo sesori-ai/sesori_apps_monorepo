@@ -105,7 +105,7 @@ class SessionCreationService({
       model: normalizedCommand == null || normalizedCommand.isEmpty ? request.model : null,
       isDedicated: worktreeState.isDedicated,
       worktreePath: worktreeState.worktreePath,
-      branchName: worktreeState.branchName,
+      branchName: null,
       baseBranch: worktreeState.baseBranch,
       baseCommit: worktreeState.baseCommit,
       lastAgent: promptDefaults.agent,
@@ -157,10 +157,7 @@ class SessionCreationService({
     if (!request.dedicatedWorktree) {
       return null;
     }
-    return await _worktreeService.prepareWorktreeForSession(
-      projectId: request.projectId,
-      parentSessionId: null,
-    );
+    return await _worktreeService.prepareWorktreeForSession(projectId: request.projectId);
   }
 
   List<PromptPart> _buildPromptParts({
@@ -175,11 +172,10 @@ class SessionCreationService({
     if (parts.isEmpty && includeUserParts) {
       return parts;
     }
-    if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
+    if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch)) {
       final promptParts = <PromptPart>[
         PromptPart.text(
           text: _buildWorktreeSystemPrompt(
-            branchName: branchName,
             worktreePath: path,
             baseBranch: baseBranch,
           ),
@@ -244,9 +240,8 @@ class SessionCreationService({
     required String userArguments,
     required WorktreeResult? worktreeResult,
   }) {
-    if (worktreeResult case WorktreeSuccess(:final path, :final branchName, :final baseBranch)) {
+    if (worktreeResult case WorktreeSuccess(:final path, :final baseBranch)) {
       final systemContext = _buildWorktreeSystemPrompt(
-        branchName: branchName,
         worktreePath: path,
         baseBranch: baseBranch,
       ).trimRight();
@@ -268,13 +263,11 @@ class SessionCreationService({
     switch (worktreeResult) {
       case WorktreeSuccess(
         :final path,
-        branchName: final resolvedBranchName,
         baseBranch: final resolvedBaseBranch,
         baseCommit: final resolvedBaseCommit,
       ):
         return _DedicatedSessionCreationWorktreeState(
           path: path,
-          branchName: resolvedBranchName,
           baseBranch: resolvedBaseBranch,
           baseCommit: resolvedBaseCommit,
         );
@@ -293,18 +286,18 @@ class SessionCreationService({
   }
 
   String _buildWorktreeSystemPrompt({
-    required String branchName,
     required String worktreePath,
     required String baseBranch,
   }) {
     return '''
 [SYSTEM CONTEXT — IMPORTANT]
-A dedicated git worktree and branch have been created for this session:
-- Branch: $branchName
+A dedicated git worktree has been created for this session:
 - Worktree path: $worktreePath
 - Based on: $baseBranch
 
-IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+This worktree is on a detached HEAD at the latest commit of $baseBranch. Before your first commit, create a branch for this task, named as this repository's instructions say, or after the work.
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
 ''';
@@ -353,14 +346,6 @@ IMPORTANT: Perform all work for this task in this dedicated worktree. You may us
     } on Object catch (error, stackTrace) {
       Log.w("Failed to apply generated title for session ${session.id}", error, stackTrace);
     }
-    try {
-      await _sessionMutationDispatcher.applyGeneratedBranchName(
-        sessionId: session.id,
-        branchName: metadata.branchName,
-      );
-    } on Object catch (error, stackTrace) {
-      Log.w("Failed to apply generated branch for session ${session.id}", error, stackTrace);
-    }
   }
 
   Future<void> _drain() async {
@@ -373,14 +358,12 @@ sealed class _SessionCreationWorktreeState() {
   String get directory;
   bool get isDedicated;
   String? get worktreePath;
-  String? get branchName;
   String? get baseBranch;
   String? get baseCommit;
 }
 
 class _DedicatedSessionCreationWorktreeState({
   required final String path,
-  @override required final String branchName,
   @override required final String baseBranch,
   @override required final String baseCommit,
 }) implements _SessionCreationWorktreeState {
@@ -403,9 +386,6 @@ class _InPlaceSessionCreationWorktreeState({
 
   @override
   String? get worktreePath => null;
-
-  @override
-  String? get branchName => null;
 
   @override
   String? get baseBranch => null;

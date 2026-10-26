@@ -313,13 +313,12 @@ void main() {
       );
     });
 
-    test("createWorktree runs git worktree add and returns success", () async {
+    test("createWorktree runs a detached git worktree add and returns success", () async {
       processRunner.enqueue(result: _processResult(exitCode: 0, stdout: "prepared"));
 
       final result = await service.createWorktree(
         projectPath: "/repo/project",
         worktreePath: "/repo/.worktrees/feature-x",
-        branchName: "feature/x",
         startPoint: "main",
       );
 
@@ -331,9 +330,7 @@ void main() {
         equals([
           "worktree",
           "add",
-          "-b",
-          "feature/x",
-          "--no-track",
+          "--detach",
           "--",
           "/repo/.worktrees/feature-x",
           "main",

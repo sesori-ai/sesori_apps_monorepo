@@ -14,7 +14,6 @@ sealed class WorktreeResult();
 
 class WorktreeSuccess({
   required final String path,
-  required final String branchName,
   required final String baseBranch,
   required final String baseCommit,
 }) extends WorktreeResult;
