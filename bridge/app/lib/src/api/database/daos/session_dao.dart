@@ -39,12 +39,6 @@ typedef SessionProjectPathRow = ({
   String directory,
 });
 
-typedef SessionPullRequestScopeUpdate = ({
-  String sessionId,
-  String? currentBranchName,
-  String? currentGithubRepositoryIdentity,
-});
-
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
 class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> with _$SessionDaoMixin {
   static const _ownerIdentity = "local";
@@ -253,26 +247,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
 
   Future<SessionDto?> getSession({required String sessionId}) async {
     return await (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
-  }
-
-  Future<void> updatePullRequestScopes({
-    required List<SessionPullRequestScopeUpdate> updates,
-  }) async {
-    if (updates.isEmpty) {
-      return;
-    }
-    await batch((batch) {
-      for (final update in updates) {
-        batch.update(
-          sessionTable,
-          SessionTableCompanion(
-            currentBranchName: Value(update.currentBranchName),
-            currentGithubRepositoryIdentity: Value(update.currentGithubRepositoryIdentity),
-          ),
-          where: (table) => table.sessionId.equals(update.sessionId),
-        );
-      }
-    });
   }
 
   /// Upserts the supplied rows without applying merge or import policy.
@@ -531,10 +505,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         projectionUpdatedAt: Value(projectionUpdatedAt),
       ),
     );
-  }
-
-  Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
-    return await (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
   }
 
   /// The stored project path for every session recorded for [pluginId], via a

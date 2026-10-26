@@ -1,3 +1,4 @@
+import "package:drift/drift.dart" show Value;
 import "package:drift/native.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -5,6 +6,36 @@ import "package:sesori_shared/sesori_shared.dart";
 export "single_plugin_repository_test_support.dart";
 
 AppDatabase createTestDatabase() => AppDatabase(NativeDatabase.memory());
+
+/// Stores [githubLogin] as the PR cache login of [projectId].
+///
+/// Test setup only: production code no longer records a PR cache login.
+Future<void> setTestPrCacheGithubLogin({
+  required AppDatabase db,
+  required String projectId,
+  required String githubLogin,
+}) async {
+  await (db.update(db.projectsTable)..where((table) => table.projectId.equals(projectId))).write(
+    ProjectsTableCompanion(prCacheGithubLogin: Value(githubLogin)),
+  );
+}
+
+/// Stores the PR scope columns of [sessionId].
+///
+/// Test setup only: production code no longer records a PR scope.
+Future<void> setTestPullRequestScope({
+  required AppDatabase db,
+  required String sessionId,
+  required String currentBranchName,
+  required String currentGithubRepositoryIdentity,
+}) async {
+  await (db.update(db.sessionTable)..where((table) => table.sessionId.equals(sessionId))).write(
+    SessionTableCompanion(
+      currentBranchName: Value(currentBranchName),
+      currentGithubRepositoryIdentity: Value(currentGithubRepositoryIdentity),
+    ),
+  );
+}
 
 /// Inserts a bound session row (and its project) straight through the DAOs.
 ///

@@ -119,7 +119,13 @@ void main() {
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
         ),
       ];
-      await _setPullRequestScope(db: db, sessionId: "s1");
+      await setTestPrCacheGithubLogin(db: db, projectId: "/repo", githubLogin: "octocat");
+      await setTestPullRequestScope(
+        db: db,
+        sessionId: "s1",
+        currentBranchName: "session-001",
+        currentGithubRepositoryIdentity: "org/repo",
+      );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(
           projectId: "/repo",
@@ -745,22 +751,6 @@ void main() {
       expect(result.hasWorktree, isFalse);
     });
   });
-}
-
-Future<void> _setPullRequestScope({required AppDatabase db, required String sessionId}) async {
-  await db.projectsDao.setPrCacheGithubLogin(
-    projectId: "/repo",
-    githubLogin: "octocat",
-  );
-  await db.sessionDao.updatePullRequestScopes(
-    updates: [
-      (
-        sessionId: sessionId,
-        currentBranchName: "session-001",
-        currentGithubRepositoryIdentity: "org/repo",
-      ),
-    ],
-  );
 }
 
 UpdateSessionArchiveRequest _archiveRequest({

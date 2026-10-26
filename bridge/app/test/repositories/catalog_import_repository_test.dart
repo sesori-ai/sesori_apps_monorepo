@@ -67,18 +67,12 @@ void main() {
           ),
         ],
       );
-      await database.projectsDao.setPrCacheGithubLogin(
-        projectId: "stored-project",
-        githubLogin: "octocat",
-      );
-      await database.sessionDao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "ses_existing_root",
-            currentBranchName: "feature/current",
-            currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
-          ),
-        ],
+      await setTestPrCacheGithubLogin(db: database, projectId: "stored-project", githubLogin: "octocat");
+      await setTestPullRequestScope(
+        db: database,
+        sessionId: "ses_existing_root",
+        currentBranchName: "feature/current",
+        currentGithubRepositoryIdentity: "sesori-ai/sesori_apps_monorepo",
       );
       await database.sessionDao.insertSessionTombstone(
         backendSessionId: "deleted",

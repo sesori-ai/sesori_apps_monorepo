@@ -119,18 +119,12 @@ void main() {
         lastAgent: null,
         lastAgentModel: null,
       );
-      await db.projectsDao.setPrCacheGithubLogin(
-        projectId: "p1",
-        githubLogin: "octocat",
-      );
-      await db.sessionDao.updatePullRequestScopes(
-        updates: [
-          (
-            sessionId: "s1",
-            currentBranchName: "feature/rename",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
+      await setTestPrCacheGithubLogin(db: db, projectId: "p1", githubLogin: "octocat");
+      await setTestPullRequestScope(
+        db: db,
+        sessionId: "s1",
+        currentBranchName: "feature/rename",
+        currentGithubRepositoryIdentity: "org/repo",
       );
       await db.pullRequestDao.upsertPr(
         pullRequest: const PullRequestDto(

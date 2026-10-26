@@ -368,7 +368,7 @@ void main() {
       expect(result!.archivedAt, equals(1234567890));
     });
 
-    test("getSessionsByProject and getSessionsByIds return expected sessions", () async {
+    test("getSessionsByIds returns expected sessions", () async {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
@@ -418,13 +418,10 @@ void main() {
         lastAgentModel: null,
       );
 
-      final projectSessions = await dao.getSessionsByProject(projectId: "proj-x");
-      expect(projectSessions.map((session) => session.sessionId), containsAll(<String>["ses-a", "ses-b"]));
-      expect(projectSessions.map((session) => session.sessionId), isNot(contains("ses-c")));
-
       final byIds = await dao.getSessionsByIds(sessionIds: <String>["ses-a", "ses-c", "missing"]);
       expect(byIds.keys, containsAll(<String>["ses-a", "ses-c"]));
       expect(byIds.containsKey("missing"), isFalse);
+      expect(byIds.containsKey("ses-b"), isFalse);
       expect(byIds["ses-a"]!.projectId, equals("proj-x"));
       expect(byIds["ses-c"]!.projectId, equals("proj-y"));
     });
