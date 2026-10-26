@@ -151,52 +151,6 @@ void main() {
       );
     });
 
-    test("removes bridge worktree context from visible prompt and command history", () async {
-      const context = """
-[SYSTEM CONTEXT \u2014 IMPORTANT]
-A dedicated git worktree and branch have been created for this session:
-- Branch: private-branch
-- Worktree path: /private/worktree
-- Based on: main
-
-IMPORTANT: Do NOT create new worktrees.
-
----
-""";
-      _writeTranscript(
-        temp: temp,
-        records: [
-          _messageRecord(
-            type: "user",
-            uuid: "initial-user",
-            timestamp: "2026-08-09T10:00:00Z",
-            content: [
-              {"type": "text", "text": context},
-              {"type": "text", "text": "visible prompt"},
-            ],
-          ),
-          _messageRecord(
-            type: "user",
-            uuid: "command-user",
-            timestamp: "2026-08-09T10:00:01Z",
-            content: [
-              {"type": "text", "text": "/review ${context.trimRight()}\n\nvisible args"},
-            ],
-          ),
-        ],
-      );
-
-      final messages = mapper.map(
-        sessionId: _sessionId,
-        agentId: null,
-        records: await transcripts.readTranscriptRecordsInIsolate(sessionId: _sessionId),
-        residentTaskToolUseIds: const {},
-        catalogModelId: null,
-      );
-
-      expect(messages.map((message) => message.parts.single.text), ["visible prompt", "/review visible args"]);
-    });
-
     test("maps the transcript-only compaction summary to one compaction row with its boundary's details", () async {
       _writeTranscript(
         temp: temp,

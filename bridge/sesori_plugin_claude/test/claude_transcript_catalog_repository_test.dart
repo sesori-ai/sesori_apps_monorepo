@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:claude_plugin/claude_plugin.dart";
 import "package:path/path.dart" as p;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -203,6 +204,28 @@ void main() {
       );
 
       expect(catalog.listSessionRecords().single.title, "${"a" * 100}…");
+    });
+
+    test("titles a dedicated-worktree session with its prompt, not the bridge note", () {
+      final note = buildWorktreeSystemContext(worktreePath: "/tmp/worktrees/blue-otter", baseBranch: "main");
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(
+            _sessionA,
+            cwd: "/work/alpha",
+            uuid: "u1",
+            content: [
+              {"type": "text", "text": note},
+              {"type": "text", "text": "visible prompt"},
+            ],
+          ),
+        ],
+      );
+
+      expect(catalog.listSessionRecords().single.title, "visible prompt");
     });
 
     test("orders sessions newest first with undated ones last", () async {

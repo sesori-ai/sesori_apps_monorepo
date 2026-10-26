@@ -763,32 +763,6 @@ void main() {
       expect((summary.first as BridgeSseMessageUpdated).info.id, "summary-frame");
     });
 
-    test("strips the bridge worktree envelope from a replayed user frame", () {
-      const envelope = "[SYSTEM CONTEXT \u2014 IMPORTANT]\nWorktree path: /private/worktree\n---\n";
-      final replayed = _map(
-        mapper,
-        _user(
-          uuid: "replay-frame",
-          content: [
-            {"type": "text", "text": "${envelope}authored follow-up"},
-          ],
-        ),
-      );
-      final contextOnly = _map(
-        mapper,
-        _user(
-          uuid: "context-frame",
-          content: [
-            {"type": "text", "text": envelope},
-          ],
-        ),
-      );
-
-      expect((replayed.first as BridgeSseMessageUpdated).info.id, "replay-frame");
-      expect((replayed.last as BridgeSseMessagePartUpdated).part.text, "authored follow-up");
-      expect(contextOnly, isEmpty);
-    });
-
     test("renders a synthetic API failure once with the transcript message identity", () {
       _startMessage(mapper, messageId: "msg-real", model: "claude-opus-5");
       final assistantEvents = _map(

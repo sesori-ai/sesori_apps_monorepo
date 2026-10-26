@@ -294,6 +294,11 @@ variant, and worktree mode, and creating the session with its first input.
   worktree, base branch, and base commit; in-place mode records the HEAD commit as baseline. The session note tells
   the agent the worktree is detached at the base branch's latest commit and asks it to create a branch for the task,
   named by the repository's own instructions, before its first commit or after the work.
+- The session note never appears in the user's message, for every harness, live or after history load. The bridge
+  strips it from every text part it receives, before storing or delivering it: a part that is only the note is dropped,
+  and a leading command token such as `/review` or `$review` stays. Claude also strips it from the first-prompt session
+  title. Known gap: an OpenCode command template expands its arguments on the server, so the note can land mid-text
+  and stay visible (see `docs/HARNESS_CAPABILITIES.md`).
 - A session created for the bridge's scratch project, whose id is the scratch
   root `~/.sesori/scratch`, runs in its own new folder
   `~/.sesori/scratch/<YYYY-MM-DD>-<random>`; the bridge creates the root when it
