@@ -1535,6 +1535,76 @@ void main() {
     expect(find.byType(PromptInput), findsOneWidget);
   });
 
+  testWidgets("folds the composer away as the no-harness notice opens, and opens it again for a harness", (
+    tester,
+  ) async {
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) async {
+      discoveryCalls++;
+      return ApiResponse.success(
+        PluginDiscoverySnapshot(
+          bridgeId: null,
+          supportsSessionOptions: true,
+          plugins: discoveryCalls == 1
+              ? const []
+              : const [
+                  PluginMetadata(
+                    id: "plugin-1",
+                    displayName: "Plugin One",
+                    isDefault: true,
+                    state: PluginLifecycleState.ready,
+                    actionHint: null,
+                  ),
+                ],
+        ),
+      );
+    });
+    final composer = find.byType(PromptInput);
+    final notice = find.byKey(const Key("new_session_no_harness_notice"));
+
+    /// The composer's top edge in each frame it shares with the notice.
+    Future<List<double>> composerTopsBesideNotice() async {
+      final tops = <double>[];
+      for (var frame = 0; frame < 25; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        if (composer.evaluate().isNotEmpty && notice.evaluate().isNotEmpty) tops.add(tester.getRect(composer).top);
+      }
+      return tops;
+    }
+
+    await tester.pumpWidget(_buildApp());
+    final promptState = tester.state(composer);
+    final folding = await composerTopsBesideNotice();
+
+    // It sinks under the bottom edge over the frames the notice opens in,
+    // rather than blinking out.
+    expect(folding.length, greaterThan(3));
+    expect(folding, orderedEquals([...folding]..sort()));
+    expect(folding.last - folding.first, greaterThan(20));
+    expect(composer, findsNothing);
+    expect(notice, findsOneWidget);
+
+    connectionStatus
+      ..add(const ConnectionStatus.disconnected())
+      ..add(
+        const ConnectionStatus.connected(
+          config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+          health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+        ),
+      );
+    final opening = await composerTopsBesideNotice();
+
+    expect(opening.length, greaterThan(3));
+    expect(opening.reversed, orderedEquals([...opening]..sort()));
+    expect(opening.first - opening.last, greaterThan(20));
+    await tester.pumpAndSettle();
+    expect(discoveryCalls, 2);
+    expect(composer, findsOneWidget);
+    expect(notice, findsNothing);
+    // Kept mounted while folded, so staged images survive the notice.
+    expect(tester.state(composer), same(promptState));
+  });
+
   testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),

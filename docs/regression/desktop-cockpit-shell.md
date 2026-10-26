@@ -356,8 +356,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The home composer after connect (`desktop_home_composer_layout_test`): its final geometry from the first frame,
   the harness pill, options row and worktree row shimmering in place from that frame, and the heading and composer
   unchanged while discovery, the project check and the options resolve; "No project" holding no worktree room; the
-  retry and the no-harness notice still taking the options' place. A switch to "No project" folds the room it is
-  left from the next frame, with no shimmer or row in it (`desktop_home_pane_test`).
+  retry taking the options' place; and the no-harness notice opening there as the composer folds away, the heading
+  never stepping more than a few pixels a frame. A switch to "No project" folds the room it is left from the next
+  frame, with no shimmer or row in it (`desktop_home_pane_test`).
 - Flat typed route registration, archived read-only navigation,
   new-session replacement, Changes file selection, home states, package-font resolution.
 - Add project from the sidebar's empty New session row opening New session in the added project

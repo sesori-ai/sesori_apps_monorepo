@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -44,6 +45,8 @@ const _claudeCode = PluginMetadata(
   actionHint: null,
   supportsPromptAttachments: true,
 );
+
+const _frame = Duration(milliseconds: 16);
 
 const _folder = ProjectSummary(id: "one", name: "demo-app", path: "/one", time: null);
 const _scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
@@ -360,13 +363,31 @@ void main() {
     expect(worktreeShimmer, findsNothing);
   });
 
-  testWidgets("a bridge with no harness still says so in the options' place", (tester) async {
+  testWidgets("a bridge with no harness folds the composer away as its notice opens, so the heading never jumps", (
+    tester,
+  ) async {
     final answers = await pumpHome(tester: tester, project: _folder);
+    final notice = find.byKey(const Key("new_session_no_harness_notice"));
+    var titleTop = tester.getRect(title).top;
+    var largestStep = 0.0;
+    var foldedWhileNoticeOpened = false;
 
     answers.discover(plugins: const []);
-    await landAnswer(tester);
+    for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 400); elapsed += _frame) {
+      await tester.pump(_frame);
+      final top = tester.getRect(title).top;
+      largestStep = math.max(largestStep, (top - titleTop).abs());
+      titleTop = top;
+      foldedWhileNoticeOpened |= composer.evaluate().isNotEmpty && notice.evaluate().isNotEmpty;
+    }
 
-    expect(find.byKey(const Key("new_session_no_harness_notice")), findsOneWidget);
+    // The column stays centred, so the heading follows half of what the
+    // composer and its gap give up and the notice takes: frame by frame,
+    // never in one step.
+    expect(largestStep, lessThan(4));
+    expect(foldedWhileNoticeOpened, isTrue);
+    expect(composer, findsNothing);
+    expect(notice, findsOneWidget);
     expect(find.byType(PregoShimmer), findsNothing);
     expect(harness, findsNothing);
   });
