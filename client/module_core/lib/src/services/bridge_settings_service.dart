@@ -43,7 +43,7 @@ class BridgeSettingsService({
       case BridgeSettingsLoadSupported(:final response):
         _publishYolo(settings: response.yolo);
       // Bridges without the aggregate settings route have no YOLO setting.
-      case BridgeSettingsLoadLegacyPartial() || BridgeSettingsLoadUnsupported():
+      case BridgeSettingsLoadUnsupported():
         _publishYolo(settings: _noYolo);
       case BridgeSettingsLoadFailure():
         break;
@@ -59,9 +59,6 @@ class BridgeSettingsService({
     }
     return result;
   }
-
-  Future<PullRequestRefreshSettingsMutationResult> updatePullRequestRefresh({required int intervalSeconds}) =>
-      _repository.updatePullRequestRefresh(intervalSeconds: intervalSeconds);
 
   Future<PluginWarmupSettingsMutationResult> updatePluginWarmup({required bool enabled}) =>
       _repository.updatePluginWarmup(enabled: enabled);

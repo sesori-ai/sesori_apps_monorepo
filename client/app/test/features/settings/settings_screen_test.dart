@@ -235,16 +235,6 @@ void main() {
         ),
       ),
     );
-    when(
-      () => bridgeSettingsService.updatePullRequestRefresh(
-        intervalSeconds: any(named: "intervalSeconds"),
-      ),
-    ).thenAnswer((invocation) async {
-      final intervalSeconds = invocation.namedArguments[#intervalSeconds] as int;
-      return PullRequestRefreshSettingsMutationCommitted(
-        response: PullRequestRefreshSettingsResponse(intervalSeconds: intervalSeconds),
-      );
-    });
     when(() => bridgeSettingsService.updateYolo(enabled: any(named: "enabled"))).thenAnswer((invocation) async {
       final enabled = invocation.namedArguments[#enabled] as bool;
       return YoloSettingsMutationCommitted(response: YoloSettingsResponse(enabled: enabled));
@@ -359,7 +349,7 @@ void main() {
     final group = find.ancestor(of: find.text("Notifications"), matching: find.byType(PregoGroupedRows));
     expect(find.descendant(of: group, matching: find.text("Default input")), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text("Pull request refresh")).dy,
+      tester.getTopLeft(find.text("Warm harness on session open")).dy,
       lessThan(tester.getTopLeft(find.text("Preferences")).dy),
     );
     expect(
@@ -489,16 +479,6 @@ void main() {
     expect(find.text("Harnesses"), findsOneWidget);
   });
 
-  testWidgets("shows the bridge-committed pull request refresh interval", (tester) async {
-    _useTallSurface(tester);
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Bridge"), findsOneWidget);
-    expect(find.text("Pull request refresh"), findsOneWidget);
-    expect(find.text("30 seconds"), findsOneWidget);
-  });
-
   testWidgets("shows YOLO warning and toggles from the authoritative value", (tester) async {
     _useTallSurface(tester);
     await tester.pumpWidget(_app(appearance: appearance));
@@ -549,10 +529,7 @@ void main() {
 
     expect(find.byKey(const Key("yolo_switch")), findsNothing);
     expect(find.byType(PregoActivityIndicator), findsOneWidget);
-    expect(
-      tester.widget<PregoGroupedRow>(find.byKey(const Key("pull_request_refresh_interval"))).onTap,
-      isNull,
-    );
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("plugin_warmup_switch"))).onChanged, isNull);
     await tester.tap(find.text("YOLO mode"));
     verify(() => bridgeSettingsService.updateYolo(enabled: true)).called(1);
 
@@ -562,46 +539,23 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  testWidgets("YOLO disables interaction while a refresh update is in progress", (tester) async {
+  testWidgets("YOLO disables interaction while a warm-up update is in progress", (tester) async {
     _useTallSurface(tester);
-    final mutation = Completer<PullRequestRefreshSettingsMutationResult>();
-    when(
-      () => bridgeSettingsService.updatePullRequestRefresh(intervalSeconds: 45),
-    ).thenAnswer((_) => mutation.future);
+    final mutation = Completer<PluginWarmupSettingsMutationResult>();
+    when(() => bridgeSettingsService.updatePluginWarmup(enabled: false)).thenAnswer((_) => mutation.future);
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    await tester.tap(find.text("Pull request refresh"));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
-    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
-    await tester.pump(const Duration(milliseconds: 500));
+    await tester.tap(find.byKey(const Key("plugin_warmup_switch")));
+    await tester.pump();
 
-    expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).onChanged, isNull);
-
-    mutation.complete(
-      const PullRequestRefreshSettingsMutationCommitted(
-        response: PullRequestRefreshSettingsResponse(intervalSeconds: 45),
-      ),
-    );
-    await tester.pumpAndSettle();
-  });
-
-  testWidgets("old bridges show YOLO as unsupported while keeping refresh settings", (tester) async {
-    _useTallSurface(tester);
-    when(bridgeSettingsService.load).thenAnswer(
-      (_) async => const BridgeSettingsLoadLegacyPartial(
-        pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
-      ),
-    );
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(2));
-    expect(find.byKey(const Key("yolo_switch")), findsNothing);
     expect(find.byKey(const Key("plugin_warmup_switch")), findsNothing);
-    expect(find.text("Pull request refresh"), findsOneWidget);
-    expect(find.text("30 seconds"), findsOneWidget);
+    expect(tester.widget<PregoSwitch>(find.byKey(const Key("yolo_switch"))).onChanged, isNull);
+    await tester.tap(find.text("YOLO mode"));
+    verifyNever(() => bridgeSettingsService.updateYolo(enabled: any(named: "enabled")));
+
+    mutation.complete(const PluginWarmupSettingsMutationCommitted(enabled: false));
+    await tester.pumpAndSettle();
   });
 
   testWidgets("a v1.8.2 bridge leaves only session-open warm-up unsupported", (tester) async {
@@ -620,7 +574,6 @@ void main() {
 
     expect(find.byKey(const Key("plugin_warmup_switch")), findsNothing);
     expect(find.byKey(const Key("yolo_switch")), findsOneWidget);
-    expect(find.text("30 seconds"), findsOneWidget);
     expect(find.text("Update the connected bridge to configure this setting."), findsOneWidget);
   });
 
@@ -698,135 +651,24 @@ void main() {
     verifyNever(bridgeSettingsService.load);
   });
 
-  testWidgets("saves a custom interval and displays the committed response", (tester) async {
+  testWidgets("a bridge without /settings shows YOLO and warm-up as unsupported", (tester) async {
     _useTallSurface(tester);
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text("Pull request refresh"));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
-    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
-    await tester.pumpAndSettle();
-
-    verify(
-      () => bridgeSettingsService.updatePullRequestRefresh(intervalSeconds: 45),
-    ).called(1);
-    expect(find.text("45 seconds"), findsOneWidget);
-  });
-
-  testWidgets("invalid custom input stays in the sheet and dispatches nothing", (tester) async {
-    _useTallSurface(tester);
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text("Pull request refresh"));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "15.5");
-    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
-    await tester.pump();
-
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("pull_request_refresh_input")),
-        matching: find.text("Enter a whole number of seconds."),
-      ),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
-    verifyNever(
-      () => bridgeSettingsService.updatePullRequestRefresh(
-        intervalSeconds: any(named: "intervalSeconds"),
-      ),
-    );
-  });
-
-  testWidgets("reports when an editor becomes stale before save", (tester) async {
-    _useTallSurface(tester);
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text("Pull request refresh"));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "45");
-
-    connectionStatuses.add(const ConnectionStatus.connectionLost(config: _connectionConfig));
-    connectionStatuses.add(_connected);
-    await tester.pumpAndSettle();
-    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
-    await tester.pumpAndSettle();
-
-    expect(find.text("The bridge setting changed while you were editing. Try again."), findsOneWidget);
-    verifyNever(
-      () => bridgeSettingsService.updatePullRequestRefresh(
-        intervalSeconds: any(named: "intervalSeconds"),
-      ),
-    );
-  });
-
-  testWidgets("a bridge rejection reports and enforces its authoritative bounds", (tester) async {
-    _useTallSurface(tester);
-    var updateCalls = 0;
-    when(
-      () => bridgeSettingsService.updatePullRequestRefresh(
-        intervalSeconds: any(named: "intervalSeconds"),
-      ),
-    ).thenAnswer((_) async {
-      updateCalls++;
-      return PullRequestRefreshSettingsMutationRejected(
-        bounds: PullRequestRefreshSettingsBounds(
-          minimumIntervalSeconds: 20,
-          maximumIntervalSeconds: 1800,
-        ),
-      );
-    });
-    await tester.pumpWidget(_app(appearance: appearance));
-    await tester.pumpAndSettle();
-
-    await tester.tap(find.text("Pull request refresh"));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "1900");
-    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
-    await tester.pumpAndSettle();
-
-    expect(find.text("Enter a whole number from 20 to 1,800."), findsOneWidget);
-    expect(updateCalls, 1);
-
-    await tester.tap(find.text("Pull request refresh"));
-    await tester.pumpAndSettle();
-    await tester.enterText(find.byKey(const Key("pull_request_refresh_input")), "1900");
-    await tester.tap(find.byKey(const Key("pull_request_refresh_save")));
-    await tester.pump();
-
-    expect(
-      find.descendant(
-        of: find.byKey(const Key("pull_request_refresh_input")),
-        matching: find.text("Enter a whole number from 20 to 1,800."),
-      ),
-      findsOneWidget,
-    );
-    expect(find.byKey(const Key("pull_request_refresh_input")), findsOneWidget);
-    expect(updateCalls, 1);
-  });
-
-  testWidgets("old bridges show the cadence setting as unsupported", (tester) async {
-    _useTallSurface(tester);
-    when(
-      bridgeSettingsService.load,
-    ).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
+    when(bridgeSettingsService.load).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
 
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
 
-    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(3));
-    expect(find.text("How to update"), findsNWidgets(3));
+    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(2));
+    expect(find.text("How to update"), findsNWidgets(2));
+    expect(find.byKey(const Key("yolo_switch")), findsNothing);
+    expect(find.byKey(const Key("plugin_warmup_switch")), findsNothing);
 
-    await tester.tap(find.byKey(const Key("pull_request_refresh_interval")));
+    await tester.tap(find.byKey(const Key("yolo_setting")));
     await tester.pumpAndSettle();
     expect(find.text("Update Sesori Bridge"), findsOneWidget);
   });
 
-  testWidgets("a failed cadence load exposes one retry that refreshes it", (tester) async {
+  testWidgets("a failed settings load offers retries that reload them", (tester) async {
     _useTallSurface(tester);
     var loadCalls = 0;
     when(bridgeSettingsService.load).thenAnswer((_) async {
@@ -844,16 +686,14 @@ void main() {
 
     await tester.pumpWidget(_app(appearance: appearance));
     await tester.pumpAndSettle();
-    expect(find.byKey(const Key("pull_request_refresh_retry")), findsOneWidget);
-    expect(
-      tester.widget<IconButton>(find.byKey(const Key("pull_request_refresh_retry"))).tooltip,
-      "Retry pull request refresh setting",
-    );
+    expect(find.byKey(const Key("plugin_warmup_retry")), findsOneWidget);
+    expect(tester.widget<IconButton>(find.byKey(const Key("yolo_retry"))).tooltip, "Retry YOLO setting");
 
-    await tester.tap(find.byKey(const Key("pull_request_refresh_retry")));
+    await tester.tap(find.byKey(const Key("yolo_retry")));
     await tester.pumpAndSettle();
 
-    expect(find.text("30 seconds"), findsOneWidget);
+    expect(find.byKey(const Key("yolo_switch")), findsOneWidget);
+    expect(find.byKey(const Key("plugin_warmup_switch")), findsOneWidget);
     expect(loadCalls, 2);
   });
 
