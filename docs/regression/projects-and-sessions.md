@@ -384,21 +384,14 @@ state.
   its place while the session is neither running nor waiting for the user;
   running and waiting keep the time (see quota-auto-continuation.md). Under the title, starting under the logo, one tertiary meta line holds any state that needs
   words ("Waiting" in amber, retrying, background tasks), then the project
-  when the list gives one and the pull request; it names neither the harness
-  nor the branch, which session detail still shows. The pull request is its
-  number after an icon whose glyph and colour alone give its state, with no
-  state word: a green pull-request glyph while open, a purple merge glyph once
-  merged, a red closed-pull-request glyph when closed. Screen readers hear
-  "Pull request open", "merged" or "closed" from it. An open pull request with
-  merge conflicts adds a red warning mark, and its review and check marks
-  follow. The home and Archived while filtered to one project give no
-  project; across
+  when the list gives one; it names neither the harness nor the branch, which
+  session detail still shows. The home and Archived while filtered to one
+  project give no project; across
   every project the home and Archived name each row's. Screen
   readers hear the waiting state once, from the status mark. The meta line
   keeps its height when it has nothing to show, so rows are 70px at standard
   text size, under touch and under a pointer alike, and they grow with
-  accessibility text rather than clipping or overflowing. In a narrow pane
-  the pull request's indicators clip instead of overflowing. Regular rows form
+  accessibility text rather than clipping or overflowing. Regular rows form
   one timeline with no Running section, in updated-time date buckets, and a
   status change alone never moves a row. A running row sits under Today
   whatever its stored time but keeps its place, so a heading can repeat
@@ -620,9 +613,9 @@ disposable sessions and projects and restore hidden-state changes afterwards.
 For activity order, vary REST versus live delivery, null versus populated
 markers, ties, awaiting-only versus running state, and assistant/tool updates
 after a marker has been established.
-For session rows, check idle, running, unread and waiting rows, a long title
-beside each mark, and open, merged and closed pull requests on both apps, with
-preserved swipe/menu actions and enlarged text.
+For session rows, check idle, running, unread and waiting rows and a long title
+beside each mark on both apps, with preserved swipe/menu actions and enlarged
+text.
 Verify running rows under Today keeping their place, awaiting-only date grouping,
 updated-time versus archive-time buckets, and missing-timestamp headings.
 For list-row swipes, alternate iOS, Android gesture navigation, Android button
@@ -733,8 +726,7 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   voice/attachment controls instead of honoring declared capabilities.
 - A session row hides its time, loses the harness logo or its spoken harness
   name, misaligns titles between quiet and busy rows or between harnesses,
-  pushes its status mark off the line behind a long title, tells pull request
-  states apart only by colour or leaves the pull request icon unspoken,
+  pushes its status mark off the line behind a long title,
   shows a project in a list filtered to one project, changes height when its
   meta line is empty, or clips its meta line under enlarged text.
 - A status change moves a row, a running row sits outside Today, a Running
