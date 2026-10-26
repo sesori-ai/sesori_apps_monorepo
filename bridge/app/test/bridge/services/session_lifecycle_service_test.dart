@@ -535,8 +535,7 @@ class _FakeSessionRepository() implements SessionRepository {
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async {
     hasSharingCallCount++;
     return hasSharingResult;

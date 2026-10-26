@@ -30,18 +30,18 @@ import "../../helpers/test_database.dart";
 import "routing_test_helpers.dart";
 
 String _expectedWorktreeSystemPrompt({
-  required String branchName,
   required String worktreePath,
   required String baseBranch,
 }) {
   return '''
 [SYSTEM CONTEXT — IMPORTANT]
-A dedicated git worktree and branch have been created for this session:
-- Branch: $branchName
+A dedicated git worktree has been created for this session:
 - Worktree path: $worktreePath
 - Based on: $baseBranch
 
-IMPORTANT: Perform all work for this task in this dedicated worktree. You may use the initial branch above, or switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
+This worktree is on a detached HEAD at the latest commit of $baseBranch. Before your first commit, create a branch for this task, named as this repository's instructions say, or after the work.
+
+IMPORTANT: Perform all work for this task in this dedicated worktree. You may switch branches or create additional branches here as needed. Do NOT create another worktree or working directory — even if other instructions suggest it.
 
 ---
 ''';
@@ -200,7 +200,6 @@ void main() {
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123def456",
       );
@@ -233,7 +232,6 @@ void main() {
         equals(
           PluginPromptPart.text(
             text: _expectedWorktreeSystemPrompt(
-              branchName: "session-001",
               worktreePath: "/repo/.worktrees/session-001",
               baseBranch: "main",
             ),
@@ -251,7 +249,7 @@ void main() {
       expect(dbSession.projectId, equals("/repo"));
       expect(dbSession.isDedicated, isTrue);
       expect(dbSession.worktreePath, equals("/repo/.worktrees/session-001"));
-      expect(dbSession.branchName, equals("session-001"));
+      expect(dbSession.branchName, isNull);
       expect(dbSession.baseBranch, equals("main"));
       expect(dbSession.baseCommit, equals("abc123def456"));
       expect(dbSession.fastMode, isTrue);
@@ -457,7 +455,6 @@ void main() {
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-empty",
-        branchName: "session-empty",
         baseBranch: "main",
         baseCommit: "abc123def456",
       );
@@ -488,23 +485,21 @@ void main() {
       );
       expect(dbSession.isDedicated, isTrue);
       expect(dbSession.worktreePath, equals("/repo/.worktrees/session-empty"));
-      expect(dbSession.branchName, equals("session-empty"));
+      expect(dbSession.branchName, isNull);
       expect(dbSession.baseBranch, equals("main"));
       expect(dbSession.baseCommit, equals("abc123def456"));
     });
 
-    test("worktree system prompt requires the worktree but permits branch changes", () {
+    test("worktree system prompt requires the worktree and asks the agent to create a branch", () {
       final prompt = _expectedWorktreeSystemPrompt(
-        branchName: "session-017",
         worktreePath: "/repo/.worktrees/session-017",
         baseBranch: "develop",
       );
 
-      expect(prompt, contains("session-017"));
       expect(prompt, contains("/repo/.worktrees/session-017"));
-      expect(prompt, contains("develop"));
+      expect(prompt, contains("detached HEAD at the latest commit of develop"));
       expect(prompt, contains("Perform all work for this task in this dedicated worktree"));
-      expect(prompt, contains("use the initial branch above, or switch branches"));
+      expect(prompt, contains("create a branch for this task"));
       expect(prompt, contains("Do NOT create another worktree or working directory"));
     });
 
@@ -544,7 +539,6 @@ void main() {
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123def456",
       );
@@ -626,7 +620,6 @@ void main() {
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123",
       );
@@ -748,7 +741,6 @@ void main() {
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/fix-login-bug",
-        branchName: "fix-login-bug",
         baseBranch: "main",
         baseCommit: "abc123",
       );
@@ -788,7 +780,6 @@ void main() {
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123",
       );
@@ -993,7 +984,6 @@ void main() {
       );
       worktreeService.prepareResult = WorktreeSuccess(
         path: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123def456",
       );
@@ -1285,7 +1275,6 @@ void main() {
 
 class _FakeWorktreeService({required AppDatabase database}) extends WorktreeService {
   String? lastPrepareProjectId;
-  String? lastPrepareParentSessionId;
   String? lastResolveHeadProjectId;
   int prepareCallCount = 0;
   int resolveHeadCommitCallCount = 0;
@@ -1294,16 +1283,12 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
     reason: "default",
   );
   String? resolveHeadCommitResult;
-  GeneratedBranchRenameResult renameResult = GeneratedBranchRenameSkipped(
-    reason: GeneratedBranchRenameSkipReason.initialBranchChanged,
-  );
 
   this
     : super(
         worktreeRepository: singlePluginWorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: database.projectsDao,
-          sessionDao: database.sessionDao,
           gitApi: GitCliApi(
             streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: NoopProcessRunner(),
@@ -1316,11 +1301,9 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
   @override
   Future<WorktreeResult> prepareWorktreeForSession({
     required String projectId,
-    required String? parentSessionId,
   }) async {
     prepareCallCount++;
     lastPrepareProjectId = projectId;
-    lastPrepareParentSessionId = parentSessionId;
     return prepareResult;
   }
 
@@ -1332,13 +1315,6 @@ class _FakeWorktreeService({required AppDatabase database}) extends WorktreeServ
     lastResolveHeadProjectId = projectId;
     return resolveHeadCommitResult;
   }
-
-  @override
-  Future<GeneratedBranchRenameResult> renameGeneratedBranch({
-    required String worktreePath,
-    required String initialBranchName,
-    required String generatedBranchName,
-  }) async => renameResult;
 }
 
 class _OpenCodeFakeBridgePlugin() extends FakeBridgePlugin {

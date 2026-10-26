@@ -27,12 +27,9 @@ that baseline, and the branch and worktree facts a session carries.
 - The base branch can be read and set; setting rejects empty input and applies
   to later dedicated baselines, and the stable project identifier resolves to
   the live directory before git runs.
-- A session initially reports its creation-time branch and dedicated-worktree
-  facts. Generated metadata may later rename only the still-current unpublished
-  initial dedicated branch without moving the worktree; durable and current
-  branch facts then update together through the existing session update. Other
-  live current-branch and PR refreshes belong to pull request monitoring. A
-  mutating tool emits the diff refresh signal; bursts during an in-flight read
+- A session reports its dedicated-worktree facts. A new dedicated worktree starts on a detached HEAD with no
+  branch, so the agent's own branch appears only through the live current-branch refresh, which belongs to pull
+  request monitoring with the PR refresh. A mutating tool emits the diff refresh signal; bursts during an in-flight read
   coalesce into one trailing refresh, a failed event-driven refresh retries
   after a delay while the diff screen remains open, and diffs stay encrypted
   from the relay.
@@ -99,9 +96,6 @@ and in-place sessions, and default versus explicit base branches.
   bare 404.
 - The Changes button pops to its new size when the counts arrive or leave,
   animates under reduced motion, or stretches taller than its own content.
-- Generated refinement renames a branch after it switches or becomes published,
-  moves the worktree directory, leaves durable/current branch facts disagreeing,
-  or leaves Git and persistence on different branch names after failure.
 
 ## Known Limitations
 

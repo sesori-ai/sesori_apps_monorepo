@@ -64,7 +64,6 @@ void main() {
         worktreeRepository: WorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
           filesystemApi: const FilesystemApi(),
           gitApi: gitCliApi,
           runtime: createTestPluginRuntime(plugins: [plugin]),

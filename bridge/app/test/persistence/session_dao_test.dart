@@ -521,35 +521,6 @@ void main() {
     });
 
     group("getOtherActiveSessionsSharing", () {
-      test("returns empty when both params are null", () async {
-        await dao.insertSession(
-          fastMode: false,
-          pluginId: "opencode",
-          preservePullRequestScope: false,
-          sessionId: "ses-1",
-          backendSessionId: "ses-1",
-          projectId: "proj-1",
-          isDedicated: true,
-          createdAt: 1,
-          worktreePath: "/wt",
-          branchName: "branch-1",
-          baseBranch: "main",
-          baseCommit: null,
-
-          lastAgent: null,
-          lastAgentModel: null,
-        );
-
-        final result = await dao.getOtherActiveSessionsSharing(
-          sessionId: "ses-1",
-          projectId: "proj-1",
-          worktreePath: null,
-          branchName: null,
-        );
-
-        expect(result, isEmpty);
-      });
-
       test("finds other session sharing worktreePath", () async {
         await dao.insertSession(
           fastMode: false,
@@ -590,54 +561,6 @@ void main() {
           sessionId: "ses-a",
           projectId: "proj-1",
           worktreePath: "/shared-wt",
-          branchName: null,
-        );
-
-        expect(result, hasLength(1));
-        expect(result.first.sessionId, "ses-b");
-      });
-
-      test("finds other session sharing branchName", () async {
-        await dao.insertSession(
-          fastMode: false,
-          pluginId: "opencode",
-          preservePullRequestScope: false,
-          sessionId: "ses-a",
-          backendSessionId: "ses-a",
-          projectId: "proj-1",
-          isDedicated: true,
-          createdAt: 1,
-          worktreePath: "/wt-a",
-          branchName: "shared-branch",
-          baseBranch: "main",
-          baseCommit: null,
-
-          lastAgent: null,
-          lastAgentModel: null,
-        );
-        await dao.insertSession(
-          fastMode: false,
-          pluginId: "opencode",
-          preservePullRequestScope: false,
-          sessionId: "ses-b",
-          backendSessionId: "ses-b",
-          projectId: "proj-1",
-          isDedicated: true,
-          createdAt: 2,
-          worktreePath: "/wt-b",
-          branchName: "shared-branch",
-          baseBranch: "main",
-          baseCommit: null,
-
-          lastAgent: null,
-          lastAgentModel: null,
-        );
-
-        final result = await dao.getOtherActiveSessionsSharing(
-          sessionId: "ses-a",
-          projectId: "proj-1",
-          worktreePath: null,
-          branchName: "shared-branch",
         );
 
         expect(result, hasLength(1));
@@ -667,7 +590,6 @@ void main() {
           sessionId: "ses-a",
           projectId: "proj-1",
           worktreePath: "/shared-wt",
-          branchName: null,
         );
 
         expect(result, isEmpty);
@@ -719,79 +641,14 @@ void main() {
           sessionId: "ses-a",
           projectId: "proj-1",
           worktreePath: "/shared-wt",
-          branchName: null,
         );
 
         expect(result, isEmpty);
       });
 
-      test("uses OR logic when both worktreePath and branchName provided", () async {
-        await dao.insertSession(
-          fastMode: false,
-          pluginId: "opencode",
-          preservePullRequestScope: false,
-          sessionId: "ses-a",
-          backendSessionId: "ses-a",
-          projectId: "proj-1",
-          isDedicated: true,
-          createdAt: 1,
-          worktreePath: "/wt-a",
-          branchName: "branch-a",
-          baseBranch: "main",
-          baseCommit: null,
-
-          lastAgent: null,
-          lastAgentModel: null,
-        );
-        await dao.insertSession(
-          fastMode: false,
-          pluginId: "opencode",
-          preservePullRequestScope: false,
-          sessionId: "ses-b",
-          backendSessionId: "ses-b",
-          projectId: "proj-1",
-          isDedicated: true,
-          createdAt: 2,
-          worktreePath: "/wt-a",
-          branchName: "branch-other",
-          baseBranch: "main",
-          baseCommit: null,
-
-          lastAgent: null,
-          lastAgentModel: null,
-        );
-        await dao.insertSession(
-          fastMode: false,
-          pluginId: "opencode",
-          preservePullRequestScope: false,
-          sessionId: "ses-c",
-          backendSessionId: "ses-c",
-          projectId: "proj-1",
-          isDedicated: true,
-          createdAt: 3,
-          worktreePath: "/wt-other",
-          branchName: "branch-a",
-          baseBranch: "main",
-          baseCommit: null,
-
-          lastAgent: null,
-          lastAgentModel: null,
-        );
-
-        final result = await dao.getOtherActiveSessionsSharing(
-          sessionId: "ses-a",
-          projectId: "proj-1",
-          worktreePath: "/wt-a",
-          branchName: "branch-a",
-        );
-
-        expect(result, hasLength(2));
-        expect(result.map((s) => s.sessionId), containsAll(["ses-b", "ses-c"]));
-      });
-
       test("excludes sessions from other projects", () async {
-        // Two sessions in different projects accidentally share the same branch
-        // name. Cleanup of one must not be blocked by the other.
+        // Sessions in different projects never share a worktree, even when
+        // their paths match. Cleanup of one must not be blocked by the other.
         await dao.insertSession(
           fastMode: false,
           pluginId: "opencode",
@@ -831,7 +688,6 @@ void main() {
           sessionId: "ses-a",
           projectId: "proj-1",
           worktreePath: "/wt-a",
-          branchName: "session-001",
         );
 
         expect(result, isEmpty);

@@ -161,24 +161,7 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
 
   static String _hexSuffix(int value) => value.toRadixString(16).padLeft(6, "0");
 
-  Future<WorktreeResult> prepareWorktreeForSession({
-    required String projectId,
-    required String? parentSessionId,
-  }) async {
-    if (parentSessionId != null) {
-      final parentWorktree = await _worktreeRepository.getParentWorktree(
-        parentSessionId: parentSessionId,
-      );
-      if (parentWorktree != null) {
-        return WorktreeSuccess(
-          path: parentWorktree.path,
-          branchName: parentWorktree.branchName,
-          baseBranch: parentWorktree.baseBranch,
-          baseCommit: parentWorktree.baseCommit,
-        );
-      }
-    }
-
+  Future<WorktreeResult> prepareWorktreeForSession({required String projectId}) async {
     final projectPath = await _worktreeRepository.resolveProjectPath(projectId: projectId);
 
     if (!await _worktreeRepository.isGitInitialized(projectPath: projectPath)) {
@@ -272,7 +255,8 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
   static String _workspaceSlug({required int colorIndex, required int animalIndex}) =>
       "${_workspaceColors[colorIndex]}-${_workspaceAnimals[animalIndex]}";
 
-  /// Creates the worktree for [slug] unless its branch or path is taken.
+  /// Creates the worktree for [slug] on a detached HEAD unless its path is
+  /// taken.
   Future<_WorktreeCandidateAttempt> _attemptWorktreeCandidate({
     required String projectPath,
     required String slug,
@@ -280,23 +264,19 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
     required String baseBranch,
     required String baseCommit,
   }) async {
-    final branchName = "$_branchPrefix$slug";
     final worktreePath = _worktreeRepository.worktreePathFor(projectPath: projectPath, slug: slug);
-    if (await _worktreeRepository.branchExists(projectPath: projectPath, branchName: branchName) ||
-        _worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
+    if (_worktreeRepository.worktreePathExists(worktreePath: worktreePath)) {
       return const _WorktreeCandidateTaken();
     }
     final created = await _worktreeRepository.createWorktree(
       projectPath: projectPath,
       worktreePath: worktreePath,
-      branchName: branchName,
       startPoint: startPoint,
     );
     if (!created) return const _WorktreeCandidateFailed();
     return _WorktreeCandidateCreated(
       success: WorktreeSuccess(
         path: worktreePath,
-        branchName: branchName,
         baseBranch: baseBranch,
         baseCommit: baseCommit,
       ),
@@ -470,7 +450,7 @@ class WorktreeService({required final WorktreeRepository _worktreeRepository}) {
 /// Outcome of one generated worktree candidate.
 sealed class const _WorktreeCandidateAttempt();
 
-/// The branch or path already exists; the candidate was never tried.
+/// The path already exists; the candidate was never tried.
 final class const _WorktreeCandidateTaken() extends _WorktreeCandidateAttempt;
 
 /// The candidate was available but git refused to create the worktree.
