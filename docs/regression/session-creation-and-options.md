@@ -13,8 +13,8 @@ variant, and worktree mode, and creating the session with its first input.
   project yet they open the Add project dialog, and the project it adds opens in setup.
   It opens setup rather than creating a backend session, ignores held-key repeats and respects root popup focus.
 - The phone home's New session button opens setup (`/sessions/new?project=<id>`) in the home's default
-  project: the filtered project, else the project of the newest session, known once every project's sessions have
-  loaded. With no default it opens a "New
+  project: the filtered project, else the project of the newest session, known once every project's session read
+  has settled (loaded or failed). With no default it opens a "New
   session" page headed "What should we work on?" whose "Choose a project" picker opens at once with nothing
   selected: its search first, the known projects below and "Open folder…" pinned under them; with no projects
   it offers only that action. Choosing one replaces the page with that project's setup page.

@@ -248,11 +248,12 @@ state.
   The sidebar leads with New session, then search, then the project switcher heading the list, and
   its footer holds the computer switcher, Settings and collapse. With no session open the pane is a new
   session in the list's default project, which holds once chosen so another session turning newest never moves
-  the draft. Without a filter the default lands only once every project's sessions have loaded, so a project that
-  answers first never takes the draft; until then the pane waits blank. With no default it asks for a project with
-  nothing selected, and its picker opens on a tap rather than by itself. Another filter moves the draft to the
-  filter's default, and New session in the sidebar returns the pane to it. The open page (a session, new session or
-  File Changes) fills the pane and the list marks the open session; archiving or deleting it empties the pane.
+  the draft. Without a filter the default lands only once every project's session read has settled (loaded or
+  failed), so a project that answers first never takes the draft; until then the pane waits blank. With no
+  default it asks for a project with nothing selected, and its picker opens on a tap rather than by itself.
+  Another filter moves the draft to the filter's default, and New session in the sidebar returns the pane to it. The
+  open page (a session, new session or File Changes) fills the pane and the list marks the open session; archiving or
+  deleting it empties the pane.
   Collapse hides the sidebar completely until the pane's restore button brings it back; the collapse lasts until
   the app restarts and survives rotation. In iPhone landscape the pane keeps its page clear of the side insets: the
   far side's always, and the notch side's once collapsing brings the pane there, the page gliding with the pane

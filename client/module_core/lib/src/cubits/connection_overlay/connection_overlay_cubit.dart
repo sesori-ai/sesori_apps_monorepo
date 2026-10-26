@@ -58,6 +58,11 @@ class ConnectionOverlayCubit(
     final retargeted = _targetChange.changed(status: update.status);
     if (derived is ConnectionOverlayReconnecting) {
       if (state is ConnectionOverlayReconnecting) return;
+      if (retargeted) {
+        // The new computer gets its own full grace.
+        _reconnectingGraceTimer?.cancel();
+        _reconnectingGraceTimer = null;
+      }
       if (state is ConnectionOverlayConnectionLost || retargeted) {
         emit(const ConnectionOverlayState.hidden(connected: false));
       }
