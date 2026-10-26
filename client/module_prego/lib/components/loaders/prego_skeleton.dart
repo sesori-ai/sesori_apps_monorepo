@@ -123,13 +123,20 @@ class _PregoShimmerState()
     if (!_visible && !widget.leaving) _scheduleAppear();
   }
 
+  /// Counted from the end of the frame that asks for it, so shimmers built in
+  /// one frame appear on one frame, however long building those between them
+  /// took.
   void _scheduleAppear() {
     _appearTimer?.cancel();
-    _appearTimer = Timer(widget.appearDelay, () {
-      if (!mounted) return;
-      setState(() => _visible = true);
-      _opacity.forward();
-      syncMotion();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted || widget.leaving || _visible) return;
+      _appearTimer?.cancel();
+      _appearTimer = Timer(widget.appearDelay, () {
+        if (!mounted) return;
+        setState(() => _visible = true);
+        _opacity.forward();
+        syncMotion();
+      });
     });
   }
 

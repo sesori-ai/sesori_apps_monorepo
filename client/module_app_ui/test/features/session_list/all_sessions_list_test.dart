@@ -7,6 +7,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_list/session_list_headings.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -75,6 +76,8 @@ void main() {
     ),
     Stream<ProjectListState> projectUpdates = const Stream.empty(),
     AllSessionsDisconnectedBuilder disconnectedBuilder = _offlinePage,
+    Widget? header,
+    TextDirection textDirection = TextDirection.ltr,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -91,37 +94,40 @@ void main() {
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
-        home: MultiBlocProvider(
-          providers: [
-            BlocProvider<AllSessionsCubit>.value(value: cubit),
-            BlocProvider<ProjectListCubit>.value(value: projects),
-            BlocProvider(
-              create: (_) => PendingSessionArchiveCubit(
-                cleanupService: SessionCleanupService(repository: MockSessionRepository()),
-              ),
-            ),
-            RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
-            RepositoryProvider(create: (_) => idleSessionLaunchService()),
-          ],
-          child: Scaffold(
-            body: CustomScrollView(
-              slivers: [
-                AllSessionsList(
-                  onSessionTap: ({required row}) {},
-                  actionDispatcher: const SessionListActionDispatcher(
-                    deleteConfirmation: SessionDeleteConfirmation.sheet,
-                    onSessionArchived: null,
-                    onSessionDeleted: null,
-                    onSessionMarkedUnread: null,
-                  ),
-                  createActionCubit: ({required projectId, required session}) => throw StateError("no row to act on"),
-                  selectedSessionId: null,
-                  disconnectedBuilder: disconnectedBuilder,
-                  emptyState: const Text("Nothing here"),
-                  header: null,
-                  endClearance: 0,
+        home: Directionality(
+          textDirection: textDirection,
+          child: MultiBlocProvider(
+            providers: [
+              BlocProvider<AllSessionsCubit>.value(value: cubit),
+              BlocProvider<ProjectListCubit>.value(value: projects),
+              BlocProvider(
+                create: (_) => PendingSessionArchiveCubit(
+                  cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                 ),
-              ],
+              ),
+              RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
+              RepositoryProvider(create: (_) => idleSessionLaunchService()),
+            ],
+            child: Scaffold(
+              body: CustomScrollView(
+                slivers: [
+                  AllSessionsList(
+                    onSessionTap: ({required row}) {},
+                    actionDispatcher: const SessionListActionDispatcher(
+                      deleteConfirmation: SessionDeleteConfirmation.sheet,
+                      onSessionArchived: null,
+                      onSessionDeleted: null,
+                      onSessionMarkedUnread: null,
+                    ),
+                    createActionCubit: ({required projectId, required session}) => throw StateError("no row to act on"),
+                    selectedSessionId: null,
+                    disconnectedBuilder: disconnectedBuilder,
+                    emptyState: const Text("Nothing here"),
+                    header: header,
+                    endClearance: 0,
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -185,6 +191,31 @@ void main() {
     expect(find.byKey(const Key("session-list-filter-all")), findsNothing);
   });
 
+  for (final textDirection in TextDirection.values) {
+    testWidgets("a date heading starts at the list's start inset, as its rows do (${textDirection.name})", (
+      tester,
+    ) async {
+      final today = DateTime.now();
+      await pumpList(
+        tester,
+        textDirection: textDirection,
+        initial: state(
+          query: "",
+          failures: const [],
+          rows: [row(title: "Archived today", archivedAt: today, updatedAt: today, isRunning: false)],
+          scratchProjectId: null,
+        ),
+      );
+      final heading = tester.getRect(find.text("Today"));
+      switch (textDirection) {
+        case TextDirection.ltr:
+          expect(heading.left, 16);
+        case TextDirection.rtl:
+          expect(heading.right, 800 - 16);
+      }
+    });
+  }
+
   testWidgets("with nothing to show the empty state fills the list", (tester) async {
     await pumpList(
       tester,
@@ -217,7 +248,7 @@ void main() {
       await tester.pump(const Duration(milliseconds: 600));
       expect(find.text("Computer offline"), findsOneWidget);
       expect(find.text("Nothing here"), findsNothing);
-      expect(find.byType(PregoSkeletonList), findsNothing);
+      expect(find.byType(SessionListSkeleton), findsNothing);
     });
   }
 
@@ -283,12 +314,14 @@ void main() {
       project: ProjectSummary(id: "p2", name: "Project Two", path: "/p2", time: null),
       reason: RemoteFailureReason.networkDown,
     );
-    final failureRow = find.text("Couldn’t load Project Two");
+    // Found while it opens from nothing, which takes no room on screen.
+    final failureRow = find.text("Couldn’t load Project Two", skipOffstage: false);
     AllSessionsState loaded({
       required AllSessionsMode mode,
       required List<String> titles,
       String query = "",
       List<AllSessionsFailure> failures = const [],
+      SessionListChipCounts? counts,
     }) => state(
       query: query,
       failures: failures,
@@ -302,7 +335,7 @@ void main() {
           ),
       ],
       scratchProjectId: null,
-      counts: SessionListChipCounts(all: titles.length, running: 0, unread: 0),
+      counts: counts ?? SessionListChipCounts(all: titles.length, running: 0, unread: 0),
     );
 
     double opacityAbove(WidgetTester tester, Finder finder) => tester
@@ -321,7 +354,10 @@ void main() {
         .widgetList(
           find.ancestor(
             of: finder,
-            matching: find.byWidgetPredicate((w) => w is FadeTransition || w is SliverFadeTransition || w is Opacity),
+            matching: find.byWidgetPredicate(
+              (w) => w is FadeTransition || w is SliverFadeTransition || w is Opacity,
+              skipOffstage: false,
+            ),
           ),
         )
         .fold(
@@ -334,9 +370,10 @@ void main() {
                 _ => 1.0,
               },
         );
-    final skeleton = find.byType(PregoSkeletonList);
+    final skeleton = find.byType(SessionListSkeleton);
     double skeletonOpacity(WidgetTester tester) =>
-        skeleton.evaluate().isEmpty ? 0 : paintedOpacity(tester, find.byType(PregoSkeletonListTile).first);
+        skeleton.evaluate().isEmpty ? 0 : paintedOpacity(tester, find.byType(SessionTileSkeleton).first);
+    final searchField = find.byType(TextField);
 
     /// Pumps a loading list until its skeleton has appeared, and returns
     /// where the skeleton stands.
@@ -344,14 +381,15 @@ void main() {
       WidgetTester tester, {
       required Stream<AllSessionsState> updates,
       AllSessionsMode mode = AllSessionsMode.archived,
+      Widget? header,
     }) async {
-      await pumpList(tester, initial: loading, updates: updates, mode: mode);
+      await pumpList(tester, initial: loading, updates: updates, mode: mode, header: header);
       // Its 300 ms appearance delay, then its 200 ms fade in, timed from the
       // frame after the delay.
       await tester.pump(const Duration(milliseconds: 300));
       await tester.pump(const Duration(milliseconds: 300));
       expect(skeletonOpacity(tester), 1);
-      expect(find.byType(TextField), findsNothing);
+      expect(paintedOpacity(tester, searchField), 1);
       return tester.getTopLeft(skeleton).dy;
     }
 
@@ -371,7 +409,8 @@ void main() {
 
         expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
         expect(rowsOpacity(tester), inExclusiveRange(0, 1));
-        expect(opacityAbove(tester, find.byType(TextField)), rowsOpacity(tester));
+        // Shown through the load, the field does not fade in again.
+        expect(paintedOpacity(tester, searchField), 1);
         if (mode == AllSessionsMode.active) {
           expect(opacityAbove(tester, find.byKey(const Key("session-list-filter-all"))), rowsOpacity(tester));
         }
@@ -379,7 +418,7 @@ void main() {
 
         await tester.pump(const Duration(milliseconds: 150));
         expect(skeleton, findsNothing);
-        expect(opacityAbove(tester, find.byType(TextField)), 1);
+        expect(paintedOpacity(tester, searchField), 1);
         expect(rowsOpacity(tester), 1);
       });
     }
@@ -396,12 +435,17 @@ void main() {
 
       expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
       expect(opacityAbove(tester, find.text("Nothing here")), inExclusiveRange(0, 1));
-      expect(tester.getTopLeft(find.byType(PregoSkeletonList)).dy, skeletonTop);
-      expect(tester.getTopLeft(find.text("Nothing here")).dy, skeletonTop);
+      // Both rise together as the search field, with nothing to search,
+      // folds away above them.
+      expect(paintedOpacity(tester, searchField), inExclusiveRange(0, 1));
+      expect(tester.getTopLeft(skeleton).dy, inExclusiveRange(0, skeletonTop));
+      expect(tester.getTopLeft(find.text("Nothing here")).dy, tester.getTopLeft(skeleton).dy);
 
       await tester.pump(const Duration(milliseconds: 150));
-      expect(find.byType(PregoSkeletonList), findsNothing);
+      expect(skeleton, findsNothing);
+      expect(searchField, findsNothing);
       expect(opacityAbove(tester, find.text("Nothing here")), 1);
+      expect(tester.getTopLeft(find.text("Nothing here")).dy, 0);
     });
 
     final failurePadding = find.ancestor(of: failureRow, matching: find.byType(Padding)).first;
@@ -439,8 +483,9 @@ void main() {
           // It fades out where it stood, under the failed project.
           expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
           expect(tester.getTopLeft(skeleton).dy, tester.getRect(failurePadding).bottom);
-          // Alone, nothing arrives above it to push it down.
-          if (!withRows) expect(tester.getTopLeft(skeleton).dy, skeletonTop);
+          // The search field stays, so nothing moves; with nothing to search
+          // it folds away, raising both together.
+          expect(tester.getTopLeft(skeleton).dy, withRows ? skeletonTop : lessThan(skeletonTop));
           expect(paintedOpacity(tester, failureRow), 1);
           if (withRows) expect(rowsOpacity(tester), inExclusiveRange(0, 1));
 
@@ -466,9 +511,11 @@ void main() {
 
           expect(paintedOpacity(tester, failureRow), inExclusiveRange(0, 1));
           if (withRows) expect(paintedOpacity(tester, failureRow), moreOrLessEquals(rowsOpacity(tester)));
-          // It fades out where it stood, over the search field or, alone, over the failed project.
+          // It fades out over the failed project, where it stood; alone, the
+          // search field folds away, raising both together.
           expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
-          expect(tester.getTopLeft(skeleton).dy, skeletonTop);
+          expect(tester.getTopLeft(skeleton).dy, tester.getRect(failurePadding).top);
+          expect(tester.getTopLeft(skeleton).dy, withRows ? skeletonTop : lessThan(skeletonTop));
 
           await tester.pump(const Duration(milliseconds: 150));
           expect(skeleton, findsNothing);
@@ -477,7 +524,7 @@ void main() {
       );
     }
 
-    testWidgets("a project that fails as the load ends arrives under the skeleton, which stays where it stood", (
+    testWidgets("a project that fails as the load ends arrives under the skeleton, which stays under its project", (
       tester,
     ) async {
       const lastFailure = AllSessionsFailure(
@@ -497,7 +544,9 @@ void main() {
       expect(tester.getTopLeft(skeleton).dy, skeletonTop);
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
-      expect(tester.getTopLeft(skeleton).dy, skeletonTop);
+      // The search field folds away above them both.
+      expect(tester.getTopLeft(skeleton).dy, tester.getRect(failurePadding).bottom);
+      expect(tester.getTopLeft(skeleton).dy, lessThan(skeletonTop));
       expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
       expect(paintedOpacity(tester, find.text("Couldn’t load Project Three")), inExclusiveRange(0, 1));
     });
@@ -539,23 +588,26 @@ void main() {
       });
     }
 
-    testWidgets("the search field arrives with the rows, never over an empty body", (tester) async {
+    testWidgets("the search field takes focus and a query while the list loads, keeping both as the rows arrive", (
+      tester,
+    ) async {
       final updates = StreamController<AllSessionsState>();
       addTearDown(updates.close);
-      await pumpLoading(tester, updates: updates.stream);
+      final cubit = await pumpList(tester, initial: loading, updates: updates.stream);
+      bool focused() => tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus;
 
-      updates.add(loaded(mode: AllSessionsMode.archived, titles: ["Fix the parser", "Write the docs"]));
+      await tester.enterText(searchField, "parser");
+      expect(focused(), isTrue);
+      verify(() => cubit.setQuery(query: "parser")).called(1);
+
+      // The load ends with what matches the query.
+      updates.add(loaded(mode: AllSessionsMode.archived, titles: ["Fix the parser"], query: "parser"));
       await tester.pump();
-      // The rows are already in place at full size; the field shows with them.
-      expect(opacityAbove(tester, find.byType(TextField)), 0);
-      expect(rowsOpacity(tester), 0);
-      final secondRowTop = tester.getTopLeft(find.text("Write the docs")).dy;
-      for (var frame = 0; frame < 5; frame++) {
-        await tester.pump(const Duration(milliseconds: 50));
-        expect(opacityAbove(tester, find.byType(TextField)), rowsOpacity(tester));
-        expect(tester.getTopLeft(find.text("Write the docs")).dy, secondRowTop, reason: "no row grows in");
-      }
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
       expect(rowsOpacity(tester), 1);
+      expect(focused(), isTrue);
+      expect(find.text("parser"), findsOneWidget);
     });
 
     testWidgets("under reduced motion the hand-off is instant", (tester) async {
@@ -569,8 +621,9 @@ void main() {
       // With nothing animating, a bare pump would skip the frame before the update arrives.
       await tester.pump(Duration.zero);
 
-      expect(find.byType(PregoSkeletonList), findsNothing);
-      expect(opacityAbove(tester, find.byType(TextField)), 1);
+      expect(find.byType(SessionListSkeleton), findsNothing);
+      expect(find.byType(TextField), findsOneWidget);
+      expect(paintedOpacity(tester, searchField), 1);
       expect(rowsOpacity(tester), 1);
     });
 
@@ -598,10 +651,280 @@ void main() {
         updates.add(update);
         await tester.pump();
         expect(skeleton, findsNothing);
-        expect(opacityAbove(tester, find.byType(TextField)), 1);
+        expect(paintedOpacity(tester, searchField), 1);
         expect(rowsOpacity(tester), 1);
         expect(paintedOpacity(tester, failureRow), 1);
       }
+    });
+
+    group("layout across every frame", () {
+      const header = SizedBox(key: Key("header"), height: 36, child: Text("All projects"));
+      final headerBox = find.byKey(const Key("header"));
+      const lastFailure = AllSessionsFailure(
+        project: ProjectSummary(id: "p3", name: "Project Three", path: "/p3", time: null),
+        reason: RemoteFailureReason.networkDown,
+      );
+
+      /// How far anything may move in one 5 ms frame: smooth motion stays
+      /// well under it, a one-frame snap of a box's height does not.
+      const maxStep = 6.0;
+
+      /// The tops of [finders], each null while it is gone, on the frame
+      /// before [update] lands and on every 5 ms frame of the 300 ms after.
+      Future<List<List<double?>>> topsAcross(
+        WidgetTester tester, {
+        required StreamController<AllSessionsState> updates,
+        required AllSessionsState update,
+        required List<Finder> finders,
+      }) async {
+        List<double?> tops() => [
+          for (final finder in finders) finder.evaluate().isEmpty ? null : tester.getTopLeft(finder).dy,
+        ];
+        final frames = [tops()];
+        updates.add(update);
+        for (var elapsed = 0; elapsed < 300; elapsed += 5) {
+          await tester.pump(const Duration(milliseconds: 5));
+          frames.add(tops());
+        }
+        return [
+          for (var index = 0; index < finders.length; index++) [for (final frame in frames) frame[index]],
+        ];
+      }
+
+      /// Each one-frame move in [tops], across the frames it was shown.
+      List<double> steps(List<double?> tops) => [
+        for (var frame = 1; frame < tops.length; frame++)
+          if ((tops[frame - 1], tops[frame]) case (final from?, final to?)) to - from,
+      ];
+
+      for (final withHeader in [true, false]) {
+        testWidgets("a load that ends with sessions moves nothing (${withHeader ? "header" : "no header"})", (
+          tester,
+        ) async {
+          final updates = StreamController<AllSessionsState>();
+          addTearDown(updates.close);
+          final skeletonTop = await pumpLoading(
+            tester,
+            updates: updates.stream,
+            mode: AllSessionsMode.active,
+            header: withHeader ? header : null,
+          );
+          final headerTop = withHeader ? tester.getTopLeft(headerBox).dy : null;
+          final fieldTop = tester.getTopLeft(searchField).dy;
+          final heading = find.byType(SessionListHeadingSkeleton).first;
+          final headingRect = tester.getRect(heading);
+          final headingStart = tester
+              .getTopLeft(find.descendant(of: heading, matching: find.byType(PregoSkeletonBar)))
+              .dx;
+          final rowRect = tester.getRect(find.byType(SessionTileSkeleton).first);
+          final pillRect = tester.getRect(
+            find.descendant(of: find.byType(PregoShimmer).first, matching: find.byType(PregoSkeletonBar)).first,
+          );
+
+          final [headerTops, fieldTops, skeletonTops] = await topsAcross(
+            tester,
+            updates: updates,
+            update: loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"]),
+            finders: [headerBox, searchField, skeleton],
+          );
+          expect(headerTops, everyElement(headerTop));
+          expect(fieldTops, everyElement(fieldTop));
+          expect(skeletonTops.nonNulls, everyElement(skeletonTop));
+          expect(skeleton, findsNothing);
+          // Each chip, heading and row stands where its placeholder stood.
+          expect(tester.getRect(find.byKey(const Key("session-list-filter-all"))), pillRect);
+          expect(tester.getRect(find.byType(SessionListHeading)).top, headingRect.top);
+          expect(tester.getRect(find.byType(SessionListHeading)).height, headingRect.height);
+          expect(tester.getTopLeft(find.text("Today")).dx, headingStart);
+          expect(tester.getRect(find.byType(SessionTile)), rowRect);
+        });
+      }
+
+      testWidgets("counts that wrap the chips onto another line ease the room open", (tester) async {
+        // Wide enough for the placeholders' two lines, too narrow for these
+        // counts' two.
+        tester.view.devicePixelRatio = 1;
+        tester.view.physicalSize = const Size(380, 900);
+        addTearDown(tester.view.reset);
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpLoading(tester, updates: updates.stream, mode: AllSessionsMode.active);
+        final chipsRoom = find.descendant(
+          of: find.byKey(const ValueKey("all-sessions-chips")),
+          matching: find.byType(AnimatedSize),
+        );
+        final loadingHeight = tester.getSize(chipsRoom).height;
+        // Only its placeholder carries no count.
+        final lastPill = find.text("Unread · 0");
+        final lastPillTop = tester.getTopLeft(lastPill).dy;
+
+        final [skeletonTops, pillTops] = await topsAcross(
+          tester,
+          updates: updates,
+          update: loaded(
+            mode: AllSessionsMode.active,
+            titles: ["Fix the parser"],
+            counts: const SessionListChipCounts(all: 1000, running: 100, unread: 100),
+          ),
+          finders: [skeleton, lastPill],
+        );
+        expect(tester.getSize(chipsRoom).height, greaterThan(loadingHeight));
+        // The placeholders fade out where they stood, and what is below eases
+        // down rather than snapping.
+        expect(pillTops.nonNulls, everyElement(lastPillTop));
+        expect(steps(skeletonTops), everyElement(lessThan(2)));
+      });
+
+      testWidgets("the chips' and the list's placeholders fade in together", (tester) async {
+        await pumpList(tester, initial: loading, mode: AllSessionsMode.active, header: header);
+        final shimmers = find.byType(PregoShimmer);
+        expect(shimmers, findsNWidgets(2));
+        final seen = <double>{};
+        for (var elapsed = 0; elapsed < 600; elapsed += 5) {
+          await tester.pump(const Duration(milliseconds: 5));
+          final [chips, list] = [
+            for (var index = 0; index < 2; index++)
+              paintedOpacity(
+                tester,
+                find.descendant(of: shimmers.at(index), matching: find.byType(PregoSkeletonBar)).first,
+              ),
+          ];
+          expect(list, chips);
+          seen.add(chips);
+        }
+        // Through the whole fade, from unseen to shown.
+        expect(seen, containsAll([0.0, 1.0]));
+        expect(seen.length, greaterThan(10));
+      });
+
+      testWidgets("the list's placeholder is date groups of 3, 2 and 4 rows", (
+        tester,
+      ) async {
+        await pumpLoading(tester, updates: const Stream.empty());
+        final pattern = [
+          for (final element
+              in find
+                  .descendant(
+                    of: skeleton,
+                    matching: find.byWidgetPredicate(
+                      (w) => w is SessionListHeadingSkeleton || w is SessionTileSkeleton,
+                    ),
+                  )
+                  .evaluate())
+            element.widget is SessionListHeadingSkeleton ? "heading" : "row",
+        ].join(" ");
+        expect(pattern, "heading row row row heading row row heading row row row row");
+      });
+
+      testWidgets("the list's placeholder fills the room left on screen, leaving nothing to scroll", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpLoading(tester, updates: updates.stream, mode: AllSessionsMode.active, header: header);
+        ScrollPosition position() => tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+        Rect shown() => tester.getRect(find.ancestor(of: skeleton, matching: find.byType(ClipRect)).first);
+        expect(position().maxScrollExtent, 0);
+        expect(shown().bottom, 600);
+
+        // Nor once a Retry row has opened above it.
+        updates.add(
+          state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+        );
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(position().maxScrollExtent, 0);
+        expect(shown().bottom, 600);
+      });
+
+      testWidgets("a load that ends with no sessions folds the search field and chips away smoothly", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        final skeletonTop = await pumpLoading(
+          tester,
+          updates: updates.stream,
+          mode: AllSessionsMode.active,
+          header: header,
+        );
+        // The search field and chips above the header.
+        final headerTop = tester.getTopLeft(headerBox).dy;
+        expect(headerTop, greaterThan(20));
+
+        final [headerTops, skeletonTops, emptyTops] = await topsAcross(
+          tester,
+          updates: updates,
+          update: empty,
+          finders: [headerBox, skeleton, find.text("Nothing here")],
+        );
+        for (final tops in [headerTops, skeletonTops, emptyTops]) {
+          expect(steps(tops), everyElement(inInclusiveRange(-maxStep, 0)));
+        }
+        expect(headerTops.first, headerTop);
+        expect(headerTops.last, 0);
+        expect(skeletonTops.first, skeletonTop);
+        expect(emptyTops.last, tester.getRect(headerBox).bottom);
+        expect(find.byType(PregoShimmer), findsNothing);
+      });
+
+      for (final withHeader in [true, false]) {
+        testWidgets(
+          "Retry rows shown while loading stay put as the sessions arrive (${withHeader ? "header" : "no header"})",
+          (tester) async {
+            final updates = StreamController<AllSessionsState>();
+            addTearDown(updates.close);
+            await pumpLoading(
+              tester,
+              updates: updates.stream,
+              mode: AllSessionsMode.active,
+              header: withHeader ? header : null,
+            );
+            updates.add(
+              state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+            );
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 250));
+            final failureTop = tester.getTopLeft(failureRow).dy;
+            final skeletonTop = tester.getTopLeft(skeleton).dy;
+
+            // Another project fails with the hand-off: it fades in under the
+            // first, and grows no room under the arriving rows.
+            final [failureTops, skeletonTops, rowTops] = await topsAcross(
+              tester,
+              updates: updates,
+              update: loaded(
+                mode: AllSessionsMode.active,
+                titles: ["Fix the parser"],
+                failures: const [failure, lastFailure],
+              ),
+              finders: [failureRow, skeleton, find.text("Fix the parser")],
+            );
+            expect(failureTops, everyElement(failureTop));
+            expect(skeletonTops.nonNulls, everyElement(skeletonTop));
+            expect(rowTops.nonNulls, isNotEmpty);
+            expect(rowTops.nonNulls, everyElement(rowTops.nonNulls.first));
+          },
+        );
+      }
+
+      testWidgets("a Retry row that shows mid-load opens, easing the skeleton down", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        final skeletonTop = await pumpLoading(
+          tester,
+          updates: updates.stream,
+          mode: AllSessionsMode.active,
+          header: header,
+        );
+
+        final [skeletonTops] = await topsAcross(
+          tester,
+          updates: updates,
+          update: state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+          finders: [skeleton],
+        );
+        expect(steps(skeletonTops), everyElement(inInclusiveRange(0, maxStep)));
+        expect(skeletonTops.first, skeletonTop);
+        expect(skeletonTops.last, skeletonTop + tester.getSize(failurePadding).height);
+        expect(paintedOpacity(tester, failureRow), 1);
+      });
     });
 
     /// Whether the skeleton has begun to fade in.

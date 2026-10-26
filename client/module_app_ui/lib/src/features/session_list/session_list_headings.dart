@@ -69,13 +69,45 @@ List<SessionListEntry<T>> groupUnderHeadings<T>({
 class const SessionListHeading({super.key, required final String heading, required final bool isFirst})
     extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => Padding(
-    // The first heading carries the list's top breathing room, so removing
-    // the row below it leaves the heading where it is.
-    padding: EdgeInsetsDirectional.fromSTEB(16, 16, 16, isFirst ? 20 : 12),
-    child: Text(
-      heading,
-      style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textTertiary),
+  Widget build(BuildContext context) => SizedBox(
+    // Filling the width keeps the text at the start inset under a parent that
+    // loosens its constraints and centres what it holds, as the animated
+    // list's rows do.
+    width: double.infinity,
+    child: Padding(
+      padding: _headingPadding(isFirst: isFirst),
+      child: Text(
+        heading,
+        style: context.prego.textTheme.textSm.medium.copyWith(color: context.prego.colors.textTertiary),
+      ),
     ),
   );
 }
+
+/// A heading's loading placeholder: the heading's insets and line box, with a
+/// bar of [width] where the heading's text starts.
+class const SessionListHeadingSkeleton({super.key, required final bool isFirst, required final double width})
+    extends StatelessWidget {
+  /// As tall as a heading at the default text size.
+  static double heightOf({required bool isFirst}) => _headingPadding(isFirst: isFirst).vertical + _headingLineHeight;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: _headingPadding(isFirst: isFirst),
+    child: SizedBox(
+      height: _headingLineHeight,
+      child: Align(
+        alignment: AlignmentDirectional.centerStart,
+        child: PregoSkeletonBar(height: 12, width: width),
+      ),
+    ),
+  );
+}
+
+/// The first heading carries the list's top breathing room, so removing the
+/// row below it leaves the heading where it is.
+EdgeInsetsDirectional _headingPadding({required bool isFirst}) =>
+    EdgeInsetsDirectional.fromSTEB(16, 16, 16, isFirst ? 20 : 12);
+
+/// The line box of a heading's 14/20 text.
+const double _headingLineHeight = 20;

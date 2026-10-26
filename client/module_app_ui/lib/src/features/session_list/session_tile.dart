@@ -536,6 +536,55 @@ class const PendingSessionLaunchTile({super.key, required final LaunchingSession
   }
 }
 
+/// A session row's loading placeholder: the row's own insets and line boxes,
+/// with a bar where the title goes and a shorter one for the details under it.
+class const SessionTileSkeleton({
+  super.key,
+
+  /// The share of the row's width the title bar spans.
+  required final double titleWidthFraction,
+  required final double detailsWidth,
+}) extends StatelessWidget {
+  /// As tall as a row at the default text size.
+  static const double height = PregoSpacing.lg * 2 + _titleLineHeight + _lineGap + _metaLineHeight;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: _rowPadding,
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: _lineGap,
+      children: [
+        SizedBox(
+          height: _titleLineHeight,
+          // A dot where the harness logo goes, so the title bar starts where
+          // the title does.
+          child: Row(
+            spacing: PregoSpacing.xs,
+            children: [
+              const PregoSkeletonBar(height: _brandLogoSize, width: _brandLogoSize),
+              Expanded(
+                child: FractionallySizedBox(
+                  alignment: AlignmentDirectional.centerStart,
+                  widthFactor: titleWidthFraction,
+                  child: const Center(child: PregoSkeletonBar(height: 16)),
+                ),
+              ),
+            ],
+          ),
+        ),
+        SizedBox(
+          height: _metaLineHeight,
+          child: Align(
+            alignment: AlignmentDirectional.centerStart,
+            child: PregoSkeletonBar(height: 12, width: detailsWidth),
+          ),
+        ),
+      ],
+    ),
+  );
+}
+
 /// The row's insets, shared with the launching row: the harness logo leads
 /// [PregoSpacing.lg] in, and the time keeps the toolbar's [PregoSpacing.xl]
 /// from the trailing edge.
