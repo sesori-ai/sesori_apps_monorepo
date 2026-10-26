@@ -6,6 +6,7 @@ import "package:rxdart/rxdart.dart";
 
 import "../../capabilities/server_connection/connection_service.dart";
 import "../../capabilities/server_connection/models/connection_status.dart";
+import "../../capabilities/server_connection/target_bridge_change_tracker.dart";
 import "../../services/registered_bridges_service.dart";
 import "connection_overlay_state.dart";
 
@@ -24,8 +25,11 @@ class ConnectionOverlayCubit(
   RegisteredBridgesService registeredBridgesService, {
   @visibleForTesting final Duration _reconnectingGrace = defaultReconnectingGrace,
 }) extends Cubit<ConnectionOverlayState> {
-  late final StreamSubscription<ConnectionOverlayState> _subscription;
+  late final StreamSubscription<void> _subscription;
   Timer? _reconnectingGraceTimer;
+  final TargetBridgeChangeTracker _targetChange = TargetBridgeChangeTracker(
+    initialStatus: _connectionService.currentStatus,
+  );
 
   /// How long a reconnect must persist before [ConnectionOverlayState.reconnecting]
   /// is surfaced. Routine fast reconnects (foreground resume, a bridge handover)
@@ -35,24 +39,28 @@ class ConnectionOverlayCubit(
   /// reconnect has stopped, which is no longer true once a reconnect runs. This
   /// is what keeps a phone resume quiet — a relay drop observed while the app is
   /// backgrounded parks in connection lost, and the resume reconnect replaces it
-  /// before the first foreground frame.
+  /// before the first foreground frame. A reconnect to another computer retains
+  /// nothing either: the previous computer's state is not the new one's.
   static const Duration defaultReconnectingGrace = Duration(seconds: 3);
 
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(_derive(_connectionService.currentStatus, registeredBridgesService.isRegistered.value)) {
-    _subscription =
-        Rx.combineLatest2(
-          _connectionService.status,
-          registeredBridgesService.isRegistered,
-          _derive,
-        ).listen(_onDerived);
+    _subscription = Rx.combineLatest2(
+      _connectionService.status,
+      registeredBridgesService.isRegistered,
+      (status, isRegistered) => (status: status, derived: _derive(status, isRegistered)),
+    ).listen(_onDerived);
   }
 
-  void _onDerived(ConnectionOverlayState derived) {
+  void _onDerived(({ConnectionStatus status, ConnectionOverlayState derived}) update) {
     if (isClosed) return;
+    final derived = update.derived;
+    final retargeted = _targetChange.changed(status: update.status);
     if (derived is ConnectionOverlayReconnecting) {
       if (state is ConnectionOverlayReconnecting) return;
-      if (state is ConnectionOverlayConnectionLost) emit(const ConnectionOverlayState.hidden(connected: false));
+      if (state is ConnectionOverlayConnectionLost || retargeted) {
+        emit(const ConnectionOverlayState.hidden(connected: false));
+      }
       _reconnectingGraceTimer ??= Timer(_reconnectingGrace, () {
         _reconnectingGraceTimer = null;
         if (!isClosed) emit(const ConnectionOverlayState.reconnecting());

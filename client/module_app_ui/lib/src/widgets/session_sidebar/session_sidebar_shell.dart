@@ -180,14 +180,24 @@ class _SessionSidebarShellState() extends State<SessionSidebarShell> with Single
                   child: ListenableBuilder(
                     listenable: _sidebarCurve,
                     builder: (context, _) {
-                      // Beside the panel the pane is clear of the screen's
-                      // edge, so it takes back that edge's inset only as the
-                      // collapse brings it there.
-                      final data = MediaQuery.of(context);
-                      final edgeInset = math.max(0.0, data.padding.left - sidebarExtent * _sidebarCurve.value);
-                      return MediaQuery(
-                        data: data.copyWith(padding: data.padding.copyWith(left: edgeInset)),
-                        child: pane,
+                      // Pages lay their bodies out edge to edge, so the pane
+                      // keeps them clear of a landscape notch itself: always
+                      // on the right, and on the left only as the collapse
+                      // brings the pane to that edge, so its content glides
+                      // with the pane and stops at the inset.
+                      final padding = MediaQuery.paddingOf(context);
+                      return Padding(
+                        padding: padding.copyWith(
+                          left: math.max(0.0, padding.left - sidebarExtent * _sidebarCurve.value),
+                          top: 0,
+                          bottom: 0,
+                        ),
+                        child: MediaQuery.removePadding(
+                          context: context,
+                          removeLeft: true,
+                          removeRight: true,
+                          child: pane,
+                        ),
                       );
                     },
                   ),

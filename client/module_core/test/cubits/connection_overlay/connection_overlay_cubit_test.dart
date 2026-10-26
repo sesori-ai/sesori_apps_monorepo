@@ -193,6 +193,34 @@ void main() {
       expect: () => const [ConnectionOverlayState.hidden(connected: true)],
     );
 
+    test("switching computers stops reading connected at once, and the banner still waits for the grace", () {
+      const otherConfig = ServerConnectionConfig(
+        relayHost: "relay.example.com",
+        authToken: "test-token",
+        bridgeId: "br_other",
+      );
+      const pinnedConfig = ServerConnectionConfig(
+        relayHost: "relay.example.com",
+        authToken: "test-token",
+        bridgeId: "br_pinned",
+      );
+      fakeAsync((async) {
+        final cubit = buildCubit();
+        statusStream.add(const ConnectionStatus.connected(config: pinnedConfig, health: health));
+        async.flushMicrotasks();
+        expect(cubit.state, const ConnectionOverlayState.hidden(connected: true));
+
+        statusStream.add(const ConnectionStatus.reconnecting(config: otherConfig));
+        async.flushMicrotasks();
+        expect(cubit.state, const ConnectionOverlayState.hidden(connected: false));
+
+        async.elapse(ConnectionOverlayCubit.defaultReconnectingGrace);
+        expect(cubit.state, const ConnectionOverlayState.reconnecting());
+        unawaited(cubit.close());
+        async.flushMicrotasks();
+      });
+    });
+
     blocTest<ConnectionOverlayCubit, ConnectionOverlayState>(
       "a bannerless disconnect still flips hidden to not connected (drives availability dots)",
       build: buildCubit,

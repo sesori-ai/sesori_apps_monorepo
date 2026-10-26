@@ -294,6 +294,38 @@ void main() {
     expect(cubit.state.defaultProjectId, one.id);
   });
 
+  test("without a filter the default waits until every project's sessions have loaded", () async {
+    final older = loaded(
+      sessions: [session(id: "a", project: one, updatedAt: 10)],
+      activity: const {},
+    );
+    entries.add({one.id: older, two.id: RecentSessionsLoading()});
+    final cubit = create(mode: AllSessionsMode.active);
+    expect(cubit.state.isLoading, isTrue);
+    expect(cubit.state.defaultProjectId, isNull, reason: "the first project to answer is not yet the newest");
+
+    cubit.selectProject(projectId: one.id);
+    expect(cubit.state.defaultProjectId, one.id, reason: "a filter needs no sessions");
+    cubit.selectProject(projectId: null);
+    expect(cubit.state.defaultProjectId, isNull);
+
+    entries.add({
+      one.id: older,
+      two.id: loaded(
+        sessions: [session(id: "b", project: two, updatedAt: 20)],
+        activity: const {},
+      ),
+    });
+    await settle();
+    expect(cubit.state.isLoading, isFalse);
+    expect(cubit.state.defaultProjectId, two.id);
+
+    // A project that failed to load does not hold the default back.
+    entries.add({one.id: older, two.id: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown)});
+    await settle();
+    expect(cubit.state.defaultProjectId, one.id);
+  });
+
   test("the list claim follows the filter, is made ready or failed by its entry, and is released", () async {
     final claimOne = ProjectViewClaim();
     final claimTwo = ProjectViewClaim();
