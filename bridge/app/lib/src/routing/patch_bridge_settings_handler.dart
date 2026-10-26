@@ -23,6 +23,8 @@ class PatchBridgeSettingsHandler({
     required BridgeSettingUpdate body,
   }) async {
     switch (body) {
+      // COMPATIBILITY 2026-10-25 (v1.10.0): Released apps still save the pull request refresh interval, which is
+      // persisted but no longer has any effect. Remove once public apps older than v1.9.2 are unsupported.
       case PullRequestRefreshIntervalSettingUpdate(:final intervalSeconds):
         try {
           final committed = await _pullRequestRefreshSettingsService.update(

@@ -42,7 +42,7 @@ void main() {
 
     tearDown(() => repository.dispose());
 
-    test("GET returns the committed interval", () async {
+    test("the legacy GET still serves the inert committed interval", () async {
       final response = await GetPullRequestRefreshSettingsHandler(settingsService: service).routeForTest(
         makeRequest("GET", "/settings/pull-request-refresh"),
       );
@@ -72,7 +72,7 @@ void main() {
       );
     });
 
-    test("PATCH persists and returns the committed interval", () async {
+    test("PATCH still accepts, persists and returns the inert interval", () async {
       final response =
           await PatchBridgeSettingsHandler(
             pullRequestRefreshSettingsService: service,

@@ -25,8 +25,8 @@ void main() {
 
     tearDown(() => repository.dispose());
 
-    test("returns the loaded committed interval", () {
-      expect(service.currentSettings, const PullRequestRefreshSettingsResponse(intervalSeconds: 30));
+    test("returns the loaded committed interval", () async {
+      expect(await service.readCommittedSettings(), const PullRequestRefreshSettingsResponse(intervalSeconds: 30));
     });
 
     test("an ordered read waits for an active mutation to commit", () async {
@@ -51,10 +51,7 @@ void main() {
       expect(await update, const PullRequestRefreshSettingsResponse(intervalSeconds: 45));
     });
 
-    test("persists and publishes accepted boundary values", () async {
-      final changes = <PullRequestRefreshSettingsResponse>[];
-      final subscription = service.changes.listen(changes.add);
-
+    test("persists accepted boundary values", () async {
       for (final intervalSeconds in [
         minimumPullRequestRefreshIntervalSeconds,
         maximumPullRequestRefreshIntervalSeconds,
@@ -67,14 +64,9 @@ void main() {
         expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, intervalSeconds);
         expect(jsonDecodeMap(api.config!)["pullRequestRefreshIntervalSeconds"], intervalSeconds);
       }
-      expect(changes.map((change) => change.intervalSeconds), [15, 3600]);
-      await subscription.cancel();
     });
 
-    test("rejects out-of-range values without persisting or publishing", () async {
-      final changes = <PullRequestRefreshSettingsResponse>[];
-      final subscription = service.changes.listen(changes.add);
-
+    test("rejects out-of-range values without persisting", () async {
       for (final intervalSeconds in [
         minimumPullRequestRefreshIntervalSeconds - 1,
         maximumPullRequestRefreshIntervalSeconds + 1,
@@ -99,38 +91,16 @@ void main() {
       }
 
       expect(api.writeCount, 0);
-      expect(changes, isEmpty);
-      expect(service.currentSettings.intervalSeconds, 30);
-      await subscription.cancel();
+      expect(repository.currentSettings.pullRequestRefreshIntervalSeconds, 30);
     });
 
-    test("an unchanged value does not rewrite or publish", () async {
-      final changes = <PullRequestRefreshSettingsResponse>[];
-      final subscription = service.changes.listen(changes.add);
-
+    test("an unchanged value does not rewrite", () async {
       final response = await service.update(
         intervalSeconds: 30,
       );
 
       expect(response.intervalSeconds, 30);
       expect(api.writeCount, 0);
-      expect(changes, isEmpty);
-      await subscription.cancel();
-    });
-
-    test("unrelated committed settings do not publish a cadence change", () async {
-      final changes = <PullRequestRefreshSettingsResponse>[];
-      final subscription = service.changes.listen(changes.add);
-
-      await repository.mutateSettings(
-        mutation: ({required current}) => current.copyWith(
-          plugins: current.plugins.withPluginDisabled(pluginId: "cursor", disabled: true),
-        ),
-      );
-
-      expect(changes, isEmpty);
-      expect(service.currentSettings.intervalSeconds, 30);
-      await subscription.cancel();
     });
   });
 }
