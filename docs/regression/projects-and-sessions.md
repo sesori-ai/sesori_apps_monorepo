@@ -273,10 +273,13 @@ state.
   refreshes every project and imports, as above. Until the project list loads the home shows a skeleton, a failed
   project list shows its error with Retry, a computer with no projects at all, "No project" included, shows the
   add-project call to action, and the disconnected pages below replace the list. A failed project's Retry row shows
-  as soon as it fails, fading in on its own. The first rows or the empty state fade in where the skeleton stood, search
-  field and chips with them, as it fades out over them from wherever its own fade-in had reached (a load that ends
-  before the skeleton shows just fades them in); reduced motion swaps them at once, and a later refresh, search or
-  filter never repeats a fade on what is already shown.
+  as soon as it fails: one failing while the skeleton shows opens over it, easing the skeleton down, and one arriving
+  with the first rows only fades in with them. While the list loads, a skeleton holds the search field's and chips'
+  room, so the header above them and the Retry rows under them never move when the load ends. The first rows or the
+  empty state fade in where the skeleton stood, search field and chips taking their held room in place, as it fades
+  out over them from wherever its own fade-in had reached (a load that ends before the skeleton shows just fades them
+  in); a load that ends with no sessions folds the held room away as the empty state fades in. Reduced motion swaps
+  them at once, and a later refresh, search or filter never repeats a fade on what is already shown.
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
   divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.

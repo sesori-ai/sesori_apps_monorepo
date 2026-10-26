@@ -147,13 +147,6 @@ final class const _SessionItem({required final AllSessionsRow row}) extends _Ite
 
 final class const _LaunchItem({required final LaunchingSession launch}) extends _Item;
 
-/// Where a box holds the leaving skeleton: over itself from its top, or
-/// below itself from its bottom.
-enum _SkeletonHold() {
-  over,
-  below,
-}
-
 class const _Sessions({
   required final AllSessionsList list,
 
@@ -170,7 +163,8 @@ class const _Sessions({
 class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMixin {
   /// The hand-off from the loading skeleton to the first rows or the empty
   /// state: they fade in where the skeleton stood while it fades itself out
-  /// over them. Complete at rest, so later updates show as they always do.
+  /// over them, and the room no sessions take folds away. Complete at rest,
+  /// so later updates show as they always do.
   late final AnimationController _handOff = AnimationController(
     vsync: this,
     duration: transcriptMotionDuration,
@@ -260,13 +254,71 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     }
     _wasLoading = loading;
     if (loading) _skeletonUnderFailureId = state.failures.lastOrNull?.project.id;
+    final isActive = cubit.mode == AllSessionsMode.active;
     // The skeleton fades out where it stood: hanging from the failed project
-    // it stood under, else from the top of the first box to arrive under the
-    // header. At most one place holds it.
+    // it stood under, else from the room above the failed projects. At most
+    // one place holds it.
     final skeletonLeaving = !loading && !_handOff.isCompleted;
     final heldUnderFailures =
         skeletonLeaving && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
-    final heldByArrival = skeletonLeaving && !heldUnderFailures;
+    final heldAboveFailures = skeletonLeaving && !heldUnderFailures;
+    // While the list loads, the search field and chips hold their room with a
+    // skeleton, so nothing under them moves when they take it with the rows.
+    // Through the hand-off that skeleton fades out where it stands, one that
+    // never showed staying hidden, and a load that ends with no sessions
+    // folds the room away as the empty state fades in.
+    final roomHeld = (loading && !hasSessions) || skeletonLeaving;
+    final roomFolds = skeletonLeaving && !hasSessions;
+    Widget room({required Widget content, required Widget skeleton}) => ListenableBuilder(
+      listenable: _contentOpacity,
+      // The fade's ease-out, run backwards: an ease-in fold, as a transcript row's.
+      builder: (_, child) => _sized(size: roomFolds ? 1 - _contentOpacity.value : 1, child: child),
+      child: SizedBox(
+        width: double.infinity,
+        child: Stack(
+          fit: StackFit.passthrough,
+          children: [
+            if (hasSessions) FadeTransition(key: const ValueKey("content"), opacity: _contentOpacity, child: content),
+            if (roomHeld)
+              IgnorePointer(
+                key: const ValueKey("skeleton"),
+                child: PregoShimmer(leaving: !loading, child: skeleton),
+              ),
+          ],
+        ),
+      ),
+    );
+    final searchField = ListSearchField(
+      query: state.query,
+      hintText: loc.sessionListSearchHint,
+      autofocus: false,
+      padding: EdgeInsets.zero,
+      onChanged: (query) => cubit.setQuery(query: query),
+    );
+    Widget chip({required SessionListQuickFilter filter, required Key? key}) => Semantics(
+      toggled: state.quickFilter == filter,
+      child: PregoButtonsSolid(
+        key: key,
+        label: switch (filter) {
+          SessionListQuickFilter.all => loc.sessionListFilterAll(state.counts.all),
+          SessionListQuickFilter.running => loc.sessionListFilterRunning(state.counts.running),
+          SessionListQuickFilter.unread => loc.sessionListFilterUnread(state.counts.unread),
+        },
+        hierarchy: state.quickFilter == filter
+            ? PregoButtonsSolidHierarchy.primaryAlt
+            : PregoButtonsSolidHierarchy.secondary,
+        size: PregoButtonsSolidSize.sm,
+        onPressed: () => cubit.setQuickFilter(filter: filter),
+      ),
+    );
+    Widget chips({required Widget Function(SessionListQuickFilter filter) each}) => Padding(
+      padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
+      child: Wrap(
+        spacing: PregoSpacing.md,
+        runSpacing: PregoSpacing.md,
+        children: [for (final filter in SessionListQuickFilter.values) each(filter)],
+      ),
+    );
     final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
     final note = switch (settled) {
       false => null,
@@ -278,87 +330,78 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
 
     return SliverMainAxisGroup(
       slivers: [
-        if (hasSessions)
+        // Keyed, so the header keeps its state as the rooms around it come and go.
+        if (hasSessions || roomHeld)
           SliverToBoxAdapter(
-            child: _arriving(
-              holdsSkeleton: heldByArrival && list.header == null,
-              child: ListSearchField(
-                query: state.query,
-                hintText: loc.sessionListSearchHint,
-                autofocus: false,
-                padding: const EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0),
-                onChanged: (query) => cubit.setQuery(query: query),
-              ),
-            ),
-          ),
-        if (list.header case final header?) SliverToBoxAdapter(child: header),
-        if (cubit.mode == AllSessionsMode.active && hasSessions)
-          SliverToBoxAdapter(
-            child: _arriving(
-              holdsSkeleton: heldByArrival && list.header != null,
-              child: Padding(
-                padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
-                child: Wrap(
-                  spacing: PregoSpacing.md,
-                  runSpacing: PregoSpacing.md,
-                  children: [
-                    for (final filter in SessionListQuickFilter.values)
-                      Semantics(
-                        toggled: state.quickFilter == filter,
-                        child: PregoButtonsSolid(
-                          key: Key("session-list-filter-${filter.name}"),
-                          label: switch (filter) {
-                            SessionListQuickFilter.all => loc.sessionListFilterAll(state.counts.all),
-                            SessionListQuickFilter.running => loc.sessionListFilterRunning(state.counts.running),
-                            SessionListQuickFilter.unread => loc.sessionListFilterUnread(state.counts.unread),
-                          },
-                          hierarchy: state.quickFilter == filter
-                              ? PregoButtonsSolidHierarchy.primaryAlt
-                              : PregoButtonsSolidHierarchy.secondary,
-                          size: PregoButtonsSolidSize.sm,
-                          onPressed: () => cubit.setQuickFilter(filter: filter),
-                        ),
-                      ),
-                  ],
+            key: const ValueKey("all-sessions-search"),
+            child: _holding(
+              // The archived list's last box above the failed projects: only
+              // the active list has a header.
+              skeleton: heldAboveFailures && !isActive,
+              child: room(
+                content: Padding(padding: _searchFieldPadding, child: searchField),
+                skeleton: Padding(
+                  padding: _searchFieldPadding,
+                  child: _barOver(shape: searchField),
                 ),
               ),
             ),
           ),
-        for (final (index, failure) in state.failures.indexed)
+        if (list.header case final header?)
+          SliverToBoxAdapter(key: const ValueKey("all-sessions-header"), child: header),
+        if (isActive && (hasSessions || roomHeld))
+          SliverToBoxAdapter(
+            key: const ValueKey("all-sessions-chips"),
+            child: _holding(
+              // The active list's last box above the failed projects.
+              skeleton: heldAboveFailures,
+              child: room(
+                content: chips(
+                  each: (filter) => chip(filter: filter, key: Key("session-list-filter-${filter.name}")),
+                ),
+                skeleton: chips(
+                  each: (filter) => _barOver(shape: chip(filter: filter, key: null)),
+                ),
+              ),
+            ),
+          ),
+        for (final failure in state.failures)
           SliverToBoxAdapter(
             key: ValueKey("all-sessions-failure-${failure.project.id}"),
             child: _holding(
-              skeleton: heldUnderFailures && failure.project.id == _skeletonUnderFailureId
-                  ? _SkeletonHold.below
-                  // Without sessions the first one is the first box under the header.
-                  : heldByArrival && !hasSessions && index == 0
-                  ? _SkeletonHold.over
-                  : null,
-              // Shown as soon as the project fails, so each fades in on its
-              // own when it first mounts: alongside the first rows in the
-              // hand-off, or by itself while the skeleton still shows.
+              skeleton: heldUnderFailures && failure.project.id == _skeletonUnderFailureId,
+              // Shown as soon as the project fails. Read once, when it first
+              // builds: one failing while the skeleton shows opens over it,
+              // easing it down, while one arriving with the hand-off only
+              // fades in alongside the first rows, so nothing moves under them.
               child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: 0, end: 1),
+                tween: Tween(begin: loading ? 0 : 1, end: 1),
                 duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
                 curve: transcriptMotionCurve,
-                builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
-                child: Padding(
-                  padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: Text(
-                          loc.allSessionsProjectFailed(projectDisplayName(loc: loc, project: failure.project)),
-                          style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                builder: (_, size, child) => _sized(size: size, child: child),
+                child: TweenAnimationBuilder<double>(
+                  tween: Tween(begin: 0, end: 1),
+                  duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+                  curve: transcriptMotionCurve,
+                  builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+                  child: Padding(
+                    padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: Text(
+                            loc.allSessionsProjectFailed(projectDisplayName(loc: loc, project: failure.project)),
+                            style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
+                          ),
                         ),
-                      ),
-                      PregoButtonsSolid(
-                        label: loc.sessionListRetry,
-                        hierarchy: PregoButtonsSolidHierarchy.secondary,
-                        size: PregoButtonsSolidSize.sm,
-                        onPressed: () => unawaited(cubit.retry(projectId: failure.project.id)),
-                      ),
-                    ],
+                        PregoButtonsSolid(
+                          label: loc.sessionListRetry,
+                          hierarchy: PregoButtonsSolidHierarchy.secondary,
+                          size: PregoButtonsSolidSize.sm,
+                          onPressed: () => unawaited(cubit.retry(projectId: failure.project.id)),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
               ),
@@ -420,7 +463,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         if (settled && !hasSessions)
           SliverFillRemaining(
             hasScrollBody: false,
-            child: _arriving(holdsSkeleton: heldByArrival, child: list.emptyState),
+            child: FadeTransition(opacity: _contentOpacity, child: list.emptyState),
           ),
       ],
     );
@@ -432,24 +475,16 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     leaving: leaving,
   );
 
-  /// [child], fading in with the hand-off, holding the leaving skeleton over
-  /// itself if it [holdsSkeleton].
-  Widget _arriving({required bool holdsSkeleton, required Widget child}) => _holding(
-    skeleton: holdsSkeleton ? _SkeletonHold.over : null,
-    child: FadeTransition(opacity: _contentOpacity, child: child),
-  );
-
-  /// [child], with the leaving [skeleton] fading out over it and what
-  /// follows, hanging from its top or bottom without taking room.
-  Widget _holding({required _SkeletonHold? skeleton, required Widget child}) => Stack(
+  /// [child], with the leaving skeleton, if it holds the [skeleton], fading
+  /// out over what follows, hanging from its bottom without taking room.
+  Widget _holding({required bool skeleton, required Widget child}) => Stack(
     fit: StackFit.passthrough,
     clipBehavior: Clip.none,
     children: [
       child,
-      if (skeleton != null)
+      if (skeleton)
         PositionedDirectional(
-          top: skeleton == _SkeletonHold.over ? 0 : null,
-          bottom: skeleton == _SkeletonHold.below ? 0 : null,
+          bottom: 0,
           start: 0,
           end: 0,
           height: 0,
@@ -513,6 +548,26 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     return tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: tile) : tile;
   }
 }
+
+const EdgeInsetsGeometry _searchFieldPadding = EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0);
+
+/// [child] at [size] of its height, folded from its bottom: the same widgets
+/// at rest and in motion, so it keeps its state, and clipped only while it
+/// moves.
+Widget _sized({required double size, required Widget? child}) => ClipRect(
+  clipBehavior: size < 1 ? Clip.hardEdge : Clip.none,
+  child: Align(alignment: AlignmentDirectional.topStart, heightFactor: size, child: child),
+);
+
+/// [shape] laid out unseen, holding its room under a skeleton bar of its
+/// size.
+Widget _barOver({required Widget shape}) => Stack(
+  fit: StackFit.passthrough,
+  children: [
+    Visibility(visible: false, maintainState: true, maintainAnimation: true, maintainSize: true, child: shape),
+    const Positioned.fill(child: PregoSkeletonBar(height: double.infinity)),
+  ],
+);
 
 /// A launching row and the session row that takes its place share one list
 /// item, so the change cross-fades in place rather than collapsing one row and
