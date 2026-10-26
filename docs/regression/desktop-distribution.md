@@ -759,7 +759,7 @@ historical evidence as shared-store qualification.
 - **L4:** Actual publisher verification and a signed N→N+1 Sparkle or Velopack update on
   Quit and on Restart to update; for DEB/RPM, an unattended-upgrades/dnf-automatic install
   followed by Restart to update. Each with helper On/Off, failed-stop refusal and data
-  preservation, plus one manual replacement from a pre-updater install.
+  preservation.
 - **L5:** All recorded native platform/package/host gates in the active distribution
   plan, downloaded artifacts, trust checks and public links. The deployed website
   browser checks prove live preview selection, anchors, channel/platform presentation
