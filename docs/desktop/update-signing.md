@@ -23,7 +23,7 @@ python3 .github/scripts/sign_desktop_update.py public-key --key sesori-update-ke
    branch, with no required reviewers. Production publication is already gated by
    `store-production`.
 2. Store the PEM as its secret `DESKTOP_UPDATE_SIGNING_KEY`:
-   `gh secret set DESKTOP_UPDATE_SIGNING_KEY --env desktop-update-signing < sesori-update-key.pem`
+   `gh secret set DESKTOP_UPDATE_SIGNING_KEY -R sesori-ai/sesori_apps_monorepo --env desktop-update-signing < sesori-update-key.pem`
 3. Keep an offline backup of the PEM, then delete the working copy.
 4. The printed public key is not secret. It is compiled into the apps as Sparkle's
    `SUPublicEDKey` and as the Velopack feed verifier key.
