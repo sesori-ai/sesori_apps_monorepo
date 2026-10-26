@@ -403,7 +403,7 @@ This plan and its tracker.
   - Settings › Projects omits the row;
   - delete sends the flag only for scratch sessions.
 - **Regression docs:** `projects-and-sessions.md`, `session-creation-and-options.md`,
-  `desktop-cockpit-shell.md` and `analytics.md`.
+  `desktop-cockpit-shell.md`, `session-archiving-and-deletion.md` and `analytics.md`.
 
 ### Step 7 — Run the L3 matrix and retire the plan (🌱)
 
