@@ -18,7 +18,7 @@ Layer 0 — Foundation (transport primitives & base abstractions)
 Layer 1 — API (data sources)
   └─ Dumb classes that execute operations. No decision-making logic.
   └─ All external data enters/exits through this layer.
-  └─ Sub-groups: Database (Drift), GhCliApi, GitRemoteApi, SesoriServerApi
+  └─ Sub-groups: Database (Drift), GitCliApi, SesoriServerApi
   └─ Location: app/lib/src/api/
 
          ▲ consumed by
@@ -97,7 +97,6 @@ app/lib/src/
 ├── api/                     # Layer 1 — data sources, one class per tool
 │   ├── database/            # Drift: tables, DAOs, migrations
 │   ├── models/              # API-layer DTOs
-│   ├── gh_cli_api.dart
 │   ├── git_cli_api.dart
 │   └── sesori_server_api.dart
 │
