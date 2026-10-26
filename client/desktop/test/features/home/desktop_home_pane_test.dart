@@ -702,6 +702,72 @@ void main() {
       });
     }
 
+    testWidgets("a second computer's Viewing line fades in over the top band; the composer stays put", (tester) async {
+      final heading = find.text("What should we work on?");
+      final header = find.byKey(const Key("desktop-computer-header"));
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+      final headingRect = tester.getRect(heading);
+      expect(header, findsNothing);
+
+      // The account's list loads after the home, naming a second computer.
+      bridges.emitBridges(
+        bridges: [
+          _computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active),
+          _computer(id: "studio", name: "Studio Mac", status: BridgeRegistrationStatus.active),
+        ],
+      );
+      await tester.pump();
+      for (var frame = 0; frame < 8; frame++) {
+        await tester.pump(const Duration(milliseconds: 33));
+        expect(tester.getRect(composer), composerRect);
+        expect(tester.getRect(heading), headingRect);
+      }
+      expect(find.text("Viewing: This computer"), findsOneWidget);
+      expect(opacityOf(tester: tester, finder: header), 1);
+      expect(header.hitTestable(), findsOneWidget);
+      // Beside the line, the band leaves clicks to the body beneath it.
+      final beside = Offset(
+        tester.getRect(find.byType(DesktopHomePane)).right - PregoSpacing.x2l,
+        tester.getCenter(header).dy,
+      );
+      expect(
+        tester.hitTestOnBinding(beside).path.map((entry) => entry.target),
+        contains(tester.renderObject(find.byType(NewSessionView))),
+      );
+
+      // Back to one computer, the line fades out the same way.
+      bridges.emitBridges(
+        bridges: [_computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active)],
+      );
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: header), inExclusiveRange(0, 1));
+      expect(tester.getRect(composer), composerRect);
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(header, findsNothing);
+      expect(tester.getRect(composer), composerRect);
+    });
+
+    testWidgets("with reduced motion the Viewing line appears at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final header = find.byKey(const Key("desktop-computer-header"));
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+
+      bridges.emitBridges(
+        bridges: [
+          _computer(id: "local", name: "this-mac", status: BridgeRegistrationStatus.active),
+          _computer(id: "studio", name: "Studio Mac", status: BridgeRegistrationStatus.active),
+        ],
+      );
+      await tester.pump();
+      await tester.pump();
+      expect(opacityOf(tester: tester, finder: header), 1);
+      expect(tester.getRect(composer), composerRect);
+    });
+
     testWidgets("a status page of another kind cross-fades in; one whose content changes stays put", (tester) async {
       final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
       addTearDown(starts.close);

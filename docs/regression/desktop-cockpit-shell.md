@@ -205,10 +205,15 @@ The main pane hosts one full-width routed page.
   stays disconnected); another computer's offline state shows immediately.
 - Home opens with a "Viewing: <computer> ▾" header ("Viewing: This computer" for the local one) whose anchored menu
   switches computers through the shared switch flow (source `menu`). It is hidden while the account's only computer is
-  this one, grows into place when the list says otherwise, and stays put while the body below changes state. The body
-  cross-fades over 220 ms between the composer and the loader or another status page, as when a switch loads the next
-  computer's projects and lands on its composer. Each kind of status page (the loader, a failure, recovery, offline)
-  cross-fades into the next, while one whose own content changes, such as the slow-start line appearing under the
+  this one. When the list says otherwise it fades in over 220 ms on its own layer over the pane's 54-pixel top band
+  (at once with reduced motion), and fades out the same way if the list goes back to one. The body fills the pane from
+  launch, so the heading, pills, composer and loader never move as the line comes or goes; beside the line, the band
+  leaves clicks to the body, and the file-access card starts below the band, so the line clears it up to 150% text
+  (from about 200% the line's lower edge reaches over the card's top padding, not its text). The line stays put
+  while the body below changes state. The body cross-fades over 220 ms between the composer and the loader
+  or another status page, as when a switch loads the next computer's projects and lands on its composer. Each kind
+  of status page (the loader, a failure, recovery, offline) cross-fades into the next, while one whose own content
+  changes, such as the slow-start line appearing under the
   loader, stays put. While the new computer's home project is still loading the loader holds, so it fades straight into
   the composer. Every body stays in place over the pane's one background, so nothing dims mid-fade; the swap is at once
   with reduced motion, and the body fading out takes no clicks, focus or announcements. The desktop starts on the stored
@@ -311,8 +316,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
-- Home computer header shown, hidden for a lone local computer, and switching from its menu; disconnected home
-  for a remote target (offline body, other computers, no Start, also while this computer's bridge launches) versus
+- Home computer header shown, hidden for a lone local computer, fading in and out over the top band without moving the
+  composer (at once with reduced motion), and switching from its menu; disconnected home for a remote target (offline
+  body, other computers, no Start, also while this computer's bridge launches) versus
   this computer (supervised Start; the loader while its bridge launches, its still-starting line after 10 s,
   recovery once the start fails); the desktop target following a new or changed supervised bridge id unless
   another computer was picked in this sign-in; header and body agreeing on "this computer" before the
@@ -434,8 +440,9 @@ On home, watch for a session starting in a project other than the one picked, a 
 reorder or surviving a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
 the prompt while the list loads on launch, the composer building up part by part or its heading shifting
 after the bridge connects, a Start button
-offered for another computer, a header that pops in on each load, or the desktop jumping back to this computer
-after the user picked another one.
+offered for another computer, a header that pops in on each load, the heading, pills, composer or loader sliding
+as the "Viewing:" line appears or leaves, that line covering the file-access card, or the desktop jumping back to
+this computer after the user picked another one.
 
 ## Maintenance Sources
 
