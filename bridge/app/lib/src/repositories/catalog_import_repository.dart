@@ -437,7 +437,7 @@ class CatalogImportRepository({
         final publicationProjects = <String, _ObservedProject>{};
         if (observation.projectOwnership == PluginProjectOwnership.bridgeDerived) {
           final launchDirectory = derivedLaunchDirectory!;
-          _mergeObservedProject(publicationProjects, observedProjects[_publishedProjectPath(launchDirectory)]!);
+          _mergeObservedProject(publicationProjects, observedProjects[_publishedProjectPath(path: launchDirectory)]!);
           for (final observation in orderedSessions) {
             if (observation.session.parentID != null) continue;
             final existing = currentBindings[observation.session.id];
@@ -515,7 +515,7 @@ class CatalogImportRepository({
           final existing = currentBindings[session.id];
           final parent = session.parentID == null ? null : finalBindingsByBackendId[session.parentID];
           final rootProjectPath = observation.rootProjectPath;
-          final publishedPath = rootProjectPath == null ? null : _publishedProjectPath(rootProjectPath);
+          final publishedPath = rootProjectPath == null ? null : _publishedProjectPath(path: rootProjectPath);
           final projectId =
               parent?.projectId ?? (publishedPath == null ? null : importedProjectIdByPath[publishedPath]);
           if (projectId == null) {
@@ -740,7 +740,7 @@ class CatalogImportRepository({
     Map<String, _ObservedProject> observations,
     _ObservedProject observed,
   ) {
-    final publishedPath = _publishedProjectPath(observed.path);
+    final publishedPath = _publishedProjectPath(path: observed.path);
     final observation = publishedPath == observed.path
         ? observed
         : _ObservedProject(
@@ -766,7 +766,7 @@ class CatalogImportRepository({
 
   /// The path of the project a root observed at [path] publishes under: the
   /// scratch root for a scratch folder, otherwise [path] itself.
-  String _publishedProjectPath(String path) {
+  String _publishedProjectPath({required String path}) {
     final normalizedPath = _normalizeRequiredPath(path);
     return _projectCatalogIdentityCalculator.isWithinScratch(path: normalizedPath)
         ? _projectCatalogIdentityCalculator.scratchRoot
