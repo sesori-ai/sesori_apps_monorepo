@@ -5,7 +5,6 @@ import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../extensions/build_context_x.dart";
-import "pr_status_row.dart";
 import "session_scheduled_resume.dart";
 
 /// Builds the long-press actions for a session row. It is a builder rather than
@@ -18,8 +17,7 @@ import "session_scheduled_resume.dart";
 typedef SessionOpenedCallback = void Function({required Session session});
 
 /// A single session row: the harness logo, the title with its status mark and
-/// when the session last changed, over one tertiary meta line with the project
-/// and pull request.
+/// when the session last changed, over one tertiary meta line with the project.
 ///
 /// The harness logo leads in a square of one size for every harness, and is
 /// the only place the row names the harness. The mark right after the title
@@ -399,7 +397,7 @@ class const SessionTile({
   }
 
   /// The row's second line, starting under the logo: any state that needs
-  /// words, then the project and pull request, apart by middle dots.
+  /// words, then the project, apart by a middle dot.
   Widget _metaLine({required BuildContext context}) {
     final prego = context.prego;
     final style = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
@@ -416,43 +414,27 @@ class const SessionTile({
     // the line instead of being cropped to the 1x line box.
     return ConstrainedBox(
       constraints: const BoxConstraints(minHeight: _metaLineHeight),
-      child: LayoutBuilder(
-        builder: (context, constraints) => Row(
-          children: [
-            for (final (index, detail) in details.indexed)
-              // Each separator yields with the detail it leads, so scaled-up
-              // text shrinks details rather than overflowing the line.
-              Flexible(
-                child: index == 0
-                    ? detail
-                    : Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Flexible(child: separator()),
-                          Flexible(flex: 3, child: detail),
-                        ],
-                      ),
-              ),
-            // The pull request is short and bounded, so it keeps its full width
-            // and the other details share what is left. The cap keeps a narrow
-            // pane from handing it the whole line.
-            if (session.pullRequest case final pr?)
-              ConstrainedBox(
-                constraints: BoxConstraints(maxWidth: constraints.maxWidth * _pullRequestMaxShare),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    if (details.isNotEmpty) separator(),
-                    Flexible(child: PrStatusRow(pr: pr)),
-                  ],
-                ),
-              ),
-            // With nothing to show, an empty line of the meta text still
-            // takes its height at the current text scale, so the row stays as
-            // tall as its neighbours and as the launching row it replaces.
-            if (details.isEmpty && session.pullRequest == null) Text("", style: style),
-          ],
-        ),
+      child: Row(
+        children: [
+          for (final (index, detail) in details.indexed)
+            // Each separator yields with the detail it leads, so scaled-up
+            // text shrinks details rather than overflowing the line.
+            Flexible(
+              child: index == 0
+                  ? detail
+                  : Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(child: separator()),
+                        Flexible(flex: 3, child: detail),
+                      ],
+                    ),
+            ),
+          // With nothing to show, an empty line of the meta text still
+          // takes its height at the current text scale, so the row stays as
+          // tall as its neighbours and as the launching row it replaces.
+          if (details.isEmpty) Text("", style: style),
+        ],
       ),
     );
   }
@@ -629,9 +611,6 @@ const double _waitingDotSize = 8;
 /// As large as the status marks, so the logo and the mark read as glyphs of
 /// one size around the title.
 const double _brandLogoSize = 16;
-
-/// The most of the meta line the pull request may take before it clips.
-const double _pullRequestMaxShare = 0.8;
 
 /// Between the meta line's details; a glyph, not words, so it is not translated.
 const String _separator = " · ";
