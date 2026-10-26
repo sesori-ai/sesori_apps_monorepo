@@ -50,8 +50,9 @@ sealed class Session with _$Session {
     @Default(<PullRequestInfo>[]) List<PullRequestInfo> pullRequestHistory,
     required SessionPromptDefaults? promptDefaults,
     // The branch the bridge created for this session's dedicated worktree.
-    // Null means the session has no dedicated worktree or came from a bridge
-    // that predates branch reporting.
+    // Null means the bridge created none: the session has no dedicated
+    // worktree, its worktree started on a detached HEAD, or it came from a
+    // bridge that predates branch reporting.
     required String? branchName,
     @Default(false) bool hasWorktree,
     // Whether this session has unseen activity (new changes the user has not

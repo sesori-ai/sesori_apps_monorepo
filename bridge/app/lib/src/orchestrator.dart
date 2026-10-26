@@ -23,7 +23,6 @@ import "api/database/database.dart";
 import "api/database/history/chat_history_database.dart";
 import "api/drive_roots_api.dart";
 import "api/filesystem_api.dart";
-import "api/gh_cli_api.dart";
 import "api/git_cli_api.dart";
 import "api/sesori_server_api.dart";
 import "auth/access_token_provider.dart";
@@ -77,7 +76,6 @@ import "repositories/new_session_defaults_repository.dart";
 import "repositories/pending_interaction_support.dart";
 import "repositories/permission_repository.dart";
 import "repositories/plugin_lifecycle_repository.dart";
-import "repositories/pr_source_repository.dart";
 import "repositories/project_activity_repository.dart";
 import "repositories/project_catalog_identity_calculator.dart";
 import "repositories/project_glossary_publication_repository.dart";
@@ -85,7 +83,6 @@ import "repositories/project_glossary_repository.dart";
 import "repositories/project_glossary_scope_repository.dart";
 import "repositories/project_repository.dart";
 import "repositories/provider_repository.dart";
-import "repositories/pull_request_repository.dart";
 import "repositories/question_repository.dart";
 import "repositories/scratch_repository.dart";
 import "repositories/session_continuation_repository.dart";
@@ -185,7 +182,6 @@ import "services/permission_auto_approval_service.dart";
 import "services/plugin_lifecycle_service.dart";
 import "services/plugin_warmup_service.dart";
 import "services/plugin_warmup_settings_service.dart";
-import "services/pr_sync_service.dart";
 import "services/project_activity_service.dart";
 import "services/project_glossary_population_service.dart";
 import "services/project_glossary_scope_service.dart";
@@ -413,21 +409,6 @@ class Orchestrator({
         rateLimiter: pushRateLimiter,
         rssBytesReader: readCurrentRssBytes,
       ),
-    );
-    final pullRequestRepository = PullRequestRepository(
-      database: _database,
-      pullRequestDao: _database.pullRequestDao,
-      projectsDao: _database.projectsDao,
-      sessionDao: _database.sessionDao,
-    );
-    final prSyncService = PrSyncService(
-      prSource: PrSourceRepository(
-        ghCli: GhCliApi(processRunner: _processRunner),
-        gitCli: gitCliApi,
-      ),
-      pullRequestRepository: pullRequestRepository,
-      sessionRepository: sessionRepository,
-      clock: const Clock(),
     );
     final pullRequestRefreshSettingsService = PullRequestRefreshSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
@@ -838,7 +819,6 @@ class Orchestrator({
       bytesSentController: bytesSentController,
       failureReporter: _failureReporter,
       sessionRepository: sessionRepository,
-      prSyncService: prSyncService,
       pluginWarmupSettingListener: pluginWarmupSettingListener,
       viewedSessionPluginWarmupListener: viewedSessionPluginWarmupListener,
       currentProjectGlossaryListener: currentProjectGlossaryListener,
@@ -958,7 +938,6 @@ class OrchestratorSession._({
   required final StreamController<SesoriSseEvent> _localWireEventsController,
   required final FailureReporter _failureReporter,
   required final SessionRepository _sessionRepository,
-  required final PrSyncService _prSyncService,
   required final PluginWarmupSettingListener _pluginWarmupSettingListener,
   required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
   required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
@@ -1293,7 +1272,6 @@ class OrchestratorSession._({
   Future<void> _teardown() async {
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
-    _prSyncService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     final teardownSw = Stopwatch()..start();
     Object? firstTeardownError;
@@ -1377,8 +1355,7 @@ class OrchestratorSession._({
       attempt(_pluginWarmupSettingListener.dispose),
       attempt(_viewedSessionPluginWarmupListener.dispose),
     ]);
-    await attempt(_prSyncService.drain);
-    Log.v("[shutdown] maintenance + view listeners + pr-sync disposed (+${teardownSw.elapsedMilliseconds}ms)");
+    Log.v("[shutdown] maintenance + view listeners disposed (+${teardownSw.elapsedMilliseconds}ms)");
     // Plugin teardown is owned by BridgePlugin.shutdown(), run as the
     // shutdown coordinator's ordered step — the deprecated direct
     // api.dispose() call is gone since the descriptor flip.
@@ -1534,7 +1511,6 @@ class OrchestratorSession._({
     _startupRetryService.cancel();
     _routedRequestDispatcher.beginShutdown();
     _sessionCreationService.beginShutdown();
-    _prSyncService.beginShutdown();
     _projectGlossaryPopulationService.beginShutdown();
     if (_cancelRequestedAt == null) {
       _cancelRequestedAt = DateTime.now();
