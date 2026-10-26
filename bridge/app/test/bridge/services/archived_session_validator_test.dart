@@ -35,7 +35,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,

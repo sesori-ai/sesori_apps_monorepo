@@ -391,23 +391,9 @@ void main() {
     ),
   );
 
-  testWidgets("a manual-download install opens its downloads index", (tester) async {
-    final uri = Uri.parse("https://sesori.com/desktop/#internal-macos-arm64");
-    updateStates.add(DesktopUpdateManualDownload(downloadsUri: uri));
-    final launcher = getIt<UrlLauncher>();
-    when(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).thenAnswer((_) async => true);
-    await tester.pumpWidget(updateSection());
-    expect(find.textContaining("Closing the window is not Quit"), findsOneWidget);
-    expect(find.byType(PregoSwitch), findsNothing);
-    await tester.tap(find.text("View downloads"));
-    await tester.pump();
-    verify(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).called(1);
-  });
-
   testWidgets("a development build offers no updater controls", (tester) async {
     await tester.pumpWidget(updateSection());
     expect(find.text("Development build"), findsOneWidget);
-    expect(find.text("View downloads"), findsNothing);
     expect(find.text("Check for updates"), findsNothing);
     expect(find.byType(PregoSwitch), findsNothing);
   });

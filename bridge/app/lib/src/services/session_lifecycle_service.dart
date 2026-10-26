@@ -79,7 +79,6 @@ class SessionLifecycleService({
         sessionId: sessionId,
         projectId: projectId,
         worktreePath: worktreePath,
-        branchName: null,
       );
       if (hasSharing) {
         return CleanupRejected(

@@ -1,20 +1,29 @@
 import "dart:async";
-import "dart:ui";
 
 import "package:flutter/foundation.dart" show TargetPlatform, defaultTargetPlatform, visibleForTesting;
+import "package:flutter/services.dart";
 import "package:injectable/injectable.dart";
 import "package:screen_retriever/screen_retriever.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:window_manager/window_manager.dart";
 
-/// Dumb `window_manager` adapter for the Sesori desktop window.
+import "macos_termination_channel.dart";
+
+/// Dumb `window_manager` adapter for the Sesori desktop window. It also
+/// relays the macOS runner's system quit requests.
 @LazySingleton(as: WindowHost)
 class FlutterWindowHost.forTesting({
   required final WindowManager _manager,
   required final ScreenRetriever _screenRetriever,
+  required final MethodChannel _terminationChannel,
 }) with WindowListener implements WindowHost {
-  new() : this.forTesting(manager: windowManager, screenRetriever: screenRetriever);
+  new()
+    : this.forTesting(
+        manager: windowManager,
+        screenRetriever: screenRetriever,
+        terminationChannel: macosTerminationChannel,
+      );
 
   @visibleForTesting
   this;
@@ -85,6 +94,7 @@ class FlutterWindowHost.forTesting({
         await _manager.focus();
         _emitState(state: WindowHostState.focused);
       }
+      _terminationChannel.setMethodCallHandler(_onRunnerCall);
       _initialized = true;
     } on Object {
       _manager.removeListener(this);
@@ -101,6 +111,14 @@ class FlutterWindowHost.forTesting({
       }
       rethrow;
     }
+  }
+
+  Future<void> _onRunnerCall(MethodCall call) async {
+    // No exit owner listens yet during startup; the runner then quits as before.
+    if (call.method != "quitRequested" || !_events.hasListener) {
+      throw MissingPluginException();
+    }
+    _emitEvent(event: WindowHostEvent.quitRequested);
   }
 
   @override
@@ -239,6 +257,7 @@ class FlutterWindowHost.forTesting({
       return;
     }
     _disposed = true;
+    _terminationChannel.setMethodCallHandler(null);
     if (_listenerRegistered) {
       _manager.removeListener(this);
       _listenerRegistered = false;

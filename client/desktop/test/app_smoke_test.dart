@@ -179,7 +179,10 @@ class _FakeWindowHost() implements WindowHost {
 
 class _FakeApplicationTerminator() implements DesktopApplicationTerminator {
   @override
-  void terminate({required int exitCode}) {}
+  void terminate() {}
+
+  @override
+  void cancelTermination() {}
 }
 
 class _FakeLaunchAtLogin() implements LaunchAtLogin {

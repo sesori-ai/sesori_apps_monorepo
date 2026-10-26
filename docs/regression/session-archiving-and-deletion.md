@@ -119,20 +119,20 @@ entirely along with its transcript and its dedicated worktree.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions. Archived row menus omit Rename and Archive but retain
   permanent Delete and read-state actions.
-- Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
+- Mobile shows archived sessions on one page (`/archived-sessions`)
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
   narrows the list to one project. Settings' Archived sessions row, after
-  Projects in the Bridge section and disabled offline, opens the modal over
-  Settings under the home's filter through the same filter the all-projects
-  lists share; it adds no second filter. The live
-  list remains active-only. The modal has a search field, no new-session button
+  Projects in the Bridge section and disabled offline, pushes the page over
+  Settings like its other pages, with Back and no close button, under the home's filter through the same filter
+  the all-projects lists share; it adds no second filter. The live
+  list remains active-only. The page has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
-  the project list has loaded: while it loads the modal shows a skeleton, a failed
+  the project list has loaded: while it loads the page shows a skeleton, a failed
   project list shows its error with Retry, and a disconnected computer shows the
   same setup or offline page as the home. A project whose sessions failed to load
-  gets its own Retry row instead of the empty state. The modal reloads
+  gets its own Retry row instead of the empty state. The page reloads
   the session inventory when it opens, because the bridge publishes no event on
   archive, and pull-to-refresh runs the scope's shared refresh with a success or
   failure alert. Archived lists never claim a viewed project. Swipe and menu
@@ -147,15 +147,16 @@ entirely along with its transcript and its dedicated worktree.
   from its first frame. In the composer's place it
   shows what the newest agent reply ran with as read-only pills (see
   [Session creation and options](session-creation-and-options.md)), from options
-  read from the bridge's cache only, never discovered. Back returns to the retained
-  archive list; X closes the entire modal to its original opener, preserving its
-  list/scroll and draft. Both controls remain available during loading and errors,
-  including related-session audit navigation. Direct archive entry has a safe X
-  exit to the home and leaves the project filter as it was. Audit cubits never
+  read from the bridge's cache only, never discovered. Back, the edge swipe and
+  system Back return to the retained archive list; the list's own Back leaves the
+  whole flow for its original opener, preserving its list/scroll and draft. Back remains
+  available during loading and errors, including related-session audit navigation.
+  Direct archive entry falls back to the home from the list's Back and leaves the
+  project filter as it was. Audit cubits never
   replace the opener's live-project claims;
   the covered project's declaration is suspended until the opener is visible.
   A covered live detail also stops declaring its session viewed, so new output
-  stays unread; closing the modal reasserts the retained loaded detail. Incoming
+  stays unread; leaving the flow reasserts the retained loaded detail. Incoming
   questions, permissions and notices from the covered detail do not interrupt
   archive browsing.
 - Mobile and desktop detail activity share one visibility rule: the top route
@@ -168,7 +169,7 @@ entirely along with its transcript and its dedicated worktree.
   listener. Disposing the detail releases the owner's route and analytics listeners.
 - Deletion completed in the archive flow returns to its archive list only when
   the currently open audit record is the deleted session. Stale or
-  unrelated completions leave navigation unchanged; X still restores the opener.
+  unrelated completions leave navigation unchanged; the list's Back still restores the opener.
 - The phone's delete confirmation sheet identifies the action, names the worktree
   loss only when a dedicated worktree exists, and keeps its confirm action
   visually destructive. Cancelling deletes nothing.
@@ -205,8 +206,9 @@ restart before explicit re-import.
 
 ## Failure Signals
 
-- Mobile mixes active rows into archives, shows a new-session floating button in
-  the modal, loses the opener on X, or navigates out of the modal on detail Back.
+- Mobile mixes active rows into archives, shows a new-session floating button on
+  the Archived page, rises from the bottom or shows a close button there, loses
+  the opener on the list's Back, or leaves the flow on detail Back or its edge swipe.
 - Settings' Archived sessions row ignores the home's filter, filtered rows
   repeat the project name, an unfiltered row omits it, or a newly archived
   session is missing until a manual refresh.

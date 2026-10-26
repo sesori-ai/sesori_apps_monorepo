@@ -34,8 +34,7 @@ class PullRequestRepository({
           final current = currentById[captured.id];
           if (current == null ||
               current.projectId != captured.projectId ||
-              current.parentSessionId != captured.parentSessionId ||
-              current.branchName != captured.branchName) {
+              current.parentSessionId != captured.parentSessionId) {
             continue;
           }
           if (current.directory != captured.directory) {

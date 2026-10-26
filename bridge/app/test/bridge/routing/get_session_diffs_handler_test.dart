@@ -103,7 +103,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: null,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -136,7 +135,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: null,
         baseCommit: null,
 
@@ -169,7 +167,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: "${tempDir.path}/does-not-exist",
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -202,7 +199,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -241,7 +237,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -283,7 +278,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -325,7 +319,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 

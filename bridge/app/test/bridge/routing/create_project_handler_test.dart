@@ -61,7 +61,6 @@ void main() {
         worktreeRepository: singlePluginWorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
           plugin: plugin,
           gitApi: GitCliApi(
             streamingProcessRunner: const StreamingProcessRunner(),

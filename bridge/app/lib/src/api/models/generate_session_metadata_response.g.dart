@@ -8,7 +8,4 @@ part of 'generate_session_metadata_response.dart';
 
 _GenerateSessionMetadataResponse _$GenerateSessionMetadataResponseFromJson(
   Map json,
-) => _GenerateSessionMetadataResponse(
-  title: json['title'] as String,
-  branchName: json['branchName'] as String,
-);
+) => _GenerateSessionMetadataResponse(title: json['title'] as String);

@@ -87,7 +87,6 @@ void main() {
         isDedicated: true,
         createdAt: 123,
         worktreePath: null,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
         lastAgent: null,

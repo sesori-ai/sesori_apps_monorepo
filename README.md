@@ -101,7 +101,7 @@ Sign in with the **same account** on your phone and your machine. The two pair a
 |---|---|
 | **Browse projects & sessions** | See your projects and active sessions across every supported assistant, right on your phone. |
 | **Keep agents moving** | Answer questions, approve steps, and stop or restart tasks without returning to your desk. |
-| **Review code and PR status** | Read diffs and keep tabs on pull requests without opening your laptop. |
+| **Review code** | Read diffs without opening your laptop. |
 | **Voice or type** | Talk to your assistant naturally or use the keyboard — whatever works in the moment. |
 | **Real-time notifications** | Get pinged the moment your AI needs you back or a long-running task finishes. |
 | **End-to-end encrypted** | Your code, prompts, and responses stay between your phone and your machine. |

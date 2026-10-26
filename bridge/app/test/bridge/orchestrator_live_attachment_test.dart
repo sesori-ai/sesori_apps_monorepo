@@ -432,7 +432,6 @@ Future<void> _insertRootSession({required AppDatabase database}) async {
     isDedicated: false,
     createdAt: 1,
     worktreePath: null,
-    branchName: null,
     baseBranch: null,
     baseCommit: null,
     lastAgent: null,

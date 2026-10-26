@@ -45,6 +45,7 @@ export "src/foundation/platform/desktop_application_terminator.dart";
 export "src/foundation/platform/file_access_permission.dart";
 export "src/foundation/platform/installed_desktop_bundle_source.dart";
 export "src/foundation/platform/launch_at_login.dart";
+export "src/foundation/platform/sparkle_update_engine.dart";
 export "src/foundation/platform/system_tray.dart";
 export "src/foundation/platform/window_host.dart";
 export "src/orchestration/desktop_bridge_takeover_orchestrator.dart";

@@ -382,7 +382,6 @@ class _ConcurrencyHarness._({
       isDedicated: false,
       createdAt: 1,
       worktreePath: null,
-      branchName: null,
       baseBranch: null,
       baseCommit: null,
       agent: null,

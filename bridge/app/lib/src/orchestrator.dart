@@ -352,7 +352,6 @@ class Orchestrator({
     final worktreeRepository = WorktreeRepository(
       worktreesDirectory: sesoriWorktreesDirectory(),
       projectsDao: _database.projectsDao,
-      sessionDao: _database.sessionDao,
       filesystemApi: const FilesystemApi(),
       gitApi: gitCliApi,
       runtime: _pluginRuntime,
@@ -381,7 +380,6 @@ class Orchestrator({
     final sessionMutationDispatcher = SessionMutationDispatcher(
       sessionRepository: sessionRepository,
       sessionOperationDispatcher: sessionOperationDispatcher,
-      worktreeService: worktreeService,
     );
     final pushTracker = PushSessionStateTracker(now: clock.now);
     final pushRateLimiter = PushRateLimiter(now: clock.now);
@@ -749,22 +747,14 @@ class Orchestrator({
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
         GetChildSessionsHandler(sessionRepository: sessionRepository, sessionViews: sessionViews),
-        GetSessionHandler(
-          sessionViews: sessionViews,
-          sessionRepository: sessionRepository,
-          prSyncService: prSyncService,
-        ),
+        GetSessionHandler(sessionViews: sessionViews, sessionRepository: sessionRepository),
         GetSessionAttachmentHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesHandler(chatHistoryService: chatHistoryService),
         GetSessionMessagesThroughHandler(chatHistoryService: chatHistoryService),
         GetSessionPromptIndexHandler(chatHistoryService: chatHistoryService),
         SearchSessionPromptsHandler(chatHistoryService: chatHistoryService),
         GetSessionToolOutputHandler(chatHistoryService: chatHistoryService),
-        GetSessionsHandler(
-          sessionViews: sessionViews,
-          sessionRepository: sessionRepository,
-          prSyncService: prSyncService,
-        ),
+        GetSessionsHandler(sessionViews: sessionViews, sessionRepository: sessionRepository),
         CreateSessionHandler(sessionCreationService: sessionCreationService, sessionViews: sessionViews),
         RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         SetSessionAutoContinuationHandler(service: sessionContinuationService),
@@ -915,7 +905,6 @@ class Orchestrator({
       pluginId: session.pluginId,
       event: switch (mutation) {
         SessionTitleUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: true),
-        SessionBranchUpdated() ||
         SessionContinuationUpdated() ||
         SessionApprovalOverrideUpdated() => BridgeSseSessionUpdated(info: session.toJson(), titleChanged: false),
         SessionDeleted() => BridgeSseSessionDeleted(info: session.toJson()),
