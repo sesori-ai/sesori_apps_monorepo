@@ -83,8 +83,12 @@ void main() {
 
   tearDown(getIt.reset);
 
-  Future<void> pumpHome({required WidgetTester tester, required ProjectListState state}) async {
-    whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
+  Future<void> pumpHome({
+    required WidgetTester tester,
+    required ProjectListState state,
+    Stream<ProjectListState> updates = const Stream.empty(),
+  }) async {
+    whenListen(projects, updates, initialState: state);
     await tester.pumpWidget(
       MaterialApp(
         theme: buildPregoThemeData(brightness: Brightness.light),
@@ -197,6 +201,114 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.byType(PregoAiLoader), findsNothing);
     expect(find.text("Start the bridge"), findsOneWidget);
+  });
+
+  group("a slow start of this computer's bridge", () {
+    const line = "Still starting this computer's bridge…";
+    const disconnected = ProjectListState.bridgeDisconnected(hasRegisteredBridges: false);
+    final loader = find.byType(PregoAiLoader);
+
+    void arrangeStarting() => whenListen(
+      startup,
+      const Stream<LocalBridgeStartupState>.empty(),
+      initialState: LocalBridgeStartupState.starting,
+    );
+
+    // The opacity the line is painted with now: its nearest fade's.
+    double lineOpacity(WidgetTester tester) => tester
+        .widget<FadeTransition>(find.ancestor(of: find.text(line), matching: find.byType(FadeTransition)).first)
+        .opacity
+        .value;
+
+    testWidgets("keeps the running loader in place and shows no line before 10 s", (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        arrangeStarting();
+        final updates = StreamController<ProjectListState>();
+        addTearDown(updates.close);
+        // The relay is still connecting as the launch begins: a load.
+        await pumpHome(tester: tester, state: const ProjectListState.loading(), updates: updates.stream);
+        final running = tester.state(loader);
+        final place = tester.getRect(loader);
+
+        updates.add(disconnected);
+        await tester.pump();
+        expect(tester.state(loader), same(running));
+        expect(tester.getRect(loader), place);
+        expect(find.text("Start the bridge"), findsNothing);
+
+        await tester.pump(const Duration(milliseconds: 9900));
+        expect(lineOpacity(tester), 0);
+        expect(find.bySemanticsLabel(line), findsNothing);
+        expect(find.bySemanticsLabel("Loading projects"), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+      } finally {
+        semantics.dispose();
+      }
+    });
+
+    testWidgets("after 10 s the line fades in under the loader, which stays put", (tester) async {
+      final semantics = tester.ensureSemantics();
+      try {
+        arrangeStarting();
+        await pumpHome(tester: tester, state: disconnected);
+        final place = tester.getRect(loader);
+        // Centred in the body, as any load shows it.
+        expect(place.center, tester.getCenter(find.ancestor(of: loader, matching: find.byType(SafeArea)).first));
+
+        // The timer fires, and the frame it builds starts the fade.
+        await tester.pump(const Duration(seconds: 10));
+        await tester.pump(const Duration(milliseconds: 110));
+        expect(lineOpacity(tester), allOf(greaterThan(0), lessThan(1)));
+        expect(tester.getRect(loader), place);
+
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(lineOpacity(tester), 1);
+        expect(tester.getRect(loader), place);
+        expect(tester.getRect(find.text(line)).top, greaterThan(place.bottom));
+        expect(find.bySemanticsLabel(line), findsOneWidget);
+        expect(find.bySemanticsLabel("Loading projects"), findsOneWidget);
+        await tester.pumpWidget(const SizedBox.shrink());
+      } finally {
+        semantics.dispose();
+      }
+    });
+
+    testWidgets("with reduced motion, the line shows at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      arrangeStarting();
+      await pumpHome(tester: tester, state: disconnected);
+
+      await tester.pump(const Duration(milliseconds: 9999));
+      expect(lineOpacity(tester), 0);
+      await tester.pump(const Duration(milliseconds: 1));
+      expect(lineOpacity(tester), 1);
+    });
+
+    testWidgets("a start that fails or stops after the line shows still gives way to recovery", (tester) async {
+      final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+      addTearDown(starts.close);
+      whenListen(startup, starts, initialState: starts.value);
+      await pumpHome(tester: tester, state: disconnected);
+      await tester.pump(const Duration(seconds: 10));
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(lineOpacity(tester), 1);
+
+      // Failed and stopped alike leave the launch.
+      starts.add(LocalBridgeStartupState.settled);
+      await tester.pumpAndSettle();
+      expect(find.text(line), findsNothing);
+      expect(loader, findsNothing);
+      expect(find.text("Start the bridge"), findsOneWidget);
+    });
+
+    testWidgets("an ordinary load never shows the line", (tester) async {
+      await pumpHome(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(seconds: 11));
+      expect(loader, findsOneWidget);
+      expect(find.text(line), findsNothing);
+    });
   });
 
   group("with several computers", () {

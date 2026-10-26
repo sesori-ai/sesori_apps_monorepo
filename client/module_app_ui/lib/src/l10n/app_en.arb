@@ -472,6 +472,10 @@
   "@projectsDesktopRemoteOfflineInfo": {
     "description": "Desktop-only explanation under '<computer> is offline' when the computer being viewed is another computer, not this one."
   },
+  "projectsDesktopBridgeStillStarting": "Still starting this computer's bridge…",
+  "@projectsDesktopBridgeStillStarting": {
+    "description": "Desktop-only line that fades in under the home loader when launching this computer's own bridge has taken longer than 10 seconds and the app has not reached it yet."
+  },
   "desktopViewingComputer": "Viewing: {name}",
   "@desktopViewingComputer": {
     "description": "Desktop home header naming the other computer whose projects are shown; opens the computer menu.",
