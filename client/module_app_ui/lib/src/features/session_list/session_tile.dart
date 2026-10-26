@@ -557,10 +557,20 @@ class const SessionTileSkeleton({
       children: [
         SizedBox(
           height: _titleLineHeight,
-          child: FractionallySizedBox(
-            alignment: AlignmentDirectional.centerStart,
-            widthFactor: titleWidthFraction,
-            child: const Center(child: PregoSkeletonBar(height: 16)),
+          // A dot where the harness logo goes, so the title bar starts where
+          // the title does.
+          child: Row(
+            spacing: PregoSpacing.xs,
+            children: [
+              const PregoSkeletonBar(height: _brandLogoSize, width: _brandLogoSize),
+              Expanded(
+                child: FractionallySizedBox(
+                  alignment: AlignmentDirectional.centerStart,
+                  widthFactor: titleWidthFraction,
+                  child: const Center(child: PregoSkeletonBar(height: 16)),
+                ),
+              ),
+            ],
           ),
         ),
         SizedBox(
