@@ -235,8 +235,7 @@ state.
   persistent sidebar lists every project's active sessions, filterable to one
   project, and keeps This computer and Settings reachable; Settings opens Archived. One main pane
   hosts home, Archived, new session, detail, or diffs at every desktop
-  width. The sidebar's list declares the project it is filtered to while it shows.
-  Archived rows open read-only. Mobile retains its adaptive session sidebar.
+  width. Archived rows open read-only. Mobile retains its adaptive session sidebar.
   Desktop contextual shortcuts and local controls follow the
   [cockpit contract](desktop-cockpit-shell.md).
 - The phone opens signed in on the home (`/sessions`): one list of every listed project's active sessions in the
