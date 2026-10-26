@@ -33,9 +33,10 @@ desktop main-pane transitions distinct.
   into the +. On iOS a swipe from the left edge shrinks the circle with the
   finger; released past halfway or flicked it closes, otherwise it springs back
   open, carrying the swipe's speed. With no default project the project picker
-  rises once the circle has settled. Every other way into New session, the
-  sidebar's button and deep links included, keeps the platform transition;
-  under reduced motion the + page moves as those do, with no circle.
+  rises once the circle has settled. Every other way into New session, deep
+  links included, keeps the platform transition, and the wide layout's sidebar
+  button still returns the pane to the composer; under reduced motion the + page
+  moves as the platform transition does, with no circle.
 - The base compact session-detail toolbar returns to the home. A child or
   background-task detail opened with a push still pops to its parent detail.
   Typed routes keep path-like project identifiers percent-encoded, so a
