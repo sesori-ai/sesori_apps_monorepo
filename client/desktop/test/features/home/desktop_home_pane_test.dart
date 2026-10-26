@@ -87,11 +87,12 @@ void main() {
     required WidgetTester tester,
     required ProjectListState state,
     Stream<ProjectListState> updates = const Stream.empty(),
+    Brightness brightness = Brightness.light,
   }) async {
     whenListen(projects, updates, initialState: state);
     await tester.pumpWidget(
       MaterialApp(
-        theme: buildPregoThemeData(brightness: Brightness.light),
+        theme: buildPregoThemeData(brightness: brightness),
         localizationsDelegates: AppLocalizations.localizationsDelegates,
         supportedLocales: AppLocalizations.supportedLocales,
         home: MultiBlocProvider(
@@ -540,11 +541,11 @@ void main() {
       addTearDown(updates.close);
     });
 
-    Future<void> pumpReadyHome({required WidgetTester tester}) async {
+    Future<void> pumpReadyHome({required WidgetTester tester, Brightness brightness = Brightness.light}) async {
       tester.view.physicalSize = const Size(1200, 900);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);
-      await pumpHome(tester: tester, state: ready, updates: updates.stream);
+      await pumpHome(tester: tester, state: ready, updates: updates.stream, brightness: brightness);
     }
 
     // The state lands, then the frame it schedules starts the cross-fade.
@@ -665,6 +666,141 @@ void main() {
       expect(loader, findsNothing);
       expect(opacityOf(tester: tester, finder: composer), 1);
       expect(tester.getRect(composer), composerRect);
+    });
+
+    for (final brightness in Brightness.values) {
+      testWidgets("only the pane paints the page, beneath both bodies as they cross (${brightness.name})", (
+        tester,
+      ) async {
+        await pumpReadyHome(tester: tester, brightness: brightness);
+        final page = Theme.of(tester.element(find.byType(DesktopHomePane))).scaffoldBackgroundColor;
+        expect(page, buildPregoThemeData(brightness: brightness).scaffoldBackgroundColor);
+        // Whatever in the pane paints the page's color.
+        final painted = find.descendant(
+          of: find.byType(DesktopHomePane),
+          matching: find.byWidgetPredicate(
+            (widget) => switch (widget) {
+              ColoredBox(:final color) => color == page,
+              Scaffold(:final backgroundColor) => (backgroundColor ?? page) == page,
+              _ => false,
+            },
+          ),
+        );
+        const noProjects = ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null);
+
+        // Halfway through each cross: the composer leaving, then arriving,
+        // then the project prompt arriving.
+        for (final state in [const ProjectListState.loading(), ready, const ProjectListState.loading(), noProjects]) {
+          await land(tester: tester, state: state);
+          await tester.pump(const Duration(milliseconds: 110));
+          expect(find.byType(FadeTransition), findsWidgets);
+          expect(painted, findsOneWidget);
+          expect(find.ancestor(of: find.byType(AnimatedSwitcher).first, matching: painted), findsOneWidget);
+          await tester.pump(const Duration(milliseconds: 120));
+        }
+        expect(find.byKey(const Key("desktop-home-prompt")), findsOneWidget);
+      });
+    }
+
+    testWidgets("a status page of another kind cross-fades in; one whose content changes stays put", (tester) async {
+      final starts = BehaviorSubject<LocalBridgeStartupState>.seeded(LocalBridgeStartupState.starting);
+      addTearDown(starts.close);
+      whenListen(startup, starts, initialState: starts.value);
+      final retry = find.text("Retry");
+      final start = find.text("Start the bridge");
+      await pumpHome(tester: tester, state: const ProjectListState.loading(), updates: updates.stream);
+      final running = tester.state(loader);
+
+      // The load turns into a launch of this computer's bridge: the same page.
+      await land(tester: tester, state: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: false));
+      expect(tester.state(loader), same(running));
+      expect(opacityOf(tester: tester, finder: loader), 1);
+
+      // The launch stops, so recovery cross-fades in over the loader.
+      starts.add(LocalBridgeStartupState.settled);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: start), inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(loader, findsNothing);
+
+      await land(
+        tester: tester,
+        state: const ProjectListState.failed(reason: RemoteFailureReason.networkDown),
+      );
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: start), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: retry), inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(start, findsNothing);
+
+      // Another failure only changes what the page says.
+      await land(
+        tester: tester,
+        state: const ProjectListState.failed(reason: RemoteFailureReason.serverRejected),
+      );
+      expect(retry, findsOneWidget);
+      expect(opacityOf(tester: tester, finder: retry), 1);
+
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: retry), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(retry, findsNothing);
+      expect(opacityOf(tester: tester, finder: loader), 1);
+    });
+
+    testWidgets("the loader holds until the list names the home's project, then fades into its composer", (
+      tester,
+    ) async {
+      const other = ProjectSummary(id: "two", name: "api", path: "/two", time: null);
+      final lists = StreamController<AllSessionsState>();
+      addTearDown(lists.close);
+      whenListen(sessions, lists.stream, initialState: _list(defaultProjectId: project.id));
+      await pumpReadyHome(tester: tester);
+      final composerRect = tester.getRect(composer);
+
+      // The next computer has no project for new sessions until its sessions
+      // load, after its projects.
+      lists.add(_list(defaultProjectId: null, isLoading: true));
+      await land(tester: tester, state: const ProjectListState.loading());
+      await tester.pump(const Duration(milliseconds: 230));
+      final running = tester.state(loader);
+      await land(tester: tester, state: ready);
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(tester.state(loader), same(running));
+      expect(opacityOf(tester: tester, finder: loader), 1);
+      expect(find.byType(DesktopHomeStart), findsNothing);
+
+      lists.add(_list(defaultProjectId: project.id, isLoading: true));
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 110));
+      expect(opacityOf(tester: tester, finder: loader), inExclusiveRange(0, 1));
+      expect(opacityOf(tester: tester, finder: composer), inExclusiveRange(0, 1));
+      expect(find.byKey(const Key("desktop-home-waiting")), findsNothing);
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.getRect(composer), composerRect);
+
+      // A project added later loads without taking the home back to the loader.
+      lists.add(_list(defaultProjectId: null, isLoading: true));
+      await land(
+        tester: tester,
+        state: const ProjectListState.loaded(
+          projects: [project, other],
+          folderProjects: [project, other],
+          scratchProject: null,
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 230));
+      expect(loader, findsNothing);
+      expect(opacityOf(tester: tester, finder: composer), 1);
+      expect(tester.widget<NewSessionView>(find.byType(NewSessionView)).projectId, project.id);
     });
   });
 
