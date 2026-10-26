@@ -663,6 +663,129 @@ void main() {
       }
     });
 
+    final oldRow = find.text("Fix the parser");
+    final newRow = find.text("Draft the install guide");
+
+    for (final mode in AllSessionsMode.values) {
+      testWidgets(
+        "a load that replaces the rows, as a computer switch's, fades them into the skeleton (${mode.name})",
+        (
+          tester,
+        ) async {
+          final updates = StreamController<AllSessionsState>();
+          addTearDown(updates.close);
+          await pumpList(
+            tester,
+            initial: loaded(mode: mode, titles: ["Fix the parser"], failures: const [failure]),
+            updates: updates.stream,
+            mode: mode,
+          );
+          // The Retry row fades in as it first shows.
+          await tester.pump(const Duration(milliseconds: 300));
+
+          updates.add(loading);
+          // With nothing animating, a bare pump would skip the frame before the update arrives.
+          await tester.pump(Duration.zero);
+          expect(oldRow, findsOneWidget);
+          expect(paintedOpacity(tester, oldRow), 1);
+
+          // The rows stay, fading out and taking no taps, as the skeleton
+          // fades in over them without waiting out its delay.
+          await tester.pump(const Duration(milliseconds: 33));
+          expect(oldRow, findsOneWidget);
+          expect(paintedOpacity(tester, oldRow), inExclusiveRange(0, 1));
+          expect(oldRow.hitTestable(), findsNothing);
+          await tester.pump(const Duration(milliseconds: 67));
+          expect(paintedOpacity(tester, oldRow), inExclusiveRange(0, 1));
+          expect(paintedOpacity(tester, failureRow), moreOrLessEquals(paintedOpacity(tester, oldRow)));
+          expect(find.text("Retry").hitTestable(), findsNothing);
+          expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
+          expect(paintedOpacity(tester, searchField), 1);
+          if (mode == AllSessionsMode.active) {
+            final allChip = find.byKey(const Key("session-list-filter-all"));
+            expect(paintedOpacity(tester, allChip), moreOrLessEquals(paintedOpacity(tester, oldRow)));
+            expect(allChip.hitTestable(), findsNothing);
+            final pill = find.descendant(of: find.byType(PregoShimmer).first, matching: find.byType(PregoSkeletonBar));
+            expect(paintedOpacity(tester, pill.first), moreOrLessEquals(skeletonOpacity(tester)));
+          }
+
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(oldRow, findsNothing);
+          expect(failureRow, findsNothing);
+          expect(skeletonOpacity(tester), 1);
+          expect(paintedOpacity(tester, searchField), 1);
+
+          // The next computer's rows hand off from the skeleton as a first load's do.
+          updates.add(loaded(mode: mode, titles: ["Draft the install guide"]));
+          await tester.pump();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
+          expect(paintedOpacity(tester, newRow), inExclusiveRange(0, 1));
+          await tester.pump(const Duration(milliseconds: 150));
+          expect(skeleton, findsNothing);
+          expect(paintedOpacity(tester, newRow), 1);
+        },
+      );
+    }
+
+    testWidgets("a load that ends as the rows it replaces fade out hands off from the skeleton they leave", (
+      tester,
+    ) async {
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"]),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+      );
+      updates.add(loading);
+      await tester.pump(Duration.zero);
+      await tester.pump(const Duration(milliseconds: 100));
+      final rowTop = tester.getTopLeft(oldRow).dy;
+      var last = skeletonOpacity(tester);
+      expect(last, inExclusiveRange(0, 1));
+
+      updates.add(loaded(mode: AllSessionsMode.active, titles: ["Draft the install guide"]));
+      var dimming = false;
+      for (var elapsed = 0; elapsed <= 400; elapsed += 10) {
+        await tester.pump(const Duration(milliseconds: 10));
+        final opacity = skeletonOpacity(tester);
+        // It brightens until the old rows are gone, then only dims, never
+        // snapping either way.
+        expect((opacity - last).abs(), lessThan(0.2), reason: "at ${elapsed}ms");
+        if (opacity < last) dimming = true;
+        if (dimming) expect(opacity, lessThanOrEqualTo(last), reason: "at ${elapsed}ms");
+        // The new rows show only once the old ones are gone, in their place.
+        expect(oldRow.evaluate().isEmpty || newRow.evaluate().isEmpty, isTrue, reason: "at ${elapsed}ms");
+        if (oldRow.evaluate().isNotEmpty) expect(tester.getTopLeft(oldRow).dy, rowTop);
+        if (newRow.evaluate().isNotEmpty) expect(tester.getTopLeft(newRow).dy, rowTop);
+        last = opacity;
+      }
+      expect(dimming, isTrue);
+      expect(skeleton, findsNothing);
+      expect(paintedOpacity(tester, newRow), 1);
+    });
+
+    testWidgets("under reduced motion a load that replaces the rows cuts straight to the skeleton", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: loaded(mode: AllSessionsMode.archived, titles: ["Fix the parser"]),
+        updates: updates.stream,
+      );
+
+      updates.add(loading);
+      await tester.pump(Duration.zero);
+      expect(oldRow, findsNothing);
+      expect(skeletonOpacity(tester), 1);
+      expect(paintedOpacity(tester, searchField), 1);
+    });
+
     group("layout across every frame", () {
       const header = SizedBox(key: Key("header"), height: 36, child: Text("All projects"));
       final headerBox = find.byKey(const Key("header"));
@@ -754,6 +877,46 @@ void main() {
           );
         }
       }
+
+      testWidgets("a load that replaces the rows moves nothing", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        final row = find.text("Fix the parser");
+        final allChip = find.byKey(const Key("session-list-filter-all"));
+        final pills = find.byKey(const ValueKey("skeleton"));
+        await pumpList(
+          tester,
+          initial: loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"]),
+          updates: updates.stream,
+          mode: AllSessionsMode.active,
+          header: header,
+        );
+        final headerTop = tester.getTopLeft(headerBox).dy;
+        final fieldTop = tester.getTopLeft(searchField).dy;
+        final chipTop = tester.getTopLeft(allChip).dy;
+        final rowTop = tester.getTopLeft(row).dy;
+
+        final [headerTops, fieldTops, chipTops, pillTops, skeletonTops, rowTops] = await topsAcross(
+          tester,
+          updates: updates,
+          update: loading,
+          finders: [headerBox, searchField, allChip, pills, skeleton, row],
+        );
+        expect(headerTops, everyElement(headerTop));
+        expect(fieldTops, everyElement(fieldTop));
+        // The chips fade out over the pills that hold their places.
+        expect(chipTops.nonNulls, everyElement(chipTop));
+        expect(pillTops.last, isNotNull);
+        expect(pillTops.nonNulls, everyElement(pillTops.last));
+        final allPill = find.descendant(of: pills, matching: find.byType(PregoSkeletonBar)).first;
+        expect(tester.getTopLeft(allPill).dy, chipTop);
+        // The skeleton fades in from where it then stands, over the rows.
+        expect(skeletonTops.nonNulls, everyElement(tester.getTopLeft(skeleton).dy));
+        expect(skeletonTops.last, lessThanOrEqualTo(rowTop));
+        // The rows stay where they are as they fade out, gone once they have.
+        expect(rowTops.take(40), everyElement(rowTop));
+        expect(rowTops.last, isNull);
+      });
 
       testWidgets("counts that wrap the chips onto another line ease the room open", (tester) async {
         // Wide enough for the placeholders' two lines, too narrow for these

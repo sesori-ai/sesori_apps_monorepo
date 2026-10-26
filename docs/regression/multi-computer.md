@@ -20,9 +20,13 @@ area documents linked below own the detail.
 - **Switch flow.** Every switch goes through one dispatcher: it replaces the route stack with the home, then
   records the pick and retargets the connection, so no deeper screen ever has its computer change underneath it. The
   previous computer's socket is detached first, its late answers are dropped, and its bridge-scoped caches reset. The
-  home's project filter returns to All projects, and the list shows its loading skeleton under the new name and fades
-  in as a first load does, with no rows from the previous computer. Each switch reports `computer_switched` with its `source` (`menu`, `offline_screen`,
-  `settings`, `computers_page`, `alert`, `notification`) and whether the target was online, never a name or id
+  home's project filter returns to All projects. The list is never blank: under the new name, the previous
+  computer's rows, Retry rows and chips stay where they are, fading out without taking taps, as the loading skeleton
+  fades in over them at once (without the delay a first load waits) from where it then stands; the new computer's
+  content then fades in from the skeleton as a first load's does, and a load that ends sooner lets the old rows finish
+  fading first. Reduced motion cuts straight to the skeleton. Each switch reports `computer_switched` with its
+  `source` (`menu`, `offline_screen`, `settings`, `computers_page`, `alert`, `notification`) and whether the target
+  was online, never a name or id
   ([analytics](analytics.md)). Picking the current computer in a menu only closes the menu.
 - **Computer menu.** The phone home's computer button, whose label and status dot name the target computer and
   its state, and the wide sidebar footer's row, which names it and ends in a chevron, open an anchored menu
@@ -100,7 +104,7 @@ release-target client platform and macOS desktop; Linux and Windows machine iden
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated, no plugin: the owning suites for the stored target in relay `auth`, adoption without reconnect, retarget, bridge-scoped cache resets, the switch dispatcher returning to the home before it retargets, the computer list's presence overlay, the Computers page and its rename rules, the one-action-at-a-time lock, the replacement chosen after a removal (including a switch made while it ran), and a push for another computer switching before it opens the session. |
+| L1 Smoke | Automated, no plugin: the owning suites for the stored target in relay `auth`, adoption without reconnect, retarget, bridge-scoped cache resets, the switch dispatcher returning to the home before it retargets, the session list fading the previous computer's rows into its skeleton, the computer list's presence overlay, the Computers page and its rename rules, the one-action-at-a-time lock, the replacement chosen after a removal (including a switch made while it ran), and a push for another computer switching before it opens the session. |
 | L2 Routine | Relay integration with two bridges and one app on one account: the app reaches only the computer it targets and its projects; with no target it reaches the most recently connected bridge; a presence notice for the other computer arrives and updates its status; a same-id restart replaces only its own connection. Headless bridge: deleting the stored bridge id and restarting registers into the same entry. |
 | L3 Release | Client end to end on the release-target client platform with two computers: a switch from the menu, the offline card, Settings, and the linked-computer alert, each landing on the new computer's home with the filter on All projects and no rows from the previous one; a relaunch staying on the last pick; the target stopping and starting with the offline screen and menu following live; the Computers page opened from "Manage computers…", switching from it, renaming a computer and clearing the name back to its hostname, and Back returning to Settings; Remove… disabled on an online computer, removing an offline one closing its row, and removing the viewed offline one moving to the next. macOS desktop: the "Viewing:" header, viewing the other computer while the local bridge keeps serving a phone, that computer's offline body without Start, the Computers page inside the Settings window with its in-window Back, and Remove… on "This computer" showing the explanation whose "Turn off bridge" stops the bridge and then hides. |
 | L4 Extended | Relay integration with two apps pinned to different computers at once, an older app following the default and re-keying when a newer bridge connects, logout then sign-in starting without a stored target, a desktop fresh install moving to this computer once its helper registers, a relay drop during a switch, and the alternate client platform. Packaged or external: one real-device session push from the other computer opening that computer and the session, and status pushes naming each computer without replacing one another. |
@@ -119,7 +123,10 @@ and another while a phone works on the local bridge.
 - An app reaching a computer other than its target, a reconnect or relaunch landing elsewhere, or one app's traffic,
   broadcasts or live events reaching a bridge or app on another computer.
 - A switch leaving the previous computer's projects, sessions, activity, project filter or a pushed page on
-  screen, the header keeping the old name, or a late answer from the previous computer repopulating the new one.
+  screen once the skeleton has faded in, the header keeping the old name, or a late answer from the previous computer
+  repopulating the new one.
+- A blank session list between computers, or the previous rows, chips or search field vanishing, moving or staying
+  tappable instead of fading into the skeleton, or the skeleton flashing brighter as the new rows arrive.
 - A bridge with a different id displacing another, a same-id restart reading as offline to the other apps, or the
   app jumping to another computer on its own.
 - The menu, offline card, Settings entry or desktop header disagreeing about which computer is current or whether

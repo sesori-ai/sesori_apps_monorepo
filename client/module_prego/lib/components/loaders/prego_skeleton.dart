@@ -42,7 +42,7 @@ class const PregoShimmer({
 
   /// How long the skeleton stays invisible before fading in, so loads that
   /// finish quickly never flash it. [Duration.zero] shows it immediately.
-  final Duration appearDelay = const Duration(milliseconds: 300),
+  final Duration appearDelay = PregoShimmer.defaultAppearDelay,
 
   /// Whether the skeleton is on its way out, as content takes its place.
   /// Turning it on drops an appearance still pending and fades the skeleton
@@ -65,6 +65,8 @@ class const PregoShimmer({
   /// Announced to screen readers in place of the decorative skeleton.
   final String? semanticLabel,
 }) extends StatefulWidget {
+  static const Duration defaultAppearDelay = Duration(milliseconds: 300);
+
   @override
   State<PregoShimmer> createState() => _PregoShimmerState();
 }
