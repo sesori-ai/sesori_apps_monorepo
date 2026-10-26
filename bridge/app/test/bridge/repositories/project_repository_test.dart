@@ -112,6 +112,45 @@ void main() {
       expect(plugin.getProjectsCallCount, 0);
     });
 
+    test("getProjects maps kind by project id, not by path", () async {
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "/scratch",
+        path: "/scratch",
+        hidden: false,
+        displayName: "No project",
+      );
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "other-project",
+        path: "/scratch",
+        hidden: false,
+        displayName: null,
+      );
+
+      final kinds = {for (final project in await repo.getProjects()) project.id: project.kind};
+
+      expect(kinds, {"/scratch": ProjectKind.scratch, "other-project": ProjectKind.folder});
+    });
+
+    test("native activity neither inserts nor reports a scratch folder's project", () async {
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "scratch-folder",
+          directory: "/scratch/2026-10-25-abc",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+        PluginProject(
+          id: "ordinary",
+          directory: "/projects/ordinary",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+
+      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(observation!.evidence.map((item) => item.projectId), ["ordinary"]);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["ordinary"]);
+    });
+
     test("zero-plugin mode keeps catalog reads, project opens, and renames online", () async {
       await db.projectsDao.recordOpenedProject(
         projectId: "stored-project",
@@ -1013,6 +1052,30 @@ void main() {
       final rows = await db.projectsDao.getAllProjects();
       expect(rows.map((project) => project.projectId), [nativeProjectId]);
       expect(rows.single.updatedAt, 20);
+    });
+
+    test("derived activity asks for scratch session folders and credits No project", () async {
+      const folder = "/scratch/2026-10-25-abc";
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "/scratch",
+        path: "/scratch",
+        hidden: false,
+        displayName: "No project",
+      );
+      await insertTestSessionInDirectory(
+        db: db,
+        sessionId: "scratch-session",
+        pluginId: plugin.id,
+        projectId: "/scratch",
+        directory: folder,
+      );
+      plugin.sessions = [_session(folder, id: "scratch-session", created: 10, updated: 20)];
+
+      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(plugin.receivedKnownDirectories, contains(folder));
+      expect(observation!.evidence.map((item) => item.projectId), ["/scratch"]);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["/scratch"]);
     });
 
     test("openProject records an opened folder so an empty project survives the listing", () async {

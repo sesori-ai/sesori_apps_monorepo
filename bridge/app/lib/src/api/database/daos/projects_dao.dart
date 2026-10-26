@@ -247,12 +247,14 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
     });
   }
 
-  /// Inserts one project with its explicit [path] and [hidden] state when it
-  /// does not exist. Existing rows are untouched.
+  /// Inserts one project with its explicit [path], [hidden] state and
+  /// [displayName] override when it does not exist. Existing rows are
+  /// untouched.
   Future<void> insertProjectIfMissing({
     required String projectId,
     required String path,
     required bool hidden,
+    required String? displayName,
   }) async {
     final insertedAt = DateTime.now().millisecondsSinceEpoch;
     await into(projectsTable).insert(
@@ -260,6 +262,7 @@ class ProjectsDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> 
         projectId: projectId,
         path: path,
         hidden: Value(hidden),
+        displayName: Value(displayName),
         createdAt: Value(insertedAt),
         updatedAt: Value(insertedAt),
         projectionUpdatedAt: insertedAt,

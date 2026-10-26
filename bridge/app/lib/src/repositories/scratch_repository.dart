@@ -5,17 +5,39 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
+import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart";
 import "../api/filesystem_api.dart";
 import "project_catalog_identity_calculator.dart";
 
-/// Owns the per-session folders under the scratch root that project-less
-/// sessions run in: their creation and their removal with the session.
+/// Owns the scratch root that project-less sessions run in: its "No project"
+/// row, and the per-session folders with their removal with the session.
 class ScratchRepository({
   required final FilesystemApi _filesystemApi,
+  required final ProjectsDao _projectsDao,
   required final SessionDao _sessionDao,
   required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
 }) {
+  /// Creates the scratch root, then inserts its visible "No project" row when
+  /// it is missing. The row comes last, so a peer can only start a session in
+  /// the root once the root exists. An existing row, renamed or not, is kept.
+  ///
+  /// A failure is logged and the bridge continues without "No project".
+  Future<void> ensureScratchProject() async {
+    final scratchRoot = _projectCatalogIdentityCalculator.scratchRoot;
+    try {
+      await _filesystemApi.createDirectoryRecursively(path: scratchRoot);
+      await _projectsDao.insertProjectIfMissing(
+        projectId: scratchRoot,
+        path: scratchRoot,
+        hidden: false,
+        displayName: "No project",
+      );
+    } on Object catch (error, stackTrace) {
+      Log.w("Could not set up the No project project in $scratchRoot; continuing without it", error, stackTrace);
+    }
+  }
+
   /// Creates a new `<YYYY-MM-DD>-<random>` folder in the scratch root, and the
   /// root first when it is missing, and returns the new folder's path.
   Future<String> createSessionDirectory() async {
