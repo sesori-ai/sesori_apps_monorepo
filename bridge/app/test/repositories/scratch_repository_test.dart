@@ -19,7 +19,7 @@ void main() {
       db = createTestDatabase();
       parent = Directory.systemTemp.createTempSync("scratch-repository-");
       scratchRoot = p.join(parent.path, "scratch");
-      repository = testScratchRepository(sessionDao: db.sessionDao, scratchRoot: scratchRoot);
+      repository = testScratchRepository(db: db, scratchRoot: scratchRoot);
     });
 
     tearDown(() async {
@@ -32,6 +32,32 @@ void main() {
       File(p.join(folder.path, "notes.txt")).writeAsStringSync("draft");
       return folder;
     }
+
+    group("ensureScratchProject", () {
+      test("creates the root and one visible No project row, and keeps a renamed row", () async {
+        await repository.ensureScratchProject();
+
+        expect(Directory(scratchRoot).existsSync(), isTrue);
+        final row = await db.projectsDao.getProject(projectId: scratchRoot);
+        expect(row?.path, scratchRoot);
+        expect(row?.hidden, isFalse);
+        expect(row?.displayName, "No project");
+
+        await db.projectsDao.setDisplayName(projectId: scratchRoot, displayName: "Drafts", updatedAt: 1);
+        await repository.ensureScratchProject();
+
+        expect(await db.projectsDao.getAllProjects(), hasLength(1));
+        expect((await db.projectsDao.getProject(projectId: scratchRoot))?.displayName, "Drafts");
+      });
+
+      test("inserts no row when the root cannot be created", () async {
+        File(scratchRoot).writeAsStringSync("not a folder");
+
+        await repository.ensureScratchProject();
+
+        expect(await db.projectsDao.getAllProjects(), isEmpty);
+      });
+    });
 
     group("createSessionDirectory", () {
       test("creates the missing root and a dated folder directly in it", () async {
@@ -83,6 +109,7 @@ void main() {
         await insertTestSessionInDirectory(
           db: db,
           sessionId: "sibling",
+          pluginId: "fake",
           projectId: scratchRoot,
           directory: folder.path,
         );
@@ -97,6 +124,7 @@ void main() {
         await insertTestSessionInDirectory(
           db: db,
           sessionId: "sibling",
+          pluginId: "fake",
           projectId: scratchRoot,
           directory: p.join(folder.path, ".", "src", ".."),
         );
@@ -111,6 +139,7 @@ void main() {
         await insertTestSessionInDirectory(
           db: db,
           sessionId: "child",
+          pluginId: "fake",
           projectId: scratchRoot,
           directory: p.join(folder.path, "packages", "app"),
         );
@@ -126,6 +155,7 @@ void main() {
         await insertTestSessionInDirectory(
           db: db,
           sessionId: "neighbour",
+          pluginId: "fake",
           projectId: scratchRoot,
           directory: neighbour.path,
         );

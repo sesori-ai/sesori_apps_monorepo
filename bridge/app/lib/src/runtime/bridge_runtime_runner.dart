@@ -870,6 +870,9 @@ class const BridgeRuntimeRunner._() {
       );
       final activeRuntime = runtime;
 
+      // Run before any import, so the first catalog hydration already binds
+      // scratch sessions to "No project" instead of seeing scratch folders.
+      await activeRuntime.ensureScratchProject();
       // Run before imports, debug routes, or relay traffic can load a session
       // into a backend process and retain handles to its persisted storage.
       await activeRuntime.reconcileDeletedSessionStorage();

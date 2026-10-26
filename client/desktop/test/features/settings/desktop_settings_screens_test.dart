@@ -213,6 +213,7 @@ void main() {
     desktopUpdateService = _MockDesktopUpdateService();
     when(() => desktopUpdateService.states).thenAnswer((_) => updateStates.stream);
     when(() => desktopUpdateService.currentState).thenAnswer((_) => updateStates.value);
+    when(() => desktopUpdateService.installKind).thenReturn(DesktopInstallKind.linuxPackage);
     when(() => desktopUpdateService.automaticUpdates).thenAnswer((_) => automaticUpdates.stream);
     when(() => desktopUpdateService.currentAutomaticUpdates).thenAnswer((_) => automaticUpdates.value);
     when(() => desktopUpdateService.setAutomaticUpdates(preference: any(named: "preference"))).thenAnswer((
@@ -413,7 +414,8 @@ void main() {
 
   testWidgets("a package install toggles and checks, then offers Restart to update once installed", (tester) async {
     updateStates.add(const DesktopUpdateManagedBySystem());
-    when(desktopUpdateService.check).thenAnswer((_) => updateStates.add(const DesktopUpdateReady(version: "1.8.5")));
+    when(desktopUpdateService.check)
+        .thenAnswer((_) async => updateStates.add(const DesktopUpdateReady(version: "1.8.5")));
     when(bridgeControl.restartToUpdate).thenAnswer((_) async {});
     await tester.pumpWidget(updateSection());
     expect(find.text("Restart to update"), findsNothing);
@@ -429,11 +431,20 @@ void main() {
     verify(desktopUpdateService.check).called(1);
     // The new row opens below; the rows above it stay where they were.
     expect(tester.getTopLeft(find.text("Check for updates")), checkRow);
-    expect(find.textContaining("Version 1.8.5 is installed"), findsOneWidget);
+    expect(find.textContaining("Version 1.8.5 is ready"), findsOneWidget);
 
     await tester.tap(find.text("Restart to update"));
     await tester.pump();
     verify(bridgeControl.restartToUpdate).called(1);
+  });
+
+  testWidgets("a Velopack install describes downloading verified updates", (tester) async {
+    updateStates.add(const DesktopUpdateIdle());
+    when(() => desktopUpdateService.installKind).thenReturn(DesktopInstallKind.velopack);
+    await tester.pumpWidget(updateSection());
+    expect(find.byType(PregoSwitch), findsOneWidget);
+    expect(find.textContaining("installs them when you quit"), findsOneWidget);
+    expect(find.text("Restart to update"), findsNothing);
   });
 
   for (final status in FileAccessStatus.values) {

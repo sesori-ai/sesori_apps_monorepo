@@ -45,7 +45,7 @@ void main() {
       scratchParent = Directory.systemTemp.createTempSync("delete-session-scratch-");
       scratchRoot = p.join(scratchParent.path, "scratch");
       scratchRepository = _RecordingScratchRepository(
-        delegate: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: scratchRoot),
+        delegate: testScratchRepository(db: db, scratchRoot: scratchRoot),
       );
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
@@ -103,7 +103,13 @@ void main() {
       setUp(() async {
         folder = Directory(p.join(scratchRoot, "2026-10-25-abc"))..createSync(recursive: true);
         File(p.join(folder.path, "notes.txt")).writeAsStringSync("draft");
-        await insertTestSessionInDirectory(db: db, sessionId: "s1", projectId: scratchRoot, directory: folder.path);
+        await insertTestSessionInDirectory(
+          db: db,
+          sessionId: "s1",
+          pluginId: "fake",
+          projectId: scratchRoot,
+          directory: folder.path,
+        );
       });
 
       Future<void> delete({required bool deleteSessionFolder}) async {
@@ -137,7 +143,13 @@ void main() {
       });
 
       test("is kept while another session still runs in it", () async {
-        await insertTestSessionInDirectory(db: db, sessionId: "s2", projectId: scratchRoot, directory: folder.path);
+        await insertTestSessionInDirectory(
+          db: db,
+          sessionId: "s2",
+          pluginId: "fake",
+          projectId: scratchRoot,
+          directory: folder.path,
+        );
 
         await delete(deleteSessionFolder: true);
 
@@ -599,6 +611,9 @@ Future<void> _insertSession({
 /// service leaves running.
 class _RecordingScratchRepository({required final ScratchRepository _delegate}) implements ScratchRepository {
   final List<Future<void>> deletions = [];
+
+  @override
+  Future<void> ensureScratchProject() => _delegate.ensureScratchProject();
 
   @override
   Future<String> createSessionDirectory() => _delegate.createSessionDirectory();

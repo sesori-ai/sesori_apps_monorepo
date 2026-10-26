@@ -9,10 +9,13 @@ import "package:theme_prego/module_prego.dart";
 import "app.dart";
 import "core/di/injection.dart";
 import "core/platform/desktop_launch_arguments.dart";
+import "core/platform/io_installed_desktop_bundle_source.dart";
 import "core/routing/desktop_router.dart";
 
 Future<void> main(List<String> arguments) async {
   logi("Desktop startup: entered Dart main");
+  // The update engine's app startup must run before DI and the first frame.
+  runDesktopUpdateStartupHooks(bundleSource: IoInstalledDesktopBundleSource());
   final bool hiddenLaunch = isDesktopHiddenLaunch(arguments: arguments);
   WidgetsFlutterBinding.ensureInitialized();
   configureDesktopDependencies(

@@ -11,6 +11,7 @@ import subprocess
 import sys
 import tempfile
 import urllib.request
+import zipfile
 from pathlib import Path, PurePosixPath
 from urllib.parse import unquote, urlparse
 
@@ -54,6 +55,16 @@ VPK_PACKAGE_URL = f"https://github.com/velopack/velopack/releases/download/{VPK_
 VPK_PACKAGE_SHA256 = "2b56ce117f803fc70c103cb423bd040e395e40370f6ff6e10818e9ff9c26a323"
 # vpk places the bundle in the image's usr/bin and adds its updater and manifest beside it.
 VELOPACK_ADDED_FILES = {"UpdateNix", "sq.version"}
+# The app's in-process Velopack library comes from the same release as vpk. Only Velopack packages carry it;
+# DEB and RPM installs are updated by the system. The bundle paths match velopackLibraryPath in the desktop shell.
+VELOPACK_LIBRARY_URL = f"https://github.com/velopack/velopack/releases/download/{VPK_VERSION}/velopack_libc_{VPK_VERSION}.zip"
+VELOPACK_LIBRARY_SHA256 = "31de8f2cf05a47bd5328a9f98b0c41aec1582156f6075f1058b26941f7f17c20"
+VELOPACK_LIBRARIES = {
+    ("linux", "x64"): ("lib/velopack_libc_linux_x64_gnu.so", "lib/libvelopack_libc.so"),
+    ("linux", "arm64"): ("lib/velopack_libc_linux_arm64_gnu.so", "lib/libvelopack_libc.so"),
+    ("windows", "x64"): ("lib/velopack_libc_win_x64_msvc.dll", "velopack_libc.dll"),
+    ("windows", "arm64"): ("lib/velopack_libc_win_arm64_msvc.dll", "velopack_libc.dll"),
+}
 
 
 def run(*, command: list[str], cwd: Path, env: dict[str, str] | None = None) -> str:
@@ -300,19 +311,40 @@ def build_rpm(*, root: Path, work: Path, output: Path, arch: str, identity: dict
                      "packageFiles": run(command=["rpm", "-qlp", str(package)], cwd=work).splitlines()}
 
 
+def download_pinned(*, url: str, digest: str, destination: Path, name: str) -> Path:
+    with urllib.request.urlopen(url, timeout=60) as response, destination.open("wb") as stream:
+        shutil.copyfileobj(response, stream)
+    if sha256(destination) != digest:
+        raise ValueError(f"{name} digest mismatch: {sha256(destination)}; expected {digest}")
+    return destination
+
+
 def install_vpk(*, work: Path) -> Path:
     feed = work / "vpk-feed"
     feed.mkdir()
-    package = feed / f"vpk.{VPK_VERSION}.nupkg"
-    with urllib.request.urlopen(VPK_PACKAGE_URL, timeout=60) as response, package.open("wb") as stream:
-        shutil.copyfileobj(response, stream)
-    if sha256(package) != VPK_PACKAGE_SHA256:
-        raise ValueError(f"vpk package digest mismatch: {sha256(package)}; expected {VPK_PACKAGE_SHA256}")
+    download_pinned(url=VPK_PACKAGE_URL, digest=VPK_PACKAGE_SHA256, destination=feed / f"vpk.{VPK_VERSION}.nupkg",
+                    name="vpk package")
     tools = work / "vpk-tool"
     # --source replaces every NuGet source, so only the verified package can be installed.
     run(command=["dotnet", "tool", "install", "vpk", "--version", VPK_VERSION, "--tool-path", str(tools),
                  "--source", str(feed)], cwd=work)
     return tools / "vpk"
+
+
+def velopack_pack_dir(*, bundle: Path, work: Path, target_os: str, arch: str) -> Path:
+    """Copy the staged bundle and add the pinned Velopack library: the exact tree vpk packs."""
+    archive = download_pinned(url=VELOPACK_LIBRARY_URL, digest=VELOPACK_LIBRARY_SHA256,
+                              destination=work / f"velopack_libc_{VPK_VERSION}.zip", name="Velopack library archive")
+    member, relative = VELOPACK_LIBRARIES[(target_os, arch)]
+    pack_dir = work / "pack"
+    shutil.copytree(bundle, pack_dir, symlinks=True)
+    library = pack_dir / relative
+    with zipfile.ZipFile(archive) as libraries, libraries.open(member) as source, library.open("wb") as target:
+        shutil.copyfileobj(source, target)
+    expected = ({"linux": "ELF", "windows": "PE"}[target_os], [arch])
+    if native_arch(path=library) != expected:
+        raise ValueError(f"Wrong native target: {library}: {native_arch(path=library)}; expected {expected}")
+    return pack_dir
 
 
 def velopack_version(*, identity: dict, channel: str) -> str:
@@ -336,9 +368,10 @@ def build_appimage(*, bundle: Path, work: Path, output: Path, arch: str, identit
     channel = compiled_channel(bundle=bundle)
     version = velopack_version(identity=identity, channel=channel)
     vpk = install_vpk(work=work)
+    pack_dir = velopack_pack_dir(bundle=bundle, work=work, target_os="linux", arch=arch)
     verify_icon(path=ICON_SOURCE)
     releases = work / "velopack"
-    command = [str(vpk), "pack", "--packId", PACKAGE_NAME, "--packVersion", version, "--packDir", str(bundle),
+    command = [str(vpk), "pack", "--packId", PACKAGE_NAME, "--packVersion", version, "--packDir", str(pack_dir),
                "--mainExe", "sesori_desktop", "--packTitle", "Sesori", "--icon", str(ICON_SOURCE),
                "--categories", "Development;Utility", "--channel", channel, "--outputDir", str(releases)]
     print(run(command=command, cwd=work))
@@ -349,14 +382,15 @@ def build_appimage(*, bundle: Path, work: Path, output: Path, arch: str, identit
     velopack.mkdir()
     for name in (f"{PACKAGE_NAME}-{version}-{channel}-full.nupkg", f"releases.{channel}.json"):
         shutil.copy2(releases / name, velopack / name)
-    # Read the embedded image back without executing the runtime and require the exact staged bundle.
+    # Read the embedded image back without executing the runtime and require the exact staged bundle
+    # plus the Velopack library.
     offset = squashfs_offset(image=package)
     extracted = work / "extracted"
     run(command=["unsquashfs", "-offset", str(offset), "-no-progress", "-d", str(extracted), str(package)], cwd=work)
     contents = extracted / "usr/bin"
     bundled = [row for row in payload_inventory(root=contents) if row["path"] not in VELOPACK_ADDED_FILES]
     added = all((contents / name).is_file() for name in VELOPACK_ADDED_FILES)
-    if bundled != payload_inventory(root=bundle) or not added:
+    if bundled != payload_inventory(root=pack_dir) or not added:
         raise ValueError("AppImage does not contain the exact staged bundle")
     if sha256(extracted / f"{PACKAGE_NAME}.png") != sha256(ICON_SOURCE):
         raise ValueError("AppImage icon differs from the application icon")
@@ -365,6 +399,7 @@ def build_appimage(*, bundle: Path, work: Path, output: Path, arch: str, identit
     # A portable image has no package-manager dependencies; record what the host must provide.
     return package, {"dependencies": [], "dependencyCommand": command, "hostRequirements": APPIMAGE_HOST_REQUIREMENTS,
                      "velopack": {"vpkVersion": VPK_VERSION, "vpkPackageSha256": VPK_PACKAGE_SHA256,
+                                  "libraryArchiveSha256": VELOPACK_LIBRARY_SHA256,
                                   "packVersion": version, "channel": channel,
                                   "runtime": {"sha256": runtime_digest, "bytes": offset},
                                   "releaseFiles": [{"name": path.name, "sha256": sha256(path),

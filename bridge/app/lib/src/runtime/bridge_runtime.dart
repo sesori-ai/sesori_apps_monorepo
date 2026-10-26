@@ -30,6 +30,10 @@ class BridgeRuntime({
   CatalogImportService get catalogImportService => _composition.catalogImportService;
   PluginCatalogHydrationListener get catalogHydrationListener => _composition.catalogHydrationListener;
 
+  Future<void> ensureScratchProject() {
+    return _composition.scratchRepository.ensureScratchProject();
+  }
+
   Future<void> reconcileDeletedSessionStorage() {
     return _composition.deletedSessionStorageCleanupService.reconcile();
   }

@@ -2,6 +2,7 @@ import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show Par
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../repositories/filesystem_repository.dart";
+import "../repositories/project_catalog_identity_calculator.dart";
 import "../repositories/project_repository.dart";
 import "project_activity_service.dart";
 import "project_initialization_service.dart";
@@ -16,12 +17,20 @@ final class const OpenProjectPathNotDirectory() extends OpenProjectOutcome;
 
 final class const OpenProjectGitChoiceRequired() extends OpenProjectOutcome;
 
+/// Thrown when a peer asks to hide the "No project" project. Hiding it would
+/// take "No project" away from every app on the bridge until it is opened again.
+class ScratchProjectHideRefusedException({required final String projectId}) implements Exception {
+  @override
+  String toString() => "ScratchProjectHideRefusedException: the No project project cannot be hidden: $projectId";
+}
+
 /// Owns complete create, open, and hide workflows under one bridge-wide FIFO.
 class ProjectMutationService({
   required final FilesystemRepository _filesystemRepository,
   required final ProjectInitializationService _projectInitializationService,
   required final ProjectActivityService _projectActivityService,
   required final ProjectRepository _projectRepository,
+  required final ProjectCatalogIdentityCalculator _projectCatalogIdentityCalculator,
 }) {
   final ParallelLock _lock = ParallelLock(maxParallelOperations: 1);
 
@@ -59,8 +68,11 @@ class ProjectMutationService({
     });
   }
 
-  Future<void> hideProject({required String projectId}) {
-    return _enqueue(() => _projectRepository.hideProject(projectId: projectId));
+  Future<void> hideProject({required String projectId}) async {
+    if (_projectCatalogIdentityCalculator.isScratchRoot(path: projectId)) {
+      throw ScratchProjectHideRefusedException(projectId: projectId);
+    }
+    await _enqueue(() => _projectRepository.hideProject(projectId: projectId));
   }
 
   Future<T> _enqueue<T>(Future<T> Function() workflow) => _lock.use(operation: workflow);

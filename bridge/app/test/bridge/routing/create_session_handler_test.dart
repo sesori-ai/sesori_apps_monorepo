@@ -109,7 +109,7 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: sessionMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
-        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        scratchRepository: testScratchRepository(db: db, scratchRoot: "/scratch"),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -527,7 +527,7 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: localMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
-        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        scratchRepository: testScratchRepository(db: db, scratchRoot: "/scratch"),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -1044,7 +1044,7 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: orderedMutationDispatcher,
         sessionOptionsService: sessionOptionsService,
-        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        scratchRepository: testScratchRepository(db: db, scratchRoot: "/scratch"),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,
@@ -1237,7 +1237,7 @@ void main() {
         newSessionDefaultsRepository: defaultsRepository,
         sessionMutationDispatcher: throwingDispatcher,
         sessionOptionsService: sessionOptionsService,
-        scratchRepository: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: "/scratch"),
+        scratchRepository: testScratchRepository(db: db, scratchRoot: "/scratch"),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
           pathContext: p.context,

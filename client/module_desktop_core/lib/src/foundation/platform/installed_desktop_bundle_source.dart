@@ -11,6 +11,10 @@ abstract interface class InstalledDesktopBundleSource() {
   /// Whether the running GUI was started from a portable Linux AppImage.
   bool get isAppImage;
 
+  /// The Velopack C library that packaging bundles into Windows and AppImage
+  /// installs; macOS and Linux packages carry none.
+  String get velopackLibraryPath;
+
   /// Reads the `desktop-bundle.json` currently installed beside the running
   /// GUI. It differs from [compiledIdentity] once a package upgrade replaced
   /// the files on disk. Throws when the manifest is missing or malformed.

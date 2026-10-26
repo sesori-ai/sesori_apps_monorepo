@@ -206,6 +206,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopUpdatesCheck => 'Check for updates';
 
   @override
+  String get desktopUpdatesCheckDescription =>
+      'Sesori downloads verified updates in the background and installs them when you quit or restart to update.';
+
+  @override
   String get desktopUpdatesCheckPackageDescription =>
       'Your system\'s software updater installs new versions from Sesori\'s signed repository.';
 
@@ -214,7 +218,7 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String desktopUpdatesRestartDescription(String version) {
-    return 'Version $version is installed. Restart Sesori to start using it.';
+    return 'Version $version is ready. Restart Sesori to start using it.';
   }
 
   @override

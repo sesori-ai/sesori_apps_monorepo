@@ -36,6 +36,7 @@ typedef SessionProjectPathRow = ({
   String backendSessionId,
   String projectPath,
   String? worktreePath,
+  String directory,
 });
 
 typedef SessionPullRequestScopeUpdate = ({
@@ -571,7 +572,8 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   /// Each row also carries the session's dedicated [worktreePath] (null for
   /// sessions running in the project directory itself): a directory-scoped
   /// backend enumerates a worktree session under its own cwd, so callers feed
-  /// these paths into the plugin's enumeration hints.
+  /// these paths into the plugin's enumeration hints, as they do with the
+  /// [directory] of a project-less session's scratch folder.
   Future<List<SessionProjectPathRow>> getSessionProjectPaths({
     required String pluginId,
   }) async {
@@ -586,6 +588,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
           backendSessionId: row.readTable(sessionTable).backendSessionId,
           projectPath: row.readTable(projectsTable).path,
           worktreePath: row.readTable(sessionTable).worktreePath,
+          directory: row.readTable(sessionTable).directory,
         ),
     ];
   }
