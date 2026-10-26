@@ -41,7 +41,6 @@ class AdaptiveSessionRouterTestHarness() {
   late final MockSessionRepository sessionRepository;
   late final MockConnectionService connectionService;
   late final MockSseEventTracker sseEventTracker;
-  late final MockProjectViewingService projectViewingService;
   late final MockRouteSource routeSource;
   late final MockFailureReporter failureReporter;
   late final MockPermissionRepository permissionRepository;
@@ -73,7 +72,6 @@ class AdaptiveSessionRouterTestHarness() {
     sessionRepository = MockSessionRepository();
     connectionService = MockConnectionService();
     sseEventTracker = MockSseEventTracker();
-    projectViewingService = stubbedProjectViewingService();
     routeSource = MockRouteSource(initialRoute: currentRouteDef);
     failureReporter = MockFailureReporter();
     permissionRepository = MockPermissionRepository();
@@ -286,7 +284,6 @@ class AdaptiveSessionRouterTestHarness() {
     getIt.registerSingleton<SseEventTracker>(sseEventTracker);
     getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());
     getIt.registerSingleton<SessionViewingService>(stubbedSessionViewingService());
-    getIt.registerSingleton<ProjectViewingService>(projectViewingService);
     getIt.registerSingleton<LifecycleSource>(MockLifecycleSource());
     getIt.registerSingleton<RouteSource>(routeSource);
     getIt.registerSingleton<FailureReporter>(failureReporter);
@@ -387,7 +384,6 @@ Session adaptiveTestSession({
     directory: "/tmp/$projectId",
     parentID: null,
     title: title,
-    pullRequest: null,
     time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
     promptDefaults: null,
     lastUserActivityAt: null,
@@ -419,7 +415,6 @@ SessionDetailSnapshot _buildDetailSnapshot({
   return SessionDetailSnapshot(
     areOptionsStale: false,
     bridgeQueuedPrompts: const [],
-    projectId: projectId,
     pluginId: "opencode",
     supportsPromptAttachments: false,
     messages: const [],

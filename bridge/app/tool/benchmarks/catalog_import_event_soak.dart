@@ -145,7 +145,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
         runtime: runtime,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
-        pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
@@ -493,7 +492,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
             path: fixture.projectPaths[index],
             hidden: false,
             baseBranch: null,
-            prCacheGithubLogin: null,
             displayName: "Project $index",
             createdAt: _catalogTimestamp + index,
             updatedAt: _catalogTimestamp + index,
@@ -512,8 +510,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
           directory: fixture.projectPaths.first,
           worktreePath: null,
           branchName: null,
-          currentBranchName: null,
-          currentGithubRepositoryIdentity: null,
           isDedicated: false,
           archivedAt: null,
           baseBranch: null,
@@ -548,7 +544,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
       projectId: sentinelProjectId,
       start: null,
       limit: null,
-      verifiedGithubLogin: null,
     );
     if (sessions.length != 1 || sessions.single.id != _sentinelSessionId) {
       throw StateError("last-committed sentinel was not readable while import was blocked");
@@ -582,7 +577,6 @@ class const _CatalogImportEventSoak({required final _BenchmarkConfiguration _con
             updated: updatedAt,
             archived: null,
           ),
-          pullRequest: null,
           promptDefaults: null,
           lastUserActivityAt: null,
         ).toJson(),

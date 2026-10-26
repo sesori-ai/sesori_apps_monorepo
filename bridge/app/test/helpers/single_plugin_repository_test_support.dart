@@ -1,8 +1,8 @@
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/catalog_hydrations_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
-import "package:sesori_bridge/src/api/database/daos/pull_request_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
+import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/repositories/agent_repository.dart";
@@ -101,7 +101,6 @@ SessionRepository singlePluginSessionRepository({
   required BridgePluginApi plugin,
   required SessionDao sessionDao,
   required ProjectsDao projectsDao,
-  required PullRequestDao pullRequestDao,
   required SessionUnseenCalculator unseenCalculator,
   Set<String>? eligiblePluginIds,
   TestPluginRuntime? runtime,
@@ -115,7 +114,6 @@ SessionRepository singlePluginSessionRepository({
         ),
     sessionDao: sessionDao,
     projectsDao: projectsDao,
-    pullRequestDao: pullRequestDao,
     unseenCalculator: unseenCalculator,
     projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(scratchRoot: "/scratch", pathContext: p.context),
     aggregateSourceDeadline: const Duration(seconds: 5),
@@ -124,7 +122,6 @@ SessionRepository singlePluginSessionRepository({
 
 WorktreeRepository singlePluginWorktreeRepository({
   required ProjectsDao projectsDao,
-  required SessionDao sessionDao,
   required GitCliApi gitApi,
   required BridgePluginApi plugin,
   required String worktreesDirectory,
@@ -132,7 +129,6 @@ WorktreeRepository singlePluginWorktreeRepository({
   return WorktreeRepository(
     worktreesDirectory: worktreesDirectory,
     projectsDao: projectsDao,
-    sessionDao: sessionDao,
     filesystemApi: const FilesystemApi(),
     gitApi: gitApi,
     runtime: createTestPluginRuntime(plugins: [plugin]),
@@ -154,13 +150,14 @@ CatalogImportRepository singlePluginCatalogImportRepository({
   );
 }
 
-/// A real [ScratchRepository] over [sessionDao] whose scratch root is
-/// [scratchRoot], which tests that never create a scratch session can leave
-/// as a path that does not exist.
-ScratchRepository testScratchRepository({required SessionDao sessionDao, required String scratchRoot}) {
+/// A real [ScratchRepository] over [db] whose scratch root is [scratchRoot],
+/// which tests that never create a scratch session can leave as a path that
+/// does not exist.
+ScratchRepository testScratchRepository({required AppDatabase db, required String scratchRoot}) {
   return ScratchRepository(
     filesystemApi: const FilesystemApi(),
-    sessionDao: sessionDao,
+    projectsDao: db.projectsDao,
+    sessionDao: db.sessionDao,
     projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
       scratchRoot: scratchRoot,
       pathContext: p.context,

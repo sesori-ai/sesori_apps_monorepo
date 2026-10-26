@@ -102,10 +102,6 @@
   "@desktopSettingsLaunchAtLoginDescription": {"description": "Explains native app startup, not a connected bridge's configuration."},
   "desktopUpdatesTitle": "Desktop updates",
   "@desktopUpdatesTitle": {"description": "Section title for the desktop app's own updates."},
-  "desktopUpdatesViewDownloads": "View downloads",
-  "@desktopUpdatesViewDownloads": {"description": "Opens the published desktop downloads page."},
-  "desktopUpdatesViewDownloadsDescription": "See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.",
-  "@desktopUpdatesViewDownloadsDescription": {"description": "Manual update guidance for installs without an automatic engine."},
   "desktopUpdatesDevelopmentBuild": "Development build",
   "@desktopUpdatesDevelopmentBuild": {"description": "Shown for source builds, which cannot update themselves."},
   "desktopUpdatesDevelopmentBuildDescription": "Update from your source checkout. Automatic updates are unavailable for this build.",
@@ -556,41 +552,6 @@
   "settingsPluginWarmupUncertain": "The update status is unknown. Refresh before trying again.",
   "settingsPluginWarmupUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
   "settingsPluginWarmupRetry": "Retry harness warm-up setting",
-  "settingsPullRequestRefreshTitle": "Pull request refresh",
-  "settingsPullRequestRefreshDescription": "How often viewed projects refresh pull request status.",
-  "settingsPullRequestRefreshLoading": "Loading the bridge setting…",
-  "settingsPullRequestRefreshUnsupported": "Update the connected bridge to configure this setting.",
-  "settingsPullRequestRefreshLoadFailed": "Couldn't load the bridge setting. Check your connection and try again.",
-  "settingsPullRequestRefreshUncertain": "The update status is unknown. Refresh before trying again.",
-  "settingsPullRequestRefreshUpdateFailed": "Couldn't update the bridge setting. Check your connection and try again.",
-  "settingsPullRequestRefreshStateChanged": "The bridge setting changed while you were editing. Try again.",
-  "settingsPullRequestRefreshRetry": "Retry pull request refresh setting",
-  "settingsPullRequestRefreshDialogTitle": "Pull request refresh interval",
-  "settingsPullRequestRefreshSecondsLabel": "Seconds",
-  "settingsPullRequestRefreshInvalid": "Enter a whole number of seconds.",
-  "settingsPullRequestRefreshRangeInvalid": "Enter a whole number from {minimumSeconds} to {maximumSeconds}.",
-  "@settingsPullRequestRefreshRangeInvalid": {
-    "placeholders": {
-      "minimumSeconds": {
-        "type": "int",
-        "format": "decimalPattern"
-      },
-      "maximumSeconds": {
-        "type": "int",
-        "format": "decimalPattern"
-      }
-    }
-  },
-  "settingsPullRequestRefreshCancel": "Cancel",
-  "settingsPullRequestRefreshSave": "Save",
-  "settingsPullRequestRefreshSeconds": "{seconds, plural, =1{1 second} other{{seconds} seconds}}",
-  "@settingsPullRequestRefreshSeconds": {
-    "placeholders": {
-      "seconds": {
-        "type": "int"
-      }
-    }
-  },
   "harnessManagementDescription": "Control the harnesses that support management through Sesori.",
   "harnessManagementDefaultsSection": "Global harness settings",
   "harnessManagementDefaultTimeout": "Default idle timeout",
@@ -1407,6 +1368,8 @@
   "@sessionListDeleteNamedTitle": {"description": "Title of the desktop delete alert, naming the session.", "placeholders": {"title": {"type": "String"}}},
   "sessionListDeleteWorktreeNotice": "Its worktree will be deleted too. The branch is kept.",
   "@sessionListDeleteWorktreeNotice": {"description": "Line in the delete confirmation, on both shells, stating that a session with a dedicated worktree loses it. Deletion never offers a choice about this."},
+  "sessionListDeleteFolderNotice": "Its folder and every file in it will be deleted too.",
+  "@sessionListDeleteFolderNotice": {"description": "Line in the delete confirmation, on both shells, stating that a session started without a project loses the folder it worked in, with the files the agent wrote there. Deletion never offers a choice about this."},
   "sessionListDeleted": "Session deleted",
   "sessionListDeleteConfirmTitle": "Delete session?",
   "sessionListDeleteConfirmMessage": "This will permanently remove the session and all its messages. This cannot be undone.",
@@ -1745,25 +1708,6 @@
   },
   "sessionListDeleteFailed": "Failed to delete session",
   "sessionListArchiveFailed": "Failed to archive session",
-  "prLabel": "PR #{number}",
-  "@prLabel": {
-    "placeholders": {
-      "number": {
-        "type": "int"
-      }
-    }
-  },
-  "prStateOpen": "Pull request open",
-  "prStateMerged": "Pull request merged",
-  "prStateClosed": "Pull request closed",
-  "prStateUnknown": "Pull request",
-  "prReviewApproved": "Approved",
-  "prReviewChangesRequested": "Changes requested",
-  "prReviewRequired": "Review required",
-  "prChecksSuccess": "Checks passing",
-  "prChecksFailing": "Checks failing",
-  "prChecksPending": "Checks pending",
-  "prConflicting": "Has merge conflicts",
   "diffPermissionRequestTitle": "Allow this action?",
   "diffPermissionReject": "Don’t allow",
   "diffPermissionOnce": "Allow",
@@ -2199,9 +2143,9 @@
     "placeholders": {"projectName": {"type": "String"}}
   },
   "projectPickerAllProjects": "All projects",
-  "@projectPickerAllProjects": {"description": "The home's title and the desktop sidebar's project filter while the list shows every project's sessions."},
-  "projectPickerShowAllProjects": "Show all projects",
-  "@projectPickerShowAllProjects": {"description": "Button pinned below the project filter's list that clears the filter, so the list shows every project's sessions; checked while it already does."},
+  "@projectPickerAllProjects": {"description": "The home's title and the desktop sidebar's project filter while the list shows every project's sessions, and the button pinned below the project filter's list that clears the filter; checked while it already does."},
+  "projectPickerNoProject": "No project",
+  "@projectPickerNoProject": {"description": "Name of the project that holds sessions started without a project folder: the button pinned below the project pickers' lists, the new-session project chip, and the home's title while filtered to it."},
   "projectPickerChooseProject": "Choose a project",
   "@projectPickerChooseProject": {"description": "The new-session project pill while no project is chosen yet."},
   "archivedSessionsToday": "Today",
@@ -2277,13 +2221,12 @@
   "bridgeUpdateReinstallRestart": "Then start the bridge again.",
   "bridgeUpdateCopyCommand": "Copy command",
   "bridgeUpdateDesktopTitle": "Update Sesori Desktop",
-  "@bridgeUpdateDesktopTitle": {"description": "Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which is updated by installing a newer Sesori Desktop."},
-  "bridgeUpdateDesktopIntro": "This bridge runs inside Sesori Desktop. On that computer:",
-  "bridgeUpdateDesktopStepDownload": "1. Download the latest version:",
-  "bridgeUpdateDesktopStepQuit": "2. Quit Sesori Desktop (closing the window may not quit it).",
-  "bridgeUpdateDesktopStepInstall": "3. Install the new version, then open Sesori Desktop again.",
-  "@bridgeUpdateDesktopStepInstall": {"description": "Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager."},
-  "bridgeUpdateCopyLink": "Copy link",
+  "@bridgeUpdateDesktopTitle": {"description": "Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which updates the bridge together with itself."},
+  "bridgeUpdateDesktopIntro": "This bridge runs inside Sesori Desktop, which updates itself.",
+  "bridgeUpdateDesktopRestart": "On that computer, choose Restart to update in Sesori's tray menu or Settings.",
+  "@bridgeUpdateDesktopRestart": {"description": "'Restart to update' and 'Settings' are the desktop app's own labels; keep them matching."},
+  "bridgeUpdateDesktopCheck": "Not there yet? Choose Check for updates in Settings. Linux DEB and RPM installs get new versions through the system's software updates.",
+  "@bridgeUpdateDesktopCheck": {"description": "'Check for updates' is the desktop app's own Settings label. DEB and RPM are Linux package formats; keep them as is."},
   "mcpTitle": "MCP servers and connectors",
   "mcpMenuLabel": "MCP",
   "mcpRefresh": "Refresh",

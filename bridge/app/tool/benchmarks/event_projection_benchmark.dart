@@ -83,7 +83,6 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
         runtime: runtime,
         sessionDao: database.sessionDao,
         projectsDao: database.projectsDao,
-        pullRequestDao: database.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
@@ -293,7 +292,6 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
               updated: updatedAt,
               archived: null,
             ),
-            pullRequest: null,
             promptDefaults: null,
             lastUserActivityAt: null,
             branchName: null,
@@ -326,13 +324,11 @@ class const _EventProjectionBenchmark({required final _BenchmarkConfiguration _c
       isDedicated: false,
       createdAt: _defaultTimestamp,
       worktreePath: null,
-      branchName: null,
       baseBranch: null,
       baseCommit: null,
       lastAgent: null,
       lastAgentModel: null,
       pluginId: _pluginId,
-      preservePullRequestScope: false,
     );
   }
 

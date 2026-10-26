@@ -88,7 +88,6 @@ class _FakeYoloSettingsService() implements YoloSettingsService {
       parentID: null,
       title: null,
       time: null,
-      pullRequest: null,
       promptDefaults: null,
       branchName: null,
       lastUserActivityAt: null,

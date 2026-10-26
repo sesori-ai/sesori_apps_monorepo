@@ -183,13 +183,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get desktopUpdatesTitle => 'Desktop updates';
 
   @override
-  String get desktopUpdatesViewDownloads => 'View downloads';
-
-  @override
-  String get desktopUpdatesViewDownloadsDescription =>
-      'See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.';
-
-  @override
   String get desktopUpdatesDevelopmentBuild => 'Development build';
 
   @override
@@ -612,71 +605,6 @@ class AppLocalizationsEn extends AppLocalizations {
 
   @override
   String get settingsPluginWarmupRetry => 'Retry harness warm-up setting';
-
-  @override
-  String get settingsPullRequestRefreshTitle => 'Pull request refresh';
-
-  @override
-  String get settingsPullRequestRefreshDescription => 'How often viewed projects refresh pull request status.';
-
-  @override
-  String get settingsPullRequestRefreshLoading => 'Loading the bridge setting…';
-
-  @override
-  String get settingsPullRequestRefreshUnsupported => 'Update the connected bridge to configure this setting.';
-
-  @override
-  String get settingsPullRequestRefreshLoadFailed =>
-      'Couldn\'t load the bridge setting. Check your connection and try again.';
-
-  @override
-  String get settingsPullRequestRefreshUncertain => 'The update status is unknown. Refresh before trying again.';
-
-  @override
-  String get settingsPullRequestRefreshUpdateFailed =>
-      'Couldn\'t update the bridge setting. Check your connection and try again.';
-
-  @override
-  String get settingsPullRequestRefreshStateChanged => 'The bridge setting changed while you were editing. Try again.';
-
-  @override
-  String get settingsPullRequestRefreshRetry => 'Retry pull request refresh setting';
-
-  @override
-  String get settingsPullRequestRefreshDialogTitle => 'Pull request refresh interval';
-
-  @override
-  String get settingsPullRequestRefreshSecondsLabel => 'Seconds';
-
-  @override
-  String get settingsPullRequestRefreshInvalid => 'Enter a whole number of seconds.';
-
-  @override
-  String settingsPullRequestRefreshRangeInvalid(int minimumSeconds, int maximumSeconds) {
-    final intl.NumberFormat minimumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
-    final String minimumSecondsString = minimumSecondsNumberFormat.format(minimumSeconds);
-    final intl.NumberFormat maximumSecondsNumberFormat = intl.NumberFormat.decimalPattern(localeName);
-    final String maximumSecondsString = maximumSecondsNumberFormat.format(maximumSeconds);
-
-    return 'Enter a whole number from $minimumSecondsString to $maximumSecondsString.';
-  }
-
-  @override
-  String get settingsPullRequestRefreshCancel => 'Cancel';
-
-  @override
-  String get settingsPullRequestRefreshSave => 'Save';
-
-  @override
-  String settingsPullRequestRefreshSeconds(int seconds) {
-    String _temp0 = intl.Intl.pluralLogic(
-      seconds,
-      locale: localeName,
-      other: '$seconds seconds',
-      one: '1 second',
-    );
-    return '$_temp0';
-  }
 
   @override
   String get harnessManagementDescription => 'Control the harnesses that support management through Sesori.';
@@ -1960,6 +1888,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListDeleteWorktreeNotice => 'Its worktree will be deleted too. The branch is kept.';
 
   @override
+  String get sessionListDeleteFolderNotice => 'Its folder and every file in it will be deleted too.';
+
+  @override
   String get sessionListDeleted => 'Session deleted';
 
   @override
@@ -2524,44 +2455,6 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListArchiveFailed => 'Failed to archive session';
 
   @override
-  String prLabel(int number) {
-    return 'PR #$number';
-  }
-
-  @override
-  String get prStateOpen => 'Pull request open';
-
-  @override
-  String get prStateMerged => 'Pull request merged';
-
-  @override
-  String get prStateClosed => 'Pull request closed';
-
-  @override
-  String get prStateUnknown => 'Pull request';
-
-  @override
-  String get prReviewApproved => 'Approved';
-
-  @override
-  String get prReviewChangesRequested => 'Changes requested';
-
-  @override
-  String get prReviewRequired => 'Review required';
-
-  @override
-  String get prChecksSuccess => 'Checks passing';
-
-  @override
-  String get prChecksFailing => 'Checks failing';
-
-  @override
-  String get prChecksPending => 'Checks pending';
-
-  @override
-  String get prConflicting => 'Has merge conflicts';
-
-  @override
   String get diffPermissionRequestTitle => 'Allow this action?';
 
   @override
@@ -3025,7 +2918,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get projectPickerAllProjects => 'All projects';
 
   @override
-  String get projectPickerShowAllProjects => 'Show all projects';
+  String get projectPickerNoProject => 'No project';
 
   @override
   String get projectPickerChooseProject => 'Choose a project';
@@ -3168,19 +3061,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get bridgeUpdateDesktopTitle => 'Update Sesori Desktop';
 
   @override
-  String get bridgeUpdateDesktopIntro => 'This bridge runs inside Sesori Desktop. On that computer:';
+  String get bridgeUpdateDesktopIntro => 'This bridge runs inside Sesori Desktop, which updates itself.';
 
   @override
-  String get bridgeUpdateDesktopStepDownload => '1. Download the latest version:';
+  String get bridgeUpdateDesktopRestart =>
+      'On that computer, choose Restart to update in Sesori\'s tray menu or Settings.';
 
   @override
-  String get bridgeUpdateDesktopStepQuit => '2. Quit Sesori Desktop (closing the window may not quit it).';
-
-  @override
-  String get bridgeUpdateDesktopStepInstall => '3. Install the new version, then open Sesori Desktop again.';
-
-  @override
-  String get bridgeUpdateCopyLink => 'Copy link';
+  String get bridgeUpdateDesktopCheck =>
+      'Not there yet? Choose Check for updates in Settings. Linux DEB and RPM installs get new versions through the system\'s software updates.';
 
   @override
   String get mcpTitle => 'MCP servers and connectors';

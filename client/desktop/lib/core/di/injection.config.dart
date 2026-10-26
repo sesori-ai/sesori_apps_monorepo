@@ -65,6 +65,8 @@ import 'package:sesori_desktop/core/platform/io_file_access_permission.dart'
 import 'package:sesori_desktop/core/platform/io_installed_desktop_bundle_source.dart'
     as _i696;
 import 'package:sesori_desktop/core/platform/io_launch_at_login.dart' as _i122;
+import 'package:sesori_desktop/core/platform/method_channel_sparkle_update_engine.dart'
+    as _i760;
 import 'package:sesori_desktop/core/platform/no_op_analytics_client.dart'
     as _i262;
 import 'package:sesori_desktop/core/platform/no_op_attribution_claim_storage.dart'
@@ -147,6 +149,9 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i948.UrlLauncher>(() => _i137.DesktopUrlLauncher());
+    gh.lazySingleton<_i316.SparkleUpdateEngine>(
+      () => _i760.MethodChannelSparkleUpdateEngine(),
+    );
     gh.lazySingleton<_i948.LocalNotificationClient>(
       () => _i500.DesktopLocalNotificationClient(
         plugin: gh<_i163.FlutterLocalNotificationsPlugin>(),

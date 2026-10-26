@@ -66,13 +66,19 @@ requesting a complete silent refresh. That refresh fetches messages, children,
 session metadata, commands, agents, providers, pending questions, pending
 permissions, and all session statuses.
 
-Known producers are:
+At the August baseline its producers were:
 
-- `PrSyncService.renderedChanges`, which is forwarded as
-  `SesoriSseEvent.sessionsUpdated(projectID)` while a project is being viewed;
-- ACP/Cursor `available_commands_update`, which currently reuses
+- `PrSyncService.renderedChanges`, which was forwarded as
+  `SesoriSseEvent.sessionsUpdated(projectID)` while a project was being viewed;
+- ACP/Cursor `available_commands_update`, which then reused
   `BridgeSseSessionsUpdated` as a command-discovery nudge; and
 - buffered project invalidations replayed after the initial detail load.
+
+None of these producers remains. ACP now emits the session-scoped
+`BridgeSseSessionOptionsChanged`, and the `pr-tracking-removal` plan removed the
+PR sync service and then, on 2026-10-25, the shared `sessions.updated` event
+itself. Bridges up to v1.9.1 can still send it; current clients log it as an
+unknown event type and ignore it.
 
 The detail screen contains no PR state. Reloading its transcript because PR
 metadata changed is unnecessary. The ACP use is a compatibility-era workaround
@@ -123,7 +129,7 @@ detail refresh:
 
 | Trigger | Current behavior | Initial assessment |
 |---|---|---|
-| Matching `sessions.updated` | Full detail snapshot | Suspect; retain unchanged until diagnostics correlate it with the symptom |
+| Matching `sessions.updated` | Full detail snapshot at the August baseline | Retired: detail later ignored it, and the event was removed on 2026-10-25 |
 | `command.executed` | Coalesced full detail snapshot | Retain initially; validate command-history need if observed |
 | Connection disconnected -> connected | Immediate full detail snapshot and view reassertion | Intended reconciliation path |
 | Lifecycle paused/hidden -> resumed | Immediate full detail snapshot when connected | Intended today; reassess only with evidence |
@@ -364,8 +370,9 @@ revisions would be a separate cross-stack architecture effort.
 
 - Step 2 changes no transport model. Older and newer peers continue exchanging
   the same events.
-- The v1.6.0 `sessions.updated` command-discovery behavior is retained as a
-  targeted client fallback rather than a full-detail reload.
+- The `sessions.updated` command-discovery nudge is gone: ACP sends the
+  session-scoped options event, and current clients ignore `sessions.updated`
+  from older bridges as an unknown event type.
 - No database, persisted state, migration, or backfill changes.
 - Debug diagnostics are local and disabled below debug verbosity. They use the
   fixed `[session-refresh]` prefix and bounded trigger/action/result values.

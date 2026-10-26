@@ -4,6 +4,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/project_activity_repository.dart";
@@ -110,6 +111,45 @@ void main() {
         "/projects/one",
       );
       expect(plugin.getProjectsCallCount, 0);
+    });
+
+    test("getProjects maps kind by project id, not by path", () async {
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "/scratch",
+        path: "/scratch",
+        hidden: false,
+        displayName: "No project",
+      );
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "other-project",
+        path: "/scratch",
+        hidden: false,
+        displayName: null,
+      );
+
+      final kinds = {for (final project in await repo.getProjects()) project.id: project.kind};
+
+      expect(kinds, {"/scratch": ProjectKind.scratch, "other-project": ProjectKind.folder});
+    });
+
+    test("native activity neither inserts nor reports a scratch folder's project", () async {
+      plugin.projectsResult = const [
+        PluginProject(
+          id: "scratch-folder",
+          directory: "/scratch/2026-10-25-abc",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+        PluginProject(
+          id: "ordinary",
+          directory: "/projects/ordinary",
+          activity: PluginProjectActivity(createdAt: 10, updatedAt: 20),
+        ),
+      ];
+
+      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(observation!.evidence.map((item) => item.projectId), ["ordinary"]);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["ordinary"]);
     });
 
     test("zero-plugin mode keeps catalog reads, project opens, and renames online", () async {
@@ -563,6 +603,22 @@ void main() {
       expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), [directory]);
     });
 
+    test("opening keeps a folder whose links cannot be resolved as given", () async {
+      const missing = "/sesori-test-missing/project";
+      final resolvingRepo = singlePluginProjectRepository(
+        gitCliApi: FakeGitCliApi(),
+        projectsDao: db.projectsDao,
+        sessionDao: db.sessionDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+        filesystemApi: const FilesystemApi(),
+      );
+
+      final target = await resolvingRepo.resolveProjectOpenTarget(path: missing);
+
+      expect(target.id, missing);
+      expect(target.path, missing);
+    });
+
     test("openProject atomically rechecks identity after a concurrent catalog import", () async {
       const directory = "/tmp/projects/racing-open";
       const nativeProjectId = "native-project-id";
@@ -753,14 +809,12 @@ void main() {
         await db.sessionDao.insertSession(
           fastMode: false,
           pluginId: plugin.id,
-          preservePullRequestScope: false,
           sessionId: "shared-session",
           backendSessionId: "shared-session",
           projectId: directory,
           isDedicated: false,
           createdAt: 1,
           worktreePath: null,
-          branchName: null,
           baseBranch: null,
           baseCommit: null,
           lastAgent: null,
@@ -1015,6 +1069,30 @@ void main() {
       expect(rows.single.updatedAt, 20);
     });
 
+    test("derived activity asks for scratch session folders and credits No project", () async {
+      const folder = "/scratch/2026-10-25-abc";
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "/scratch",
+        path: "/scratch",
+        hidden: false,
+        displayName: "No project",
+      );
+      await insertTestSessionInDirectory(
+        db: db,
+        sessionId: "scratch-session",
+        pluginId: plugin.id,
+        projectId: "/scratch",
+        directory: folder,
+      );
+      plugin.sessions = [_session(folder, id: "scratch-session", created: 10, updated: 20)];
+
+      final observation = await activityRepo.listProjectActivityEvidence(pluginId: plugin.id);
+
+      expect(plugin.receivedKnownDirectories, contains(folder));
+      expect(observation!.evidence.map((item) => item.projectId), ["/scratch"]);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["/scratch"]);
+    });
+
     test("openProject records an opened folder so an empty project survives the listing", () async {
       final target = await repo.resolveProjectOpenTarget(path: "/tmp/proj/empty");
       final commit = await repo.persistOpenedProject(
@@ -1134,13 +1212,11 @@ void main() {
         isDedicated: true,
         createdAt: 200,
         worktreePath: worktree,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
       // The plugin, however, only knows the session by its worktree cwd.
       plugin.sessions = [

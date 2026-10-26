@@ -30,7 +30,6 @@ class const SessionScope({
   required final ConnectionService connectionService,
   required final SessionListFilterTracker filterTracker,
   required final SessionListService sessionListService,
-  required final ProjectViewingService projectViewingService,
 
   /// The navigator whose overlay shows the scope's alerts, so they share one
   /// alert slot with the pages' own alerts when the scope sits above that
@@ -67,7 +66,6 @@ class const SessionScope({
               mode: AllSessionsMode.active,
               filterTracker: filterTracker,
               sessionListService: sessionListService,
-              projectViewingService: projectViewingService,
             ),
           ),
           // For each list's own launching rows.
@@ -94,12 +92,10 @@ AllSessionsCubit createAllSessionsCubit({
   required AllSessionsMode mode,
   required SessionListFilterTracker filterTracker,
   required SessionListService sessionListService,
-  required ProjectViewingService projectViewingService,
 }) => AllSessionsCubit(
   mode: mode,
   recentInventory: context.read<RecentSessionInventoryService>(),
   projectInventory: context.read<ProjectInventoryService>(),
   filterTracker: filterTracker,
   sessionListService: sessionListService,
-  projectViewingService: projectViewingService,
 );

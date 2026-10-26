@@ -304,7 +304,6 @@ void main() {
           parentID: null,
           title: null,
           time: SessionTime(created: 600, updated: 600, archived: null),
-          pullRequest: null,
           promptDefaults: null,
           lastUserActivityAt: null,
         ),
@@ -435,13 +434,11 @@ Future<void> _storeSession({
     isDedicated: false,
     createdAt: 100,
     worktreePath: null,
-    branchName: null,
     baseBranch: null,
     baseCommit: null,
     lastAgent: null,
     lastAgentModel: null,
     pluginId: "fake",
-    preservePullRequestScope: false,
   );
 }
 

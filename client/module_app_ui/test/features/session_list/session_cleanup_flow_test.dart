@@ -13,6 +13,8 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockSessionListCubit() extends MockCubit<SessionListState> implements SessionListCubit;
 
+class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
+
 void main() {
   late _MockSessionListCubit cubit;
   late PendingSessionArchiveCubit archives;
@@ -157,23 +159,45 @@ void main() {
     ///
     /// Each entry of [rejections] answers one `deleteSession` call: a rejection
     /// fails that call and is published as the cubit's last rejection, null lets
-    /// it complete. Calls past the end complete.
+    /// it complete. Calls past the end complete. [target] belongs to the
+    /// bridge's "No project" project when [noProject].
     Future<void> pumpDeleteButton({
       required WidgetTester tester,
       required shared.Session target,
       required SessionDeleteConfirmation deleteConfirmation,
       List<SessionCleanupRejection?> rejections = const [],
+      bool noProject = false,
     }) async {
       final pending = [...rejections];
       SessionCleanupRejection? lastRejection;
       when(() => cubit.state).thenReturn(
         SessionListState(sessions: [target], activeSessionIds: const {}, unseenBySessionId: const {}),
       );
+      when(() => cubit.projectId).thenReturn(noProject ? "scratch" : "folder");
+      final projects = _MockProjectListCubit();
+      const scratch = shared.ProjectSummary(
+        id: "scratch",
+        name: null,
+        path: "/scratch",
+        time: null,
+        kind: shared.ProjectKind.scratch,
+      );
+      const folder = shared.ProjectSummary(id: "folder", name: "Folder", path: "/folder", time: null);
+      whenListen(
+        projects,
+        const Stream<ProjectListState>.empty(),
+        initialState: const ProjectListState.loaded(
+          projects: [folder, scratch],
+          folderProjects: [folder],
+          scratchProject: scratch,
+        ),
+      );
       when(() => cubit.lastCleanupRejection).thenAnswer((_) => lastRejection);
       when(
         () => cubit.deleteSession(
           sessionId: any(named: "sessionId"),
           deleteWorktree: any(named: "deleteWorktree"),
+          deleteSessionFolder: any(named: "deleteSessionFolder"),
           force: any(named: "force"),
         ),
       ).thenAnswer((_) async {
@@ -199,6 +223,7 @@ void main() {
                 builder: (_, _) => MultiBlocProvider(
                   providers: [
                     BlocProvider<SessionListCubit>.value(value: cubit),
+                    BlocProvider<ProjectListCubit>.value(value: projects),
                     BlocProvider.value(value: archives),
                   ],
                   child: Material(
@@ -231,16 +256,32 @@ void main() {
 
         await tester.tap(find.byKey(sessionDeleteConfirmKey));
         await tester.pumpAndSettle();
-        verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: false)).called(1);
+        verify(
+          () => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: false),
+        ).called(1);
       });
 
       testWidgets("the ${confirmation.name} omits the worktree line without one", (tester) async {
         await pumpDeleteButton(tester: tester, target: session, deleteConfirmation: confirmation);
 
         expect(find.text("Its worktree will be deleted too. The branch is kept."), findsNothing);
+        expect(find.text("Its folder and every file in it will be deleted too."), findsNothing);
         await tester.tap(find.byKey(sessionDeleteConfirmKey));
         await tester.pumpAndSettle();
-        verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: false, force: false)).called(1);
+        verify(
+          () => cubit.deleteSession(sessionId: "s1", deleteWorktree: false, deleteSessionFolder: false, force: false),
+        ).called(1);
+      });
+
+      testWidgets("the ${confirmation.name} says a No project session's folder goes, and deletes it", (tester) async {
+        await pumpDeleteButton(tester: tester, target: session, deleteConfirmation: confirmation, noProject: true);
+
+        expect(find.text("Its folder and every file in it will be deleted too."), findsOneWidget);
+        await tester.tap(find.byKey(sessionDeleteConfirmKey));
+        await tester.pumpAndSettle();
+        verify(
+          () => cubit.deleteSession(sessionId: "s1", deleteWorktree: false, deleteSessionFolder: true, force: false),
+        ).called(1);
       });
     }
 
@@ -269,7 +310,8 @@ void main() {
 
       await tester.tap(anyway);
       await tester.pumpAndSettle();
-      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: true)).called(1);
+      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: true))
+          .called(1);
     });
 
     testWidgets("an older bridge's branch mismatch refusal still offers Delete anyway", (tester) async {
@@ -288,7 +330,8 @@ void main() {
       expect(find.text("Worktree is on branch 'main' instead of expected 'feat/x'"), findsOneWidget);
       await tester.tap(find.widgetWithText(PregoButtonsSolid, "Delete anyway"));
       await tester.pumpAndSettle();
-      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: true)).called(1);
+      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: true))
+          .called(1);
     });
 
     testWidgets("Cancel on that refusal deletes nothing more", (tester) async {
@@ -308,6 +351,7 @@ void main() {
         () => cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: any(named: "deleteWorktree"),
+          deleteSessionFolder: any(named: "deleteSessionFolder"),
           force: true,
         ),
       );
@@ -320,12 +364,13 @@ void main() {
         deleteConfirmation: SessionDeleteConfirmation.alert,
       );
       when(
-        () => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: false),
+        () => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: false),
       ).thenAnswer((_) async => SessionCleanupOutcome.sharedWorktreeKept);
       await confirmDelete(tester);
 
       expect(find.text("Delete anyway"), findsNothing);
-      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, force: false)).called(1);
+      verify(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: false))
+          .called(1);
       expect(find.text("Session deleted"), findsOneWidget);
       expect(find.text("Another session is still using the worktree, so it was left in place."), findsOneWidget);
     });
@@ -346,7 +391,9 @@ void main() {
       expect(find.text("Another active session uses this worktree"), findsOneWidget);
       expect(find.text("Worktree has unstaged changes"), findsOneWidget);
       expect(find.widgetWithText(PregoButtonsSolid, "Delete anyway"), findsOneWidget);
-      verifyNever(() => cubit.deleteSession(sessionId: "s1", deleteWorktree: false, force: false));
+      verifyNever(
+        () => cubit.deleteSession(sessionId: "s1", deleteWorktree: false, deleteSessionFolder: false, force: false),
+      );
     });
   });
 }

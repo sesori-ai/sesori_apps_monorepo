@@ -263,11 +263,23 @@ void main() {
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     // The sidebar's New session row pushes the page over the one it was opened from.
-    unawaited(router.push(const AppRoute.newSession(projectId: "p", projectName: "UI / Core").buildPath()));
+    unawaited(
+      router.push(
+        const AppRoute.newSession(
+          projectId: "p",
+          projectName: "UI / Core",
+          entry: NewSessionEntry.platform(),
+        ).buildPath(),
+      ),
+    );
     await tester.pumpAndSettle();
     expect(
       router.state.uri.toString(),
-      const AppRoute.newSession(projectId: "p", projectName: "UI / Core").buildPath(),
+      const AppRoute.newSession(
+        projectId: "p",
+        projectName: "UI / Core",
+        entry: NewSessionEntry.platform(),
+      ).buildPath(),
     );
     await tester.tap(find.text("created"));
     await tester.pumpAndSettle();
@@ -343,7 +355,11 @@ void main() {
 
   testWidgets("direct newSession back falls back to the home", (tester) async {
     final router = _callbackRouter(
-      initialRoute: const AppRoute.newSession(projectId: "p", projectName: "UI / Core"),
+      initialRoute: const AppRoute.newSession(
+        projectId: "p",
+        projectName: "UI / Core",
+        entry: NewSessionEntry.platform(),
+      ),
     );
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
@@ -353,7 +369,9 @@ void main() {
   });
 
   testWidgets("a new session without a project goes home", (tester) async {
-    final router = _callbackRouter(initialRoute: const AppRoute.newSession(projectId: null, projectName: null));
+    final router = _callbackRouter(
+      initialRoute: const AppRoute.newSession(projectId: null, projectName: null, entry: NewSessionEntry.platform()),
+    );
     addTearDown(router.dispose);
     await tester.pumpWidget(MaterialApp.router(routerConfig: router));
     await tester.pumpAndSettle();
@@ -422,7 +440,6 @@ const _session = Session(
   directory: "/fixture",
   parentID: null,
   branchName: null,
-  pullRequest: null,
   promptDefaults: null,
   lastUserActivityAt: null,
   time: SessionTime(created: 1, updated: 2, archived: 3),
@@ -523,7 +540,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                             ),
                           ),
                         ),
-                        button(label: "close archived", action: archived.onClose),
+                        button(label: "close archived", action: archived.onExit),
                       ],
                       _ => [const Text("home")],
                     },

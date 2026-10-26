@@ -4,11 +4,12 @@ part of "session_list_action_dispatcher.dart";
 /// a delete without depending on which shell rendered the question.
 const Key sessionDeleteConfirmKey = Key("session-delete-confirm");
 
-/// The phone's delete question: what deleting means, the worktree notice when
-/// the session has one, then Cancel and a destructive Delete. Deleting always
-/// removes a dedicated worktree, so the sheet states it rather than asking.
+/// The phone's delete question: what deleting means, the worktree or folder
+/// notice when the session has one, then Cancel and a destructive Delete.
+/// Deleting always removes them, so the sheet states it rather than asking.
 class const _DeleteSessionSheet({
   required final Session session,
+  required final bool deletesFolder,
   required final VoidCallback onConfirm,
 }) extends StatelessWidget {
   @override
@@ -27,6 +28,10 @@ class const _DeleteSessionSheet({
             if (session.hasWorktree) ...[
               const SizedBox(height: 12),
               Text(loc.sessionListDeleteWorktreeNotice, style: bodyStyle),
+            ],
+            if (deletesFolder) ...[
+              const SizedBox(height: 12),
+              Text(loc.sessionListDeleteFolderNotice, style: bodyStyle),
             ],
             const SizedBox(height: 12),
             Row(

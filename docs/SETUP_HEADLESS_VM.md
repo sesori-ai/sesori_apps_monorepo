@@ -30,25 +30,7 @@ apt install git -y
 
 ---
 
-## 4. (Optional) Install GitHub CLI (`gh`)
-
-Sesori uses `gh` only to add GitHub pull request, CI, review, and mergeability
-status to sessions. Git worktrees and local file diffs use `git` directly and
-do not require `gh`, so you can skip this step if you do not need GitHub status
-sync.
-
-Follow the official [GitHub CLI installation instructions](https://cli.github.com/).
-
-To enable GitHub status sync, authenticate as the same OS user that will run
-`sesori-bridge` (`root` in the service below):
-
-```bash
-gh auth login
-```
-
----
-
-## 5. Install OpenCode
+## 4. Install OpenCode
 
 ```bash
 curl -fsSL https://opencode.ai/install | bash
@@ -68,7 +50,7 @@ Expected path example:
 
 ---
 
-## 5.5. Login OpenCode
+## 4.5. Login OpenCode
 
 At least one provider needs to be logged in for it to work.
 
@@ -78,7 +60,7 @@ opencode auth login
 
 ---
 
-## 6. Install Sesori Bridge
+## 5. Install Sesori Bridge
 ```bash
 curl -fsSL https://sesori.com/install | bash
 ````
@@ -97,13 +79,13 @@ Expected path example:
 
 ---
 
-## 6.5 Login Sesori Bridge
+## 5.5 Login Sesori Bridge
 
 Run `sesori-bridge` once and login. After this, stop it.
 
 ---
 
-## 7. (Recommended) Add Swap (for 512MB VMs)
+## 6. (Recommended) Add Swap (for 512MB VMs)
 
 ```bash
 fallocate -l 2G /swapfile
@@ -122,7 +104,7 @@ echo 'vm.swappiness=10' >> /etc/sysctl.conf
 
 ---
 
-## 8. Setup OpenCode systemd service
+## 7. Setup OpenCode systemd service
 
 ```bash
 nano /etc/systemd/system/opencode.service
@@ -152,7 +134,7 @@ systemctl enable --now opencode
 
 ---
 
-## 9. Setup Sesori Bridge systemd service
+## 8. Setup Sesori Bridge systemd service
 
 ```bash
 nano /etc/systemd/system/sesori-bridge.service
@@ -174,32 +156,6 @@ User=root
 WantedBy=multi-user.target
 ```
 
-### Optional: Token authentication for `gh`
-
-Skip this subsection if you ran `gh auth login` in step 4. It is needed only
-when you choose to authenticate GitHub CLI with `GH_TOKEN` or `GITHUB_TOKEN`
-instead of stored `gh` credentials.
-
-Systemd does not inherit variables exported in an SSH shell. Create a root-only
-environment file:
-
-```bash
-install -m 600 /dev/null /etc/sesori-bridge.env
-nano /etc/sesori-bridge.env
-```
-
-Add your token:
-
-```ini
-GH_TOKEN=replace-with-token
-```
-
-Then add this line under `[Service]` in `sesori-bridge.service`:
-
-```ini
-EnvironmentFile=/etc/sesori-bridge.env
-```
-
 Enable + start:
 
 ```bash
@@ -213,7 +169,7 @@ systemctl enable --now sesori-bridge
 
 ---
 
-## 10. Verify services
+## 9. Verify services
 
 ```bash
 systemctl status opencode --no-pager

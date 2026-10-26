@@ -15,7 +15,6 @@ void main() {
         parentID: null,
         title: null,
         time: null,
-        pullRequest: null,
         promptDefaults: null,
         lastUserActivityAt: null,
       );
@@ -32,7 +31,6 @@ void main() {
         "title": null,
         "time": null,
         "summary": {"additions": 4, "deletions": 1, "files": 2},
-        "pullRequest": null,
       });
 
       expect(legacyMissingPluginId, "opencode");

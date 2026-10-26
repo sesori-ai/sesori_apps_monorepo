@@ -37,19 +37,16 @@ void main() {
         projectId: "project-X",
         start: 0,
         limit: 2,
-        verifiedGithubLogin: null,
       );
       final unboundedTail = await repository.getSessionsForProject(
         projectId: "project-X",
         start: 1,
         limit: null,
-        verifiedGithubLogin: null,
       );
       final zeroLimit = await repository.getSessionsForProject(
         projectId: "project-X",
         start: 0,
         limit: 0,
-        verifiedGithubLogin: null,
       );
 
       expect(firstPage.map((session) => session.id), ["root-c", "root-b"]);
@@ -80,7 +77,6 @@ void main() {
         projectId: "project-X",
         start: null,
         limit: null,
-        verifiedGithubLogin: null,
       );
       final detail = await repository.getCatalogSession(sessionId: "stable-id");
 
@@ -129,7 +125,6 @@ void main() {
             projectId: "project-X",
             start: null,
             limit: null,
-            verifiedGithubLogin: null,
           )
           .timeout(const Duration(seconds: 1));
       final detail = await repository.getCatalogSession(sessionId: "root").timeout(const Duration(seconds: 1));
@@ -150,7 +145,6 @@ void main() {
           projectId: "missing",
           start: null,
           limit: null,
-          verifiedGithubLogin: null,
         ),
         throwsA(isA<ProjectNotFoundException>()),
       );
@@ -202,7 +196,6 @@ SessionRepository _repository({required AppDatabase database, required BridgePlu
     plugin: plugin,
     projectsDao: database.projectsDao,
     sessionDao: database.sessionDao,
-    pullRequestDao: database.pullRequestDao,
     unseenCalculator: const SessionUnseenCalculator(),
   );
 }
@@ -223,13 +216,11 @@ Future<void> _insertRoot({
     isDedicated: false,
     createdAt: 1,
     worktreePath: null,
-    branchName: null,
     baseBranch: null,
     baseCommit: null,
     lastAgent: null,
     lastAgentModel: null,
     pluginId: pluginId,
-    preservePullRequestScope: false,
   );
   await database.sessionDao.updateObservedSessionProjection(
     sessionId: sessionId,

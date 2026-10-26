@@ -4,7 +4,6 @@ import "dart:io";
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
@@ -43,7 +42,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       final filesystemRepository = FilesystemRepository(
@@ -106,7 +104,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -121,24 +118,6 @@ void main() {
           time: PluginSessionTime(created: 10, updated: 20, archived: null),
         ),
       ];
-      await _setPullRequestScope(db: db, sessionId: "s1");
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "/repo",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "session-001",
-          prNumber: 21,
-          url: "https://github.com/org/repo/pull/21",
-          title: "Archive PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.unknown,
-          reviewDecision: PrReviewDecision.unknown,
-          checkStatus: PrCheckStatus.unknown,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
 
       final result = await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -157,7 +136,6 @@ void main() {
       expect(persisted?.archivedAt, isNotNull);
       expect(result.id, equals("s1"));
       expect(result.time?.archived, equals(persisted?.archivedAt));
-      expect(result.pullRequest, isNull);
     });
 
     test("archiving an already-archived session emits no unseen change", () async {
@@ -167,7 +145,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: 12345,
         baseCommit: null,
@@ -210,7 +187,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -252,7 +228,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001-legacy",
-        branchName: "session-001-legacy",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -285,7 +260,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -321,7 +295,6 @@ void main() {
         projectId: "/repo",
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: 123,
         baseCommit: null,
@@ -359,7 +332,6 @@ void main() {
         projectId: "/repo",
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: 123,
         baseCommit: null,
@@ -399,7 +371,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -461,7 +432,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: "/repo/.worktrees/stale",
-        branchName: "stale",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -498,7 +468,6 @@ void main() {
         projectId: "/repo",
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -537,7 +506,6 @@ void main() {
         projectId: "/repo",
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -577,7 +545,6 @@ void main() {
         projectId: "/repo",
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -626,7 +593,6 @@ void main() {
         projectId: "/repo",
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -664,7 +630,13 @@ void main() {
       addTearDown(() => scratchRoot.delete(recursive: true));
       final folder = Directory(p.join(scratchRoot.path, "2026-10-25-abc"))..createSync();
       File(p.join(folder.path, "notes.txt")).writeAsStringSync("keep me");
-      await insertTestSessionInDirectory(db: db, sessionId: "s1", projectId: scratchRoot.path, directory: folder.path);
+      await insertTestSessionInDirectory(
+        db: db,
+        sessionId: "s1",
+        pluginId: "fake",
+        projectId: scratchRoot.path,
+        directory: folder.path,
+      );
 
       await handler.handle(
         makeRequest("PATCH", "/session/update/archive"),
@@ -688,7 +660,6 @@ void main() {
         projectId: "/repo",
         isDedicated: true,
         worktreePath: "/repo/.worktrees/session-001",
-        branchName: "session-001",
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -725,7 +696,6 @@ void main() {
         projectId: "/repo",
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         archivedAt: null,
         baseCommit: null,
@@ -757,22 +727,6 @@ void main() {
   });
 }
 
-Future<void> _setPullRequestScope({required AppDatabase db, required String sessionId}) async {
-  await db.projectsDao.setPrCacheGithubLogin(
-    projectId: "/repo",
-    githubLogin: "octocat",
-  );
-  await db.sessionDao.updatePullRequestScopes(
-    updates: [
-      (
-        sessionId: sessionId,
-        currentBranchName: "session-001",
-        currentGithubRepositoryIdentity: "org/repo",
-      ),
-    ],
-  );
-}
-
 UpdateSessionArchiveRequest _archiveRequest({
   required String sessionId,
   required bool archived,
@@ -795,7 +749,6 @@ Future<void> _insertSession({
   required String projectId,
   required bool isDedicated,
   required String? worktreePath,
-  required String? branchName,
   required String? baseBranch,
   required int? archivedAt,
   required String? baseCommit,
@@ -805,14 +758,12 @@ Future<void> _insertSession({
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: pluginId,
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
     isDedicated: isDedicated,
     createdAt: 1,
     worktreePath: worktreePath,
-    branchName: branchName,
     baseBranch: baseBranch,
     baseCommit: baseCommit,
 

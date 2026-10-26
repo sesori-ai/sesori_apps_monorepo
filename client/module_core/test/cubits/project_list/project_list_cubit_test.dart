@@ -526,6 +526,22 @@ void main() {
       ],
     );
 
+    test("a loaded list splits folder projects from No project, keeping both in projects", () async {
+      final folder = testProjectSummary(id: "folder");
+      final scratch = testProjectSummary(id: "scratch").copyWith(kind: ProjectKind.scratch);
+      when(mockProjectRepository.listProjects).thenAnswer(
+        (_) async => ApiResponse.success(Projects(data: [folder, scratch])),
+      );
+      final inventory = buildInventory();
+      final loaded = await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded) as ProjectListLoaded;
+
+      expect(loaded.projects.map((project) => project.id), unorderedEquals(["folder", "scratch"]));
+      expect(loaded.folderProjects, [folder]);
+      expect(loaded.scratchProject, scratch);
+      expect(loaded.kindOf(projectId: "scratch"), ProjectKind.scratch);
+      expect(loaded.kindOf(projectId: "folder"), ProjectKind.folder);
+    });
+
     late Completer<bool> initialConnectCompleter;
 
     blocTest<ProjectListCubit, ProjectListState>(
@@ -1896,28 +1912,61 @@ void main() {
       },
     );
 
-    blocTest<ProjectListCubit, ProjectListState>(
-      "projectTimestampUpdates: ignores unknown project IDs",
-      build: () {
-        when(
-          () => mockProjectRepository.listProjects(),
-        ).thenAnswer(
-          (_) async => ApiResponse.success(
-            Projects(
-              data: [testProjectSummary(id: "A", name: "Alpha")],
-            ),
+    test("projectTimestampUpdates: a project opened elsewhere is listed without a manual refresh", () async {
+      final alpha = testProjectSummary(id: "A", name: "Alpha");
+      final opened = testProjectSummary(id: "opened", name: "Opened");
+      var bridgeProjects = [alpha];
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer((_) async => ApiResponse.success(Projects(data: bridgeProjects)));
+      final listedProjects = <List<ProjectSummary>>[];
+      final listedSubscription = projectListService.listedProjects.listen(listedProjects.add);
+      addTearDown(listedSubscription.cancel);
+      final inventory = buildInventory();
+      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+
+      // Another surface opens the folder: the bridge commits it, then reports
+      // its activity time.
+      bridgeProjects = [alpha, opened];
+      mockSseEventTracker.emitProjectTimestampUpdate({"opened": 1700000000001});
+      await inventory.stateStream.firstWhere(
+        (state) => state is ProjectListLoaded && state.projects.any((project) => project.id == "opened"),
+      );
+
+      verify(() => mockProjectRepository.listProjects()).called(2);
+      // The recent-session inventory admits the project from this snapshot.
+      expect(listedProjects.last.map((project) => project.id), containsAll(["A", "opened"]));
+    });
+
+    test("projectTimestampUpdates: an unlisted project re-reads the list only when it advances", () async {
+      when(
+        () => mockProjectRepository.listProjects(),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          Projects(
+            data: [testProjectSummary(id: "A", name: "Alpha")],
           ),
-        );
-        return buildCubit();
-      },
-      act: (cubit) async {
-        await Future<void>.delayed(Duration.zero);
-        mockSseEventTracker.emitProjectTimestampUpdate({"unknown": 9999999999999});
-        await Future<void>.delayed(Duration.zero);
-      },
-      skip: 1,
-      expect: () => <ProjectListState>[],
-    );
+        ),
+      );
+      final inventory = buildInventory();
+      await inventory.stateStream.firstWhere((state) => state is ProjectListLoaded);
+      clearInteractions(mockProjectRepository);
+
+      // A hidden project's session reports activity: the read finds it still hidden.
+      mockSseEventTracker.emitProjectTimestampUpdate({"hidden": 1});
+      await Future<void>.delayed(Duration.zero);
+      verify(() => mockProjectRepository.listProjects()).called(1);
+
+      // The cumulative map keeps the hidden entry; a listed project's update
+      // does not read again because of it.
+      mockSseEventTracker.emitProjectTimestampUpdate({"hidden": 1, "A": 9999999999999});
+      await Future<void>.delayed(Duration.zero);
+      verifyNever(() => mockProjectRepository.listProjects());
+
+      mockSseEventTracker.emitProjectTimestampUpdate({"hidden": 2, "A": 9999999999999});
+      await Future<void>.delayed(Duration.zero);
+      verify(() => mockProjectRepository.listProjects()).called(1);
+    });
 
     blocTest<ProjectListCubit, ProjectListState>(
       "projectTimestampUpdates: ignores projects with null time",

@@ -271,7 +271,6 @@ class _Fixture() {
     mutations = SessionMutationDispatcher(
       sessionRepository: repository,
       sessionOperationDispatcher: operations,
-      worktreeService: worktree,
     );
     lifecycle = SessionLifecycleService(
       continuations: const EmptySessionContinuations(),
@@ -450,8 +449,7 @@ class _FamilyRepository() implements SessionRepository {
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async => false;
 
   @override
@@ -521,7 +519,6 @@ class _SessionRecord({
     parentID: parentId,
     title: title,
     time: SessionTime(created: 1, updated: 1, archived: archivedAt),
-    pullRequest: null,
     promptDefaults: null,
     lastUserActivityAt: null,
     branchName: "branch-$id",
@@ -546,9 +543,6 @@ class _FamilyWorktreeService() implements WorktreeService {
   }) async => true;
 
   @override
-  Future<bool> branchExists({required String projectId, required String branchName}) async => false;
-
-  @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
@@ -564,6 +558,9 @@ class _MissingFilesystemRepository() implements FilesystemRepository {
 }
 
 class _UnusedScratchRepository() implements ScratchRepository {
+  @override
+  Future<void> ensureScratchProject() => throw UnimplementedError();
+
   @override
   Future<String> createSessionDirectory() => throw UnimplementedError();
 

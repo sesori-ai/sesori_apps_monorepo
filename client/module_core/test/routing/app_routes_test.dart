@@ -110,9 +110,20 @@ void main() {
 
     test("the home and its new session sit under /sessions, the project optional", () {
       expect(const AppRoute.home().buildPath(), "/sessions");
-      expect(const AppRoute.newSession(projectId: null, projectName: null).buildPath(), "/sessions/new");
+      expect(
+        const AppRoute.newSession(
+          projectId: null,
+          projectName: null,
+          entry: NewSessionEntry.platform(),
+        ).buildPath(),
+        "/sessions/new",
+      );
 
-      const chosen = AppRoute.newSession(projectId: "project/1", projectName: "One");
+      const chosen = AppRoute.newSession(
+        projectId: "project/1",
+        projectName: "One",
+        entry: NewSessionEntry.platform(),
+      );
       final uri = Uri.parse(chosen.buildPath());
       expect(uri.path, "/sessions/new");
       final decoded = AppRoute.fromDef(
@@ -121,6 +132,7 @@ void main() {
         queryParams: uri.queryParameters,
       ) as AppRouteNewSession;
       expect((decoded.projectId, decoded.projectName), ("project/1", "One"));
+      expect(decoded.entry, isA<NewSessionPlatformEntry>());
 
       final unchosen = AppRoute.fromDef(
         def: AppRouteDef.newSession,
@@ -128,6 +140,28 @@ void main() {
         queryParams: const {},
       ) as AppRouteNewSession;
       expect((unchosen.projectId, unchosen.projectName), (null, null));
+      expect(unchosen.entry, isA<NewSessionPlatformEntry>());
+    });
+
+    test("a new session revealed from the + carries its origin through the URL", () {
+      const revealed = AppRoute.newSession(
+        projectId: "p1",
+        projectName: null,
+        entry: NewSessionEntry.reveal(x: 0.875, y: 0.9),
+      );
+      final uri = Uri.parse(revealed.buildPath());
+      expect(uri.queryParameters, {"project": "p1", "reveal": "0.8750,0.9000"});
+      final decoded = AppRouteNewSession.fromParams(queryParams: uri.queryParameters);
+      expect(decoded.entry, isA<NewSessionRevealEntry>().having((entry) => (entry.x, entry.y), "origin", (0.875, 0.9)));
+
+      // A malformed or off-screen origin opens the page as any other entry does.
+      for (final malformed in ["", "0.5", "a,b", "0.5,1.5", "-0.1,0.5", "NaN,0.5", "0.1,0.2,0.3"]) {
+        expect(
+          AppRouteNewSession.fromParams(queryParams: {"reveal": malformed}).entry,
+          isA<NewSessionPlatformEntry>(),
+          reason: malformed,
+        );
+      }
     });
 
     test("session detail with name encodes path params exactly once and round-trips", () {

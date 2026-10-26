@@ -7,8 +7,6 @@ import "package:path/path.dart" as p;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
 
 import "../api/database/daos/projects_dao.dart";
-import "../api/database/daos/session_dao.dart";
-import "../api/database/tables/session_table.dart";
 import "../api/filesystem_api.dart";
 import "../api/git_cli_api.dart";
 import "../runtime/plugin_runtime.dart";
@@ -18,31 +16,10 @@ import "models/worktree_types.dart";
 class WorktreeRepository({
   required final String _worktreesDirectory,
   required final ProjectsDao _projectsDao,
-  required final SessionDao _sessionDao,
   required final FilesystemApi _filesystemApi,
   required final GitCliApi _gitApi,
   required final PluginRuntime _runtime,
 }) {
-  Future<({String path, String branchName, String baseBranch, String baseCommit})?> getParentWorktree({
-    required String parentSessionId,
-  }) async {
-    final parentWorktree = await _sessionDao.getSession(sessionId: parentSessionId);
-    if (parentWorktree case SessionDto(
-      worktreePath: final worktreePath?,
-      branchName: final branchName?,
-      baseBranch: final parentBaseBranch,
-      baseCommit: final parentBaseCommit,
-    )) {
-      return (
-        path: worktreePath,
-        branchName: branchName,
-        baseBranch: parentBaseBranch ?? "",
-        baseCommit: parentBaseCommit ?? "",
-      );
-    }
-    return null;
-  }
-
   Future<bool> isGitInitialized({required String projectPath}) {
     return _gitApi.isGitInitialized(projectPath: projectPath);
   }
@@ -67,61 +44,14 @@ class WorktreeRepository({
     return _gitApi.hasAtLeastOneCommit(projectPath: projectPath);
   }
 
-  Future<bool> branchExists({
-    required String projectPath,
-    required String branchName,
-  }) {
-    return _gitApi.branchExists(projectPath: projectPath, branchName: branchName);
-  }
-
-  Future<String?> getCurrentBranchName({required String worktreePath}) async {
-    final result = await _gitApi.getCurrentBranch(projectPath: worktreePath);
-    return switch (result) {
-      GitCurrentBranchNamed(:final branchName) => branchName,
-      _ => null,
-    };
-  }
-
-  Future<bool> isValidBranchName({required String branchName}) {
-    return _gitApi.isValidBranchName(branchName: branchName);
-  }
-
-  Future<bool> hasUpstream({
-    required String worktreePath,
-    required String branchName,
-  }) {
-    return _gitApi.hasUpstream(projectPath: worktreePath, branchName: branchName);
-  }
-
-  Future<bool> hasRemoteBranch({
-    required String worktreePath,
-    required String branchName,
-  }) {
-    return _gitApi.hasRemoteBranch(projectPath: worktreePath, branchName: branchName);
-  }
-
-  Future<void> renameBranch({
-    required String worktreePath,
-    required String oldBranchName,
-    required String newBranchName,
-  }) {
-    return _gitApi.renameBranch(
-      projectPath: worktreePath,
-      oldBranchName: oldBranchName,
-      newBranchName: newBranchName,
-    );
-  }
-
   Future<bool> createWorktree({
     required String projectPath,
     required String worktreePath,
-    required String branchName,
     required String startPoint,
   }) {
     return _gitApi.createWorktree(
       projectPath: projectPath,
       worktreePath: worktreePath,
-      branchName: branchName,
       startPoint: startPoint,
     );
   }

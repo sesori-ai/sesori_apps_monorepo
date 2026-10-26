@@ -8,6 +8,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
+import "package:sesori_mobile/core/routing/circular_reveal_page.dart";
 import "package:sesori_mobile/core/routing/imperative_pane_route.dart";
 import "package:sesori_mobile/features/home/home_screen.dart";
 import "package:sesori_mobile/features/login/login_screen.dart";
@@ -132,8 +133,15 @@ void main() {
     });
 
     test("carries an optional project for newSession", () {
-      expect(const AppRoute.newSession(projectId: null, projectName: null).buildPath(), "/sessions/new");
-      final named = const AppRoute.newSession(projectId: "proj-42", projectName: "Project One").buildPath();
+      expect(
+        const AppRoute.newSession(projectId: null, projectName: null, entry: NewSessionEntry.platform()).buildPath(),
+        "/sessions/new",
+      );
+      final named = const AppRoute.newSession(
+        projectId: "proj-42",
+        projectName: "Project One",
+        entry: NewSessionEntry.platform(),
+      ).buildPath();
       expect(named, startsWith("/sessions/new?"));
       expect(Uri.parse(named).queryParameters, {"project": "proj-42", "name": "Project One"});
     });
@@ -202,6 +210,18 @@ void main() {
       ) as MaterialPage<void>;
       final pushedScreen = (pushed.child as NavigatorPopHandler<void>).child as HarnessesSettingsScreen;
       expect(pushedScreen.child, same(child));
+    });
+
+    // Archived is a Settings page, so it pushes with the platform transition
+    // instead of rising as a modal.
+    test("archive shell pushes as a standard page", () {
+      final page = buildArchivedSessionsRoute().pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(),
+        const SizedBox(),
+      );
+      expect(page, isA<MaterialPage<void>>());
+      expect((page as MaterialPage<void>).fullscreenDialog, isFalse);
     });
 
     test("newSession route builds NewSessionScreen", () {
@@ -315,6 +335,29 @@ void main() {
       expect(screen.sessionId, "ses-99");
       expect(screen.sessionTitle, "Debug session");
       expect(screen.readOnly, isTrue);
+    });
+
+    test("newSession grows out of the + only when its URL carries the + origin", () {
+      final newSessionRoute = _newSessionRoute();
+
+      final platform = newSessionRoute.pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(queryParameters: {"project": "proj-42"}),
+      );
+      final revealed = newSessionRoute.pageBuilder!(
+        _FakeBuildContext(),
+        _FakeGoRouterState(queryParameters: {"reveal": "0.8750,0.9000"}),
+      );
+
+      expect(platform, isA<CustomTransitionPage<void>>());
+      expect(revealed, isA<CircularRevealPage>());
+      final page = revealed as CircularRevealPage;
+      expect(page.origin, const FractionalOffset(0.875, 0.9));
+      // Choosing a project replaces the page with one that still leaves by the +.
+      expect(
+        (page.child as NewSessionScreen).entry,
+        isA<NewSessionRevealEntry>().having((entry) => entry.x, "x", 0.875).having((entry) => entry.y, "y", 0.9),
+      );
     });
 
     test("diffs route preserves typed route decoding and stable key", () {
@@ -525,6 +568,11 @@ GoRoute _sessionDetailRoute() {
   return sessionsRoute.routes.whereType<GoRoute>().singleWhere(
     (route) => route.path == ":$projectIdPathParam/:$sessionIdPathParam",
   );
+}
+
+GoRoute _newSessionRoute() {
+  final sessionsRoute = _sessionShellRoute().routes.whereType<GoRoute>().single;
+  return sessionsRoute.routes.whereType<GoRoute>().singleWhere((route) => route.path == "new");
 }
 
 GoRoute _sessionDiffsRoute() {

@@ -24,7 +24,12 @@ void main() {
 
   void stubDelete({required bool deleteWorktree, required List<shared.CleanupIssue>? refusedWith}) {
     final call = when(
-      () => repository.deleteSession(sessionId: "s1", deleteWorktree: deleteWorktree, force: false),
+      () => repository.deleteSession(
+        sessionId: "s1",
+        deleteWorktree: deleteWorktree,
+        deleteSessionFolder: false,
+        force: false,
+      ),
     );
     if (refusedWith == null) {
       call.thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -37,7 +42,12 @@ void main() {
     stubDelete(deleteWorktree: true, refusedWith: const [shared.CleanupIssue.sharedWorktree()]);
     stubDelete(deleteWorktree: false, refusedWith: null);
 
-    final response = await service.deleteSession(sessionId: "s1", deleteWorktree: true, force: false);
+    final response = await service.deleteSession(
+      sessionId: "s1",
+      deleteWorktree: true,
+      deleteSessionFolder: false,
+      force: false,
+    );
 
     expect(
       response,
@@ -47,26 +57,32 @@ void main() {
         SessionCleanupOutcome.sharedWorktreeKept,
       ),
     );
-    verify(() => repository.deleteSession(sessionId: "s1", deleteWorktree: false, force: false)).called(1);
+    verify(
+      () => repository.deleteSession(sessionId: "s1", deleteWorktree: false, deleteSessionFolder: false, force: false),
+    ).called(1);
   });
 
   test("a refusal that names no issue is never retried", () async {
     stubDelete(deleteWorktree: true, refusedWith: const []);
 
     await expectLater(
-      service.deleteSession(sessionId: "s1", deleteWorktree: true, force: false),
+      service.deleteSession(sessionId: "s1", deleteWorktree: true, deleteSessionFolder: false, force: false),
       throwsA(isA<SessionCleanupRejectedException>()),
     );
-    verifyNever(() => repository.deleteSession(sessionId: "s1", deleteWorktree: false, force: false));
+    verifyNever(
+      () => repository.deleteSession(sessionId: "s1", deleteWorktree: false, deleteSessionFolder: false, force: false),
+    );
   });
 
   test("a refusal without worktree cleanup requested is not retried again", () async {
     stubDelete(deleteWorktree: false, refusedWith: const [shared.CleanupIssue.sharedWorktree()]);
 
     await expectLater(
-      service.deleteSession(sessionId: "s1", deleteWorktree: false, force: false),
+      service.deleteSession(sessionId: "s1", deleteWorktree: false, deleteSessionFolder: false, force: false),
       throwsA(isA<SessionCleanupRejectedException>()),
     );
-    verify(() => repository.deleteSession(sessionId: "s1", deleteWorktree: false, force: false)).called(1);
+    verify(
+      () => repository.deleteSession(sessionId: "s1", deleteWorktree: false, deleteSessionFolder: false, force: false),
+    ).called(1);
   });
 }

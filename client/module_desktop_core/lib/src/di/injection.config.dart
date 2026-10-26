@@ -44,6 +44,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/installed_desktop_bu
     as _i234;
 import 'package:sesori_desktop_core/src/foundation/platform/launch_at_login.dart'
     as _i589;
+import 'package:sesori_desktop_core/src/foundation/platform/sparkle_update_engine.dart'
+    as _i1069;
 import 'package:sesori_desktop_core/src/foundation/platform/window_host.dart'
     as _i732;
 import 'package:sesori_desktop_core/src/orchestration/desktop_bridge_takeover_orchestrator.dart'
@@ -209,15 +211,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i737.DesktopUpdateRepository>(
-      () => _i737.DesktopUpdateRepository(
-        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
-        relaunchApi: gh<_i67.DesktopRelaunchApi>(),
-        feedApi: gh<_i414.DesktopUpdateFeedApi>(),
-        feedValidator: gh<_i265.DesktopUpdateFeedValidator>(),
-        velopackApi: gh<_i862.VelopackUpdateApi>(),
-      ),
-    );
     gh.lazySingleton<_i171.ControlCommandRepository>(
       () => _i171.ControlCommandRepository(api: gh<_i639.ControlChannelApi>()),
     );
@@ -248,6 +241,16 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i494.DesktopInstanceService>(
       () => _i494.DesktopInstanceService(
         repository: gh<_i210.DesktopInstanceRepository>(),
+      ),
+    );
+    gh.lazySingleton<_i737.DesktopUpdateRepository>(
+      () => _i737.DesktopUpdateRepository(
+        bundleSource: gh<_i234.InstalledDesktopBundleSource>(),
+        relaunchApi: gh<_i67.DesktopRelaunchApi>(),
+        feedApi: gh<_i414.DesktopUpdateFeedApi>(),
+        feedValidator: gh<_i265.DesktopUpdateFeedValidator>(),
+        velopackApi: gh<_i862.VelopackUpdateApi>(),
+        sparkleEngine: gh<_i1069.SparkleUpdateEngine>(),
       ),
     );
     gh.lazySingleton<_i68.WindowBoundsService>(

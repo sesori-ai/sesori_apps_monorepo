@@ -71,175 +71,6 @@ void main() {
     );
   });
 
-  test("getCurrentBranch removes one line ending without trimming the branch", () async {
-    for (final testCase in [
-      (stdout: "Feature/Current\n", expected: "Feature/Current"),
-      (stdout: "\u2003Feature/Current\u2003\r\n", expected: "\u2003Feature/Current\u2003"),
-      (stdout: "Feature/Current\r", expected: "Feature/Current"),
-      (stdout: "Feature/Current\n\n", expected: "Feature/Current\n"),
-    ]) {
-      final processRunner = _RecordingProcessRunner(stdout: testCase.stdout);
-      final api = GitCliApi(
-        streamingProcessRunner: const StreamingProcessRunner(),
-        processRunner: processRunner,
-        gitPathExists: ({required String gitPath}) => true,
-      );
-
-      final result = await api.getCurrentBranch(projectPath: "/project");
-
-      expect(result, isA<GitCurrentBranchNamed>());
-      expect((result as GitCurrentBranchNamed).branchName, testCase.expected);
-      expect(processRunner.arguments, ["symbolic-ref", "--quiet", "--short", "HEAD"]);
-      expect(processRunner.environment, const {"LC_ALL": "C"});
-    }
-  });
-
-  test("getCurrentBranch distinguishes detached, non-git, and missing directories", () async {
-    final detachedApi = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: _RecordingProcessRunner(exitCode: 1),
-      gitPathExists: ({required String gitPath}) => true,
-    );
-    final nonGitApi = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: _RecordingProcessRunner(exitCode: 128, stderr: "fatal: not a git repository"),
-      gitPathExists: ({required String gitPath}) => true,
-    );
-    final missingRunner = _RecordingProcessRunner();
-    final missingApi = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: missingRunner,
-      gitPathExists: ({required String gitPath}) => false,
-    );
-
-    expect(await detachedApi.getCurrentBranch(projectPath: "/detached"), isA<GitCurrentBranchDetached>());
-    expect(await nonGitApi.getCurrentBranch(projectPath: "/plain"), isA<GitCurrentBranchNotRepository>());
-    expect(
-      await missingApi.getCurrentBranch(projectPath: "/missing"),
-      isA<GitCurrentBranchMissingDirectory>(),
-    );
-    expect(missingRunner.arguments, isNull);
-  });
-
-  test("getCurrentBranch preserves unexpected git failures", () async {
-    final api = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: _RecordingProcessRunner(exitCode: 2, stderr: "unexpected failure"),
-      gitPathExists: ({required String gitPath}) => true,
-    );
-
-    await expectLater(
-      api.getCurrentBranch(projectPath: "/project"),
-      throwsA(isA<ProcessException>()),
-    );
-  });
-
-  test("isValidBranchName delegates to git check-ref-format", () async {
-    for (final testCase in [
-      (exitCode: 0, stdout: "generated-branch\n", expected: true),
-      (exitCode: 1, stdout: "", expected: false),
-      (exitCode: 128, stdout: "", expected: false),
-      (exitCode: 0, stdout: "previous-branch\n", expected: false),
-    ]) {
-      final processRunner = _RecordingProcessRunner(exitCode: testCase.exitCode, stdout: testCase.stdout);
-      final api = GitCliApi(
-        streamingProcessRunner: const StreamingProcessRunner(),
-        processRunner: processRunner,
-        gitPathExists: ({required String gitPath}) => true,
-      );
-
-      expect(await api.isValidBranchName(branchName: "generated-branch"), testCase.expected);
-      expect(processRunner.arguments, ["check-ref-format", "--branch", "generated-branch"]);
-    }
-  });
-
-  test("hasUpstream reads the exact local branch ref", () async {
-    final processRunner = _RecordingProcessRunner(stdout: "refs/remotes/origin/initial-branch\n");
-    final api = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: processRunner,
-      gitPathExists: ({required String gitPath}) => true,
-    );
-
-    expect(
-      await api.hasUpstream(projectPath: "/worktree", branchName: "initial-branch"),
-      isTrue,
-    );
-    expect(processRunner.workingDirectory, "/worktree");
-    expect(processRunner.arguments, [
-      "for-each-ref",
-      "--format=%(upstream)",
-      "refs/heads/initial-branch",
-    ]);
-  });
-
-  test("hasRemoteBranch finds the exact branch name under any remote", () async {
-    final processRunner = _RecordingProcessRunner(
-      results: [
-        ProcessResult(1, 0, "origin\nteam/origin\n", ""),
-        ProcessResult(
-          1,
-          0,
-          "refs/remotes/origin/HEAD\nrefs/remotes/team/origin/initial-branch\n",
-          "",
-        ),
-      ],
-    );
-    final api = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: processRunner,
-      gitPathExists: ({required String gitPath}) => true,
-    );
-
-    expect(
-      await api.hasRemoteBranch(projectPath: "/worktree", branchName: "initial-branch"),
-      isTrue,
-    );
-    expect(processRunner.workingDirectory, "/worktree");
-    expect(processRunner.invocations, [
-      ["remote"],
-      ["for-each-ref", "--format=%(refname)", "refs/remotes"],
-    ]);
-  });
-
-  test("renameBranch uses explicit old and new refs and preserves failures", () async {
-    final processRunner = _RecordingProcessRunner();
-    final api = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: processRunner,
-      gitPathExists: ({required String gitPath}) => true,
-    );
-
-    await api.renameBranch(
-      projectPath: "/worktree",
-      oldBranchName: "initial-branch",
-      newBranchName: "generated-branch",
-    );
-
-    expect(processRunner.workingDirectory, "/worktree");
-    expect(processRunner.arguments, [
-      "branch",
-      "-m",
-      "--",
-      "initial-branch",
-      "generated-branch",
-    ]);
-
-    final failingApi = GitCliApi(
-      streamingProcessRunner: const StreamingProcessRunner(),
-      processRunner: _RecordingProcessRunner(exitCode: 128, stderr: "rename failed"),
-      gitPathExists: ({required String gitPath}) => true,
-    );
-    await expectLater(
-      failingApi.renameBranch(
-        projectPath: "/worktree",
-        oldBranchName: "initial-branch",
-        newBranchName: "generated-branch",
-      ),
-      throwsA(isA<ProcessException>()),
-    );
-  });
-
   test("streams only the requested tracked-file prefix through the injected process boundary", () async {
     final process = _FakeStreamingProcess(
       stdoutChunks: [utf8.encode("a.dart\u0000b."), utf8.encode("dart\u0000c.dart\u0000")],
@@ -317,7 +148,7 @@ void main() {
     expect(runner.runCount, 0);
   });
 
-  group("inspectWorktreeSafety in a real repository", () {
+  group("worktrees in a real repository", () {
     final api = GitCliApi(
       streamingProcessRunner: const StreamingProcessRunner(),
       processRunner: ProcessRunner(),
@@ -351,6 +182,24 @@ void main() {
     });
 
     tearDown(() => root.delete(recursive: true));
+
+    test("createWorktree starts a detached HEAD at the start point without creating a branch", () async {
+      final baseBranch = await git(cwd: repoPath, args: ["rev-parse", "--abbrev-ref", "HEAD"]);
+      await commit(cwd: repoPath, message: "tip");
+      final tipCommit = await git(cwd: repoPath, args: ["rev-parse", "HEAD"]);
+
+      final created = await api.createWorktree(
+        projectPath: repoPath,
+        worktreePath: worktreePath,
+        startPoint: baseBranch,
+      );
+
+      expect(created, isTrue);
+      final symbolicRef = await Process.run("git", ["symbolic-ref", "-q", "HEAD"], workingDirectory: worktreePath);
+      expect(symbolicRef.exitCode, isNot(0), reason: "HEAD must be detached");
+      expect(await git(cwd: worktreePath, args: ["rev-parse", "HEAD"]), tipCommit);
+      expect(await git(cwd: repoPath, args: ["for-each-ref", "--format=%(refname:short)", "refs/heads"]), baseBranch);
+    });
 
     test("flags a commit made on a detached HEAD", () async {
       await git(cwd: repoPath, args: ["worktree", "add", "--quiet", "--detach", worktreePath, baseCommit]);
@@ -387,10 +236,8 @@ class _RecordingProcessRunner({
   final String stdout = "",
   final String stderr = "",
   final int exitCode = 0,
-  final List<ProcessResult>? results,
 }) implements ProcessRunner {
   List<String>? arguments;
-  final List<List<String>> invocations = [];
   String? workingDirectory;
   Map<String, String>? environment;
 
@@ -404,10 +251,8 @@ class _RecordingProcessRunner({
   }) async {
     expect(executable, "git");
     this.arguments = arguments;
-    invocations.add(arguments);
     this.workingDirectory = workingDirectory;
     this.environment = environment;
-    if (results case final results? when results.isNotEmpty) return results.removeAt(0);
     return ProcessResult(1, exitCode, stdout, stderr);
   }
 

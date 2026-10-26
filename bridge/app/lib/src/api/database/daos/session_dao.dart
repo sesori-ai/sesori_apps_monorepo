@@ -36,12 +36,7 @@ typedef SessionProjectPathRow = ({
   String backendSessionId,
   String projectPath,
   String? worktreePath,
-});
-
-typedef SessionPullRequestScopeUpdate = ({
-  String sessionId,
-  String? currentBranchName,
-  String? currentGithubRepositoryIdentity,
+  String directory,
 });
 
 @DriftAccessor(tables: [SessionTable, ProjectsTable, DeletedSessionsTable])
@@ -103,29 +98,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     return updatedRows == 1;
   }
 
-  Future<bool> replaceGeneratedBranch({
-    required String sessionId,
-    required String expectedBranchName,
-    required String branchName,
-  }) async {
-    final updatedRows =
-        await (update(sessionTable)..where(
-              (table) =>
-                  table.sessionId.equals(sessionId) &
-                  table.branchName.equals(expectedBranchName) &
-                  (table.currentBranchName.isNull() |
-                      table.currentBranchName.equals(expectedBranchName) |
-                      table.currentBranchName.equals(branchName)),
-            ))
-            .write(
-              SessionTableCompanion(
-                branchName: Value(branchName),
-                currentBranchName: Value(branchName),
-              ),
-            );
-    return updatedRows == 1;
-  }
-
   /// Records a delete tombstone for [backendSessionId]. Idempotent — re-deleting an
   /// already-tombstoned session keeps the original timestamp.
   Future<void> insertSessionTombstone({
@@ -178,14 +150,12 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     required bool isDedicated,
     required int createdAt,
     required String? worktreePath,
-    required String? branchName,
     required String? baseBranch,
     required String? baseCommit,
     required String? lastAgent,
     required AgentModel? lastAgentModel,
     required bool fastMode,
     required String pluginId,
-    required bool preservePullRequestScope,
   }) async {
     final project = await (select(
       projectsTable,
@@ -202,7 +172,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         parentSessionId: const Value(null),
         directory: Value(directory),
         worktreePath: Value(worktreePath),
-        branchName: Value(branchName),
+        branchName: const Value(null),
         isDedicated: Value(isDedicated),
         archivedAt: const Value(null),
         baseBranch: Value(baseBranch),
@@ -229,9 +199,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
           // Only the worktree/agent state the create flow owns — never clobber
           // created_at or the unseen timestamps that a placeholder may have set.
           worktreePath: Value(worktreePath),
-          branchName: Value(branchName),
-          currentBranchName: preservePullRequestScope ? const Value.absent() : const Value(null),
-          currentGithubRepositoryIdentity: preservePullRequestScope ? const Value.absent() : const Value(null),
+          branchName: const Value(null),
           isDedicated: Value(isDedicated),
           baseBranch: Value(baseBranch),
           baseCommit: Value(baseCommit),
@@ -276,26 +244,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
 
   Future<SessionDto?> getSession({required String sessionId}) async {
     return await (select(sessionTable)..where((t) => t.sessionId.equals(sessionId))).getSingleOrNull();
-  }
-
-  Future<void> updatePullRequestScopes({
-    required List<SessionPullRequestScopeUpdate> updates,
-  }) async {
-    if (updates.isEmpty) {
-      return;
-    }
-    await batch((batch) {
-      for (final update in updates) {
-        batch.update(
-          sessionTable,
-          SessionTableCompanion(
-            currentBranchName: Value(update.currentBranchName),
-            currentGithubRepositoryIdentity: Value(update.currentGithubRepositoryIdentity),
-          ),
-          where: (table) => table.sessionId.equals(update.sessionId),
-        );
-      }
-    });
   }
 
   /// Upserts the supplied rows without applying merge or import policy.
@@ -556,10 +504,6 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
-  Future<List<SessionDto>> getSessionsByProject({required String projectId}) async {
-    return await (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
-  }
-
   /// The stored project path for every session recorded for [pluginId], via a
   /// join from each session's projectId to its project row. This is how the
   /// bridge attributes a derive-style plugin's sessions to projects: the row
@@ -571,7 +515,8 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   /// Each row also carries the session's dedicated [worktreePath] (null for
   /// sessions running in the project directory itself): a directory-scoped
   /// backend enumerates a worktree session under its own cwd, so callers feed
-  /// these paths into the plugin's enumeration hints.
+  /// these paths into the plugin's enumeration hints, as they do with the
+  /// [directory] of a project-less session's scratch folder.
   Future<List<SessionProjectPathRow>> getSessionProjectPaths({
     required String pluginId,
   }) async {
@@ -586,6 +531,7 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
           backendSessionId: row.readTable(sessionTable).backendSessionId,
           projectPath: row.readTable(projectsTable).path,
           worktreePath: row.readTable(sessionTable).worktreePath,
+          directory: row.readTable(sessionTable).directory,
         ),
     ];
   }
@@ -682,23 +628,15 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
   Future<List<SessionDto>> getOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async {
-    if (worktreePath == null && branchName == null) return [];
-
-    return await (select(sessionTable)..where((t) {
-          final base = t.sessionId.equals(sessionId).not() & t.projectId.equals(projectId) & t.archivedAt.isNull();
-
-          final sharingCondition = switch ((worktreePath, branchName)) {
-            (final wt?, final br?) => t.worktreePath.equals(wt) | t.branchName.equals(br),
-            (final wt?, null) => t.worktreePath.equals(wt),
-            (null, final br?) => t.branchName.equals(br),
-            (null, null) => throw StateError("unreachable"), // guarded by early return above
-          };
-
-          return base & sharingCondition;
-        }))
+    return await (select(sessionTable)..where(
+          (t) =>
+              t.sessionId.equals(sessionId).not() &
+              t.projectId.equals(projectId) &
+              t.archivedAt.isNull() &
+              t.worktreePath.equals(worktreePath),
+        ))
         .get();
   }
 

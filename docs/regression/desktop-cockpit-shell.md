@@ -49,13 +49,15 @@ The main pane hosts one full-width routed page.
 - Windows narrower than 760 pixels temporarily hide the sidebar without changing saved preferences; the
   restore button shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
   restores the user's choice. The native minimum window remains 560 × 480.
-- New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects it
-  reads Add project and opens the shared folder dialog, and the project it adds opens in New session. Search under it opens the command palette. Below them
-  the project filter, "All projects ▾" or the chosen project's name, heads the shared all-projects session list
-  beside Refresh: it opens the shared project picker, and its pick is the shared filter that lasts for the app's
-  run. The list is the phone's (see `projects-and-sessions.md`): its search field, All, Running and Unread
-  chips, date headings with running sessions under Today, launching rows, the catalog scan row and
-  project-local retry. Each row names its project while the filter shows all of them, and opens its session in
+- New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects at
+  all, "No project" included, it reads Add project and opens the shared folder dialog, and the project it adds
+  opens in New session. Search under it opens the command palette. Below them the project filter, "All projects
+  ▾", "No project ▾" or the chosen project's name, heads the shared all-projects session list beside Refresh: it
+  opens the shared project picker, whose footer always holds "All projects" (beside "No project" when the bridge
+  has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see
+  `projects-and-sessions.md`): its search field, All, Running and Unread chips, date headings with running sessions
+  under Today, launching rows, the catalog scan row and project-local retry. Each row names its project while the
+  filter shows all of them ("No project" rows name none), and opens its session in
   that project; the open session is highlighted. Adding a project otherwise lives on home and in Settings ›
   Projects. Icon/status hints and truncated-label hints remain useful, while fully visible labels need no
   duplicate tooltip.
@@ -101,11 +103,7 @@ The main pane hosts one full-width routed page.
   below; a button press or the keyboard hangs the menu off its trigger as before. A row shows a shortcut only
   where the desktop registers a real binding for the same action. The phone installs no scope and keeps its
   long-press presentation.
-- Filtered to one project, the sidebar's list claims that project's viewing once its sessions load, as the
-  phone's list does; All projects claims nothing, since the bridge is told one project. The cockpit reports the
-  open sidebar as the visible list pane, so the new session and Changes pages keep that claim only while the
-  sidebar shows. A session action menu never claims
-  project viewing. Session mutations use the existing action controller and a stable sidebar presentation
+- Session mutations use the existing action controller and a stable sidebar presentation
   context. Opening a session menu first retains its
   action owner even if reconciliation removes the row/group; dismissal releases it, while selection transfers to the
   confirmation or admitted operation lease. Mark-read, rename, archive and delete finish handling before disposal.
@@ -134,12 +132,11 @@ The main pane hosts one full-width routed page.
   Closed or superseded reads cannot seed shared unseen state, and an older
   completion cannot release a newer pending read.
 - The sidebar is the only navigation pane. The home, archived sessions, new session, detail, and diffs
-  are sibling main-pane routes. The sidebar's shared list is the only full list owner; session action menus
-  remain non-viewing action scopes.
+  are sibling main-pane routes. The sidebar's shared list is the only full list owner.
 - The settings window's Archived sessions row, below its tabs on every tab, closes the window and opens the
   Archived sessions page over the current page: the shared archived list across
-  projects, read through the sidebar's shared project filter, with each row naming its project. It never claims
-  project viewing. A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
+  projects, read through the sidebar's shared project filter, with each row naming its project.
+  A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
   returns to the page it opened over, or home when there is none, and opening Archived while it is the top page
   does nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
   card say why.
@@ -187,12 +184,13 @@ The main pane hosts one full-width routed page.
   timestamp gutter still fits inside the designed window; past that width the peek degrades to the phone's
   behaviour during the drag rather than breaking, and a settled label is never cut. The phone keeps its
   floating glass bar and one full-width transcript and composer.
-- Home is the new-session composer alone, in the sidebar list's default project (its filter, else the newest
-  session's project), as `session-creation-and-options.md` details: the project holds once it lands, another
-  filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank, and with no
-  default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there are
-  no projects. A session started from home opens in its project. Loading projects is labelled and failures retry
-  the shared inventory. A disconnected home branches on
+- Home is the new-session composer alone, in the sidebar list's default project (its filter, else "No project",
+  else the newest session's project), as `session-creation-and-options.md` details: the project holds once it
+  lands, another filter or a header pick moves it with its own draft, a still-loading list leaves the pane blank,
+  and with no default the shared "Choose a project" prompt shows instead, offering only "Open folder…" when there
+  are no projects; a bridge whose only project is "No project" still shows the composer, in "No project". A
+  session started from home opens in its project. Loading projects is labelled and failures retry the shared
+  inventory. A disconnected home branches on
   the computer being viewed: this computer's own bridge (or an unknown target) offers supervised recovery without
   CLI setup; another computer shows the phone's offline body instead: "<computer> is offline" (the generic
   "Bridge offline" until the list names it), its last-seen time when the list has one, a line to start the
@@ -318,9 +316,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   shortcut label, a button-opened menu still hung off its trigger, the touch presentation where no scope
   exists, and the desktop app installing the pointer scope.
 - The sidebar's shared list across projects, a row opening its session in its own project, the filter
-  narrowing the list and returning to All projects, project-local retry, the list hearing whether the sidebar
-  shows it through collapse, restore and narrow windows, and a filtered sidebar declaring its project
-  (`desktop_cockpit_shell_test`).
+  narrowing the list and returning to All projects, and project-local retry (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks.
 - The session page toolbar above a centred transcript column wider than the centred composer's: a subtask's crumb,
@@ -422,7 +418,6 @@ after the user picked another one.
 - `client/module_app_ui/lib/src/features/session_list/all_sessions_list.dart`
 - `client/module_app_ui/lib/src/features/project_picker/project_picker.dart`
 - `client/module_core/lib/src/cubits/all_sessions/all_sessions_cubit.dart`
-- `client/module_core/lib/src/services/project_viewing_service.dart`
 - `client/desktop/lib/core/widgets/desktop_window_drag_area.dart`
 - `client/desktop/lib/core/widgets/desktop_window_brightness.dart`
 - `client/desktop/lib/core/platform/flutter_window_host.dart`

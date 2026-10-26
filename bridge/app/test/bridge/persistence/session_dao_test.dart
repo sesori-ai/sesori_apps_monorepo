@@ -41,26 +41,15 @@ void main() {
       // The create flow inserts the same session under the original project id
       // (its project row exists first, satisfying the FK).
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
-      await db.sessionDao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "s1",
-            currentBranchName: "stale-branch",
-            currentGithubRepositoryIdentity: "stale/repository",
-          ),
-        ],
-      );
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "/repo",
         isDedicated: true,
         createdAt: 200,
         worktreePath: "/repo/.worktrees/s1",
-        branchName: "s1",
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -72,58 +61,6 @@ void main() {
       // a placeholder may have set) is preserved.
       expect(dto?.projectId, equals("/repo"));
       expect(dto?.createdAt, equals(100));
-      expect(dto?.currentBranchName, isNull);
-      expect(dto?.currentGithubRepositoryIdentity, isNull);
-    });
-
-    test("preserves PR scope when retrying the same project and branch binding", () async {
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
-      await dao.insertSession(
-        fastMode: false,
-        pluginId: "opencode",
-        preservePullRequestScope: false,
-        sessionId: "s1",
-        backendSessionId: "s1",
-        projectId: "/repo",
-        isDedicated: true,
-        createdAt: 100,
-        worktreePath: "/repo/.worktrees/s1",
-        branchName: "feature/one",
-        baseBranch: "main",
-        baseCommit: "abc123",
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      await dao.updatePullRequestScopes(
-        updates: const [
-          (
-            sessionId: "s1",
-            currentBranchName: "feature/one",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
-      );
-
-      await dao.insertSession(
-        fastMode: false,
-        pluginId: "opencode",
-        preservePullRequestScope: true,
-        sessionId: "s1",
-        backendSessionId: "s1",
-        projectId: "/repo",
-        isDedicated: true,
-        createdAt: 200,
-        worktreePath: "/repo/.worktrees/s1",
-        branchName: "feature/one",
-        baseBranch: "main",
-        baseCommit: "abc123",
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-
-      final dto = await dao.getSession(sessionId: "s1");
-      expect(dto?.currentBranchName, "feature/one");
-      expect(dto?.currentGithubRepositoryIdentity, "org/repo");
     });
 
     test("looks up a divergent stable id by its plugin/backend binding", () async {
@@ -131,14 +68,12 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "stable-root-id",
         backendSessionId: "backend-root-id",
         projectId: "/repo",
         isDedicated: false,
         createdAt: 100,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -167,14 +102,12 @@ void main() {
           dao.insertSession(
             fastMode: false,
             pluginId: pluginId,
-            preservePullRequestScope: false,
             sessionId: sessionId,
             backendSessionId: backendSessionId,
             projectId: "/repo",
             isDedicated: false,
             createdAt: 100,
             worktreePath: null,
-            branchName: null,
             baseBranch: null,
             baseCommit: null,
             lastAgent: null,
@@ -205,14 +138,12 @@ void main() {
       await dao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "stable-root-id",
         backendSessionId: "backend-root-id",
         projectId: "/repo",
         isDedicated: true,
         createdAt: 100,
         worktreePath: "/repo/.worktrees/root",
-        branchName: "feature/root",
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: "build",
@@ -256,7 +187,6 @@ void main() {
       expect(dto?.title, equals("Bridge title"));
       expect(dto?.catalogTitle, equals("Backend title"));
       expect(dto?.worktreePath, equals("/repo/.worktrees/root"));
-      expect(dto?.branchName, equals("feature/root"));
       expect(dto?.baseBranch, equals("main"));
       expect(dto?.baseCommit, equals("abc123"));
       expect(dto?.lastAgent, isNull);

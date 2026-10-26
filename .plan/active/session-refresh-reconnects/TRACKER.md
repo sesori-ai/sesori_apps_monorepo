@@ -17,6 +17,8 @@
   `SesoriSessionsUpdated`; dedicated `SesoriSessionOptionsUpdated` events invoke
   `_onSessionOptionsUpdated`. The old project-invalidation full-refresh trigger
   and proposed command-only replacement are superseded, not outstanding work.
+  The shared event itself was removed on 2026-10-25 (`pr-tracking-removal`
+  step 13); clients ignore it from older bridges as an unknown event type.
 - **Searchable diagnostic prefix:** `[session-refresh]`; missing entries are
   evidence only in a build configured for debug/trace logging.
 

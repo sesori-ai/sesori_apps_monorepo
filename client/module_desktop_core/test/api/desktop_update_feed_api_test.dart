@@ -42,6 +42,18 @@ void main() {
     ]);
   });
 
+  test("names the macOS appcast for this channel and CPU without fetching it", () {
+    final Uri appcast = api(responses: {}).appcastUri(
+      identity: identity.copyWith(os: DesktopBundleOs.macos, architecture: DesktopBundleArchitecture.x64),
+    );
+
+    expect(
+      appcast.toString(),
+      "https://storage.googleapis.com/sesori-ai-linux-packages/desktop-updates/k1/internal/macos-x64/appcast.xml",
+    );
+    expect(requested, isEmpty);
+  });
+
   test("a missing feed fails instead of reporting no update", () async {
     await expectLater(api(responses: {}).fetchFeed(identity: identity), throwsA(isA<HttpException>()));
   });

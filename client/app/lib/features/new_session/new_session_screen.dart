@@ -14,6 +14,10 @@ class const NewSessionScreen({
   /// Null asks for a project first.
   required final String? projectId,
   required final String? projectName,
+
+  /// How the page opened. Choosing another project replaces the page in place
+  /// and keeps it, so the page still leaves the way it came in.
+  required final NewSessionEntry entry,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -21,7 +25,7 @@ class const NewSessionScreen({
     if (projectId == null) {
       return NewSessionProjectPrompt(
         onProjectSelected: ({required projectId, required projectName}) =>
-            context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName)),
+            context.replaceRoute(AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry)),
         onBack: context.pop,
         banner: ConnectionBanner.maybeFor(context),
         opensPicker: true,
@@ -32,7 +36,12 @@ class const NewSessionScreen({
       // Replacing the route keeps its page, so the project keys the provider:
       // another project gets a fresh cubit and never the one that was left.
       key: ValueKey(projectId),
-      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
+      create: (context) => createNewSessionCubit(
+        locator: getIt,
+        projectId: projectId,
+        projectName: projectName,
+        projectKind: context.read<ProjectListCubit>().state.kindOf(projectId: projectId),
+      ),
       child: Builder(
         builder: (context) => _build(context: context, projectId: projectId),
       ),
@@ -46,7 +55,7 @@ class const NewSessionScreen({
       // A different project is a different page: the route builds a fresh
       // cubit for it.
       onProjectSelected: ({required projectId, required projectName}) => context.replaceRoute(
-        AppRoute.newSession(projectId: projectId, projectName: projectName),
+        AppRoute.newSession(projectId: projectId, projectName: projectName, entry: entry),
       ),
       onBack: context.pop,
       onOpenHarnessSettings: () => context.pushRoute(

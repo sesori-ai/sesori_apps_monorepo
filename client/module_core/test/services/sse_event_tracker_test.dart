@@ -512,7 +512,6 @@ void main() {
             parentID: null,
             title: null,
             time: SessionTime(created: 1, updated: 2, archived: null),
-            pullRequest: null,
             promptDefaults: null,
             lastUserActivityAt: null,
           ),

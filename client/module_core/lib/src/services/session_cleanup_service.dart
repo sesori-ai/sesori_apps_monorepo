@@ -23,14 +23,21 @@ class SessionCleanupService({required final SessionRepository _repository}) {
         _repository.archiveSession(sessionId: sessionId, deleteWorktree: deleteWorktree, force: force),
   );
 
+  /// [deleteSessionFolder] also removes a "No project" session's own folder,
+  /// once the user was told its files go too.
   Future<ApiResponse<SessionCleanupOutcome>> deleteSession({
     required String sessionId,
     required bool deleteWorktree,
+    required bool deleteSessionFolder,
     required bool force,
   }) => _cleanUp(
     deleteWorktree: deleteWorktree,
-    request: ({required deleteWorktree}) =>
-        _repository.deleteSession(sessionId: sessionId, deleteWorktree: deleteWorktree, force: force),
+    request: ({required deleteWorktree}) => _repository.deleteSession(
+      sessionId: sessionId,
+      deleteWorktree: deleteWorktree,
+      deleteSessionFolder: deleteSessionFolder,
+      force: force,
+    ),
   );
 
   Future<ApiResponse<SessionCleanupOutcome>> _cleanUp<T>({

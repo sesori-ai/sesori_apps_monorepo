@@ -19,7 +19,6 @@ Future<void> insertTestSession({
   required bool isDedicated,
   required int createdAt,
   required String? worktreePath,
-  required String? branchName,
   required String? baseBranch,
   required String? baseCommit,
   required String? agent,
@@ -34,13 +33,11 @@ Future<void> insertTestSession({
     isDedicated: isDedicated,
     createdAt: createdAt,
     worktreePath: worktreePath,
-    branchName: branchName,
     baseBranch: baseBranch,
     baseCommit: baseCommit,
     lastAgent: agent,
     lastAgentModel: agentModel,
     pluginId: pluginId,
-    preservePullRequestScope: false,
   );
 }
 
@@ -49,6 +46,7 @@ Future<void> insertTestSession({
 Future<void> insertTestSessionInDirectory({
   required AppDatabase db,
   required String sessionId,
+  required String pluginId,
   required String projectId,
   required String directory,
 }) async {
@@ -56,12 +54,11 @@ Future<void> insertTestSessionInDirectory({
     db: db,
     sessionId: sessionId,
     backendSessionId: sessionId,
-    pluginId: "fake",
+    pluginId: pluginId,
     projectId: projectId,
     isDedicated: false,
     createdAt: 1,
     worktreePath: null,
-    branchName: null,
     baseBranch: null,
     baseCommit: null,
     agent: null,

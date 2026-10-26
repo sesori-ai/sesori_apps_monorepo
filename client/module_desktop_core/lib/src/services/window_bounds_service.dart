@@ -106,6 +106,9 @@ class WindowBoundsService._create({
         _schedulePersistence();
       case WindowHostEvent.closeRequested:
         _flushScheduledPersistence();
+      // The quit flushes when it disposes this service.
+      case WindowHostEvent.quitRequested:
+        return;
     }
   }
 

@@ -38,13 +38,11 @@ void main() {
         isDedicated: true,
         createdAt: 1,
         worktreePath: worktree,
-        branchName: "session-001",
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
     }
 
@@ -64,13 +62,11 @@ void main() {
           isDedicated: false,
           createdAt: 1,
           worktreePath: null,
-          branchName: null,
           baseBranch: null,
           baseCommit: null,
           lastAgent: null,
           lastAgentModel: null,
           pluginId: "codex",
-          preservePullRequestScope: false,
         );
       } else {
         await db.sessionDao.insertObservedChild(
@@ -351,13 +347,11 @@ void main() {
         isDedicated: true,
         createdAt: 1,
         worktreePath: worktree,
-        branchName: "session-001",
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
       final plugin = _FakeDerivedQuestionPlugin(
         launchDirectory: parent,

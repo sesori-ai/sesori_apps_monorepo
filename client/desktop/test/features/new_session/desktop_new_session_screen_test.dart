@@ -25,7 +25,7 @@ class _MockProjectListCubit() extends MockCubit<ProjectListState> implements Pro
 /// The live project list the page names its project from.
 BlocProvider<ProjectListCubit> _projectList({required List<ProjectSummary> projects}) {
   final cubit = _MockProjectListCubit();
-  final state = ProjectListState.loaded(projects: projects);
+  final state = ProjectListState.loaded(projects: projects, folderProjects: projects, scratchProject: null);
   whenListen(cubit, const Stream<ProjectListState>.empty(), initialState: state);
   return BlocProvider<ProjectListCubit>.value(value: cubit);
 }

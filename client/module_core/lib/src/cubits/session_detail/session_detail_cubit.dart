@@ -42,7 +42,6 @@ import "../../services/feedback_prompt_service.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
-import "../../services/project_viewing_service.dart";
 import "../../services/session_abort_service.dart";
 import "../../services/session_approval_calculator.dart";
 import "../../services/session_approval_service.dart";
@@ -110,14 +109,12 @@ class SessionDetailCubit(
   required SessionRepository promptDispatcher,
   required final PermissionRepository _permissionRepository,
   required final SessionViewingService _sessionViewingService,
-  required final ProjectViewingService _projectViewingService,
   required final LifecycleSource _lifecycleSource,
   required final ComposerDraftRepository _composerDraftRepository,
   required final ProductAnalyticsService _productAnalyticsService,
   required final FeedbackPromptService _feedbackPromptService,
   required final String _sessionId,
   required final String _projectId,
-  required final bool claimProjectView,
   required final NotificationCanceller? _notificationCanceller,
   required final FailureReporter _failureReporter,
   required final BridgeSettingsService _bridgeSettingsService,
@@ -146,9 +143,6 @@ class SessionDetailCubit(
   /// result no longer joins onto what is shown.
   int _transcriptGeneration = 0;
   final SessionRepository _sessionRepository = promptDispatcher;
-  final ProjectViewClaim? _projectViewClaim = claimProjectView
-      ? _projectViewingService.beginDetailClaim(projectId: _projectId)
-      : null;
   ComposerDraft _composerDraft = _composerDraftRepository.readForSession(sessionId: _sessionId);
   final PromptSendQueue _promptQueue = PromptSendQueue();
   final Set<String> _cancellingBridgePromptIds = {};
@@ -489,7 +483,6 @@ class SessionDetailCubit(
 
     switch (metadataResult) {
       case SessionDetailMetadataWaitingForConnection():
-        if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
         _waitingForConnection = true;
         if (_isConnected) {
           _waitingForConnection = false;
@@ -509,7 +502,6 @@ class SessionDetailCubit(
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
         } else {
-          if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
           emit(
             SessionDetailState.failed(
               reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
@@ -536,9 +528,6 @@ class SessionDetailCubit(
             // Eligibility that arrived meanwhile makes it retryable instead,
             // and the recovery refresh below does exactly that.
             if (snapshot.awaitingHarnessSync && snapshot.messages.isEmpty && !_interaction.canInteract) {
-              if (_projectViewClaim case final claim?) {
-                _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
-              }
               emit(_harnessUnavailable(session: session, interaction: _interaction));
               _drainPendingEvents();
               return _SessionRefreshResult.applied;
@@ -568,15 +557,6 @@ class SessionDetailCubit(
               // eligibility already runs a strict refresh that reloads them.
               _refreshStaleOptions(snapshot: snapshot);
             }
-            final effectiveProjectId = snapshot.projectId;
-            if (effectiveProjectId == null || effectiveProjectId.isEmpty) {
-              if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
-            } else if (_projectViewClaim case final claim?) {
-              _projectViewingService.markClaimReady(
-                claim: claim,
-                projectId: effectiveProjectId,
-              );
-            }
             // Declare the view only now that the transcript has actually loaded —
             // a load that fails or waits for connection must not mark the session
             // read (clearing its bold globally) while the user only saw a
@@ -587,7 +567,6 @@ class SessionDetailCubit(
             _tryDrainQueue();
             return _SessionRefreshResult.applied;
           case SessionDetailLoadResultWaitingForConnection():
-            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
             _waitingForConnection = true;
             if (_connectionService.currentStatus is ConnectionConnected) {
               _waitingForConnection = false;
@@ -624,15 +603,11 @@ class SessionDetailCubit(
                 _drainDeferredPartsForLoadedMessages();
                 return _SessionRefreshResult.applied;
               }
-              if (_projectViewClaim case final claim?) {
-                _projectViewingService.markClaimReady(claim: claim, projectId: session.projectID);
-              }
               emit(_harnessUnavailable(session: session, interaction: _interaction));
               _drainPendingEvents();
               return _SessionRefreshResult.applied;
             }
             _clearBufferedEvents();
-            if (_projectViewClaim case final claim?) _projectViewingService.markClaimFailed(claim: claim);
             loge("Session detail load failed", error, stackTrace);
             emit(
               SessionDetailState.failed(
@@ -1469,7 +1444,6 @@ class SessionDetailCubit(
       SesoriPluginManagementChanged() ||
       SesoriPluginInstallProgress() ||
       SesoriPluginAuthenticationProgress() ||
-      SesoriSessionsUpdated() ||
       SesoriSessionDeleted() ||
       SesoriSessionDiff() ||
       SesoriSessionError() ||
@@ -1546,7 +1520,6 @@ class SessionDetailCubit(
             SesoriPluginManagementChanged() ||
             SesoriPluginInstallProgress() ||
             SesoriPluginAuthenticationProgress() ||
-            SesoriSessionsUpdated() ||
             SesoriMessageUpdated() ||
             SesoriMessageRemoved() ||
             SesoriMessagePartUpdated() ||
@@ -3423,7 +3396,6 @@ class SessionDetailCubit(
   @override
   Future<void> close() {
     _sessionViewingService.clearViewingSession(_sessionId);
-    if (_projectViewClaim case final claim?) _projectViewingService.releaseClaim(claim: claim);
     _pendingSessionEvents.clear();
     _pendingGlobalEvents.clear();
     _deferredPartEvents.clear();

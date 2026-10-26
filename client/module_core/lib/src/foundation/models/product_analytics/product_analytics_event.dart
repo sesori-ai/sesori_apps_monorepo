@@ -81,7 +81,8 @@ final class const AnalyticsCommandSubmission() extends AnalyticsSubmission {
 
 enum AnalyticsWorkspaceKind({required final String wireValue}) {
   project(wireValue: "project"),
-  dedicatedWorktree(wireValue: "dedicated_worktree");
+  dedicatedWorktree(wireValue: "dedicated_worktree"),
+  noProject(wireValue: "no_project");
 }
 
 enum AnalyticsSessionCreationFailureReason({required final String wireValue}) {

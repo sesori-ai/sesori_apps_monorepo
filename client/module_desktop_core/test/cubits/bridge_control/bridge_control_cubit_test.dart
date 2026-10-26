@@ -60,6 +60,7 @@ void main() {
             bundleSource: bundleSource,
             applicationSupportDirectory: _LogDirectory(root: Directory.systemTemp),
           ),
+          sparkleEngine: _UnusedSparkleUpdateEngine(),
         ),
         instanceRepository: _RecordingDesktopInstanceRepository(),
       );
@@ -359,7 +360,7 @@ void main() {
 
       expect(cubit.state.trayAvailability, SystemTrayAvailability.unavailable);
       expect(systemTray.setMenuCalls, 0);
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
     });
 
     test("reports window-only fallback when tray initialization throws", () async {
@@ -368,7 +369,7 @@ void main() {
       await cubit.initialize();
 
       expect(cubit.state.trayAvailability, SystemTrayAvailability.unavailable);
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
     });
 
     test("Open and native close route through the window host when the tray is available", () async {
@@ -381,7 +382,7 @@ void main() {
       windowHost.emit(event: WindowHostEvent.closeRequested);
       await pumpEventQueue(times: 2);
       expect(windowHost.hideCalls, 1);
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
     });
 
     test("tray-backed close hides while a lifecycle operation is pending", () async {
@@ -416,12 +417,60 @@ void main() {
       await pumpEventQueue();
       windowHost.emit(event: WindowHostEvent.closeRequested);
       await pumpEventQueue();
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
 
       processService.stopGate!.complete();
       await pumpEventQueue(times: 3);
       expect(processService.stopCalls, 2);
-      expect(applicationTerminator.exitCodes, <int>[0]);
+      expect(applicationTerminator.terminations, 1);
+    });
+
+    test("a system quit request quits safely even when the tray is available", () async {
+      await cubit.initialize();
+
+      windowHost.emit(event: WindowHostEvent.quitRequested);
+      await pumpEventQueue(times: 2);
+
+      expect(processService.stopCalls, 1);
+      expect(windowHost.hideCalls, 0);
+      expect(applicationTerminator.terminations, 1);
+    });
+
+    test("a system quit request waits for a lifecycle operation, then quits once", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopGate = Completer<void>();
+      await cubit.initialize();
+
+      systemTray.emit(command: SystemTrayCommand.toggleBridge);
+      await pumpEventQueue();
+      windowHost.emit(event: WindowHostEvent.quitRequested);
+      windowHost.emit(event: WindowHostEvent.quitRequested);
+      await pumpEventQueue();
+      expect(applicationTerminator.terminations, 0);
+
+      processService.stopGate!.complete();
+      await pumpEventQueue(times: 3);
+      expect(windowHost.hideCalls, 0);
+      expect(applicationTerminator.terminations, 1);
+    });
+
+    test("a failed quit declines the system quit request and keeps the app running", () async {
+      processService.emit(
+        state: const BridgeProcessRunning(pid: 42),
+        desiredState: BridgeProcessDesiredState.on,
+      );
+      processService.stopError = StateError("bridge remained alive");
+      await cubit.initialize();
+
+      windowHost.emit(event: WindowHostEvent.quitRequested);
+      await pumpEventQueue(times: 2);
+
+      expect(applicationTerminator.terminations, 0);
+      expect(applicationTerminator.cancellations, 1);
+      expect(cubit.state.activity, BridgeControlActivity.idle);
     });
 
     test("logout status locks lifecycle controls until local auth clears", () async {
@@ -458,7 +507,7 @@ void main() {
 
       expect(processService.stopCalls, 1);
       expect(windowHost.hideCalls, 0);
-      expect(applicationTerminator.exitCodes, <int>[0]);
+      expect(applicationTerminator.terminations, 1);
     });
 
     test("Open Logs launches the repository-owned local file URI", () async {
@@ -603,7 +652,7 @@ void main() {
       expect(instanceService.cancelRestoreCalls, 1);
       expect(instanceService.writes, isEmpty);
       expect(processService.stopCalls, 1);
-      expect(applicationTerminator.exitCodes, <int>[0]);
+      expect(applicationTerminator.terminations, 1);
       expect(systemTray.disposeCalls, 1);
       expect(windowBoundsService.disposeCalls, 1);
       expect(cubit.state.activity, BridgeControlActivity.quitting);
@@ -622,7 +671,7 @@ void main() {
 
       expect(instanceService.cancelRestoreCalls, 1);
       expect(processService.stopCalls, 1);
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
       expect(systemTray.disposeCalls, 0);
 
       processService.stopGate!.complete();
@@ -632,7 +681,7 @@ void main() {
       expect(windowBoundsService.disposeCalls, 1);
       expect(windowHost.disposeCalls, 1);
       expect(instanceService.writes, isEmpty);
-      expect(applicationTerminator.exitCodes, <int>[0]);
+      expect(applicationTerminator.terminations, 1);
       expect(cubit.state.activity, BridgeControlActivity.quitting);
     });
 
@@ -675,7 +724,7 @@ void main() {
 
       expect(boundsRepository.windowBoundsWrites, <WindowBounds>[latestBounds]);
       expect(windowHost.disposeCalls, 1);
-      expect(applicationTerminator.exitCodes, <int>[0]);
+      expect(applicationTerminator.terminations, 1);
     });
 
     test("Quit waits for final cleanup diagnostics before terminating", () async {
@@ -686,12 +735,12 @@ void main() {
       final quitting = cubit.quit();
       await sink.started.future;
       expect(windowHost.disposeCalls, 1);
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
       expect(sink.records.last.message, "Failed to dispose the desktop window host during quit");
       expect(sink.records.last.diagnosticError, contains("window cleanup /tmp/context"));
       sink.pending.complete();
       await quitting;
-      expect(applicationTerminator.exitCodes, [0]);
+      expect(applicationTerminator.terminations, 1);
     });
 
     test("Quit persists the final cleanup record before the termination callback", () async {
@@ -720,7 +769,7 @@ void main() {
       };
       await cubit.initialize();
       await cubit.quit();
-      expect(applicationTerminator.exitCodes, [0]);
+      expect(applicationTerminator.terminations, 1);
     });
 
     test("Restart to Update appears in the tray only once an update is installed", () async {
@@ -754,14 +803,14 @@ void main() {
       await pumpEventQueue(times: 2);
       expect(relaunchApi.relaunches, 1);
       expect(processService.stopCalls, 1);
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
 
       processService.stopGate!.complete();
       await pumpEventQueue(times: 3);
 
       expect(relaunchApi.relaunches, 1);
       expect(instanceService.writes, isEmpty);
-      expect(applicationTerminator.exitCodes, <int>[0]);
+      expect(applicationTerminator.terminations, 1);
     });
 
     test("a failed relaunch keeps the app running with its helper untouched", () async {
@@ -778,7 +827,7 @@ void main() {
 
       expect(processService.stopCalls, 0);
       expect(processService.startCalls, 0);
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
       expect(systemTray.disposeCalls, 0);
       expect(cubit.state.activity, BridgeControlActivity.idle);
     });
@@ -796,7 +845,7 @@ void main() {
       systemTray.emit(command: SystemTrayCommand.quit);
       await pumpEventQueue(times: 2);
 
-      expect(applicationTerminator.exitCodes, isEmpty);
+      expect(applicationTerminator.terminations, 0);
       expect(systemTray.disposeCalls, 0);
       expect(sink.started.isCompleted, isFalse);
       expect(cubit.state.activity, BridgeControlActivity.idle);
@@ -1143,14 +1192,38 @@ class _LogDirectory({required final Directory root}) implements DesktopApplicati
 }
 
 class _FakeDesktopApplicationTerminator() implements DesktopApplicationTerminator {
-  final List<int> exitCodes = <int>[];
+  int terminations = 0;
+  int cancellations = 0;
   void Function()? beforeTerminate;
 
   @override
-  void terminate({required int exitCode}) {
+  void terminate() {
     beforeTerminate?.call();
-    exitCodes.add(exitCode);
+    terminations++;
   }
+
+  @override
+  void cancelTermination() {
+    cancellations++;
+  }
+}
+
+/// Linux packages never reach Sparkle.
+class _UnusedSparkleUpdateEngine() implements SparkleUpdateEngine {
+  @override
+  Stream<String> get downloadedVersions => const Stream<String>.empty();
+
+  @override
+  Future<void> start({required Uri feedUri, required bool automaticChecks}) => throw UnimplementedError();
+
+  @override
+  Future<void> setAutomaticChecks({required bool enabled}) => throw UnimplementedError();
+
+  @override
+  Future<void> checkNow() => throw UnimplementedError();
+
+  @override
+  Future<void> installAndRelaunch() => throw UnimplementedError();
 }
 
 class _FakeLaunchAtLogin() implements LaunchAtLogin {

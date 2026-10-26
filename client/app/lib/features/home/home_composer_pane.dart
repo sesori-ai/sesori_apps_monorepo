@@ -90,7 +90,12 @@ class _HomeComposerPaneState() extends State<HomeComposerPane> {
     return BlocProvider(
       // A different project, or a session started, is a fresh draft.
       key: ValueKey(("home-composer-pane", projectId, _launches)),
-      create: (_) => createNewSessionCubit(locator: getIt, projectId: projectId, projectName: projectName),
+      create: (_) => createNewSessionCubit(
+        locator: getIt,
+        projectId: projectId,
+        projectName: projectName,
+        projectKind: project.kind,
+      ),
       child: BlocListener<NewSessionCubit, NewSessionState>(
         listenWhen: (_, current) => current is NewSessionCreated,
         listener: (_, _) => setState(() => _launches++),

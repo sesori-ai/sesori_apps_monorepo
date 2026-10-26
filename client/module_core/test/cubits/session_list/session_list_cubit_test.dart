@@ -319,6 +319,7 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
+            deleteSessionFolder: true,
             force: any(named: "force"),
           ),
         ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -329,6 +330,7 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: false,
+          deleteSessionFolder: true,
           force: false,
         );
         expect(result, SessionCleanupOutcome.completed);
@@ -355,6 +357,7 @@ void main() {
           () => mockSessionService.deleteSession(
             sessionId: "s1",
             deleteWorktree: any(named: "deleteWorktree"),
+            deleteSessionFolder: any(named: "deleteSessionFolder"),
             force: any(named: "force"),
           ),
         ).thenThrow(
@@ -367,6 +370,7 @@ void main() {
         final result = await cubit.deleteSession(
           sessionId: "s1",
           deleteWorktree: true,
+          deleteSessionFolder: false,
           force: false,
         );
         expect(result, isNull);
@@ -479,7 +483,6 @@ void main() {
           parentID: null,
           title: "Existing",
           time: SessionTime(created: 1, updated: 2, archived: null),
-          pullRequest: null,
           promptDefaults: null,
           lastUserActivityAt: null,
         );
@@ -508,7 +511,6 @@ void main() {
                 parentID: null,
                 title: "New",
                 time: SessionTime(created: 3, updated: 4, archived: null),
-                pullRequest: null,
                 promptDefaults: null,
                 lastUserActivityAt: null,
               ),
@@ -563,53 +565,6 @@ void main() {
             .having((s) => s.sessions.first.title, "updated title", "Updated"),
       ],
     );
-
-    test("PR-free session.updated preserves REST PR data until sessions.updated refreshes it", () async {
-      const mergedPullRequest = PullRequestInfo(
-        number: 690,
-        url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/690",
-        title: "Merged pull request",
-        state: PrState.merged,
-        mergeableStatus: PrMergeableStatus.unknown,
-        reviewDecision: PrReviewDecision.unknown,
-        checkStatus: PrCheckStatus.success,
-      );
-      final withPullRequest = testSession(id: "s1", title: "Original").copyWith(
-        pullRequest: mergedPullRequest,
-      );
-      final withoutPullRequest = testSession(id: "s1", title: "Updated");
-      final responses = <SessionListResponse>[
-        SessionListResponse(items: [withPullRequest]),
-        SessionListResponse(items: [withoutPullRequest]),
-      ];
-      when(
-        () => mockProjectRepository.listSessions(
-          projectId: projectId,
-        ),
-      ).thenAnswer((_) async => ApiResponse.success(responses.removeAt(0)));
-      final cubit = buildCubit();
-      addTearDown(cubit.close);
-
-      await cubit.refreshSessions();
-      expect(cubit.state.sessions.single.pullRequest, mergedPullRequest);
-      eventController.add(
-        SseEvent(
-          data: SesoriSseEvent.sessionUpdated(info: withoutPullRequest),
-        ),
-      );
-      final afterSessionUpdate = await cubit.stream.firstWhere(
-        (state) => state.sessions.single.title == "Updated",
-      );
-      expect(afterSessionUpdate.sessions.single.pullRequest, mergedPullRequest);
-
-      eventController.add(
-        SseEvent(data: const SesoriSessionsUpdated(projectID: projectId)),
-      );
-      final afterAuthoritativeRefresh = await cubit.stream.firstWhere(
-        (state) => state.sessions.single.pullRequest == null,
-      );
-      expect(afterAuthoritativeRefresh.sessions.single.pullRequest, isNull);
-    });
 
     blocTest<SessionListCubit, SessionListState>(
       "SSE session.updated timestamp reorders sessions",
@@ -735,7 +690,6 @@ void main() {
                 directory: "/home/user/my-project",
                 title: "Child Session",
                 time: SessionTime(created: 1, updated: 2, archived: null),
-                pullRequest: null,
                 promptDefaults: null,
                 lastUserActivityAt: null,
               ),
@@ -905,7 +859,6 @@ void main() {
                 parentID: null,
                 title: "Foreign Session",
                 time: SessionTime(created: 1, updated: 2, archived: null),
-                pullRequest: null,
                 promptDefaults: null,
                 lastUserActivityAt: null,
               ),
@@ -947,7 +900,6 @@ void main() {
                 parentID: null,
                 title: "Foreign Session Updated",
                 time: SessionTime(created: 1, updated: 3, archived: null),
-                pullRequest: null,
                 promptDefaults: null,
                 lastUserActivityAt: null,
               ),
@@ -987,7 +939,6 @@ void main() {
                 parentID: null,
                 title: null,
                 time: SessionTime(created: 1, updated: 2, archived: null),
-                pullRequest: null,
                 promptDefaults: null,
                 lastUserActivityAt: null,
               ),
@@ -1019,7 +970,6 @@ void main() {
             parentID: null,
             title: "Under /tmp/foo",
             time: SessionTime(created: 1, updated: 2, archived: null),
-            pullRequest: null,
             promptDefaults: null,
             lastUserActivityAt: null,
           ),
@@ -1034,7 +984,6 @@ void main() {
             parentID: null,
             title: "Under /home/bar",
             time: SessionTime(created: 3, updated: 4, archived: null),
-            pullRequest: null,
             promptDefaults: null,
             lastUserActivityAt: null,
           ),
@@ -1877,7 +1826,12 @@ void main() {
         () => mockSessionService.markSessionSeen(sessionId: session.id, read: true),
       ).thenAnswer((_) => markReply.future);
       when(
-        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+        () => mockSessionService.deleteSession(
+          sessionId: session.id,
+          deleteWorktree: true,
+          deleteSessionFolder: false,
+          force: false,
+        ),
       ).thenAnswer((_) => deleteReply.future);
       when(
         () => mockProjectRepository.listSessions(projectId: projectId),
@@ -1889,7 +1843,12 @@ void main() {
       expect(cubit.isClosed, isFalse);
       final rename = cubit.renameSession(sessionId: session.id, title: "Renamed");
       final mutation = cubit.markSessionSeen(sessionId: session.id, read: true);
-      final deletion = cubit.deleteSession(sessionId: session.id, deleteWorktree: true, force: false);
+      final deletion = cubit.deleteSession(
+        sessionId: session.id,
+        deleteWorktree: true,
+        deleteSessionFolder: false,
+        force: false,
+      );
       releaseDialog();
       releaseDialog();
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isFalse);
@@ -1908,7 +1867,12 @@ void main() {
       expect(fakeSessionUnseenTracker.currentSessionUnseen[projectId]?[session.id]?.unseen, isTrue);
       verify(() => mockProjectRepository.listSessions(projectId: projectId)).called(1);
       verify(
-        () => mockSessionService.deleteSession(sessionId: session.id, deleteWorktree: true, force: false),
+        () => mockSessionService.deleteSession(
+          sessionId: session.id,
+          deleteWorktree: true,
+          deleteSessionFolder: false,
+          force: false,
+        ),
       ).called(1);
     });
 

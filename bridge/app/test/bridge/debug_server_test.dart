@@ -6,7 +6,6 @@ import "package:cryptography/cryptography.dart";
 import "package:http/http.dart" as http;
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/debug_server.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/relay_client.dart";
@@ -188,49 +187,17 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "p1",
         isDedicated: true,
         createdAt: 10,
         worktreePath: "/tmp/worktree",
-        branchName: "feature/one",
         baseBranch: null,
         baseCommit: null,
 
         lastAgent: null,
         lastAgentModel: null,
-      );
-      await db.projectsDao.setPrCacheGithubLogin(
-        projectId: "p1",
-        githubLogin: "octocat",
-      );
-      await db.sessionDao.updatePullRequestScopes(
-        updates: [
-          (
-            sessionId: "s1",
-            currentBranchName: "feature/one",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/one",
-          prNumber: 11,
-          url: "https://github.com/org/repo/pull/11",
-          title: "Newest open PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 2,
-          createdAt: 2,
-        ),
       );
 
       final client = await _SseTestClient.connect(debugServer.boundPort!);
@@ -263,7 +230,6 @@ void main() {
 
       expect(firstEvent["type"], equals("session.created"));
       expect(secondEvent["type"], equals("session.diff"));
-      expect((firstEvent["info"] as Map<String, dynamic>)["pullRequest"], isNull);
     });
 
     test("debug client disconnect does not tear down the orchestrator plugin listeners", () async {
@@ -421,14 +387,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "stable-s1",
         backendSessionId: "s1",
         projectId: "/tmp/test",
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -473,14 +437,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -532,14 +494,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -632,14 +592,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "/tmp/test",
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,

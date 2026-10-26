@@ -8,7 +8,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../../services/models/project_list_state.dart";
 import "../../services/models/recent_sessions_entry.dart";
 import "../../services/project_inventory_service.dart";
-import "../../services/project_viewing_service.dart";
 import "../../services/recent_session_inventory_service.dart";
 import "../../services/session_list_filter_tracker.dart";
 import "../../services/session_list_service.dart";
@@ -17,37 +16,21 @@ import "../recent_sessions/recent_sessions_resolvers.dart";
 import "../session_list/session_list_quick_filter.dart";
 import "all_sessions_state.dart";
 
-typedef _ListClaim = ({ProjectViewClaim claim, String projectId, _ListClaimStatus status});
-
-enum _ListClaimStatus() {
-  pending,
-  ready,
-  failed,
-}
-
 /// The session list across every listed project: one flat list from the
 /// scoped inventories, narrowed by the shared project filter, a query and a
 /// chip.
 ///
-/// In [AllSessionsMode.active] it also declares the viewed project: the list
-/// claim while a filter is set, and the wide pane a shell reports through
-/// [setPaneVisible]. "All projects" claims nothing, because the bridge is told
-/// one project. [AllSessionsMode.archived] never claims, and reloads the
-/// inventory when it opens: the bridge publishes no event on archive.
+/// [AllSessionsMode.archived] reloads the inventory when it opens: the bridge
+/// publishes no event on archive.
 class AllSessionsCubit({
   required final AllSessionsMode _mode,
   required final RecentSessionInventoryService _recentInventory,
   required final ProjectInventoryService _projectInventory,
   required final SessionListFilterTracker _filterTracker,
   required final SessionListService _sessionListService,
-  required final ProjectViewingService _projectViewingService,
 }) extends Cubit<AllSessionsState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
-  final ProjectViewPaneClaim? _paneClaim = _mode == AllSessionsMode.active
-      ? _projectViewingService.beginWideListPaneClaim()
-      : null;
   Set<String> _hiddenSessionIds = const {};
-  _ListClaim? _listClaim;
 
   this
     : super(
@@ -62,7 +45,6 @@ class AllSessionsCubit({
           sessionListService: _sessionListService,
         ),
       ) {
-    _syncListClaim();
     _subscriptions
       ..add(_recentInventory.state.skip(1).listen((_) => _update()))
       ..add(_projectInventory.stateStream.skip(1).listen((_) => _update()))
@@ -96,19 +78,9 @@ class AllSessionsCubit({
     _emit(query: state.query, quickFilter: state.quickFilter);
   }
 
-  /// Whether a shell shows this list beside a content pane.
-  void setPaneVisible({required bool isVisible}) {
-    if (_paneClaim case final claim?) {
-      _projectViewingService.setWideListPaneVisible(claim: claim, isVisible: isVisible);
-    }
-  }
-
   Future<void> retry({required String projectId}) => _recentInventory.retry(projectId: projectId);
 
-  void _update() {
-    _syncListClaim();
-    _emit(query: state.query, quickFilter: state.quickFilter);
-  }
+  void _update() => _emit(query: state.query, quickFilter: state.quickFilter);
 
   void _emit({required String query, required SessionListQuickFilter quickFilter}) => emit(
     _resolve(
@@ -123,43 +95,6 @@ class AllSessionsCubit({
     ),
   );
 
-  /// Holds the list claim for the filtered project, ready once its sessions
-  /// load and failed when they cannot.
-  void _syncListClaim() {
-    if (_mode != AllSessionsMode.active) return;
-    final projectId = _filterTracker.projectId.value;
-    var claim = _listClaim;
-    if (claim != null && claim.projectId != projectId) {
-      _projectViewingService.releaseClaim(claim: claim.claim);
-      claim = null;
-    }
-    if (projectId == null) {
-      _listClaim = null;
-      return;
-    }
-    claim ??= (
-      claim: _projectViewingService.beginListClaim(projectId: projectId),
-      projectId: projectId,
-      status: _ListClaimStatus.pending,
-    );
-    final status = switch (_recentInventory.state.value[projectId]) {
-      RecentSessionsLoaded() => _ListClaimStatus.ready,
-      RecentSessionsFailed() => _ListClaimStatus.failed,
-      RecentSessionsLoading() || null => claim.status,
-    };
-    if (status != claim.status) {
-      switch (status) {
-        case _ListClaimStatus.ready:
-          _projectViewingService.markClaimReady(claim: claim.claim, projectId: projectId);
-        case _ListClaimStatus.failed:
-          _projectViewingService.markClaimFailed(claim: claim.claim);
-        case _ListClaimStatus.pending:
-          break;
-      }
-    }
-    _listClaim = (claim: claim.claim, projectId: projectId, status: status);
-  }
-
   static AllSessionsState _resolve({
     required AllSessionsMode mode,
     required ProjectListState projects,
@@ -170,9 +105,11 @@ class AllSessionsCubit({
     required Set<String> hiddenSessionIds,
     required SessionListService sessionListService,
   }) {
-    final known = switch (projects) {
-      ProjectListLoaded(:final projects) => projects,
-      ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <ProjectSummary>[],
+    final (known, scratchProjectId) = switch (projects) {
+      ProjectListLoaded(:final projects, :final scratchProject) => (projects, scratchProject?.id),
+      ProjectListLoading() ||
+      ProjectListFailed() ||
+      ProjectListBridgeDisconnected() => (const <ProjectSummary>[], null),
     };
     final listed = [
       for (final project in known)
@@ -242,17 +179,16 @@ class AllSessionsCubit({
             AllSessionsFailure(project: project, reason: reason),
       ]),
       isLoading: isLoading,
+      scratchProjectId: scratchProjectId,
       // The newest session is only known once every project's sessions have
       // loaded: the first project to answer is not the default.
-      defaultProjectId: projectId ?? (isLoading ? null : merged.firstOrNull?.project.id),
+      defaultProjectId: projectId ?? scratchProjectId ?? (isLoading ? null : merged.firstOrNull?.project.id),
     );
   }
 
   @override
   Future<void> close() async {
     await _subscriptions.dispose();
-    if (_listClaim case final listClaim?) _projectViewingService.releaseClaim(claim: listClaim.claim);
-    if (_paneClaim case final claim?) _projectViewingService.releaseWideListPaneClaim(claim: claim);
     await super.close();
   }
 }

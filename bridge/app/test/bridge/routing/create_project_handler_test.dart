@@ -1,5 +1,6 @@
 import "dart:io";
 
+import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
@@ -7,6 +8,7 @@ import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dar
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
+import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/repositories/worktree_repository.dart";
 import "package:sesori_bridge/src/routing/create_project_handler.dart";
@@ -59,7 +61,6 @@ void main() {
         worktreeRepository: singlePluginWorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
           plugin: plugin,
           gitApi: GitCliApi(
             streamingProcessRunner: const StreamingProcessRunner(),
@@ -76,6 +77,10 @@ void main() {
           projectInitializationService: projectInitializationService,
           projectActivityService: projectActivityService,
           projectRepository: projectRepository,
+          projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+            scratchRoot: "/scratch",
+            pathContext: p.context,
+          ),
         ),
       );
       tempDir = await Directory.systemTemp.createTemp("create-project-handler-test-");

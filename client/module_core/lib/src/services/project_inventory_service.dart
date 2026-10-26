@@ -85,6 +85,16 @@ class ProjectInventoryService({
       _sseEventTracker.projectTimestampUpdates.listen(_onProjectTimestampUpdated),
     );
 
+    // 1a1. Projects opened elsewhere. The tracker's map is cumulative, so
+    //      pairwise() isolates the projects each update advanced; an unlisted
+    //      entry left in the map does not re-read the list on every later
+    //      update for some other project.
+    _subscriptions.add(
+      _sseEventTracker.projectTimestampUpdates.pairwise().listen(
+        (pair) => _onProjectTimestampsAdvanced(previous: pair.first, current: pair.last),
+      ),
+    );
+
     // 1a2. A committed catalog import raises no list invalidation of its own.
     _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
 
@@ -258,6 +268,23 @@ class ProjectInventoryService({
               loge("Failed to report project timestamp update error", error, stackTrace);
             }),
       );
+    }
+  }
+
+  /// The timestamp merge can only move listed projects. An update for a project
+  /// the list does not hold means the bridge opened, created or unhid it,
+  /// possibly on another surface, or that a hidden project saw activity. Read the
+  /// list again: it then holds the project, and the recent-session inventory
+  /// loads its sessions. Forced, so a read started before the bridge committed
+  /// the project cannot stand in for one started after.
+  void _onProjectTimestampsAdvanced({required Map<String, int> previous, required Map<String, int> current}) {
+    if (_state.isClosed) return;
+    if (state case ProjectListLoaded(:final projects)) {
+      final listedIds = {for (final project in projects) project.id};
+      final advancedUnlisted = current.entries.any(
+        (entry) => entry.value != previous[entry.key] && !listedIds.contains(entry.key),
+      );
+      if (advancedUnlisted) unawaited(_refreshProjects(force: true, catalogRefresh: false));
     }
   }
 
@@ -577,11 +604,21 @@ class ProjectInventoryService({
     _emit(
       state: loaded.copyWith(
         projects: ordered,
+        folderProjects: _folderProjects(projects: ordered),
+        scratchProject: _scratchProject(projects: ordered),
         runningByProjectId: runningByProjectId,
         unseenByProjectId: _unseenByProjectId(projects: ordered),
       ),
     );
   }
+
+  static List<ProjectSummary> _folderProjects({required List<ProjectSummary> projects}) => [
+    for (final project in projects)
+      if (project.kind == ProjectKind.folder) project,
+  ];
+
+  static ProjectSummary? _scratchProject({required List<ProjectSummary> projects}) =>
+      projects.where((project) => project.kind == ProjectKind.scratch).firstOrNull;
 
   Iterable<ProjectSummary> _withOptimisticProjectNames({required Iterable<ProjectSummary> projects}) {
     return projects.map((project) {
@@ -837,6 +874,8 @@ class ProjectInventoryService({
           _emit(
             state: ProjectListState.loaded(
               projects: sortedProjects,
+              folderProjects: _folderProjects(projects: sortedProjects),
+              scratchProject: _scratchProject(projects: sortedProjects),
               runningByProjectId: runningByProjectId,
               unseenByProjectId: _unseenByProjectId(projects: sortedProjects),
             ),

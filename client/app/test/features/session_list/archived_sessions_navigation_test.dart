@@ -75,7 +75,7 @@ void main() {
   );
 
   for (final size in [const Size(440, 956), const Size(956, 440)]) {
-    testWidgets("Archived opens over the home under its filter and keeps the home through Back and X at $size", (
+    testWidgets("Archived opens over the home under its filter and keeps the home through both Backs at $size", (
       tester,
     ) async {
       const opener = "/sessions";
@@ -109,24 +109,23 @@ void main() {
       expect(find.text("Today"), findsOneWidget);
       expect(find.byKey(const Key("session-sidebar")), findsNothing);
       expect(find.byIcon(TablerRegular.plus), findsNothing);
+      // A pushed page, so Back leaves it, like the other Settings pages.
+      expect(find.bySemanticsLabel("Back"), findsOneWidget);
+      expect(find.bySemanticsLabel("Close archived sessions"), findsNothing);
       final listElement = tester.element(find.byType(ArchivedSessionsView));
       await tester.tap(find.text("Archived record"));
       await tester.pumpAndSettle();
       expect(harness.router.state.uri.path, "/archived-sessions/p1/audit");
       expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
       expect(find.byIcon(TablerRegular.git_compare), findsNothing);
-      // The audit page carries Back only; closing the flow belongs to the list.
-      expect(find.bySemanticsLabel("Close archived sessions"), findsNothing);
-      verifyNever(() => harness.projectViewingService.beginDetailClaim(projectId: any(named: "projectId")));
       await tester.tap(find.byIcon(TablerRegular.chevron_left));
       await tester.pumpAndSettle();
       expect(tester.element(find.byType(ArchivedSessionsView)), same(listElement));
-      await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+      await tester.tap(find.byIcon(TablerRegular.chevron_left));
       await tester.pumpAndSettle();
       expect(harness.router.state.uri.toString(), opener);
       expect(find.text("Live record"), findsOneWidget);
       expect(find.text("Archived record"), findsNothing);
-      verify(() => harness.projectViewingService.beginListClaim(projectId: "p1")).called(1);
     });
   }
 
@@ -152,19 +151,69 @@ void main() {
       tester.getTopLeft(tile(title: "Archived record")).dy,
       lessThan(tester.getTopLeft(tile(title: "Other archive")).dy),
     );
-    // Archived mode never claims a viewed project.
-    verifyNever(() => harness.projectViewingService.beginListClaim(projectId: any(named: "projectId")));
-
     // A row opens its own project's audit record.
     await tester.tap(find.text("Other archive"));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.path, "/archived-sessions/p2/other");
     await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+    // Reached directly, the list's Back falls back to the home.
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), "/sessions");
   });
+
+  testWidgets(
+    "the edge swipe and system back leave the open record first, then the flow",
+    (tester) async {
+      const opener = "/sessions";
+      final harness = await setUpArchive(
+        tester: tester,
+        size: const Size(440, 956),
+        initialLocation: opener,
+        currentRouteDef: AppRouteDef.home,
+        sessionsByProject: {
+          "p1": [live, audit],
+        },
+      );
+      await tester.pumpWidget(harness.buildApp());
+      await tester.pumpAndSettle();
+
+      Future<void> openRecord() async {
+        unawaited(harness.router.push<void>(const AppRoute.archivedSessions().buildPath()));
+        await tester.pumpAndSettle();
+        await tester.tap(find.text("Archived record"));
+        await tester.pumpAndSettle();
+        expect(harness.router.state.uri.path, "/archived-sessions/p1/audit");
+      }
+
+      Future<void> swipeBack() async {
+        await tester.dragFrom(const Offset(5, 600), const Offset(300, 0));
+        await tester.pumpAndSettle();
+      }
+
+      // The record's swipe pops only the record; the list's pops the flow.
+      await openRecord();
+      final listElement = tester.element(find.byType(ArchivedSessionsView, skipOffstage: false));
+      await swipeBack();
+      expect(harness.router.state.uri.path, "/archived-sessions");
+      expect(tester.element(find.byType(ArchivedSessionsView)), same(listElement));
+      await swipeBack();
+      expect(harness.router.state.uri.toString(), opener);
+      expect(find.text("Live record"), findsOneWidget);
+
+      // System back takes the same two steps.
+      await openRecord();
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(harness.router.state.uri.path, "/archived-sessions");
+      await tester.binding.handlePopRoute();
+      await tester.pumpAndSettle();
+      expect(harness.router.state.uri.toString(), opener);
+      expect(find.text("Live record"), findsOneWidget);
+    },
+    variant: TargetPlatformVariant.only(TargetPlatform.iOS),
+  );
 
   testWidgets("Archived shows the computer's offline page when the relay drops", (tester) async {
     final harness = await setUpArchive(
@@ -215,6 +264,7 @@ void main() {
       () => harness.sessionRepository.deleteSession(
         sessionId: any(named: "sessionId"),
         deleteWorktree: any(named: "deleteWorktree"),
+        deleteSessionFolder: any(named: "deleteSessionFolder"),
         force: any(named: "force"),
       ),
     ).thenAnswer((_) async => ApiResponse<void>.success(null));
@@ -240,6 +290,7 @@ void main() {
       () => harness.sessionRepository.deleteSession(
         sessionId: "other",
         deleteWorktree: any(named: "deleteWorktree"),
+        deleteSessionFolder: any(named: "deleteSessionFolder"),
         force: any(named: "force"),
       ),
     ).called(1);
@@ -284,7 +335,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
-    await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), opener);
     expect(tester.element(find.byType(SessionDetailBody)), same(openerContext));
@@ -294,7 +345,6 @@ void main() {
     harness.routeSource.emitRoute(AppRouteDef.sessionDetail);
     await tester.pumpAndSettle();
     verify(() => viewingService.setViewingSession("live")).called(1);
-    verify(() => harness.projectViewingService.beginDetailClaim(projectId: "p1")).called(1);
   });
 
   testWidgets("with nothing archived the archive is empty; direct detail has only Back", (tester) async {
@@ -315,8 +365,9 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("No archived sessions"), findsOneWidget);
     expect(find.text("Live record"), findsNothing);
-    expect(find.byIcon(TablerRegular.chevron_left), findsNothing);
-    await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+    expect(find.bySemanticsLabel("Close archived sessions"), findsNothing);
+    // With no opener under the flow, the list's Back falls back to the home.
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), "/sessions");
   });
@@ -351,7 +402,7 @@ void main() {
     closeDeletedArchivedSessionRoute(context: listContext, sessionId: "audit");
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.path, "/archived-sessions");
-    await tester.tap(find.bySemanticsLabel("Close archived sessions"));
+    await tester.tap(find.byIcon(TablerRegular.chevron_left));
     await tester.pumpAndSettle();
     expect(harness.router.state.uri.toString(), opener);
   });

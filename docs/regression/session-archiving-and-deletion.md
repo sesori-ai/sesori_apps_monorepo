@@ -49,6 +49,9 @@ entirely along with its transcript and its dedicated worktree.
 - Desktop Delete asks in a dialog titled with the session's name; Esc cancels and no button is a keyboard
   default, so Return never deletes. The phone keeps its delete sheet. Either confirmation states plainly
   that a dedicated worktree will be deleted and its branch kept.
+- Deleting a "No project" session, from any entry point, adds to that confirmation that its folder and every file
+  in it are deleted too, and only then sends `deleteSessionFolder: true` (also on a forced retry). Deleting any
+  other session sends `false` and adds no such sentence.
 - Deletion removes the session record immediately and is destructive and not
   recoverable. History, spilled content, and the archive record are purged
   best-effort after row deletion; a logged failure leaves residue for startup
@@ -116,23 +119,23 @@ entirely along with its transcript and its dedicated worktree.
 - Clients present archiving as permanent, hide mutation affordances there, and
   list archived sessions. Archived row menus omit Rename and Archive but retain
   permanent Delete and read-state actions.
-- Mobile shows archived sessions in one full-screen modal (`/archived-sessions`)
+- Mobile shows archived sessions on one page (`/archived-sessions`)
   that lists every listed project's archives, newest first by archive time, under
   date headings. Each row names its project unless the shared project filter
   narrows the list to one project. Settings' Archived sessions row, after
-  Projects in the Bridge section and disabled offline, opens the modal over
-  Settings under the home's filter through the same filter the all-projects
-  lists share; it adds no second filter. The live
-  list remains active-only. The modal has a search field, no new-session button
+  Projects in the Bridge section and disabled offline, pushes the page over
+  Settings like its other pages, with Back and no close button, under the home's filter through the same filter
+  the all-projects lists share; it adds no second filter. The live
+  list remains active-only. The page has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
-  the project list has loaded: while it loads the modal shows a skeleton, a failed
+  the project list has loaded: while it loads the page shows a skeleton, a failed
   project list shows its error with Retry, and a disconnected computer shows the
   same setup or offline page as the home. A project whose sessions failed to load
-  gets its own Retry row instead of the empty state. The modal reloads
+  gets its own Retry row instead of the empty state. The page reloads
   the session inventory when it opens, because the bridge publishes no event on
   archive, and pull-to-refresh runs the scope's shared refresh with a success or
-  failure alert. Archived lists never claim a viewed project. Swipe and menu
+  failure alert. Swipe and menu
   actions run on a per-row action cubit; a deleted row leaves when the bridge's
   `session.deleted` event arrives.
 - Desktop shows the same list as a main-pane page (`/archived-sessions`), opened from the settings window's
@@ -144,15 +147,13 @@ entirely along with its transcript and its dedicated worktree.
   from its first frame. In the composer's place it
   shows what the newest agent reply ran with as read-only pills (see
   [Session creation and options](session-creation-and-options.md)), from options
-  read from the bridge's cache only, never discovered. Back returns to the retained
-  archive list; X closes the entire modal to its original opener, preserving its
-  list/scroll and draft. Both controls remain available during loading and errors,
-  including related-session audit navigation. Direct archive entry has a safe X
-  exit to the home and leaves the project filter as it was. Audit cubits never
-  replace the opener's live-project claims;
-  the covered project's declaration is suspended until the opener is visible.
-  A covered live detail also stops declaring its session viewed, so new output
-  stays unread; closing the modal reasserts the retained loaded detail. Incoming
+  read from the bridge's cache only, never discovered. Back, the edge swipe and
+  system Back return to the retained archive list; the list's own Back leaves the
+  whole flow for its original opener, preserving its list/scroll and draft. Back remains
+  available during loading and errors, including related-session audit navigation.
+  Direct archive entry falls back to the home from the list's Back and leaves the
+  project filter as it was. A covered live detail stops declaring its session viewed, so new output
+  stays unread; leaving the flow reasserts the retained loaded detail. Incoming
   questions, permissions and notices from the covered detail do not interrupt
   archive browsing.
 - Mobile and desktop detail activity share one visibility rule: the top route
@@ -165,7 +166,7 @@ entirely along with its transcript and its dedicated worktree.
   listener. Disposing the detail releases the owner's route and analytics listeners.
 - Deletion completed in the archive flow returns to its archive list only when
   the currently open audit record is the deleted session. Stale or
-  unrelated completions leave navigation unchanged; X still restores the opener.
+  unrelated completions leave navigation unchanged; the list's Back still restores the opener.
 - The phone's delete confirmation sheet identifies the action, names the worktree
   loss only when a dedicated worktree exists, and keeps its confirm action
   visually destructive. Cancelling deletes nothing.
@@ -181,7 +182,7 @@ entirely along with its transcript and its dedicated worktree.
 |---|---|
 | L1 Smoke | Headless bridge, one representative plugin: a session archives, stays readable, and refuses a later non-deletion mutation. |
 | L2 Routine | Headless bridge, representative: deletion removes the session immediately and purges its history and archive record, with a simulated purge failure logged and recovered by startup reconciliation; export and purge observed as a pair with honest completeness; cleanup rejection issues reported without deleting anything; a close-capable ACP session orders cancel, settlement, and close, while timeout preserves retryable state. Copilot and Grok additionally retain upstream history but their exhausted explicit re-import honors the local tombstone. |
-| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. |
+| L3 Release | Client end to end on the release-target client platform, every supporting production plugin: archive from the session list, read-only detail and archived listing, delete of a session with and without a dedicated worktree, a dirty-worktree refusal forced through from the modal, a shared-worktree refusal retried silently, branch retained. Deleting a "No project" session warns that its folder goes too and removes it. |
 | L4 Extended | Relay integration, every supporting production plugin: archive or delete with a live turn, pending requests, or a stopped plugin; competing archive/delete/mutation on one family; a second client observing retirement; shared worktree and forced retry; bridge restart between export and flip. |
 | L5 Full | Headless bridge for unreadable or version-mismatched audit records, failed export, startup reconciliation, missing worktrees, and dirty or diverged repositories; packaged or external for released-client unarchive intent. Every supporting production plugin where backend export participates. |
 
@@ -202,15 +203,14 @@ restart before explicit re-import.
 
 ## Failure Signals
 
-- Mobile mixes active rows into archives, shows a new-session floating button in
-  the modal, loses the opener on X, or navigates out of the modal on detail Back.
+- Mobile mixes active rows into archives, shows a new-session floating button on
+  the Archived page, rises from the bottom or shows a close button there, loses
+  the opener on the list's Back, or leaves the flow on detail Back or its edge swipe.
 - Settings' Archived sessions row ignores the home's filter, filtered rows
   repeat the project name, an unfiltered row omits it, or a newly archived
   session is missing until a manual refresh.
 - Archived says “No archived sessions” while the project list is loading, has
   failed, or the computer is disconnected.
-- Opening or closing an audit record consumes the underlying live project's
-  claim, preventing its declaration from returning when the opener is visible.
 - A covered detail marks late output seen, reports activity, or presents a
   question, permission or notice over another page; child Back or cover dismissal
   loses the retained detail/draft or fails to restore its loaded viewed state.
@@ -228,6 +228,8 @@ restart before explicit re-import.
   the scratch root itself, a folder another session still runs in or under, a
   link or its target, or a folder the request did not ask to remove; or
   archiving removes a scratch folder.
+- The app sends `deleteSessionFolder: true` for a session outside "No project", or before a confirmation that
+  names the folder.
 - Any archive or delete surface offers to keep the worktree, or a refusal modal
   presents a third way out beyond Cancel and the destructive force.
 - A shared-worktree-only refusal reaches the user as a question, or a refusal that

@@ -30,6 +30,10 @@ class BridgeRuntime({
   CatalogImportService get catalogImportService => _composition.catalogImportService;
   PluginCatalogHydrationListener get catalogHydrationListener => _composition.catalogHydrationListener;
 
+  Future<void> ensureScratchProject() {
+    return _composition.scratchRepository.ensureScratchProject();
+  }
+
   Future<void> reconcileDeletedSessionStorage() {
     return _composition.deletedSessionStorageCleanupService.reconcile();
   }
@@ -70,7 +74,6 @@ class BridgeRuntime({
     await step(_restartDispatcher.dispose);
     await step(_composition.sessionUnseenService.dispose);
     await step(_composition.sessionViewTracker.dispose);
-    await step(_composition.projectViewTracker.dispose);
     await step(_composition.sessionRepository.dispose);
     await step(_composition.catalogHydrationListener.dispose);
     await step(_composition.catalogImportService.dispose);

@@ -27,12 +27,12 @@ that baseline, and the branch and worktree facts a session carries.
 - The base branch can be read and set; setting rejects empty input and applies
   to later dedicated baselines, and the stable project identifier resolves to
   the live directory before git runs.
-- A session initially reports its creation-time branch and dedicated-worktree
-  facts. Generated metadata may later rename only the still-current unpublished
-  initial dedicated branch without moving the worktree; durable and current
-  branch facts then update together through the existing session update. Other
-  live current-branch and PR refreshes belong to pull request monitoring. A
-  mutating tool emits the diff refresh signal; bursts during an in-flight read
+- A session reports its dedicated-worktree facts. A new dedicated worktree starts on a detached HEAD with no
+  branch.
+- A session's reported branch is the one the bridge stored for its dedicated worktree, never the branch checked
+  out now, so a new dedicated worktree, a session in the project folder and a "No project" session report none.
+  No current client screen shows it; v1.9.1 apps show it on session rows.
+- A mutating tool emits the diff refresh signal; bursts during an in-flight read
   coalesce into one trailing refresh, a failed event-driven refresh retries
   after a delay while the diff screen remains open, and diffs stay encrypted
   from the relay.
@@ -71,7 +71,7 @@ that baseline, and the branch and worktree facts a session carries.
 |---|---|
 | L1 Smoke | Not included because a meaningful diff requires a mutating live turn. |
 | L2 Routine | Headless bridge, representative plugin: after a session edits files the diff lists them with before/after content and line counts; dedicated uses its base branch and in-place its creation-time commit. |
-| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; eligible generated branch refinement updates source-control facts without moving the worktree; the diff list, per-file view, and refresh on the file-change signal render. Desktop automated coverage proves the typed route, Back behavior, and shared rendering; shared UI coverage proves selectable source lines. |
+| L3 Release | Client end to end (phone), representative plugin: added, modified, deleted, and untracked files report correct status and counts; a rename renders as deletion plus addition; binary, too-large, and unreadable files return explicit skip reasons; base-branch read and set apply to later baselines; a new dedicated worktree reports a detached HEAD with no branch; the diff list, per-file view, and refresh on the file-change signal render. Desktop automated coverage proves the typed route, Back behavior, and shared rendering; shared UI coverage proves selectable source lines. |
 | L4 Extended | Relay integration, every supporting production plugin: unreachable base and no-common-ancestor are distinct client-visible failures; archived sessions and removed worktrees return no diffs without erroring; a moved project still resolves git correctly; each plugin's file-change signal triggers a refresh reflecting the real change set. |
 | L5 Full | Headless bridge for large mixed changes, non-git or commitless sessions returning no diffs, and invalid base branches; relay integration to prove diff payload encryption. Representative plugin. |
 
@@ -84,6 +84,7 @@ and in-place sessions, and default versus explicit base branches.
 ## Failure Signals
 
 - The diff omits working-tree changes or compares against the wrong base.
+- A session reports a branch the bridge did not store for its worktree, such as the project folder's checkout.
 - A skipped file appears as an empty change instead of a skip reason, an
   unreachable base or missing ancestor flattens into an empty diff or opaque
   error, or an archived or missing worktree errors instead of returning nothing.
@@ -99,9 +100,6 @@ and in-place sessions, and default versus explicit base branches.
   bare 404.
 - The Changes button pops to its new size when the counts arrive or leave,
   animates under reduced motion, or stretches taller than its own content.
-- Generated refinement renames a branch after it switches or becomes published,
-  moves the worktree directory, leaves durable/current branch facts disagreeing,
-  or leaves Git and persistence on different branch names after failure.
 
 ## Known Limitations
 

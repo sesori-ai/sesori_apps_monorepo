@@ -12,7 +12,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/repositories/view_declaration_repository.dart";
 import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
@@ -34,7 +33,6 @@ void main() {
   late _MockProjectInventoryService projectInventory;
   late BehaviorSubject<String?> filter;
   late _MockFilterTracker filterTracker;
-  late ProjectViewingService viewing;
   late _MockRepository repository;
   late DesktopSidebarCubit sidebar;
   late AllSessionsCubit sessions;
@@ -45,8 +43,6 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const DesktopSidebarLayout());
-    registerFallbackValue(ProjectViewClaim());
-    registerFallbackValue(ProjectViewPaneClaim());
   });
   tearDown(GetIt.instance.reset);
   setUp(() {
@@ -72,9 +68,7 @@ void main() {
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(
-        projects: [ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null)],
-      ),
+      initialState: const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
     );
     // The inventories behind the mocked cubits, as the shared list reads them.
     recentInventory = _MockRecentSessionInventoryService();
@@ -91,7 +85,6 @@ void main() {
     when(() => filterTracker.select(projectId: any(named: "projectId"))).thenAnswer(
       (invocation) => filter.add(invocation.namedArguments[#projectId] as String?),
     );
-    viewing = stubbedProjectViewingService();
     refreshService = _MockRefreshService();
     when(() => refreshService.scan).thenAnswer((_) => BehaviorSubject.seeded(const CatalogRescanState.idle()));
     when(refreshService.refresh).thenAnswer((_) async => true);
@@ -138,7 +131,6 @@ void main() {
                   repository: MockProjectRepository(),
                   activityCalculator: const SessionActivityCalculator(),
                 ),
-                projectViewingService: viewing,
               ),
             ),
           ],
@@ -171,10 +163,9 @@ void main() {
       projects,
       const Stream<ProjectListState>.empty(),
       initialState: const ProjectListState.loaded(
-        projects: [
-          ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null),
-          ProjectSummary(id: "project-2", name: "Landing page", path: "/work/landing", time: null),
-        ],
+        projects: [_sesori, _landing],
+        folderProjects: [_sesori, _landing],
+        scratchProject: null,
       ),
     );
     recent = {
@@ -328,63 +319,11 @@ void main() {
     expect(find.descendant(of: list, matching: find.text("Fix the build")), findsNothing);
     await tester.tap(filterTrigger);
     await tester.pumpAndSettle();
-    await tester.tap(find.descendant(of: picker, matching: find.text("Show all projects")));
+    await tester.tap(find.descendant(of: picker, matching: find.text("All projects")));
     await tester.pumpAndSettle();
     expect(filter.value, isNull);
     expect(find.descendant(of: filterTrigger, matching: find.text("All projects")), findsOneWidget);
     expect(find.descendant(of: list, matching: find.text("Fix the build")), findsOneWidget);
-  });
-
-  testWidgets("the shared list hears whether the sidebar shows it", (tester) async {
-    tester.view.devicePixelRatio = 1;
-    tester.view.physicalSize = const Size(900, 600);
-    addTearDown(tester.view.resetPhysicalSize);
-    addTearDown(tester.view.resetDevicePixelRatio);
-    void expectPane({required bool visible}) => verify(
-      () => viewing.setWideListPaneVisible(
-        claim: any(named: "claim"),
-        isVisible: visible,
-      ),
-    ).called(1);
-    await tester.pumpWidget(app(state: running));
-    expectPane(visible: true);
-    await tester.tap(toggle);
-    await tester.pumpAndSettle();
-    expectPane(visible: false);
-    await tester.tap(restore);
-    await tester.pumpAndSettle();
-    expectPane(visible: true);
-    tester.view.physicalSize = const Size(700, 600);
-    await tester.pumpAndSettle();
-    expectPane(visible: false);
-  });
-
-  testWidgets("a filtered sidebar declares its project as viewed", (tester) async {
-    final declarations = _MockViewDeclarationRepository();
-    when(() => declarations.sendProjectView(projectId: any(named: "projectId"))).thenAnswer((_) async {});
-    when(() => declarations.sendSessionView(sessionId: any(named: "sessionId"))).thenAnswer((_) async {});
-    final connection = MockConnectionService();
-    final status = ConnectionStatus.connected(
-      config: const ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
-      health: testHealthResponse(),
-    );
-    final statuses = BehaviorSubject<ConnectionStatus>.seeded(status);
-    when(() => connection.status).thenAnswer((_) => statuses.stream);
-    when(() => connection.currentStatus).thenReturn(status);
-    final lifecycle = FakeLifecycleSource();
-    final routes = MockRouteSource(initialRoute: AppRouteDef.home);
-    final service = ProjectViewingService(
-      viewRepository: declarations,
-      lifecycleSource: lifecycle,
-      connectionService: connection,
-      routeSource: routes,
-    );
-    viewing = service;
-    seedTwoProjects();
-    filter.add("project-1");
-    await tester.pumpWidget(app(state: running));
-    await tester.pump();
-    expect(service.declaredProjectId, "project-1");
   });
 
   testWidgets("a hidden sidebar comes back from the page's corner, which the toolbar leaves free", (tester) async {
@@ -644,7 +583,7 @@ void main() {
     for (final state in <ProjectListState>[
       const ProjectListState.loading(),
       const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
-      const ProjectListState.loaded(projects: [], isRefreshing: true),
+      const ProjectListState.loaded(projects: [], folderProjects: [], scratchProject: null, isRefreshing: true),
     ]) {
       whenListen(projects, const Stream<ProjectListState>.empty(), initialState: state);
       await tester.pumpWidget(app(state: running));
@@ -829,7 +768,7 @@ void main() {
       whenListen(
         projects,
         const Stream<ProjectListState>.empty(),
-        initialState: ProjectListState.loaded(projects: available),
+        initialState: ProjectListState.loaded(projects: available, folderProjects: available, scratchProject: null),
       );
       recent = {for (final project in available) project.id: _loaded(sessions: const [])};
       return app(
@@ -1297,6 +1236,9 @@ RecentSessionsLoaded _loaded({required List<Session> sessions}) => RecentSession
   listStateBySessionId: const {},
 );
 
+const _sesori = ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null);
+const _landing = ProjectSummary(id: "project-2", name: "Landing page", path: "/work/landing", time: null);
+
 const _sessionActions = SessionListActionDispatcher(
   deleteConfirmation: SessionDeleteConfirmation.sheet,
   onSessionArchived: null,
@@ -1329,7 +1271,5 @@ class _MockRecentSessionInventoryService() extends Mock implements RecentSession
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;
 
 class _MockFilterTracker() extends Mock implements SessionListFilterTracker;
-
-class _MockViewDeclarationRepository() extends Mock implements ViewDeclarationRepository;
 
 class _MockRepository() extends Mock implements DesktopInstanceRepository;

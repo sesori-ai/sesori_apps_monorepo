@@ -43,20 +43,28 @@ Future<bool> _confirmArchiveRunning({required BuildContext context, required Ses
 }
 
 /// Whether the user confirmed deleting [session]. Deleting always removes a
-/// dedicated worktree, so the dialog says so rather than asking.
-Future<bool> _confirmDelete({required BuildContext context, required Session session}) async {
+/// dedicated worktree and a "No project" session's folder, so the dialog says
+/// so rather than asking.
+Future<bool> _confirmDelete({
+  required BuildContext context,
+  required Session session,
+  required bool deletesFolder,
+}) async {
   final loc = context.loc;
   final confirmed = await showPregoModal<bool>(
     context: context,
     title: loc.sessionListDeleteNamedTitle(_sessionName(loc: loc, session: session)),
-    builder: (_) => _DeleteConfirmation(session: session),
+    builder: (_) => _DeleteConfirmation(session: session, deletesFolder: deletesFolder),
   );
   return confirmed ?? false;
 }
 
-/// The delete question's body: what deleting means, the worktree notice when
-/// the session has one, then Cancel and a destructive Delete.
-class const _DeleteConfirmation({required final Session session}) extends StatelessWidget {
+/// The delete question's body: what deleting means, the worktree or folder
+/// notice when the session has one, then Cancel and a destructive Delete.
+class const _DeleteConfirmation({
+  required final Session session,
+  required final bool deletesFolder,
+}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final loc = context.loc;
@@ -71,6 +79,10 @@ class const _DeleteConfirmation({required final Session session}) extends Statel
           if (session.hasWorktree) ...[
             const SizedBox(height: PregoSpacing.md),
             Text(loc.sessionListDeleteWorktreeNotice, style: bodyStyle),
+          ],
+          if (deletesFolder) ...[
+            const SizedBox(height: PregoSpacing.md),
+            Text(loc.sessionListDeleteFolderNotice, style: bodyStyle),
           ],
           const SizedBox(height: PregoSpacing.x2l),
           PregoSheetActions(

@@ -67,6 +67,16 @@ void main() {
       );
     });
 
+    test("returns 409 when the service refuses to hide the No project project", () async {
+      await expectLater(
+        handler.handle(
+          makeRequest("POST", "/project/hide"),
+          body: const ProjectIdRequest(projectId: "/scratch"),
+        ),
+        throwsA(isA<RelayResponse>().having((r) => r.status, "status", 409)),
+      );
+    });
+
     test("handles project IDs containing slashes", () async {
       const projectId = "/Users/alex/projects/my-app";
       final response = await handler.handle(
@@ -84,6 +94,7 @@ void main() {
 class _ProjectMutationService({required final ProjectRepository projectRepository}) implements ProjectMutationService {
   @override
   Future<void> hideProject({required String projectId}) {
+    if (projectId == "/scratch") throw ScratchProjectHideRefusedException(projectId: projectId);
     return projectRepository.hideProject(projectId: projectId);
   }
 

@@ -144,37 +144,13 @@ void main() {
     );
   });
 
-  test("session updates preserve REST PR history when the event omits it", () {
+  test("session updates keep the later user-activity marker", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
       activityCalculator: const SessionActivityCalculator(),
     );
-    const existingHistory = PullRequestInfo(
-      number: 690,
-      url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/690",
-      title: "Merged pull request",
-      state: PrState.merged,
-      mergeableStatus: PrMergeableStatus.unknown,
-      reviewDecision: PrReviewDecision.unknown,
-      checkStatus: PrCheckStatus.success,
-    );
-    const incomingPullRequest = PullRequestInfo(
-      number: 698,
-      url: "https://github.com/sesori-ai/sesori_apps_monorepo/pull/698",
-      title: "Open pull request",
-      state: PrState.open,
-      mergeableStatus: PrMergeableStatus.mergeable,
-      reviewDecision: PrReviewDecision.unknown,
-      checkStatus: PrCheckStatus.pending,
-    );
-    final existing = _session(id: "session", title: "Original", updatedAt: 1).copyWith(
-      pullRequestHistory: const [existingHistory],
-      lastUserActivityAt: 20,
-    );
-    final incoming = _session(id: "session", title: "Updated", updatedAt: 2).copyWith(
-      pullRequest: incomingPullRequest,
-      lastUserActivityAt: 10,
-    );
+    final existing = _session(id: "session", title: "Original", updatedAt: 1).copyWith(lastUserActivityAt: 20);
+    final incoming = _session(id: "session", title: "Updated", updatedAt: 2).copyWith(lastUserActivityAt: 10);
 
     final result = service.applySessionUpdatedEvent(
       sessions: [existing],
@@ -182,8 +158,7 @@ void main() {
       session: incoming,
     );
 
-    expect(result.single.pullRequest, incomingPullRequest);
-    expect(result.single.pullRequestHistory, const [existingHistory]);
+    expect(result.single.title, "Updated");
     expect(result.single.lastUserActivityAt, 20);
   });
 }
@@ -198,7 +173,6 @@ Session _session({required String id, required String title, required int update
     parentID: null,
     title: title,
     time: SessionTime(created: 1, updated: updatedAt, archived: null),
-    pullRequest: null,
     promptDefaults: null,
     branchName: null,
     lastUserActivityAt: null,

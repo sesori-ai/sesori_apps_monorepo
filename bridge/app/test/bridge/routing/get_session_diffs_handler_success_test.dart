@@ -35,7 +35,6 @@ void main() {
         plugin: FakeBridgePlugin(),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       processRunner = FakeProcessRunner();
@@ -80,14 +79,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -184,14 +181,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -249,14 +244,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -318,14 +311,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -386,14 +377,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "s1",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "session-001",
         baseBranch: "main",
         baseCommit: "main",
 
@@ -451,14 +440,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "unicode-session",
         backendSessionId: "unicode-session",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "unicode-session",
         baseBranch: "main",
         baseCommit: "main",
         lastAgent: null,
@@ -511,14 +498,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: "opencode",
-        preservePullRequestScope: false,
         sessionId: "large-base-session",
         backendSessionId: "large-base-session",
         projectId: "project-1",
         isDedicated: true,
         createdAt: 123,
         worktreePath: tempDir.path,
-        branchName: "large-base-session",
         baseBranch: "main",
         baseCommit: "main",
         lastAgent: null,

@@ -18,13 +18,14 @@ typedef NewSessionProjectSelected = void Function({required String projectId, re
 /// layouts and under a pointer. Under touch the search waits for a tap, so the
 /// keyboard stays down until the user wants it.
 ///
-/// The search sits first, and the list holds only projects. A button pinned
-/// below the list, which the search leaves alone, is there with one project,
-/// with none, and when nothing matches. Choosing a new session's project, it
-/// is "Open folder…", which opens the folder browser and then selects the
-/// project that adds. Filtering a list instead ([onAllProjects] set), it is
-/// "Show all projects", checked while no project is chosen. A path shows only
-/// under a name another project shares.
+/// The search sits first, and the list holds only folder projects. Buttons
+/// pinned below the list, which the search leaves alone, are there with one
+/// project, with none, and when nothing matches. "No project" leads them on a
+/// bridge that has it, and picks it like a project. Choosing a new session's
+/// project, it sits beside "Open folder…", which opens the folder browser and
+/// then selects the project that adds. Filtering a list instead
+/// ([onAllProjects] set), it sits beside "All projects", checked while no
+/// project is chosen. A path shows only under a name another project shares.
 class const ProjectPicker({
   super.key,
 
@@ -32,7 +33,7 @@ class const ProjectPicker({
   required final String? selectedProjectId,
   required final NewSessionProjectSelected onSelected,
 
-  /// Clears a list's filter. Set, the picker filters: "Show all projects" is
+  /// Clears a list's filter. Set, the picker filters: "All projects" is
   /// pinned below the list in place of "Open folder…".
   required final VoidCallback? onAllProjects,
 
@@ -153,10 +154,13 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
 
   @override
   Widget build(BuildContext context) {
-    final projects = context.select(
+    final loc = context.loc;
+    final (projects, scratchProject) = context.select(
       (ProjectListCubit cubit) => switch (cubit.state) {
-        ProjectListLoaded(:final projects) => projects,
-        ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => const <ProjectSummary>[],
+        ProjectListLoaded(:final folderProjects, :final scratchProject) => (folderProjects, scratchProject),
+        ProjectListLoading() ||
+        ProjectListFailed() ||
+        ProjectListBridgeDisconnected() => (const <ProjectSummary>[], null),
       },
     );
     var rows = _rows;
@@ -164,39 +168,47 @@ class _ProjectPickerListState() extends State<_ProjectPickerList> {
       _projects = projects;
       rows = _rows = _buildRows();
     }
+    final trailing = switch (widget.onAllProjects) {
+      null => PregoPickerSearchFooterAction(
+        label: loc.projectPickerOpenFolder,
+        icon: TablerRegular.folder_plus,
+        isSelected: false,
+        onPick: () {
+          final route = ModalRoute.of(context);
+          widget.onClose();
+          // A popped route completes only once its closing animation ends.
+          unawaited(route?.completed.then((_) => widget.onOpenFolder()));
+        },
+      ),
+      // Checked when it is already the choice, so it never reads as one
+      // more project.
+      final onAllProjects => PregoPickerSearchFooterAction(
+        label: loc.projectPickerAllProjects,
+        icon: TablerRegular.folders,
+        isSelected: widget.selectedProjectId == null,
+        onPick: () {
+          widget.onClose();
+          if (widget.selectedProjectId != null) onAllProjects();
+        },
+      ),
+    };
     return PregoPickerSearchList(
-      searchHint: context.loc.projectPickerSearchHint,
+      searchHint: loc.projectPickerSearchHint,
       onQueryChanged: (query) => setState(() {
         _query = query;
         _rows = _buildRows();
       }),
       // Actions rather than projects, so the search leaves them alone.
-      footer: switch (widget.onAllProjects) {
-        null => PregoPickerSearchFooter.single(
-          action: PregoPickerSearchFooterAction(
-            label: context.loc.projectPickerOpenFolder,
-            icon: TablerRegular.folder_plus,
-            isSelected: false,
-            onPick: () {
-              final route = ModalRoute.of(context);
-              widget.onClose();
-              // A popped route completes only once its closing animation ends.
-              unawaited(route?.completed.then((_) => widget.onOpenFolder()));
-            },
+      footer: switch (scratchProject) {
+        null => PregoPickerSearchFooter.single(action: trailing),
+        final scratchProject => PregoPickerSearchFooter.pair(
+          leading: PregoPickerSearchFooterAction(
+            label: loc.projectPickerNoProject,
+            icon: TablerRegular.folder_off,
+            isSelected: scratchProject.id == widget.selectedProjectId,
+            onPick: () => _pickProject(project: scratchProject, name: loc.projectPickerNoProject),
           ),
-        ),
-        // Checked when it is already the choice, so it never reads as one
-        // more project.
-        final onAllProjects => PregoPickerSearchFooter.single(
-          action: PregoPickerSearchFooterAction(
-            label: context.loc.projectPickerShowAllProjects,
-            icon: TablerRegular.folders,
-            isSelected: widget.selectedProjectId == null,
-            onPick: () {
-              widget.onClose();
-              if (widget.selectedProjectId != null) onAllProjects();
-            },
-          ),
+          trailing: trailing,
         ),
       },
       rows: rows,

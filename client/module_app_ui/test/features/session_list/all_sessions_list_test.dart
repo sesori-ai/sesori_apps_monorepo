@@ -23,6 +23,7 @@ void main() {
     required String query,
     required List<AllSessionsFailure> failures,
     required List<AllSessionsRow> rows,
+    required String? scratchProjectId,
     SessionListChipCounts counts = const SessionListChipCounts(all: 0, running: 0, unread: 0),
   }) => AllSessionsState(
     projectId: null,
@@ -33,6 +34,7 @@ void main() {
     counts: counts,
     failures: failures,
     isLoading: false,
+    scratchProjectId: scratchProjectId,
     defaultProjectId: null,
   );
 
@@ -62,7 +64,11 @@ void main() {
     WidgetTester tester, {
     required AllSessionsState initial,
     AllSessionsMode mode = AllSessionsMode.archived,
-    ProjectListState projectList = const ProjectListState.loaded(projects: [project]),
+    ProjectListState projectList = const ProjectListState.loaded(
+      projects: [project],
+      folderProjects: [project],
+      scratchProject: null,
+    ),
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, const Stream<AllSessionsState>.empty(), initialState: initial);
@@ -128,6 +134,7 @@ void main() {
         query: "",
         failures: const [AllSessionsFailure(project: project, reason: RemoteFailureReason.networkDown)],
         rows: const [],
+        scratchProjectId: null,
       ),
     );
     expect(find.text("Couldn’t load Project One"), findsOneWidget);
@@ -139,7 +146,7 @@ void main() {
   testWidgets("a query that matches nothing says so instead of the empty state", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "zzz", failures: const [], rows: const []),
+      initial: state(query: "zzz", failures: const [], rows: const [], scratchProjectId: null),
     );
     expect(find.text("Nothing here"), findsNothing);
     expect(find.text("No matches"), findsOneWidget);
@@ -159,6 +166,7 @@ void main() {
           // Still running, but an archive lists it by its archive date.
           row(title: "Archived yesterday", archivedAt: yesterday, updatedAt: today, isRunning: true),
         ],
+        scratchProjectId: null,
       ),
     );
 
@@ -175,7 +183,7 @@ void main() {
   testWidgets("with nothing to show the empty state fills the list", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "", failures: const [], rows: const []),
+      initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
     );
     expect(find.text("Nothing here"), findsOneWidget);
   });
@@ -183,7 +191,7 @@ void main() {
   testWidgets("Archived shows a failed project list with Retry, not the empty state", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "", failures: const [], rows: const []),
+      initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
       projectList: const ProjectListState.failed(reason: RemoteFailureReason.networkDown),
     );
     expect(find.text("Failed to load projects"), findsOneWidget);
@@ -196,7 +204,7 @@ void main() {
   testWidgets("Archived shows the disconnected computer, not the empty state", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "", failures: const [], rows: const []),
+      initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
       projectList: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
     );
     expect(find.text("Computer offline"), findsOneWidget);
@@ -212,6 +220,7 @@ void main() {
         query: "",
         failures: const [],
         rows: [row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false)],
+        scratchProjectId: null,
         counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
       ),
     );
@@ -220,5 +229,39 @@ void main() {
     expect(find.text("Fix the parser"), findsOneWidget);
     // Unfiltered, a row names its project.
     expect(find.text("Project One"), findsOneWidget);
+  });
+
+  testWidgets("unfiltered, a No project row names no project", (tester) async {
+    const scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
+    final now = DateTime.now();
+    await pumpList(
+      tester,
+      mode: AllSessionsMode.active,
+      initial: state(
+        query: "",
+        failures: const [],
+        rows: [
+          row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false),
+          AllSessionsRow(
+            session: testSession(id: "jot", title: "Jot down ideas", updatedAt: now.millisecondsSinceEpoch),
+            project: scratch,
+            isRunning: false,
+            isUnseen: false,
+            isAwaitingInput: false,
+            isRetrying: false,
+            backgroundTaskCount: 0,
+          ),
+        ],
+        scratchProjectId: scratch.id,
+      ),
+      projectList: const ProjectListState.loaded(
+        projects: [project, scratch],
+        folderProjects: [project],
+        scratchProject: scratch,
+      ),
+    );
+    expect(find.text("Jot down ideas"), findsOneWidget);
+    expect(find.text("Project One"), findsOneWidget);
+    expect(find.text("No project"), findsNothing);
   });
 }

@@ -1,10 +1,10 @@
-import "dart:io" show FileSystemException;
+import "dart:io" show FileSystemException, Platform;
 import "dart:math" show max;
 
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show ParallelLock, normalizeProjectDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show Project, ProjectSummary, ProjectTime;
+import "package:sesori_shared/sesori_shared.dart" show Project, ProjectKind, ProjectSummary, ProjectTime;
 
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart" show SessionDao, SessionUnseenRow;
@@ -47,6 +47,10 @@ class ProjectRepository({
           row: row,
           hasUnseenChanges: unseenById[row.projectId] ?? false,
           directoryMissing: directoryMissing[index],
+          // Keyed on the row's stable id rather than its path.
+          kind: _projectCatalogIdentityCalculator.isScratchRoot(path: row.projectId)
+              ? ProjectKind.scratch
+              : ProjectKind.folder,
         ),
     ];
   }
@@ -99,7 +103,7 @@ class ProjectRepository({
   /// Resolves [path] locally, retaining any durable identity already recorded
   /// for the same canonical directory.
   Future<Project> resolveProjectOpenTarget({required String path}) async {
-    final canonical = normalizeProjectDirectory(directory: path);
+    final canonical = _canonicalProjectDirectory(path: path);
     final storedProjects = await _projectsDao.getAllProjects();
     final stored = _projectCatalogIdentityCalculator.calculate(
       projectsById: {for (final project in storedProjects) project.projectId: project},
@@ -269,6 +273,24 @@ class ProjectRepository({
     } on FileSystemException catch (error, stackTrace) {
       Log.w("ProjectRepository: could not determine whether $path exists; treating as present", error, stackTrace);
       return false;
+    }
+  }
+
+  /// [path] normalized and, on macOS and Linux, with its symbolic links
+  /// resolved. Harnesses read their working directory back through `getcwd`,
+  /// which resolves links there, so a folder opened through a link (`/tmp` is
+  /// `/private/tmp` on macOS) must be stored the same way to match the
+  /// sessions they report. Windows keeps a working directory as spelled, so
+  /// the path stays as given there, as does a path whose links cannot be
+  /// resolved.
+  String _canonicalProjectDirectory({required String path}) {
+    final normalized = normalizeProjectDirectory(directory: path);
+    if (Platform.isWindows) return normalized;
+    try {
+      return normalizeProjectDirectory(directory: _filesystemApi.resolveDirectoryPath(normalized));
+    } on FileSystemException catch (error, stackTrace) {
+      Log.w("ProjectRepository: could not resolve links in $normalized; storing it as given", error, stackTrace);
+      return normalized;
     }
   }
 

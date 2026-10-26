@@ -101,7 +101,7 @@ migration/snapshot; never fold them into the merged version.
 
 Root `AGENTS.md` has the full suffix vocabulary. Concrete bridge examples:
 
-- **Tool wrappers** use `Api`: `GhCliApi` (gh), `GitCliApi` (git), `SesoriServerApi` (HTTP)
+- **Tool wrappers** use `Api`: `GitCliApi` (git), `SesoriServerApi` (HTTP)
 - **Transport wrappers** use `Client`: `RelayClient`, `PushNotificationClient`
 - **Layer 3 orchestration** uses `Service`: `WorktreeService`, `SessionCreationService`, `PluginLifecycleService`
 - **Pipeline choke points** use `Dispatcher`: `PushDispatcher` (owns only outbound push sends: immediate sends, completion sends, rate limiting, payload building, and client disposal)
@@ -129,12 +129,16 @@ Only create an interface if **at least one** of these is true:
 
 **Forbidden:**
 - Creating an interface just so tests can fake it (when `implements` would work)
-- `PullRequestDaoLike` wrapping `PullRequestDao`
-- `PullRequestRepositoryLike` / `SessionRepositoryLike` / `PrSourceRepositoryLike`
+- `SessionDaoLike` wrapping `SessionDao`
+- `SessionRepositoryLike`
 
 ### API Classes Are Per-Tool, Not Per-Use-Case
 
-One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GhCliApi` for `gh`, `GitCliApi` for `git`). Do not merge tool wrappers just because features are related. Within one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external providers — e.g., `GitHubReleasesApi` wrapping GitHub's web API is separate from `GhCliApi`.
+One API class wraps one external binary/tool. Use separate classes for separate tools (for example, `GitCliApi` for
+`git`, `SesoriServerApi` for the Sesori server). Do not merge tool wrappers just because features are related. Within
+one tool wrapper, keep all operations together instead of splitting by use-case. This also applies to external
+providers — e.g., `GitHubReleasesApi` wrapping GitHub's web API is separate from `SesoriServerApi`, even though both
+use HTTP.
 
 The root sealed-platform-capability preference is the narrow exception. When
 one package-internal capability has mutually exclusive platform
@@ -205,11 +209,13 @@ dependency cycle.
 
 ### Orchestrator Owns SSE Decisions
 
-No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams (`plugin.events`, `prSyncService.prChanges`) and decides what to emit to phones. No `emitBridgeEvent()` or similar public methods on the Orchestrator.
+No component below the Orchestrator may emit SSE events directly. The Orchestrator subscribes to streams
+(`plugin.events`, `projectActivityService.changes`) and decides what to emit to phones. No `emitBridgeEvent()` or
+similar public methods on the Orchestrator.
 
 ### No Magic Strings for Known Enumerations
 
-If a concept has a fixed set of values (PR state, mergeable status, review decision, check status), **use an enum**. Never compare strings like `state.toUpperCase() == "OPEN"` in business logic. Map the raw string to an enum at the deserialization boundary (API/mapper layer), then use the enum everywhere else.
+If a concept has a fixed set of values (permission reply, session approval mode, archived-session completeness), **use an enum**. Never compare strings like `reply.toLowerCase() == "always"` in business logic. Map the raw string to an enum at the deserialization boundary (API/mapper layer), then use the enum everywhere else.
 
 ### No Swallowing Errors with Empty Defaults
 

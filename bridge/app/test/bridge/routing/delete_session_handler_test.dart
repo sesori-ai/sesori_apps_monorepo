@@ -45,7 +45,7 @@ void main() {
       scratchParent = Directory.systemTemp.createTempSync("delete-session-scratch-");
       scratchRoot = p.join(scratchParent.path, "scratch");
       scratchRepository = _RecordingScratchRepository(
-        delegate: testScratchRepository(sessionDao: db.sessionDao, scratchRoot: scratchRoot),
+        delegate: testScratchRepository(db: db, scratchRoot: scratchRoot),
       );
       operationLog = [];
       plugin = _TrackingFakeBridgePlugin(operationLog: operationLog);
@@ -54,7 +54,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       chatHistory = createTestChatHistory();
@@ -62,7 +61,6 @@ void main() {
       sessionMutationDispatcher = SessionMutationDispatcher(
         sessionRepository: sessionRepository,
         sessionOperationDispatcher: sessionOperationDispatcher,
-        worktreeService: worktreeService,
       );
       final sessionLifecycleService = SessionLifecycleService(
         continuations: const EmptySessionContinuations(),
@@ -103,7 +101,13 @@ void main() {
       setUp(() async {
         folder = Directory(p.join(scratchRoot, "2026-10-25-abc"))..createSync(recursive: true);
         File(p.join(folder.path, "notes.txt")).writeAsStringSync("draft");
-        await insertTestSessionInDirectory(db: db, sessionId: "s1", projectId: scratchRoot, directory: folder.path);
+        await insertTestSessionInDirectory(
+          db: db,
+          sessionId: "s1",
+          pluginId: "fake",
+          projectId: scratchRoot,
+          directory: folder.path,
+        );
       });
 
       Future<void> delete({required bool deleteSessionFolder}) async {
@@ -137,7 +141,13 @@ void main() {
       });
 
       test("is kept while another session still runs in it", () async {
-        await insertTestSessionInDirectory(db: db, sessionId: "s2", projectId: scratchRoot, directory: folder.path);
+        await insertTestSessionInDirectory(
+          db: db,
+          sessionId: "s2",
+          pluginId: "fake",
+          projectId: scratchRoot,
+          directory: folder.path,
+        );
 
         await delete(deleteSessionFolder: true);
 
@@ -168,7 +178,6 @@ void main() {
         sessionId: "s1",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-001",
-        branchName: "session-001",
       );
 
       final response = await handler.handle(
@@ -217,7 +226,6 @@ void main() {
         sessionId: "s2",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-002",
-        branchName: "session-002",
       );
       worktreeService.safetyResult = WorktreeSafe();
 
@@ -253,7 +261,6 @@ void main() {
         sessionId: "s2-failed",
         projectId: "/repo",
         worktreePath: worktree.path,
-        branchName: "session-002-failed",
       );
       worktreeService.safetyResult = WorktreeSafe();
       worktreeService.removeResult = false;
@@ -282,7 +289,6 @@ void main() {
         sessionId: "s3",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-003",
-        branchName: "session-003",
       );
 
       await expectLater(
@@ -311,7 +317,6 @@ void main() {
         sessionId: "s4",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-004",
-        branchName: "session-004",
       );
       worktreeService.safetyResult = WorktreeSafe();
 
@@ -341,7 +346,6 @@ void main() {
         sessionId: "s5",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-005",
-        branchName: "session-005",
       );
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [
@@ -373,7 +377,6 @@ void main() {
         sessionId: "s6",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-006",
-        branchName: "session-006",
       );
       worktreeService.safetyResult = WorktreeUnsafe(
         issues: [UnstagedChanges()],
@@ -404,7 +407,6 @@ void main() {
         sessionId: "s7",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
 
       final response = await handler.handle(
@@ -431,7 +433,6 @@ void main() {
         sessionId: "s9",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-009",
-        branchName: "session-009",
         pluginId: "uninstalled-plugin",
       );
 
@@ -467,7 +468,6 @@ void main() {
         sessionId: "s10",
         projectId: "/repo",
         worktreePath: "/repo/.worktrees/session-010",
-        branchName: "session-010",
       );
       worktreeService.safetyResult = WorktreeSafe();
       plugin.throwOnDeleteSessionError = PluginApiException("/session/s10", 500);
@@ -497,7 +497,6 @@ void main() {
         sessionId: "s10-unavailable",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
       plugin.throwOnDeleteSessionError = PluginApiException("/session/s10-unavailable", 503);
 
@@ -523,7 +522,6 @@ void main() {
         sessionId: "s11",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
       plugin.throwOnDeleteSessionError = PluginApiException("/session/s11", 404);
 
@@ -547,7 +545,6 @@ void main() {
         sessionId: "s12",
         projectId: "/repo",
         worktreePath: null,
-        branchName: null,
       );
       plugin.throwOnDeleteSessionError = const PluginOperationException.notFound("deleteSession");
 
@@ -572,21 +569,18 @@ Future<void> _insertSession({
   required String sessionId,
   required String projectId,
   required String? worktreePath,
-  required String? branchName,
   String pluginId = "fake",
 }) async {
   await db.projectsDao.insertProjectsIfMissing(projectIds: [projectId]); // satisfy v5 FK constraint
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: pluginId,
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
     isDedicated: true,
     createdAt: 1,
     worktreePath: worktreePath,
-    branchName: branchName,
     baseBranch: null,
     baseCommit: null,
 
@@ -599,6 +593,9 @@ Future<void> _insertSession({
 /// service leaves running.
 class _RecordingScratchRepository({required final ScratchRepository _delegate}) implements ScratchRepository {
   final List<Future<void>> deletions = [];
+
+  @override
+  Future<void> ensureScratchProject() => _delegate.ensureScratchProject();
 
   @override
   Future<String> createSessionDirectory() => _delegate.createSessionDirectory();

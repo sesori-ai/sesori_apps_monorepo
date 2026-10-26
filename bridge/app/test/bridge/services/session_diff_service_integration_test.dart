@@ -35,7 +35,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       service = SessionDiffService(
@@ -384,14 +383,12 @@ Future<void> _insertStoredSession({
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: "opencode",
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
     isDedicated: true,
     createdAt: 1,
     worktreePath: worktreePath,
-    branchName: "session-branch",
     baseBranch: "main",
     baseCommit: "main",
     lastAgent: null,
@@ -410,14 +407,12 @@ Future<void> _insertInPlaceStoredSession({
   await db.sessionDao.insertSession(
     fastMode: false,
     pluginId: "opencode",
-    preservePullRequestScope: false,
     sessionId: sessionId,
     backendSessionId: sessionId,
     projectId: projectId,
     isDedicated: false,
     createdAt: 1,
     worktreePath: null,
-    branchName: null,
     baseBranch: baseBranch,
     baseCommit: baseCommit,
     lastAgent: null,

@@ -2151,7 +2151,6 @@ void main() {
         parentID: "session-1",
         title: "Explore",
         time: SessionTime(created: startedAt, updated: startedAt, archived: null),
-        pullRequest: null,
         promptDefaults: null,
         branchName: null,
         lastUserActivityAt: null,

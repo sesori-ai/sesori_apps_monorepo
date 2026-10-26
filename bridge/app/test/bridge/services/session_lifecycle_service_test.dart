@@ -7,7 +7,6 @@ import "package:sesori_bridge/src/foundation/session_archived_read_only_exceptio
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
-import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/services/archived_session_validator.dart";
@@ -361,7 +360,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       operationDispatcher = SessionOperationDispatcher(sessionRepository: repository);
@@ -388,7 +386,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: "build",
@@ -398,7 +395,6 @@ void main() {
           variant: "high",
         ),
         pluginId: "fake",
-        preservePullRequestScope: false,
       );
     });
 
@@ -526,17 +522,10 @@ class _FakeSessionRepository() implements SessionRepository {
   int hasSharingCallCount = 0;
 
   @override
-  Future<List<Session>> enrichSessions({
-    required List<Session> sessions,
-    required VerifiedGithubLogin? verifiedGithubLogin,
-  }) async => sessions;
-
-  @override
   Future<bool> hasOtherActiveSessionsSharing({
     required String sessionId,
     required String projectId,
-    required String? worktreePath,
-    required String? branchName,
+    required String worktreePath,
   }) async {
     hasSharingCallCount++;
     return hasSharingResult;

@@ -1,5 +1,3 @@
-import "dart:convert";
-
 import "package:mocktail/mocktail.dart";
 import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/api/bridge_settings_api.dart";
@@ -18,24 +16,7 @@ void main() {
     api = BridgeSettingsApi(client: client);
   });
 
-  test("GET parses the committed pull request refresh interval", () async {
-    when(
-      () => client.get<PullRequestRefreshSettingsResponse>(
-        "/settings/pull-request-refresh",
-        fromJson: any(named: "fromJson"),
-      ),
-    ).thenAnswer((invocation) async {
-      final fromJson =
-          invocation.namedArguments[#fromJson] as PullRequestRefreshSettingsResponse Function(Map<String, dynamic>);
-      return ApiResponse.success(fromJson({"intervalSeconds": 30}));
-    });
-
-    final result = await api.getPullRequestRefreshSettings();
-
-    expect((result as SuccessResponse<PullRequestRefreshSettingsResponse>).data.intervalSeconds, 30);
-  });
-
-  test("GET parses the aggregate bridge settings", () async {
+  test("GET parses the aggregate settings a v1.9.1 bridge sends", () async {
     when(
       () => client.get<BridgeSettingsResponse>(
         "/settings",
@@ -46,7 +27,7 @@ void main() {
       return ApiResponse.success(
         fromJson({
           "pullRequestRefresh": {"intervalSeconds": 30},
-          "yolo": {"enabled": true},
+          "yolo": {"enabled": true, "supportsSessionOverride": true},
           "warmUpPluginsOnSessionOpen": true,
         }),
       );
@@ -55,37 +36,32 @@ void main() {
     final result = await api.getBridgeSettings();
 
     final settings = (result as SuccessResponse<BridgeSettingsResponse>).data;
-    expect(settings.pullRequestRefresh.intervalSeconds, 30);
     expect(settings.yolo.enabled, isTrue);
+    expect(settings.yolo.supportsSessionOverride, isTrue);
     expect(settings.warmUpPluginsOnSessionOpen, isTrue);
   });
 
-  test("PATCH serializes and parses a committed setting variant", () async {
+  test("GET parses settings from a bridge that omits the pull request interval", () async {
     when(
-      () => client.patch<BridgeSettingUpdate>(
+      () => client.get<BridgeSettingsResponse>(
         "/settings",
-        body: any(named: "body"),
         fromJson: any(named: "fromJson"),
       ),
     ).thenAnswer((invocation) async {
-      final fromJson = invocation.namedArguments[#fromJson] as BridgeSettingUpdate Function(Map<String, dynamic>);
+      final fromJson = invocation.namedArguments[#fromJson] as BridgeSettingsResponse Function(Map<String, dynamic>);
       return ApiResponse.success(
-        fromJson(const {"type": "pullRequestRefreshInterval", "intervalSeconds": 45}),
+        fromJson({
+          "yolo": {"enabled": false, "supportsSessionOverride": true},
+          "warmUpPluginsOnSessionOpen": true,
+        }),
       );
     });
-    const update = BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 45);
 
-    final result = await api.update(update: update);
+    final result = await api.getBridgeSettings();
 
-    expect((result as BridgeSettingUpdateApiCommitted).update, update);
-    final body = verify(
-      () => client.patch<BridgeSettingUpdate>(
-        "/settings",
-        body: captureAny(named: "body"),
-        fromJson: any(named: "fromJson"),
-      ),
-    ).captured.single;
-    expect(body, update.toJson());
+    final settings = (result as SuccessResponse<BridgeSettingsResponse>).data;
+    expect(settings.yolo.enabled, isFalse);
+    expect(settings.warmUpPluginsOnSessionOpen, isTrue);
   });
 
   test("PATCH serializes and parses a committed YOLO setting", () async {
@@ -142,38 +118,15 @@ void main() {
     expect(body, update.toJson());
   });
 
-  test("PATCH parses a typed rejection at the API boundary", () async {
-    const rejection = BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange(
-      minimumIntervalSeconds: 15,
-      maximumIntervalSeconds: 3600,
-    );
-    final error = NonSuccessCodeError(
-      errorCode: 400,
-      rawErrorString: jsonEncode(rejection.toJson()),
-    );
-    _stubFailure(client: client, error: error);
-
-    final result = await api.update(
-      update: const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 10),
-    );
-
-    expect((result as BridgeSettingUpdateApiRejected).rejection, rejection);
-    expect(result.error, same(error));
-  });
-
-  test("PATCH preserves malformed rejection and other transport failures", () async {
-    final malformed = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "not-json");
-    _stubFailure(client: client, error: malformed);
-    final malformedResult = await api.update(
-      update: const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 10),
-    );
-    expect((malformedResult as BridgeSettingUpdateApiFailure).error, same(malformed));
+  test("PATCH preserves the original error of a refused or unavailable update", () async {
+    final refused = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "not-json");
+    _stubFailure(client: client, error: refused);
+    final refusedResult = await api.update(update: const BridgeSettingUpdate.yolo(enabled: true));
+    expect((refusedResult as BridgeSettingUpdateApiFailure).error, same(refused));
 
     final unavailable = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null);
     _stubFailure(client: client, error: unavailable);
-    final unavailableResult = await api.update(
-      update: const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 30),
-    );
+    final unavailableResult = await api.update(update: const BridgeSettingUpdate.yolo(enabled: false));
     expect((unavailableResult as BridgeSettingUpdateApiFailure).error, same(unavailable));
   });
 }

@@ -7,10 +7,11 @@ import "../foundation/models/desktop_bundle_identity.dart";
 import "../foundation/models/desktop_install_kind.dart";
 import "../foundation/models/desktop_update_state.dart";
 import "../foundation/platform/installed_desktop_bundle_source.dart";
+import "../foundation/platform/sparkle_update_engine.dart";
 import "desktop_update_feed_validator.dart";
 
-/// Layer-2 update engine for this install kind. Linux packages and Velopack
-/// installs have one; macOS keeps the manual download until Sparkle lands.
+/// Layer-2 update engine for this install kind: Sparkle on macOS, Velopack on
+/// Windows and AppImage, and the package manager for DEB and RPM.
 @lazySingleton
 class DesktopUpdateRepository._create({
   required final InstalledDesktopBundleSource _bundleSource,
@@ -18,6 +19,7 @@ class DesktopUpdateRepository._create({
   required final DesktopUpdateFeedApi _feedApi,
   required final DesktopUpdateFeedValidator _feedValidator,
   required final VelopackUpdateApi _velopackApi,
+  required final SparkleUpdateEngine _sparkleEngine,
 }) {
   new({
     required InstalledDesktopBundleSource bundleSource,
@@ -25,12 +27,14 @@ class DesktopUpdateRepository._create({
     required DesktopUpdateFeedApi feedApi,
     required DesktopUpdateFeedValidator feedValidator,
     required VelopackUpdateApi velopackApi,
+    required SparkleUpdateEngine sparkleEngine,
   }) : this._create(
          bundleSource: bundleSource,
          relaunchApi: relaunchApi,
          feedApi: feedApi,
          feedValidator: feedValidator,
          velopackApi: velopackApi,
+         sparkleEngine: sparkleEngine,
        );
 
   late final DesktopInstallKind installKind = DesktopInstallKind.resolve(
@@ -39,21 +43,15 @@ class DesktopUpdateRepository._create({
   );
 
   /// The state before any check has run.
-  DesktopUpdateState initialState() => switch ((installKind, _bundleSource.compiledIdentity)) {
-    (DesktopInstallKind.linuxPackage, _) => const DesktopUpdateManagedBySystem(),
-    (DesktopInstallKind.velopack, _) => const DesktopUpdateIdle(),
-    (DesktopInstallKind.macosSparkle, final DesktopBundleIdentity identity) => DesktopUpdateManualDownload(
-      downloadsUri: Uri(
-        scheme: "https",
-        host: "sesori.com",
-        path: "/desktop/",
-        fragment: "${_bundleSource.channel.name}-${identity.os.name}-${identity.architecture.name}",
-      ),
+  DesktopUpdateState initialState() => switch (installKind) {
+    DesktopInstallKind.linuxPackage => const DesktopUpdateManagedBySystem(),
+    DesktopInstallKind.velopack || DesktopInstallKind.macosSparkle => const DesktopUpdateIdle(),
+    DesktopInstallKind.development => const DesktopUpdateUnavailable(
+      reason: DesktopUpdateUnavailableReason.developmentBuild,
     ),
-    _ => const DesktopUpdateUnavailable(reason: DesktopUpdateUnavailableReason.developmentBuild),
   };
 
-  /// One check of this install kind's engine. Throws on any failure.
+  /// One check of the Linux package or Velopack engine. Throws on any failure.
   Future<DesktopUpdateState> check() async => switch ((installKind, _bundleSource.compiledIdentity)) {
     (DesktopInstallKind.linuxPackage, _) => _readInstalledPackageState(),
     (DesktopInstallKind.velopack, final DesktopBundleIdentity identity) => await _checkVelopack(identity: identity),
@@ -61,6 +59,27 @@ class DesktopUpdateRepository._create({
   };
 
   Future<void> relaunchInstalledPackage() => _relaunchApi.relaunchInstalledPackage();
+
+  /// Ready for each update Sparkle has downloaded and verified.
+  Stream<DesktopUpdateState> get sparkleDownloads =>
+      _sparkleEngine.downloadedVersions.map((version) => DesktopUpdateReady(version: version));
+
+  /// Starts Sparkle on this install's appcast; Sparkle schedules its own checks.
+  Future<void> startSparkle({required bool automaticChecks}) => switch (_bundleSource.compiledIdentity) {
+    final DesktopBundleIdentity identity => _sparkleEngine.start(
+      feedUri: _feedApi.appcastUri(identity: identity),
+      automaticChecks: automaticChecks,
+    ),
+    null => throw StateError("A source build has no update feed"),
+  };
+
+  Future<void> setSparkleAutomaticChecks({required bool enabled}) =>
+      _sparkleEngine.setAutomaticChecks(enabled: enabled);
+
+  /// Sparkle reports a downloaded update on [sparkleDownloads], not here.
+  Future<void> checkSparkle() => _sparkleEngine.checkNow();
+
+  Future<void> installSparkleUpdateAndRelaunch() => _sparkleEngine.installAndRelaunch();
 
   /// Starts Velopack's updater for the downloaded package; it installs once this process exits.
   Future<void> applyDownloadedUpdate({required bool restart}) => _velopackApi.applyPendingRelease(restart: restart);

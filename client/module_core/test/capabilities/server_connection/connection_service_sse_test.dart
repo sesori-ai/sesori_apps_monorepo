@@ -158,67 +158,70 @@ void main() {
           .called(1);
     });
 
-    test("ignores an unknown event type without reporting and continues", () async {
-      final previousLogLevel = logLevel;
-      setLogLevel(LogLevel.warning);
-      addTearDown(() => setLogLevel(previousLogLevel));
+    for (final unknown in [
+      (type: "plugin.future.changed", properties: {"snapshotToken": "future-token"}),
+      // Bridges up to v1.9.1 still emit this retired event.
+      (type: "sessions.updated", properties: {"projectID": "project-1"}),
+    ]) {
+      test("ignores the unknown event type ${unknown.type} without reporting and continues", () async {
+        final previousLogLevel = logLevel;
+        setLogLevel(LogLevel.warning);
+        addTearDown(() => setLogLevel(previousLogLevel));
 
-      final logs = <String>[];
-      final unknownEventLogged = Completer<void>();
+        final logs = <String>[];
+        final unknownEventLogged = Completer<void>();
 
-      await runZoned(
-        () async {
-          final result = await service.connect(config);
-          expect(result, isA<SuccessResponse<HealthResponse>>());
+        await runZoned(
+          () async {
+            final result = await service.connect(config);
+            expect(result, isA<SuccessResponse<HealthResponse>>());
 
-          final nextKnownEvent = service.events.first;
-          sseController.add(
-            RelaySseEvent(
-              data: jsonEncode({
-                "payload": {
-                  "type": "plugin.future.changed",
-                  "properties": {"snapshotToken": "future-token"},
-                },
-              }),
-            ),
-          );
-          await unknownEventLogged.future.timeout(const Duration(seconds: 1));
+            final nextKnownEvent = service.events.first;
+            sseController.add(
+              RelaySseEvent(
+                data: jsonEncode({
+                  "payload": {"type": unknown.type, "properties": unknown.properties},
+                }),
+              ),
+            );
+            await unknownEventLogged.future.timeout(const Duration(seconds: 1));
 
-          verifyNever(
-            () => failureReporter.recordFailure(
-              error: any(named: "error"),
-              stackTrace: any(named: "stackTrace"),
-              uniqueIdentifier: any(named: "uniqueIdentifier"),
-              fatal: any(named: "fatal"),
-              reason: any(named: "reason"),
-              information: any(named: "information"),
-            ),
-          );
+            verifyNever(
+              () => failureReporter.recordFailure(
+                error: any(named: "error"),
+                stackTrace: any(named: "stackTrace"),
+                uniqueIdentifier: any(named: "uniqueIdentifier"),
+                fatal: any(named: "fatal"),
+                reason: any(named: "reason"),
+                information: any(named: "information"),
+              ),
+            );
 
-          sseController.add(
-            RelaySseEvent(
-              data: jsonEncode({
-                "payload": {"type": "server.heartbeat", "properties": <String, Object?>{}},
-              }),
-            ),
-          );
+            sseController.add(
+              RelaySseEvent(
+                data: jsonEncode({
+                  "payload": {"type": "server.heartbeat", "properties": <String, Object?>{}},
+                }),
+              ),
+            );
 
-          final event = await nextKnownEvent.timeout(const Duration(seconds: 1));
-          expect(event.data, isA<SesoriServerHeartbeat>());
-        },
-        zoneSpecification: ZoneSpecification(
-          print: (self, parent, zone, line) {
-            logs.add(line);
-            if (line.contains("Ignoring unknown SSE event type: plugin.future.changed") &&
-                !unknownEventLogged.isCompleted) {
-              unknownEventLogged.complete();
-            }
+            final event = await nextKnownEvent.timeout(const Duration(seconds: 1));
+            expect(event.data, isA<SesoriServerHeartbeat>());
           },
-        ),
-      );
+          zoneSpecification: ZoneSpecification(
+            print: (self, parent, zone, line) {
+              logs.add(line);
+              if (line.contains("Ignoring unknown SSE event type: ${unknown.type}") &&
+                  !unknownEventLogged.isCompleted) {
+                unknownEventLogged.complete();
+              }
+            },
+          ),
+        );
 
-      expect(logs, contains(contains("Ignoring unknown SSE event type: plugin.future.changed")));
-    });
+        expect(logs, contains(contains("Ignoring unknown SSE event type: ${unknown.type}")));
+      });
+    }
 
     test("still reports a malformed payload for a known event type", () async {
       final previousLogLevel = logLevel;

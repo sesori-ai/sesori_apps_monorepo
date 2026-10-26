@@ -50,21 +50,12 @@ void main() {
     return harness;
   }
 
-  void verifyPaneVisible(AdaptiveSessionRouterTestHarness harness, {required bool isVisible, required int times}) {
-    verify(
-      () => harness.projectViewingService.setWideListPaneVisible(
-        claim: any(named: "claim"),
-        isVisible: isVisible,
-      ),
-    ).called(times);
-  }
-
   Finder inSidebar(Finder finder) => find.descendant(of: find.byKey(_sidebar), matching: finder);
   Finder inContent(Finder finder) => find.descendant(of: find.byKey(_content), matching: finder);
 
   group("SessionSidebarShell", () {
     testWidgets("below 700 pt the home fills the screen without a sidebar", (tester) async {
-      final harness = await pumpShell(
+      await pumpShell(
         tester,
         size: const Size(699, 800),
         initialLocation: "/sessions",
@@ -74,13 +65,10 @@ void main() {
       expect(find.byKey(_sidebar), findsNothing);
       expect(find.text("Session One"), findsOneWidget);
       expect(SessionSidebarShell.layoutOf(tester.element(find.text("Session One"))), SessionShellLayout.pages);
-      verifyNever(
-        () => harness.projectViewingService.setWideListPaneVisible(claim: any(named: "claim"), isVisible: true),
-      );
     });
 
     testWidgets("from 700 pt the open session shows beside the sidebar, highlighted", (tester) async {
-      final harness = await pumpShell(
+      await pumpShell(
         tester,
         size: const Size(700, 800),
         initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
@@ -91,7 +79,6 @@ void main() {
       expect(SessionSidebarShell.layoutOf(tester.element(find.byKey(_detail))), SessionShellLayout.pane);
       final tile = tester.widget<SessionTile>(inSidebar(find.byType(SessionTile)));
       expect(tile.selected, isTrue);
-      verifyPaneVisible(harness, isVisible: true, times: 1);
     });
 
     testWidgets("with no session open the pane is a new session in the default project", (tester) async {
@@ -134,13 +121,12 @@ void main() {
     });
 
     testWidgets("collapse slides the sidebar out and the pane's restore button brings it back", (tester) async {
-      final harness = await pumpShell(
+      await pumpShell(
         tester,
         size: const Size(1024, 800),
         initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
         currentRouteDef: AppRouteDef.sessionDetail,
       );
-      verifyPaneVisible(harness, isVisible: true, times: 1);
       expect(find.byKey(const Key("session-sidebar-restore")), findsNothing);
 
       await tester.tap(find.byKey(const Key("session-sidebar-collapse")));
@@ -157,7 +143,6 @@ void main() {
       expect(find.byKey(_sidebar), findsNothing);
       expect(tester.getSize(find.byKey(_content)).width, 1024);
       expect(inContent(find.byKey(_detail)), findsOneWidget);
-      verifyPaneVisible(harness, isVisible: false, times: 1);
 
       await tester.tap(find.byKey(const Key("session-sidebar-restore")));
       await tester.pumpAndSettle();
@@ -165,7 +150,6 @@ void main() {
       expect(find.byKey(_sidebar), findsOneWidget);
       expect(find.byKey(const Key("session-sidebar-restore")), findsNothing);
       expect(tester.getSize(find.byKey(_content)).width, 1024 - _sidebarExtent);
-      verifyPaneVisible(harness, isVisible: true, times: 1);
     });
 
     testWidgets("the sidebar floats inside the safe area, and the pane keeps its pages clear of the side insets", (
@@ -266,7 +250,7 @@ void main() {
     });
 
     testWidgets("rotating keeps the open session open and the same list cubit", (tester) async {
-      final harness = await pumpShell(
+      await pumpShell(
         tester,
         size: const Size(1024, 768),
         initialLocation: "/sessions/p1/session-1?title=Session+One&readOnly=false",
@@ -283,7 +267,6 @@ void main() {
       expect(tester.element(find.byKey(_detail)), same(detail));
       // Full screen, the session leads back to the home.
       expect(find.byIcon(TablerRegular.chevron_left), findsOneWidget);
-      verifyPaneVisible(harness, isVisible: false, times: 1);
 
       await tester.binding.setSurfaceSize(const Size(1024, 768));
       await tester.pumpAndSettle();
@@ -360,7 +343,13 @@ void main() {
 
       // A new session pushed over the open one, as from a first project.
       unawaited(
-        harness.router.push(const AppRoute.newSession(projectId: "p1", projectName: "Project One").buildPath()),
+        harness.router.push(
+          const AppRoute.newSession(
+            projectId: "p1",
+            projectName: "Project One",
+            entry: NewSessionEntry.platform(),
+          ).buildPath(),
+        ),
       );
       await tester.pumpAndSettle();
       final newSession = find.byType(NewSessionScreen);

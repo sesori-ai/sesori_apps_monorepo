@@ -51,6 +51,7 @@ void main() {
       counts: SessionListChipCounts(all: sessions.length, running: 0, unread: 0),
       failures: const [],
       isLoading: false,
+      scratchProjectId: null,
       defaultProjectId: project.id,
     );
   }
@@ -89,7 +90,7 @@ void main() {
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(projects: [project]),
+      initialState: const ProjectListState.loaded(projects: [project], folderProjects: [project], scratchProject: null),
     );
     final inventory = _MockRecentSessionInventoryService();
     when(() => inventory.state).thenAnswer((_) => entries);

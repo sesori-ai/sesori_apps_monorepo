@@ -18,7 +18,6 @@ void main() {
     directory: "/project",
     parentID: "session-1",
     title: "Sub-agent $index",
-    pullRequest: null,
     time: const SessionTime(created: 1700000000000, updated: 1700000000000, archived: null),
     promptDefaults: null,
     lastUserActivityAt: null,

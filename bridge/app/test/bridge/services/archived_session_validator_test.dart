@@ -23,7 +23,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         ),
       );
@@ -35,13 +34,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "fake",
-        preservePullRequestScope: false,
       );
     });
 

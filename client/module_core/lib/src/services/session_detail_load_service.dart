@@ -254,7 +254,6 @@ class SessionDetailLoadService({
       };
       return SessionDetailLoadResult.loaded(
         snapshot: SessionDetailSnapshot(
-          projectId: effectiveProjectId,
           pluginId: pluginId,
           supportsPromptAttachments: supportsPromptAttachments,
           messages: messagesPage.messages,
@@ -427,8 +426,6 @@ class SessionDetailLoadService({
 }
 
 class const SessionDetailSnapshot({
-  required final String? projectId,
-
   /// The harness running this session, or `null` when neither the session nor
   /// the project fallback resolved it.
   required final String? pluginId,

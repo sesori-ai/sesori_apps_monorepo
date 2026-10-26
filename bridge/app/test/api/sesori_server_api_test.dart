@@ -263,7 +263,7 @@ void main() {
   });
 
   group("SesoriServerApi session metadata", () {
-    test("acquires token and posts typed request while decoding title and branch", () async {
+    test("acquires token and posts typed request while decoding the title and ignoring other keys", () async {
       late http.Request request;
       final tokenRefresher = FakeTokenRefresher(token: "secret-token");
       final api = SesoriServerApi(
@@ -285,7 +285,6 @@ void main() {
       );
 
       expect(response.title, equals("Generated title"));
-      expect(response.branchName, equals("generated-branch"));
       expect(tokenRefresher.forceRefreshValues, equals([false]));
       expect(request.method, equals("POST"));
       expect(request.url, equals(Uri.parse("https://auth.example.test/sessions/generate-metadata")));
@@ -315,7 +314,6 @@ void main() {
       );
 
       expect(response.title, equals("Retried"));
-      expect(response.branchName, equals("retried-branch"));
       expect(tokenRefresher.forceRefreshValues, equals([false, true]));
       expect(requests, hasLength(2));
       expect(requests.last.headers["Authorization"], equals("Bearer fresh"));

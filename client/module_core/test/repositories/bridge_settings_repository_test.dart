@@ -17,7 +17,7 @@ void main() {
     repository = BridgeSettingsRepository(bridgeSettingsApi: api);
   });
 
-  test("loads the aggregate snapshot without calling the legacy route", () async {
+  test("loads the aggregate snapshot", () async {
     const response = BridgeSettingsResponse(
       pullRequestRefresh: PullRequestRefreshSettingsResponse(intervalSeconds: 30),
       yolo: YoloSettingsResponse(enabled: true),
@@ -28,48 +28,27 @@ void main() {
     final result = await repository.load();
 
     expect((result as BridgeSettingsLoadSupported).response, response);
-    verifyNever(api.getPullRequestRefreshSettings);
   });
 
-  test("falls back to legacy PR settings only when aggregate GET is 404", () async {
+  test("a 404 on the aggregate route is unsupported", () async {
     when(api.getBridgeSettings).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null)),
     );
-    when(api.getPullRequestRefreshSettings).thenAnswer(
-      (_) async => ApiResponse.success(const PullRequestRefreshSettingsResponse(intervalSeconds: 45)),
-    );
 
-    final result = await repository.load();
-
-    expect((result as BridgeSettingsLoadLegacyPartial).pullRequestRefresh.intervalSeconds, 45);
+    expect(await repository.load(), isA<BridgeSettingsLoadUnsupported>());
+    verify(api.getBridgeSettings).called(1);
   });
 
-  test("does not fall back after a non-404 aggregate failure", () async {
+  test("keeps the original error of any other aggregate failure", () async {
     final error = ApiError.generic();
     when(api.getBridgeSettings).thenAnswer((_) async => ApiResponse.error(error));
 
     final result = await repository.load();
 
     expect((result as BridgeSettingsLoadFailure).error, same(error));
-    verifyNever(api.getPullRequestRefreshSettings);
-  });
-
-  test("reports fully unsupported when aggregate and legacy routes are 404", () async {
-    final notFound = ApiError.nonSuccessCode(errorCode: 404, rawErrorString: null);
-    when(api.getBridgeSettings).thenAnswer((_) async => ApiResponse.error(notFound));
-    when(api.getPullRequestRefreshSettings).thenAnswer((_) async => ApiResponse.error(notFound));
-
-    expect(await repository.load(), isA<BridgeSettingsLoadUnsupported>());
   });
 
   test("maps every setting mutation response", () async {
-    when(
-      () => api.update(update: const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 45)),
-    ).thenAnswer(
-      (_) async => const BridgeSettingUpdateApiCommitted(
-        update: BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 46),
-      ),
-    );
     when(() => api.update(update: const BridgeSettingUpdate.yolo(enabled: true))).thenAnswer(
       (_) async => const BridgeSettingUpdateApiCommitted(update: BridgeSettingUpdate.yolo(enabled: true)),
     );
@@ -81,38 +60,26 @@ void main() {
       ),
     );
 
-    final pullRequest = await repository.updatePullRequestRefresh(intervalSeconds: 45);
     final yolo = await repository.updateYolo(enabled: true);
     final warmup = await repository.updatePluginWarmup(enabled: false);
 
-    expect((pullRequest as PullRequestRefreshSettingsMutationCommitted).response.intervalSeconds, 46);
     expect((yolo as YoloSettingsMutationCommitted).response.enabled, isTrue);
     expect((warmup as PluginWarmupSettingsMutationCommitted).enabled, isFalse);
   });
 
-  test("maps PR bounds rejections and uncertain transport outcomes", () async {
-    final rejectionError = NonSuccessCodeError(errorCode: 400, rawErrorString: null);
-    when(
-      () => api.update(update: const BridgeSettingUpdate.pullRequestRefreshInterval(intervalSeconds: 10)),
-    ).thenAnswer(
-      (_) async => BridgeSettingUpdateApiRejected(
-        rejection: const BridgeSettingUpdateRejection.pullRequestRefreshIntervalOutOfRange(
-          minimumIntervalSeconds: 15,
-          maximumIntervalSeconds: 3600,
-        ),
-        error: rejectionError,
-      ),
-    );
+  test("maps uncertain transport outcomes and failures", () async {
+    final rejected = NonSuccessCodeError(errorCode: 400, rawErrorString: null);
     when(() => api.update(update: const BridgeSettingUpdate.yolo(enabled: true))).thenAnswer(
       (_) async => BridgeSettingUpdateApiFailure(error: ApiError.emptyResponse()),
     );
+    when(
+      () => api.update(update: const BridgeSettingUpdate.warmUpPluginsOnSessionOpen(enabled: false)),
+    ).thenAnswer((_) async => BridgeSettingUpdateApiFailure(error: rejected));
 
-    final pullRequest = await repository.updatePullRequestRefresh(intervalSeconds: 10);
     final yolo = await repository.updateYolo(enabled: true);
+    final warmup = await repository.updatePluginWarmup(enabled: false);
 
-    final bounds = (pullRequest as PullRequestRefreshSettingsMutationRejected).bounds;
-    expect(bounds.minimumIntervalSeconds, 15);
-    expect(bounds.maximumIntervalSeconds, 3600);
     expect(yolo, isA<YoloSettingsMutationUncertain>());
+    expect((warmup as PluginWarmupSettingsMutationFailure).error, same(rejected));
   });
 }

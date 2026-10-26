@@ -53,6 +53,8 @@ class const _LocalBridge({required final String bridgeId}) implements ActiveBrid
   bool isLocalBridge({required String bridgeId}) => bridgeId == this.bridgeId;
 }
 
+const _demo = ProjectSummary(id: "demo", name: "demo-app", path: "/work/demo-app", time: null);
+
 const AuthUser _user = AuthUser(
   id: "user-1",
   provider: AuthProvider.github,
@@ -265,9 +267,7 @@ void main() {
     whenListen(
       projectList,
       const Stream<ProjectListState>.empty(),
-      initialState: const ProjectListState.loaded(
-        projects: [ProjectSummary(id: "demo", name: "demo-app", path: "/work/demo-app", time: null)],
-      ),
+      initialState: const ProjectListState.loaded(projects: [_demo], folderProjects: [_demo], scratchProject: null),
     );
     connectionOverlay = _MockConnectionOverlayCubit();
     whenListen(
@@ -391,23 +391,9 @@ void main() {
     ),
   );
 
-  testWidgets("a manual-download install opens its downloads index", (tester) async {
-    final uri = Uri.parse("https://sesori.com/desktop/#internal-macos-arm64");
-    updateStates.add(DesktopUpdateManualDownload(downloadsUri: uri));
-    final launcher = getIt<UrlLauncher>();
-    when(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).thenAnswer((_) async => true);
-    await tester.pumpWidget(updateSection());
-    expect(find.textContaining("Closing the window is not Quit"), findsOneWidget);
-    expect(find.byType(PregoSwitch), findsNothing);
-    await tester.tap(find.text("View downloads"));
-    await tester.pump();
-    verify(() => launcher.launch(uri, mode: UrlLaunchMode.externalApp)).called(1);
-  });
-
   testWidgets("a development build offers no updater controls", (tester) async {
     await tester.pumpWidget(updateSection());
     expect(find.text("Development build"), findsOneWidget);
-    expect(find.text("View downloads"), findsNothing);
     expect(find.text("Check for updates"), findsNothing);
     expect(find.byType(PregoSwitch), findsNothing);
   });
@@ -528,21 +514,13 @@ void main() {
     await tester.tap(find.text("Open logs"));
     verify(bridgeControl.openLogs).called(1);
     verifyNever(bridgeControl.refreshLaunchAtLogin);
-    final interval = find.byKey(const Key("pull_request_refresh_interval"));
-    await tester.ensureVisible(interval);
-    await tester.pumpAndSettle();
-    await tester.tap(interval);
-    await tester.pumpAndSettle();
-    final input = find.byType(EditableText);
-    await tester.showKeyboard(input);
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pump();
-    expect(tester.widget<EditableText>(input).focusNode.hasFocus, isFalse);
-    expect(find.byType(Dialog), findsOneWidget);
-    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
-    await tester.pumpAndSettle();
-    expect(find.byType(Dialog), findsNothing);
-    expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
+  });
+
+  testWidgets("a bridge without /settings shows the bridge settings as unsupported", (tester) async {
+    when(bridgeSettingsService.load).thenAnswer((_) async => const BridgeSettingsLoadUnsupported());
+    await open(tester: tester, tab: DesktopSettingsTab.bridge);
+
+    expect(find.text("Update the connected bridge to configure this setting."), findsNWidgets(2));
   });
 
   testWidgets("Bridge opens with the computer entry, and a switch closes the window", (tester) async {

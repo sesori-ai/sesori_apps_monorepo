@@ -12,6 +12,7 @@ void _showDeleteSheet({
   required BuildContext context,
   required SessionListCubit cubit,
   required Session session,
+  required bool deletesFolder,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) {
   final release = cubit.retainActionScope();
@@ -20,6 +21,7 @@ void _showDeleteSheet({
     title: context.loc.sessionListDeleteConfirmTitle,
     builder: (_) => _DeleteSessionSheet(
       session: session,
+      deletesFolder: deletesFolder,
       onConfirm: () {
         final release = cubit.retainActionScope();
         unawaited(
@@ -28,6 +30,7 @@ void _showDeleteSheet({
             cubit: cubit,
             sessionId: session.id,
             deleteWorktree: session.hasWorktree,
+            deleteSessionFolder: deletesFolder,
             onSessionDeleted: onSessionDeleted,
           ).whenComplete(release),
         );
@@ -42,6 +45,9 @@ Future<void> _deleteSession({
   required SessionListCubit cubit,
   required String sessionId,
   required bool deleteWorktree,
+
+  /// Only after the confirmation said the session's folder goes too.
+  required bool deleteSessionFolder,
   bool force = false,
   required SessionDeletedRouteHandler? onSessionDeleted,
 }) async {
@@ -49,6 +55,7 @@ Future<void> _deleteSession({
   final outcome = await cubit.deleteSession(
     sessionId: sessionId,
     deleteWorktree: deleteWorktree,
+    deleteSessionFolder: deleteSessionFolder,
     force: force,
   );
   if (!context.mounted) return;
@@ -75,6 +82,7 @@ Future<void> _deleteSession({
       context: context,
       cubit: cubit,
       sessionId: sessionId,
+      deleteSessionFolder: deleteSessionFolder,
       rejection: rejection,
       onSessionDeleted: onSessionDeleted,
     );

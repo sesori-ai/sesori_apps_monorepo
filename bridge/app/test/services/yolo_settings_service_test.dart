@@ -120,7 +120,6 @@ class _FakeSessionMutationDispatcher() implements SessionMutationDispatcher {
       parentID: null,
       title: null,
       time: null,
-      pullRequest: null,
       promptDefaults: null,
       branchName: null,
       lastUserActivityAt: null,

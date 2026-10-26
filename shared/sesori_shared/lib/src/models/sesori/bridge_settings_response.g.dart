@@ -8,9 +8,11 @@ part of 'bridge_settings_response.dart';
 
 _BridgeSettingsResponse _$BridgeSettingsResponseFromJson(Map json) =>
     _BridgeSettingsResponse(
-      pullRequestRefresh: PullRequestRefreshSettingsResponse.fromJson(
-        Map<String, dynamic>.from(json['pullRequestRefresh'] as Map),
-      ),
+      pullRequestRefresh: json['pullRequestRefresh'] == null
+          ? null
+          : PullRequestRefreshSettingsResponse.fromJson(
+              Map<String, dynamic>.from(json['pullRequestRefresh'] as Map),
+            ),
       yolo: YoloSettingsResponse.fromJson(
         Map<String, dynamic>.from(json['yolo'] as Map),
       ),
@@ -20,7 +22,7 @@ _BridgeSettingsResponse _$BridgeSettingsResponseFromJson(Map json) =>
 Map<String, dynamic> _$BridgeSettingsResponseToJson(
   _BridgeSettingsResponse instance,
 ) => <String, dynamic>{
-  'pullRequestRefresh': instance.pullRequestRefresh.toJson(),
+  'pullRequestRefresh': ?instance.pullRequestRefresh?.toJson(),
   'yolo': instance.yolo.toJson(),
   'warmUpPluginsOnSessionOpen': ?instance.warmUpPluginsOnSessionOpen,
 };

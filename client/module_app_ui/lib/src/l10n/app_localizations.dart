@@ -415,18 +415,6 @@ abstract class AppLocalizations {
   /// **'Desktop updates'**
   String get desktopUpdatesTitle;
 
-  /// Opens the published desktop downloads page.
-  ///
-  /// In en, this message translates to:
-  /// **'View downloads'**
-  String get desktopUpdatesViewDownloads;
-
-  /// Manual update guidance for installs without an automatic engine.
-  ///
-  /// In en, this message translates to:
-  /// **'See published releases for this build. Quit Sesori before replacing the app, then reopen it manually. Closing the window is not Quit.'**
-  String get desktopUpdatesViewDownloadsDescription;
-
   /// Shown for source builds, which cannot update themselves.
   ///
   /// In en, this message translates to:
@@ -1164,102 +1152,6 @@ abstract class AppLocalizations {
   /// In en, this message translates to:
   /// **'Retry harness warm-up setting'**
   String get settingsPluginWarmupRetry;
-
-  /// No description provided for @settingsPullRequestRefreshTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Pull request refresh'**
-  String get settingsPullRequestRefreshTitle;
-
-  /// No description provided for @settingsPullRequestRefreshDescription.
-  ///
-  /// In en, this message translates to:
-  /// **'How often viewed projects refresh pull request status.'**
-  String get settingsPullRequestRefreshDescription;
-
-  /// No description provided for @settingsPullRequestRefreshLoading.
-  ///
-  /// In en, this message translates to:
-  /// **'Loading the bridge setting…'**
-  String get settingsPullRequestRefreshLoading;
-
-  /// No description provided for @settingsPullRequestRefreshUnsupported.
-  ///
-  /// In en, this message translates to:
-  /// **'Update the connected bridge to configure this setting.'**
-  String get settingsPullRequestRefreshUnsupported;
-
-  /// No description provided for @settingsPullRequestRefreshLoadFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t load the bridge setting. Check your connection and try again.'**
-  String get settingsPullRequestRefreshLoadFailed;
-
-  /// No description provided for @settingsPullRequestRefreshUncertain.
-  ///
-  /// In en, this message translates to:
-  /// **'The update status is unknown. Refresh before trying again.'**
-  String get settingsPullRequestRefreshUncertain;
-
-  /// No description provided for @settingsPullRequestRefreshUpdateFailed.
-  ///
-  /// In en, this message translates to:
-  /// **'Couldn\'t update the bridge setting. Check your connection and try again.'**
-  String get settingsPullRequestRefreshUpdateFailed;
-
-  /// No description provided for @settingsPullRequestRefreshStateChanged.
-  ///
-  /// In en, this message translates to:
-  /// **'The bridge setting changed while you were editing. Try again.'**
-  String get settingsPullRequestRefreshStateChanged;
-
-  /// No description provided for @settingsPullRequestRefreshRetry.
-  ///
-  /// In en, this message translates to:
-  /// **'Retry pull request refresh setting'**
-  String get settingsPullRequestRefreshRetry;
-
-  /// No description provided for @settingsPullRequestRefreshDialogTitle.
-  ///
-  /// In en, this message translates to:
-  /// **'Pull request refresh interval'**
-  String get settingsPullRequestRefreshDialogTitle;
-
-  /// No description provided for @settingsPullRequestRefreshSecondsLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'Seconds'**
-  String get settingsPullRequestRefreshSecondsLabel;
-
-  /// No description provided for @settingsPullRequestRefreshInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a whole number of seconds.'**
-  String get settingsPullRequestRefreshInvalid;
-
-  /// No description provided for @settingsPullRequestRefreshRangeInvalid.
-  ///
-  /// In en, this message translates to:
-  /// **'Enter a whole number from {minimumSeconds} to {maximumSeconds}.'**
-  String settingsPullRequestRefreshRangeInvalid(int minimumSeconds, int maximumSeconds);
-
-  /// No description provided for @settingsPullRequestRefreshCancel.
-  ///
-  /// In en, this message translates to:
-  /// **'Cancel'**
-  String get settingsPullRequestRefreshCancel;
-
-  /// No description provided for @settingsPullRequestRefreshSave.
-  ///
-  /// In en, this message translates to:
-  /// **'Save'**
-  String get settingsPullRequestRefreshSave;
-
-  /// No description provided for @settingsPullRequestRefreshSeconds.
-  ///
-  /// In en, this message translates to:
-  /// **'{seconds, plural, =1{1 second} other{{seconds} seconds}}'**
-  String settingsPullRequestRefreshSeconds(int seconds);
 
   /// No description provided for @harnessManagementDescription.
   ///
@@ -3487,6 +3379,12 @@ abstract class AppLocalizations {
   /// **'Its worktree will be deleted too. The branch is kept.'**
   String get sessionListDeleteWorktreeNotice;
 
+  /// Line in the delete confirmation, on both shells, stating that a session started without a project loses the folder it worked in, with the files the agent wrote there. Deletion never offers a choice about this.
+  ///
+  /// In en, this message translates to:
+  /// **'Its folder and every file in it will be deleted too.'**
+  String get sessionListDeleteFolderNotice;
+
   /// No description provided for @sessionListDeleted.
   ///
   /// In en, this message translates to:
@@ -4507,78 +4405,6 @@ abstract class AppLocalizations {
   /// **'Failed to archive session'**
   String get sessionListArchiveFailed;
 
-  /// No description provided for @prLabel.
-  ///
-  /// In en, this message translates to:
-  /// **'PR #{number}'**
-  String prLabel(int number);
-
-  /// No description provided for @prStateOpen.
-  ///
-  /// In en, this message translates to:
-  /// **'Pull request open'**
-  String get prStateOpen;
-
-  /// No description provided for @prStateMerged.
-  ///
-  /// In en, this message translates to:
-  /// **'Pull request merged'**
-  String get prStateMerged;
-
-  /// No description provided for @prStateClosed.
-  ///
-  /// In en, this message translates to:
-  /// **'Pull request closed'**
-  String get prStateClosed;
-
-  /// No description provided for @prStateUnknown.
-  ///
-  /// In en, this message translates to:
-  /// **'Pull request'**
-  String get prStateUnknown;
-
-  /// No description provided for @prReviewApproved.
-  ///
-  /// In en, this message translates to:
-  /// **'Approved'**
-  String get prReviewApproved;
-
-  /// No description provided for @prReviewChangesRequested.
-  ///
-  /// In en, this message translates to:
-  /// **'Changes requested'**
-  String get prReviewChangesRequested;
-
-  /// No description provided for @prReviewRequired.
-  ///
-  /// In en, this message translates to:
-  /// **'Review required'**
-  String get prReviewRequired;
-
-  /// No description provided for @prChecksSuccess.
-  ///
-  /// In en, this message translates to:
-  /// **'Checks passing'**
-  String get prChecksSuccess;
-
-  /// No description provided for @prChecksFailing.
-  ///
-  /// In en, this message translates to:
-  /// **'Checks failing'**
-  String get prChecksFailing;
-
-  /// No description provided for @prChecksPending.
-  ///
-  /// In en, this message translates to:
-  /// **'Checks pending'**
-  String get prChecksPending;
-
-  /// No description provided for @prConflicting.
-  ///
-  /// In en, this message translates to:
-  /// **'Has merge conflicts'**
-  String get prConflicting;
-
   /// No description provided for @diffPermissionRequestTitle.
   ///
   /// In en, this message translates to:
@@ -5245,17 +5071,17 @@ abstract class AppLocalizations {
   /// **'Couldn’t load {projectName}'**
   String allSessionsProjectFailed(String projectName);
 
-  /// The home's title and the desktop sidebar's project filter while the list shows every project's sessions.
+  /// The home's title and the desktop sidebar's project filter while the list shows every project's sessions, and the button pinned below the project filter's list that clears the filter; checked while it already does.
   ///
   /// In en, this message translates to:
   /// **'All projects'**
   String get projectPickerAllProjects;
 
-  /// Button pinned below the project filter's list that clears the filter, so the list shows every project's sessions; checked while it already does.
+  /// Name of the project that holds sessions started without a project folder: the button pinned below the project pickers' lists, the new-session project chip, and the home's title while filtered to it.
   ///
   /// In en, this message translates to:
-  /// **'Show all projects'**
-  String get projectPickerShowAllProjects;
+  /// **'No project'**
+  String get projectPickerNoProject;
 
   /// The new-session project pill while no project is chosen yet.
   ///
@@ -5503,7 +5329,7 @@ abstract class AppLocalizations {
   /// **'Copy command'**
   String get bridgeUpdateCopyCommand;
 
-  /// Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which is updated by installing a newer Sesori Desktop.
+  /// Title of the update sheet when the connected bridge runs inside the Sesori Desktop app, which updates the bridge together with itself.
   ///
   /// In en, this message translates to:
   /// **'Update Sesori Desktop'**
@@ -5512,32 +5338,20 @@ abstract class AppLocalizations {
   /// No description provided for @bridgeUpdateDesktopIntro.
   ///
   /// In en, this message translates to:
-  /// **'This bridge runs inside Sesori Desktop. On that computer:'**
+  /// **'This bridge runs inside Sesori Desktop, which updates itself.'**
   String get bridgeUpdateDesktopIntro;
 
-  /// No description provided for @bridgeUpdateDesktopStepDownload.
+  /// 'Restart to update' and 'Settings' are the desktop app's own labels; keep them matching.
   ///
   /// In en, this message translates to:
-  /// **'1. Download the latest version:'**
-  String get bridgeUpdateDesktopStepDownload;
+  /// **'On that computer, choose Restart to update in Sesori\'s tray menu or Settings.'**
+  String get bridgeUpdateDesktopRestart;
 
-  /// No description provided for @bridgeUpdateDesktopStepQuit.
+  /// 'Check for updates' is the desktop app's own Settings label. DEB and RPM are Linux package formats; keep them as is.
   ///
   /// In en, this message translates to:
-  /// **'2. Quit Sesori Desktop (closing the window may not quit it).'**
-  String get bridgeUpdateDesktopStepQuit;
-
-  /// Platform-neutral: macOS replaces the app, Windows runs an installer, Linux uses the package manager.
-  ///
-  /// In en, this message translates to:
-  /// **'3. Install the new version, then open Sesori Desktop again.'**
-  String get bridgeUpdateDesktopStepInstall;
-
-  /// No description provided for @bridgeUpdateCopyLink.
-  ///
-  /// In en, this message translates to:
-  /// **'Copy link'**
-  String get bridgeUpdateCopyLink;
+  /// **'Not there yet? Choose Check for updates in Settings. Linux DEB and RPM installs get new versions through the system\'s software updates.'**
+  String get bridgeUpdateDesktopCheck;
 
   /// No description provided for @mcpTitle.
   ///

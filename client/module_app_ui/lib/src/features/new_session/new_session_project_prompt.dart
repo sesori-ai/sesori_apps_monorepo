@@ -35,9 +35,19 @@ class _NewSessionProjectPromptState() extends State<NewSessionProjectPrompt> {
   void initState() {
     super.initState();
     if (!widget.opensPicker) return;
-    // The picker's trigger exists only after the first frame.
+    // The picker's trigger exists only after the first frame, and the picker
+    // rises once the page has settled, never over it still moving in.
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      if (mounted) _openPicker?.call();
+      if (!mounted) return;
+      final entrance = ModalRoute.of(context)?.animation;
+      if (entrance == null || entrance.isCompleted) return _openPicker?.call();
+      late final AnimationStatusListener settled;
+      settled = (status) {
+        if (status.isAnimating) return;
+        entrance.removeStatusListener(settled);
+        if (mounted && status.isCompleted) _openPicker?.call();
+      };
+      entrance.addStatusListener(settled);
     });
   }
 

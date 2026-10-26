@@ -1,8 +1,8 @@
 import "dart:io";
 
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
-import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
+import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/api/git_cli_api.dart";
 import "package:sesori_bridge/src/foundation/process_runner.dart";
 import "package:sesori_bridge/src/foundation/streaming_process_runner.dart";
@@ -12,6 +12,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:test/test.dart";
 
 import "../helpers/fakes/fake_bridge_plugin.dart";
+import "../helpers/plugin_runtime_test_support.dart";
 import "../helpers/test_database.dart";
 
 const _projectId = "/repo/project";
@@ -24,13 +25,11 @@ void main() {
     late bool gitDirectoryExists;
     late AppDatabase db;
     late ProjectsDao projectsDao;
-    late SessionDao sessionDao;
     late WorktreeService service;
 
     setUp(() async {
       db = createTestDatabase();
       projectsDao = db.projectsDao;
-      sessionDao = db.sessionDao;
       await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]);
       processRunner = _FakeProcessRunner();
       gitDirectoryExists = true;
@@ -39,7 +38,6 @@ void main() {
         worktreeRepository: singlePluginWorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: projectsDao,
-          sessionDao: sessionDao,
           gitApi: GitCliApi(
             streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: processRunner,
@@ -71,27 +69,21 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated workspace branch does not exist.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
+      expect(success.path, matches(RegExp(r"^/worktrees/project-9a1fd19f/[a-z]+-[a-z]+$")));
       expect(success.baseBranch, equals("main"));
       expect(success.baseCommit, equals("abc123def456"));
 
-      // Verify the worktree add command used "main" as base branch
-      final worktreeAddCall = processRunner.invocations.last;
-      expect(worktreeAddCall.arguments, contains("main"));
-      expect(worktreeAddCall.arguments, contains(success.branchName));
+      // The worktree starts on a detached HEAD at "main"; no branch is created.
+      expect(processRunner.invocations.last.arguments, ["worktree", "add", "--detach", "--", success.path, "main"]);
     });
 
     test("moved project: git runs in the recorded live directory", () async {
@@ -116,86 +108,19 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated workspace branch does not exist.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // git worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("/worktrees/project-c4014039/${_slugOf(success.branchName)}"));
+      expect(success.path, matches(RegExp(r"^/worktrees/project-c4014039/[a-z]+-[a-z]+$")));
       for (final invocation in processRunner.invocations) {
         expect(invocation.workingDirectory, equals("/moved/project"));
       }
-    });
-
-    test("parent session: reuses parent worktree when mapping exists", () async {
-      // Insert a mapping for the parent session.
-      await projectsDao.insertProjectsIfMissing(projectIds: [_projectId]); // satisfy v5 FK constraint
-      await sessionDao.insertSession(
-        fastMode: false,
-        pluginId: "opencode",
-        preservePullRequestScope: false,
-        sessionId: "parent-001",
-        backendSessionId: "parent-001",
-        projectId: _projectId,
-        isDedicated: true,
-        createdAt: 123,
-        worktreePath: "$_projectWorktrees/session-001",
-        branchName: "session-001",
-        baseBranch: "main",
-        baseCommit: "sha-parent",
-
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: "parent-001",
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      expect(success.path, equals("$_projectWorktrees/session-001"));
-      expect(success.branchName, equals("session-001"));
-      // No git commands should have been called — worktree already exists.
-      expect(processRunner.invocations, isEmpty);
-    });
-
-    test("parent session: falls through to create new when parent has no mapping", () async {
-      // git rev-parse HEAD → success
-      processRunner.enqueue(result: _ok());
-      // git symbolic-ref refs/remotes/origin/HEAD → "refs/remotes/origin/main"
-      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
-      // git remote → origin is configured
-      processRunner.enqueue(result: _ok(stdout: "origin\n"));
-      // git fetch origin/main → unavailable; continue with existing refs
-      processRunner.enqueue(result: _fail(exitCode: 1));
-      // git rev-parse main → base commit SHA
-      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
-      // git rev-parse origin/main → no remote tracking branch
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated workspace branch does not exist.
-      processRunner.enqueue(result: _ok(stdout: ""));
-      // git worktree add → success
-      processRunner.enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: "nonexistent-parent",
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final success = result as WorktreeSuccess;
-      _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
     });
 
     // -----------------------------------------------------------------------
@@ -207,7 +132,6 @@ void main() {
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeFallback>());
@@ -227,7 +151,6 @@ void main() {
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeFallback>());
@@ -237,94 +160,34 @@ void main() {
     });
 
     // -----------------------------------------------------------------------
-    // Branch collision retry
+    // Path collision retry
     // -----------------------------------------------------------------------
 
-    test("branch collision retry: skips existing branch, succeeds on second attempt", () async {
-      // rev-parse HEAD → ok
-      processRunner.enqueue(result: _ok());
-      // symbolic-ref → main
-      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
-      // git remote → origin is configured
-      processRunner.enqueue(result: _ok(stdout: "origin\n"));
-      // fetch origin/main → unavailable; continue with existing refs
-      processRunner.enqueue(result: _fail(exitCode: 1));
-      // git rev-parse main → base commit SHA
-      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
-      // git rev-parse origin/main → no remote tracking branch
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      // First generated branch collides; the second is free.
-      processRunner.enqueue(result: _ok(stdout: "existing\n"));
-      processRunner.enqueue(result: _ok(stdout: ""));
-      // worktree add → success
+    test("occupied worktree path skips to the next name before Git runs", () async {
+      final filesystemApi = _OccupyingFilesystemApi(occupiedCount: 1);
+      service = WorktreeService(
+        worktreeRepository: _worktreeRepository(
+          projectsDao: projectsDao,
+          processRunner: processRunner,
+          filesystemApi: filesystemApi,
+        ),
+      );
+      _enqueueResolvedMain(processRunner: processRunner);
       processRunner.enqueue(result: _ok());
 
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: null,
-      );
+      final result = await service.prepareWorktreeForSession(projectId: _projectId);
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      _expectColorAnimalSlug(success.branchName);
-      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
-      final checkedBranches = processRunner.invocations
-          .where(
-            (invocation) =>
-                invocation.arguments.length >= 2 &&
-                invocation.arguments[0] == "branch" &&
-                invocation.arguments[1] == "--list",
-          )
-          .map((invocation) => invocation.arguments.last)
-          .toList(growable: false);
-      expect(checkedBranches, hasLength(2));
-      expect(checkedBranches.toSet(), hasLength(2));
-      checkedBranches.forEach(_expectColorAnimalSlug);
-      expect(success.branchName, checkedBranches.last);
-    });
-
-    test("occupied worktree path skips the name before Git creates its branch", () async {
-      final worktreesDirectory = await Directory.systemTemp.createTemp("worktree_name_collision_");
-      addTearDown(() => worktreesDirectory.delete(recursive: true));
-      final repository = singlePluginWorktreeRepository(
-        worktreesDirectory: worktreesDirectory.path,
-        projectsDao: projectsDao,
-        sessionDao: sessionDao,
-        gitApi: GitCliApi(
-          streamingProcessRunner: const StreamingProcessRunner(),
-          processRunner: processRunner,
-          gitPathExists: ({required String gitPath}) => true,
-        ),
-        plugin: _FakeBridgePluginApi(),
-      );
-      service = WorktreeService(worktreeRepository: repository);
-      processRunner
-        ..pathToOccupy = ((slug) => repository.worktreePathFor(projectPath: _projectId, slug: slug))
-        ..enqueue(result: _ok())
-        ..enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"))
-        ..enqueue(result: _ok(stdout: "origin\n"))
-        ..enqueue(result: _fail(exitCode: 1))
-        ..enqueue(result: _ok(stdout: "abc123def456\n"))
-        ..enqueue(result: _fail(exitCode: 128))
-        ..enqueue(result: _ok(stdout: ""))
-        ..enqueue(result: _ok(stdout: ""))
-        ..enqueue(result: _ok());
-
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: null,
-      );
-
-      expect(result, isA<WorktreeSuccess>());
-      final branchChecks = processRunner.invocations
-          .where((invocation) => invocation.arguments.take(2).join(" ") == "branch --list")
-          .toList(growable: false);
+      expect(filesystemApi.checkedPaths, hasLength(2));
+      expect(filesystemApi.checkedPaths.toSet(), hasLength(2));
+      expect(filesystemApi.checkedPaths, everyElement(matches(RegExp(r"^/worktrees/project-9a1fd19f/[a-z]+-[a-z]+$"))));
+      expect(success.path, filesystemApi.checkedPaths.last);
       final worktreeCreates = processRunner.invocations
           .where((invocation) => invocation.arguments.take(2).join(" ") == "worktree add")
           .toList(growable: false);
-      expect(branchChecks, hasLength(2));
       expect(worktreeCreates, hasLength(1));
-      expect(worktreeCreates.single.arguments, contains((result as WorktreeSuccess).branchName));
+      expect(worktreeCreates.single.arguments, contains(success.path));
     });
 
     // -----------------------------------------------------------------------
@@ -344,20 +207,15 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Each generated branch is free, but worktree creation fails.
-      processRunner.enqueue(result: _ok(stdout: ""));
+      // Every generated path is free, but worktree creation fails.
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
-      processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
-      processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
       // Final secure-suffix attempt also fails.
-      processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "error"));
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeFallback>());
@@ -397,14 +255,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "deadbeef1234\n"));
       // git rev-parse origin/develop → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -448,14 +303,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
       // git rev-parse origin/main → no remote tracking branch
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -471,54 +323,36 @@ void main() {
     // -----------------------------------------------------------------------
 
     test("pair exhaustion appends a secure suffix to the last sampled pair", () async {
-      // rev-parse HEAD → ok
-      processRunner.enqueue(result: _ok());
-      // symbolic-ref → main
-      processRunner.enqueue(result: _ok(stdout: "refs/remotes/origin/main\n"));
-      // git remote → origin is configured
-      processRunner.enqueue(result: _ok(stdout: "origin\n"));
-      // fetch origin/main → unavailable; continue with existing refs
-      processRunner.enqueue(result: _fail(exitCode: 1));
-      // git rev-parse main → base commit SHA
-      processRunner.enqueue(result: _ok(stdout: "abc123def456\n"));
-      // git rev-parse origin/main → no remote tracking branch
-      processRunner.enqueue(result: _fail(exitCode: 128));
-      // All three normal pairs and the first suffix collide.
-      processRunner.enqueue(result: _ok(stdout: "existing\n"));
-      processRunner.enqueue(result: _ok(stdout: "existing\n"));
-      processRunner.enqueue(result: _ok(stdout: "existing\n"));
-      processRunner.enqueue(result: _ok(stdout: "existing\n"));
+      // All three normal pairs and the first suffix are occupied.
+      final filesystemApi = _OccupyingFilesystemApi(occupiedCount: 4);
+      service = WorktreeService(
+        worktreeRepository: _worktreeRepository(
+          projectsDao: projectsDao,
+          processRunner: processRunner,
+          filesystemApi: filesystemApi,
+        ),
+      );
+      _enqueueResolvedMain(processRunner: processRunner);
       // The second suffixed candidate is available and succeeds.
-      processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _ok());
 
-      final result = await service.prepareWorktreeForSession(
-        projectId: _projectId,
-        parentSessionId: null,
-      );
+      final result = await service.prepareWorktreeForSession(projectId: _projectId);
 
       expect(result, isA<WorktreeSuccess>());
       final success = result as WorktreeSuccess;
-      expect(success.branchName, matches(RegExp(r"^sesori/[a-z]+-[a-z]+-[0-9a-f]{6}$")));
-      final checkedBranches = processRunner.invocations
-          .where(
-            (invocation) =>
-                invocation.arguments.length >= 2 &&
-                invocation.arguments[0] == "branch" &&
-                invocation.arguments[1] == "--list",
-          )
-          .map((invocation) => invocation.arguments.last)
-          .toList(growable: false);
-      expect(checkedBranches, hasLength(5));
-      final normalCandidates = checkedBranches.take(3).toList(growable: false);
-      final suffixCandidates = checkedBranches.skip(3).toList(growable: false);
+      final checkedPaths = filesystemApi.checkedPaths;
+      expect(checkedPaths, hasLength(5));
+      final normalCandidates = checkedPaths.take(3).toList(growable: false);
+      final suffixCandidates = checkedPaths.skip(3).toList(growable: false);
       expect(normalCandidates.toSet(), hasLength(3));
-      normalCandidates.forEach(_expectColorAnimalSlug);
+      expect(normalCandidates, everyElement(matches(RegExp(r"^/worktrees/project-9a1fd19f/[a-z]+-[a-z]+$"))));
       expect(suffixCandidates.toSet(), hasLength(2));
-      expect(suffixCandidates, everyElement(matches(RegExp(r"^sesori/[a-z]+-[a-z]+-[0-9a-f]{6}$"))));
-      expect(success.branchName, suffixCandidates.last);
-      expect(success.branchName.substring(0, success.branchName.length - 7), normalCandidates.last);
-      expect(success.path, equals("$_projectWorktrees/${_slugOf(success.branchName)}"));
+      expect(
+        suffixCandidates,
+        everyElement(matches(RegExp(r"^/worktrees/project-9a1fd19f/[a-z]+-[a-z]+-[0-9a-f]{6}$"))),
+      );
+      expect(success.path, suffixCandidates.last);
+      expect(success.path.substring(0, success.path.length - 7), normalCandidates.last);
     });
 
     // -----------------------------------------------------------------------
@@ -540,14 +374,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "origin222\n"));
       // merge-base --is-ancestor origin222 local111 → exit 1 (origin NOT ancestor of local)
       processRunner.enqueue(result: _fail(exitCode: 1));
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -587,14 +418,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "origin222\n"));
       // merge-base --is-ancestor origin222 local111 → exit 0 (origin IS ancestor of local)
       processRunner.enqueue(result: _ok());
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -620,14 +448,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "samecommit\n"));
       // rev-parse origin/main → same commit
       processRunner.enqueue(result: _ok(stdout: "samecommit\n"));
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -654,14 +479,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "diverged-origin\n"));
       // merge-base --is-ancestor diverged-origin diverged-local → exit 1 (not ancestor)
       processRunner.enqueue(result: _fail(exitCode: 1));
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -685,14 +507,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
       // rev-parse origin/main → fail (no remote tracking branch)
       processRunner.enqueue(result: _fail(exitCode: 128));
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -710,12 +529,10 @@ void main() {
       processRunner.enqueue(result: _ok()); // remote: none configured
       processRunner.enqueue(result: _ok(stdout: "local111\n")); // rev-parse main
       processRunner.enqueue(result: _fail(exitCode: 128)); // no origin/main ref
-      processRunner.enqueue(result: _ok()); // generated branch is available
       processRunner.enqueue(result: _ok()); // worktree add
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -736,12 +553,10 @@ void main() {
       // These would let creation succeed if the unexpected error were swallowed.
       processRunner.enqueue(result: _ok(stdout: "local111\n"));
       processRunner.enqueue(result: _fail(exitCode: 128));
-      processRunner.enqueue(result: _ok(stdout: ""));
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeFallback>());
@@ -764,14 +579,11 @@ void main() {
       processRunner.enqueue(result: _ok(stdout: "origin222\n"));
       // merge-base --is-ancestor → exit 128 (fatal error, e.g. shallow clone)
       processRunner.enqueue(result: _fail(exitCode: 128, stderr: "fatal"));
-      // Generated workspace branch is available.
-      processRunner.enqueue(result: _ok(stdout: ""));
       // worktree add → success
       processRunner.enqueue(result: _ok());
 
       final result = await service.prepareWorktreeForSession(
         projectId: _projectId,
-        parentSessionId: null,
       );
 
       expect(result, isA<WorktreeSuccess>());
@@ -800,7 +612,6 @@ void main() {
         worktreeRepository: singlePluginWorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
           gitApi: GitCliApi(
             streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: processRunner,
@@ -916,7 +727,6 @@ void main() {
         worktreeRepository: singlePluginWorktreeRepository(
           worktreesDirectory: "/worktrees",
           projectsDao: db.projectsDao,
-          sessionDao: db.sessionDao,
           gitApi: GitCliApi(
             streamingProcessRunner: const StreamingProcessRunner(),
             processRunner: processRunner,
@@ -1063,186 +873,6 @@ void main() {
       expect(result, isFalse);
     });
   });
-
-  group("WorktreeService.renameGeneratedBranch", () {
-    late _GeneratedRenameWorktreeRepository repository;
-    late WorktreeService service;
-
-    setUp(() {
-      repository = _GeneratedRenameWorktreeRepository();
-      service = WorktreeService(worktreeRepository: repository);
-    });
-
-    test("renames the still-current unpublished initial branch", () async {
-      final result = await service.renameGeneratedBranch(
-        worktreePath: "$_projectWorktrees/blue-otter",
-        initialBranchName: "blue-otter",
-        generatedBranchName: "fix-login-flow",
-      );
-
-      expect(result, isA<GeneratedBranchRenamed>());
-      expect((result as GeneratedBranchRenamed).branchName, "sesori/fix-login-flow");
-      expect(repository.renameCalls, [
-        (oldBranchName: "blue-otter", newBranchName: "sesori/fix-login-flow"),
-      ]);
-      expect(repository.lastWorktreePath, "$_projectWorktrees/blue-otter");
-    });
-
-    test("skips invalid, switched, and published branches", () async {
-      repository.validBranchName = false;
-      expect(
-        await service.renameGeneratedBranch(
-          worktreePath: "/worktree",
-          initialBranchName: "blue-otter",
-          generatedBranchName: "invalid branch",
-        ),
-        isA<GeneratedBranchRenameSkipped>().having(
-          (result) => result.reason,
-          "reason",
-          GeneratedBranchRenameSkipReason.invalidGeneratedName,
-        ),
-      );
-
-      repository
-        ..validBranchName = true
-        ..currentBranchName = "user-branch";
-      expect(
-        await service.renameGeneratedBranch(
-          worktreePath: "/worktree",
-          initialBranchName: "blue-otter",
-          generatedBranchName: "fix-login-flow",
-        ),
-        isA<GeneratedBranchRenameSkipped>().having(
-          (result) => result.reason,
-          "reason",
-          GeneratedBranchRenameSkipReason.initialBranchChanged,
-        ),
-      );
-
-      repository
-        ..currentBranchName = "blue-otter"
-        ..upstream = true;
-      expect(
-        await service.renameGeneratedBranch(
-          worktreePath: "/worktree",
-          initialBranchName: "blue-otter",
-          generatedBranchName: "fix-login-flow",
-        ),
-        isA<GeneratedBranchRenameSkipped>().having(
-          (result) => result.reason,
-          "reason",
-          GeneratedBranchRenameSkipReason.initialBranchPublished,
-        ),
-      );
-
-      repository
-        ..upstream = false
-        ..remoteBranches.add("blue-otter");
-      expect(
-        await service.renameGeneratedBranch(
-          worktreePath: "/worktree",
-          initialBranchName: "blue-otter",
-          generatedBranchName: "fix-login-flow",
-        ),
-        isA<GeneratedBranchRenameSkipped>().having(
-          (result) => result.reason,
-          "reason",
-          GeneratedBranchRenameSkipReason.initialBranchPublished,
-        ),
-      );
-      expect(repository.renameCalls, isEmpty);
-    });
-
-    test("adds a secure suffix when the generated target already exists", () async {
-      repository.existingBranches.add("sesori/fix-login-flow");
-
-      final result = await service.renameGeneratedBranch(
-        worktreePath: "/worktree",
-        initialBranchName: "blue-otter",
-        generatedBranchName: "fix-login-flow",
-      );
-
-      final renamed = result as GeneratedBranchRenamed;
-      expect(renamed.branchName, matches(RegExp(r"^sesori/fix-login-flow-[0-9a-f]{6}$")));
-      expect(repository.renameCalls.single.newBranchName, renamed.branchName);
-    });
-
-    test("adds a secure suffix when only a matching remote target exists", () async {
-      repository.remoteBranches.add("sesori/fix-login-flow");
-
-      final result = await service.renameGeneratedBranch(
-        worktreePath: "/worktree",
-        initialBranchName: "blue-otter",
-        generatedBranchName: "fix-login-flow",
-      );
-
-      final renamed = result as GeneratedBranchRenamed;
-      expect(renamed.branchName, matches(RegExp(r"^sesori/fix-login-flow-[0-9a-f]{6}$")));
-      expect(repository.renameCalls.single.newBranchName, renamed.branchName);
-    });
-
-    test("skips when collision suffixes are not valid branch names", () async {
-      repository
-        ..existingBranches.add("sesori/fix-login-flow")
-        ..branchNameValidator = (branchName) => branchName == "sesori/fix-login-flow";
-
-      final result = await service.renameGeneratedBranch(
-        worktreePath: "/worktree",
-        initialBranchName: "blue-otter",
-        generatedBranchName: "fix-login-flow",
-      );
-
-      expect(
-        result,
-        isA<GeneratedBranchRenameSkipped>().having(
-          (result) => result.reason,
-          "reason",
-          GeneratedBranchRenameSkipReason.targetCollisions,
-        ),
-      );
-      expect(repository.renameCalls, isEmpty);
-    });
-
-    test("restores the initial ref when current branch changes during rename", () async {
-      repository.currentAfterRename = "user-branch";
-
-      final result = await service.renameGeneratedBranch(
-        worktreePath: "/worktree",
-        initialBranchName: "blue-otter",
-        generatedBranchName: "fix-login-flow",
-      );
-
-      expect(
-        result,
-        isA<GeneratedBranchRenameSkipped>().having(
-          (result) => result.reason,
-          "reason",
-          GeneratedBranchRenameSkipReason.initialBranchChanged,
-        ),
-      );
-      expect(repository.renameCalls, [
-        (oldBranchName: "blue-otter", newBranchName: "sesori/fix-login-flow"),
-        (oldBranchName: "sesori/fix-login-flow", newBranchName: "blue-otter"),
-      ]);
-    });
-
-    test("restores the initial ref when post-rename confirmation fails", () async {
-      repository.currentBranchReadErrorAfterRename = StateError("confirmation failed");
-
-      await expectLater(
-        service.renameGeneratedBranch(
-          worktreePath: "/worktree",
-          initialBranchName: "blue-otter",
-          generatedBranchName: "fix-login-flow",
-        ),
-        throwsA(isA<StateError>()),
-      );
-      expect(repository.renameCalls, [
-        (oldBranchName: "blue-otter", newBranchName: "sesori/fix-login-flow"),
-        (oldBranchName: "sesori/fix-login-flow", newBranchName: "blue-otter"),
-      ]);
-    });
-  });
 }
 
 // ---------------------------------------------------------------------------
@@ -1257,11 +887,46 @@ ProcessResult _fail({required int exitCode, String stderr = ""}) {
   return ProcessResult(1, exitCode, "", stderr);
 }
 
-void _expectColorAnimalSlug(String branchName) {
-  expect(branchName, matches(RegExp(r"^sesori/[a-z]+-[a-z]+$")));
+WorktreeRepository _worktreeRepository({
+  required ProjectsDao projectsDao,
+  required _FakeProcessRunner processRunner,
+  required FilesystemApi filesystemApi,
+}) {
+  return WorktreeRepository(
+    worktreesDirectory: "/worktrees",
+    projectsDao: projectsDao,
+    filesystemApi: filesystemApi,
+    gitApi: GitCliApi(
+      streamingProcessRunner: const StreamingProcessRunner(),
+      processRunner: processRunner,
+      gitPathExists: ({required String gitPath}) => true,
+    ),
+    runtime: createTestPluginRuntime(plugins: [_FakeBridgePluginApi()]),
+  );
 }
 
-String _slugOf(String branchName) => branchName.replaceFirst("sesori/", "");
+/// Queues the git results that resolve `main` as the base with no origin ref.
+void _enqueueResolvedMain({required _FakeProcessRunner processRunner}) {
+  processRunner
+    ..enqueue(result: _ok()) // rev-parse HEAD
+    ..enqueue(result: _ok(stdout: "refs/remotes/origin/main\n")) // symbolic-ref
+    ..enqueue(result: _ok(stdout: "origin\n")) // remote
+    ..enqueue(result: _fail(exitCode: 1)) // fetch origin/main
+    ..enqueue(result: _ok(stdout: "abc123def456\n")) // rev-parse main
+    ..enqueue(result: _fail(exitCode: 128)); // rev-parse origin/main
+}
+
+/// Reports the first [_occupiedCount] checked paths as taken, as if folders
+/// already sat there.
+class _OccupyingFilesystemApi({required final int _occupiedCount}) extends FilesystemApi {
+  final List<String> checkedPaths = <String>[];
+
+  @override
+  FileSystemEntityType entityType(String path) {
+    checkedPaths.add(path);
+    return checkedPaths.length <= _occupiedCount ? FileSystemEntityType.directory : FileSystemEntityType.notFound;
+  }
+}
 
 class const _Invocation({
   required final String command,
@@ -1281,8 +946,6 @@ class _FakeProcessRunner() implements ProcessRunner {
 
   final List<_Invocation> invocations = <_Invocation>[];
   final List<Object> _queue = <Object>[];
-  // Occupies the first generated worktree path, as if a folder already sat there.
-  String Function(String slug)? pathToOccupy;
 
   void enqueue({required ProcessResult result}) {
     _queue.add(result);
@@ -1308,11 +971,6 @@ class _FakeProcessRunner() implements ProcessRunner {
       ),
     );
 
-    if (pathToOccupy case final occupy? when arguments.take(2).join(" ") == "branch --list") {
-      Directory(occupy(_slugOf(arguments.last))).createSync(recursive: true);
-      pathToOccupy = null;
-    }
-
     if (_queue.isEmpty) {
       throw StateError("No ProcessResult queued for: $executable $arguments");
     }
@@ -1323,62 +981,6 @@ class _FakeProcessRunner() implements ProcessRunner {
     }
     throw next;
   }
-}
-
-class _GeneratedRenameWorktreeRepository() implements WorktreeRepository {
-  bool validBranchName = true;
-  bool Function(String branchName)? branchNameValidator;
-  bool upstream = false;
-  final Set<String> remoteBranches = <String>{};
-  String? currentBranchName = "blue-otter";
-  String? currentAfterRename;
-  Object? currentBranchReadErrorAfterRename;
-  final Set<String> existingBranches = <String>{};
-  final List<({String oldBranchName, String newBranchName})> renameCalls = [];
-  String? lastWorktreePath;
-
-  @override
-  Future<bool> isValidBranchName({required String branchName}) async {
-    return branchNameValidator?.call(branchName) ?? validBranchName;
-  }
-
-  @override
-  Future<String?> getCurrentBranchName({required String worktreePath}) async {
-    lastWorktreePath = worktreePath;
-    if (renameCalls.isNotEmpty) {
-      if (currentBranchReadErrorAfterRename case final error?) throw error;
-    }
-    return currentBranchName;
-  }
-
-  @override
-  Future<bool> hasUpstream({required String worktreePath, required String branchName}) async => upstream;
-
-  @override
-  Future<bool> hasRemoteBranch({required String worktreePath, required String branchName}) async {
-    return remoteBranches.contains(branchName);
-  }
-
-  @override
-  Future<bool> branchExists({required String projectPath, required String branchName}) async {
-    lastWorktreePath = projectPath;
-    return existingBranches.contains(branchName);
-  }
-
-  @override
-  Future<void> renameBranch({
-    required String worktreePath,
-    required String oldBranchName,
-    required String newBranchName,
-  }) async {
-    lastWorktreePath = worktreePath;
-    renameCalls.add((oldBranchName: oldBranchName, newBranchName: newBranchName));
-    currentBranchName = currentAfterRename ?? newBranchName;
-    currentAfterRename = null;
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 class _FakeBridgePluginApi() extends FakeBridgePlugin {

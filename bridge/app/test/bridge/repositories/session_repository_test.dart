@@ -5,12 +5,10 @@ import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
-import "package:sesori_bridge/src/api/database/tables/pull_requests_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
-import "package:sesori_bridge/src/repositories/models/verified_github_login.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -21,9 +19,6 @@ import "package:test/test.dart";
 import "../../helpers/fakes/fake_derived_bridge_plugin.dart";
 import "../../helpers/plugin_runtime_test_support.dart";
 import "../../helpers/test_database.dart";
-
-final _octocatLogin = VerifiedGithubLogin.tryParse(rawLogin: "octocat")!;
-final _hubotLogin = VerifiedGithubLogin.tryParse(rawLogin: "hubot")!;
 
 void main() {
   group("SessionRepository", () {
@@ -46,13 +41,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       await db.sessionDao.insertObservedChild(
         sessionId: "child",
@@ -71,7 +64,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -129,21 +121,18 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["proj-tomb"]);
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "sess-tomb",
         backendSessionId: "sess-tomb",
         projectId: "proj-tomb",
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: "build",
@@ -184,7 +173,6 @@ void main() {
         plugin: cleanupPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -223,7 +211,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -245,7 +232,6 @@ void main() {
         ),
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
@@ -266,7 +252,6 @@ void main() {
         plugin: plugin,
         sessionDao: sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -290,416 +275,12 @@ void main() {
         plugin: plugin,
         sessionDao: sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
       await expectLater(repository.isSessionTombstoned(sessionId: "gone"), throwsStateError);
       expect(await repository.isSessionTombstoned(sessionId: "gone"), isTrue);
       expect(sessionDao.bulkReadCount, 2);
-    });
-
-    test("enrichSessions merges stored archive and selected PR metadata", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
-
-      await db.sessionDao.insertSession(
-        fastMode: false,
-        pluginId: plugin.id,
-        preservePullRequestScope: false,
-        sessionId: "s1",
-        backendSessionId: "s1",
-        projectId: "p1",
-        isDedicated: true,
-        createdAt: 10,
-        worktreePath: "/tmp/worktree",
-        branchName: "feature/one",
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: "agent-1",
-        lastAgentModel: const AgentModel(
-          providerID: "provider-1",
-          modelID: "model-1",
-          variant: "variant-1",
-        ),
-      );
-      await db.sessionDao.updateObservedSessionProjection(
-        sessionId: "s1",
-        directory: "/tmp/project",
-        catalogTitle: "Catalog title",
-        updateCatalogTitle: true,
-        updatedAt: 10,
-        projectionUpdatedAt: 10,
-      );
-      await db.sessionDao.setUserMessageAt(sessionId: "s1", userMessageAt: 1234);
-      await db.projectsDao.setPrCacheGithubLogin(
-        projectId: "p1",
-        githubLogin: "octocat",
-      );
-      await db.sessionDao.updatePullRequestScopes(
-        updates: [
-          (
-            sessionId: "s1",
-            currentBranchName: "feature/one",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/one",
-          prNumber: 7,
-          url: "https://github.com/org/repo/pull/7",
-          title: "Older open PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.unknown,
-          reviewDecision: PrReviewDecision.unknown,
-          checkStatus: PrCheckStatus.unknown,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/one",
-          prNumber: 11,
-          url: "https://github.com/org/repo/pull/11",
-          title: "Newest open PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 2,
-          createdAt: 2,
-        ),
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/one",
-          prNumber: 99,
-          url: "https://github.com/org/repo/pull/99",
-          title: "Closed but higher number",
-          state: PrState.closed,
-          mergeableStatus: PrMergeableStatus.conflicting,
-          reviewDecision: PrReviewDecision.changesRequested,
-          checkStatus: PrCheckStatus.failure,
-          lastCheckedAt: 3,
-          createdAt: 3,
-        ),
-      );
-
-      final result = await repository.enrichSessions(
-        sessions: const [
-          Session(
-            approvalOverride: null,
-            autoContinuation: null,
-            branchName: null,
-            id: "s1",
-            pluginId: "fake",
-            projectID: "p1",
-            directory: "/tmp/project",
-            parentID: null,
-            title: "Live plugin title",
-            time: SessionTime(created: 1, updated: 2, archived: null),
-            pullRequest: null,
-            promptDefaults: null,
-            lastUserActivityAt: null,
-          ),
-        ],
-        verifiedGithubLogin: _octocatLogin,
-      );
-      final session = result.single;
-
-      expect(session.time?.created, equals(1));
-      expect(session.pluginId, equals(plugin.id));
-      expect(session.time?.updated, equals(2));
-      expect(session.time?.archived, isNull);
-      expect(session.title, "Live plugin title");
-      expect(session.branchName, isNull);
-      expect(session.hasWorktree, isFalse);
-      expect(session.promptDefaults, isNull);
-      expect(session.pullRequest?.number, equals(11));
-      expect(session.pullRequest?.state, equals(PrState.open));
-      expect(session.lastUserActivityAt, isNull);
-    });
-
-    test("enrichSessions clears incoming PR data without a freshly visible selection", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-      const staleSession = Session(
-        approvalOverride: null,
-        autoContinuation: null,
-        branchName: "feature/private",
-        id: "stale-session",
-        pluginId: "fake",
-        projectID: "p1",
-        directory: "/tmp/project",
-        parentID: null,
-        title: "Session",
-        time: null,
-        pullRequest: PullRequestInfo(
-          number: 17,
-          url: "https://github.com/org/repo/pull/17",
-          title: "Stale PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-        ),
-        pullRequestHistory: [
-          PullRequestInfo(
-            number: 16,
-            url: "https://github.com/org/repo/pull/16",
-            title: "Stale history",
-            state: PrState.merged,
-            mergeableStatus: PrMergeableStatus.unknown,
-            reviewDecision: PrReviewDecision.approved,
-            checkStatus: PrCheckStatus.success,
-          ),
-        ],
-        promptDefaults: null,
-        lastUserActivityAt: null,
-      );
-
-      for (final verifiedGithubLogin in <VerifiedGithubLogin?>[null, _hubotLogin]) {
-        final result = await repository.enrichSessions(
-          sessions: const [staleSession],
-          verifiedGithubLogin: verifiedGithubLogin,
-        );
-
-        expect(result.single.pullRequest, isNull);
-        expect(result.single.pullRequestHistory, isEmpty);
-      }
-    });
-
-    test("enrichSessions applies stored data only to matching sessions", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-
-      final repository = singlePluginSessionRepository(
-        plugin: plugin,
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-      );
-
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["p1"]);
-
-      await db.sessionDao.insertSession(
-        fastMode: false,
-        pluginId: plugin.id,
-        preservePullRequestScope: false,
-        sessionId: "s1",
-        backendSessionId: "s1",
-        projectId: "p1",
-        isDedicated: false,
-        createdAt: 10,
-        worktreePath: null,
-        branchName: "feature/one",
-        baseBranch: null,
-        baseCommit: null,
-
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      await db.sessionDao.setArchived(
-        sessionId: "s1",
-        archivedAt: 1234,
-        updatedAt: 1234,
-        projectionUpdatedAt: 1234,
-      );
-      await db.projectsDao.setPrCacheGithubLogin(
-        projectId: "p1",
-        githubLogin: "octocat",
-      );
-      await db.sessionDao.updatePullRequestScopes(
-        updates: [
-          (
-            sessionId: "s1",
-            currentBranchName: "feature/one",
-            currentGithubRepositoryIdentity: "org/repo",
-          ),
-        ],
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/one",
-          prNumber: 5,
-          url: "https://github.com/org/repo/pull/5",
-          title: "Only matching PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.reviewRequired,
-          checkStatus: PrCheckStatus.pending,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
-      );
-
-      final result = await repository.enrichSessions(
-        sessions: const [
-          Session(
-            approvalOverride: null,
-            autoContinuation: null,
-            branchName: null,
-            id: "s1",
-            pluginId: "fake",
-            projectID: "p1",
-            directory: "/tmp/project",
-            parentID: null,
-            title: "stored",
-            time: null,
-            pullRequest: null,
-            promptDefaults: null,
-            lastUserActivityAt: null,
-          ),
-          Session(
-            approvalOverride: null,
-            autoContinuation: null,
-            branchName: null,
-            id: "s2",
-            pluginId: "fake",
-            projectID: "p1",
-            directory: "/tmp/project",
-            parentID: null,
-            title: "unstored",
-            time: SessionTime(created: 3, updated: 4, archived: null),
-            pullRequest: null,
-            promptDefaults: null,
-            lastUserActivityAt: null,
-          ),
-        ],
-        verifiedGithubLogin: _octocatLogin,
-      );
-
-      expect(result, hasLength(2));
-      expect(result.map((session) => session.pluginId), everyElement(plugin.id));
-      expect(result[0].time, isNull);
-      expect(result[0].pullRequest?.number, equals(5));
-      expect(result[1].time?.created, equals(3));
-      expect(result[1].time?.updated, equals(4));
-      expect(result[1].time?.archived, isNull);
-      expect(result[1].pullRequest, isNull);
-    });
-
-    test("enrichSessions retains derived project attribution after operational removal", () async {
-      final db = createTestDatabase();
-      addTearDown(db.close);
-      final derivedPlugin = _FakeDerivedPlugin(launchDirectory: "/derived", allSessions: const []);
-      final repository = SessionRepository(
-        runtime: createTestPluginRuntime(plugins: [plugin]),
-        sessionDao: db.sessionDao,
-        projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
-        unseenCalculator: const SessionUnseenCalculator(),
-        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
-          scratchRoot: "/scratch",
-          pathContext: p.context,
-        ),
-        aggregateSourceDeadline: const Duration(seconds: 1),
-      );
-      await db.projectsDao.insertProjectsIfMissing(projectIds: ["stored-native", "stored-derived"]);
-      await db.sessionDao.insertSession(
-        fastMode: false,
-        pluginId: plugin.id,
-        preservePullRequestScope: false,
-        sessionId: "native-session",
-        backendSessionId: "native-session",
-        projectId: "stored-native",
-        isDedicated: false,
-        createdAt: 1,
-        worktreePath: null,
-        branchName: null,
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-      await db.sessionDao.insertSession(
-        fastMode: false,
-        pluginId: derivedPlugin.id,
-        preservePullRequestScope: false,
-        sessionId: "derived-session",
-        backendSessionId: "derived-session",
-        projectId: "stored-derived",
-        isDedicated: true,
-        createdAt: 1,
-        worktreePath: "/derived/.worktrees/session",
-        branchName: "session",
-        baseBranch: null,
-        baseCommit: null,
-        lastAgent: null,
-        lastAgentModel: null,
-      );
-
-      final result = await repository.enrichSessions(
-        sessions: const [
-          Session(
-            approvalOverride: null,
-            autoContinuation: null,
-            branchName: null,
-            id: "native-session",
-            pluginId: "fake",
-            projectID: "native-reported-project",
-            directory: "/native",
-            parentID: null,
-            title: null,
-            time: null,
-            pullRequest: null,
-            promptDefaults: null,
-            lastUserActivityAt: null,
-          ),
-          Session(
-            approvalOverride: null,
-            autoContinuation: null,
-            branchName: null,
-            id: "derived-session",
-            pluginId: "codex",
-            projectID: "/derived/.worktrees/session",
-            directory: "/derived/.worktrees/session",
-            parentID: null,
-            title: null,
-            time: null,
-            pullRequest: null,
-            promptDefaults: null,
-            lastUserActivityAt: null,
-          ),
-        ],
-        verifiedGithubLogin: null,
-      );
-
-      expect(result[0].projectID, "native-reported-project");
-      expect(result[1].projectID, "/derived/.worktrees/session");
     });
 
     test("updatePromptDefaults writes latest nullable prompt defaults", () async {
@@ -710,7 +291,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -723,7 +303,6 @@ void main() {
         isDedicated: false,
         createdAt: 123,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: "old-agent",
@@ -760,7 +339,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -768,36 +346,17 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s1",
         backendSessionId: "backend-s1",
         projectId: "p1",
         isDedicated: true,
         createdAt: 10,
         worktreePath: "/tmp/worktree",
-        branchName: "feature/rename",
         baseBranch: null,
         baseCommit: null,
 
         lastAgent: null,
         lastAgentModel: null,
-      );
-      await db.pullRequestDao.upsertPr(
-        pullRequest: const PullRequestDto(
-          projectId: "p1",
-          githubRepositoryIdentity: "org/repo",
-          githubLogin: "octocat",
-          branchName: "feature/rename",
-          prNumber: 12,
-          url: "https://github.com/org/repo/pull/12",
-          title: "Rename PR",
-          state: PrState.open,
-          mergeableStatus: PrMergeableStatus.mergeable,
-          reviewDecision: PrReviewDecision.approved,
-          checkStatus: PrCheckStatus.success,
-          lastCheckedAt: 1,
-          createdAt: 1,
-        ),
       );
       await repository.renameSession(sessionId: "s1", title: "Renamed");
 
@@ -813,7 +372,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -821,14 +379,12 @@ void main() {
       await db.sessionDao.insertSession(
         fastMode: false,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
         sessionId: "s-target",
         backendSessionId: "s-target",
         projectId: "p-stored",
         isDedicated: true,
         createdAt: 1,
         worktreePath: "/tmp",
-        branchName: "main",
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -850,7 +406,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -868,7 +423,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       plugin.createSessionResult = const PluginSession(
@@ -909,7 +463,6 @@ void main() {
         model: const PromptModel(providerID: "provider", modelID: "model"),
         isDedicated: true,
         worktreePath: "/repo/.worktrees/blue-otter",
-        branchName: "blue-otter",
         baseBranch: "main",
         baseCommit: "abc123",
         lastAgent: "agent",
@@ -930,7 +483,7 @@ void main() {
       expect(created.hasWorktree, isTrue);
       expect(created.promptDefaults, const SessionPromptDefaults(agent: "agent", model: lastAgentModel));
       expect(row?.backendSessionId, "backend-created");
-      expect(row?.branchName, "blue-otter");
+      expect(row?.branchName, isNull);
       expect(row?.baseBranch, "main");
       expect(row?.baseCommit, "abc123");
       expect(publication.commit.kind, SessionBindingCommitKind.sessionCreation);
@@ -946,7 +499,6 @@ void main() {
         plugin: derivedPlugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.projectsDao.recordOpenedProject(
@@ -964,13 +516,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: derivedPlugin.id,
-        preservePullRequestScope: false,
       );
 
       final created = await repository.createSession(
@@ -986,7 +536,6 @@ void main() {
         model: null,
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -1009,7 +558,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["stable-project"]);
@@ -1021,13 +569,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       await db.sessionDao.setTitle(
         sessionId: "stable-session",
@@ -1057,7 +603,6 @@ void main() {
         model: null,
         isDedicated: false,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
@@ -1078,7 +623,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1099,7 +643,6 @@ void main() {
           model: null,
           isDedicated: false,
           worktreePath: null,
-          branchName: null,
           baseBranch: null,
           baseCommit: null,
           lastAgent: null,
@@ -1121,7 +664,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1139,7 +681,6 @@ void main() {
           model: null,
           isDedicated: false,
           worktreePath: null,
-          branchName: null,
           baseBranch: null,
           baseCommit: null,
           lastAgent: null,
@@ -1180,7 +721,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
         await insertTestSession(
@@ -1192,7 +732,6 @@ void main() {
           isDedicated: false,
           createdAt: 1,
           worktreePath: null,
-          branchName: null,
           baseBranch: null,
           baseCommit: null,
           agent: null,
@@ -1203,7 +742,6 @@ void main() {
           projectId: "/projects/a",
           start: null,
           limit: null,
-          verifiedGithubLogin: null,
         );
         final binding = await db.sessionDao.getSession(sessionId: "stable-live");
 
@@ -1230,7 +768,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
@@ -1257,7 +794,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
@@ -1275,7 +811,6 @@ void main() {
           plugin: plugin,
           sessionDao: db.sessionDao,
           projectsDao: db.projectsDao,
-          pullRequestDao: db.pullRequestDao,
           unseenCalculator: const SessionUnseenCalculator(),
         );
 
@@ -1294,7 +829,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await insertTestSession(
@@ -1306,7 +840,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -1351,7 +884,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1376,7 +908,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -1404,7 +935,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await insertTestSession(
@@ -1416,7 +946,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -1465,7 +994,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await insertTestSession(
@@ -1477,7 +1005,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -1517,7 +1044,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       for (final (sessionId, backendSessionId) in [("stable-s1", "backend-s1"), ("stable-child", "backend-child")]) {
@@ -1530,7 +1056,6 @@ void main() {
           isDedicated: false,
           createdAt: 1,
           worktreePath: null,
-          branchName: null,
           baseBranch: null,
           baseCommit: null,
           agent: null,
@@ -1588,7 +1113,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         eligiblePluginIds: {plugin.id, "setup-blocked"},
       );
@@ -1611,13 +1135,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       for (final child in const [
         (id: "child", backendId: "backend-child", parentId: "root"),
@@ -1642,7 +1164,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1685,7 +1206,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1730,7 +1250,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1757,6 +1276,56 @@ void main() {
         ))?.sessionId,
         active.id,
       );
+    });
+
+    test("active-root hydration binds a scratch-folder root to No project and inserts no project", () async {
+      final db = createTestDatabase();
+      addTearDown(db.close);
+      const folder = "/scratch/2026-10-25-abc";
+      plugin
+        ..activitySummaries = const [
+          PluginProjectActivitySummary(
+            id: folder,
+            activeSessions: [PluginActiveSession(id: "scratch-root", awaitingInput: true)],
+          ),
+        ]
+        ..sessionsByWorktree = const {
+          folder: [
+            PluginSession(
+              id: "scratch-root",
+              projectID: folder,
+              directory: folder,
+              parentID: null,
+              title: "Scratch root",
+              time: PluginSessionTime(created: 1, updated: 2, archived: null),
+            ),
+          ],
+        };
+      final repository = singlePluginSessionRepository(
+        plugin: plugin,
+        sessionDao: db.sessionDao,
+        projectsDao: db.projectsDao,
+        unseenCalculator: const SessionUnseenCalculator(),
+      );
+
+      // Without the No project row the root stays unbound.
+      expect(await repository.getProjectActivitySummaries(), isEmpty);
+      expect(await db.projectsDao.getAllProjects(), isEmpty);
+      expect(await db.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "scratch-root"), isNull);
+
+      await db.projectsDao.insertProjectIfMissing(
+        projectId: "/scratch",
+        path: "/scratch",
+        hidden: false,
+        displayName: "No project",
+      );
+      final summaries = await repository.getProjectActivitySummaries();
+
+      expect(summaries.single.id, "/scratch");
+      final row = await db.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "scratch-root");
+      expect(row?.projectId, "/scratch");
+      expect(row?.directory, folder);
+      expect((await db.projectsDao.getAllProjects()).map((project) => project.projectId), ["/scratch"]);
     });
 
     test("active-root hydration is not persisted after generation replacement", () async {
@@ -1787,7 +1356,6 @@ void main() {
         runtime: runtime,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
         projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
           scratchRoot: "/scratch",
@@ -1849,7 +1417,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1913,7 +1480,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -1981,7 +1547,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -2038,7 +1603,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -2078,13 +1642,11 @@ void main() {
         isDedicated: true,
         createdAt: 1,
         worktreePath: worktree,
-        branchName: "session-001",
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
     }
 
@@ -2105,7 +1667,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
@@ -2114,7 +1675,6 @@ void main() {
         projectId: parent,
         start: null,
         limit: null,
-        verifiedGithubLogin: null,
       );
 
       expect(sessions.map((s) => s.id).toSet(), {"w1"});
@@ -2144,7 +1704,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "a1");
 
@@ -2166,7 +1725,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -2187,7 +1745,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       // One dedicated-worktree session and one plain in-project session.
@@ -2200,13 +1757,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
 
       // The worktree session primes with its worktree path...
@@ -2268,7 +1823,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
@@ -2340,7 +1894,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -2376,7 +1929,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: [parent]);
@@ -2388,13 +1940,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: "codex",
-        preservePullRequestScope: false,
       );
 
       expect(
@@ -2408,7 +1958,6 @@ void main() {
         projectId: parent,
         start: null,
         limit: null,
-        verifiedGithubLogin: null,
       );
       expect(sessions.single.title, "My rename");
       expect((await db.sessionDao.getSession(sessionId: "s1"))?.title, "My rename");
@@ -2422,7 +1971,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await insertTestSession(
@@ -2434,7 +1982,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -2479,7 +2026,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -2550,7 +2096,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/repo"]);
@@ -2562,13 +2107,11 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         lastAgent: null,
         lastAgentModel: null,
         pluginId: plugin.id,
-        preservePullRequestScope: false,
       );
       await db.sessionDao.insertObservedChild(
         sessionId: "stable-child",
@@ -2619,7 +2162,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
 
@@ -2639,7 +2181,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await insertTestSession(
@@ -2651,7 +2192,6 @@ void main() {
         isDedicated: false,
         createdAt: 1,
         worktreePath: null,
-        branchName: null,
         baseBranch: null,
         baseCommit: null,
         agent: null,
@@ -2681,7 +2221,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
         unseenCalculator: const SessionUnseenCalculator(),
       );
       await db.sessionDao.insertSessionTombstone(
@@ -2695,7 +2234,6 @@ void main() {
         projectId: parent,
         start: null,
         limit: null,
-        verifiedGithubLogin: null,
       );
       expect(sessions, isEmpty);
 
@@ -2719,7 +2257,6 @@ void main() {
         plugin: plugin,
         sessionDao: db.sessionDao,
         projectsDao: db.projectsDao,
-        pullRequestDao: db.pullRequestDao,
       );
       await recordWorktreeSession(db, parent: parent, worktree: worktree, sessionId: "w1");
 
@@ -2728,7 +2265,6 @@ void main() {
           projectId: worktree,
           start: null,
           limit: null,
-          verifiedGithubLogin: null,
         ),
         throwsA(isA<ProjectNotFoundException>()),
       );
@@ -3004,8 +2540,6 @@ class _CountingSessionDao({required final Set<String> tombstones, required final
       directory: "/project",
       worktreePath: null,
       branchName: null,
-      currentBranchName: null,
-      currentGithubRepositoryIdentity: null,
       isDedicated: false,
       archivedAt: null,
       baseBranch: null,
