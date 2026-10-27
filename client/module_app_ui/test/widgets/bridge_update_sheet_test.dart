@@ -36,7 +36,7 @@ Widget _notice({required SessionInteractionState interaction, required VoidCallb
     interaction: interaction,
     historyUnavailable: false,
     onOpenHarnessSettings: onOpenHarnessSettings,
-    onRecheck: () {},
+    onRecheck: () async {},
   ),
 );
 
