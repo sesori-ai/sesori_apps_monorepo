@@ -560,7 +560,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
             onDraftCleared: context.read<NewSessionCubit>().clearComposerDraft,
             onAbort: _dismissScreen,
             surfaceStyleController: surfaceStyleController,
-            header: _buildErrorBanner(state),
+            header: _AnimatedBanner(banner: _buildErrorBanner(state)),
             composerHeader: _buildComposerHeader(
               cubit: cubit,
               state: state,
@@ -899,6 +899,37 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
         ),
       ),
       child: options,
+    );
+  }
+}
+
+/// The error banner over the composer, in the motion of [_AnimatedOptions]:
+/// its room opens as it fades in and folds away as it fades out, so the pills
+/// and a centred page glide rather than jump as an error comes or clears.
+/// Another error while one shows takes its place without fading, its room
+/// easing to the new text's height. Reduced motion changes it at once.
+class const _AnimatedBanner({required final Widget? banner}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final duration = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
+    return AnimatedSwitcher(
+      duration: duration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionReverseCurve,
+      transitionBuilder: (child, animation) => SizeTransition(
+        sizeFactor: animation,
+        alignment: Alignment.topCenter,
+        child: FadeTransition(opacity: animation, child: child),
+      ),
+      child: switch (banner) {
+        null => null,
+        final banner => AnimatedSize(
+          duration: duration,
+          curve: transcriptMotionCurve,
+          alignment: Alignment.topCenter,
+          child: banner,
+        ),
+      },
     );
   }
 }

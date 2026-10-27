@@ -262,7 +262,12 @@ variant, and worktree mode, and creating the session with its first input.
   one "Retry loading models" button stands in the pills' place; a bridge that can
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
-  themselves is decided behind it.
+  themselves is decided behind it. When discovery or creation fails, the error above the composer's pills opens as
+  it fades in over about 200 ms, and folds as it fades out once Retry clears it. On desktop the centred heading and
+  pills glide, by under 1.5 px a frame, with the project pill riding under the heading
+  (`desktop_new_session_screen_test`); on the phone the pills hold their place as the composer's top edge rises
+  (`new_session_screen_test`). Another error while one shows replaces the words in place without fading, its room
+  easing to the new height. Reduced motion shows and clears the error at once.
 - The "New worktree" toggle opens with the value the last session on this device
   was started with (on when none was ever started), whatever the project or
   bridge. Only a Send where the toggle was shown updates the remembered value.
@@ -562,6 +567,8 @@ startup-extension file failure, retry once the filesystem is usable.
 - Options are stale where a discovery failure should be an explicit error.
 - When discovery fails or finds no harness, the project pill snaps sideways, slides under reduced motion, drifts
   apart from the heading as the page re-centres, or comes to rest off centre.
+- The error above the composer appears or clears in one frame, so the desktop heading and pills jump or the
+  phone's pills shift; one error replacing another flashes; or the error animates under reduced motion.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch
   session cannot be deleted, deletes before the scratch process exits, or hides
   a real CLI/database failure as benign absence.

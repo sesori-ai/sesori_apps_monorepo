@@ -1219,10 +1219,9 @@ class _PromptInputState() extends State<PromptInput> {
         // keyboard (their menus want the screen space the keyboard occupies).
         TextFieldTapRegion(
           child: Padding(
-            padding: EdgeInsetsDirectional.only(
-              top: widget.header != null ? 4 : 8,
-              bottom: MediaQuery.paddingOf(context).bottom + 8,
-            ),
+            // One gap whatever the header shows, so a header easing in or out
+            // never shifts the input under the pills in a frame.
+            padding: EdgeInsetsDirectional.only(top: 8, bottom: MediaQuery.paddingOf(context).bottom + 8),
             // The composer's halo runs on to the bottom edge, so nothing
             // shows below it. It follows the animated size rather than one
             // layout's surface, so it stays put while layouts cross-fade.

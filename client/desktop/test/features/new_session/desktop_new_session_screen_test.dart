@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -273,6 +274,202 @@ void main() {
     expect(rect.left, 220);
     expect(rect.right, 1180);
     expect(rect.bottom, closeTo(bottomRect.top - 8, 0.01));
+  });
+
+  group("the error banner opens and folds while the centred page glides", () {
+    const plugin = PluginMetadata(
+      id: "plugin-1",
+      displayName: "Plugin One",
+      isDefault: true,
+      state: PluginLifecycleState.ready,
+      actionHint: null,
+    );
+    const discovering = NewSessionState.composing(
+      config: NewSessionComposeConfig(
+        availablePlugins: [],
+        selectedPlugin: null,
+        options: NewSessionOptionsLoadState.loading(source: null),
+        backendScope: NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null),
+        isPluginDiscoveryInFlight: true,
+        projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+      ),
+      phase: NewSessionPhase.idle(),
+    );
+    NewSessionState failed({required RemoteFailureReason reason}) => NewSessionState.composing(
+      config: const NewSessionComposeConfig(
+        availablePlugins: [],
+        selectedPlugin: null,
+        options: NewSessionOptionsLoadState.loading(source: null),
+        backendScope: NewSessionBackendScope.unverified(lastIdentifiedBridgeId: null),
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+      ),
+      phase: NewSessionPhase.discoveryError(reason: reason),
+    );
+    const found = NewSessionState.composing(
+      config: NewSessionComposeConfig(
+        availablePlugins: [plugin],
+        selectedPlugin: plugin,
+        options: NewSessionOptionsLoadState.unsupported(),
+        backendScope: NewSessionBackendScope.verified(bridgeId: null),
+        isPluginDiscoveryInFlight: false,
+        projectWorktreeCapability: NewSessionProjectWorktreeCapability.supported,
+      ),
+      phase: NewSessionPhase.idle(),
+    );
+    const networkDown = "Connection failed — check your network and try again.";
+    const serverRejected = "The server returned an error. Please try again.";
+    final heading = find.text("What should we work on?");
+    final project = find.byKey(const Key("new_session_project"));
+
+    /// The desktop page over a cubit that emits what the test adds.
+    Future<StreamController<NewSessionState>> pumpPage(WidgetTester tester, {required NewSessionState initial}) async {
+      tester.view.physicalSize = const Size(1400, 900);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final cubit = _MockNewSessionCubit();
+      final inputModeCubit = _MockChatInputModeCubit();
+      final states = StreamController<NewSessionState>();
+      addTearDown(states.close);
+      whenListen(cubit, states.stream, initialState: initial);
+      bool failedDiscovery() => cubit.state.phase is NewSessionPhaseDiscoveryError;
+      when(() => cubit.needsHarnessDiscovery).thenAnswer((_) => failedDiscovery());
+      when(() => cubit.hasNoHarnesses).thenReturn(false);
+      when(() => cubit.composerPresentation).thenAnswer(
+        (_) => failedDiscovery()
+            ? const NewSessionComposerRetry()
+            : identical(cubit.state, discovering)
+            ? const NewSessionComposerPending()
+            : const NewSessionComposerReady(),
+      );
+      when(cubit.readDedicatedWorktreePreference).thenAnswer((_) async => true);
+      when(() => cubit.canSubmit).thenReturn(false);
+      when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: ""));
+      when(() => cubit.projectKind).thenReturn(ProjectKind.folder);
+      whenListen(inputModeCubit, const Stream<ChatInputMode>.empty(), initialState: ChatInputMode.textFirst);
+      await tester.pumpWidget(
+        MultiBlocProvider(
+          providers: [
+            BlocProvider<NewSessionCubit>.value(value: cubit),
+            BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
+            _projectList(projects: const []),
+          ],
+          child: MaterialApp(
+            theme: ThemeData(extensions: [PregoDesignSystem.light]),
+            localizationsDelegates: AppLocalizations.localizationsDelegates,
+            supportedLocales: AppLocalizations.supportedLocales,
+            home: DesktopNewSessionView(
+              projectId: "project-1",
+              projectName: "Sesori",
+              onBack: () {},
+              onOpenHarnessSettings: () {},
+              onSessionCreated: ({required session}) {},
+              onProjectSelected: ({required projectId, required projectName}) {},
+            ),
+          ),
+        ),
+      );
+      await tester.pump(const Duration(milliseconds: 500));
+      return states;
+    }
+
+    /// The heading's and the project pill's rects at each 16 ms frame after
+    /// [next] lands, from the frame before it until the page has settled.
+    /// [checkFirstFrame] runs on the frame that applies [next].
+    Future<List<(Rect, Rect)>> framesAfter(
+      WidgetTester tester, {
+      required StreamController<NewSessionState> states,
+      required NewSessionState next,
+      required VoidCallback? checkFirstFrame,
+    }) async {
+      (Rect, Rect) frame() => (tester.getRect(heading), tester.getRect(project));
+      final frames = [frame()];
+      states.add(next);
+      // Zero time still delivers the state before the frame, even when no
+      // other motion has one scheduled.
+      await tester.pump(Duration.zero);
+      checkFirstFrame?.call();
+      frames.add(frame());
+      for (var i = 0; i < 20; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        frames.add(frame());
+      }
+      await tester.pump(const Duration(milliseconds: 400));
+      frames.add(frame());
+      return frames;
+    }
+
+    /// How far the heading moves up or down in the frame that moves it most.
+    double largestStep(List<(Rect, Rect)> frames) => [
+      for (var i = 1; i < frames.length; i++) (frames[i].$1.top - frames[i - 1].$1.top).abs(),
+    ].reduce(math.max);
+
+    /// Fails when the project pill parts from the heading vertically: it must
+    /// ride along with it every frame, however the page re-centres.
+    void expectPillUnderHeading(List<(Rect, Rect)> frames) {
+      final gap = frames.first.$2.top - frames.first.$1.bottom;
+      for (final (heading, project) in frames) {
+        expect(project.top - heading.bottom, moreOrLessEquals(gap, epsilon: 0.01));
+      }
+    }
+
+    /// The opacity [finder] paints with, through every fade above it.
+    double opacityOf(WidgetTester tester, Finder finder) => tester
+        .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
+        .fold(1, (opacity, fade) => opacity * fade.opacity.value);
+
+    testWidgets("when discovery fails, and back when Retry finds a harness", (tester) async {
+      final states = await pumpPage(tester, initial: discovering);
+
+      final opening = await framesAfter(
+        tester,
+        states: states,
+        next: failed(reason: RemoteFailureReason.networkDown),
+        checkFirstFrame: null,
+      );
+      // The banner's room makes the column taller, so the centred heading
+      // moves, but over the motion rather than in one frame.
+      expect(opening.last.$1.top, isNot(moreOrLessEquals(opening.first.$1.top, epsilon: 1)));
+      expect(largestStep(opening), lessThan(1.5));
+      expectPillUnderHeading(opening);
+      expect(find.text(networkDown), findsOneWidget);
+      expect(opacityOf(tester, find.text(networkDown)), 1);
+
+      // Another error while one shows takes its place at once, without
+      // fading, and its room eases to the new text's height.
+      final swapping = await framesAfter(
+        tester,
+        states: states,
+        next: failed(reason: RemoteFailureReason.serverRejected),
+        checkFirstFrame: () {
+          expect(find.text(networkDown), findsNothing);
+          expect(opacityOf(tester, find.text(serverRejected)), 1);
+        },
+      );
+      expect(largestStep(swapping), lessThan(1.5));
+      expectPillUnderHeading(swapping);
+
+      final folding = await framesAfter(tester, states: states, next: found, checkFirstFrame: null);
+      expect(largestStep(folding), lessThan(1.5));
+      expectPillUnderHeading(folding);
+      expect(find.text(serverRejected), findsNothing);
+    });
+
+    testWidgets("at once under reduced motion", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final states = await pumpPage(tester, initial: discovering);
+
+      for (final next in [failed(reason: RemoteFailureReason.networkDown), found]) {
+        final frames = await framesAfter(tester, states: states, next: next, checkFirstFrame: null);
+        // The frame that applies the change already shows the page at rest.
+        expect(frames[1].$1, frames.last.$1);
+        expect(frames[1].$1, isNot(frames.first.$1));
+        expect(find.text(networkDown), next == found ? findsNothing : findsOneWidget);
+      }
+    });
   });
 
   for (final closeFromDetail in [false, true]) {

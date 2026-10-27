@@ -1675,6 +1675,46 @@ void main() {
     }
   });
 
+  testWidgets("the error banner opens over the composer while its pills hold their place", (tester) async {
+    tester.view.physicalSize = const Size(400, 800);
+    tester.view.devicePixelRatio = 1;
+    addTearDown(tester.view.reset);
+    final discovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+    when(pluginRepository.listPlugins).thenAnswer((_) => discovery.future);
+    final composer = find.byType(PromptInput);
+    final retry = find.byKey(const Key("new_session_options_retry"));
+    // The placeholder pills while discovery runs, then Retry in their place.
+    Rect pills() => tester.getRect(
+      retry.evaluate().isEmpty ? find.descendant(of: composer, matching: find.byType(PregoSkeletonBar)).first : retry,
+    );
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pump(const Duration(milliseconds: 300));
+    final loc = tester.element(find.byType(NewSessionScreen)).loc;
+    final pillsBottom = pills().bottom;
+    final composerTops = [tester.getRect(composer).top];
+
+    discovery.complete(ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)));
+    await tester.pump(Duration.zero);
+    for (var frame = 0; frame < 20; frame++) {
+      expect(pills().bottom, pillsBottom);
+      composerTops.add(tester.getRect(composer).top);
+      await tester.pump(const Duration(milliseconds: 16));
+    }
+    await tester.pumpAndSettle();
+    composerTops.add(tester.getRect(composer).top);
+
+    expect(find.text(loc.apiErrorServerRejected), findsOneWidget);
+    expect(pills().bottom, pillsBottom);
+    // The composer's top edge rises over the motion as the banner's room
+    // opens above the pills, never by the whole banner in one frame.
+    final rise = composerTops.first - composerTops.last;
+    expect(rise, greaterThan(20));
+    for (var frame = 1; frame < composerTops.length; frame++) {
+      expect(composerTops[frame - 1] - composerTops[frame], lessThan(rise / 4));
+    }
+  });
+
   testWidgets("opens harness settings from the empty harness notice", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
