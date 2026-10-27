@@ -3223,6 +3223,14 @@ void main() {
         commands: const [],
         lastUsedPromptDefaults: null,
       );
+      const project = Project(
+        id: "project-1",
+        name: "Project",
+        path: "/project",
+        time: null,
+        supportsDedicatedWorktrees: true,
+        voiceGlossaryKey: null,
+      );
 
       /// Answers discovery from bridge-1 at once and the options with
       /// [answersBeforeBlip], in order; every later call waits on the returned
@@ -3371,6 +3379,140 @@ void main() {
         expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
         expect(cubit.canCreateSession, isFalse);
       });
+
+      test("a recheck on the login card while the reconnect rechecks the project loads the options", () async {
+        final projectRecheck = Completer<ApiResponse<Project>>();
+        var projectChecks = 0;
+        when(() => mockProjectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+          projectChecks++;
+          return projectChecks == 1 ? Future.value(ApiResponse.success(project)) : projectRecheck.future;
+        });
+        final blip = stubBlip(answersBeforeBlip: [loginRequired, loginRequired]);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await settleLogin(cubit);
+        connectionStatus
+          ..add(const ConnectionStatus.disconnected())
+          ..add(connected);
+        while (blip.discoveries() < 2) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        blip.rediscovery.complete(answer(bridgeId: "bridge-1", plugins: [defaultPlugin]));
+        while (blip.optionLoads() < 2) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        await Future<void>.delayed(Duration.zero);
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+        expect(cubit.state.agentModelData?.projectWorktreeCapability, NewSessionProjectWorktreeCapability.loading);
+
+        final recheck = cubit.refreshOptions();
+        await Future<void>.delayed(Duration.zero);
+        // The press asks for the options at once; the project check answers on
+        // its own.
+        expect(blip.optionLoads(), 3);
+        blip.optionsAfterBlip.complete(SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
+        await recheck;
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        expect(cubit.canCreateSession, isFalse);
+
+        projectRecheck.complete(ApiResponse.success(project));
+        await settleLoads(cubit);
+        expect(cubit.canCreateSession, isTrue);
+      });
+
+      for (final (outcome, rediscovery, settled) in [
+        (
+          "the options arrive",
+          answer(bridgeId: "bridge-1", plugins: [defaultPlugin]),
+          isA<NewSessionComposerReady>(),
+        ),
+        (
+          "rediscovery fails",
+          ApiResponse<PluginDiscoverySnapshot>.error(ApiError.generic()),
+          isA<NewSessionComposerRetry>(),
+        ),
+      ]) {
+        test("keeps an options load a reconnect cut off pending until $outcome", () async {
+          final blip = stubBlip(answersBeforeBlip: const []);
+          final cubit = buildCubit();
+          addTearDown(cubit.close);
+          while (blip.optionLoads() < 1) {
+            await Future<void>.delayed(Duration.zero);
+          }
+          expect(cubit.composerPresentation, isA<NewSessionComposerPending>());
+
+          final shown = <NewSessionComposerPresentation>[];
+          final subscription = cubit.stream.listen((_) => shown.add(cubit.composerPresentation));
+          addTearDown(subscription.cancel);
+          connectionStatus.add(const ConnectionStatus.disconnected());
+          await Future<void>.delayed(Duration.zero);
+          connectionStatus.add(connected);
+          while (blip.discoveries() < 2) {
+            await Future<void>.delayed(Duration.zero);
+          }
+          // Neither the blip nor the rediscovery under way shows Retry.
+          expect(shown, isNotEmpty);
+          expect(shown, everyElement(isA<NewSessionComposerPending>()));
+
+          blip.rediscovery.complete(rediscovery);
+          if (rediscovery is SuccessResponse) {
+            // Nor does the options load the rediscovery starts.
+            while (blip.optionLoads() < 2) {
+              await Future<void>.delayed(Duration.zero);
+            }
+            expect(shown, everyElement(isA<NewSessionComposerPending>()));
+            blip.optionsAfterBlip.complete(SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false));
+          }
+          await settleLoads(cubit);
+          expect(cubit.composerPresentation, settled);
+        });
+      }
+
+      for (final (outcome, recheck, settled) in [
+        (
+          "it still cannot be checked",
+          ApiResponse<Project>.error(ApiError.generic()),
+          isA<NewSessionComposerProjectUnavailable>(),
+        ),
+        ("it can be checked again", ApiResponse.success(project), isA<NewSessionComposerReady>()),
+      ]) {
+        test("keeps the project card through a reconnect until $outcome", () async {
+          final projectRecheck = Completer<ApiResponse<Project>>();
+          var projectChecks = 0;
+          when(() => mockProjectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+            projectChecks++;
+            return projectChecks == 1
+                ? Future.value(ApiResponse<Project>.error(ApiError.generic()))
+                : projectRecheck.future;
+          });
+          final cubit = buildCubit();
+          addTearDown(cubit.close);
+          await settleLoads(cubit);
+          expect(cubit.composerPresentation, isA<NewSessionComposerProjectUnavailable>());
+
+          final shown = <NewSessionComposerPresentation>[];
+          final subscription = cubit.stream.listen((_) => shown.add(cubit.composerPresentation));
+          addTearDown(subscription.cancel);
+          connectionStatus
+            ..add(const ConnectionStatus.disconnected())
+            ..add(connected);
+          while (projectChecks < 2 ||
+              (cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true) ||
+              (cubit.state.agentModelData?.optionsState.isLoading ?? true)) {
+            await Future<void>.delayed(Duration.zero);
+          }
+          // Neither the blip, the rediscovery nor the recheck under way swaps
+          // the card for the composer, and creation stays blocked meanwhile.
+          expect(shown, isNotEmpty);
+          expect(shown, everyElement(isA<NewSessionComposerProjectUnavailable>()));
+          expect(cubit.canCreateSession, isFalse);
+
+          projectRecheck.complete(recheck);
+          await settleLoads(cubit);
+          expect(cubit.composerPresentation, settled);
+          expect(cubit.canCreateSession, recheck is SuccessResponse);
+        });
+      }
 
       test("is LoadOnDemand for a legacy bridge whose selected plugin cannot be routed yet", () async {
         when(mockPluginRepository.listPlugins).thenAnswer(

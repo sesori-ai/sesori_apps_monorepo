@@ -1827,6 +1827,192 @@ void main() {
     await expectStill();
   });
 
+  group("through a reconnect", () {
+    final harness = ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-1",
+        supportsSessionOptions: true,
+        plugins: const [
+          PluginMetadata(
+            id: "plugin-1",
+            displayName: "Plugin One",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+          ),
+        ],
+      ),
+    );
+    final project = ApiResponse.success(
+      const Project(
+        id: "project-1",
+        name: "Project One",
+        path: "/project-one",
+        time: null,
+        supportsDedicatedWorktrees: true,
+        voiceGlossaryKey: null,
+      ),
+    );
+    const connected = ConnectionStatus.connected(
+      config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+      health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+    );
+
+    /// Answers the first discovery with [harness] and every later one with the
+    /// returned completer. Called from each test body, so the completer
+    /// answers in the test's fake time.
+    ({Completer<ApiResponse<PluginDiscoverySnapshot>> rediscovery, int Function() calls}) stubDiscovery() {
+      final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+      var calls = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) {
+        calls++;
+        return calls == 1 ? Future.value(harness) : rediscovery.future;
+      });
+      return (rediscovery: rediscovery, calls: () => calls);
+    }
+
+    /// Answers the options with [answers], in order, and every later load with
+    /// the returned completer.
+    ({Completer<SessionOptionsRepositoryResult> later, int Function() loads}) stubOptions({
+      required List<SessionOptionsRepositoryResult> answers,
+    }) {
+      final later = Completer<SessionOptionsRepositoryResult>();
+      var loads = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) {
+        loads++;
+        return loads <= answers.length ? Future.value(answers[loads - 1]) : later.future;
+      });
+      return (later: later, loads: () => loads);
+    }
+
+    testWidgets("holds the option placeholders still when the drop cuts off their load", (tester) async {
+      final discovery = stubDiscovery();
+      final options = stubOptions(answers: const []);
+      final placeholder = find.byType(PregoShimmer);
+
+      await tester.pumpWidget(_buildApp());
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(options.loads(), 1);
+      final placeholderRect = tester.getRect(placeholder);
+
+      /// Every frame shows the placeholders as they were, with no Retry in
+      /// their place.
+      Future<void> expectStill() async {
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(placeholder, findsOneWidget);
+          expect(tester.getRect(placeholder), placeholderRect);
+          expect(find.byKey(const Key("new_session_options_retry")), findsNothing);
+          expect(find.byType(AgentModelButtons), findsNothing);
+        }
+      }
+
+      connectionStatus.add(const ConnectionStatus.disconnected());
+      await expectStill();
+      connectionStatus.add(connected);
+      await expectStill();
+      expect(discovery.calls(), 2);
+      discovery.rediscovery.complete(harness);
+      await expectStill();
+      expect(options.loads(), 2);
+      options.later.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      await tester.pumpAndSettle();
+      expect(find.byType(AgentModelButtons), findsOneWidget);
+    });
+
+    testWidgets("holds the project card still when the project still cannot be checked", (tester) async {
+      final discovery = stubDiscovery();
+      final projectRecheck = Completer<ApiResponse<Project>>();
+      var projectCalls = 0;
+      when(() => projectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+        projectCalls++;
+        return projectCalls == 1 ? Future.value(ApiResponse<Project>.error(ApiError.generic())) : projectRecheck.future;
+      });
+      final card = find.byKey(const Key("new_session_project_unavailable"));
+
+      await tester.pumpWidget(_buildApp());
+      await tester.pumpAndSettle();
+      final cardRect = tester.getRect(card);
+
+      /// Every frame shows the card as it was, with no composer, pills, Retry
+      /// or shimmer in its place.
+      Future<void> expectStill() async {
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(card, findsOneWidget);
+          expect(tester.getRect(card), cardRect);
+          expect(find.byType(PromptInput), findsNothing);
+          expect(find.byType(AgentModelButtons), findsNothing);
+          expect(find.byKey(const Key("new_session_options_retry")), findsNothing);
+          expect(find.byType(PregoShimmer), findsNothing);
+        }
+      }
+
+      connectionStatus.add(const ConnectionStatus.disconnected());
+      await expectStill();
+      connectionStatus.add(connected);
+      await expectStill();
+      expect(discovery.calls(), 2);
+      expect(projectCalls, 2);
+      discovery.rediscovery.complete(harness);
+      await expectStill();
+      projectRecheck.complete(ApiResponse.error(ApiError.generic()));
+      await expectStill();
+    });
+
+    testWidgets("a recheck on the login card while the project is rechecked opens the composer once logged in", (
+      tester,
+    ) async {
+      const loginRequired = SessionOptionsRepositoryAuthenticationRequired(
+        actionHint: "Run the harness locally and use /login.",
+      );
+      final discovery = stubDiscovery();
+      final options = stubOptions(answers: const [loginRequired, loginRequired]);
+      final projectRecheck = Completer<ApiResponse<Project>>();
+      var projectCalls = 0;
+      when(() => projectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+        projectCalls++;
+        return projectCalls == 1 ? Future.value(project) : projectRecheck.future;
+      });
+      final card = find.byKey(const Key("new_session_login_required"));
+
+      await tester.pumpWidget(_buildApp());
+      await tester.pumpAndSettle();
+      connectionStatus.add(const ConnectionStatus.disconnected());
+      await tester.pump();
+      connectionStatus.add(connected);
+      await tester.pump();
+      discovery.rediscovery.complete(harness);
+      await tester.pump();
+      expect(options.loads(), 2);
+      expect(projectCalls, 2);
+      final cardRect = tester.getRect(card);
+
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      // The card stays as it is while the press asks for the options.
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(tester.getRect(card), cardRect);
+        expect(find.byType(PregoShimmer), findsNothing);
+      }
+      expect(options.loads(), 3);
+      options.later.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(find.byType(AgentModelButtons), findsOneWidget);
+      projectRecheck.complete(project);
+      await tester.pumpAndSettle();
+    });
+  });
+
   testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),
