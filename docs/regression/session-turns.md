@@ -210,8 +210,9 @@ defaults and queued client sends coherent.
   busy, even after that sub-agent ends, but never sets `mainAgentRunning`,
   and its completion opens no main-agent wake-up turn: the CLI delivers it to
   the sub-agent. A background sub-agent's permission ask is its own work too:
-  it never sets `mainAgentRunning`, so the sub-agent row returns once the ask
-  is answered. Under YOLO the bridge answers every ask before a client sees
+  it never sets `mainAgentRunning`. While the ask waits on the user, its
+  permission card stands in for the sub-agent row, as for any waiting
+  question or permission; once it is answered the row is back. Under YOLO the bridge answers every ask before a client sees
   it, so the row stays up. Failure signal: the transcript's sub-agent row
   vanishes seconds after a background sub-agent starts running tools (under
   YOLO, at its first tool call that misses an allow rule), once one of its
