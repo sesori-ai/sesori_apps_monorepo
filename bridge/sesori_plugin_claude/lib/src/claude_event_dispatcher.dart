@@ -687,9 +687,9 @@ final class ClaudeEventDispatcher({
     required String sessionId,
     required ClaudeResultMessage message,
   }) {
-    if (!message.isError && message.subtype == ClaudeResultSubtype.success && message.permissionDenials.isEmpty) {
-      return const [];
-    }
+    // A refused tool already shows as a failed step, and the model saw that
+    // failure, so a successful turn with permission denials is not an error.
+    if (!message.isError && message.subtype == ClaudeResultSubtype.success) return const [];
     final mappedApiError = _mappedApiErrorSessions.remove(sessionId);
     if (mappedApiError && message.isError) return const [];
     final messageId = _nonEmptyString(message.uuid);
@@ -870,9 +870,6 @@ PluginMessageTime? _messageTime(DateTime? timestamp) =>
 String _retryMessage(ClaudeApiRetryMessage message) => message.rawError ?? "Claude Code is retrying the request.";
 
 ({String name, String message}) _resultError(ClaudeResultMessage result) {
-  if (!result.isError && result.subtype == ClaudeResultSubtype.success && result.permissionDenials.isNotEmpty) {
-    return (name: "permission_denied", message: "Claude Code denied a tool without requesting permission.");
-  }
   final fallback = _resultErrorFallback(result);
   final rawError = result.errors.isNotEmpty ? result.errors.join("\n") : result.result;
   return rawError == null ? fallback : (name: fallback.name, message: rawError);

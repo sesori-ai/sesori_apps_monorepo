@@ -788,19 +788,9 @@ final class ClaudePlugin({
             break;
         }
       }
-      if (message is ClaudeResultMessage) {
-        final denialsWereHandled = _approvals.consumeHandledPermissionDenials(
-          sessionId: event.sessionId,
-          denials: message.permissionDenials,
-        );
-        if (interrupted) {
-          _eventDispatcher.completeTurn(sessionId: event.sessionId);
-          return;
-        }
-        if (!message.isError && message.subtype == ClaudeResultSubtype.success && denialsWereHandled) {
-          _eventDispatcher.completeTurn(sessionId: event.sessionId);
-          return;
-        }
+      if (message is ClaudeResultMessage && interrupted) {
+        _eventDispatcher.completeTurn(sessionId: event.sessionId);
+        return;
       }
       if (message is ClaudeInitMessage && message.sessionId != event.sessionId) {
         Log.e("[claude] backend reported a different session id; stopping the session");

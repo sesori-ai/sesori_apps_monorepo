@@ -918,7 +918,66 @@ void main() {
       await subscription.cancel();
     });
 
-    test("preserves an error result after a handled permission denial", () async {
+    test("a hook-denied tool fails its step and leaves a successful turn without an error", () async {
+      final events = <BridgeSseEvent>[];
+      final subscription = harness.plugin.events.listen(events.add);
+      await harness.createSession();
+      final process = harness.processes.single;
+      await waitForFrame(process, "user");
+
+      // Frame shape observed on Claude Code 2.1.310: a PreToolUse hook denial
+      // sends no permission request; the tool result is an error, and the
+      // successful result lists the tool under permission_denials.
+      process.emit(_assistantToolUse(id: "toolu-hook", name: "Bash", input: {"command": "echo blocked"}));
+      process.emit({
+        "type": "user",
+        "session_id": testSessionId,
+        "uuid": "hook-denial",
+        "message": {
+          "role": "user",
+          "content": [
+            {
+              "type": "tool_result",
+              "tool_use_id": "toolu-hook",
+              "content": "PreToolUse:Bash hook error: fixture hook denied this command",
+              "is_error": true,
+            },
+          ],
+        },
+        "tool_use_result": "Error: PreToolUse:Bash hook error: fixture hook denied this command",
+      });
+      process.emit({
+        "type": "result",
+        "subtype": "success",
+        "session_id": testSessionId,
+        "uuid": "result-success",
+        "is_error": false,
+        "terminal_reason": "completed",
+        "permission_denials": [
+          {
+            "tool_name": "Bash",
+            "tool_use_id": "toolu-hook",
+            "tool_input": {"command": "echo blocked"},
+          },
+        ],
+      });
+      await pump();
+
+      final step = events
+          .whereType<BridgeSseMessagePartUpdated>()
+          .map((event) => event.part)
+          .whereType<PluginMessagePartTool>()
+          .lastWhere((part) => part.id == "toolu-hook");
+      expect(step.state.status, PluginToolStatus.error);
+      expect(step.state.error, "PreToolUse:Bash hook error: fixture hook denied this command");
+      expect(
+        events.whereType<BridgeSseMessageUpdated>().map((event) => event.info),
+        everyElement(isNot(isA<PluginMessageError>())),
+      );
+      await subscription.cancel();
+    });
+
+    test("an error result with permission denials keeps its own error", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
       await harness.createSession();
@@ -930,22 +989,6 @@ void main() {
         effort: null,
         permissionMode: ClaudePermissionMode.plan,
         fastMode: false,
-      );
-      process.emit({
-        "type": "control_request",
-        "request_id": "permission-1",
-        "request": {
-          "subtype": "can_use_tool",
-          "tool_name": "Write",
-          "tool_use_id": "toolu-1",
-          "input": {"file_path": "a.dart"},
-        },
-      });
-      await pump();
-      await harness.plugin.replyToPermission(
-        requestId: "br-1",
-        sessionId: testSessionId,
-        reply: PluginPermissionReply.reject,
       );
 
       process.emit({
@@ -966,15 +1009,6 @@ void main() {
       final error = errorEvent.info as PluginMessageError;
       expect(error.errorName, "api_error");
       expect(error.errorMessage, "Claude Code could not complete the API request (HTTP 500).");
-      expect(
-        harness.approvals.consumeHandledPermissionDenials(
-          sessionId: testSessionId,
-          denials: const [
-            {"tool_use_id": "toolu-1"},
-          ],
-        ),
-        isFalse,
-      );
       await subscription.cancel();
     });
 

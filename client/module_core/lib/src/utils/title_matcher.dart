@@ -5,12 +5,22 @@ List<T> matchTitles<T>({
   required Iterable<T> items,
   required String? Function(T item) titleOf,
   required String query,
+}) => matchTexts(items: items, textsOf: (item) => [titleOf(item)], query: query);
+
+/// [matchTitles] over several texts per item: each word of [query] must occur
+/// in one of the item's texts, not necessarily the same one, so "app fix"
+/// finds the title "Fix the header" in the project "app". A null text never
+/// matches.
+List<T> matchTexts<T>({
+  required Iterable<T> items,
+  required List<String?> Function(T item) textsOf,
+  required String query,
 }) {
   final words = _words(query: query);
   if (words.isEmpty) return items.toList();
   return items.where((item) {
-    final title = titleOf(item)?.toLowerCase();
-    return title != null && words.every(title.contains);
+    final texts = [for (final text in textsOf(item)) ?text?.toLowerCase()];
+    return words.every((word) => texts.any((text) => text.contains(word)));
   }).toList();
 }
 

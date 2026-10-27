@@ -17,6 +17,15 @@ void main() {
     expect(match("build fix", ["Fix the build", "Fix the docs"]), ["Fix the build"]);
   });
 
+  test("over several texts, each word may match a different one", () {
+    final items = [("Fix the header", "sesori"), ("Fix the parser", "landing"), (null, "sesori")];
+    List<(String?, String)> matchBoth(String query) =>
+        matchTexts(items: items, textsOf: (item) => [item.$1, item.$2], query: query);
+    expect(matchBoth("SESORI fix"), [items[0]]);
+    expect(matchBoth("sesori"), [items[0], items[2]], reason: "a null text leaves the others to match");
+    expect(matchBoth("sesori parser"), isEmpty);
+  });
+
   test("match ranges cover every occurrence of each word, merged and sorted", () {
     expect(titleMatchRanges(title: "Fix the build", query: "BUILD fix"), [(start: 0, end: 3), (start: 8, end: 13)]);
     expect(titleMatchRanges(title: "aaa", query: "a"), [(start: 0, end: 3)]);

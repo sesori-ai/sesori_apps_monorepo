@@ -80,10 +80,10 @@ class ClaudeLaunchSpec({
   /// This flag is REQUIRED and is deliberately not optional. It does not appear
   /// in `claude --help`; it was found in the Agent SDK's argument builder and
   /// confirmed live. Without it the CLI silently auto-denies every
-  /// permission-gated tool: no control request is sent, the turn still reports
-  /// `subtype: "success"`, and the refusal is visible only in the result's
-  /// `permission_denials` array. A plugin missing this flag looks healthy while
-  /// every write, edit, and command fails.
+  /// permission-gated tool: no control request is sent, each refused tool only
+  /// fails its own step, and the turn still reports `subtype: "success"`. A
+  /// plugin missing this flag looks healthy while every write, edit, and
+  /// command fails, so the launch-spec test guards it rather than a turn error.
   static const List<String> permissionPromptToolArguments = ["--permission-prompt-tool", "stdio"];
 
   /// The child process this spec starts.
