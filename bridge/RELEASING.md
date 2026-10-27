@@ -147,7 +147,7 @@ Linux internal previews use the same aligned source/build with native x64/arm64 
 and OpenPGP signing. They attach after core finalization, independently of macOS completion. Their last-uploaded
 `desktop-linux-release.json` marks completion; per-CPU checksum/signature pairs and `desktop-linux-public.asc`
 remain separate from CLI assets. Main-only bootstrap can target an existing shared internal release without
-store uploads. Stable Linux and APT/RPM repositories remain gated;
+store uploads. Production attaches stable Linux packages the same way (first `v1.10.1`);
 see [Linux signing](../docs/desktop/linux-signing.md).
 
 Stable bridge/npm cleanup skips either platform's completed internal previews, including bridge-only production and

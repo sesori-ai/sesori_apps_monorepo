@@ -574,8 +574,8 @@ assets exist: an internal channel must not be forced onto stable. This also pres
 previews during bridge-only production or pending/failed stable desktop attachment.
 `DESKTOP_MACOS_PUBLICATION_ENABLED` defaults off; the user admitted macOS on 2026-09-26
 and it is now `true`. Linux internal previews were admitted on 2026-10-13. Stable Linux
-publication is wired through production without a separate variable; it has no live
-release yet. Windows remains unadmitted.
+publication is wired through production without a separate variable; `v1.10.1` was its
+first live release. Windows remains unadmitted.
 
 Admitted macOS publication attaches four installers, `desktop-checksums.txt` and
 `desktop-release.json` to existing product tags. It never creates/promotes a release,
@@ -706,8 +706,8 @@ platforms: signed/notarized/stapled DMGs and ZIPs containing the signed/notarize
 app on macOS (the ZIP itself is not signed or stapled), unsigned per-user EXE
 construction and isolated fixtures on Windows, and unsigned DEB/RPM construction plus
 six native package-manager fixtures on Linux. Separate signed Linux qualification and
-public internal delivery are recorded above. macOS and Linux internal installers are
-public; stable Linux and Windows availability are not implied.
+public internal delivery are recorded above. macOS and Linux installers are public on
+both channels; Windows availability is not implied.
 Exact accepted sources, runs, hashes and proof limits stay
 in the active distribution plan's [macOS](../../.plan/active/desktop-distribution/steps/step-06.md),
 [Windows](../../.plan/active/desktop-distribution/steps/step-07.md), and

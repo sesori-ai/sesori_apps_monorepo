@@ -18,7 +18,9 @@ in an ARM64 Fedora container, without installing or executing the application.
 
 [Retained verification summaries](https://github.com/sesori-ai/sesori_apps_monorepo/pull/2002#issuecomment-6196620863)
 include the independent verifier revision and the exact evidence boundary. This accepts
-internal repository delivery only; stable repository delivery has no live acceptance yet.
+internal repository delivery only. Stable repository delivery first published with `v1.10.1`
+(run 40582445355, 2026-10-27); its anonymous `InRelease` and both `repomd.xml` files served
+`1.10.1-1082`, but no real APT/DNF client check was recorded for it.
 
 ## Package registration
 
@@ -64,8 +66,8 @@ newer repository metadata.
 - All three paths share one non-cancelling concurrency group. Every run refreshes each
   channel that has a completed release, so a replaced pending run loses no channel.
   A `select` job lists those channels; signing and publication run one independent
-  matrix leg per channel. Before the first stable Linux release, stable is skipped and
-  the run still succeeds.
+  matrix leg per channel. A channel without a completed release is skipped and the run
+  still succeeds.
 - Internal follows the newest completed `v<X.Y.Z>-internal.<N>` pre-release by package
   version, not the most recently republished old tag. Stable follows the newest
   non-draft `v<X.Y.Z>` carrying `desktop-linux-release.json`. Like macOS, that includes a

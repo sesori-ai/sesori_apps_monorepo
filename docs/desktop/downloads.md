@@ -7,13 +7,15 @@ plus `linux-package-managers`, and its contract checks fail when one is renamed 
 removed. Its `src/lib/desktop-downloads.ts` resolves completed public shared releases;
 individual preview builds do not need a source edit or website redeployment.
 
-**Stable/internal macOS installers and native Linux DEB/RPM previews are public for both CPUs.**
+**Stable and internal macOS installers and Linux DEB/RPM/AppImage packages are public for both CPUs.**
 Both platforms' website downloads are live, independently selected by completion marker.
 Stable macOS `v1.9.1` ships build `1017` from source
 `8bfeda9416c96ea5de70ffc701a36b738f24eff7`, packaging run `38537594836`.
 Both stable DMG links appeared on the live website and returned HTTP 200 on 2026-10-14;
 this is publication evidence, not new native/account upgrade qualification.
-Windows and stable Linux are not published yet. Linux internal build `1.9.1+1013`
+Stable Linux `v1.10.1` (build `1082`, packaging run `40582445355`) was the first stable
+Linux release; the same run published the stable APT/RPM repositories and AppImage feed.
+Windows is not published yet. Linux internal build `1.9.1+1013`
 passed independent anonymous package/signature verification on 2026-10-13.
 The website selects each platform's newest completed preview rather than pinning
 its first publication.
@@ -128,9 +130,9 @@ No public download is available.
 ## Linux package managers
 
 Production attaches stable Linux DEB/RPM/AppImage files to the approved `v<X.Y.Z>`
-release with its own `desktop-linux-release.json` (`channel: stable`); none is published
-yet. Signed [APT/RPM repositories](linux-repositories.md) host `internal` and `stable`
-separately; stable appears after the first stable Linux release.
+release with its own `desktop-linux-release.json` (`channel: stable`), first for `v1.10.1`.
+Signed [APT/RPM repositories](linux-repositories.md) host `internal` and `stable`
+separately.
 Opt-in internal DEB/RPM previews use `desktop-linux-release.json` as their independent
 completion marker, with native x64/arm64 packages named
 `Sesori-linux-<arch>-<version>-<build>.<deb|rpm>`. The website must not infer them from
