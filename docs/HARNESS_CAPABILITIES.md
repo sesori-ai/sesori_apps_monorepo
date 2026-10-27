@@ -286,10 +286,11 @@ While only sub-agents run (the bridge reports the main agent's turn over, and
 it streams nothing and runs no step of its own), the transcript shows "N sub-agents running in the background · time"
 and "You can keep chatting meanwhile." The time counts from the earliest
 running sub-agent's start. On every harness that is when the bridge saw it go
-busy after seeing it not busy, so a resumed sub-agent counts from its resume.
-Otherwise (an older bridge, or a sub-agent first seen already busy, as after a
-bridge restart) it is the `time.created` of the message holding its sub-agent
-step, else the child session's own `time.created`, as the table lists. With
+busy after seeing it not busy (live or in a status read), so a resumed sub-agent
+counts from its resume. Otherwise (an older bridge, or a sub-agent first seen
+already busy, as after a bridge restart) it falls back to the `time.created` of
+the message holding its sub-agent step, else the child session's own
+`time.created`, as the table lists. With
 none, the row shows no timer. The second line claims that a prompt sent now reaches the
 main agent at once; no harness where the row shows queues it behind the
 sub-agents. A main agent blocked on a foreground sub-agent is still mid-turn
@@ -300,13 +301,13 @@ with sub-agents still running; a bridge released before this does not, so the
 flag stays set there and "Working…" shows in place of the row until the
 sub-agents finish.
 
-| Harness | Sub-agent start | Prompt while sub-agents run |
+| Harness | Fallback start (no bridge busy time) | Prompt while sub-agents run |
 |---|---|---|
 | Claude | ✅ The sub-agent step's message time. | ✅ For background `Agent` calls (`run_in_background`): the turn ends at launch, and a prompt is written to the CLI at once and starts a turn. A foreground `Agent` call keeps the turn running, so the row does not show; verified live 2026-09-26 on the Claude CLI (stream-json): a prompt sent 8 s into a foreground call was taken up only when the call returned 11 s later. |
 | Codex | ✅ The sub-agent step's message time. | ✅ `turn/start` at once. Verified live 2026-09-26 on codex-cli 0.156.1 (app-server): the parent's turn ended with its sub-agent still running `sleep 90`, and a new prompt started a parent turn answered in 2 s. |
 | OpenCode | ✅ The child session's `time.created`. | ✅ For background children the parent is idle and `prompt_async` starts a turn. A foreground Task is the parent's own running step, so the row does not show. |
 | DeepSeek | ✅ The sub-agent step's message time. | ✅ By code, not probed live (the adapter is not installed on the probe machine): the parent idles while a background child runs, and the shared ACP path sends `session/prompt` at once. A foreground child keeps the parent's turn running, so the row does not show. A prompt that meets DeepSeek's own follow-up turn after a child settles is unconfirmed. |
-| Grok | ⚠️ Only a sub-agent the bridge saw go idle and then busy again counts, from that busy. A first run has no time: no message or child session carries one, so the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
+| Grok | ❌ None: no message or child session carries one, so without a bridge busy time the row shows no timer. | ✅ `session/prompt` at once while the root is idle. A prompt sent during the wake turn that follows a finished sub-agent cancels that turn and is then answered. |
 | Cursor | Not applicable: the root turn stays open while any sub-agent runs, so the row never shows. | Not applicable: a follow-up prompt is stop-and-send, and the root cancel stops every sub-agent, background ones included. |
 | Antigravity, Copilot, Hermes, OMP, Pi | Not applicable: no running sub-agent lifecycle reaches the client, so the row never shows. | Not applicable. |
 

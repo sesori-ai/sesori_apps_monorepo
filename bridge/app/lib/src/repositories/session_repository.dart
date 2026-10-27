@@ -677,6 +677,7 @@ class SessionRepository({
     _deletedSessionIds.addAll(subtree.map((binding) => binding.sessionId));
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
+      _busyObservations.remove(binding.sessionId);
     }
     return (
       session: deletionSnapshot,
@@ -1097,12 +1098,9 @@ class SessionRepository({
             statuses: {
               for (final entry in pluginStatuses.entries)
                 if (bindings[entry.key] case final binding?)
-                  binding.sessionId: _withBusySince(
+                  binding.sessionId: _stampSnapshotStatus(
+                    sessionId: binding.sessionId,
                     status: entry.value.toSharedSessionStatus(),
-                    since: switch (_busyObservations[binding.sessionId]) {
-                      _BusySince(:final since) => since,
-                      _ObservedNotBusy() || null => null,
-                    },
                   ),
             },
           );
@@ -1126,9 +1124,9 @@ class SessionRepository({
   /// [status] as a client receives it live: a busy or retry status carries when
   /// the bridge saw [sessionId] go busy, the same time for the whole busy run.
   ///
-  /// Only a busy run that starts after an observed idle has a known start; a
-  /// session first seen busy, as after a bridge restart, stays without one
-  /// until it next goes idle.
+  /// Only a busy run that starts after an idle seen live or in the status
+  /// snapshot has a known start; a session first seen busy, as after a bridge
+  /// restart, stays without one until it next goes idle.
   SessionStatus stampLiveStatus({required String sessionId, required SessionStatus status}) {
     if (status is SessionStatusIdle) {
       markSessionIdle(sessionId: sessionId);
@@ -1151,6 +1149,23 @@ class SessionRepository({
   /// Records that [sessionId] went idle, so its next busy run is timed.
   void markSessionIdle({required String sessionId}) {
     _busyObservations[sessionId] = const _ObservedNotBusy();
+  }
+
+  /// [status] as a plugin snapshot reports it. A busy or retry status carries
+  /// the tracked start but never creates one, since the run began at an unknown
+  /// time; an idle counts as seen idle unless a live status is already tracked.
+  SessionStatus _stampSnapshotStatus({required String sessionId, required SessionStatus status}) {
+    if (status is SessionStatusIdle) {
+      _busyObservations.putIfAbsent(sessionId, () => const _ObservedNotBusy());
+      return status;
+    }
+    return _withBusySince(
+      status: status,
+      since: switch (_busyObservations[sessionId]) {
+        _BusySince(:final since) => since,
+        _ObservedNotBusy() || null => null,
+      },
+    );
   }
 
   static SessionStatus _withBusySince({required SessionStatus status, required int? since}) => switch (status) {

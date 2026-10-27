@@ -1060,6 +1060,25 @@ void main() {
         () => repository.stampLiveStatus(sessionId: "s1", status: status),
       );
 
+      Future<void> insertSessions({required List<String> ids}) async {
+        for (final id in ids) {
+          await insertTestSession(
+            db: db,
+            sessionId: id,
+            backendSessionId: "backend-$id",
+            pluginId: plugin.id,
+            projectId: "/repo",
+            isDedicated: false,
+            createdAt: 1,
+            worktreePath: null,
+            baseBranch: null,
+            baseCommit: null,
+            agent: null,
+            agentModel: null,
+          );
+        }
+      }
+
       test("starts when a session seen idle goes busy, and holds through the run", () {
         expect(stampAt(now: 100, status: const SessionStatus.idle()), const SessionStatus.idle());
 
@@ -1086,22 +1105,7 @@ void main() {
       });
 
       test("snapshots carry a tracked start and never invent one", () async {
-        for (final id in ["s1", "s2", "s3"]) {
-          await insertTestSession(
-            db: db,
-            sessionId: id,
-            backendSessionId: "backend-$id",
-            pluginId: plugin.id,
-            projectId: "/repo",
-            isDedicated: false,
-            createdAt: 1,
-            worktreePath: null,
-            baseBranch: null,
-            baseCommit: null,
-            agent: null,
-            agentModel: null,
-          );
-        }
+        await insertSessions(ids: ["s1", "s2", "s3"]);
         repository.markSessionIdle(sessionId: "s1");
         stampAt(now: 200, status: busy);
         repository.markSessionIdle(sessionId: "s3");
@@ -1121,6 +1125,27 @@ void main() {
           "s2": busy,
           "s3": busy,
         });
+      });
+
+      test("a snapshot idle times the next live busy without replacing a live start", () async {
+        await insertSessions(ids: ["s1", "s2"]);
+        repository.markSessionIdle(sessionId: "s2");
+        withClock(
+          Clock.fixed(DateTime.fromMillisecondsSinceEpoch(100)),
+          () => repository.stampLiveStatus(sessionId: "s2", status: busy),
+        );
+        plugin.sessionStatusesResult = const {
+          "backend-s1": PluginSessionStatus.idle(),
+          "backend-s2": PluginSessionStatus.idle(),
+        };
+
+        await repository.getSessionStatuses();
+
+        expect(stampAt(now: 200, status: busy), const SessionStatus.busy(since: 200));
+        expect(
+          repository.stampLiveStatus(sessionId: "s2", status: busy),
+          const SessionStatus.busy(since: 100),
+        );
       });
     });
 
