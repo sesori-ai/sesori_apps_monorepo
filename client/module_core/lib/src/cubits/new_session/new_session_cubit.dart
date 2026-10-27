@@ -299,12 +299,17 @@ class NewSessionCubit({
 
   Future<void> _loadProjectCapability() async {
     final generation = ++_projectLoadGeneration;
-    _emitStateUpdate(
-      options: null,
-      backendScope: null,
-      isPluginDiscoveryInFlight: null,
-      projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
-    );
+    // A project that could not be checked keeps its card, and creation stays
+    // blocked, until the bridge answers again: a recheck, a reconnect's too,
+    // never swaps the card for the composer only to bring it back.
+    if (state.agentModelData?.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable) {
+      _emitStateUpdate(
+        options: null,
+        backendScope: null,
+        isPluginDiscoveryInFlight: null,
+        projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+      );
+    }
     try {
       final response = await _projectRepository.getProject(projectId: _projectId);
       if (isClosed || generation != _projectLoadGeneration || state is NewSessionCreated) return;
@@ -399,11 +404,13 @@ class NewSessionCubit({
     final current = state;
     final data = current.agentModelData;
     final source = data?.optionsState.source;
+    // A project check still under way, such as a reconnect's, answers on its
+    // own; it does not hold back the options this press asks for.
     if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         !(data?.backendScope.isVerified ?? false) ||
         data == null ||
-        data.isLoading ||
+        data.optionsState.isLoading ||
         source == null) {
       return;
     }
@@ -680,11 +687,11 @@ class NewSessionCubit({
       return data.isPluginDiscoveryInFlight ? const NewSessionComposerPending() : const NewSessionComposerRetry();
     }
     // A failed rediscovery keeps the options on screen but cannot send. Options
-    // or a login card still waiting for a rediscovery after a disconnect are
-    // not a failure yet; a failed rediscovery turns both into one.
+    // still loading or a login card, waiting for a rediscovery after a
+    // disconnect, are not a failure yet; a failed rediscovery turns each into one.
     if (!data.backendScope.isVerified &&
         !data.isPluginDiscoveryInFlight &&
-        data.optionsState is! NewSessionOptionsRefreshingState &&
+        !data.optionsState.isLoading &&
         !data.optionsState.authenticationRequired) {
       return const NewSessionComposerRetry();
     }
