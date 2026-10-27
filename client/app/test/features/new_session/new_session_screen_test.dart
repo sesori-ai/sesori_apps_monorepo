@@ -1647,6 +1647,85 @@ void main() {
     await expectStill();
   });
 
+  testWidgets("holds the option pills still through a reconnect that finds the same harness", (tester) async {
+    final harness = ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-1",
+        supportsSessionOptions: true,
+        plugins: const [
+          PluginMetadata(
+            id: "plugin-1",
+            displayName: "Plugin One",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+          ),
+        ],
+      ),
+    );
+    final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) {
+      discoveryCalls++;
+      return discoveryCalls == 1 ? Future.value(harness) : rediscovery.future;
+    });
+    final project = ApiResponse.success(
+      const Project(
+        id: "project-1",
+        name: "Project One",
+        path: "/project-one",
+        time: null,
+        supportsDedicatedWorktrees: true,
+        voiceGlossaryKey: null,
+      ),
+    );
+    final projectRecheck = Completer<ApiResponse<Project>>();
+    var projectCalls = 0;
+    when(() => projectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+      projectCalls++;
+      return projectCalls == 1 ? Future.value(project) : projectRecheck.future;
+    });
+    final pills = find.byType(AgentModelButtons);
+    final worktreeToggle = find.byKey(const Key("new_session_dedicated_workspace"));
+    List<String> agentNames() => [for (final agent in tester.widget<AgentModelButtons>(pills).agents) agent.name];
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final pillsRect = tester.getRect(pills);
+    final toggleRect = tester.getRect(worktreeToggle);
+    final shownAgents = agentNames();
+
+    /// Every frame shows the pills and the worktree toggle as they were, with
+    /// no Retry and nothing shimmering in their place.
+    Future<void> expectStill() async {
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(pills, findsOneWidget);
+        expect(tester.getRect(pills), pillsRect);
+        expect(agentNames(), shownAgents);
+        expect(tester.getRect(worktreeToggle), toggleRect);
+        expect(find.byKey(const Key("new_session_options_retry")), findsNothing);
+        expect(find.byType(PregoShimmer), findsNothing);
+      }
+    }
+
+    connectionStatus.add(const ConnectionStatus.disconnected());
+    await expectStill();
+    connectionStatus.add(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+      ),
+    );
+    await expectStill();
+    expect(discoveryCalls, 2);
+    expect(projectCalls, 2);
+    rediscovery.complete(harness);
+    await expectStill();
+    projectRecheck.complete(project);
+    await expectStill();
+  });
+
   testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),

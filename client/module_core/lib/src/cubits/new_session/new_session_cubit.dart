@@ -102,13 +102,31 @@ class NewSessionCubit({
     if (isClosed) return;
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
+    final dropped = !isConnected && _wasConnected;
     _wasConnected = isConnected;
+    // Answers to requests sent before the drop never land during it: a late
+    // failure would show Retry, a late success re-verify a bridge nobody has
+    // reached. The reconnect asks again.
+    if (dropped) {
+      ++_loadGeneration;
+      ++_projectLoadGeneration;
+    }
     if (!isConnected) {
-      final backendScope = state.agentModelData?.backendScope;
-      if (backendScope != null) {
+      final data = state.agentModelData;
+      if (data != null) {
         _emitStateUpdate(
-          options: null,
-          backendScope: backendScope.invalidate(),
+          // The pills on screen wait for the rediscovery to vouch for them
+          // again, as they do while it runs: shown, not pickable, and not
+          // swapped for Retry by the blip alone.
+          options: switch (data.optionsState) {
+            NewSessionOptionsAvailableState(:final options, :final source) ||
+            NewSessionOptionsFailureRetainedState(:final options, :final source) => NewSessionOptionsRefreshingState(
+              options: options,
+              source: source,
+            ),
+            final other => other,
+          },
+          backendScope: data.backendScope.invalidate(),
           isPluginDiscoveryInFlight: null,
           projectWorktreeCapability: null,
         );
@@ -650,8 +668,13 @@ class NewSessionCubit({
     if (plugin == null) {
       return data.isPluginDiscoveryInFlight ? const NewSessionComposerPending() : const NewSessionComposerRetry();
     }
-    // A failed rediscovery keeps the options on screen but cannot send.
-    if (!data.backendScope.isVerified && !data.isPluginDiscoveryInFlight) return const NewSessionComposerRetry();
+    // A failed rediscovery keeps the options on screen but cannot send. Options
+    // still waiting for a rediscovery after a disconnect are not a failure yet.
+    if (!data.backendScope.isVerified &&
+        !data.isPluginDiscoveryInFlight &&
+        data.optionsState is! NewSessionOptionsRefreshingState) {
+      return const NewSessionComposerRetry();
+    }
     // The project check comes first because Recheck retries it first.
     if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
       return const NewSessionComposerProjectUnavailable();

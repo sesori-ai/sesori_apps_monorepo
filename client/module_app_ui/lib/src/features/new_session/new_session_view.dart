@@ -93,6 +93,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   /// Whether the options showed when this composer last built; while the
   /// project is checked again they hold that place.
   late bool _optionsShown;
+
+  /// Whether the bridge last said this project supports worktrees. While it
+  /// checks again after a reconnect the toggle stays rather than shimmering;
+  /// Send still waits for the answer.
+  bool _worktreesSupported = false;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
   late PregoPopupAlertPresenter _popupAlertPresenter;
@@ -285,8 +290,10 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
         value: _chosenDedicatedWorktree,
         onChanged: choose,
       ),
-      NewSessionProjectWorktreeCapability.loading ||
-      null => _optionsShown ? _DedicatedWorkspaceRow(value: null, onChanged: choose) : null,
+      NewSessionProjectWorktreeCapability.loading || null =>
+        _optionsShown
+            ? _DedicatedWorkspaceRow(value: _worktreesSupported ? _chosenDedicatedWorktree : null, onChanged: choose)
+            : null,
       NewSessionProjectWorktreeCapability.unsupported || NewSessionProjectWorktreeCapability.unavailable => null,
     };
   }
@@ -612,6 +619,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     final harnessName = switch (composerData?.plugin) {
       final plugin? => PregoBrandLogo.displayNameFor(plugin.id),
       null => null,
+    };
+    _worktreesSupported = switch (composerData?.projectWorktreeCapability) {
+      NewSessionProjectWorktreeCapability.supported => true,
+      NewSessionProjectWorktreeCapability.unsupported || NewSessionProjectWorktreeCapability.unavailable => false,
+      NewSessionProjectWorktreeCapability.loading || null => _worktreesSupported,
     };
     final options = _buildOptions(cubit: cubit, data: composerData);
     _optionsShown = options != null;
@@ -1014,8 +1026,8 @@ class _AnimatedFoldState() extends State<_AnimatedFold> with SingleTickerProvide
 /// Whether the session gets a git worktree of its own instead of working in
 /// the project checkout everyone shares.
 class const _DedicatedWorkspaceRow({
-  /// Null shimmers in the row's place while the project is checked or the
-  /// stored choice loads; the row fades in once both are known.
+  /// Null shimmers in the row's place until the project is first checked and
+  /// the stored choice loads; the row fades in once both are known.
   required final bool? value,
   required final ValueChanged<bool> onChanged,
 }) extends StatelessWidget {
