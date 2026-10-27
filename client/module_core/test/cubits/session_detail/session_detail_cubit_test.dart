@@ -950,6 +950,53 @@ void main() {
       expect(recovered.selectedAgent, testAgentInfo().name);
     });
 
+    test("Recheck completes only once the session it finds usable again can interact", () async {
+      // Recheck shows that it is checking until this future completes, so it
+      // must not complete while the notice still stands in the composer's place.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      // The page asks for a refresh as it opens; only the one after the login
+      // finds the harness ready.
+      var loggedIn = false;
+      when(service.refresh).thenAnswer((_) async {
+        if (!loggedIn) return;
+        snapshots.add(
+          managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+        );
+      });
+
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailLoaded && !state.interaction.canInteract,
+        description: "blocked transcript",
+      );
+
+      loggedIn = true;
+      await cubit.recheckHarnessAvailability();
+
+      // Recheck joined the refresh the snapshot started and queued another
+      // behind it, which may already be running; the composer does not wait
+      // for that one.
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having(
+          (state) => state.interaction.canInteract,
+          "interaction.canInteract",
+          isTrue,
+        ),
+      );
+    });
+
     test("a blocked session the bridge stored nothing for reports the block", () async {
       // The store-only read succeeds but has nothing to serve and says the
       // harness still owes it. An empty chat would claim the session has no

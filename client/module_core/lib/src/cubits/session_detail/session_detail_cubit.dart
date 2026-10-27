@@ -413,6 +413,10 @@ class SessionDetailCubit(
     }
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
+      // Recheck shows it is checking until this returns, so it waits for the
+      // refresh that swaps the notice for the composer. That refresh catches
+      // its own failures.
+      if (_activeRefresh case final refresh?) await refresh;
     } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
       await reload();
     }
