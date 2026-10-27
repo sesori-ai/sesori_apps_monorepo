@@ -453,12 +453,12 @@ the project again:
 ```bash
 set -e
 if command -v xcodebuild >/dev/null 2>&1; then
-  for platform in ios macos; do
-    project_lockfile="client/app/$platform/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
+  for native_dir in client/app/ios client/app/macos client/desktop/macos; do
+    project_lockfile="$native_dir/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved"
     backup="$(mktemp)"
     cp "$project_lockfile" "$backup"
     rm "$project_lockfile"
-    if (cd "client/app/$platform" && xcodebuild -resolvePackageDependencies \
+    if (cd "$native_dir" && xcodebuild -resolvePackageDependencies \
       -project Runner.xcodeproj -scheme Runner \
       -clonedSourcePackagesDirPath "$(mktemp -d)"); then
       rm "$backup"
@@ -476,7 +476,7 @@ plugin graph.
 
 </step>
 
-<step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs, across the app `Package.resolved` files):
+<step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs, across the `Package.resolved` files; the desktop copies change only when Sparkle moves):
 
 ```bash
 git diff --stat -- '*Package.resolved'
