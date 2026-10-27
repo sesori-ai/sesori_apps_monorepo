@@ -74,6 +74,8 @@ iOS and macOS pull native dependencies (Firebase, Google SDKs, leveldb, gRPC, et
 - `client/app/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 - `client/app/ios/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`
 - `client/app/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+- `client/desktop/macos/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved`
+- `client/desktop/macos/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved` (desktop pins Sparkle)
 
 `flutter build --config-only` regenerates only the **project** copies. The `Runner.xcworkspace` copies are what Xcode actually consumes when a build targets the workspace — which is exactly what the iOS release lanes do (`build_app(workspace: "Runner.xcworkspace", ...)` in `client/app/ios/fastlane/Fastfile`). Leaving them stale means the shipped TestFlight/App Store build silently links the OLD native SDKs even though the PR claims to have updated them. Verified 2026-07-21: with the workspace copy stale, `xcodebuild -resolvePackageDependencies -workspace Runner.xcworkspace -scheme Runner` resolved AppCheck 11.3.0 / GoogleUtilities 8.1.1 while the project copy already said 11.3.1 / 8.1.2.
 
@@ -106,7 +108,7 @@ sed -n '/^workspace:/,$p' client/pubspec.yaml
 ```
 </step>
 
-<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (currently four tracked app copies — a project copy and a workspace copy per platform; these are native deps and are in scope). Reconcile this list with actual source Xcode projects, including `client/desktop/macos`: configure and resolve every discovered SwiftPM graph. A local-only graph may legitimately produce no `Package.resolved`; report that rather than adding an artificial lockfile.
+<step name="0.3">List the iOS/macOS SwiftPM lockfiles that Phase 5 will refresh (currently six tracked copies — a project copy and a workspace copy for app iOS, app macOS, and desktop macOS; these are native deps and are in scope). Reconcile this list with actual source Xcode projects: configure and resolve every discovered SwiftPM graph. A local-only graph may legitimately produce no `Package.resolved`; report that rather than adding an artificial lockfile.
 
 ```bash
 git ls-files | grep 'Package.resolved'
@@ -474,7 +476,7 @@ plugin graph.
 
 </step>
 
-<step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs, across all four `Package.resolved` files):
+<step name="5.2">Verify the SwiftPM lockfiles resolved (changes here are expected on most weekly runs, across the app `Package.resolved` files):
 
 ```bash
 git diff --stat -- '*Package.resolved'
@@ -482,15 +484,13 @@ git diff --stat -- '*Package.resolved'
 
 If there are NO changes, confirm that's genuine (the native graph really was current) and not a resolve that silently failed — re-check the exit codes from 5.1. A `git diff` showing nothing while a resolve "succeeded" is the classic symptom of a resolve that honored existing pins instead of re-resolving.
 
-For `client/desktop/macos`, the current graph contains only local plugin packages, so neither project nor workspace resolution emits a lockfile. Check the resolver output confirms this; if remote dependencies appear, include both new lockfiles in pin verification and commits.
-
-Then assert the project and workspace copies agree per platform. They describe the same package graph, so any difference means one of them is stale and a workspace build would link different native SDKs than a project build:
+Then assert the project and workspace copies agree per native directory. They describe the same package graph, so any difference means one of them is stale and a workspace build would link different native SDKs than a project build:
 
 ```bash
-for platform in ios macos; do
-  diff <(jq -S '.pins' "client/app/$platform/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
-       <(jq -S '.pins' "client/app/$platform/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
-    && echo "$platform: pins identical" || echo "$platform: MISMATCH — re-run 5.1"
+for native_dir in client/app/ios client/app/macos client/desktop/macos; do
+  diff <(jq -S '.pins' "$native_dir/Runner.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
+       <(jq -S '.pins' "$native_dir/Runner.xcodeproj/project.xcworkspace/xcshareddata/swiftpm/Package.resolved") \
+    && echo "$native_dir: pins identical" || echo "$native_dir: MISMATCH — re-run 5.1"
 done
 ```
 </step>
@@ -586,7 +586,7 @@ Report this list at the end of the update process for visibility.
 - Version constraints bumped to latest resolvable versions in every pubspec EXCEPT `shared/no_slop_linter/pubspec.yaml`
 - All three workspaces (shared, bridge, client) are individually accounted for: each either has bumped constraints or provably had no upgradable deps (Phase 3.4)
 - All in-scope pubspec.lock files regenerated (bridge workspace, client workspace, and `shared/sesori_shared` = 3 lockfiles); `shared/no_slop_linter/pubspec.lock` remains untouched
-- Every discovered SwiftPM graph configured and re-resolved — currently app iOS/macOS (4 tracked project/workspace lockfiles, with pins verified identical) and desktop macOS (local-only, no lockfiles) — or recorded as deferred if no Xcode toolchain
+- Every discovered SwiftPM graph configured and re-resolved — currently app iOS/macOS and desktop macOS (6 tracked project/workspace lockfiles, with pins verified identical) — or recorded as deferred if no Xcode toolchain
 - `(cd shared && make analyze)`, `(cd bridge && make analyze)`, `(cd client && make analyze)` all pass
 - `(cd shared && make test)`, `(cd bridge && make test)`, `(cd client && make test)` all pass
 - `(cd shared && make codegen)`, `(cd bridge && make codegen)`, `(cd client && make codegen)` all complete cleanly
