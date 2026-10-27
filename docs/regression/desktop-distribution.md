@@ -39,6 +39,15 @@ macOS updates through Sparkle, Windows and AppImage installs through Velopack (b
 Linux DEB/RPM upgrades remain package-manager-owned. Closing a tray-backed window is not Quit.
 A failed helper stop retains the existing refusal to Quit. Shared CLI data is not update cleanup.
 
+In Settings, **Check for updates** shows a spinner and "Checking for updates…" until the check,
+and any download, ends, then "You're up to date" or a failure line for 4 seconds; DEB/RPM
+installs return to the system-updater description instead, since their check sees only the
+installed bundle. Once an update
+is ready, **Restart to update** cross-fades into the same row slot, so the rows above stay put.
+Internal builds show the build number beside the version ("1.10.0 (build 1066)"); stable builds
+show the version only. Failure signals: the row shows no progress, says up to date after a
+failed check, or the rows jump when the restart row arrives.
+
 ## Linux package restart to update
 
 After the package manager installs a new DEB/RPM bundle, the running app shows
@@ -58,12 +67,17 @@ Only a verified feed is staged, in `velopack-feed/` under the app's support dire
 Velopack's file source. Only when Velopack finds a newer full package does the app download it
 there; Velopack then copies it into its own packages directory and refuses it unless size and
 SHA-256 match the feed. The app then shows **Restart to update** in Settings and the tray.
+Later checks still fetch and verify the feed while an update waits: a newer build downloads and
+replaces the waiting one, so a single restart reaches the latest build, and a build already
+waiting is not downloaded again.
 Quit stops the helper, then starts Velopack's updater silently without relaunch; Restart to
 update does the same and relaunches. The updater waits for the app to exit. A failed updater
 start keeps the app running on restart, restores a helper that was on, and still quits on Quit.
-An unreachable, unsigned or tampered feed, or a package with a wrong SHA-256, leaves the state
-idle and is only logged locally. Velopack never applies an update at app startup.
-Failure signals: an unsigned feed or wrong package is applied, a feed failure shows an error,
+An unreachable, unsigned or tampered feed, or a package with a wrong SHA-256, is logged locally
+and leaves the state idle, or Ready for a package already waiting, which still installs on
+Restart or Quit. Velopack never applies an update at app startup.
+Failure signals: an unsigned feed or wrong package is applied, a background feed failure shows
+an error, a waiting package loses **Restart to update** while offline,
 the helper outlives the updater, or the update applies with the app still running.
 
 ## Sparkle updates (macOS)
@@ -72,7 +86,12 @@ Sparkle checks every 6 hours while Automatic updates is on, and on **Check for u
 `.../desktop-updates/k1/<channel>/macos-<arch>/appcast.xml` (the app supplies the URL), and
 verifies the archive's EdDSA signature against the compiled `SUPublicEDKey` before extracting.
 It never shows its own permission prompt or update window for a normal update; downloads are
-silent. A downloaded update shows **Restart to update**. Restart to update stops the helper,
+silent. A downloaded update shows **Restart to update**. Once one has downloaded, Sparkle's
+checks resume its waiting installer instead of reading the appcast, so a build published
+meanwhile arrives with the first check after the restart (two restarts). The app menu has
+**Check for Updates…** under About; it opens an alert window with the result (up to date, a
+failure, or the downloaded version with **Restart Now** and **Later**) and becomes **Restart to
+Update** once an update has downloaded. Restart to update stops the helper,
 then Sparkle installs and relaunches; a plain Quit installs on normal termination.
 Every system quit (Cmd+Q, Dock Quit, logout, Sparkle's own quit request) runs the same exit as
 tray Quit: the helper stops before the app exits. A quit request during a running quit is

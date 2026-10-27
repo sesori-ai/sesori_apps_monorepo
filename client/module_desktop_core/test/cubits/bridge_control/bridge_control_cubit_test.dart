@@ -1211,10 +1211,14 @@ class _FakeDesktopApplicationTerminator() implements DesktopApplicationTerminato
 /// Linux packages never reach Sparkle.
 class _UnusedSparkleUpdateEngine() implements SparkleUpdateEngine {
   @override
-  Stream<String> get downloadedVersions => const Stream<String>.empty();
+  Stream<SparkleDownloadedUpdate> get downloadedUpdates => const Stream<SparkleDownloadedUpdate>.empty();
 
   @override
-  Future<void> start({required Uri feedUri, required bool automaticChecks}) => throw UnimplementedError();
+  Stream<void> get restartRequests => const Stream<void>.empty();
+
+  @override
+  Future<void> start({required Uri feedUri, required bool automaticChecks, required bool showsBuildNumber}) =>
+      throw UnimplementedError();
 
   @override
   Future<void> setAutomaticChecks({required bool enabled}) => throw UnimplementedError();

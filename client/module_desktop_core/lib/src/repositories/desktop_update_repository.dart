@@ -1,10 +1,12 @@
 import "package:injectable/injectable.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../api/desktop_relaunch_api.dart";
 import "../api/desktop_update_feed_api.dart";
 import "../api/velopack_update_api.dart";
 import "../foundation/models/desktop_bundle_identity.dart";
 import "../foundation/models/desktop_install_kind.dart";
+import "../foundation/models/desktop_release_channel.dart";
 import "../foundation/models/desktop_update_state.dart";
 import "../foundation/platform/installed_desktop_bundle_source.dart";
 import "../foundation/platform/sparkle_update_engine.dart";
@@ -58,17 +60,23 @@ class DesktopUpdateRepository._create({
     _ => initialState(),
   };
 
+
   Future<void> relaunchInstalledPackage() => _relaunchApi.relaunchInstalledPackage();
 
   /// Ready for each update Sparkle has downloaded and verified.
-  Stream<DesktopUpdateState> get sparkleDownloads =>
-      _sparkleEngine.downloadedVersions.map((version) => DesktopUpdateReady(version: version));
+  Stream<DesktopUpdateState> get sparkleDownloads => _sparkleEngine.downloadedUpdates.map(
+    (update) => _ready(version: update.version, buildNumber: update.buildNumber),
+  );
+
+  /// Each "Restart to Update" chosen in the macOS app menu or update window.
+  Stream<void> get sparkleRestartRequests => _sparkleEngine.restartRequests;
 
   /// Starts Sparkle on this install's appcast; Sparkle schedules its own checks.
   Future<void> startSparkle({required bool automaticChecks}) => switch (_bundleSource.compiledIdentity) {
     final DesktopBundleIdentity identity => _sparkleEngine.start(
       feedUri: _feedApi.appcastUri(identity: identity),
       automaticChecks: automaticChecks,
+      showsBuildNumber: _bundleSource.channel == DesktopReleaseChannel.internal,
     ),
     null => throw StateError("A source build has no update feed"),
   };
@@ -76,7 +84,8 @@ class DesktopUpdateRepository._create({
   Future<void> setSparkleAutomaticChecks({required bool enabled}) =>
       _sparkleEngine.setAutomaticChecks(enabled: enabled);
 
-  /// Sparkle reports a downloaded update on [sparkleDownloads], not here.
+  /// Completes when Sparkle's check ends and throws when it failed. Sparkle
+  /// reports a downloaded update on [sparkleDownloads], not here.
   Future<void> checkSparkle() => _sparkleEngine.checkNow();
 
   Future<void> installSparkleUpdateAndRelaunch() => _sparkleEngine.installAndRelaunch();
@@ -91,28 +100,60 @@ class DesktopUpdateRepository._create({
     if (installed == _bundleSource.compiledIdentity) {
       return const DesktopUpdateManagedBySystem();
     }
-    return DesktopUpdateReady(version: installed.version);
+    return _ready(version: installed.version, buildNumber: installed.buildNumber);
   }
 
   /// Ready once Velopack holds a verified newer package. Fetches the signed
-  /// feed, verifies it, and downloads the package only when Velopack's own
-  /// check finds one newer than the running version.
+  /// feed and verifies it on every check, so a build published while an older
+  /// one waits replaces it; the package downloads only when Velopack's own
+  /// check names one newer than the running version that is not already waiting.
+  /// A waiting package stays Ready when the refresh fails.
   Future<DesktopUpdateState> _checkVelopack({required DesktopBundleIdentity identity}) async {
     final String? pendingVersion = await _velopackApi.readPendingVersion();
-    if (pendingVersion != null) {
-      return DesktopUpdateReady(version: pendingVersion);
+    try {
+      return await _refreshVelopack(identity: identity, pendingVersion: pendingVersion);
+    } on Object catch (error, stackTrace) {
+      if (pendingVersion == null) {
+        rethrow;
+      }
+      logw("Failed to refresh the desktop update feed; keeping the waiting update", error, stackTrace);
+      return _velopackReady(packVersion: pendingVersion);
     }
+  }
+
+  Future<DesktopUpdateState> _refreshVelopack({
+    required DesktopBundleIdentity identity,
+    required String? pendingVersion,
+  }) async {
     final DesktopUpdateFeed feed = await _feedApi.fetchFeed(identity: identity);
     await _feedValidator.verify(feed: feed);
     final VelopackStagedRelease? release = await _velopackApi.stageFeed(feed: feed.bytes);
-    if (release == null) {
-      return const DesktopUpdateIdle();
+    if (release == null || release.version == pendingVersion) {
+      return switch (pendingVersion) {
+        final String version => _velopackReady(packVersion: version),
+        null => const DesktopUpdateIdle(),
+      };
     }
     await _feedApi.downloadPackage(
       identity: identity,
       fileName: release.fileName,
       destination: await _velopackApi.stagedPackageFile(release: release),
     );
-    return DesktopUpdateReady(version: await _velopackApi.downloadStagedRelease());
+    return _velopackReady(packVersion: await _velopackApi.downloadStagedRelease());
   }
+
+  /// Internal Velopack packages carry the build in their SemVer, as
+  /// `<version>-internal.<build>`; stable ones are the plain version.
+  DesktopUpdateState _velopackReady({required String packVersion}) =>
+      switch (_internalPackVersion.firstMatch(packVersion)?.groups(<int>[1, 2])) {
+        [final String version?, final String build?] => _ready(version: version, buildNumber: int.parse(build)),
+        _ => DesktopUpdateReady(version: packVersion, internalBuildNumber: null),
+      };
+
+  DesktopUpdateReady _ready({required String version, required int buildNumber}) => DesktopUpdateReady(
+    version: version,
+    internalBuildNumber: _bundleSource.channel == DesktopReleaseChannel.internal ? buildNumber : null,
+  );
+
+  static final RegExp _internalPackVersion = RegExp(r"^(.+)-internal\.(\d+)$");
 }

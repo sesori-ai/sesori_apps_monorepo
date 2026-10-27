@@ -34,7 +34,7 @@ class DesktopUpdateService._create({
     DesktopAutomaticUpdates.enabled,
   );
   Timer? _checkTimer;
-  Future<void>? _runningCheck;
+  Future<bool>? _runningCheck;
   StreamSubscription<DesktopUpdateState>? _sparkleSubscription;
 
   DesktopInstallKind get installKind => _updateRepository.installKind;
@@ -46,6 +46,10 @@ class DesktopUpdateService._create({
   ValueStream<DesktopAutomaticUpdates> get automaticUpdates => _automaticUpdates.stream;
 
   DesktopAutomaticUpdates get currentAutomaticUpdates => _automaticUpdates.value;
+
+  /// Each "Restart to Update" chosen in the macOS app menu or update window;
+  /// `BridgeControlCubit` owns the exit it starts. Only a started Sparkle emits.
+  Stream<void> get restartRequests => _updateRepository.sparkleRestartRequests;
 
   bool get _canCheck => installKind != DesktopInstallKind.development;
 
@@ -91,15 +95,16 @@ class DesktopUpdateService._create({
 
   /// The single check: the background trigger and "Check for updates" share
   /// it, and a check that starts while one runs (a Velopack download can take
-  /// minutes) joins it. A failure keeps the current state and is only logged.
-  Future<void> check() {
+  /// minutes) joins it. Completes with whether the check finished; a failure
+  /// keeps the current state and is only logged.
+  Future<bool> check() {
     if (!_canCheck) {
-      return Future<void>.value();
+      return Future<bool>.value(false);
     }
     return _runningCheck ??= _check().whenComplete(() => _runningCheck = null);
   }
 
-  Future<void> _check() async {
+  Future<bool> _check() async {
     try {
       if (installKind == DesktopInstallKind.macosSparkle) {
         // Sparkle reports a downloaded update on its own stream.
@@ -107,8 +112,10 @@ class DesktopUpdateService._create({
       } else {
         _states.add(await _updateRepository.check());
       }
+      return true;
     } on Object catch (error, stackTrace) {
       logw("Failed to check for desktop updates", error, stackTrace);
+      return false;
     }
   }
 

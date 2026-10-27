@@ -419,10 +419,12 @@ void main() {
     expect(find.byType(PregoSwitch), findsNothing);
   });
 
-  testWidgets("a package install toggles and checks, then offers Restart to update once installed", (tester) async {
+  testWidgets("a package install toggles and checks, then Restart to update takes the check's place", (tester) async {
     updateStates.add(const DesktopUpdateManagedBySystem());
-    when(desktopUpdateService.check)
-        .thenAnswer((_) async => updateStates.add(const DesktopUpdateReady(version: "1.8.5")));
+    when(desktopUpdateService.check).thenAnswer((_) async {
+      updateStates.add(const DesktopUpdateReady(version: "1.10.0", internalBuildNumber: 1066));
+      return true;
+    });
     when(bridgeControl.restartToUpdate).thenAnswer((_) async {});
     await tester.pumpWidget(updateSection());
     expect(find.text("Restart to update"), findsNothing);
@@ -436,13 +438,36 @@ void main() {
     await tester.tap(find.text("Check for updates"));
     await tester.pumpAndSettle();
     verify(desktopUpdateService.check).called(1);
-    // The new row opens below; the rows above it stay where they were.
-    expect(tester.getTopLeft(find.text("Check for updates")), checkRow);
-    expect(find.textContaining("Version 1.8.5 is ready"), findsOneWidget);
+    // The restart row replaces the check row in place.
+    expect(find.text("Check for updates"), findsNothing);
+    expect(tester.getTopLeft(find.text("Restart to update")), checkRow);
+    expect(find.textContaining("Version 1.10.0 (build 1066) is ready"), findsOneWidget);
 
     await tester.tap(find.text("Restart to update"));
     await tester.pump();
     verify(bridgeControl.restartToUpdate).called(1);
+  });
+
+  testWidgets("Check for updates shows progress, then up to date for a few seconds", (tester) async {
+    updateStates.add(const DesktopUpdateIdle());
+    when(() => desktopUpdateService.installKind).thenReturn(DesktopInstallKind.velopack);
+    final Completer<bool> check = Completer<bool>();
+    when(desktopUpdateService.check).thenAnswer((_) => check.future);
+    await tester.pumpWidget(updateSection());
+
+    await tester.tap(find.text("Check for updates"));
+    await tester.pump();
+    expect(find.text("Checking for updates…"), findsOneWidget);
+    expect(find.byType(PregoActivityIndicator), findsOneWidget);
+
+    check.complete(true);
+    await tester.pumpAndSettle();
+    expect(find.text("You're up to date"), findsOneWidget);
+
+    await tester.pump(DesktopUpdateCubit.checkResultDuration);
+    await tester.pumpAndSettle();
+    expect(find.text("You're up to date"), findsNothing);
+    expect(find.textContaining("installs them when you quit"), findsOneWidget);
   });
 
   testWidgets("a Velopack install describes downloading verified updates", (tester) async {

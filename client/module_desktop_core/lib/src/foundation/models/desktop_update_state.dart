@@ -5,8 +5,11 @@ sealed class const DesktopUpdateState();
 final class const DesktopUpdateIdle() extends DesktopUpdateState;
 
 /// A newer version is installed, or downloaded and verified; it applies on
-/// "Restart to update", and a downloaded one also on Quit.
-final class const DesktopUpdateReady({required final String version}) extends DesktopUpdateState;
+/// "Restart to update", and a downloaded one also on Quit. Internal builds
+/// share the product [version], so [internalBuildNumber] tells them apart; it
+/// is null on the stable channel.
+final class const DesktopUpdateReady({required final String version, required final int? internalBuildNumber})
+    extends DesktopUpdateState;
 
 /// The system package manager installs updates; the app only notices them.
 final class const DesktopUpdateManagedBySystem() extends DesktopUpdateState;
