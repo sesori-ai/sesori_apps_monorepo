@@ -209,7 +209,12 @@ class const _ComputerRow({
                   overflow: TextOverflow.ellipsis,
                   style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
                 ),
-              Text(ComputerMenu.presenceLabel(context: context, computer: computer)),
+              PregoStatusLabel(
+                status: ComputerMenu.presenceStatus(computer: computer),
+                text: ComputerMenu.presenceLabel(context: context, computer: computer),
+                style: null,
+                maxLines: null,
+              ),
             ],
           ),
           trailing: Row(

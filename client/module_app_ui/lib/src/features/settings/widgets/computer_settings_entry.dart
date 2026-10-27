@@ -71,9 +71,11 @@ class const ComputerSettingsEntry({
                                     overflow: TextOverflow.ellipsis,
                                     style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
                                   ),
-                                  Text(
-                                    ComputerMenu.presenceLabel(context: context, computer: computer),
+                                  PregoStatusLabel(
+                                    status: ComputerMenu.presenceStatus(computer: computer),
+                                    text: ComputerMenu.presenceLabel(context: context, computer: computer),
                                     style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textSecondary),
+                                    maxLines: null,
                                   ),
                                 ],
                               ),

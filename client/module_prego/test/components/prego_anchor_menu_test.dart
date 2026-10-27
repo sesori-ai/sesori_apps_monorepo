@@ -350,6 +350,34 @@ void main() {
       expect(tester.widget<InkWell>(lastItem).borderRadius, BorderRadius.zero);
     });
 
+    testWidgets("a status row leads its subtitle with the status dot and reaches the panel edges", (tester) async {
+      await tester.pumpWidget(
+        _harness([
+          PregoMenuStatusItem(
+            key: null,
+            title: "Studio Mac",
+            status: PregoNavStatus.online,
+            statusText: "Online",
+            leadingIcon: TablerRegular.brand_apple,
+            isSelected: false,
+            onTap: () {},
+          ),
+        ], flat: true),
+      );
+
+      await tester.tap(find.text("Open"));
+      await tester.pumpAndSettle();
+
+      final row = find.widgetWithText(InkWell, "Studio Mac");
+      expect(
+        find.descendant(of: row, matching: find.widgetWithText(PregoStatusLabel, "Online")),
+        findsOneWidget,
+      );
+      final panelRect = tester.getRect(find.byType(SingleChildScrollView));
+      expect(tester.getRect(row).top, panelRect.top);
+      expect(tester.getRect(row).bottom, panelRect.bottom);
+    });
+
     testWidgets("custom entries keep the original inset at panel edges", (tester) async {
       await tester.pumpWidget(
         _harness([

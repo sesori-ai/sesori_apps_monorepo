@@ -90,6 +90,35 @@ void main() {
     expect(find.byIcon(TablerRegular.check), findsOneWidget);
   });
 
+  testWidgets("leads each presence with a dot on its line: green online, red offline", (tester) async {
+    await pumpMenu(tester, onManageComputers: null);
+
+    final colors = PregoDesignSystem.light.colors;
+    final rows = {
+      "a": ("Online", colors.fgSuccessSecondary),
+      "b": ("Offline · last seen 5h ago", colors.fgErrorPrimary),
+      "c": ("Offline", colors.fgErrorPrimary),
+    };
+    for (final MapEntry(key: id, value: (presence, color)) in rows.entries) {
+      final row = find.byKey(ValueKey("computer-menu-$id"));
+      final dot = find.descendant(
+        of: row,
+        matching: find.byWidgetPredicate(
+          (widget) => switch (widget) {
+            Container(decoration: BoxDecoration(shape: BoxShape.circle)) => true,
+            _ => false,
+          },
+        ),
+      );
+      final text = find.descendant(of: row, matching: find.text(presence));
+
+      expect(dot, findsOneWidget, reason: id);
+      expect(tester.widget<Container>(dot).decoration, isA<BoxDecoration>().having((d) => d.color, "color", color));
+      expect(tester.getCenter(dot).dx, lessThan(tester.getTopLeft(text).dx), reason: id);
+      expect(tester.getCenter(dot).dy, moreOrLessEquals(tester.getCenter(text).dy, epsilon: 0.5), reason: id);
+    }
+  });
+
   testWidgets("picking another computer switches to it and closes the menu", (tester) async {
     await pumpMenu(tester, onManageComputers: null);
 
