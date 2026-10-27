@@ -103,7 +103,9 @@ enum NewSessionProjectWorktreeCapability() {
 @Freezed()
 sealed class NewSessionComposeConfig with _$NewSessionComposeConfig {
   const factory({
-    required List<PluginMetadata> availablePlugins,
+    /// The harnesses the bridge last reported, kept until another answer
+    /// replaces them; null until a bridge has answered at all.
+    required List<PluginMetadata>? availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
     required NewSessionBackendScope backendScope,
@@ -156,7 +158,7 @@ sealed class NewSessionState with _$NewSessionState {
 }
 
 typedef AgentModelData = ({
-  List<PluginMetadata> plugins,
+  List<PluginMetadata>? plugins,
   PluginMetadata? plugin,
   NewSessionOptionsLoadState optionsState,
   NewSessionBackendScope backendScope,

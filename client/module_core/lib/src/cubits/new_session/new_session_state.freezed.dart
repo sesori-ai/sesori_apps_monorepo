@@ -698,7 +698,9 @@ String toString() {
 /// @nodoc
 mixin _$NewSessionComposeConfig {
 
- List<PluginMetadata> get availablePlugins; PluginMetadata? get selectedPlugin; NewSessionOptionsLoadState get options; NewSessionBackendScope get backendScope; bool get isPluginDiscoveryInFlight; NewSessionProjectWorktreeCapability get projectWorktreeCapability;
+/// The harnesses the bridge last reported, kept until another answer
+/// replaces them; null until a bridge has answered at all.
+ List<PluginMetadata>? get availablePlugins; PluginMetadata? get selectedPlugin; NewSessionOptionsLoadState get options; NewSessionBackendScope get backendScope; bool get isPluginDiscoveryInFlight; NewSessionProjectWorktreeCapability get projectWorktreeCapability;
 /// Create a copy of NewSessionComposeConfig
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -734,7 +736,7 @@ abstract mixin class $NewSessionComposeConfigCopyWith<$Res>  {
   factory $NewSessionComposeConfigCopyWith(NewSessionComposeConfig value, $Res Function(NewSessionComposeConfig) _then) = _$NewSessionComposeConfigCopyWithImpl;
 @useResult
 $Res call({
- List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
+ List<PluginMetadata>? availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
 });
 
 
@@ -751,10 +753,10 @@ class _$NewSessionComposeConfigCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionComposeConfig
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? availablePlugins = freezed,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
   return _then(NewSessionComposeConfig(
-availablePlugins: null == availablePlugins ? _self.availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
+availablePlugins: freezed == availablePlugins ? _self.availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
+as List<PluginMetadata>?,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
 as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
 as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable
@@ -801,14 +803,20 @@ $NewSessionBackendScopeCopyWith<$Res> get backendScope {
 
 
 class _NewSessionComposeConfig implements NewSessionComposeConfig {
-  const _NewSessionComposeConfig({required  List<PluginMetadata> availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
+  const _NewSessionComposeConfig({required  List<PluginMetadata>? availablePlugins, required this.selectedPlugin, required this.options, required this.backendScope, required this.isPluginDiscoveryInFlight, required this.projectWorktreeCapability}): _availablePlugins = availablePlugins;
   
 
- final  List<PluginMetadata> _availablePlugins;
-@override List<PluginMetadata> get availablePlugins {
+/// The harnesses the bridge last reported, kept until another answer
+/// replaces them; null until a bridge has answered at all.
+ final  List<PluginMetadata>? _availablePlugins;
+/// The harnesses the bridge last reported, kept until another answer
+/// replaces them; null until a bridge has answered at all.
+@override List<PluginMetadata>? get availablePlugins {
+  final value = _availablePlugins;
+  if (value == null) return null;
   if (_availablePlugins is EqualUnmodifiableListView) return _availablePlugins;
   // ignore: implicit_dynamic_type
-  return EqualUnmodifiableListView(_availablePlugins);
+  return EqualUnmodifiableListView(value);
 }
 
 @override final  PluginMetadata? selectedPlugin;
@@ -849,7 +857,7 @@ abstract mixin class _$NewSessionComposeConfigCopyWith<$Res> implements $NewSess
   factory _$NewSessionComposeConfigCopyWith(_NewSessionComposeConfig value, $Res Function(_NewSessionComposeConfig) _then) = __$NewSessionComposeConfigCopyWithImpl;
 @override @useResult
 $Res call({
- List<PluginMetadata> availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
+ List<PluginMetadata>? availablePlugins, PluginMetadata? selectedPlugin, NewSessionOptionsLoadState options, NewSessionBackendScope backendScope, bool isPluginDiscoveryInFlight, NewSessionProjectWorktreeCapability projectWorktreeCapability
 });
 
 
@@ -866,10 +874,10 @@ class __$NewSessionComposeConfigCopyWithImpl<$Res>
 
 /// Create a copy of NewSessionComposeConfig
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? availablePlugins = null,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? availablePlugins = freezed,Object? selectedPlugin = freezed,Object? options = null,Object? backendScope = null,Object? isPluginDiscoveryInFlight = null,Object? projectWorktreeCapability = null,}) {
   return _then(_NewSessionComposeConfig(
-availablePlugins: null == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
-as List<PluginMetadata>,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
+availablePlugins: freezed == availablePlugins ? _self._availablePlugins : availablePlugins // ignore: cast_nullable_to_non_nullable
+as List<PluginMetadata>?,selectedPlugin: freezed == selectedPlugin ? _self.selectedPlugin : selectedPlugin // ignore: cast_nullable_to_non_nullable
 as PluginMetadata?,options: null == options ? _self.options : options // ignore: cast_nullable_to_non_nullable
 as NewSessionOptionsLoadState,backendScope: null == backendScope ? _self.backendScope : backendScope // ignore: cast_nullable_to_non_nullable
 as NewSessionBackendScope,isPluginDiscoveryInFlight: null == isPluginDiscoveryInFlight ? _self.isPluginDiscoveryInFlight : isPluginDiscoveryInFlight // ignore: cast_nullable_to_non_nullable

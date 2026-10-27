@@ -2911,6 +2911,75 @@ void main() {
         expect(cubit.composerPresentation, isA<NewSessionComposerRetry>());
       });
 
+      ApiResponse<PluginDiscoverySnapshot> answer({required String bridgeId, required List<PluginMetadata> plugins}) =>
+          ApiResponse.success(
+            PluginDiscoverySnapshot(bridgeId: bridgeId, supportsSessionOptions: true, plugins: plugins),
+          );
+      for (final (outcome, rediscovery, settled) in [
+        (
+          "the same bridge still runs none",
+          answer(bridgeId: "bridge-1", plugins: const []),
+          isA<NewSessionComposerNoHarnesses>(),
+        ),
+        ("a harness appears", answer(bridgeId: "bridge-1", plugins: [defaultPlugin]), isA<NewSessionComposerReady>()),
+        // Another computer's answer replaces the old one's.
+        (
+          "another computer answers",
+          answer(bridgeId: "bridge-2", plugins: [defaultPlugin]),
+          isA<NewSessionComposerReady>(),
+        ),
+        (
+          "rediscovery fails",
+          ApiResponse<PluginDiscoverySnapshot>.error(ApiError.generic()),
+          isA<NewSessionComposerRetry>(),
+        ),
+      ]) {
+        test("keeps a no-harness answer through a reconnect until $outcome", () async {
+          final pendingRediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+          var discoveries = 0;
+          when(mockPluginRepository.listPlugins).thenAnswer((_) {
+            discoveries++;
+            return discoveries == 1
+                ? Future.value(answer(bridgeId: "bridge-1", plugins: const []))
+                : pendingRediscovery.future;
+          });
+          final cubit = buildCubit();
+          addTearDown(cubit.close);
+          Future<void> settle() async {
+            while ((cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true) ||
+                cubit.composerPresentation is NewSessionComposerPending) {
+              await Future<void>.delayed(Duration.zero);
+            }
+          }
+
+          await settle();
+          expect(cubit.composerPresentation, isA<NewSessionComposerNoHarnesses>());
+
+          final presentations = <NewSessionComposerPresentation>[];
+          final subscription = cubit.stream.listen((_) => presentations.add(cubit.composerPresentation));
+          addTearDown(subscription.cancel);
+          connectionStatus
+            ..add(const ConnectionStatus.disconnected())
+            ..add(
+              const ConnectionStatus.connected(
+                config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+                health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+              ),
+            );
+          while (discoveries < 2) {
+            await Future<void>.delayed(Duration.zero);
+          }
+
+          // Neither the blip nor the rediscovery under way moves the screen.
+          expect(presentations, isNotEmpty);
+          expect(presentations, everyElement(isA<NewSessionComposerNoHarnesses>()));
+
+          pendingRediscovery.complete(rediscovery);
+          await settle();
+          expect(cubit.composerPresentation, settled);
+        });
+      }
+
       test("is LoadOnDemand for a legacy bridge whose selected plugin cannot be routed yet", () async {
         when(mockPluginRepository.listPlugins).thenAnswer(
           (_) async => ApiResponse.success(

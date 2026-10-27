@@ -61,7 +61,7 @@ class NewSessionCubit({
     : super(
         NewSessionState.composing(
           config: NewSessionComposeConfig(
-            availablePlugins: const [],
+            availablePlugins: null,
             selectedPlugin: null,
             options: const NewSessionOptionsLoadingState(source: null),
             backendScope: _selectionTracker.backendScope.invalidate(),
@@ -259,7 +259,7 @@ class NewSessionCubit({
     emit(
       current.copyWith(
         config: NewSessionComposeConfig(
-          availablePlugins: data?.plugins ?? const [],
+          availablePlugins: data?.plugins,
           selectedPlugin: data?.plugin,
           options: options,
           backendScope: backendScope,
@@ -325,7 +325,7 @@ class NewSessionCubit({
       return;
     }
 
-    final selectedPlugin = data.plugins.firstWhereOrNull((plugin) => plugin.id == pluginId);
+    final selectedPlugin = data.plugins?.firstWhereOrNull((plugin) => plugin.id == pluginId);
     final source = data.optionsState.source;
     if (selectedPlugin == null || !selectedPlugin.isRoutable || source == null) return;
 
@@ -602,13 +602,17 @@ class NewSessionCubit({
   bool get needsHarnessDiscovery {
     if (state.phase is NewSessionPhaseSending || state is NewSessionCreated) return false;
     final data = state.agentModelData;
-    return data != null && data.plugins.isEmpty && !data.isPluginDiscoveryInFlight;
+    return data != null && (data.plugins?.isEmpty ?? true) && !data.isPluginDiscoveryInFlight;
   }
 
-  /// Whether the bridge itself answered that it runs no harness. Only then may
+  /// Whether the bridge's last answer was that it runs no harness. Only then may
   /// the screen state that as fact — after a failed discovery the error is the
-  /// honest explanation, and retrying is still the way forward.
-  bool get hasNoHarnesses => needsHarnessDiscovery && (state.agentModelData?.backendScope.isVerified ?? false);
+  /// honest explanation, and retrying is still the way forward. A disconnect
+  /// and the rediscovery after it leave that answer standing until the bridge
+  /// gives another, so a connection blip never reopens the composer only to
+  /// fold it again; another computer's answer replaces it like any other.
+  bool get hasNoHarnesses =>
+      (state.agentModelData?.plugins?.isEmpty ?? false) && state.phase is! NewSessionPhaseDiscoveryError;
 
   bool get canRefreshOptions {
     final data = state.agentModelData;
@@ -728,7 +732,7 @@ class NewSessionCubit({
   }
 
   void _emitConfigurationUpdate({
-    required List<PluginMetadata> availablePlugins,
+    required List<PluginMetadata>? availablePlugins,
     required PluginMetadata? selectedPlugin,
     required NewSessionOptionsLoadState options,
     required NewSessionBackendScope backendScope,

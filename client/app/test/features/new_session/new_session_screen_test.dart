@@ -1605,6 +1605,48 @@ void main() {
     expect(tester.state(composer), same(promptState));
   });
 
+  testWidgets("holds the no-harness notice still through a reconnect that finds none again", (tester) async {
+    final noHarness = ApiResponse.success(
+      PluginDiscoverySnapshot(bridgeId: "bridge-1", supportsSessionOptions: true, plugins: const []),
+    );
+    final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) {
+      discoveryCalls++;
+      return discoveryCalls == 1 ? Future.value(noHarness) : rediscovery.future;
+    });
+    final notice = find.byKey(const Key("new_session_no_harness_notice"));
+    final harnessRoom = find.descendant(of: find.byType(NewSessionHeader), matching: find.byType(PregoShimmer));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final noticeRect = tester.getRect(notice);
+
+    /// Every frame shows the page as the bridge's answer left it.
+    Future<void> expectStill() async {
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(tester.getRect(notice), noticeRect);
+        expect(find.byType(PromptInput), findsNothing);
+        expect(find.byKey(const Key("new_session_options_retry")), findsNothing);
+        expect(harnessRoom, findsNothing);
+      }
+    }
+
+    connectionStatus.add(const ConnectionStatus.disconnected());
+    await expectStill();
+    connectionStatus.add(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+      ),
+    );
+    await expectStill();
+    expect(discoveryCalls, 2);
+    rediscovery.complete(noHarness);
+    await expectStill();
+  });
+
   testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),
