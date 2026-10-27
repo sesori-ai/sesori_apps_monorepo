@@ -315,7 +315,7 @@ normal queue/steering behavior. Do not claim atomic idle admission or introduce
 a new conditional-admission protocol for v1. Keep the final readiness recheck
 and ordinary prompt dispatch; document this boundary with the feature behavior.
 
-Analytics assessed with `.opencode/skills/add-analytics/SKILL.md`: no new v1 event
+Analytics assessed with `.agents/skills/add-analytics/SKILL.md`: no new v1 event
 is planned. Client observations cannot authoritatively count headless resumes,
 and no reporting consumer has been selected. Keep operation context, original
 errors and stacks in local logs; do not copy prompts into diagnostics.

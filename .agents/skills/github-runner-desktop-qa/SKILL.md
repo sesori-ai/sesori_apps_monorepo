@@ -16,8 +16,8 @@ metadata:
 Use a disposable GitHub-hosted runner to inspect an actual native desktop build
 without interrupting the operator's installed Sesori app or bridge. Current
 interactive support is **Linux x64 and ARM64, KDE/X11, GNOME Keyring Secret
-Service**. This does not claim KWallet, macOS or Windows runner access. For local
-macOS testing, use [macos-desktop-qa](../macos-desktop-qa/SKILL.md).
+Service**. This does not claim KWallet, macOS or Windows runner access.
+
 
 Read the repository instructions and these owners before changing the workflow:
 

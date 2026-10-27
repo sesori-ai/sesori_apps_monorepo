@@ -7,7 +7,7 @@ description: Weekly dependency update workflow for Sesori Apps Monorepo. Updates
 
 This is the Claude Code entry point for the shared `update-dependencies` skill. The full procedure — preflight discovery, environment-constraint alignment, per-workspace dependency bumps, build verification, SwiftPM native-dependency resolution, Fastlane/Gemfile updates, and commit hygiene — is **not duplicated here**. It lives in one canonical file.
 
-**Read `.ai/skills/update-dependencies/SKILL.md` now and follow it in full.** (Path is relative to the repository root, which is the Claude Code working directory.)
+**Read `.agents/skills/update-dependencies/SKILL.md` now and follow it in full.** (Path is relative to the repository root, which is the Claude Code working directory.)
 
 ## Path resolution
 

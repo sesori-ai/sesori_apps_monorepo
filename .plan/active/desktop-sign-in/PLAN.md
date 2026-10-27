@@ -332,7 +332,7 @@ polished in review, but not the meaning.
 
 ## Analytics
 
-Checked against `.opencode/skills/add-analytics/SKILL.md`: account-less login
+Checked against `.agents/skills/add-analytics/SKILL.md`: account-less login
 belongs to `InstallationAnalyticsService`'s started/completed/failed funnel,
 which `LoginCubit` already reports per `AuthProvider` (Apple and email
 included) with the causes `authentication`, `launch`, `cancelled`, `timeout`

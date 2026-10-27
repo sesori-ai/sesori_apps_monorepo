@@ -277,7 +277,7 @@ eagerly "just in case."
 - When adding a user-facing feature or action, consider whether analytics would
   answer a product decision, activation/retention question, or feature-adoption
   question. Do not track every tap. Load
-  `.opencode/skills/add-analytics/SKILL.md` for the event-design, privacy,
+  `.agents/skills/add-analytics/SKILL.md` for the event-design, privacy,
   architecture, and reporting checklist.
 - Instrument the authoritative outcome rather than a UI proxy, use closed
   bounded parameters, and never report source code, prompts, transcripts,

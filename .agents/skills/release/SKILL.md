@@ -1,7 +1,6 @@
 ---
 name: release
 description: Automates the synchronized Sesori App + Bridge release workflow — bumps versions together and creates a PR
-compatibility: opencode
 metadata:
   audience: maintainers
   workflow: github
@@ -68,39 +67,24 @@ git diff <previous-tag>..HEAD -- client/
 git log --oneline --name-only <previous-tag>..HEAD
 ```
 
-Categorize commits based on their prefixes (used to summarize the PR body):
-- `feat:` or `feat(` → Added
-- `fix:` or `fix(` → Fixed
-- `chore:` → Changed (or skip unless significant)
-- `docs:` → Changed
-- `refactor:` → Changed
+Group the key user-visible changes by side (App / Bridge) for the PR body.
 
-This repo does NOT use changelog files. Do not create or update any `CHANGELOG.md`. The categorized commits above are only used to write the PR body in the next step.
+This repo does NOT use changelog files. Do not create or update any `CHANGELOG.md`. The summary above is only used to write the PR body in the next step.
 
 ### Step 5: Commit the version bump
 
 Stage the version-bumped files and commit on the current release branch:
 
 ```bash
-git commit -m "chore(release): v<version>"
+git commit -m "🌱 Bump version to <version>"
 ```
 
 ### Step 6: Create GitHub Pull Request
 
-Use `gh` to create the PR:
+Write the body to a file with the sections `AGENTS.md` requires (`## Complexity`, `## What`, `## Why`, `## Risk and test focus`, `## Expected result`), listing the key changes since v<previous> under `## What`, then:
 
 ```bash
-gh pr create \
-  --title "chore(release): v<version>" \
-  --body "$(cat <<'EOF'
-## Summary
-- Bump shared version to v<version>
-
-## Changes
-<list the key changes since v<previous>, or "No changes">
-EOF
-)" \
-  --base main
+gh pr create --title "🌱 Bump version to <version>" --body-file <body-file> --base main
 ```
 
 ## Important Notes
@@ -108,7 +92,6 @@ EOF
 - Always confirm the release type or explicit version with the user before proceeding
 - The root `make bump-version` command updates both bridge and mobile versions together
 - The mobile build number is preserved during version bumps; do not increment it here
-- If there are no changes on one side, use `- No changes` in that section of the changelog
 - The user must be authenticated with `gh` CLI (`gh auth status`)
 - The PR is created against `main` branch
 - GitHub Actions workflows are not edited by this skill

@@ -18,8 +18,8 @@ pr_monitor(action: "start", pr: "owner/repo#123")
 
 - The `pr` argument is always explicit — `owner/repo#123` or a full PR URL. Never a bare number.
 - One monitor per PR; start several monitors for several PRs.
-- Monitors belong to this session and **do not survive an opencode restart**. When
-  resuming PR work in a fresh opencode instance, check `pr_monitor(action: "status")`
+- Monitors belong to this session and **do not survive a harness restart**. When
+  resuming PR work in a fresh session, check `pr_monitor(action: "status")`
   and re-start monitors as needed.
 - Tuning (debounce, poll interval, CI wait, ignored comment tag, `autoMerge`)
   lives in the repository-root `.pr-monitor.json` — not in tool arguments. This repository

@@ -1376,7 +1376,7 @@ directory name.
 - Add the thin mobile `FirebaseAnalyticsClient` and desktop no-op adapter without
   starting either product lifecycle. Validate event names, bounded parameters,
   server-HMAC key shape, SDK failure mapping, and disabled-runtime behavior.
-- Update root analytics guidance and `.opencode/skills/add-analytics/SKILL.md`
+- Update root analytics guidance and `.agents/skills/add-analytics/SKILL.md`
   in the same PR so the new core contracts are the source of truth.
 - Keep the new adapters and services dormant; this slice changes no production
   reporting, preference, identity, routing, or Settings behavior.
