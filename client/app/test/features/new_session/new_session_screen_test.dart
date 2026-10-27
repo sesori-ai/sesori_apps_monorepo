@@ -1726,6 +1726,107 @@ void main() {
     await expectStill();
   });
 
+  testWidgets("holds the login card still through a reconnect that finds the harness still logged out", (
+    tester,
+  ) async {
+    final harness = ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-1",
+        supportsSessionOptions: true,
+        plugins: const [
+          PluginMetadata(
+            id: "plugin-1",
+            displayName: "Plugin One",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+          ),
+        ],
+      ),
+    );
+    final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+    var discoveryCalls = 0;
+    when(pluginRepository.listPlugins).thenAnswer((_) {
+      discoveryCalls++;
+      return discoveryCalls == 1 ? Future.value(harness) : rediscovery.future;
+    });
+    const loginRequired = SessionOptionsRepositoryAuthenticationRequired(
+      actionHint: "Run the harness locally and use /login.",
+    );
+    final optionsRecheck = Completer<SessionOptionsRepositoryResult>();
+    var optionLoads = 0;
+    when(
+      () => sessionRepository.loadSessionOptions(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        mode: any(named: "mode"),
+      ),
+    ).thenAnswer((_) {
+      optionLoads++;
+      return optionLoads == 1 ? Future.value(loginRequired) : optionsRecheck.future;
+    });
+    final project = ApiResponse.success(
+      const Project(
+        id: "project-1",
+        name: "Project One",
+        path: "/project-one",
+        time: null,
+        supportsDedicatedWorktrees: true,
+        voiceGlossaryKey: null,
+      ),
+    );
+    final projectRecheck = Completer<ApiResponse<Project>>();
+    var projectCalls = 0;
+    when(() => projectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+      projectCalls++;
+      return projectCalls == 1 ? Future.value(project) : projectRecheck.future;
+    });
+    final card = find.byKey(const Key("new_session_login_required"));
+    final worktreeToggle = find.byKey(const Key("new_session_dedicated_workspace"));
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+    final cardRect = tester.getRect(card);
+    final toggleRect = tester.getRect(worktreeToggle);
+
+    /// Every frame shows the login card and the worktree toggle as they were:
+    /// no composer, Retry, pills or shimmer in its place, and no popup saying
+    /// the harness logged out.
+    Future<void> expectStill() async {
+      for (var frame = 0; frame < 20; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(card, findsOneWidget);
+        expect(tester.getRect(card), cardRect);
+        expect(find.text("Run the harness locally and use /login."), findsOneWidget);
+        expect(tester.getRect(worktreeToggle), toggleRect);
+        expect(find.byType(PromptInput), findsNothing);
+        expect(find.byKey(const Key("new_session_options_retry")), findsNothing);
+        expect(find.byType(AgentModelButtons), findsNothing);
+        expect(find.byType(PregoShimmer), findsNothing);
+        expect(find.byType(PregoPopupAlertsNotifications), findsNothing);
+      }
+    }
+
+    connectionStatus.add(const ConnectionStatus.disconnected());
+    await expectStill();
+    connectionStatus.add(
+      const ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+      ),
+    );
+    await expectStill();
+    expect(discoveryCalls, 2);
+    expect(projectCalls, 2);
+    rediscovery.complete(harness);
+    await expectStill();
+    expect(optionLoads, 2);
+    projectRecheck.complete(project);
+    await expectStill();
+    optionsRecheck.complete(loginRequired);
+    await expectStill();
+  });
+
   testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),
