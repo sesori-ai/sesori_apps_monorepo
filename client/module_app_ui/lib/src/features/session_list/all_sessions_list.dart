@@ -174,7 +174,12 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     duration: transcriptMotionDuration,
     value: 1,
   );
-  late final CurvedAnimation _contentOpacity = CurvedAnimation(parent: _handOff, curve: transcriptMotionCurve);
+  // Backwards too it slows into rest instead of stopping at full speed.
+  late final CurvedAnimation _contentOpacity = CurvedAnimation(
+    parent: _handOff,
+    curve: transcriptMotionCurve,
+    reverseCurve: transcriptMotionCurve.flipped,
+  );
   late final Animation<double> _skeletonArrival = ReverseAnimation(_contentOpacity);
 
   /// Keeps the one skeleton, with its appearance delay and sheen, as it moves
