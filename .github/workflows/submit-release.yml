@@ -160,9 +160,9 @@ jobs:
     if: ${{ inputs.platforms == 'both' || inputs.platforms == 'ios' }}
     needs: resolve
     runs-on: ubuntu-latest
-    # Room for deliver's screenshot retries (300 s waits below) on top of a
-    # normal submit, which takes about 5 minutes.
-    timeout-minutes: 45
+    # App Store Connect can take 20+ minutes to process uploaded screenshots, and
+    # deliver waits up to its default 3600 s for them, so the job must outlast that.
+    timeout-minutes: 75
     # Surface the metadata-publish decision so the `tag` job knows whether (and
     # which private-repo commit) to tag v<VERSION> after a successful submit.
     outputs:
@@ -261,11 +261,6 @@ jobs:
           # submit_ios can apply the fixed release_notes.txt to the version being
           # submitted. Empty when no metadata repo is configured (checkout skipped).
           IOS_RELEASE_NOTES_PATH:            ${{ steps.cometa.outcome == 'success' && format('{0}/store-metadata/ios/metadata', github.workspace) || '' }}
-          # deliver waits up to 3600 s by default for App Store Connect to finish
-          # processing uploaded screenshots (normally ~15 s). A stuck screenshot
-          # held build 1082's submit until the job timed out. After 300 s deliver
-          # re-uploads the unfinished screenshots instead, up to 5 times.
-          DELIVER_SCREENSHOT_PROCESSING_TIMEOUT: "300"
         run: bundle exec fastlane submit_ios
 
       - name: Summary
