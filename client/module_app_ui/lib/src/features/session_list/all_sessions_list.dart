@@ -161,7 +161,7 @@ class const _Sessions({
   State<_Sessions> createState() => _SessionsState();
 }
 
-class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMixin {
+class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   /// The hand-off from the loading skeleton to the first rows or the empty
   /// state: they fade in where the skeleton stood while it fades itself out
   /// over them, and the room no sessions take folds away. It runs backwards
@@ -181,6 +181,17 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     reverseCurve: transcriptMotionCurve.flipped,
   );
   late final Animation<double> _skeletonArrival = ReverseAnimation(_contentOpacity);
+
+  /// The chips' own fade in over their pills as they take over from them
+  /// during a load: from where the hand-off stands as a load that has their
+  /// counts starts replacing the rows, as a filter tapped meanwhile's, or from
+  /// nothing as their counts arrive.
+  late final AnimationController _chipsIn = AnimationController(
+    vsync: this,
+    duration: transcriptMotionDuration,
+    value: 1,
+  );
+  late final CurvedAnimation _chipsOpacity = CurvedAnimation(parent: _chipsIn, curve: transcriptMotionCurve);
 
   /// Keeps the one skeleton, with its appearance delay and sheen, as it moves
   /// from its own place onto the content that replaces it.
@@ -218,13 +229,26 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   /// Whether pills held the chips' places on the last frame.
   bool _heldChips = false;
 
+  /// Whether the last frame showed the empty state, and whether it now fades
+  /// out where it stood, as it stopped applying at rest.
+  bool _showedEmptyState = false;
+  bool _emptyStateLeaving = false;
+
+  /// The note under the rows on the last frame, and whether it now fades out
+  /// where it stood, as it stopped applying at rest.
+  String? _note;
+  bool _noteLeaving = false;
+
   @override
   void initState() {
     super.initState();
-    _handOff.addStatusListener((status) {
-      // The faded skeleton leaves the tree.
+    // The faded skeleton or pills leave the tree.
+    void rebuildOnEnd(AnimationStatus status) {
       if (status.isCompleted) setState(() {});
-    });
+    }
+
+    _handOff.addStatusListener(rebuildOnEnd);
+    _chipsIn.addStatusListener(rebuildOnEnd);
   }
 
   /// Fades the content in where the skeleton stands, timed from the next
@@ -242,6 +266,8 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   void dispose() {
     _contentOpacity.dispose();
     _handOff.dispose();
+    _chipsOpacity.dispose();
+    _chipsIn.dispose();
     super.dispose();
   }
 
@@ -287,11 +313,13 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
     final currentEntries = entriesOf(current);
     final currentlyLoading = (awaitingConnection || current.isLoading) && currentEntries.isEmpty;
+    final loadStarts = !_wasLoading && currentlyLoading;
+    final replaceStarts = loadStarts && _lastShown != null && !context.isReducedMotion;
     if (_wasLoading && !currentlyLoading && !context.isReducedMotion) {
       // Rows still fading out finish first, so the content follows the
       // skeleton they leave.
       if (!_replacing) _fadeContentIn();
-    } else if (!_wasLoading && currentlyLoading && _lastShown != null && !context.isReducedMotion) {
+    } else if (replaceStarts) {
       // The rows glide to the top as they fade, where the skeleton they
       // leave stands with nothing to scroll.
       final position = Scrollable.maybeOf(context)?.position;
@@ -305,8 +333,11 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       unawaited(
         _handOff.reverse().then((_) {
           if (!mounted) return;
-          // Its Retry rows faded out with the rest, leaving none to fold.
+          // Its Retry rows faded out with the rest, leaving none to fold, and
+          // so did an empty state or note fading out where it stood.
           _failureRows = const [];
+          _emptyStateLeaving = false;
+          _noteLeaving = false;
           // Back at rest as the load goes on, or on to the content that
           // ended it while the rows faded out.
           if (_wasLoading) {
@@ -341,23 +372,72 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         handingOff && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
     final heldAboveFailures = handingOff && !heldUnderFailures;
     final motion = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
+    final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
+    final note = switch (settled) {
+      false => null,
+      true when searching => loc.listSearchNoMatches,
+      // Unsearched, All can only be empty while its last session hides.
+      true when state.counts.all > 0 && state.quickFilter != SessionListQuickFilter.all => loc.sessionListFilterEmpty,
+      true => null,
+    };
+    final emptyStateApplies = settled && !hasSessions;
+    // Once it stops applying at rest, the empty state or a note fades out
+    // where it stands, and what takes its place waits for it: the rows, a
+    // Retry row, the search field and chips the empty state folded away, and
+    // the note or empty state that follows the other. A load that starts
+    // meanwhile fades it out with the rest of the list.
+    _emptyStateLeaving =
+        !context.isReducedMotion &&
+        (_emptyStateLeaving ? !emptyStateApplies || _replacing : _showedEmptyState && !emptyStateApplies && atRest);
+    _noteLeaving =
+        !context.isReducedMotion &&
+        (_noteLeaving ? note == null || _replacing : _note != null && note == null && atRest);
+    final waiting = _emptyStateLeaving || _noteLeaving;
+    final emptyStateShown = emptyStateApplies && !waiting;
+    _showedEmptyState = emptyStateShown;
+    final shownNote = _noteLeaving ? _note : (waiting ? null : note);
+    _note = shownNote;
+    final shownEntries = waiting ? const <SessionListEntry<_Item>>[] : entries;
+    final sessionsShown = waiting ? _hadSessions : hasSessions;
     // The search field shows from a load's first frame, so nothing under it
     // moves when the rows arrive. A load that ends with nothing to search
     // folds it and the chips' room away as the empty state fades in, and so
     // does a list that empties at rest.
-    _roomFolding = !hasSessions && atRest && !context.isReducedMotion && (_roomFolding || _hadSessions);
-    _hadSessions = hasSessions;
-    final roomShown = hasSessions || _roomFolding;
+    _roomFolding = !sessionsShown && atRest && !context.isReducedMotion && (_roomFolding || _hadSessions);
+    _hadSessions = sessionsShown;
+    final roomShown = sessionsShown || _roomFolding;
     final searchShown = roomShown || loading || handingOff;
-    final roomFolds = handingOff && !hasSessions;
-    // The chips show counts, so until the load has some, a skeleton pill
-    // holds each chip's place. Through the hand-off it fades out where it
-    // stands as the chip fades in over it, one that never showed staying
-    // hidden; chips that showed their counts through the load stay as they
-    // are.
-    final chipsShown = loading ? state.counts.all > 0 : roomShown;
-    final chipsHeld = (loading && state.counts.all == 0) || (handingOff && (_replacing || _heldChips));
+    final roomFolds = handingOff && !sessionsShown;
+    // The chips show counts, so until a load has some, a skeleton pill holds
+    // each chip's place, as the load first finds them. Through the hand-off
+    // it fades out where it stands as the chip fades in over it, one that
+    // never showed staying hidden; chips that showed their counts through
+    // the load stay as they are. So do chips a load already has counts for
+    // as it starts, and those of a filter tapped as it starts, which changes
+    // none of them, as when a filter tapped while a project loads leaves no
+    // rows: they show the tapped filter at once. Chips that take over from
+    // their pills while a load runs, as their counts arrive, or still fading
+    // in as one starts, fade in by themselves from where they stood.
+    final filterTapped = (_lastShown?.quickFilter ?? current.quickFilter) != current.quickFilter;
+    final bool chipsHeld;
+    if (loadStarts) {
+      chipsHeld = current.counts.all == 0 && !filterTapped;
+    } else if (loading) {
+      chipsHeld = _heldChips && state.counts.all == 0;
+    } else {
+      chipsHeld = handingOff && _heldChips;
+    }
+    final chipsShown = loading ? !chipsHeld : roomShown;
+    if (_heldChips && !chipsHeld && (loading || replaceStarts) && !context.isReducedMotion) {
+      _chipsIn
+        ..value = replaceStarts ? _handOff.value : 0
+        ..forward();
+    }
     _heldChips = chipsHeld;
+    // Chips fading out with the rows a load replaces show what those rows did.
+    final chipsReplaced = _replacing && chipsHeld;
+    final chipsState = chipsReplaced ? state : current;
+    final chipsArriving = _chipsIn.isAnimating;
     Widget folding({required Widget child}) => TweenAnimationBuilder<double>(
       // Its start is read once, when it first builds: arriving at rest, it
       // opens, as it folds away when the list empties at rest.
@@ -383,7 +463,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
     // A project that no longer fails folds its Retry row away where it stood.
     final failing = {for (final failure in state.failures) failure.project.id};
-    final failureRows = [...state.failures];
+    final failureRows = [if (!waiting) ...state.failures];
     if (!context.isReducedMotion) {
       for (final (index, shown) in _failureRows.indexed) {
         if (!failing.contains(shown.project.id)) failureRows.insert(math.min(index, failureRows.length), shown);
@@ -399,7 +479,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
     Widget chip({required SessionListQuickFilter filter, required Key? key, required SessionListChipCounts counts}) =>
         Semantics(
-          toggled: state.quickFilter == filter,
+          toggled: chipsState.quickFilter == filter,
           child: PregoButtonsSolid(
             key: key,
             label: switch (filter) {
@@ -407,7 +487,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               SessionListQuickFilter.running => loc.sessionListFilterRunning(counts.running),
               SessionListQuickFilter.unread => loc.sessionListFilterUnread(counts.unread),
             },
-            hierarchy: state.quickFilter == filter
+            hierarchy: chipsState.quickFilter == filter
                 ? PregoButtonsSolidHierarchy.primaryAlt
                 : PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.sm,
@@ -422,14 +502,20 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         children: [for (final filter in SessionListQuickFilter.values) each(filter)],
       ),
     );
-    final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
-    final note = switch (settled) {
-      false => null,
-      true when searching => loc.listSearchNoMatches,
-      // Unsearched, All can only be empty while its last session hides.
-      true when state.counts.all > 0 && state.quickFilter != SessionListQuickFilter.all => loc.sessionListFilterEmpty,
-      true => null,
-    };
+    // The empty state or a note, arriving or leaving at rest, fading by itself:
+    // in once what leaves above it has gone, so only where it will stand.
+    Widget fadingInPlace({required bool leaving, required VoidCallback onLeft, required Widget child}) =>
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: atRest ? 0 : 1, end: leaving ? 0 : 1),
+          duration: leaving || context.isReducedMotion ? motion : _arrivalDuration,
+          curve: leaving ? transcriptMotionCurve : _arrivalCurve,
+          onEnd: () {
+            // One a load replaces fades out with the rest.
+            if (leaving && !_replacing) setState(onLeft);
+          },
+          builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+          child: child,
+        );
 
     return SliverMainAxisGroup(
       slivers: [
@@ -467,27 +553,31 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                         if (chipsShown)
                           FadeTransition(
                             key: const ValueKey("content"),
-                            opacity: chipsHeld ? _contentOpacity : kAlwaysCompleteAnimation,
+                            opacity: chipsArriving
+                                ? _chipsOpacity
+                                : chipsHeld
+                                ? _contentOpacity
+                                : kAlwaysCompleteAnimation,
                             child: IgnorePointer(
-                              ignoring: _replacing,
+                              ignoring: chipsReplaced,
                               child: chips(
                                 each: (filter) => chip(
                                   filter: filter,
                                   key: Key("session-list-filter-${filter.name}"),
-                                  counts: state.counts,
+                                  counts: chipsState.counts,
                                 ),
                               ),
                             ),
                           ),
                         // Held at the loading counts, so the pills fade out
                         // where they stood, or in with the list's skeleton.
-                        if (chipsHeld)
+                        if (chipsHeld || chipsArriving)
                           IgnorePointer(
                             key: const ValueKey("skeleton"),
                             child: FadeTransition(
-                              opacity: _replacing ? _skeletonArrival : kAlwaysCompleteAnimation,
+                              opacity: chipsReplaced ? _skeletonArrival : kAlwaysCompleteAnimation,
                               child: PregoShimmer(
-                                leaving: !loading && !_replacing,
+                                leaving: chipsArriving || (!loading && !_replacing),
                                 appearDelay: _skeletonAppearDelay,
                                 child: chips(
                                   each: (filter) => _barOver(
@@ -592,7 +682,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
             key: ValueKey(_contentFades),
             opacity: _contentOpacity,
             sliver: PregoAnimatedSliverList<SessionListEntry<_Item>>(
-              items: entries,
+              items: shownEntries,
               itemKey: (entry) => switch (entry) {
                 final SessionListHeadingEntry<_Item> heading => heading.key,
                 SessionListItemEntry(item: _LaunchItem(:final launch)) => ValueKey<Object>(launch.launchId),
@@ -609,7 +699,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                     context: context,
                     launching: true,
                     child: Padding(
-                      padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? endPadding : 0),
+                      padding: EdgeInsetsDirectional.only(bottom: index == shownEntries.length - 1 ? endPadding : 0),
                       child: PendingSessionLaunchTile(launch: launch),
                     ),
                   ),
@@ -617,7 +707,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                 SessionListItemEntry(item: _SessionItem(:final row)) => _sessionRow(
                   context: context,
                   row: row,
-                  bottomPadding: index == entries.length - 1 ? endPadding : 0,
+                  bottomPadding: index == shownEntries.length - 1 ? endPadding : 0,
                   tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
                   // A "No project" session has no project to name.
                   labelsProject: state.projectId == null && row.project.id != state.scratchProjectId,
@@ -625,31 +715,50 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               },
             ),
           ),
-        if (note != null)
+        if (shownNote != null)
           SliverFadeTransition(
             opacity: _contentOpacity,
             sliver: SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(PregoSpacing.x3l),
-                child: Text(
-                  note,
-                  textAlign: TextAlign.center,
-                  style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+              child: fadingInPlace(
+                leaving: _noteLeaving,
+                onLeft: () {
+                  _noteLeaving = false;
+                  _note = null;
+                },
+                child: Padding(
+                  padding: const EdgeInsets.all(PregoSpacing.x3l),
+                  // A note whose text changes, as a cleared query's, cross-fades
+                  // where it stands, easing the room if the two wrap differently.
+                  child: _easedSize(
+                    context: context,
+                    child: AnimatedSwitcher(
+                      duration: motion,
+                      switchInCurve: transcriptMotionCurve,
+                      switchOutCurve: transcriptMotionCurve.flipped,
+                      layoutBuilder: (current, previous) => Stack(
+                        alignment: Alignment.topCenter,
+                        children: [...previous, ?current],
+                      ),
+                      child: Text(
+                        shownNote,
+                        key: ValueKey(shownNote),
+                        textAlign: TextAlign.center,
+                        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ),
           ),
-        if (settled && !hasSessions)
+        if (emptyStateShown || _emptyStateLeaving)
           SliverFillRemaining(
             hasScrollBody: false,
             child: FadeTransition(
               opacity: _contentOpacity,
-              // Arriving at rest, it fades in by itself.
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: atRest ? 0 : 1, end: 1),
-                duration: motion,
-                curve: transcriptMotionCurve,
-                builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+              child: fadingInPlace(
+                leaving: _emptyStateLeaving,
+                onLeft: () => _emptyStateLeaving = false,
                 child: list.emptyState,
               ),
             ),
@@ -745,6 +854,16 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
 }
 
 const EdgeInsetsGeometry _searchFieldPadding = EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0);
+
+/// The empty state or a note arriving at rest first waits out the rows, search
+/// field and chips, or Retry row leaving above it, a row's the longest, then
+/// fades in.
+final Duration _arrivalDuration = pregoAnimatedListItemDuration + transcriptMotionDuration;
+final Curve _arrivalCurve = Interval(
+  pregoAnimatedListItemDuration.inMicroseconds / _arrivalDuration.inMicroseconds,
+  1,
+  curve: transcriptMotionCurve,
+);
 
 /// [child] at [size] of its height, folded from its bottom: the same widgets
 /// at rest and in motion, so it keeps its state, and clipped only while it
