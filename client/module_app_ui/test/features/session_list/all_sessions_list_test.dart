@@ -29,10 +29,11 @@ void main() {
     required String? scratchProjectId,
     SessionListChipCounts counts = const SessionListChipCounts(all: 0, running: 0, unread: 0),
     bool isLoading = false,
+    SessionListQuickFilter quickFilter = SessionListQuickFilter.all,
   }) => AllSessionsState(
     projectId: null,
     query: query,
-    quickFilter: SessionListQuickFilter.all,
+    quickFilter: quickFilter,
     everyProjectRows: rows,
     rows: rows,
     counts: counts,
@@ -142,6 +143,63 @@ void main() {
     await tester.pump();
     return cubit;
   }
+
+  /// The opacity [finder] paints at, through every fade above it.
+  double paintedOpacity(WidgetTester tester, Finder finder) => tester
+      .widgetList(
+        find.ancestor(
+          of: finder,
+          matching: find.byWidgetPredicate(
+            (w) => w is FadeTransition || w is SliverFadeTransition || w is Opacity,
+            skipOffstage: false,
+          ),
+        ),
+      )
+      .fold(
+        1.0,
+        (painted, widget) =>
+            painted *
+            switch (widget) {
+              FadeTransition(:final opacity) || SliverFadeTransition(:final opacity) => opacity.value,
+              Opacity(:final opacity) => opacity,
+              _ => 1.0,
+            },
+      );
+
+  const header = SizedBox(key: Key("header"), height: 36, child: Text("All projects"));
+  final headerBox = find.byKey(const Key("header"));
+
+  /// How far anything may move in one 5 ms frame: smooth motion stays well
+  /// under it, a one-frame snap of a box's height does not.
+  const maxStep = 6.0;
+
+  /// The tops of [finders], each null while it is gone, on the frame before
+  /// [update] lands and on every 5 ms frame of the 300 ms after.
+  Future<List<List<double?>>> topsAcross(
+    WidgetTester tester, {
+    required StreamController<AllSessionsState> updates,
+    required AllSessionsState update,
+    required List<Finder> finders,
+  }) async {
+    List<double?> tops() => [
+      for (final finder in finders) finder.evaluate().isEmpty ? null : tester.getTopLeft(finder).dy,
+    ];
+    final frames = [tops()];
+    updates.add(update);
+    for (var elapsed = 0; elapsed < 300; elapsed += 5) {
+      await tester.pump(const Duration(milliseconds: 5));
+      frames.add(tops());
+    }
+    return [
+      for (var index = 0; index < finders.length; index++) [for (final frame in frames) frame[index]],
+    ];
+  }
+
+  /// Each one-frame move in [tops], across the frames it was shown.
+  List<double> steps(List<double?> tops) => [
+    for (var frame = 1; frame < tops.length; frame++)
+      if ((tops[frame - 1], tops[frame]) case (final from?, final to?)) to - from,
+  ];
 
   testWidgets("a project that failed to load gets a retry row instead of the empty state", (tester) async {
     final cubit = await pumpList(
@@ -311,6 +369,148 @@ void main() {
     expect(find.text("No project"), findsNothing);
   });
 
+  group("a change at rest", () {
+    final now = DateTime.now();
+    const failure = AllSessionsFailure(
+      project: ProjectSummary(id: "p2", name: "Project Two", path: "/p2", time: null),
+      reason: RemoteFailureReason.networkDown,
+    );
+    final failureRow = find.text("Couldn’t load Project Two");
+    final sessionRow = find.text("Fix the parser");
+    AllSessionsState listing({
+      required bool withSession,
+      required List<AllSessionsFailure> failures,
+      bool isLoading = false,
+    }) => state(
+      query: "",
+      failures: failures,
+      rows: [if (withSession) row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false)],
+      scratchProjectId: null,
+      counts: SessionListChipCounts(all: withSession ? 1 : 0, running: 0, unread: 0),
+      isLoading: isLoading,
+    );
+
+    testWidgets("a last session that leaves folds the search field and chips away as the empty state fades in, "
+        "and they open again as it returns", (tester) async {
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: listing(withSession: true, failures: const []),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+        header: header,
+      );
+      final headerTop = tester.getTopLeft(headerBox).dy;
+      // Under the search field.
+      expect(headerTop, greaterThan(20));
+      final emptyState = find.text("Nothing here");
+
+      // Archived, as its Undo window opens.
+      updates.add(listing(withSession: false, failures: const []));
+      final headerTops = <double>[headerTop];
+      final emptyOpacities = <double>[];
+      for (var elapsed = 0; elapsed < 300; elapsed += 5) {
+        await tester.pump(const Duration(milliseconds: 5));
+        headerTops.add(tester.getTopLeft(headerBox).dy);
+        if (emptyState.evaluate().isNotEmpty) emptyOpacities.add(paintedOpacity(tester, emptyState));
+      }
+      expect(steps(headerTops), everyElement(inInclusiveRange(-maxStep, 0)));
+      expect(headerTops.last, 0);
+      expect(find.byType(TextField), findsNothing);
+      expect(find.byKey(const Key("session-list-filter-all")), findsNothing);
+      expect(emptyOpacities.first, lessThan(0.5));
+      expect(emptyOpacities.last, 1);
+
+      // Its Undo.
+      final [returningTops] = await topsAcross(
+        tester,
+        updates: updates,
+        update: listing(withSession: true, failures: const []),
+        finders: [headerBox],
+      );
+      expect(steps(returningTops), everyElement(inInclusiveRange(0, maxStep)));
+      expect(returningTops.last, headerTop);
+    });
+
+    testWidgets("a project that fails opens its Retry row, easing the rows below down", (tester) async {
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: listing(withSession: true, failures: const []),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+      );
+      final rowTop = tester.getTopLeft(sessionRow).dy;
+
+      final [rowTops] = await topsAcross(
+        tester,
+        updates: updates,
+        update: listing(withSession: true, failures: const [failure]),
+        finders: [sessionRow],
+      );
+      expect(steps(rowTops), everyElement(inInclusiveRange(0, maxStep)));
+      expect(rowTops.last, greaterThan(rowTop + 20));
+      expect(paintedOpacity(tester, failureRow), 1);
+    });
+
+    testWidgets("a Retry row whose project loads again folds away, easing the rows below up", (tester) async {
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: listing(withSession: true, failures: const [failure]),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+      );
+      // It fades in as it first shows.
+      await tester.pump(const Duration(milliseconds: 300));
+      final rowTop = tester.getTopLeft(sessionRow).dy;
+
+      final [rowTops] = await topsAcross(
+        tester,
+        updates: updates,
+        update: listing(withSession: true, failures: const [], isLoading: true),
+        finders: [sessionRow],
+      );
+      expect(steps(rowTops), everyElement(inInclusiveRange(-maxStep, 0)));
+      expect(rowTops.last, lessThan(rowTop - 20));
+      expect(failureRow, findsNothing);
+    });
+
+    testWidgets("under reduced motion each change shows at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: listing(withSession: true, failures: const []),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+      );
+      final rowTop = tester.getTopLeft(sessionRow).dy;
+
+      updates.add(listing(withSession: true, failures: const [failure]));
+      await tester.pump(Duration.zero);
+      expect(paintedOpacity(tester, failureRow), 1);
+      final failedRowTop = tester.getTopLeft(sessionRow).dy;
+      expect(failedRowTop, greaterThan(rowTop + 20));
+
+      updates.add(listing(withSession: false, failures: const []));
+      await tester.pump(Duration.zero);
+      expect(failureRow, findsNothing);
+      expect(find.byType(TextField), findsNothing);
+      expect(paintedOpacity(tester, find.text("Nothing here")), 1);
+
+      updates.add(listing(withSession: true, failures: const [failure]));
+      await tester.pump(Duration.zero);
+      expect(paintedOpacity(tester, find.byType(TextField)), 1);
+      expect(tester.getTopLeft(sessionRow).dy, failedRowTop);
+    });
+  });
+
   group("the hand-off from the loading skeleton", () {
     final now = DateTime.now();
     final loading = state(query: "", failures: const [], rows: const [], scratchProjectId: null, isLoading: true);
@@ -353,28 +553,6 @@ void main() {
         )
         .opacity
         .value;
-
-    /// The opacity [finder] paints at, through every fade above it.
-    double paintedOpacity(WidgetTester tester, Finder finder) => tester
-        .widgetList(
-          find.ancestor(
-            of: finder,
-            matching: find.byWidgetPredicate(
-              (w) => w is FadeTransition || w is SliverFadeTransition || w is Opacity,
-              skipOffstage: false,
-            ),
-          ),
-        )
-        .fold(
-          1.0,
-          (painted, widget) =>
-              painted *
-              switch (widget) {
-                FadeTransition(:final opacity) || SliverFadeTransition(:final opacity) => opacity.value,
-                Opacity(:final opacity) => opacity,
-                _ => 1.0,
-              },
-        );
     final skeleton = find.byType(SessionListSkeleton);
     double skeletonOpacity(WidgetTester tester) =>
         skeleton.evaluate().isEmpty ? 0 : paintedOpacity(tester, find.byType(SessionTileSkeleton).first);
@@ -663,6 +841,36 @@ void main() {
       }
     });
 
+    testWidgets("chips that show their counts through a load hold still as it hands off", (tester) async {
+      // Running leaves no rows while another project still loads.
+      AllSessionsState running({required bool isLoading}) => state(
+        query: "",
+        failures: const [],
+        rows: const [],
+        scratchProjectId: null,
+        counts: const SessionListChipCounts(all: 2, running: 0, unread: 0),
+        quickFilter: SessionListQuickFilter.running,
+        isLoading: isLoading,
+      );
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(tester, initial: running(isLoading: true), updates: updates.stream, mode: AllSessionsMode.active);
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+      final runningChip = find.byKey(const Key("session-list-filter-running"));
+      expect(skeletonOpacity(tester), 1);
+      expect(paintedOpacity(tester, runningChip), 1);
+
+      updates.add(running(isLoading: false));
+      await tester.pump(Duration.zero);
+      for (var elapsed = 0; elapsed <= 250; elapsed += 10) {
+        await tester.pump(const Duration(milliseconds: 10));
+        expect(paintedOpacity(tester, runningChip), 1, reason: "at ${elapsed}ms");
+      }
+      expect(skeleton, findsNothing);
+      expect(paintedOpacity(tester, find.text("No sessions match this filter")), 1);
+    });
+
     final oldRow = find.text("Fix the parser");
     final newRow = find.text("Draft the install guide");
 
@@ -819,44 +1027,10 @@ void main() {
     }
 
     group("layout across every frame", () {
-      const header = SizedBox(key: Key("header"), height: 36, child: Text("All projects"));
-      final headerBox = find.byKey(const Key("header"));
       const lastFailure = AllSessionsFailure(
         project: ProjectSummary(id: "p3", name: "Project Three", path: "/p3", time: null),
         reason: RemoteFailureReason.networkDown,
       );
-
-      /// How far anything may move in one 5 ms frame: smooth motion stays
-      /// well under it, a one-frame snap of a box's height does not.
-      const maxStep = 6.0;
-
-      /// The tops of [finders], each null while it is gone, on the frame
-      /// before [update] lands and on every 5 ms frame of the 300 ms after.
-      Future<List<List<double?>>> topsAcross(
-        WidgetTester tester, {
-        required StreamController<AllSessionsState> updates,
-        required AllSessionsState update,
-        required List<Finder> finders,
-      }) async {
-        List<double?> tops() => [
-          for (final finder in finders) finder.evaluate().isEmpty ? null : tester.getTopLeft(finder).dy,
-        ];
-        final frames = [tops()];
-        updates.add(update);
-        for (var elapsed = 0; elapsed < 300; elapsed += 5) {
-          await tester.pump(const Duration(milliseconds: 5));
-          frames.add(tops());
-        }
-        return [
-          for (var index = 0; index < finders.length; index++) [for (final frame in frames) frame[index]],
-        ];
-      }
-
-      /// Each one-frame move in [tops], across the frames it was shown.
-      List<double> steps(List<double?> tops) => [
-        for (var frame = 1; frame < tops.length; frame++)
-          if ((tops[frame - 1], tops[frame]) case (final from?, final to?)) to - from,
-      ];
 
       for (final interaction in PregoInteractionMode.values) {
         for (final withHeader in [true, false]) {
