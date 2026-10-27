@@ -3213,6 +3213,165 @@ void main() {
         expect(cubit.state.agentModelData?.projectWorktreeCapability, NewSessionProjectWorktreeCapability.supported);
       });
 
+      // The login card is the bridge's answer like any other: a blip leaves it
+      // standing, and only the answer after the reconnect changes it.
+      const loginRequired = SessionOptionsRepositoryAuthenticationRequired(actionHint: "Authenticate locally.");
+      final catalog = SessionOptionsCatalog(
+        agents: const [AgentInfo(name: "build", description: "build", model: null, mode: AgentMode.primary)],
+        providers: const [],
+        providersConnectedOnly: false,
+        commands: const [],
+        lastUsedPromptDefaults: null,
+      );
+
+      /// Answers discovery from bridge-1 at once and the options with
+      /// [answersBeforeBlip], in order; every later call waits on the returned
+      /// completers.
+      ({
+        Completer<ApiResponse<PluginDiscoverySnapshot>> rediscovery,
+        Completer<SessionOptionsRepositoryResult> optionsAfterBlip,
+        int Function() discoveries,
+        int Function() optionLoads,
+      })
+      stubBlip({required List<SessionOptionsRepositoryResult> answersBeforeBlip}) {
+        final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+        final optionsAfterBlip = Completer<SessionOptionsRepositoryResult>();
+        var discoveries = 0;
+        var optionLoads = 0;
+        when(mockPluginRepository.listPlugins).thenAnswer((_) {
+          discoveries++;
+          return discoveries == 1
+              ? Future.value(answer(bridgeId: "bridge-1", plugins: [defaultPlugin]))
+              : rediscovery.future;
+        });
+        when(
+          () => mockSessionRepository.loadSessionOptions(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+            mode: any(named: "mode"),
+          ),
+        ).thenAnswer((_) {
+          optionLoads++;
+          return optionLoads <= answersBeforeBlip.length
+              ? Future.value(answersBeforeBlip[optionLoads - 1])
+              : optionsAfterBlip.future;
+        });
+        return (
+          rediscovery: rediscovery,
+          optionsAfterBlip: optionsAfterBlip,
+          discoveries: () => discoveries,
+          optionLoads: () => optionLoads,
+        );
+      }
+
+      Future<void> settleLogin(NewSessionCubit cubit) async {
+        while ((cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true) ||
+            (cubit.state.agentModelData?.isLoading ?? true) ||
+            cubit.composerPresentation is NewSessionComposerPending) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+
+      for (final (start, answersBeforeBlip) in [
+        ("the first load", <SessionOptionsRepositoryResult>[loginRequired]),
+        // The harness logged out after its options loaded, so they are retained.
+        ("a background refresh", [SessionOptionsRepositoryAvailable(catalog: catalog, isStale: true), loginRequired]),
+      ]) {
+        for (final (outcome, rediscovery, optionsAnswer, settled) in [
+          (
+            "it still needs a login",
+            answer(bridgeId: "bridge-1", plugins: [defaultPlugin]),
+            loginRequired,
+            isA<NewSessionComposerLoginRequired>(),
+          ),
+          (
+            "it logged in meanwhile",
+            answer(bridgeId: "bridge-1", plugins: [defaultPlugin]),
+            SessionOptionsRepositoryAvailable(catalog: catalog, isStale: false),
+            isA<NewSessionComposerReady>(),
+          ),
+          (
+            "rediscovery fails",
+            ApiResponse<PluginDiscoverySnapshot>.error(ApiError.generic()),
+            null,
+            isA<NewSessionComposerRetry>(),
+          ),
+        ]) {
+          test("keeps the login card $start showed through a reconnect until $outcome", () async {
+            final blip = stubBlip(answersBeforeBlip: answersBeforeBlip);
+            final cubit = buildCubit();
+            addTearDown(cubit.close);
+            await settleLogin(cubit);
+            while (!(cubit.state.agentModelData?.optionsState.authenticationRequired ?? false)) {
+              await Future<void>.delayed(Duration.zero);
+            }
+            expect(blip.optionLoads(), answersBeforeBlip.length);
+            expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+
+            final shown = <NewSessionComposerPresentation>[];
+            final notices = <NewSessionComposerLoginRequired>[];
+            var previous = cubit.state;
+            final subscription = cubit.stream.listen((current) {
+              shown.add(cubit.composerPresentation);
+              final notice = NewSessionCubit.newlyRequiredLogin(previous: previous, current: current);
+              if (notice != null) notices.add(notice);
+              previous = current;
+            });
+            addTearDown(subscription.cancel);
+            connectionStatus.add(const ConnectionStatus.disconnected());
+            await Future<void>.delayed(Duration.zero);
+            expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+            expect(cubit.canCreateSession, isFalse);
+
+            connectionStatus.add(connected);
+            while (blip.discoveries() < 2) {
+              await Future<void>.delayed(Duration.zero);
+            }
+            // Neither the blip nor the rediscovery under way moves the card.
+            expect(shown, isNotEmpty);
+            expect(shown, everyElement(isA<NewSessionComposerLoginRequired>()));
+
+            blip.rediscovery.complete(rediscovery);
+            if (optionsAnswer != null) {
+              // Nor does the options load the rediscovery starts.
+              while (blip.optionLoads() == answersBeforeBlip.length) {
+                await Future<void>.delayed(Duration.zero);
+              }
+              expect(shown, everyElement(isA<NewSessionComposerLoginRequired>()));
+              expect(cubit.canCreateSession, isFalse);
+              blip.optionsAfterBlip.complete(optionsAnswer);
+            }
+            await settleLogin(cubit);
+            expect(cubit.composerPresentation, settled);
+            // Nothing logged out: the page never says it did.
+            expect(notices, isEmpty);
+          });
+        }
+      }
+
+      test("a recheck on the login card before rediscovery verifies the bridge asks discovery again", () async {
+        final blip = stubBlip(answersBeforeBlip: [loginRequired]);
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await settleLogin(cubit);
+        connectionStatus
+          ..add(const ConnectionStatus.disconnected())
+          ..add(connected);
+        while (blip.discoveries() < 2) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        unawaited(cubit.refreshOptions());
+        await Future<void>.delayed(Duration.zero);
+
+        // It loads no options from a bridge nobody has verified yet, and the
+        // card stays while discovery answers.
+        expect(blip.discoveries(), 3);
+        expect(blip.optionLoads(), 1);
+        expect(cubit.composerPresentation, isA<NewSessionComposerLoginRequired>());
+        expect(cubit.canCreateSession, isFalse);
+      });
+
       test("is LoadOnDemand for a legacy bridge whose selected plugin cannot be routed yet", () async {
         when(mockPluginRepository.listPlugins).thenAnswer(
           (_) async => ApiResponse.success(
