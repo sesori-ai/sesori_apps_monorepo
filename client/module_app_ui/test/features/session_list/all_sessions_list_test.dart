@@ -708,6 +708,77 @@ void main() {
       });
     }
 
+    testWidgets("a note whose text changes cross-fades where it stands, easing the room the new one wraps to", (
+      tester,
+    ) async {
+      // Narrow enough for the filter's note to wrap where "No matches" does not.
+      tester.view.physicalSize = const Size(393, 800);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      // A query that matches nothing on a Running list with no rows, cleared.
+      AllSessionsState running({required String query, required int sessions}) => state(
+        query: query,
+        failures: const [],
+        rows: const [],
+        scratchProjectId: null,
+        counts: SessionListChipCounts(all: sessions, running: 0, unread: 0),
+        quickFilter: SessionListQuickFilter.running,
+      );
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: running(query: "zzz", sessions: 0),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+        header: header,
+      );
+      final noMatches = find.text("No matches");
+      final filterNote = find.text("No sessions match this filter");
+      final noteTop = tester.getTopLeft(noMatches).dy;
+      // The room the note holds, whichever text it shows.
+      double room() => tester
+          .getSize(
+            find
+                .ancestor(
+                  of: noMatches.evaluate().isEmpty ? filterNote : noMatches,
+                  matching: find.byWidgetPredicate(
+                    (widget) => widget is Padding && widget.padding == const EdgeInsets.all(PregoSpacing.x3l),
+                  ),
+                )
+                .first,
+          )
+          .height;
+      final oneLine = room();
+
+      final frames = await everyFrameAcross(
+        tester,
+        updates: updates,
+        update: running(query: "", sessions: 1),
+        read: () => (
+          leaving: shownOpacity(tester, noMatches),
+          leavingTop: topOf(tester, noMatches),
+          arriving: shownOpacity(tester, filterNote),
+          arrivingTop: topOf(tester, filterNote),
+          room: room(),
+        ),
+      );
+      // Both show as one fades into the other.
+      expect([frames[1].leaving, frames[1].arriving], everyElement(inExclusiveRange(0, 1)));
+      expect(steps([for (final frame in frames) frame.leaving]), everyElement(lessThanOrEqualTo(0)));
+      expect(steps([for (final frame in frames) frame.arriving]), everyElement(greaterThanOrEqualTo(0)));
+      expect((frames.last.leaving, frames.last.arriving), (null, 1));
+      expect(
+        {
+          for (final frame in frames) ...[frame.leavingTop, frame.arrivingTop],
+        }..remove(null),
+        {noteTop},
+      );
+      final rooms = [for (final frame in frames) frame.room];
+      expect(steps(rooms), everyElement(inInclusiveRange(0, maxStep)));
+      expect(rooms.last, greaterThan(oneLine));
+    });
+
     testWidgets("under reduced motion the empty state, a note and a filter tapped while loading swap at once", (
       tester,
     ) async {

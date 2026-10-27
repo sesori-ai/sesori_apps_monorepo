@@ -299,8 +299,8 @@ state.
   the same way before a failed project's Retry row opens. With nothing loading and no project failed, a query that
   matches nothing fades in "No matches", and on an unsearched list with sessions a Running or Unread chip that leaves
   no rows fades in "No sessions match this filter", once the rows have left; the note fades out where it stands
-  before rows return, the empty state and a note each wait for the other to fade out, and neither moves the field or
-  chips. Neither the empty state nor a note moves while it shows,
+  before rows return, the empty state and a note each wait for the other to fade out, a note whose text changes, as
+  when a query is cleared, cross-fades where it stands, and neither moves the field or chips. Neither the empty state nor a note moves while it shows,
   and a load that starts as one fades out fades it out with the rest of the list. Reduced motion swaps them at once,
   and a later refresh, search or filter never repeats a fade on what is already shown: chips showing their counts
   while the load runs, as when Running or Unread leaves no rows while a project still loads, stay as they are through
@@ -804,7 +804,8 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   list empties or fills again at rest or a project fails or loads again; the
   empty state shows at once instead of fading in once they fold, or vanishes in
   one frame as they open or a Retry row opens; "No matches" or "No sessions
-  match this filter" appears or vanishes in one frame; the empty state or a
+  match this filter" appears, vanishes or turns into the other in one frame;
+  the empty state or a
   note moves while it shows, fades in before the other has faded out, or
   vanishes in one frame as a load starts; chips whose counts arrive while a
   load runs replace their pills in one frame; chips

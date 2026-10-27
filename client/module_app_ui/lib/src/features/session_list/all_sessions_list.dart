@@ -727,10 +727,25 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                 },
                 child: Padding(
                   padding: const EdgeInsets.all(PregoSpacing.x3l),
-                  child: Text(
-                    shownNote,
-                    textAlign: TextAlign.center,
-                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+                  // A note whose text changes, as a cleared query's, cross-fades
+                  // where it stands, easing the room if the two wrap differently.
+                  child: _easedSize(
+                    context: context,
+                    child: AnimatedSwitcher(
+                      duration: motion,
+                      switchInCurve: transcriptMotionCurve,
+                      switchOutCurve: transcriptMotionCurve.flipped,
+                      layoutBuilder: (current, previous) => Stack(
+                        alignment: Alignment.topCenter,
+                        children: [...previous, ?current],
+                      ),
+                      child: Text(
+                        shownNote,
+                        key: ValueKey(shownNote),
+                        textAlign: TextAlign.center,
+                        style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+                      ),
+                    ),
                   ),
                 ),
               ),
