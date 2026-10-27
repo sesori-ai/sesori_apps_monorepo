@@ -152,5 +152,4 @@ following the macOS QA process.
 - `client/desktop/lib/core/di/register_module.dart`
 - `client/desktop/macos/Runner/Release.entitlements`
 - `client/desktop/macos/Bridge.entitlements`
-- `.agents/skills/macos-desktop-qa/SKILL.md`
 - `.plan/active/desktop-distribution/PLAN.md`

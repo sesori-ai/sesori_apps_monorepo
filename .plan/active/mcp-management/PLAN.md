@@ -367,7 +367,7 @@ snapshots, automatic retries of consent, cross-session configuration reconciliat
 history repair, or scheduled background refresh. Creation/edit/removal of arbitrary MCP configurations, a marketplace,
 and universal OAuth broker functionality remain out of scope.
 
-Analytics assessment follows `.opencode/skills/add-analytics/SKILL.md`: retain normal screen reporting when adding a
+Analytics assessment follows `.agents/skills/add-analytics/SKILL.md`: retain normal screen reporting when adding a
 route. No additional event or reporting pipeline is needed for the first implementation; there is no concrete product
 decision requiring per-server/tool tracking. Revisit a bounded authoritative adoption metric separately. Never report
 server, connector, tool, account, path, form, or URL identifiers.

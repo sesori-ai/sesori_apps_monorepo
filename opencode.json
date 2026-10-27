@@ -7,16 +7,6 @@
       "command": ["npx", "-y", "@mobilenext/mobile-mcp@1.0.2"],
       "enabled": true
     },
-    "peekaboo": {
-      "type": "local",
-      "command": ["./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh", "peekaboo"],
-      "enabled": true
-    },
-    "agent-device": {
-      "type": "local",
-      "command": ["./.agents/skills/macos-desktop-qa/scripts/mcp-server.sh", "agent-device"],
-      "enabled": true
-    },
     "figma": {
       "type": "remote",
       "url": "http://127.0.0.1:3845/mcp",
