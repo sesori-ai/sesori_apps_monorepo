@@ -95,11 +95,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   late bool _optionsShown;
   bool _navigatingToCreatedSession = false;
   bool _isSending = false;
-
-  /// Whether the keyboard up is the composer's, which the header makes room
-  /// for. The project picker's search raises it too, and the header holding
-  /// that picker stays.
-  bool _composerFocused = false;
   late PregoPopupAlertPresenter _popupAlertPresenter;
   late String _launchingInBackgroundMessage;
 
@@ -517,10 +512,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           // Reports focus for the session screen that takes the composer over.
           canRequestFocus: false,
           skipTraversal: true,
-          onFocusChange: (focused) {
-            setState(() => _composerFocused = focused);
-            context.read<NewSessionCubit>().reportComposerFocus(focused: focused);
-          },
+          onFocusChange: (focused) => context.read<NewSessionCubit>().reportComposerFocus(focused: focused),
           child: PromptInput(
             draftIdentity: ComposerDraftRepository.newSessionIdentity(projectId: widget.projectId),
             restorationKey: restoringSubmission == null ? null : ObjectKey(restoringSubmission),
@@ -748,7 +740,6 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     );
     if (chromePage != null) return listening(child: chromePage);
 
-    final headerShown = !_composerFocused || MediaQuery.viewInsetsOf(context).bottom == 0;
     return listening(
       child: PregoGlassScaffold(
         title: loc.sessionListNewSession,
@@ -796,12 +787,10 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // The keyboard leaves this pane a few rows tall;
-                          // they belong to the options being typed against.
-                          if (headerShown) header,
+                          header,
                           _AnimatedOptions(
                             key: const Key("new_session_options"),
-                            gap: headerShown ? _optionRowSpacing : 0,
+                            gap: _optionRowSpacing,
                             options: options,
                           ),
                         ],
