@@ -2462,7 +2462,7 @@ void main() {
     verify(cubit.recheckHarnessAvailability).called(1);
     // Screen readers hear a Recheck that takes no press while it checks.
     Matcher recheckSemantics({required bool enabled}) =>
-        containsSemantics(isButton: true, hasEnabledState: true, isEnabled: enabled, hasTapAction: enabled);
+        isSemantics(isButton: true, hasEnabledState: true, isEnabled: enabled, hasTapAction: enabled);
     expect(find.semantics.byLabel("Recheck").evaluate().single, recheckSemantics(enabled: false));
 
     answer.complete();

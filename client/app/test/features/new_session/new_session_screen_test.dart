@@ -2114,7 +2114,7 @@ void main() {
       // Screen readers hear a Recheck that takes no press while it checks.
       expect(
         find.semantics.byLabel("Recheck").evaluate().single,
-        containsSemantics(isButton: true, hasEnabledState: true, isEnabled: false, hasTapAction: false),
+        isSemantics(isButton: true, hasEnabledState: true, isEnabled: false, hasTapAction: false),
       );
     }
 
