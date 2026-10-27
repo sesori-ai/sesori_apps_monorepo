@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 import "dart:typed_data";
 
 import "package:bloc_test/bloc_test.dart";
@@ -3289,6 +3290,162 @@ void main() {
       expect(find.byType(AgentModelButtons), findsOneWidget);
     });
 
+    /// Presses [blocked]'s Recheck, holds the answer until the spinner shows,
+    /// then lets [answer] land: every frame until the card is gone, it keeps
+    /// the spinner as it stood and never says Recheck again.
+    Future<void> expectCardLeavesChecking({
+      required WidgetTester tester,
+      required Finder blocked,
+      required void Function() answer,
+    }) async {
+      final recheck = find.descendant(of: blocked, matching: find.byKey(const Key("session_harness_recheck")));
+      final spinner = find.descendant(of: recheck, matching: find.byType(PregoActivityIndicator));
+      final label = find.descendant(of: recheck, matching: find.text("Recheck"));
+      await tester.tap(recheck);
+      for (var index = 0; index < 35; index++) {
+        await tester.pump(frame);
+      }
+      expect(opacityOf(tester, spinner), 1);
+      expect(opacityOf(tester, label), 0);
+
+      answer();
+      var fading = 0;
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 400); elapsed += frame) {
+        await tester.pump(frame);
+        final cardOpacity = opacityOf(tester, blocked);
+        if (cardOpacity == null) continue;
+        if (cardOpacity < 1) fading++;
+        expect(opacityOf(tester, spinner), cardOpacity);
+        expect(opacityOf(tester, label), 0);
+      }
+      expect(fading, greaterThan(5));
+      expect(blocked, findsNothing);
+      expect(opacityOf(tester, composer), 1);
+    }
+
+    testWidgets("the login card fades out still showing the check its answer ended", (tester) async {
+      final recheck = stubOptions(first: loginRequired);
+      await pumpPhone(tester);
+
+      await expectCardLeavesChecking(
+        tester: tester,
+        blocked: card,
+        answer: () => recheck.complete(
+          SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false),
+        ),
+      );
+    });
+
+    testWidgets("the project card fades out still showing the check its answer ended", (tester) async {
+      final recheck = Completer<ApiResponse<Project>>();
+      var checks = 0;
+      when(() => projectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+        checks++;
+        return checks == 1 ? Future.value(ApiResponse<Project>.error(ApiError.generic())) : recheck.future;
+      });
+      await pumpPhone(tester);
+
+      await expectCardLeavesChecking(
+        tester: tester,
+        blocked: find.byKey(const Key("new_session_project_unavailable")),
+        answer: () => recheck.complete(
+          ApiResponse.success(
+            const Project(
+              id: "project-1",
+              name: "Project One",
+              path: "/project-one",
+              time: null,
+              supportsDedicatedWorktrees: true,
+              voiceGlossaryKey: null,
+            ),
+          ),
+        ),
+      );
+    });
+
+    testWidgets("a login card called back as it fades turns back from where it is and checks as before", (
+      tester,
+    ) async {
+      // Recheck finds the harness logged in, a reconnect as the card fades
+      // finds it logged out again, and the next Recheck waits for its answer.
+      final loggedIn = Completer<SessionOptionsRepositoryResult>();
+      final nextRecheck = Completer<SessionOptionsRepositoryResult>();
+      var loads = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) {
+        loads++;
+        return switch (loads) {
+          2 => loggedIn.future,
+          4 => nextRecheck.future,
+          _ => Future.value(loginRequired),
+        };
+      });
+      await pumpPhone(tester);
+      final recheck = find.byKey(const Key("session_harness_recheck"));
+      final spinner = find.descendant(of: recheck, matching: find.byType(PregoActivityIndicator));
+      final label = find.descendant(of: recheck, matching: find.text("Recheck"));
+      final cardRect = tester.getRect(card);
+      await tester.tap(recheck);
+      for (var index = 0; index < 35; index++) {
+        await tester.pump(frame);
+      }
+
+      loggedIn.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      final opacities = <double>[];
+      for (var index = 0; index < 30; index++) {
+        if (index == 4) connectionStatus.add(const ConnectionStatus.disconnected());
+        if (index == 5) {
+          connectionStatus.add(
+            const ConnectionStatus.connected(
+              config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+              health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+            ),
+          );
+        }
+        await tester.pump(frame);
+        opacities.add(opacityOf(tester, card) ?? 0);
+      }
+      expect(loads, 3);
+
+      // It turns back partway rather than vanishing or snapping back.
+      final lowest = opacities.reduce(math.min);
+      final turn = opacities.indexOf(lowest);
+      expect(lowest, inExclusiveRange(0, 1));
+      expect(
+        opacities.take(turn + 1),
+        orderedEquals(opacities.take(turn + 1).toList()..sort((a, b) => b.compareTo(a))),
+      );
+      expect(opacities.skip(turn), orderedEquals(opacities.skip(turn).toList()..sort()));
+      for (var index = 1; index < opacities.length; index++) {
+        expect((opacities[index] - opacities[index - 1]).abs(), lessThan(1 / 6));
+      }
+      expect(opacities.last, 1);
+      expect(tester.getRect(card), cardRect);
+      expect(opacityOf(tester, label), 1);
+      expect(spinner, findsNothing);
+
+      // Back, its Recheck shows that it is checking just as before.
+      final labelOpacities = <double>[];
+      await tester.tap(recheck);
+      for (var index = 0; index < 35; index++) {
+        await tester.pump(frame);
+        labelOpacities.add(opacityOf(tester, label) ?? 0);
+      }
+      expect(loads, 4);
+      expect(labelOpacities.where((opacity) => opacity > 0 && opacity < 1), isNotEmpty);
+      expect(opacityOf(tester, label), 0);
+      expect(opacityOf(tester, spinner), 1);
+      nextRecheck.complete(loginRequired);
+      await tester.pumpAndSettle();
+      expect(opacityOf(tester, label), 1);
+      expect(spinner, findsNothing);
+    });
+
     testWidgets("a harness found logged out fades the composer out under the login card, keeping its draft", (
       tester,
     ) async {
@@ -3301,9 +3458,13 @@ void main() {
       await tester.pump();
       final promptState = tester.state(composer);
       final composerRect = tester.getRect(composer);
+      final field = tester.widget<EditableText>(find.byType(EditableText)).focusNode;
+      expect(field.hasFocus, isTrue);
 
       refresh.complete(loginRequired);
       await tester.pump();
+      // Leaving, the composer lets go of the keyboard at once.
+      expect(field.hasFocus, isFalse);
       final cardRect = tester.getRect(card);
       expect(cardRect.bottom, composerRect.bottom);
       final frames = await stepThroughSwap(tester: tester, cardRect: cardRect, composerRect: composerRect);

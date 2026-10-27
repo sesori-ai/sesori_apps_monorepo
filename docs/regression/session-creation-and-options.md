@@ -273,7 +273,8 @@ variant, and worktree mode, and creating the session with its first input.
   checked" card holds still, with creation blocked, until the bridge answers its recheck. On either card, when
   the bridge has not answered the check a Recheck starts within about 300 ms, "Recheck" cross-fades into a spinner
   in its own room (at once under reduced motion), so nothing moves, and takes no press, reading to screen readers
-  as disabled, until the answer, whichever it is; a faster answer never shows the spinner. When options cannot
+  as disabled, until the answer, whichever it is, and a card the answer clears fades out with the spinner still
+  standing, never saying "Recheck" again; a faster answer never shows the spinner. When options cannot
   be loaded, one "Retry loading models" button stands in the pills' place; a bridge that can load options only by
   starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
