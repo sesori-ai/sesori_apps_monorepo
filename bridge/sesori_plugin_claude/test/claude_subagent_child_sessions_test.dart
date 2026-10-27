@@ -203,27 +203,63 @@ void main() {
 
       // The wake-up envelope names the SendMessage call too. It stays its own
       // Automation row, as on replay, instead of rewriting the tile.
-      final envelope = dispatcher.map(
-        message: ClaudeStreamMessage.parse({
-          "type": "user",
-          "session_id": _root,
-          "uuid": "resumed-notification",
-          "origin": {"kind": "task-notification"},
-          "message": {
-            "role": "user",
-            "content":
-                "<task-notification>\n<task-id>$_agentId</task-id>\n<tool-use-id>$sendToolUseId</tool-use-id>\n"
-                "<status>completed</status>\n<summary>Agent finished</summary>\n<result>done</result>\n"
-                "</task-notification>",
-          },
-        }),
-      );
+      final envelope = dispatcher.map(message: ClaudeStreamMessage.parse(_envelopeFrame(toolUseId: sendToolUseId)));
       expect(envelope.whereType<BridgeSseMessageUpdated>(), hasLength(1));
       expect(
         envelope.whereType<BridgeSseMessagePartUpdated>().map((event) => event.part.id),
         isNot(contains(_toolUseId)),
       );
       expect(envelope.whereType<BridgeSseSessionStatus>(), isEmpty);
+    });
+
+    test("a sub-agent resumed after its process exited runs as its child, leaving the old tile alone", () {
+      const sendToolUseId = "toolu-send";
+      dispatcher.map(message: ClaudeStreamMessage.parse(_agentAssistantFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_launchResultFrame()));
+      dispatcher.map(message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: _toolUseId)));
+      // The process exits (idle shutdown, stop, respawn) and drops its tasks;
+      // the next turn runs in a new process that resumes the agent.
+      dispatcher.cancelTasks(sessionId: _root);
+      dispatcher.beginTurn(sessionId: _root, directory: "/workspace", model: null, variant: null);
+
+      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)));
+
+      expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionStatus], reason: "no tile, no re-announce");
+      expect((resumed.single as BridgeSseSessionStatus).sessionID, _child);
+      expect((resumed.single as BridgeSseSessionStatus).status, isA<PluginSessionStatusBusy>());
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
+      expect(dispatcher.busyChildSessionIds(sessionId: _root), [_child]);
+      expect(dispatcher.residentTaskToolUseIds(sessionId: _root), isEmpty, reason: "replay keeps the old tile too");
+
+      final finished = dispatcher.map(
+        message: ClaudeStreamMessage.parse(_taskNotificationFrame(toolUseId: sendToolUseId)),
+      );
+      expect(finished.map((event) => event.runtimeType), [BridgeSseSessionStatus]);
+      expect((finished.single as BridgeSseSessionStatus).status, isA<PluginSessionStatusIdle>());
+      expect(dispatcher.busyChildSessionIds(sessionId: _root), isEmpty);
+
+      final envelope = dispatcher.map(message: ClaudeStreamMessage.parse(_envelopeFrame(toolUseId: sendToolUseId)));
+      expect(envelope.whereType<BridgeSseMessageUpdated>(), hasLength(1), reason: "its own Automation step");
+      expect(envelope.whereType<BridgeSseSessionStatus>(), isEmpty);
+
+      // A resumed run still running when its process exits ends with it.
+      dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: sendToolUseId)));
+      final cancelled = dispatcher.cancelTasks(sessionId: _root);
+      expect(cancelled.map((event) => event.runtimeType), [BridgeSseSessionStatus]);
+      expect((cancelled.single as BridgeSseSessionStatus).status, isA<PluginSessionStatusIdle>());
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.idle()});
+    });
+
+    test("after a bridge restart a resumed sub-agent re-announces its child with its own title", () {
+      final resumed = dispatcher.map(message: ClaudeStreamMessage.parse(_taskStartedFrame(toolUseId: "toolu-send")));
+
+      expect(resumed.map((event) => event.runtimeType), [BridgeSseSessionCreated, BridgeSseSessionStatus]);
+      final created = (resumed.first as BridgeSseSessionCreated).info;
+      expect(created["id"], _child);
+      expect(created["parentID"], _root);
+      // The bridge rewrites a known child's catalog title from `created`.
+      expect(created["title"], "Say hi");
+      expect(dispatcher.childSessionStatuses(), {_child: const PluginSessionStatus.busy()});
     });
 
     test("routes forwarded sub-agent frames into the child session once its id is known", () {
@@ -427,7 +463,23 @@ Map<String, Object?> _taskStartedFrame({required String toolUseId}) => {
   "session_id": _root,
   "task_id": _agentId,
   "tool_use_id": toolUseId,
+  "description": "Say hi",
   "task_type": "local_agent",
+};
+
+/// The `<task-notification>` wake-up that delivers a run's result.
+Map<String, Object?> _envelopeFrame({required String toolUseId}) => {
+  "type": "user",
+  "session_id": _root,
+  "uuid": "resumed-notification",
+  "origin": {"kind": "task-notification"},
+  "message": {
+    "role": "user",
+    "content":
+        "<task-notification>\n<task-id>$_agentId</task-id>\n<tool-use-id>$toolUseId</tool-use-id>\n"
+        "<status>completed</status>\n<summary>Agent finished</summary>\n<result>done</result>\n"
+        "</task-notification>",
+  },
 };
 
 Map<String, Object?> _taskNotificationFrame({required String toolUseId}) => {

@@ -5,6 +5,7 @@ import "models/claude_agent_selection.dart";
 import "models/claude_compact_metadata.dart";
 import "models/claude_message_origin_kind.dart";
 import "models/claude_task_notification.dart";
+import "models/claude_task_type.dart";
 import "models/claude_tool_use_result.dart";
 import "repositories/mappers/claude_api_error_mapper.dart";
 import "repositories/mappers/claude_content_mapper.dart";
@@ -132,6 +133,8 @@ final class ClaudeEventDispatcher({
   List<BridgeSseEvent> cancelTasks({required String sessionId}) => [
     for (final owner in {sessionId, ...?_announcedChildren[sessionId]})
       for (final task in _tools.cancelAll(sessionId: owner)) ..._partEvents(tool: task),
+    for (final task in _tools.cancelResumedTasks(sessionId: sessionId))
+      ..._resumedTaskEvents(task: task, running: false),
   ];
 
   /// Statuses of the child sessions this dispatcher announced, for every root.
@@ -199,7 +202,7 @@ final class ClaudeEventDispatcher({
         ClaudeUserMessage() => _mapUser(sessionId: sessionId, message: message, promptId: null),
         ClaudeApiRetryMessage() => _mapRetry(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeResultMessage() => _mapResult(sessionId: sessionId, message: message),
-        ClaudeTaskStartedMessage() => _mapTaskStarted(message: message),
+        ClaudeTaskStartedMessage() => _mapTaskStarted(sessionId: sessionId, message: message),
         ClaudeTaskNotificationMessage() => _mapTaskNotification(message: message),
         ClaudeStatusMessage() => _mapStatus(sessionId: sessionId, message: message, now: now ?? DateTime.now()),
         ClaudeCompactBoundaryMessage() => _mapCompactBoundary(sessionId: sessionId, message: message),
@@ -624,13 +627,19 @@ final class ClaudeEventDispatcher({
   }
 
   List<BridgeSseEvent> _mapTaskStarted({
+    required String sessionId,
     required ClaudeTaskStartedMessage message,
   }) {
     final toolUseId = message.toolUseId;
     final taskId = message.taskId;
     if (toolUseId == null || taskId == null) return const [];
-    return _partEvents(
-      tool: _tools.taskStarted(toolUseId: toolUseId, taskId: taskId),
+    if (_tools.taskStarted(toolUseId: toolUseId, taskId: taskId) case final task?) return _partEvents(tool: task);
+    // A sub-agent this process never launched: the main agent resumed one
+    // whose process exited. Its old tile keeps its outcome; the child runs.
+    if (message.taskType != ClaudeTaskType.subAgent) return const [];
+    return _resumedTaskEvents(
+      task: _tools.resumedTaskStarted(sessionId: sessionId, taskId: taskId, title: message.description),
+      running: true,
     );
   }
 
@@ -640,15 +649,18 @@ final class ClaudeEventDispatcher({
     final toolUseId = message.toolUseId;
     final taskId = message.taskId;
     if (toolUseId == null || taskId == null) return const [];
-    return _partEvents(
-      tool: _tools.taskNotified(
-        toolUseId: toolUseId,
-        taskId: taskId,
-        status: message.status,
-        summary: message.summary,
-        result: null,
-      ),
+    final task = _tools.taskNotified(
+      toolUseId: toolUseId,
+      taskId: taskId,
+      status: message.status,
+      summary: message.summary,
+      result: null,
     );
+    if (task != null) return _partEvents(tool: task);
+    return switch (_tools.resumedTaskEnded(taskId: taskId)) {
+      final resumed? => _resumedTaskEvents(task: resumed, running: false),
+      null => const [],
+    };
   }
 
   List<BridgeSseEvent> _mapRetry({
@@ -731,19 +743,46 @@ final class ClaudeEventDispatcher({
   /// child on `created` before it translates the part's `childSessionID`.
   List<BridgeSseEvent> _partEvents({required ClaudeTrackedTool? tool}) {
     final part = tool?.toPart();
+    if (tool case ClaudeTrackedTask(:final childSessionId?)) {
+      return _childEvents(
+        ownerSessionId: tool.sessionId,
+        childId: childSessionId,
+        title: switch (tool.input) {
+          {"description": final String description} => description,
+          _ => null,
+        },
+        running: !tool.state.status.isTerminal,
+        part: part,
+      );
+    }
+    return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
+  }
+
+  /// The child-session lifecycle of a resumed run, which has no part.
+  List<BridgeSseEvent> _resumedTaskEvents({required ClaudeResumedTask task, required bool running}) => _childEvents(
+    ownerSessionId: task.sessionId,
+    childId: task.childSessionId,
+    title: task.title,
+    running: running,
+    part: null,
+  );
+
+  List<BridgeSseEvent> _childEvents({
+    required String ownerSessionId,
+    required String childId,
+    required String? title,
+    required bool running,
+    required PluginMessagePart? part,
+  }) {
     // Children of children are flattened under the root: one directory, one
     // parent, one place to look for them.
-    final root = tool == null ? null : _rootOf(tool.sessionId);
-    final directory = root == null ? null : _directories[root];
-    if (tool is! ClaudeTrackedTask || tool.childSessionId == null || root == null || directory == null) {
-      return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
-    }
-    final childId = tool.childSessionId;
-    final terminal = tool.state.status.isTerminal;
+    final root = _rootOf(ownerSessionId);
+    final directory = _directories[root];
+    if (directory == null) return part == null ? const [] : [BridgeSseMessagePartUpdated(part: part)];
     final announced = _announcedChildren.putIfAbsent(root, () => {});
     final busy = _busyChildren.putIfAbsent(root, () => {});
     final events = <BridgeSseEvent>[];
-    if (childId != null && announced.add(childId)) {
+    if (announced.add(childId)) {
       _roots[childId] = root;
       events.add(
         BridgeSseSessionCreated(
@@ -752,23 +791,20 @@ final class ClaudeEventDispatcher({
             projectID: directory,
             directory: directory,
             parentID: root,
-            title: switch (tool.input) {
-              {"description": final String description} => description,
-              _ => null,
-            },
+            title: title,
             time: null,
           ).toJson(),
         ),
       );
-      if (!terminal) busy.add(childId);
-      events.add(_childStatus(childId: childId, busy: !terminal));
-    } else if (childId != null && !terminal && busy.add(childId)) {
+      if (running) busy.add(childId);
+      events.add(_childStatus(childId: childId, busy: running));
+    } else if (running && busy.add(childId)) {
       // Claude can resume an already-announced agent after it stopped. Restore
       // the child to busy before publishing the reopened subtask part.
       events.add(_childStatus(childId: childId, busy: true));
     }
     if (part != null) events.add(BridgeSseMessagePartUpdated(part: part));
-    if (childId != null && terminal && busy.remove(childId)) events.add(_childStatus(childId: childId, busy: false));
+    if (!running && busy.remove(childId)) events.add(_childStatus(childId: childId, busy: false));
     return events;
   }
 }
