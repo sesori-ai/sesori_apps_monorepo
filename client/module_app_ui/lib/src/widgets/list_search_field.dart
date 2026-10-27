@@ -71,7 +71,11 @@ class _ListSearchFieldState() extends State<ListSearchField> {
             borderSide: BorderSide.none,
           ),
           filled: true,
-          fillColor: prego.colors.bgTertiary,
+          // A tint over whatever surface holds the field, so it reads on the
+          // near-white sidebar panel and the greyer pages alike. It is the
+          // hover's tint, so a hover adds nothing.
+          fillColor: prego.colors.bgGrayHover,
+          hoverColor: Colors.transparent,
         ),
       ),
     );
