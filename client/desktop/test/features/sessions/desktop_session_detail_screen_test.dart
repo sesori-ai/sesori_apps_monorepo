@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/services.dart";
@@ -396,12 +398,14 @@ void main() {
       required Session session,
       bool readOnly = false,
       SessionPromptDefaults? promptDefaults,
+      SessionDetailState? initialState,
+      Stream<SessionDetailState> states = const Stream.empty(),
     }) async {
       cubit = _MockSessionDetailCubit();
       when(() => cubit.isRouteVisible).thenReturn(true);
-      final state = _loadedState(session: session).copyWith(promptDefaults: promptDefaults);
+      final state = initialState ?? _loadedState(session: session).copyWith(promptDefaults: promptDefaults);
       when(() => cubit.state).thenReturn(state);
-      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+      whenListen(cubit, states, initialState: state);
       when(() => cubit.questionStream).thenAnswer((_) => const Stream.empty());
       when(() => cubit.permissionStream).thenAnswer((_) => const Stream.empty());
       when(() => cubit.noticeStream).thenAnswer((_) => const Stream.empty());
@@ -639,6 +643,86 @@ void main() {
       await tester.tap(find.byTooltip("Close prompts"));
       await tester.pumpAndSettle();
       expect(find.byTooltip("Close prompts"), findsNothing);
+    });
+
+    testWidgets("Changes and Prompts fade in with the transcript and out when it leaves", (tester) async {
+      const frame = Duration(milliseconds: 16);
+      const notice = SessionDetailState.harnessUnavailable(
+        session: _session,
+        interaction: SessionInteractionState.blocked(
+          reason: SessionInteractionBlockedReason.authenticationRequired,
+          displayName: "Claude Code",
+          actionHint: null,
+          refreshError: null,
+        ),
+      );
+      final loaded = _loadedState(session: _session);
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      await pumpPage(tester, session: _session, initialState: notice, states: states.stream);
+      final changes = find.byKey(const Key("desktop-session-page-changes"));
+      final prompts = find.byKey(const Key("desktop-session-page-prompts"));
+      double opacityOf(Finder finder) => tester
+          .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
+          .fold(1, (opacity, fade) => opacity * fade.opacity.value);
+      expect(changes, findsNothing);
+      expect(prompts, findsNothing);
+
+      Future<void> expectFade({required SessionDetailState to, required bool arriving}) async {
+        states.add(to);
+        final seen = <double>[];
+        for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+          await tester.pump(frame);
+          if (changes.evaluate().isEmpty) break;
+          // The two move as one, neither popping in or out.
+          expect(opacityOf(prompts), opacityOf(changes));
+          seen.add(opacityOf(changes));
+          if (!arriving) {
+            // Leaving, they no longer act on the transcript they leave.
+            expect(changes.hitTestable(), findsNothing);
+            expect(prompts.hitTestable(), findsNothing);
+            expect(find.semantics.byLabel(RegExp("Changes")), findsNothing);
+          }
+        }
+        expect(find.semantics.byLabel(RegExp("Changes")), arriving ? findsOneWidget : findsNothing);
+        expect(changes, arriving ? findsOneWidget : findsNothing);
+        expect(prompts, arriving ? findsOneWidget : findsNothing);
+        expect(seen.where((opacity) => opacity > 0 && opacity < 1), hasLength(greaterThanOrEqualTo(10)));
+        for (var i = 1; i < seen.length; i++) {
+          expect(seen[i], arriving ? greaterThanOrEqualTo(seen[i - 1]) : lessThanOrEqualTo(seen[i - 1]));
+        }
+      }
+
+      await expectFade(to: loaded, arriving: true);
+      await expectFade(to: notice, arriving: false);
+      // A reload from the transcript passes through loading, which has none.
+      await expectFade(to: loaded, arriving: true);
+      await expectFade(
+        to: const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
+        arriving: false,
+      );
+      await expectFade(to: loaded, arriving: true);
+      await expectFade(to: const SessionDetailState.failed(reason: RemoteFailureReason.unknown), arriving: false);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("absent Changes and Prompts leave the title its room", (tester) async {
+      await pumpPage(
+        tester,
+        session: _session,
+        initialState: const SessionDetailState.harnessUnavailable(
+          session: _session,
+          interaction: SessionInteractionState.blocked(
+            reason: SessionInteractionBlockedReason.authenticationRequired,
+            displayName: "Claude Code",
+            actionHint: null,
+            refreshError: null,
+          ),
+        ),
+      );
+      final title = find.descendant(of: find.byType(DesktopPageToolbar), matching: find.byType(Expanded)).first;
+      final more = find.byKey(const Key("desktop-session-page-more"));
+      expect(tester.getRect(more).left - tester.getRect(title).right, PregoSpacing.md);
     });
 
     testWidgets(

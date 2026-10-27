@@ -1062,6 +1062,162 @@ void main() {
       );
     });
 
+    for (final outcome in _ShellRecheck.values) {
+      test("Recheck keeps the unavailable shell up until its reload answers (${outcome.name})", () async {
+        // The notice stays where it is while Recheck reloads, rather than giving
+        // way to the loading screen, and Recheck shows that it is checking until
+        // the answer, whatever it is.
+        final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+          managementFixture(
+            pluginId: "plugin-1",
+            setup: PluginSetupState.authenticationRequired,
+            runtime: PluginRuntimeState.blocked,
+          ),
+        );
+        addTearDown(snapshots.close);
+        final service = MockPluginManagementService();
+        when(() => service.snapshots).thenAnswer((_) => snapshots);
+        var loggedIn = false;
+        when(service.refresh).thenAnswer((_) async {
+          if (!loggedIn) return;
+          snapshots.add(
+            managementFixture(pluginId: "plugin-1", setup: PluginSetupState.ready, runtime: PluginRuntimeState.dormant),
+          );
+        });
+        const nothingStored = MessageWithPartsResponse(
+          messages: [],
+          nextCursor: null,
+          userMessagesBefore: null,
+          replayedPromptDefaults: null,
+          awaitingHarnessSync: true,
+          cannotContinueMessage: null,
+        );
+        // The first load finds nothing stored; the read Recheck starts answers
+        // only when the test says so.
+        final answer = Completer<ApiResponse<MessageWithPartsResponse>>();
+        var reads = 0;
+        when(
+          () => mockSessionService.getMessages(
+            sessionId: any(named: "sessionId"),
+            limit: any(named: "limit"),
+            before: any(named: "before"),
+            storedOnly: any(named: "storedOnly"),
+          ),
+        ).thenAnswer((_) => ++reads == 1 ? Future.value(ApiResponse.success(nothingStored)) : answer.future);
+        final cubit = buildCubit(pluginManagementService: service);
+        addTearDown(cubit.close);
+        await awaitState(
+          cubit: cubit,
+          predicate: (state) => state is SessionDetailHarnessUnavailable,
+          description: "unavailable shell",
+        );
+        final states = <SessionDetailState>[];
+        final subscription = cubit.stream.listen(states.add);
+        addTearDown(subscription.cancel);
+
+        loggedIn = outcome == _ShellRecheck.loads;
+        var rechecked = false;
+        final recheck = cubit.recheckHarnessAvailability().then((_) => rechecked = true);
+        await pumpEventQueue();
+        // One read, which the harness turning available joins.
+        expect(reads, 2);
+        expect(rechecked, isFalse);
+        expect(cubit.state, isA<SessionDetailHarnessUnavailable>());
+
+        if (outcome == _ShellRecheck.losesConnection) {
+          const lost = ConnectionStatus.connectionLost(
+            config: ServerConnectionConfig(relayHost: "fake.example.com", authToken: null, bridgeId: null),
+          );
+          when(() => mockConnectionService.currentStatus).thenReturn(lost);
+          connectionStatus.add(lost);
+          await pumpEventQueue();
+        }
+        answer.complete(
+          ApiResponse.success(switch (outcome) {
+            _ShellRecheck.loads => MessageWithPartsResponse(
+              messages: [testMessageWithParts()],
+              nextCursor: null,
+              userMessagesBefore: null,
+              replayedPromptDefaults: null,
+              cannotContinueMessage: null,
+            ),
+            _ShellRecheck.staysBlocked || _ShellRecheck.losesConnection => nothingStored,
+          }),
+        );
+        await recheck;
+
+        expect(states.whereType<SessionDetailLoading>(), isEmpty);
+        expect(cubit.state, switch (outcome) {
+          _ShellRecheck.loads => isA<SessionDetailLoaded>().having(
+            (state) => state.interaction.canInteract,
+            "interaction.canInteract",
+            isTrue,
+          ),
+          _ShellRecheck.staysBlocked || _ShellRecheck.losesConnection => isA<SessionDetailHarnessUnavailable>(),
+        });
+      });
+    }
+
+    test("a Recheck whose metadata read fails drops the events buffered meanwhile", () async {
+      // The failure replaces the shell, so what arrived during its reload is not
+      // replayed onto the next successful load.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      var reads = 0;
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: ++reads == 1 ? [] : [testMessageWithParts()],
+            nextCursor: null,
+            userMessagesBefore: null,
+            replayedPromptDefaults: null,
+            awaitingHarnessSync: reads == 1,
+            cannotContinueMessage: null,
+          ),
+        ),
+      );
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailHarnessUnavailable,
+        description: "unavailable shell",
+      );
+      final saved = await mockSessionRepository.getSession(sessionId: sessionId);
+      final metadata = Completer<ApiResponse<Session>>();
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+
+      final recheck = cubit.recheckHarnessAvailability();
+      await pumpEventQueue();
+      sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy(since: null)));
+      metadata.complete(ApiResponse.error(ApiError.generic()));
+      await recheck;
+      expect(cubit.state, isA<SessionDetailFailed>());
+
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) async => saved);
+      await cubit.reload();
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having((state) => state.sessionStatus, "sessionStatus", const SessionStatus.idle()),
+      );
+    });
+
     test("a blocked session the bridge stored nothing for reports the block", () async {
       // The store-only read succeeds but has nothing to serve and says the
       // harness still owes it. An empty chat would claim the session has no
@@ -3649,6 +3805,13 @@ Future<void> _awaitNotRefreshing(SessionDetailCubit cubit) async {
     predicate: (state) => state is SessionDetailLoaded && !state.isRefreshing,
     description: "non-refreshing SessionDetailLoaded",
   );
+}
+
+/// How the reload a Recheck starts from the unavailable shell resolves.
+enum _ShellRecheck() {
+  loads,
+  staysBlocked,
+  losesConnection,
 }
 
 final class _FixedClock(final DateTime Function() _now) implements ClockProvider {

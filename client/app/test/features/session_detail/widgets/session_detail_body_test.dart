@@ -12,6 +12,7 @@ import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:get_it/get_it.dart";
 import "package:go_router/go_router.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
@@ -2475,7 +2476,7 @@ void main() {
     expect(tester.getRect(recheck), recheckRect);
   });
 
-  testWidgets("owed messages hold still from the launch through a blocked first load and its Recheck", (
+  testWidgets("owed messages hold still from the launch through a blocked first load", (
     tester,
   ) async {
     tester.view.padding = const FakeViewPadding(bottom: 102);
@@ -2549,22 +2550,320 @@ void main() {
     verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
     await tester.tap(cancels.last);
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
-
-    // Recheck reloads without hiding or moving what is still owed.
-    states.add(
-      SessionDetailState.loading(
-        launchHandoff: null,
-        seededComposer: null,
-        launchFollowUps: launchFollowUps,
-        queuedMessages: queuedMessages,
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
-    expect(tester.getRect(followUp), followUpRect);
-    expect(tester.getRect(last), lastRect);
     expect(tester.takeException(), isNull);
+  });
+
+  group("Recheck from the unavailable notice", () {
+    const frame = Duration(milliseconds: 16);
+    final notice = find.byType(SessionHarnessUnavailableNotice);
+    final transcript = find.text("Hello, world!");
+    SessionDetailState shell() =>
+        SessionDetailState.harnessUnavailable(session: testSession(), interaction: authRequired);
+    double opacityOf({required WidgetTester tester, required Finder finder}) => tester
+        .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
+        .fold(1, (opacity, fade) => opacity * fade.opacity.value);
+
+    /// Presses Recheck and holds the check open past its spinner's delay,
+    /// with the notice up and unmoved throughout. Returns where it sits.
+    Future<Rect> pressRecheck({
+      required WidgetTester tester,
+      required Stream<SessionDetailState> states,
+      required Completer<void> answer,
+    }) async {
+      whenListen(cubit, states, initialState: shell());
+      when(cubit.recheckHarnessAvailability).thenAnswer((_) => answer.future);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.byKey(const Key("session_harness_recheck")));
+      final noticeRect = tester.getRect(notice);
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      for (var elapsed = frame; elapsed <= const Duration(milliseconds: 640); elapsed += frame) {
+        await tester.pump(frame);
+        expect(find.byType(PregoLaunchStatus), findsNothing);
+        expect(tester.getRect(notice), noticeRect);
+        expect(opacityOf(tester: tester, finder: notice), 1);
+      }
+      return noticeRect;
+    }
+
+    /// The materialize progress of [button]'s glass, frame by frame, until it
+    /// has had time to settle or has left. A [leaving] button takes no taps.
+    Future<List<double>> materializing({
+      required WidgetTester tester,
+      required Finder button,
+      required bool leaving,
+    }) async {
+      final progress = <double>[];
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+        await tester.pump(frame);
+        if (button.evaluate().isEmpty) break;
+        if (leaving) expect(button.hitTestable(), findsNothing);
+        final transition = find.ancestor(of: button, matching: find.byType(GlassMaterializeTransition));
+        progress.add(tester.widget<GlassMaterializeTransition>(transition).animation.value);
+      }
+      return progress;
+    }
+
+    void expectGradual({required List<double> progress, required bool arriving}) {
+      expect(progress.where((value) => value > 0 && value < 1), hasLength(greaterThanOrEqualTo(10)));
+      for (var i = 1; i < progress.length; i++) {
+        expect(progress[i], arriving ? greaterThanOrEqualTo(progress[i - 1]) : lessThanOrEqualTo(progress[i - 1]));
+      }
+    }
+
+    testWidgets("cross-fades the notice into the transcript once it loads", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+
+      states.add(
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+      );
+      answer.complete();
+      final fades = <({double notice, double transcript})>[];
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+        await tester.pump(frame);
+        if (notice.evaluate().isEmpty) break;
+        // The notice fades where it was, never moving or giving way at once,
+        // and its Recheck keeps the spinner rather than turning back.
+        expect(tester.getRect(notice), noticeRect);
+        expect(find.byKey(const ValueKey("session_harness_recheck_spinner")), findsOneWidget);
+        expect(opacityOf(tester: tester, finder: find.text("Recheck")), 0);
+        fades.add((
+          notice: opacityOf(tester: tester, finder: notice),
+          transcript: opacityOf(tester: tester, finder: transcript),
+        ));
+      }
+      expect(notice, findsNothing);
+      expect(opacityOf(tester: tester, finder: transcript), 1);
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(find.byType(PregoLaunchStatus), findsNothing);
+      for (var i = 1; i < fades.length; i++) {
+        expect(fades[i].notice, lessThanOrEqualTo(fades[i - 1].notice));
+        expect(fades[i].transcript, greaterThanOrEqualTo(fades[i - 1].transcript));
+      }
+      expect(
+        fades.where((fade) => fade.notice > 0 && fade.notice < 1 && fade.transcript > 0 && fade.transcript < 1),
+        hasLength(greaterThanOrEqualTo(10)),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("leaves the notice where it was when the harness is still blocked", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+
+      states.add(shell());
+      answer.complete();
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 400); elapsed += frame) {
+        await tester.pump(frame);
+        expect(tester.getRect(notice), noticeRect);
+        expect(opacityOf(tester: tester, finder: notice), 1);
+        expect(find.byType(PregoLaunchStatus), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("swaps at once with reduced motion", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      await pressRecheck(tester: tester, states: states.stream, answer: answer);
+
+      states.add(
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+      );
+      answer.complete();
+      await tester.pump(frame);
+      expect(notice, findsNothing);
+      expect(opacityOf(tester: tester, finder: transcript), 1);
+      expect(tester.takeException(), isNull);
+    });
+
+    // Enlarged text on a small screen makes both views taller than the page.
+    for (final enlarged in [false, true]) {
+      testWidgets("cross-fades the notice into the error view when its reload fails (enlarged text: $enlarged)", (
+        tester,
+      ) async {
+        if (enlarged) {
+          tester.view.physicalSize = const Size(320, 480);
+          tester.view.devicePixelRatio = 1;
+          tester.platformDispatcher.textScaleFactorTestValue = 2;
+          addTearDown(tester.view.reset);
+          addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        }
+        final states = StreamController<SessionDetailState>();
+        addTearDown(states.close);
+        final answer = Completer<void>();
+        final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+        final error = find.text("Retry");
+
+        states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
+        answer.complete();
+        final fades = <({double notice, double error})>[];
+        Rect? errorRect;
+        for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+          await tester.pump(frame);
+          // The failed state sizes the slot from its first frame, so the error
+          // view never moves, through the fade or once the notice has gone.
+          errorRect ??= tester.getRect(error);
+          expect(tester.getRect(error), errorRect);
+          if (notice.evaluate().isEmpty) break;
+          // Neither does the leaving notice.
+          expect(tester.getRect(notice), noticeRect);
+          expect(find.byKey(const ValueKey("session_harness_recheck_spinner")), findsOneWidget);
+          fades.add((
+            notice: opacityOf(tester: tester, finder: notice),
+            error: opacityOf(tester: tester, finder: error),
+          ));
+        }
+        expect(notice, findsNothing);
+        expect(opacityOf(tester: tester, finder: error), 1);
+        for (var i = 1; i < fades.length; i++) {
+          expect(fades[i].notice, lessThanOrEqualTo(fades[i - 1].notice));
+          expect(fades[i].error, greaterThanOrEqualTo(fades[i - 1].error));
+        }
+        expect(
+          fades.where((fade) => fade.notice > 0 && fade.notice < 1 && fade.error > 0 && fade.error < 1),
+          hasLength(greaterThanOrEqualTo(10)),
+        );
+        expect(tester.takeException(), isNull);
+      });
+    }
+
+    testWidgets("the leaving notice no longer offers its actions", (tester) async {
+      // A long hint puts the notice's buttons below the error view, which then
+      // covers nothing of them.
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(
+        cubit,
+        states.stream,
+        initialState: SessionDetailState.harnessUnavailable(
+          session: testSession(),
+          interaction: SessionInteractionState.blocked(
+            reason: SessionInteractionBlockedReason.authenticationRequired,
+            displayName: "Claude Code",
+            actionHint: List.filled(8, "Sign in to Claude Code on the computer running the bridge.").join("\n"),
+            refreshError: null,
+          ),
+        ),
+      );
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final settings = find.byKey(const Key("session_harness_settings"));
+      expect(settings.hitTestable(), findsOneWidget);
+
+      states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
+      var leavingFrames = 0;
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+        await tester.pump(frame);
+        if (notice.evaluate().isEmpty) break;
+        leavingFrames++;
+        expect(settings.hitTestable(), findsNothing);
+      }
+      expect(leavingFrames, greaterThanOrEqualTo(10));
+      expect(tester.takeException(), isNull);
+    });
+
+    for (final fromNotice in [true, false]) {
+      testWidgets(
+        "Prompts materializes with the transcript and leaves with it (${fromNotice ? "notice" : "loading"})",
+        (
+          tester,
+        ) async {
+          final states = StreamController<SessionDetailState>();
+          addTearDown(states.close);
+          whenListen(
+            cubit,
+            states.stream,
+            initialState: fromNotice
+                ? shell()
+                : const SessionDetailState.loading(launchHandoff: null, seededComposer: null),
+          );
+          await tester.pumpWidget(_buildApp(cubit: cubit));
+          await tester.pump(const Duration(seconds: 1));
+          final prompts = find.byKey(const Key("session-detail-prompts"));
+          expect(prompts, findsNothing);
+
+          states.add(
+            _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+          );
+          final arriving = await materializing(tester: tester, button: prompts, leaving: false);
+          expect(arriving.last, 1);
+          expectGradual(progress: arriving, arriving: true);
+
+          states.add(shell());
+          final leaving = await materializing(tester: tester, button: prompts, leaving: true);
+          expect(prompts, findsNothing);
+          expectGradual(progress: leaving, arriving: false);
+          expect(tester.takeException(), isNull);
+        },
+      );
+    }
+
+    testWidgets("the menu leaves with the notice when its reload fails and returns with the transcript", (
+      tester,
+    ) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      await pressRecheck(tester: tester, states: states.stream, answer: answer);
+      final menu = find.byKey(const Key("session-detail-more"));
+      expect(menu, findsOneWidget);
+
+      states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
+      answer.complete();
+      final leaving = await materializing(tester: tester, button: menu, leaving: true);
+      expect(menu, findsNothing);
+      expectGradual(progress: leaving, arriving: false);
+
+      states.add(
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+      );
+      final arriving = await materializing(tester: tester, button: menu, leaving: false);
+      expect(arriving.last, 1);
+      expectGradual(progress: arriving, arriving: true);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("an absent Prompts leaves the title its room", (tester) async {
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: shell());
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final menu = find.byKey(const Key("session-detail-more"));
+      final trailing = find.ancestor(
+        of: menu,
+        matching: find.byWidgetPredicate((widget) => widget is Row && widget.spacing == PregoSpacing.md),
+      );
+      expect(tester.getSize(trailing).width, tester.getSize(menu).width);
+    });
+
+    testWidgets("the error view scrolls under enlarged text instead of running past the page", (tester) async {
+      tester.view.physicalSize = const Size(320, 480);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      whenListen(
+        cubit,
+        const Stream<SessionDetailState>.empty(),
+        initialState: const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
+      );
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final error = find.byType(SessionDetailErrorView);
+
+      await tester.drag(error, const Offset(0, -480));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(error).bottom, lessThanOrEqualTo(480));
+      expect(tester.takeException(), isNull);
+    });
   });
 
   for (final hasHistory in [false, true]) {

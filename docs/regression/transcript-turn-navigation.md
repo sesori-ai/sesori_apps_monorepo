@@ -85,7 +85,11 @@ stored or sent to the bridge.
   between the two sizes, so a long prompt that pins its end changes visibly
   but never snaps. Without an index nothing pins there.
 - The phone bar and the desktop toolbar carry a "Prompts" button, before the
-  menu, on a loaded session. It covers the session page with the Prompts
+  menu, on a loaded session. It arrives as the session loads and leaves with the
+  transcript over 200 ms, materializing in the phone bar's glass and fading in the
+  desktop toolbar (at once under reduced motion), rather than popping in or out.
+  While it leaves it takes no taps, and while absent it costs the title no room.
+  It covers the session page with the Prompts
   screen: a "Search prompts" field with a "Close prompts" button, then one row
   per loaded prompt in the transcript's order, each follow-up indented below its
   opener with a smaller, lighter dot on the same rail. A row shows its number,

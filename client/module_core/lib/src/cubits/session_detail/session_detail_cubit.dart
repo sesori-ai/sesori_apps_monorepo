@@ -73,6 +73,7 @@ enum _SessionRefreshTrigger(final String logValue) {
   waitingForConnection("waiting_for_connection"),
   harnessAvailable("harness_available"),
   queuedEvent("queued_event"),
+  recheck("recheck"),
 }
 
 enum _SessionRefreshAction() {
@@ -173,6 +174,10 @@ class SessionDetailCubit(
   late final StreamingTextBuffer _streamingBuffer;
   Future<void>? _activeRefresh;
 
+  /// The reload behind the unavailable shell. Recheck and the harness turning
+  /// available usually ask for one together, so they share it.
+  Future<void>? _shellReload;
+
   /// Bumped whenever an options reload applies. A session reload that started
   /// before that must not put the catalog it fetched back on screen.
   int _optionsGeneration = 0;
@@ -215,14 +220,14 @@ class SessionDetailCubit(
   /// applies anyway.
   bool _reassertViewAfterRefresh = false;
 
-  /// Pending session-scoped SSE events that arrived while the cubit was in
-  /// [SessionDetailLoading]. Replayed once state becomes [SessionDetailLoaded];
-  /// failed loads clear them.
+  /// Pending session-scoped SSE events that arrived while a load was pending
+  /// (see [_holdsEventsForLoad]). Replayed once state becomes
+  /// [SessionDetailLoaded]; failed loads clear them.
   final List<SesoriSessionEvent> _pendingSessionEvents = [];
 
-  /// Pending global SSE events that arrived while the cubit was in
-  /// [SessionDetailLoading]. Replayed once state becomes [SessionDetailLoaded];
-  /// failed loads clear them.
+  /// Pending global SSE events that arrived while a load was pending (see
+  /// [_holdsEventsForLoad]). Replayed once state becomes
+  /// [SessionDetailLoaded]; failed loads clear them.
   final List<SseEvent> _pendingGlobalEvents = [];
 
   /// Fires the [SesoriQuestionAsked] whenever a new question arrives, so the
@@ -392,7 +397,7 @@ class SessionDetailCubit(
         }
       case SessionDetailHarnessUnavailable():
         if (next.canInteract) {
-          unawaited(_runLoadingRefresh(trigger: _SessionRefreshTrigger.queuedEvent));
+          unawaited(_reloadShell(trigger: _SessionRefreshTrigger.queuedEvent));
         } else {
           emit(_harnessUnavailable(session: session, interaction: next));
         }
@@ -404,13 +409,14 @@ class SessionDetailCubit(
   Future<void> recheckHarnessAvailability() async {
     await _pluginManagementService.refresh();
     if (isClosed) return;
-    if (!_interaction.canInteract) {
-      // A blocked reload reads store-only, so it cannot wake the harness. From
-      // the unavailable shell that makes Recheck the user's retry as well: the
-      // read may have failed for a reason enabling the harness would not fix.
-      if (state is SessionDetailHarnessUnavailable) await reload();
+    // A blocked reload reads store-only, so it cannot wake the harness. From
+    // the unavailable shell that makes Recheck the user's retry as well: the
+    // read may have failed for a reason enabling the harness would not fix.
+    if (state is SessionDetailHarnessUnavailable) {
+      await _reloadShell(trigger: _SessionRefreshTrigger.recheck);
       return;
     }
+    if (!_interaction.canInteract) return;
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
       // Recheck shows it is checking until this returns, so it waits for the
@@ -422,10 +428,15 @@ class SessionDetailCubit(
         await refresh;
         if (_activeRefresh case final queued? when !identical(queued, refresh)) await queued;
       }
-    } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
+    } else if (state is SessionDetailFailed) {
       await reload();
     }
   }
+
+  /// Reloads behind the unavailable shell, which stays up until the answer
+  /// replaces it or leaves it as it was.
+  Future<void> _reloadShell({required _SessionRefreshTrigger trigger}) =>
+      _shellReload ??= _runLoadingRefresh(trigger: trigger).whenComplete(() => _shellReload = null);
 
   // ---------------------------------------------------------------------------
   // Loading
@@ -436,15 +447,19 @@ class SessionDetailCubit(
     final deferredPartEventSequence = _deferredPartEvents.latestSequence;
     _activeLoadingRefreshes.update(connectionGeneration, (count) => count + 1, ifAbsent: () => 1);
     final previous = state;
-    final launchHandoff = previous.pendingLaunchHandoff;
-    emit(
-      _withQueue(
-        loading: SessionDetailLoading(
-          launchHandoff: launchHandoff,
-          seededComposer: previous is SessionDetailLoading ? previous.seededComposer : null,
+    // The unavailable shell already shows what this screen still owes, and it
+    // stays up until the answer: Recheck shows the check meanwhile, so a
+    // harness still blocked leaves the notice where it was.
+    if (previous is! SessionDetailHarnessUnavailable) {
+      emit(
+        _withQueue(
+          loading: SessionDetailLoading(
+            launchHandoff: previous.pendingLaunchHandoff,
+            seededComposer: previous is SessionDetailLoading ? previous.seededComposer : null,
+          ),
         ),
-      ),
-    );
+      );
+    }
     final parkEpochAtFetch = _parkEpoch;
     late final SessionDetailMetadataLoadResult metadataResult;
     SessionDetailLoadResult? result;
@@ -511,6 +526,7 @@ class SessionDetailCubit(
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
         } else {
+          _clearBufferedEvents();
           emit(
             SessionDetailState.failed(
               reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
@@ -1315,8 +1331,16 @@ class SessionDetailCubit(
   // SSE event processing
   // ---------------------------------------------------------------------------
 
+  /// Whether live events wait to replay onto a pending load's answer: while
+  /// loading, and while the unavailable shell stays up over its reload.
+  bool get _holdsEventsForLoad => switch (state) {
+    SessionDetailLoading() => true,
+    SessionDetailHarnessUnavailable() => _activeLoadingRefreshes.isNotEmpty,
+    SessionDetailLoaded() || SessionDetailFailed() => false,
+  };
+
   void _handleEvent(SesoriSessionEvent event) {
-    if (state is SessionDetailLoading) {
+    if (_holdsEventsForLoad) {
       _pendingSessionEvents.add(event);
       return;
     }
@@ -1387,7 +1411,7 @@ class SessionDetailCubit(
   }
 
   void _handleGlobalEvent(SseEvent event) {
-    if (state is SessionDetailLoading) {
+    if (_holdsEventsForLoad) {
       if (_isRelevantGlobalEvent(event)) {
         _pendingGlobalEvents.add(event);
       }

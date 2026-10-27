@@ -232,81 +232,101 @@ class const DesktopSessionDetailView({
           : null,
       title: title,
       subtitle: null,
+      // One group, whose actions bring their own gaps, so the toolbar's spacing
+      // never sees an empty slot.
       actions: [
-        if (onShowDiffs != null)
-          BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
-            builder: (context, summary) => PregoButtonsSolid(
-              key: const Key("desktop-session-page-changes"),
-              label: loc.sessionChangesLabel,
-              leadingIcon: TablerRegular.git_compare,
-              labelTrailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: PregoButtonsSolidSize.sm,
-              onPressed: onShowDiffs,
-            ),
-          ),
-        if (onShowPrompts != null)
-          Builder(
-            builder: (buttonContext) => IconButton(
-              key: const Key("desktop-session-page-prompts"),
-              tooltip: loc.transcriptPrompts,
-              onPressed: () => onShowPrompts(origin: buttonContext.globalCentre),
-              icon: const Icon(TablerRegular.list_details, size: PregoIconSize.md),
-            ),
-          ),
-        PregoAnchorMenu(
-          flat: true,
-          menuWidth: 220,
-          acquireOpenLease: () => context.read<SessionListCubit>().retainActionScope(),
-          entriesBuilder: () => session == null
-              ? const []
-              : [
-                  PregoMenuItem(
-                    leadingIcon: TablerRegular.plug,
-                    title: loc.mcpMenuLabel,
-                    subtitle: null,
-                    isSelected: false,
-                    shortcutLabel: null,
-                    onTap: () => showMcpInventory(
-                      context: context,
-                      request: McpInventoryRequest(
-                        pluginId: session.pluginId,
-                        scope: McpSessionScope(sessionId: session.id),
+        Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SessionDetailActionSwitcher(
+              surface: SessionDetailActionSurface.plain,
+              gapAfter: PregoSpacing.md,
+              child: onShowDiffs == null
+                  ? null
+                  : BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
+                      builder: (context, summary) => PregoButtonsSolid(
+                        key: const Key("desktop-session-page-changes"),
+                        label: loc.sessionChangesLabel,
+                        leadingIcon: TablerRegular.git_compare,
+                        labelTrailing: sessionChangesCounts(
+                          state: summary,
+                          style: context.prego.textTheme.textSm.medium,
+                        ),
+                        hierarchy: PregoButtonsSolidHierarchy.secondary,
+                        size: PregoButtonsSolidSize.sm,
+                        onPressed: onShowDiffs,
                       ),
-                      createService: getIt.call<McpService>,
-                      authenticationService: getIt.call<McpAuthenticationService>,
-                      mutationsAllowed:
-                          !readOnly &&
-                          session.parentID == null &&
-                          session.time?.archived == null &&
-                          !(state is SessionDetailLoaded && state.isArchived),
                     ),
-                  ),
-                  if (!readOnly &&
-                      session.time?.archived == null &&
-                      !(state is SessionDetailLoaded && state.isArchived))
-                    sessionAutoContinuationMenuEntry(context: context, session: session),
-                  PregoMenuItem(
-                    leadingIcon: TablerRegular.mail,
-                    title: loc.sessionListMarkUnread,
-                    subtitle: null,
-                    isSelected: false,
-                    shortcutLabel: defaultTargetPlatform == TargetPlatform.macOS ? "⇧⌘U" : "Ctrl+Shift+U",
-                    onTap: () => _markUnread(context: context, session: session),
-                  ),
-                  ...sessionActions.sessionMenuEntries(
-                    context: context,
-                    cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
-                    session: session,
-                    readEntry: SessionReadMenuEntry.none,
-                  ),
-                ],
-          triggerBuilder: (context, openMenu) => IconButton(
-            key: const Key("desktop-session-page-more"),
-            tooltip: loc.sessionDetailMoreActions,
-            onPressed: session == null ? null : openMenu,
-            icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
-          ),
+            ),
+            SessionDetailActionSwitcher(
+              surface: SessionDetailActionSurface.plain,
+              gapAfter: PregoSpacing.md,
+              child: onShowPrompts == null
+                  ? null
+                  : Builder(
+                      builder: (buttonContext) => IconButton(
+                        key: const Key("desktop-session-page-prompts"),
+                        tooltip: loc.transcriptPrompts,
+                        onPressed: () => onShowPrompts(origin: buttonContext.globalCentre),
+                        icon: const Icon(TablerRegular.list_details, size: PregoIconSize.md),
+                      ),
+                    ),
+            ),
+            PregoAnchorMenu(
+              flat: true,
+              menuWidth: 220,
+              acquireOpenLease: () => context.read<SessionListCubit>().retainActionScope(),
+              entriesBuilder: () => session == null
+                  ? const []
+                  : [
+                      PregoMenuItem(
+                        leadingIcon: TablerRegular.plug,
+                        title: loc.mcpMenuLabel,
+                        subtitle: null,
+                        isSelected: false,
+                        shortcutLabel: null,
+                        onTap: () => showMcpInventory(
+                          context: context,
+                          request: McpInventoryRequest(
+                            pluginId: session.pluginId,
+                            scope: McpSessionScope(sessionId: session.id),
+                          ),
+                          createService: getIt.call<McpService>,
+                          authenticationService: getIt.call<McpAuthenticationService>,
+                          mutationsAllowed:
+                              !readOnly &&
+                              session.parentID == null &&
+                              session.time?.archived == null &&
+                              !(state is SessionDetailLoaded && state.isArchived),
+                        ),
+                      ),
+                      if (!readOnly &&
+                          session.time?.archived == null &&
+                          !(state is SessionDetailLoaded && state.isArchived))
+                        sessionAutoContinuationMenuEntry(context: context, session: session),
+                      PregoMenuItem(
+                        leadingIcon: TablerRegular.mail,
+                        title: loc.sessionListMarkUnread,
+                        subtitle: null,
+                        isSelected: false,
+                        shortcutLabel: defaultTargetPlatform == TargetPlatform.macOS ? "⇧⌘U" : "Ctrl+Shift+U",
+                        onTap: () => _markUnread(context: context, session: session),
+                      ),
+                      ...sessionActions.sessionMenuEntries(
+                        context: context,
+                        cubit: context.read<SessionListCubit>()..updateActionSession(session: session),
+                        session: session,
+                        readEntry: SessionReadMenuEntry.none,
+                      ),
+                    ],
+              triggerBuilder: (context, openMenu) => IconButton(
+                key: const Key("desktop-session-page-more"),
+                tooltip: loc.sessionDetailMoreActions,
+                onPressed: session == null ? null : openMenu,
+                icon: const Icon(TablerRegular.dots, size: PregoIconSize.md),
+              ),
+            ),
+          ],
         ),
       ],
     );
