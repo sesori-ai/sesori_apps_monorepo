@@ -2899,4 +2899,241 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("half-written idea"), findsOneWidget);
   });
+
+  group("the composer and a card trade places", () {
+    const frame = Duration(milliseconds: 16);
+    const loginRequired = SessionOptionsRepositoryAuthenticationRequired(
+      actionHint: "Run the harness locally and use /login.",
+    );
+    final card = find.byKey(const Key("new_session_login_required"));
+    final composer = find.byType(PromptInput);
+    final header = find.byType(NewSessionHeader);
+    final worktreeToggle = find.byKey(const Key("new_session_dedicated_workspace"));
+
+    /// Answers the options with [first] and every later load with the
+    /// returned completer.
+    Completer<SessionOptionsRepositoryResult> stubOptions({required SessionOptionsRepositoryResult first}) {
+      final later = Completer<SessionOptionsRepositoryResult>();
+      var loads = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) => loads++ == 0 ? Future.value(first) : later.future);
+      return later;
+    }
+
+    Future<void> pumpPhone(WidgetTester tester) async {
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_buildApp());
+      await tester.pumpAndSettle();
+    }
+
+    /// How opaque [finder]'s widget paints, or null while it is not on screen.
+    double? opacityOf(WidgetTester tester, Finder finder) {
+      if (finder.evaluate().isEmpty) return null;
+      var opacity = 1.0;
+      for (final fade in tester.widgetList<FadeTransition>(
+        find.ancestor(of: finder, matching: find.byType(FadeTransition)),
+      )) {
+        opacity *= fade.opacity.value;
+      }
+      return opacity;
+    }
+
+    /// The top edge of the room the card and the composer share, where the
+    /// options' scroll view above it ends.
+    double roomTop(WidgetTester tester) => tester.getRect(find.byKey(const Key("new_session_options_scroll"))).bottom;
+
+    /// Steps 16 ms frames until the swap has long finished, expecting the
+    /// header and the options above it, and the card and the composer each
+    /// while on screen, to hold still, and returns every frame's opacities
+    /// and room top.
+    Future<List<({double? card, double? composer, double roomTop})>> stepThroughSwap({
+      required WidgetTester tester,
+      required Rect cardRect,
+      required Rect composerRect,
+    }) async {
+      final headerRect = tester.getRect(header);
+      final toggleRect = tester.getRect(worktreeToggle);
+      final frames = [(card: opacityOf(tester, card), composer: opacityOf(tester, composer), roomTop: roomTop(tester))];
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 400); elapsed += frame) {
+        await tester.pump(frame);
+        expect(tester.getRect(header), headerRect);
+        expect(tester.getRect(worktreeToggle), toggleRect);
+        if (card.evaluate().isNotEmpty) expect(tester.getRect(card), cardRect);
+        if (composer.evaluate().isNotEmpty) expect(tester.getRect(composer), composerRect);
+        frames.add((card: opacityOf(tester, card), composer: opacityOf(tester, composer), roomTop: roomTop(tester)));
+      }
+      return frames;
+    }
+
+    /// Expects [frames] to show [leaving] fading out as [arriving] fades in
+    /// over it, both on screen together, and the room's top edge easing by
+    /// [travel] over many frames rather than jumping.
+    void expectCrossFade({
+      required List<({double? card, double? composer, double roomTop})> frames,
+      required double? Function(({double? card, double? composer, double roomTop})) leaving,
+      required double? Function(({double? card, double? composer, double roomTop})) arriving,
+      required double travel,
+    }) {
+      final together = [
+        for (final frame in frames)
+          if ((leaving(frame), arriving(frame)) case (final out?, final into?) when out > 0 && into < 1) frame,
+      ];
+      expect(together.length, greaterThan(5));
+      final outs = <double>[for (final frame in frames) ?leaving(frame)];
+      final ins = <double>[for (final frame in frames) ?arriving(frame)];
+      expect(outs, orderedEquals(outs.toList()..sort((a, b) => b.compareTo(a))));
+      expect(ins, orderedEquals(ins.toList()..sort()));
+      expect(leaving(frames.last), isNull);
+      expect(arriving(frames.last), 1);
+
+      final tops = [for (final frame in frames) frame.roomTop];
+      expect(tops.last - tops.first, moreOrLessEquals(travel, epsilon: 0.5));
+      for (var index = 1; index < tops.length; index++) {
+        final step = tops[index] - tops[index - 1];
+        expect(step.sign, anyOf(0, travel.sign));
+        // The steepest 16 ms of the 200 ms ease covers about an eighth.
+        expect(step.abs(), lessThan(travel.abs() / 6));
+      }
+    }
+
+    testWidgets("Recheck's answer fades the login card out as the composer fades in over it", (tester) async {
+      final recheck = stubOptions(first: loginRequired);
+      await pumpPhone(tester);
+      final cardRect = tester.getRect(card);
+      final startTop = roomTop(tester);
+
+      // The press itself shows in place: the card neither fades nor moves.
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      for (var index = 0; index < 20; index++) {
+        await tester.pump(frame);
+        expect(opacityOf(tester, card), 1);
+        expect(tester.getRect(card), cardRect);
+        expect(composer, findsNothing);
+      }
+      expect(roomTop(tester), startTop);
+
+      recheck.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      await tester.pump();
+      final composerRect = tester.getRect(composer);
+      // Both rest on the bottom edge.
+      expect(composerRect.bottom, cardRect.bottom);
+      final frames = await stepThroughSwap(tester: tester, cardRect: cardRect, composerRect: composerRect);
+
+      expectCrossFade(
+        frames: frames,
+        leaving: (frame) => frame.card,
+        arriving: (frame) => frame.composer,
+        travel: cardRect.height - composerRect.height,
+      );
+      expect(find.byType(AgentModelButtons), findsOneWidget);
+    });
+
+    testWidgets("a harness found logged out fades the composer out under the login card, keeping its draft", (
+      tester,
+    ) async {
+      final refresh = stubOptions(
+        first: SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: true),
+      );
+      await pumpPhone(tester);
+      await enterTypingMode(tester);
+      await tester.enterText(find.byType(EditableText), "half-written idea");
+      await tester.pump();
+      final promptState = tester.state(composer);
+      final composerRect = tester.getRect(composer);
+
+      refresh.complete(loginRequired);
+      await tester.pump();
+      final cardRect = tester.getRect(card);
+      expect(cardRect.bottom, composerRect.bottom);
+      final frames = await stepThroughSwap(tester: tester, cardRect: cardRect, composerRect: composerRect);
+
+      expectCrossFade(
+        frames: frames,
+        leaving: (frame) => frame.composer,
+        arriving: (frame) => frame.card,
+        travel: composerRect.height - cardRect.height,
+      );
+
+      // Behind the card the composer is the same one, draft and all, and it
+      // comes back as it was.
+      final relogin = Completer<SessionOptionsRepositoryResult>();
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) => relogin.future);
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      await tester.pump();
+      relogin.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+      expect(tester.state(composer), same(promptState));
+      expect(find.text("half-written idea"), findsOneWidget);
+    });
+
+    testWidgets("pills arriving while the composer is typed in neither fade it nor take its focus", (tester) async {
+      final options = Completer<SessionOptionsRepositoryResult>();
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) => options.future);
+      tester.view.physicalSize = const Size(390, 844);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      await tester.pumpWidget(_buildApp());
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.tap(find.byIcon(TablerRegular.keyboard));
+      await tester.pump(const Duration(milliseconds: 500));
+      await tester.enterText(find.byType(EditableText), "half-written idea");
+      await tester.pump();
+      final field = find.byType(EditableText);
+      expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+      final composerBottom = tester.getRect(composer).bottom;
+
+      options.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      for (var index = 0; index < 25; index++) {
+        await tester.pump(frame);
+        expect(opacityOf(tester, composer), 1);
+        expect(tester.getRect(composer).bottom, composerBottom);
+        expect(tester.widget<EditableText>(field).focusNode.hasFocus, isTrue);
+      }
+      expect(find.byType(AgentModelButtons), findsOneWidget);
+      expect(find.text("half-written idea"), findsOneWidget);
+    });
+
+    testWidgets("reduced motion swaps the login card for the composer in one frame", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final recheck = stubOptions(first: loginRequired);
+      await pumpPhone(tester);
+      final cardRect = tester.getRect(card);
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      await tester.pump();
+
+      recheck.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      await tester.pump();
+      expect(card, findsNothing);
+      expect(opacityOf(tester, composer), 1);
+      final settledTop = roomTop(tester);
+      expect(settledTop - cardRect.top, cardRect.height - tester.getRect(composer).height);
+      for (var index = 0; index < 15; index++) {
+        await tester.pump(frame);
+        expect(roomTop(tester), settledTop);
+      }
+    });
+  });
 }

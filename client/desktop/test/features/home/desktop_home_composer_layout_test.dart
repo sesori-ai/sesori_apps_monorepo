@@ -51,13 +51,33 @@ const _frame = Duration(milliseconds: 16);
 const _folder = ProjectSummary(id: "one", name: "demo-app", path: "/one", time: null);
 const _scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
 
+final _options = NewSessionOptionsData(
+  agents: const [
+    AgentInfo(
+      name: "build",
+      description: "Build",
+      model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
+      mode: AgentMode.primary,
+    ),
+  ],
+  providers: testProviderListResponse().items,
+  commands: const [],
+  selectedAgent: "build",
+  selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
+  fastMode: false,
+  stagedCommand: null,
+  availableVariants: const [],
+);
+
 /// The home composer as the bridge answers it part by part: harness discovery,
 /// the project's worktree check and the agents and models each answer when
-/// their completer does.
+/// their completer does. Option loads after the first answer from [reloads]
+/// in turn while any are queued.
 class const _Answers({
   required final Completer<ApiResponse<NewSessionPluginDiscovery>> discovery,
   required final Completer<ApiResponse<Project>> project,
   required final Completer<NewSessionOptionsLoadResult> options,
+  required final List<Completer<NewSessionOptionsLoadResult>> reloads,
 }) {
   void discover({required List<PluginMetadata> plugins}) => discovery.complete(
     ApiResponse.success(
@@ -84,27 +104,7 @@ class const _Answers({
   );
 
   void loadOptions() => options.complete(
-    NewSessionOptionsLoaded(
-      options: NewSessionOptionsData(
-        agents: const [
-          AgentInfo(
-            name: "build",
-            description: "Build",
-            model: AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
-            mode: AgentMode.primary,
-          ),
-        ],
-        providers: testProviderListResponse().items,
-        commands: const [],
-        selectedAgent: "build",
-        selectedAgentModel: const AgentModel(providerID: "anthropic", modelID: "claude-3-5-sonnet", variant: null),
-        fastMode: false,
-        stagedCommand: null,
-        availableVariants: const [],
-      ),
-      source: NewSessionOptionsSource.aggregate,
-      isStale: false,
-    ),
+    NewSessionOptionsLoaded(options: _options, source: NewSessionOptionsSource.aggregate, isStale: false),
   );
 }
 
@@ -124,7 +124,7 @@ void main() {
     stubVoiceTranscriptionService(service: voice);
     getIt.registerSingleton<VoiceTranscriptionService>(voice);
 
-    final answers = _Answers(discovery: Completer(), project: Completer(), options: Completer());
+    final answers = _Answers(discovery: Completer(), project: Completer(), options: Completer(), reloads: []);
     final pluginService = _MockPluginService();
     when(
       () => pluginService.discover(
@@ -142,7 +142,7 @@ void main() {
         restoredSelection: any(named: "restoredSelection"),
         previousOptions: any(named: "previousOptions"),
       ),
-    ).thenAnswer((_) => answers.options.future);
+    ).thenAnswer((_) => answers.reloads.isEmpty ? answers.options.future : answers.reloads.removeAt(0).future);
     final projects = MockProjectRepository();
     when(() => projects.getProject(projectId: any(named: "projectId"))).thenAnswer((_) => answers.project.future);
     final connection = MockConnectionService();
@@ -390,5 +390,185 @@ void main() {
     expect(notice, findsOneWidget);
     expect(find.byType(PregoShimmer), findsNothing);
     expect(harness, findsNothing);
+  });
+
+  group("the composer and the login card trade places", () {
+    const loginHint = "Run the harness locally and use /login.";
+    final card = find.byKey(const Key("new_session_login_required"));
+
+    /// How opaque [finder]'s widget paints, or null while it is not on screen.
+    double? opacityOf(WidgetTester tester, Finder finder) {
+      if (finder.evaluate().isEmpty) return null;
+      var opacity = 1.0;
+      for (final fade in tester.widgetList<FadeTransition>(
+        find.ancestor(of: finder, matching: find.byType(FadeTransition)),
+      )) {
+        opacity *= fade.opacity.value;
+      }
+      return opacity;
+    }
+
+    /// Brings the home to rest on [first] for its options, with [reload]
+    /// queued to answer the next load.
+    Future<void> pumpAnswered({
+      required WidgetTester tester,
+      required NewSessionOptionsLoadResult first,
+      required Completer<NewSessionOptionsLoadResult> reload,
+    }) async {
+      final answers = await pumpHome(tester: tester, project: _folder);
+      answers.discover(plugins: const [_claudeCode]);
+      answers.checkProject(summary: _folder, supportsDedicatedWorktrees: true);
+      await landAnswer(tester);
+      answers.reloads.add(reload);
+      answers.options.complete(first);
+      await landAnswer(tester);
+    }
+
+    /// Steps 16 ms frames from the one that applies an answer until long
+    /// after, expecting the card and the composer each to hold still while on
+    /// screen, the pills and the worktree row to keep to the heading, and
+    /// returns each frame's opacities and heading top, and the swap's travel:
+    /// half the height the room gives up.
+    Future<({List<({double? card, double? composer, double titleTop})> frames, double travel})> stepThroughSwap({
+      required WidgetTester tester,
+      required bool toComposer,
+    }) async {
+      // Zero time, but timed, so a timer due now runs as well as microtasks:
+      // a logout found by a background refresh lands through one.
+      await tester.pump(Duration.zero);
+      final cardRect = tester.getRect(card);
+      final composerRect = tester.getRect(composer);
+      // Both centre on the room's middle, which the centred column holds.
+      expect(cardRect.center.dy, moreOrLessEquals(composerRect.center.dy, epsilon: 0.5));
+      final harnessGap = tester.getRect(harness).top - tester.getRect(title).top;
+      final worktreeGap = tester.getRect(worktreeSwitch).top - tester.getRect(title).top;
+      final frames = <({double? card, double? composer, double titleTop})>[];
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 400); elapsed += _frame) {
+        final titleTop = tester.getRect(title).top;
+        expect(tester.getRect(harness).top - titleTop, moreOrLessEquals(harnessGap, epsilon: 0.01));
+        expect(tester.getRect(worktreeSwitch).top - titleTop, moreOrLessEquals(worktreeGap, epsilon: 0.01));
+        if (card.evaluate().isNotEmpty) expect(tester.getRect(card), cardRect);
+        if (composer.evaluate().isNotEmpty) expect(tester.getRect(composer), composerRect);
+        frames.add((card: opacityOf(tester, card), composer: opacityOf(tester, composer), titleTop: titleTop));
+        await tester.pump(_frame);
+      }
+      final shrink = toComposer ? cardRect.height - composerRect.height : composerRect.height - cardRect.height;
+      return (frames: frames, travel: shrink / 2);
+    }
+
+    /// Expects [frames] to show [leaving] fading out as [arriving] fades in
+    /// over it, both on screen together, and the heading gliding by [travel]
+    /// over many frames rather than jumping.
+    void expectCrossFade({
+      required List<({double? card, double? composer, double titleTop})> frames,
+      required double? Function(({double? card, double? composer, double titleTop})) leaving,
+      required double? Function(({double? card, double? composer, double titleTop})) arriving,
+      required double travel,
+    }) {
+      final together = [
+        for (final frame in frames)
+          if ((leaving(frame), arriving(frame)) case (final out?, final into?) when out > 0 && into < 1) frame,
+      ];
+      expect(together.length, greaterThan(5));
+      final outs = <double>[for (final frame in frames) ?leaving(frame)];
+      final ins = <double>[for (final frame in frames) ?arriving(frame)];
+      expect(outs, orderedEquals(outs.toList()..sort((a, b) => b.compareTo(a))));
+      expect(ins, orderedEquals(ins.toList()..sort()));
+      expect(leaving(frames.last), isNull);
+      expect(arriving(frames.last), 1);
+
+      final tops = [for (final frame in frames) frame.titleTop];
+      expect(travel.abs(), greaterThan(10));
+      expect(tops.last - tops.first, moreOrLessEquals(travel, epsilon: 0.5));
+      for (var index = 1; index < tops.length; index++) {
+        final step = tops[index] - tops[index - 1];
+        expect(step.sign, anyOf(0, travel.sign));
+        // The steepest 16 ms of the 200 ms ease covers about an eighth.
+        expect(step.abs(), lessThan(travel.abs() / 6));
+      }
+    }
+
+    testWidgets("Recheck's answer fades the card out as the composer fades in, the heading gliding down", (
+      tester,
+    ) async {
+      final recheck = Completer<NewSessionOptionsLoadResult>();
+      await pumpAnswered(
+        tester: tester,
+        first: const NewSessionOptionsAuthenticationRequiredUnavailable(actionHint: loginHint),
+        reload: recheck,
+      );
+      expect(card, findsOneWidget);
+      expect(composer, findsNothing);
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      await landAnswer(tester);
+
+      recheck.complete(
+        NewSessionOptionsLoaded(options: _options, source: NewSessionOptionsSource.aggregate, isStale: false),
+      );
+      final swap = await stepThroughSwap(tester: tester, toComposer: true);
+
+      expectCrossFade(
+        frames: swap.frames,
+        leaving: (frame) => frame.card,
+        arriving: (frame) => frame.composer,
+        travel: swap.travel,
+      );
+      expect(find.byType(AgentModelButtons), findsOneWidget);
+    });
+
+    testWidgets("a harness found logged out fades the composer out under the card, the heading gliding up", (
+      tester,
+    ) async {
+      final refresh = Completer<NewSessionOptionsLoadResult>();
+      await pumpAnswered(
+        tester: tester,
+        first: NewSessionOptionsLoaded(options: _options, source: NewSessionOptionsSource.aggregate, isStale: true),
+        reload: refresh,
+      );
+      expect(card, findsNothing);
+
+      refresh.complete(
+        NewSessionOptionsAuthenticationRequiredRetained(
+          actionHint: loginHint,
+          options: _options,
+          source: NewSessionOptionsSource.aggregate,
+        ),
+      );
+      final swap = await stepThroughSwap(tester: tester, toComposer: false);
+
+      expectCrossFade(
+        frames: swap.frames,
+        leaving: (frame) => frame.composer,
+        arriving: (frame) => frame.card,
+        travel: swap.travel,
+      );
+    });
+
+    testWidgets("reduced motion swaps the card for the composer in one frame", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final recheck = Completer<NewSessionOptionsLoadResult>();
+      await pumpAnswered(
+        tester: tester,
+        first: const NewSessionOptionsAuthenticationRequiredUnavailable(actionHint: loginHint),
+        reload: recheck,
+      );
+      final titleTop = tester.getRect(title).top;
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      await landAnswer(tester);
+
+      recheck.complete(
+        NewSessionOptionsLoaded(options: _options, source: NewSessionOptionsSource.aggregate, isStale: false),
+      );
+      await tester.pump();
+      expect(card, findsNothing);
+      expect(opacityOf(tester, composer), 1);
+      final settledTop = tester.getRect(title).top;
+      expect(settledTop, greaterThan(titleTop + 10));
+      for (var index = 0; index < 15; index++) {
+        await tester.pump(_frame);
+        expect(tester.getRect(title).top, settledTop);
+      }
+    });
   });
 }
