@@ -677,7 +677,14 @@ void main() {
           // The two move as one, neither popping in or out.
           expect(opacityOf(prompts), opacityOf(changes));
           seen.add(opacityOf(changes));
+          if (!arriving) {
+            // Leaving, they no longer act on the transcript they leave.
+            expect(changes.hitTestable(), findsNothing);
+            expect(prompts.hitTestable(), findsNothing);
+            expect(find.semantics.byLabel(RegExp("Changes")), findsNothing);
+          }
         }
+        expect(find.semantics.byLabel(RegExp("Changes")), arriving ? findsOneWidget : findsNothing);
         expect(changes, arriving ? findsOneWidget : findsNothing);
         expect(prompts, arriving ? findsOneWidget : findsNothing);
         expect(seen.where((opacity) => opacity > 0 && opacity < 1), hasLength(greaterThanOrEqualTo(10)));
@@ -697,6 +704,25 @@ void main() {
       await expectFade(to: loaded, arriving: true);
       await expectFade(to: const SessionDetailState.failed(reason: RemoteFailureReason.unknown), arriving: false);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("absent Changes and Prompts leave the title its room", (tester) async {
+      await pumpPage(
+        tester,
+        session: _session,
+        initialState: const SessionDetailState.harnessUnavailable(
+          session: _session,
+          interaction: SessionInteractionState.blocked(
+            reason: SessionInteractionBlockedReason.authenticationRequired,
+            displayName: "Claude Code",
+            actionHint: null,
+            refreshError: null,
+          ),
+        ),
+      );
+      final title = find.descendant(of: find.byType(DesktopPageToolbar), matching: find.byType(Expanded)).first;
+      final more = find.byKey(const Key("desktop-session-page-more"));
+      expect(tester.getRect(more).left - tester.getRect(title).right, PregoSpacing.md);
     });
 
     testWidgets(

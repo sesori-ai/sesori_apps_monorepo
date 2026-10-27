@@ -68,9 +68,13 @@ enum SessionDetailActionSurface() {
 /// A header action present only while [child] is non-null, such as Prompts on
 /// a loaded session. It arrives and leaves with the transcript, in its time,
 /// rather than popping as the page changes state; at once under reduced motion.
+///
+/// The action brings [gapAfter], its space before the next one, so an absent
+/// action costs the header nothing: place these in a row without spacing.
 class const SessionDetailActionSwitcher({
   super.key,
   required final SessionDetailActionSurface surface,
+  required final double gapAfter,
   required final Widget? child,
 }) extends StatelessWidget {
   @override
@@ -86,9 +90,32 @@ class const SessionDetailActionSwitcher({
       ),
       SessionDetailActionSurface.plain => (child, animation) => FadeTransition(opacity: animation, child: child),
     },
-    child: child,
+    layoutBuilder: (current, previous) => Stack(
+      alignment: Alignment.center,
+      children: [
+        for (final child in previous) _switcherEntry(key: child.key, leaving: true, child: child),
+        if (current != null) _switcherEntry(key: current.key, leaving: false, child: current),
+      ],
+    ),
+    child: switch (child) {
+      final child? => Padding(
+        padding: EdgeInsetsDirectional.only(end: gapAfter),
+        child: child,
+      ),
+      null => null,
+    },
   );
 }
+
+/// An [AnimatedSwitcher] child as its layout holds it. Once leaving, it takes no
+/// taps and drops out of semantics, so nothing acts on the state it leaves. The
+/// same wrapper, keyed like the child, holds it either way, so turning from
+/// current to previous does not remount it.
+Widget _switcherEntry({required Key? key, required bool leaving, required Widget child}) => IgnorePointer(
+  key: key,
+  ignoring: leaving,
+  child: ExcludeSemantics(excluding: leaving, child: child),
+);
 
 class const SessionDetailBody({
   super.key,
@@ -528,7 +555,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // Whatever replaces the unavailable notice, a load or a failure,
     // cross-fades with it. Every other change updates the content in place.
     // The leaving notice holds still, so its Recheck keeps the spinner rather
-    // than turning back as it fades.
+    // than turning back as it fades, and it no longer takes taps.
     final content = AnimatedSwitcher(
       duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
@@ -536,8 +563,18 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       layoutBuilder: (current, previous) => Stack(
         fit: StackFit.passthrough,
         children: [
-          for (final child in previous) TickerMode(key: child.key, enabled: false, child: child),
-          if (current != null) TickerMode(key: current.key, enabled: true, child: current),
+          for (final child in previous)
+            _switcherEntry(
+              key: child.key,
+              leaving: true,
+              child: TickerMode(enabled: false, child: child),
+            ),
+          if (current != null)
+            _switcherEntry(
+              key: current.key,
+              leaving: false,
+              child: TickerMode(enabled: true, child: current),
+            ),
         ],
       ),
       child: KeyedSubtree(
@@ -803,6 +840,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     final actions = <Widget>[
       SessionDetailActionSwitcher(
         surface: SessionDetailActionSurface.glass,
+        gapAfter: PregoSpacing.md,
         child: openPrompts == null
             ? null
             : Builder(
@@ -818,6 +856,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       // read-only entries can also inspect a child session.
       SessionDetailActionSwitcher(
         surface: SessionDetailActionSurface.glass,
+        gapAfter: 0,
         child: session == null || (openDiffs == null && menuEntriesBuilder == null && !canConfigureContinuation)
             ? null
             : PregoAnchorMenu(
@@ -874,7 +913,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       // into literal slashes and make the parent URL unmatchable.
       onBack: widget.onBack,
       automaticallyImplyLeading: widget.onBack != null,
-      actions: actions,
+      // One group, whose actions bring their own gaps, so the bar's spacing
+      // never sees an empty slot.
+      actions: [Row(mainAxisSize: MainAxisSize.min, children: actions)],
       slivers: [
         // The loaded view is a Column with an Expanded chat and a pinned
         // composer. With reserveBarSpace: false there is no top spacer, so

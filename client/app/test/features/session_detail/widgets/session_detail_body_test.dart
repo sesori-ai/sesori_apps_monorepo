@@ -2587,12 +2587,17 @@ void main() {
     }
 
     /// The materialize progress of [button]'s glass, frame by frame, until it
-    /// has had time to settle or has left.
-    Future<List<double>> materializing({required WidgetTester tester, required Finder button}) async {
+    /// has had time to settle or has left. A [leaving] button takes no taps.
+    Future<List<double>> materializing({
+      required WidgetTester tester,
+      required Finder button,
+      required bool leaving,
+    }) async {
       final progress = <double>[];
       for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
         await tester.pump(frame);
         if (button.evaluate().isEmpty) break;
+        if (leaving) expect(button.hitTestable(), findsNothing);
         final transition = find.ancestor(of: button, matching: find.byType(GlassMaterializeTransition));
         progress.add(tester.widget<GlassMaterializeTransition>(transition).animation.value);
       }
@@ -2731,6 +2736,41 @@ void main() {
       });
     }
 
+    testWidgets("the leaving notice no longer offers its actions", (tester) async {
+      // A long hint puts the notice's buttons below the error view, which then
+      // covers nothing of them.
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      whenListen(
+        cubit,
+        states.stream,
+        initialState: SessionDetailState.harnessUnavailable(
+          session: testSession(),
+          interaction: SessionInteractionState.blocked(
+            reason: SessionInteractionBlockedReason.authenticationRequired,
+            displayName: "Claude Code",
+            actionHint: List.filled(8, "Sign in to Claude Code on the computer running the bridge.").join("\n"),
+            refreshError: null,
+          ),
+        ),
+      );
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final settings = find.byKey(const Key("session_harness_settings"));
+      expect(settings.hitTestable(), findsOneWidget);
+
+      states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
+      var leavingFrames = 0;
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+        await tester.pump(frame);
+        if (notice.evaluate().isEmpty) break;
+        leavingFrames++;
+        expect(settings.hitTestable(), findsNothing);
+      }
+      expect(leavingFrames, greaterThanOrEqualTo(10));
+      expect(tester.takeException(), isNull);
+    });
+
     for (final fromNotice in [true, false]) {
       testWidgets(
         "Prompts materializes with the transcript and leaves with it (${fromNotice ? "notice" : "loading"})",
@@ -2754,12 +2794,12 @@ void main() {
           states.add(
             _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
           );
-          final arriving = await materializing(tester: tester, button: prompts);
+          final arriving = await materializing(tester: tester, button: prompts, leaving: false);
           expect(arriving.last, 1);
           expectGradual(progress: arriving, arriving: true);
 
           states.add(shell());
-          final leaving = await materializing(tester: tester, button: prompts);
+          final leaving = await materializing(tester: tester, button: prompts, leaving: true);
           expect(prompts, findsNothing);
           expectGradual(progress: leaving, arriving: false);
           expect(tester.takeException(), isNull);
@@ -2779,17 +2819,29 @@ void main() {
 
       states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
       answer.complete();
-      final leaving = await materializing(tester: tester, button: menu);
+      final leaving = await materializing(tester: tester, button: menu, leaving: true);
       expect(menu, findsNothing);
       expectGradual(progress: leaving, arriving: false);
 
       states.add(
         _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
       );
-      final arriving = await materializing(tester: tester, button: menu);
+      final arriving = await materializing(tester: tester, button: menu, leaving: false);
       expect(arriving.last, 1);
       expectGradual(progress: arriving, arriving: true);
       expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("an absent Prompts leaves the title its room", (tester) async {
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: shell());
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final menu = find.byKey(const Key("session-detail-more"));
+      final trailing = find.ancestor(
+        of: menu,
+        matching: find.byWidgetPredicate((widget) => widget is Row && widget.spacing == PregoSpacing.md),
+      );
+      expect(tester.getSize(trailing).width, tester.getSize(menu).width);
     });
 
     testWidgets("the error view scrolls under enlarged text instead of running past the page", (tester) async {

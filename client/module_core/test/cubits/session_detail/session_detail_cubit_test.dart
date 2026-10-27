@@ -1158,6 +1158,66 @@ void main() {
       });
     }
 
+    test("a Recheck whose metadata read fails drops the events buffered meanwhile", () async {
+      // The failure replaces the shell, so what arrived during its reload is not
+      // replayed onto the next successful load.
+      final snapshots = BehaviorSubject<PluginManagementLoadResult>.seeded(
+        managementFixture(
+          pluginId: "plugin-1",
+          setup: PluginSetupState.authenticationRequired,
+          runtime: PluginRuntimeState.blocked,
+        ),
+      );
+      addTearDown(snapshots.close);
+      final service = MockPluginManagementService();
+      when(() => service.snapshots).thenAnswer((_) => snapshots);
+      when(service.refresh).thenAnswer((_) async {});
+      var reads = 0;
+      when(
+        () => mockSessionService.getMessages(
+          sessionId: any(named: "sessionId"),
+          limit: any(named: "limit"),
+          before: any(named: "before"),
+          storedOnly: any(named: "storedOnly"),
+        ),
+      ).thenAnswer(
+        (_) async => ApiResponse.success(
+          MessageWithPartsResponse(
+            messages: ++reads == 1 ? [] : [testMessageWithParts()],
+            nextCursor: null,
+            userMessagesBefore: null,
+            replayedPromptDefaults: null,
+            awaitingHarnessSync: reads == 1,
+            cannotContinueMessage: null,
+          ),
+        ),
+      );
+      final cubit = buildCubit(pluginManagementService: service);
+      addTearDown(cubit.close);
+      await awaitState(
+        cubit: cubit,
+        predicate: (state) => state is SessionDetailHarnessUnavailable,
+        description: "unavailable shell",
+      );
+      final saved = await mockSessionRepository.getSession(sessionId: sessionId);
+      final metadata = Completer<ApiResponse<Session>>();
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
+
+      final recheck = cubit.recheckHarnessAvailability();
+      await pumpEventQueue();
+      sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy(since: null)));
+      metadata.complete(ApiResponse.error(ApiError.generic()));
+      await recheck;
+      expect(cubit.state, isA<SessionDetailFailed>());
+
+      when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) async => saved);
+      await cubit.reload();
+      expect(
+        cubit.state,
+        isA<SessionDetailLoaded>().having((state) => state.sessionStatus, "sessionStatus", const SessionStatus.idle()),
+      );
+    });
+
     test("a blocked session the bridge stored nothing for reports the block", () async {
       // The store-only read succeeds but has nothing to serve and says the
       // harness still owes it. An empty chat would claim the session has no

@@ -55,11 +55,12 @@ defaults and queued client sends coherent.
   harness-status recheck also retries the read, because a store-only read can fail
   for reasons enabling the harness would not fix. The notice stays up and unmoved
   while that read runs, with no loading view; a load then cross-fades the transcript
-  and composer in over it, and a failure the error view, without moving either
-  (at once under reduced motion), its Recheck keeping the spinner as it fades, and
-  a read that still finds nothing leaves the notice as it was. The phone bar's menu,
-  which the error view and the loading view have no session for, materializes and
-  dematerializes in the same 200 ms. Both the notice and the error view scroll under
+  and composer in over it, and on a failure the error view fades in over it; neither
+  view moves (at once under reduced motion). The leaving notice keeps its
+  Recheck spinner and takes no taps as it fades, and a read that still finds nothing
+  leaves the notice as it was. The phone bar's menu, which the error view and the
+  loading view have no session for, materializes and dematerializes in the same
+  200 ms, taking no taps while it leaves. Both the notice and the error view scroll under
   large text instead of running past the page. A recovery refresh that restores a
   catalog the blocked load could not read replaces the placeholder agent selection
   rather than carrying it into the enabled composer.

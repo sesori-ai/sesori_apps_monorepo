@@ -526,6 +526,7 @@ class SessionDetailCubit(
           _drainPendingEvents();
           _drainDeferredPartsForLoadedMessages();
         } else {
+          _clearBufferedEvents();
           emit(
             SessionDetailState.failed(
               reason: error is ApiError ? error.remoteFailureReason : RemoteFailureReason.unknown,
