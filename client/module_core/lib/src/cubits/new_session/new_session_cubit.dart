@@ -102,7 +102,15 @@ class NewSessionCubit({
     if (isClosed) return;
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
+    final dropped = !isConnected && _wasConnected;
     _wasConnected = isConnected;
+    // Answers to requests sent before the drop never land during it: a late
+    // failure would show Retry, a late success re-verify a bridge nobody has
+    // reached. The reconnect asks again.
+    if (dropped) {
+      ++_loadGeneration;
+      ++_projectLoadGeneration;
+    }
     if (!isConnected) {
       final data = state.agentModelData;
       if (data != null) {

@@ -3077,6 +3077,142 @@ void main() {
         });
       }
 
+      // A drop cuts off whatever was still asking the bridge: its late answer
+      // changes nothing, and the reconnect's own discovery settles the composer.
+      const connected = ConnectionStatus.connected(
+        config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+        health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+      );
+      Future<void> settleLoads(NewSessionCubit cubit) async {
+        while ((cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true) ||
+            (cubit.state.agentModelData?.optionsState.isLoading ?? true) ||
+            cubit.state.agentModelData?.projectWorktreeCapability == NewSessionProjectWorktreeCapability.loading) {
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+
+      Future<void> expectUnmovedThroughDrop(NewSessionCubit cubit) async {
+        for (var i = 0; i < 20; i++) {
+          await Future<void>.delayed(Duration.zero);
+        }
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        expect(cubit.state.agentModelData?.backendScope.isVerified, isFalse);
+        expect(cubit.canCreateSession, isFalse);
+      }
+
+      Future<void> expectSettledAfterReconnect(NewSessionCubit cubit) async {
+        connectionStatus.add(connected);
+        await Future<void>.delayed(Duration.zero);
+        await settleLoads(cubit);
+        expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+        expect(cubit.canCreateSession, isTrue);
+      }
+
+      for (final (outcome, lateAnswer) in [
+        ("succeeds", answer(bridgeId: "bridge-1", plugins: [defaultPlugin])),
+        ("fails", ApiResponse<PluginDiscoverySnapshot>.error(ApiError.generic())),
+      ]) {
+        test("ignores a rediscovery that $outcome after the connection drops again", () async {
+          final cutOffRediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+          var discoveries = 0;
+          when(mockPluginRepository.listPlugins).thenAnswer((_) {
+            discoveries++;
+            return discoveries == 2
+                ? cutOffRediscovery.future
+                : Future.value(answer(bridgeId: "bridge-1", plugins: [defaultPlugin]));
+          });
+          final cubit = buildCubit();
+          addTearDown(cubit.close);
+          await settleLoads(cubit);
+          connectionStatus
+            ..add(const ConnectionStatus.disconnected())
+            ..add(connected);
+          while (discoveries < 2) {
+            await Future<void>.delayed(Duration.zero);
+          }
+
+          connectionStatus.add(const ConnectionStatus.disconnected());
+          await Future<void>.delayed(Duration.zero);
+          cutOffRediscovery.complete(lateAnswer);
+          await expectUnmovedThroughDrop(cubit);
+
+          await expectSettledAfterReconnect(cubit);
+          expect(discoveries, 3);
+        });
+      }
+
+      test("ignores an options refresh that fails after the connection drops", () async {
+        final cutOffRefresh = Completer<ApiResponse<Agents>>();
+        var agentLoads = 0;
+        when(
+          () => mockSessionService.listAgents(
+            projectId: any(named: "projectId"),
+            pluginId: any(named: "pluginId"),
+          ),
+        ).thenAnswer((_) {
+          agentLoads++;
+          return agentLoads == 2
+              ? cutOffRefresh.future
+              : Future.value(ApiResponse<Agents>.success(const Agents(agents: <AgentInfo>[])));
+        });
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await settleLoads(cubit);
+        unawaited(cubit.refreshOptions());
+        while (agentLoads < 2) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        connectionStatus.add(const ConnectionStatus.disconnected());
+        await Future<void>.delayed(Duration.zero);
+        cutOffRefresh.complete(ApiResponse.error(ApiError.generic()));
+        await expectUnmovedThroughDrop(cubit);
+
+        await expectSettledAfterReconnect(cubit);
+      });
+
+      test("ignores a project recheck that fails after the connection drops again", () async {
+        final cutOffRecheck = Completer<ApiResponse<Project>>();
+        var projectChecks = 0;
+        when(() => mockProjectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+          projectChecks++;
+          return projectChecks == 2
+              ? cutOffRecheck.future
+              : Future.value(
+                  ApiResponse.success(
+                    const Project(
+                      id: "project-1",
+                      name: "Project",
+                      path: "/project",
+                      time: null,
+                      supportsDedicatedWorktrees: true,
+                      voiceGlossaryKey: null,
+                    ),
+                  ),
+                );
+        });
+        final cubit = buildCubit();
+        addTearDown(cubit.close);
+        await settleLoads(cubit);
+        connectionStatus
+          ..add(const ConnectionStatus.disconnected())
+          ..add(connected);
+        // The rediscovery verifies the bridge; only the recheck is still out.
+        while (projectChecks < 2 ||
+            (cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true) ||
+            (cubit.state.agentModelData?.optionsState.isLoading ?? true)) {
+          await Future<void>.delayed(Duration.zero);
+        }
+
+        connectionStatus.add(const ConnectionStatus.disconnected());
+        await Future<void>.delayed(Duration.zero);
+        cutOffRecheck.complete(ApiResponse.error(ApiError.generic()));
+        await expectUnmovedThroughDrop(cubit);
+
+        await expectSettledAfterReconnect(cubit);
+        expect(cubit.state.agentModelData?.projectWorktreeCapability, NewSessionProjectWorktreeCapability.supported);
+      });
+
       test("is LoadOnDemand for a legacy bridge whose selected plugin cannot be routed yet", () async {
         when(mockPluginRepository.listPlugins).thenAnswer(
           (_) async => ApiResponse.success(
