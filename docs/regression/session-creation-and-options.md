@@ -257,7 +257,10 @@ variant, and worktree mode, and creating the session with its first input.
   adds or removes the row, it opens or folds as it fades over about 200 ms, so the
   composer glides instead of jumping. When the bridge answers that it runs no harness, the composer and the gap
   above it fold away in that motion as the no-harness notice opens in the options' place, and open again when a
-  harness returns, so the heading barely moves. When options cannot be loaded,
+  harness returns, so the heading barely moves. That answer stands through a disconnect and the rediscovery after
+  it: the notice holds still, the composer stays folded, and neither Retry nor the harness pill's shimmer appears
+  until discovery answers otherwise, a harness (on that computer or another) opening the composer and a failed
+  rediscovery showing its error and Retry. When options cannot be loaded,
   one "Retry loading models" button stands in the pills' place; a bridge that can
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
@@ -566,6 +569,9 @@ startup-extension file failure, retry once the filesystem is usable.
 - Options are stale where a discovery failure should be an explicit error.
 - When discovery fails or finds no harness, the project pill snaps sideways, slides under reduced motion, drifts
   apart from the heading as the page re-centres, or comes to rest off centre.
+- A connection blip reopens the composer folded under the no-harness notice, or brings Retry or the harness pill's
+  shimmer back over it, before rediscovery answers differently; or a harness found by rediscovery, on that computer
+  or another, or a failed rediscovery, leaves the notice standing.
 - The error above the composer appears or clears in one frame, so the desktop heading and pills jump or the
   phone's pills shift; one error replacing another flashes; or the error animates under reduced motion.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch

@@ -410,7 +410,7 @@ void main() {
       );
       await _waitUntil(() {
         final data = cubit.state.agentModelData;
-        return data?.plugins.last == unavailableB && !(data?.isLoading ?? true);
+        return data?.plugins?.last == unavailableB && !(data?.isLoading ?? true);
       });
 
       expect(cubit.state.agentModelData?.plugin, pluginA);
@@ -1382,7 +1382,7 @@ void main() {
       addTearDown(cubit.close);
       final state = cubit.state as NewSessionComposing;
 
-      expect(state.config.availablePlugins, isEmpty);
+      expect(state.config.availablePlugins, isNull);
       expect(state.config.selectedPlugin, isNull);
       expect(state.isComposerDataLoading, isTrue);
       expect(state.config.isPluginDiscoveryInFlight, isTrue);
@@ -1402,7 +1402,7 @@ void main() {
 
       final state = cubit.state as NewSessionComposing;
       expect((state.phase as NewSessionPhaseDiscoveryError).reason, RemoteFailureReason.serverRejected);
-      expect(state.config.availablePlugins, isEmpty);
+      expect(state.config.availablePlugins, isNull);
       expect(state.config.selectedPlugin, isNull);
       expect(
         state.config.options,
@@ -1426,7 +1426,7 @@ void main() {
       await discovery.future;
       await Future<void>.delayed(Duration.zero);
 
-      expect(cubit.state.agentModelData?.plugins, isEmpty);
+      expect(cubit.state.agentModelData?.plugins, isNull);
       _verifyNoComposerCalls(sessionService);
     });
 
@@ -1454,7 +1454,7 @@ void main() {
       await _waitForComposer(cubit);
 
       final state = cubit.state as NewSessionComposing;
-      expect(state.config.availablePlugins.map((plugin) => plugin.id), ["blocked", "selected"]);
+      expect(state.config.availablePlugins?.map((plugin) => plugin.id), ["blocked", "selected"]);
       expect(state.config.selectedPlugin, second);
       verify(() => sessionService.listAgents(projectId: "project-1", pluginId: "selected")).called(1);
       verify(() => sessionService.listProviders(projectId: "project-1", pluginId: "selected")).called(1);

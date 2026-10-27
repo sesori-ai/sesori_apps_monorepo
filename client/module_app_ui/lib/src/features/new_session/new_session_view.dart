@@ -294,7 +294,11 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
   /// The harness pill beside the project pill; a shimmering pill of the same
   /// size until the bridge has said which harnesses it runs.
   Widget? _buildHarnessPill({required NewSessionCubit cubit, required AgentModelData? data}) {
-    if (data == null || (data.plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
+    // While the bridge's "no harness" answer stands, a rediscovery included,
+    // the pill's room stays away rather than shimmering back in for the wait.
+    if (cubit.hasNoHarnesses) return null;
+    final plugins = data?.plugins ?? const <PluginMetadata>[];
+    if (data == null || (plugins.isEmpty && data.isPluginDiscoveryInFlight)) {
       return PregoShimmer(
         appearDelay: Duration.zero,
         semanticLabel: context.loc.newSessionOptionsLoadingSemantics,
@@ -307,7 +311,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
     }
     if (cubit.needsHarnessDiscovery) return null;
     return NewSessionPluginChooser(
-      plugins: data.plugins,
+      plugins: plugins,
       selectedPluginId: data.plugin?.id,
       isSelectionEnabled: data.backendScope.isVerified && !data.isPluginDiscoveryInFlight,
       onSelected: (pluginId) => cubit.selectPlugin(pluginId: pluginId),
