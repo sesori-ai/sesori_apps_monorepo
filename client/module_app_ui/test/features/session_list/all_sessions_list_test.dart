@@ -166,6 +166,16 @@ void main() {
             },
       );
 
+  /// The opacity [finder] paints at, or null while it is gone.
+  double? shownOpacity(WidgetTester tester, Finder finder) =>
+      finder.evaluate().isEmpty ? null : paintedOpacity(tester, finder);
+
+  final runningChip = find.byKey(const Key("session-list-filter-running"));
+
+  /// Whether [chip] shows as the selected filter.
+  bool? selected(WidgetTester tester, Finder chip) =>
+      tester.widget<Semantics>(find.ancestor(of: chip, matching: find.byType(Semantics)).first).properties.toggled;
+
   const header = SizedBox(key: Key("header"), height: 36, child: Text("All projects"));
   final headerBox = find.byKey(const Key("header"));
 
@@ -200,6 +210,25 @@ void main() {
     for (var frame = 1; frame < tops.length; frame++)
       if ((tops[frame - 1], tops[frame]) case (final from?, final to?)) to - from,
   ];
+
+  /// What [read] sees on the frame [update] lands, and 100, 200 and 300 ms
+  /// after it.
+  Future<List<T>> framesAcross<T>(
+    WidgetTester tester, {
+    required StreamController<AllSessionsState> updates,
+    required AllSessionsState update,
+    required T Function() read,
+  }) async {
+    updates.add(update);
+    // With nothing animating, a bare pump would skip the frame before the update arrives.
+    await tester.pump(Duration.zero);
+    final frames = [read()];
+    for (var frame = 0; frame < 3; frame++) {
+      await tester.pump(const Duration(milliseconds: 100));
+      frames.add(read());
+    }
+    return frames;
+  }
 
   testWidgets("a project that failed to load gets a retry row instead of the empty state", (tester) async {
     final cubit = await pumpList(
@@ -477,6 +506,145 @@ void main() {
       expect(steps(rowTops), everyElement(inInclusiveRange(-maxStep, 0)));
       expect(rowTops.last, lessThan(rowTop - 20));
       expect(failureRow, findsNothing);
+    });
+
+    testWidgets("a session that returns fades the empty state out as the search field and chips open", (
+      tester,
+    ) async {
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      // As on a first launch, or before an archive's Undo.
+      await pumpList(
+        tester,
+        initial: listing(withSession: false, failures: const []),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+        header: header,
+      );
+      final emptyState = find.text("Nothing here");
+      expect(paintedOpacity(tester, emptyState), 1);
+      // Found while it opens from nothing, which takes no room on screen.
+      final searchField = find.byType(TextField, skipOffstage: false);
+
+      final [start, midway, _, end] = await framesAcross(
+        tester,
+        updates: updates,
+        update: listing(withSession: true, failures: const []),
+        read: () => (
+          empty: shownOpacity(tester, emptyState),
+          field: paintedOpacity(tester, searchField),
+          header: tester.getTopLeft(headerBox).dy,
+        ),
+      );
+      // It stays as the room starts to open above it, and fades out in step.
+      expect(start.empty, 1);
+      expect(start.field, 0);
+      expect(start.header, 0);
+      expect(midway.empty, inExclusiveRange(0, 1));
+      expect(midway.empty, moreOrLessEquals(1 - midway.field, epsilon: 0.01));
+      expect(midway.header, inExclusiveRange(0, end.header));
+      expect(end.empty, isNull);
+      expect(end.field, 1);
+    });
+
+    for (final (name, update, note) in [
+      ("A search", state(query: "zzz", failures: const [], rows: const [], scratchProjectId: null), "No matches"),
+      (
+        "A filter",
+        state(
+          query: "",
+          failures: const [],
+          rows: const [],
+          scratchProjectId: null,
+          counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
+          quickFilter: SessionListQuickFilter.running,
+        ),
+        "No sessions match this filter",
+      ),
+    ]) {
+      testWidgets("$name that leaves no rows fades its note in, and out as they return, moving nothing above", (
+        tester,
+      ) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(
+          tester,
+          initial: listing(withSession: true, failures: const []),
+          updates: updates.stream,
+          mode: AllSessionsMode.active,
+        );
+        final searchField = find.byType(TextField);
+        final fieldTop = tester.getTopLeft(searchField).dy;
+        final chipTop = tester.getTopLeft(runningChip).dy;
+        final noteText = find.text(note);
+        ({double? note, double field, double chips}) read() => (
+          note: shownOpacity(tester, noteText),
+          field: tester.getTopLeft(searchField).dy,
+          chips: tester.getTopLeft(runningChip).dy,
+        );
+
+        final arriving = await framesAcross(tester, updates: updates, update: update, read: read);
+        expect([for (final frame in arriving) frame.note], [0, inExclusiveRange(0, 1), 1, 1]);
+        final leaving = await framesAcross(
+          tester,
+          updates: updates,
+          update: listing(withSession: true, failures: const []),
+          read: read,
+        );
+        expect([for (final frame in leaving) frame.note], [1, inExclusiveRange(0, 1), anyOf(isNull, 0), isNull]);
+        for (final frame in [...arriving, ...leaving]) {
+          expect((frame.field, frame.chips), (fieldTop, chipTop));
+        }
+      });
+    }
+
+    testWidgets("under reduced motion the empty state, a note and a filter tapped while loading swap at once", (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: listing(withSession: false, failures: const []),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+      );
+      final emptyState = find.text("Nothing here");
+      final noMatches = find.text("No matches");
+      expect(paintedOpacity(tester, emptyState), 1);
+
+      updates.add(listing(withSession: true, failures: const []));
+      await tester.pump(Duration.zero);
+      expect(emptyState, findsNothing);
+      expect(paintedOpacity(tester, find.byType(TextField)), 1);
+
+      updates.add(state(query: "zzz", failures: const [], rows: const [], scratchProjectId: null));
+      await tester.pump(Duration.zero);
+      expect(paintedOpacity(tester, noMatches), 1);
+
+      updates.add(listing(withSession: true, failures: const [], isLoading: true));
+      await tester.pump(Duration.zero);
+      expect(noMatches, findsNothing);
+
+      // Running leaves no rows while another project still loads.
+      updates.add(
+        state(
+          query: "",
+          failures: const [],
+          rows: const [],
+          scratchProjectId: null,
+          counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
+          quickFilter: SessionListQuickFilter.running,
+          isLoading: true,
+        ),
+      );
+      await tester.pump(Duration.zero);
+      expect(selected(tester, runningChip), isTrue);
+      expect(paintedOpacity(tester, runningChip), 1);
+      expect(sessionRow, findsNothing);
+      expect(find.byType(SessionListSkeleton), findsOneWidget);
     });
 
     testWidgets("under reduced motion each change shows at once", (tester) async {
@@ -869,6 +1037,64 @@ void main() {
       }
       expect(skeleton, findsNothing);
       expect(paintedOpacity(tester, find.text("No sessions match this filter")), 1);
+    });
+
+    testWidgets("a filter tapped while a project loads shows at once, holding the chips still as the rows fade out", (
+      tester,
+    ) async {
+      // Another project still loads, and Running leaves no rows.
+      AllSessionsState filtered(SessionListQuickFilter filter) => state(
+        query: "",
+        failures: const [],
+        rows: [
+          if (filter == SessionListQuickFilter.all)
+            row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false),
+        ],
+        scratchProjectId: null,
+        counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
+        quickFilter: filter,
+        isLoading: true,
+      );
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: filtered(SessionListQuickFilter.all),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+      );
+      final allChip = find.byKey(const Key("session-list-filter-all"));
+      final chipTop = tester.getTopLeft(runningChip).dy;
+      final pills = find.byKey(const ValueKey("skeleton"));
+      final listRow = find.text("Fix the parser");
+
+      final frames = await framesAcross(
+        tester,
+        updates: updates,
+        update: filtered(SessionListQuickFilter.running),
+        read: () => (
+          selected: (all: selected(tester, allChip), running: selected(tester, runningChip)),
+          chips: paintedOpacity(tester, runningChip),
+          top: tester.getTopLeft(runningChip).dy,
+          pills: pills.evaluate().length,
+          tappable: allChip.hitTestable().evaluate().length,
+          row: shownOpacity(tester, listRow),
+          skeleton: skeletonOpacity(tester),
+        ),
+      );
+      // The chips show the new selection from the tap on, as they are, and
+      // take taps, while the rows fade into the skeleton.
+      for (final (index, frame) in frames.indexed) {
+        expect(
+          (frame.selected, frame.chips, frame.top, frame.pills, frame.tappable),
+          ((all: false, running: true), 1, chipTop, 0, 1),
+          reason: "at ${index * 100}ms",
+        );
+      }
+      expect(frames[1].row, inExclusiveRange(0, 1));
+      expect(frames[1].skeleton, inExclusiveRange(0, 1));
+      expect(frames[3].row, isNull);
+      expect(frames[3].skeleton, 1);
     });
 
     final oldRow = find.text("Fix the parser");

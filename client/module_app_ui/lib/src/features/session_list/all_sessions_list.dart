@@ -218,6 +218,15 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   /// Whether pills held the chips' places on the last frame.
   bool _heldChips = false;
 
+  /// Whether the last frame showed the empty state, and whether it now fades
+  /// out, as it stopped applying at rest.
+  bool _showedEmptyState = false;
+  bool _emptyStateLeaving = false;
+
+  /// The note under the rows, kept as it fades out where it stood once it no
+  /// longer applies at rest.
+  String? _note;
+
   @override
   void initState() {
     super.initState();
@@ -354,10 +363,16 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     // holds each chip's place. Through the hand-off it fades out where it
     // stands as the chip fades in over it, one that never showed staying
     // hidden; chips that showed their counts through the load stay as they
-    // are.
+    // are. So do chips a load already has counts for as it replaces the rows,
+    // as when a filter tapped while a project loads leaves none: they show
+    // the tapped filter at once, unless pills already stand for them.
     final chipsShown = loading ? state.counts.all > 0 : roomShown;
-    final chipsHeld = (loading && state.counts.all == 0) || (handingOff && (_replacing || _heldChips));
+    final chipsHeld =
+        (loading && state.counts.all == 0) || (handingOff && (_heldChips || (_replacing && current.counts.all == 0)));
     _heldChips = chipsHeld;
+    // Chips fading out with the rows a load replaces show what those rows did.
+    final chipsReplaced = _replacing && chipsHeld;
+    final chipsState = chipsReplaced ? state : current;
     Widget folding({required Widget child}) => TweenAnimationBuilder<double>(
       // Its start is read once, when it first builds: arriving at rest, it
       // opens, as it folds away when the list empties at rest.
@@ -399,7 +414,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
     Widget chip({required SessionListQuickFilter filter, required Key? key, required SessionListChipCounts counts}) =>
         Semantics(
-          toggled: state.quickFilter == filter,
+          toggled: chipsState.quickFilter == filter,
           child: PregoButtonsSolid(
             key: key,
             label: switch (filter) {
@@ -407,7 +422,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               SessionListQuickFilter.running => loc.sessionListFilterRunning(counts.running),
               SessionListQuickFilter.unread => loc.sessionListFilterUnread(counts.unread),
             },
-            hierarchy: state.quickFilter == filter
+            hierarchy: chipsState.quickFilter == filter
                 ? PregoButtonsSolidHierarchy.primaryAlt
                 : PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.sm,
@@ -430,6 +445,17 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       true when state.counts.all > 0 && state.quickFilter != SessionListQuickFilter.all => loc.sessionListFilterEmpty,
       true => null,
     };
+    // At rest, a note that no longer applies fades out where it stood.
+    final noteLeaving = note == null && _note != null && atRest && !context.isReducedMotion;
+    final shownNote = note ?? (noteLeaving ? _note : null);
+    _note = shownNote;
+    final emptyStateShown = settled && !hasSessions;
+    // At rest, it fades out where it stands once it no longer applies, as a
+    // session returns and the search field and chips open, the reverse of its
+    // fade in as they fold away, or as a project fails and its Retry row opens.
+    _emptyStateLeaving =
+        !emptyStateShown && atRest && !context.isReducedMotion && (_emptyStateLeaving || _showedEmptyState);
+    _showedEmptyState = emptyStateShown;
 
     return SliverMainAxisGroup(
       slivers: [
@@ -469,12 +495,12 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                             key: const ValueKey("content"),
                             opacity: chipsHeld ? _contentOpacity : kAlwaysCompleteAnimation,
                             child: IgnorePointer(
-                              ignoring: _replacing,
+                              ignoring: chipsReplaced,
                               child: chips(
                                 each: (filter) => chip(
                                   filter: filter,
                                   key: Key("session-list-filter-${filter.name}"),
-                                  counts: state.counts,
+                                  counts: chipsState.counts,
                                 ),
                               ),
                             ),
@@ -625,30 +651,43 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               },
             ),
           ),
-        if (note != null)
+        if (shownNote != null)
           SliverFadeTransition(
             opacity: _contentOpacity,
             sliver: SliverToBoxAdapter(
-              child: Padding(
-                padding: const EdgeInsets.all(PregoSpacing.x3l),
-                child: Text(
-                  note,
-                  textAlign: TextAlign.center,
-                  style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+              // Arriving or leaving at rest, it fades by itself.
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: atRest ? 0 : 1, end: noteLeaving ? 0 : 1),
+                duration: motion,
+                curve: transcriptMotionCurve,
+                onEnd: () {
+                  if (noteLeaving) setState(() => _note = null);
+                },
+                builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+                child: Padding(
+                  padding: const EdgeInsets.all(PregoSpacing.x3l),
+                  child: Text(
+                    shownNote,
+                    textAlign: TextAlign.center,
+                    style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textTertiary),
+                  ),
                 ),
               ),
             ),
           ),
-        if (settled && !hasSessions)
+        if (emptyStateShown || _emptyStateLeaving)
           SliverFillRemaining(
             hasScrollBody: false,
             child: FadeTransition(
               opacity: _contentOpacity,
-              // Arriving at rest, it fades in by itself.
+              // Arriving or leaving at rest, it fades by itself.
               child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: atRest ? 0 : 1, end: 1),
+                tween: Tween(begin: atRest ? 0 : 1, end: _emptyStateLeaving ? 0 : 1),
                 duration: motion,
                 curve: transcriptMotionCurve,
+                onEnd: () {
+                  if (_emptyStateLeaving) setState(() => _emptyStateLeaving = false);
+                },
                 builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
                 child: list.emptyState,
               ),
