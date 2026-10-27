@@ -1165,7 +1165,8 @@ class _ComposerOrNoticeState() extends State<_ComposerOrNotice> with TickerProvi
 
 /// A child of [_CrossFadeRoom] at its [presence]: it fades with it, takes no
 /// taps, focus or semantics unless [shown], and once gone stays mounted
-/// offstage.
+/// offstage. One leaving fades out as it was: its own animations hold still,
+/// so a Recheck answered as its card leaves keeps showing that it checked.
 class const _CrossFadeRoomOccupant({
   super.key,
   required final Animation<double> presence,
@@ -1183,7 +1184,10 @@ class const _CrossFadeRoomOccupant({
           excluding: !shown,
           child: ExcludeFocus(
             excluding: !shown,
-            child: FadeTransition(opacity: presence, child: child),
+            child: FadeTransition(
+              opacity: presence,
+              child: TickerMode(enabled: shown, child: child),
+            ),
           ),
         ),
       ),
