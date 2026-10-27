@@ -54,8 +54,7 @@ variant, and worktree mode, and creating the session with its first input.
   project's setup page, so a session is never created in the project that was left, and a draft stays with
   the project it was typed in; choosing the current project only closes the picker. The desktop home's
   composer uses the same picker and keeps its draft per picked project. On the phone the header sits above
-   the options and hides while the composer's
-  keyboard is open, so the options stay in view while typing; the picker's own keyboard leaves it in place.
+  the options and stays in place while the keyboard is open, the composer's or the picker's.
 - The composer shows the agent entry only when the harness advertises more than one selectable agent.
   Claude, Codex, Copilot, Cursor and OMP advertise only their default mode as one agent, so their composer
   shows model and effort alone; OpenCode lists its real agents. A released mode name such as Plan or Ask
