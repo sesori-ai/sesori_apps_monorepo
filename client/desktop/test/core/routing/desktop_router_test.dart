@@ -229,15 +229,15 @@ void main() {
     });
   }
 
-  testWidgets("Archived opens over its opener, opens rows read-only and closes back", (tester) async {
+  testWidgets("the sidebar's Archived opens over its opener, opens rows read-only and closes back", (tester) async {
     final router = _callbackRouter(initialRoute: _detail(readOnly: false));
     addTearDown(router.dispose);
     await tester.pumpWidget(_app(router: router));
-    await tester.tap(find.text("settings archived"));
+    await tester.tap(find.text("sidebar archived"));
     await tester.pumpAndSettle();
     expect(router.state.uri.path, AppRouteDef.archivedSessions.path);
-    // Archived again from Settings keeps the one page.
-    await tester.tap(find.text("settings archived"));
+    // Archived again from the sidebar keeps the one page.
+    await tester.tap(find.text("sidebar archived"));
     await tester.pumpAndSettle();
     await tester.tap(find.text("open archived row"));
     await tester.pumpAndSettle();
@@ -467,11 +467,8 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
               autofocus: true,
               child: Column(
                 children: [
-                  // As Settings' Archived row opens it, once its window has closed.
-                  TextButton(
-                    onPressed: () => openDesktopArchived(router: GoRouter.of(context)),
-                    child: const Text("settings archived"),
-                  ),
+                  // As the sidebar's Archived row opens it.
+                  TextButton(onPressed: cockpit.onOpenArchived, child: const Text("sidebar archived")),
                   Expanded(child: child),
                 ],
               ),

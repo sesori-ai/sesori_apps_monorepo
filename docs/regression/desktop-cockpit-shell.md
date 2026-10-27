@@ -51,7 +51,8 @@ The main pane hosts one full-width routed page.
   restores the user's choice. The native minimum window remains 560 × 480.
 - New session is a quiet row at the top of the sidebar, with its shortcut at the row's end; with no projects at
   all, "No project" included, it reads Add project and opens the shared folder dialog, and the project it adds
-  opens in New session. Search under it opens the command palette. Below them the project filter, "All projects
+  opens in New session. Search under it opens the command palette, and Archived sessions under Search opens the
+  Archived page; neither shows a selected state. Below them the project filter, "All projects
   ▾", "No project ▾" or the chosen project's name, heads the shared all-projects session list beside Refresh: it
   opens the shared project picker, whose footer always holds "All projects" (beside "No project" when the bridge
   has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see
@@ -85,7 +86,8 @@ The main pane hosts one full-width routed page.
   shows the shortcut. Windows and Linux retain native window chrome.
 - Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command palette: a
   search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
-  while the window is wide enough to expand it; Settings; Go back; each with its shortcut), every project's Sessions
+  while the window is wide enough to expand it; Settings; Go back; each with its shortcut; and Archived sessions,
+  without one, which reaches Archived while a narrow window hides the sidebar), every project's Sessions
   newest first with their project and without archived ones, whatever the sidebar list's filter, search and chip, and
   every Project. Typing narrows all three by title words (an untitled session by "Untitled session"), bolding the
   matched letters; signing out closes the palette with the cockpit; nothing matching reads "No matches". Up/Down move
@@ -133,13 +135,13 @@ The main pane hosts one full-width routed page.
   completion cannot release a newer pending read.
 - The sidebar is the only navigation pane. The home, archived sessions, new session, detail, and diffs
   are sibling main-pane routes. The sidebar's shared list is the only full list owner.
-- The settings window's Archived sessions row, below its tabs on every tab, closes the window and opens the
-  Archived sessions page over the current page: the shared archived list across
+- The sidebar's Archived sessions row, and the palette's command, open the Archived sessions page over the
+  current page in the main window, so nothing closes on the way in: the shared archived list across
   projects, read through the sidebar's shared project filter, with each row naming its project.
   A row opens its session read-only over Archived, so Cmd/Ctrl+[ returns to it; the page's close
   returns to the page it opened over, or home when there is none, and opening Archived while it is the top page
-  does nothing. While the computer is disconnected it lists nothing, and the connection pill and the footer's recovery
-  card say why.
+  does nothing. The row stays enabled while the computer is disconnected: the page then lists nothing, and the
+  connection pill and the footer's recovery card say why.
 - Hovering a list row, or moving keyboard focus into it, swaps its time for Mark read/unread and Archive
   without changing the row's height; an archived row offers no Archive.
 - Every enabled control that acts on a click shows the hand cursor on hover: buttons, menu items, list
@@ -360,7 +362,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, every
   project's sessions whatever the sidebar's filter, search and chip, filtering with No matches, Enter
   opening a session or filtering the sidebar to a project and bringing it back, Down skipping a heading,
-  Esc, and a command run from the palette and by its shortcut (`desktop_cockpit_shell_test`).
+  Esc, a command run from the palette and by its shortcut, and Archived sessions run from the palette
+  (`desktop_cockpit_shell_test`).
 - Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; New session reached directly, Mark unread,
   and deleting or archiving the open session all returning to the home (`desktop_router_test`).
 - The new session page: toolbar above a centred, width-capped column with room left below it, no project crumb,
@@ -375,9 +378,10 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   new-session replacement, Changes file selection, home states, package-font resolution.
 - Add project from the sidebar's empty New session row opening New session in the added project
   (`desktop_cockpit_shell_test`).
-- The settings window's Archived row closing the window and opening Archived (`desktop_settings_screens_test`);
-  the Archived page pushed once over its opener, its rows opening read-only over it, and its close returning to
-  the opener or, reached directly, home (`desktop_router_test`).
+- The sidebar's Archived sessions row directly under Search, in Search's style, opening Archived
+  (`desktop_cockpit_shell_test`); the cockpit's Archived opener pushing the page once over its opener, its rows
+  opening read-only over it, and its close returning to the opener or, reached directly, home
+  (`desktop_router_test`).
 - Bridge's Harnesses row opening the page inside the tab and its Back returning to Bridge; the harness entry point
   landing on Bridge with Harnesses open, its overview refreshing on a pull (`desktop_settings_screens_test`),
   including from New session through the real router with its draft kept (`desktop_new_session_screen_test`).
@@ -408,8 +412,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Viewing a remote computer from the home header while the local bridge keeps serving a phone, and the remote
   offline body when that computer's bridge stops.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
-- Archived from Settings: the window closes and the page fades in over the open page, a row opens read-only, Cmd/Ctrl+[ comes back,
-  and the close returns to the opener.
+- Archived from the sidebar: the page fades in over the open page with nothing closing first, a row opens
+  read-only, Cmd/Ctrl+[ comes back, and the close returns to the opener.
 - The floating panel in light and dark: rounded corners, border and shadow with no hard edge against the page.
 - Collapse and restore by the footer button, the restore button and Cmd/Ctrl+B: the panel slides whole while
   the page widens or narrows with no jump in what it shows, and the restore button fades in past the traffic

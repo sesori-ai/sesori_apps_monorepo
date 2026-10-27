@@ -2139,7 +2139,7 @@
   "harnessesStatusIdle": "Idle",
   "harnessesStatusRunning": "Running",
   "archivedSessionsTitle": "Archived sessions",
-  "@archivedSessionsTitle": {"description": "Title of the Archived page, and of the Settings row that opens it."},
+  "@archivedSessionsTitle": {"description": "Title of the Archived page, and of the rows that open it: the phone's Settings row, the desktop sidebar's row and its command palette entry."},
   "archivedSessionsClose": "Close archived sessions",
   "allSessionsProjectFailed": "Couldn’t load {projectName}",
   "@allSessionsProjectFailed": {

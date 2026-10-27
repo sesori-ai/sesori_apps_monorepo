@@ -65,6 +65,9 @@ class const DesktopCockpitShell({
   required final VoidCallback onOpenBridgeSettings,
   required final VoidCallback onOpenSettings,
 
+  /// Opens the Archived page over the current one.
+  required final VoidCallback onOpenArchived,
+
   /// Closes what the page has open, such as its Prompts screen, else leaves a
   /// pushed page; a page reached from the sidebar has nowhere to go.
   required final VoidCallback onGoBack,
@@ -139,6 +142,13 @@ class const DesktopCockpitShell({
             shortcut: desktopShortcut(key: LogicalKeyboardKey.comma),
             run: onOpenSettings,
           ),
+          // The sidebar's row, for a window too narrow to show the sidebar.
+          DesktopCommand(
+            label: loc.archivedSessionsTitle,
+            icon: TablerRegular.archive,
+            shortcut: null,
+            run: onOpenArchived,
+          ),
           DesktopCommand(
             label: loc.desktopGoBack,
             icon: TablerRegular.arrow_left,
@@ -190,6 +200,7 @@ class const DesktopCockpitShell({
                 onOpenSession: onOpenSession,
                 onStartNewSession: startNewSession,
                 onOpenSearch: openPalette,
+                onOpenArchived: onOpenArchived,
                 sessionActions: sessionActions,
                 onToggleCollapsed: () => unawaited(sidebar.toggleCollapsed()),
                 onOpenBridgeSettings: onOpenBridgeSettings,
@@ -213,7 +224,7 @@ class const DesktopCockpitShell({
         );
         return CallbackShortcuts(
           bindings: {
-            for (final command in commands) command.shortcut: command.run,
+            for (final command in commands) ?command.shortcut: command.run,
             desktopShortcut(key: LogicalKeyboardKey.keyK): openPalette,
           },
           child: Focus(autofocus: true, child: scaffold),

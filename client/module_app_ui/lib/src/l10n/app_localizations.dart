@@ -5059,7 +5059,7 @@ abstract class AppLocalizations {
   /// **'Running'**
   String get harnessesStatusRunning;
 
-  /// Title of the Archived page, and of the Settings row that opens it.
+  /// Title of the Archived page, and of the rows that open it: the phone's Settings row, the desktop sidebar's row and its command palette entry.
   ///
   /// In en, this message translates to:
   /// **'Archived sessions'**
