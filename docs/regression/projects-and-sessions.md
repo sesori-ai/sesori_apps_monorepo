@@ -291,7 +291,9 @@ state.
   that ends before they show just fades them in). The header, search field and Retry rows never move, with one
   exception: a load that ends with no sessions and no query folds the search field and chips away as the empty
   state fades in. Reduced motion swaps them at once, and a later refresh, search or filter never repeats a fade on
-  what is already shown.
+  what is already shown. A load that replaces what the list shows, as a computer switch's, never blanks it: the rows,
+  Retry rows or empty state on screen fade out where they stand as the skeleton fades in over them
+  ([multi-computer](multi-computer.md)).
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
   divider) kept clear of the notch, the status bar and the home indicator by the same margin it keeps from the pane.

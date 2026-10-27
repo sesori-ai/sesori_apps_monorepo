@@ -164,19 +164,43 @@ class const _Sessions({
 class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMixin {
   /// The hand-off from the loading skeleton to the first rows or the empty
   /// state: they fade in where the skeleton stood while it fades itself out
-  /// over them, and the room no sessions take folds away. Complete at rest,
-  /// so later updates show as they always do.
+  /// over them, and the room no sessions take folds away. It runs backwards
+  /// as a load replaces what the list shows, such as a computer switch's: it
+  /// stays, fading out, as the skeleton fades in over it from where it will
+  /// stand and the folded room opens. Complete at rest, so later updates show
+  /// as they always do.
   late final AnimationController _handOff = AnimationController(
     vsync: this,
     duration: transcriptMotionDuration,
     value: 1,
   );
-  late final CurvedAnimation _contentOpacity = CurvedAnimation(parent: _handOff, curve: transcriptMotionCurve);
+  // Backwards too it slows into rest instead of stopping at full speed.
+  late final CurvedAnimation _contentOpacity = CurvedAnimation(
+    parent: _handOff,
+    curve: transcriptMotionCurve,
+    reverseCurve: transcriptMotionCurve.flipped,
+  );
+  late final Animation<double> _skeletonArrival = ReverseAnimation(_contentOpacity);
 
   /// Keeps the one skeleton, with its appearance delay and sheen, as it moves
   /// from its own place onto the content that replaces it.
   final GlobalKey _skeletonKey = GlobalKey(debugLabel: "all-sessions-skeleton");
   bool _wasLoading = false;
+
+  /// Counts the content's fades in, so the rows of each start as a list of
+  /// their own instead of moving in among the rows a load replaced.
+  int _contentFades = 0;
+
+  /// What the list last showed when not loading, kept through a load that
+  /// replaces it.
+  AllSessionsState? _lastShown;
+
+  /// Whether what a load replaces still shows, fading out.
+  bool get _replacing => _handOff.status == AnimationStatus.reverse;
+
+  /// A skeleton waits before it shows, so a fast load never flashes it, but
+  /// not over what it replaces, which leaves nothing blank to hide.
+  Duration get _skeletonAppearDelay => _lastShown == null ? PregoShimmer.defaultAppearDelay : Duration.zero;
 
   /// The failed project listed last above the loading skeleton: it leaves
   /// from under that row while the row is still listed.
@@ -188,6 +212,17 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     _handOff.addStatusListener((status) {
       // The faded skeleton leaves the tree.
       if (status.isCompleted) setState(() {});
+    });
+  }
+
+  /// Fades the content in where the skeleton stands, timed from the next
+  /// frame: this one mounts the content and can be slow enough to use up the
+  /// whole fade.
+  void _fadeContentIn() {
+    _contentFades++;
+    _handOff.value = 0;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) _handOff.forward();
     });
   }
 
@@ -204,28 +239,26 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     final loc = context.loc;
     final prego = context.prego;
     final cubit = context.read<AllSessionsCubit>();
-    final state = context.watch<AllSessionsCubit>().state;
+    final current = context.watch<AllSessionsCubit>().state;
     final now = DateTime.now();
     // The list's bottom breathing room collapses with its last row, which
     // rests above the home indicator and anything floating there.
     final endPadding = 8 + MediaQuery.paddingOf(context).bottom + list.endClearance;
-    final searching = state.query.trim().isNotEmpty;
     // A launching row has no title to match, and is neither running nor
     // unread yet, so a search or a chip hides it.
-    final launches = searching || state.quickFilter != SessionListQuickFilter.all
+    List<LaunchingSession> launchesOf(AllSessionsState state) =>
+        state.query.trim().isNotEmpty || state.quickFilter != SessionListQuickFilter.all
         ? const <LaunchingSession>[]
         : [
             for (final MapEntry(key: projectId, value: rows) in launchRows.entries)
               if (state.projectId == null || state.projectId == projectId) ...rows.placeholders,
           ];
-    // Only a still-unarchived session hides, as on every list.
-    final rows = state.rows.where(
-      (row) => row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id),
-    );
-    final entries = groupUnderHeadings<_Item>(
+    List<SessionListEntry<_Item>> entriesOf(AllSessionsState state) => groupUnderHeadings<_Item>(
       items: [
-        for (final launch in launches) _LaunchItem(launch: launch),
-        for (final row in rows) _SessionItem(row: row),
+        for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
+        // Only a still-unarchived session hides, as on every list.
+        for (final row in state.rows)
+          if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id)) _SessionItem(row: row),
       ],
       headingOf: (item) => switch (item) {
         // A launch is the newest running thing, so it leads Today.
@@ -240,40 +273,66 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         ),
       },
     );
+    final currentEntries = entriesOf(current);
+    final currentlyLoading = (awaitingConnection || current.isLoading) && currentEntries.isEmpty;
+    if (_wasLoading && !currentlyLoading && !context.isReducedMotion) {
+      // Rows still fading out finish first, so the content follows the
+      // skeleton they leave.
+      if (!_replacing) _fadeContentIn();
+    } else if (!_wasLoading && currentlyLoading && _lastShown != null && !context.isReducedMotion) {
+      // The rows glide to the top as they fade, where the skeleton they
+      // leave stands with nothing to scroll.
+      final position = Scrollable.maybeOf(context)?.position;
+      if (position != null && position.pixels > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            unawaited(position.animateTo(0, duration: transcriptMotionDuration, curve: transcriptMotionCurve));
+          }
+        });
+      }
+      unawaited(
+        _handOff.reverse().then((_) {
+          if (!mounted) return;
+          // Back at rest as the load goes on, or on to the content that
+          // ended it while the rows faded out.
+          if (_wasLoading) {
+            _handOff.value = 1;
+          } else {
+            setState(_fadeContentIn);
+          }
+        }),
+      );
+    }
+    _wasLoading = currentlyLoading;
+    if (currentlyLoading) _skeletonUnderFailureId = current.failures.lastOrNull?.project.id;
+    final state = (_replacing ? _lastShown : null) ?? current;
+    final entries = identical(state, current) ? currentEntries : entriesOf(state);
+    if (!currentlyLoading && !_replacing) _lastShown = current;
+    final searching = state.query.trim().isNotEmpty;
     // A launching row counts, so the search field and chips are already in
     // place when a first session takes its row.
-    final hasSessions = state.counts.all > 0 || launches.isNotEmpty || searching;
+    final hasSessions = state.counts.all > 0 || launchesOf(state).isNotEmpty || searching;
     final isLoading = awaitingConnection || state.isLoading;
     final loading = isLoading && entries.isEmpty;
-    if (_wasLoading && !loading && !context.isReducedMotion) {
-      _handOff.value = 0;
-      // Timed from the next frame: this one mounts the content and can be
-      // slow enough to use up the whole fade.
-      WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (mounted) _handOff.forward();
-      });
-    }
-    _wasLoading = loading;
-    if (loading) _skeletonUnderFailureId = state.failures.lastOrNull?.project.id;
     final isActive = cubit.mode == AllSessionsMode.active;
-    // The skeleton fades out where it stood: hanging from the failed project
-    // it stood under, else from the room above the failed projects. At most
-    // one place holds it.
-    final skeletonLeaving = !loading && !_handOff.isCompleted;
+    // The skeleton fades out where it stood, or in where it will stand:
+    // hanging from the failed project it stands under, else from the room
+    // above the failed projects. At most one place holds it.
+    final handingOff = !loading && !_handOff.isCompleted;
     final heldUnderFailures =
-        skeletonLeaving && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
-    final heldAboveFailures = skeletonLeaving && !heldUnderFailures;
+        handingOff && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
+    final heldAboveFailures = handingOff && !heldUnderFailures;
     // The search field shows from a load's first frame, so nothing under it
     // moves when the rows arrive. A load that ends with nothing to search
     // folds it and the chips' room away as the empty state fades in.
-    final searchShown = hasSessions || loading || skeletonLeaving;
-    final roomFolds = skeletonLeaving && !hasSessions;
+    final searchShown = hasSessions || loading || handingOff;
+    final roomFolds = handingOff && !hasSessions;
     // The chips show counts, so until the load has some, a skeleton pill
     // holds each chip's place. Through the hand-off it fades out where it
     // stands as the chip fades in over it, one that never showed staying
     // hidden.
     final chipsShown = loading ? state.counts.all > 0 : hasSessions;
-    final chipsHeld = (loading && state.counts.all == 0) || skeletonLeaving;
+    final chipsHeld = (loading && state.counts.all == 0) || handingOff;
     Widget folding({required Widget child}) => ListenableBuilder(
       listenable: _contentOpacity,
       // The fade's ease-out, run backwards: an ease-in fold, as a transcript row's.
@@ -364,24 +423,31 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                           FadeTransition(
                             key: const ValueKey("content"),
                             opacity: _contentOpacity,
-                            child: chips(
-                              each: (filter) => chip(
-                                filter: filter,
-                                key: Key("session-list-filter-${filter.name}"),
-                                counts: state.counts,
+                            child: IgnorePointer(
+                              ignoring: _replacing,
+                              child: chips(
+                                each: (filter) => chip(
+                                  filter: filter,
+                                  key: Key("session-list-filter-${filter.name}"),
+                                  counts: state.counts,
+                                ),
                               ),
                             ),
                           ),
                         // Held at the loading counts, so the pills fade out
-                        // where they stood.
+                        // where they stood, or in with the list's skeleton.
                         if (chipsHeld)
                           IgnorePointer(
                             key: const ValueKey("skeleton"),
-                            child: PregoShimmer(
-                              leaving: !loading,
-                              child: chips(
-                                each: (filter) => _barOver(
-                                  shape: chip(filter: filter, key: null, counts: _noCounts),
+                            child: FadeTransition(
+                              opacity: _replacing ? _skeletonArrival : kAlwaysCompleteAnimation,
+                              child: PregoShimmer(
+                                leaving: !loading && !_replacing,
+                                appearDelay: _skeletonAppearDelay,
+                                child: chips(
+                                  each: (filter) => _barOver(
+                                    shape: chip(filter: filter, key: null, counts: _noCounts),
+                                  ),
                                 ),
                               ),
                             ),
@@ -411,7 +477,17 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                   tween: Tween(begin: 0, end: 1),
                   duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
                   curve: transcriptMotionCurve,
-                  builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+                  builder: (_, opacity, child) => Opacity(
+                    opacity: opacity,
+                    // It fades out with the rows a load replaces.
+                    child: IgnorePointer(
+                      ignoring: _replacing,
+                      child: FadeTransition(
+                        opacity: _replacing ? _contentOpacity : kAlwaysCompleteAnimation,
+                        child: child,
+                      ),
+                    ),
+                  ),
                   child: Padding(
                     padding: const EdgeInsetsDirectional.fromSTEB(16, 12, 16, 0),
                     child: Row(
@@ -458,6 +534,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
           // hand-off. It stays mounted when the list becomes empty, giving the
           // final removed row time to close before the empty state settles in.
           SliverFadeTransition(
+            key: ValueKey(_contentFades),
             opacity: _contentOpacity,
             sliver: PregoAnimatedSliverList<SessionListEntry<_Item>>(
               items: entries,
@@ -471,12 +548,15 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               },
               itemBuilder: (_, index, entry) => switch (entry) {
                 SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
-                SessionListItemEntry(item: _LaunchItem(:final launch)) => _launchRowSettling(
-                  context: context,
-                  launching: true,
-                  child: Padding(
-                    padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? endPadding : 0),
-                    child: PendingSessionLaunchTile(launch: launch),
+                SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
+                  ignoring: _replacing,
+                  child: _launchRowSettling(
+                    context: context,
+                    launching: true,
+                    child: Padding(
+                      padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? endPadding : 0),
+                      child: PendingSessionLaunchTile(launch: launch),
+                    ),
                   ),
                 ),
                 SessionListItemEntry(item: _SessionItem(:final row)) => _sessionRow(
@@ -513,11 +593,14 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
   }
 
-  Widget _skeleton({required BuildContext context, required bool leaving}) =>
-      SessionListSkeleton(key: _skeletonKey, leaving: leaving);
+  Widget _skeleton({required BuildContext context, required bool leaving}) => FadeTransition(
+    opacity: _replacing ? _skeletonArrival : kAlwaysCompleteAnimation,
+    child: SessionListSkeleton(key: _skeletonKey, leaving: leaving, appearDelay: _skeletonAppearDelay),
+  );
 
-  /// [child], with the leaving skeleton, if it holds the [skeleton], fading
-  /// out over what follows, hanging from its bottom without taking room.
+  /// [child], with the skeleton, if it holds the [skeleton], fading out over
+  /// what follows, or in over the rows a load replaces, hanging from its
+  /// bottom without taking room.
   Widget _holding({required bool skeleton, required Widget child}) => Stack(
     fit: StackFit.passthrough,
     clipBehavior: Clip.none,
@@ -533,7 +616,9 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
             alignment: Alignment.topCenter,
             maxHeight: double.infinity,
             child: IgnorePointer(
-              child: ExcludeSemantics(child: _skeleton(context: context, leaving: true)),
+              child: ExcludeSemantics(
+                child: _skeleton(context: context, leaving: !_replacing),
+              ),
             ),
           ),
         ),
@@ -586,7 +671,11 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         ),
       ),
     );
-    return tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: tile) : tile;
+    // A row a load replaces fades out without taking taps.
+    return IgnorePointer(
+      ignoring: _replacing,
+      child: tookLaunchRow ? _launchRowSettling(context: context, launching: false, child: tile) : tile,
+    );
   }
 }
 
@@ -605,7 +694,13 @@ Widget _sized({required double size, required Widget? child}) => ClipRect(
 /// repeated until the screen's height is covered, for the list to cut off at
 /// its viewport's bottom edge. The pattern is fixed, so the groups never
 /// reshuffle as it rebuilds.
-class const SessionListSkeleton({super.key, required final bool leaving}) extends StatelessWidget {
+class const SessionListSkeleton({
+  super.key,
+  required final bool leaving,
+
+  /// See [PregoShimmer.appearDelay].
+  required final Duration appearDelay,
+}) extends StatelessWidget {
   static const List<int> _groupSizes = [3, 2, 4];
 
   /// Close to the widths of "Today", "Yesterday" and a weekday.
@@ -641,6 +736,7 @@ class const SessionListSkeleton({super.key, required final bool leaving}) extend
     return PregoShimmer(
       semanticLabel: context.loc.sessionListLoadingSemantics,
       leaving: leaving,
+      appearDelay: appearDelay,
       child: Column(crossAxisAlignment: CrossAxisAlignment.stretch, children: children),
     );
   }
