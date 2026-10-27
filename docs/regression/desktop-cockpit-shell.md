@@ -267,8 +267,8 @@ The main pane hosts one full-width routed page.
   Longer tab labels wrap while the tab rail itself scrolls.
   Pages draw no title bar: the tab rail names the page, and one small X at the
   top-right closes the window. A page pushed inside a tab (Bridge's Harnesses and Computers) names itself under
-  its in-window Back, which fades back to the tab's own page; picking any tab leaves it. The selected tab uses
-  the main sidebar's fill.
+  its in-window Back, which fades back to the tab's own page; picking any tab leaves it. The Harnesses overview
+  keeps pull-to-refresh. The selected tab uses the main sidebar's fill.
   Theme is a Light/Dark/System segmented control that drops below its label at
   large text sizes. Bridge's connected-bridge intro sits inside its section.
   Escape/outside dismiss;
@@ -379,8 +379,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   the Archived page pushed once over its opener, its rows opening read-only over it, and its close returning to
   the opener or, reached directly, home (`desktop_router_test`).
 - Bridge's Harnesses row opening the page inside the tab and its Back returning to Bridge; the harness entry point
-  landing on Bridge with Harnesses open (`desktop_settings_screens_test`), including from New
-  session with its draft kept (`desktop_new_session_screen_test`).
+  landing on Bridge with Harnesses open, its overview refreshing on a pull (`desktop_settings_screens_test`),
+  including from New session through the real router with its draft kept (`desktop_new_session_screen_test`).
+  The home and session notices call the same router opener.
 - Live inventory mutations, action-scope viewing isolation, invalidation/disposal. All-project admission happens
   once per entering ID, including offscreen projects. Empty/loading/failed entries keep project-local retry. Keep
   loaded rows

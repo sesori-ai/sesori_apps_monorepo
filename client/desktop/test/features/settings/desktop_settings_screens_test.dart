@@ -892,6 +892,11 @@ void main() {
     expect(find.text("YOLO mode"), findsNothing);
     // The overview's one Back leads to Bridge's own page.
     expect(find.bySemanticsLabel("Back"), findsOneWidget);
+    // Pulling the overview still refreshes the harness list, as the old tab did.
+    when(pluginService.refresh).thenAnswer((_) async {});
+    await tester.drag(find.text("OpenCode"), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    verify(pluginService.refresh).called(1);
     await tester.tap(find.text("OpenCode"));
     await tester.pumpAndSettle();
     expect(tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(), same(cubit));
