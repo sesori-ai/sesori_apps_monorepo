@@ -10,8 +10,9 @@ Qualification** (`linux-packaging`, main only). RPMs receive native OpenPGP sign
 Both RPM and unchanged DEB bytes are covered by a detached signature over SHA-256 checksums. This
 is **not** an APT repository: APT normally authenticates signed repository metadata,
 not a detached signature beside a manually downloaded DEB. Internal desktop attachment
-uses the shared release described below. Stable Linux, public APT/RPM hosting and
-desktop-session/upgrade qualification remain separate.
+uses the shared release described below; stable attaches to the approved `v<X.Y.Z>`
+release (first `v1.10.1`). APT/RPM hosting and desktop-session/upgrade qualification
+remain separate.
 
 ## 1. Generate once, on your Mac
 
@@ -219,8 +220,7 @@ that same download. Missing signatures on an older release are not evidence of s
 
 The shared internal cycle builds both native Linux CPUs with the same product source,
 version and build number as Bridge/mobile, then attaches verified packages after core
-finalization. Linux failure does not block core or macOS publication. Stable Linux and
-public APT/RPM repositories are not admitted. GUI/login/keyring/tray and real N→N+1
+finalization. Linux failure does not block core or macOS publication. GUI/login/keyring/tray and real N→N+1
 checks remain unverified; users opt into those limitations by choosing internal previews.
 
 For bootstrap, select an existing public shared **internal** release and set
@@ -287,7 +287,7 @@ Website PR `sesori-ai/landingpage#112` now discovers these previews. Live deskto
 package/verification links, metadata and spacing were checked after normal deployment.
 [The acceptance record](../../.plan/active/desktop-distribution/steps/step-09.md)
 separates exact package, signature and website evidence from still-unverified
-GUI/account/keyring/tray and real N→N+1 behavior. Stable Linux and repositories remain gated.
+GUI/account/keyring/tray and real N→N+1 behavior.
 
 ## Verified private qualification
 
