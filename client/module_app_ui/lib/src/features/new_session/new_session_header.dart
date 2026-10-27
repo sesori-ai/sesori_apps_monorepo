@@ -119,13 +119,13 @@ class _NewSessionHeaderState() extends State<NewSessionHeader> with SingleTicker
                     ),
             ),
             // The harness's width eases as its shimmer turns into the
-            // chooser, so the centred row glides rather than jumps.
+            // chooser, so the centred row glides rather than jumps. Under
+            // reduced motion no wrapper at all: a zero-length AnimatedSize
+            // would re-dirty itself mid-layout.
             if (harness case final harness?)
-              AnimatedSize(
-                duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
-                curve: transcriptMotionCurve,
-                child: harness,
-              ),
+              context.isReducedMotion
+                  ? harness
+                  : AnimatedSize(duration: transcriptMotionDuration, curve: transcriptMotionCurve, child: harness),
           ],
         ),
       ],
