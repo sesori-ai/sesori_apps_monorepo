@@ -866,12 +866,14 @@ final class ClaudeSessionService({
   /// as busy/idle exactly like an enqueued turn.
   ///
   /// Only frames that prove turn activity begin one: token stream, assistant
-  /// content, a permission ask, or the completion of a background task the
-  /// main agent launched (the CLI follows it with a wake-up turn, so busy
-  /// spans launch → task → wake-up without a transient idle). Bookkeeping
-  /// frames (`init`, `status`, unknown types) do not, so post-turn stragglers
-  /// cannot re-busy a session, and forwarded sub-agent frames do not either:
-  /// they are task activity, already held by [_SessionTurnState.runningTaskIds].
+  /// content, or the completion of a background task the main agent launched
+  /// (the CLI follows it with a wake-up turn, so busy spans launch → task →
+  /// wake-up without a transient idle). Bookkeeping frames (`init`, `status`,
+  /// unknown types) do not, so post-turn stragglers cannot re-busy a session,
+  /// and forwarded sub-agent frames do not either: they are task activity,
+  /// already held by [_SessionTurnState.runningTaskIds]. Neither does a
+  /// permission ask: the main agent's own follows its assistant frame, and
+  /// one between turns is a background sub-agent's.
   void _trackSelfStartedTurn({required String sessionId, required ClaudeStreamMessage message}) {
     final state = _turns[sessionId];
     if (state == null) return;
@@ -899,7 +901,6 @@ final class ClaudeSessionService({
         break;
       case ClaudeStreamEventMessage() ||
           ClaudeAssistantMessage() ||
-          ClaudeControlRequestMessage() ||
           ClaudeTaskNotificationMessage() ||
           ClaudeUserMessage():
         if (state.selfStartedTurn != null || state.pending > 0) return;

@@ -209,9 +209,15 @@ defaults and queued client sends coherent.
   itself (`owned_by_subagent`, such as its own Bash call) keeps the session
   busy, even after that sub-agent ends, but never sets `mainAgentRunning`,
   and its completion opens no main-agent wake-up turn: the CLI delivers it to
-  the sub-agent. Failure signal: the transcript's sub-agent row vanishes
-  seconds after a background sub-agent starts running tools, or once one of
-  its background shells finishes. The CLI's
+  the sub-agent. A background sub-agent's permission ask is its own work too:
+  it never sets `mainAgentRunning`. While the ask waits on the user, its
+  permission card stands in for the sub-agent row, as for any waiting
+  question or permission; once it is answered the row is back. Under YOLO the bridge answers every ask before a client sees
+  it, so the row stays up. Failure signal: the transcript's sub-agent row
+  vanishes seconds after a background sub-agent starts running tools (under
+  YOLO, at its first tool call that misses an allow rule), once one of its
+  background shells finishes, or after one of its permission asks is
+  answered. The CLI's
   `<task-notification>` delivery records are internal: they finalize the
   matching subtask and are never rendered as user messages, while user text
   that merely discusses the envelope stays visible. Forwarded sub-agent frames
