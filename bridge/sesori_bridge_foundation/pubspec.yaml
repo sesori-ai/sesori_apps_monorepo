@@ -3,10 +3,10 @@ publish_to: none
 resolution: workspace
 
 environment:
-  sdk: ^3.13.5
+  sdk: ^3.13.7
 
 dependencies:
-  crypto: ^3.0.7
+  crypto: ^3.0.8
   http: ^1.6.0
   meta: ^1.19.0
   path: ^1.9.1

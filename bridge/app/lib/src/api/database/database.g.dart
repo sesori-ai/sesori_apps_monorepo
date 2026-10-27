@@ -3883,10 +3883,11 @@ class $$ProjectsTableTableTableManager
               getPrefetchedDataCallback: (items) async {
                 return [
                   if (sessionTableRefs)
-                    await $_getPrefetchedData<
+                    await $_getPrefetchedDataByColumns<
                       ProjectDto,
                       $ProjectsTableTable,
-                      SessionDto
+                      SessionDto,
+                      $SessionTableTable
                     >(
                       currentTable: table,
                       referencedTable: $$ProjectsTableTableReferences
@@ -3897,10 +3898,8 @@ class $$ProjectsTableTableTableManager
                             table,
                             p0,
                           ).sessionTableRefs,
-                      referencedItemsForCurrentItem: (item, referencedItems) =>
-                          referencedItems.where(
-                            (e) => e.projectId == item.projectId,
-                          ),
+                      currentColumn: 'project_id',
+                      referencedColumn: 'project_id',
                       typedResults: items,
                     ),
                 ];
@@ -4797,10 +4796,11 @@ class $$SessionTableTableTableManager
                   getPrefetchedDataCallback: (items) async {
                     return [
                       if (sessionContinuationTableRefs)
-                        await $_getPrefetchedData<
+                        await $_getPrefetchedDataByColumns<
                           SessionDto,
                           $SessionTableTable,
-                          SessionContinuationDto
+                          SessionContinuationDto,
+                          $SessionContinuationTableTable
                         >(
                           currentTable: table,
                           referencedTable: $$SessionTableTableReferences
@@ -4811,10 +4811,8 @@ class $$SessionTableTableTableManager
                                 table,
                                 p0,
                               ).sessionContinuationTableRefs,
-                          referencedItemsForCurrentItem:
-                              (item, referencedItems) => referencedItems.where(
-                                (e) => e.sessionId == item.sessionId,
-                              ),
+                          currentColumn: 'session_id',
+                          referencedColumn: 'session_id',
                           typedResults: items,
                         ),
                     ];
