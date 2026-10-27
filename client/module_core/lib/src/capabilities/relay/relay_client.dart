@@ -601,7 +601,8 @@ class RelayClient._({
 
     _sessionEncryptor = null;
     _connectionState = RelayClientConnectionState.disconnected;
-    _completeAllPendingWithError(RelayResponseLostException(message: "Relay socket closed (code=$closeCode)"));
+    final cutOffRequests = _pendingRequests.values.toList();
+    _pendingRequests.clear();
     unawaited(_teardownChannelOnly());
     unawaited(_closeSseController());
 
@@ -612,6 +613,16 @@ class RelayClient._({
     }
 
     _notifySocketClosed();
+    // ConnectionService reports the drop when the SSE stream ends or
+    // [onSocketClosed] fires. The requests the close cut off fail only on the
+    // next event-loop turn, after that report, so whoever listens for the drop
+    // hears of it before any of these requests fails.
+    final lost = RelayResponseLostException(message: "Relay socket closed (code=$closeCode)");
+    Timer.run(() {
+      for (final request in cutOffRequests) {
+        request.completeError(lost);
+      }
+    });
   }
 
   Future<void> _sendEncryptedMessage(RelayMessage message) async {
