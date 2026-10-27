@@ -148,7 +148,7 @@ void main() {
 
   test("statuses round-trip unavailable sources and decode the legacy default", () {
     const response = SessionStatusResponse(
-      statuses: {"session": SessionStatus.busy()},
+      statuses: {"session": SessionStatus.busy(since: null)},
       unavailablePluginIds: ["cursor"],
     );
 

@@ -272,15 +272,24 @@ String toString() {
 @JsonSerializable()
 
 class SessionStatusBusy implements SessionStatus {
-  const SessionStatusBusy({ String? $type}): $type = $type ?? 'busy';
+  const SessionStatusBusy({required this.since,  String? $type}): $type = $type ?? 'busy';
   factory SessionStatusBusy.fromJson(Map<String, dynamic> json) => _$SessionStatusBusyFromJson(json);
 
-
+/// When the bridge saw the session go busy, in epoch ms on the bridge
+/// clock. Null when the bridge is older, or when it did not see the
+/// session go busy from a non-busy state (it was first seen busy, as after
+/// a bridge restart).
+ final  int? since;
 
 @JsonKey(name: 'type')
 final String $type;
 
 
+/// Create a copy of SessionStatus
+/// with the given fields replaced by the non-null parameter values.
+@JsonKey(includeFromJson: false, includeToJson: false)
+@pragma('vm:prefer-inline')
+$SessionStatusBusyCopyWith<SessionStatusBusy> get copyWith => _$SessionStatusBusyCopyWithImpl<SessionStatusBusy>(this, _$identity);
 
 @override
 Map<String, dynamic> toJson() {
@@ -289,34 +298,68 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusBusy);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusBusy&&(identical(other.since, since) || other.since == since));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
-int get hashCode => runtimeType.hashCode;
+int get hashCode {
+    return Object.hash(runtimeType,since);
+}
 
 @override
 String toString() {
-    return 'SessionStatus.busy()';
+    return 'SessionStatus.busy(since: $since)';
 }
 
 
 }
 
+/// @nodoc
+abstract mixin class $SessionStatusBusyCopyWith<$Res> implements $SessionStatusCopyWith<$Res> {
+  factory $SessionStatusBusyCopyWith(SessionStatusBusy value, $Res Function(SessionStatusBusy) _then) = _$SessionStatusBusyCopyWithImpl;
+@useResult
+$Res call({
+ int? since
+});
 
 
+
+
+}
+/// @nodoc
+class _$SessionStatusBusyCopyWithImpl<$Res>
+    implements $SessionStatusBusyCopyWith<$Res> {
+  _$SessionStatusBusyCopyWithImpl(this._self, this._then);
+
+  final SessionStatusBusy _self;
+  final $Res Function(SessionStatusBusy) _then;
+
+/// Create a copy of SessionStatus
+/// with the given fields replaced by the non-null parameter values.
+@pragma('vm:prefer-inline') $Res call({Object? since = freezed,}) {
+  return _then(SessionStatusBusy(
+since: freezed == since ? _self.since : since // ignore: cast_nullable_to_non_nullable
+as int?,
+  ));
+}
+
+
+}
 
 /// @nodoc
 @JsonSerializable()
 
 class SessionStatusRetry implements SessionStatus {
-  const SessionStatusRetry({required this.attempt, required this.message, required this.next,  String? $type}): $type = $type ?? 'retry';
+  const SessionStatusRetry({required this.attempt, required this.message, required this.next, required this.since,  String? $type}): $type = $type ?? 'retry';
   factory SessionStatusRetry.fromJson(Map<String, dynamic> json) => _$SessionStatusRetryFromJson(json);
 
  final  int attempt;
  final  String message;
  final  int next;
+/// When the bridge saw the session go busy, as for [SessionStatus.busy];
+/// a retry keeps the time of the busy run it belongs to.
+ final  int? since;
 
 @JsonKey(name: 'type')
 final String $type;
@@ -335,18 +378,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusRetry&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.message, message) || other.message == message)&&(identical(other.next, next) || other.next == next));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is SessionStatusRetry&&(identical(other.attempt, attempt) || other.attempt == attempt)&&(identical(other.message, message) || other.message == message)&&(identical(other.next, next) || other.next == next)&&(identical(other.since, since) || other.since == since));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,attempt,message,next);
+    return Object.hash(runtimeType,attempt,message,next,since);
 }
 
 @override
 String toString() {
-    return 'SessionStatus.retry(attempt: $attempt, message: $message, next: $next)';
+    return 'SessionStatus.retry(attempt: $attempt, message: $message, next: $next, since: $since)';
 }
 
 
@@ -357,7 +400,7 @@ abstract mixin class $SessionStatusRetryCopyWith<$Res> implements $SessionStatus
   factory $SessionStatusRetryCopyWith(SessionStatusRetry value, $Res Function(SessionStatusRetry) _then) = _$SessionStatusRetryCopyWithImpl;
 @useResult
 $Res call({
- int attempt, String message, int next
+ int attempt, String message, int next, int? since
 });
 
 
@@ -374,12 +417,13 @@ class _$SessionStatusRetryCopyWithImpl<$Res>
 
 /// Create a copy of SessionStatus
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? attempt = null,Object? message = null,Object? next = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? attempt = null,Object? message = null,Object? next = null,Object? since = freezed,}) {
   return _then(SessionStatusRetry(
 attempt: null == attempt ? _self.attempt : attempt // ignore: cast_nullable_to_non_nullable
 as int,message: null == message ? _self.message : message // ignore: cast_nullable_to_non_nullable
 as String,next: null == next ? _self.next : next // ignore: cast_nullable_to_non_nullable
-as int,
+as int,since: freezed == since ? _self.since : since // ignore: cast_nullable_to_non_nullable
+as int?,
   ));
 }
 

@@ -11,7 +11,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -32,7 +32,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -60,7 +60,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -89,7 +89,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -98,7 +98,7 @@ void main() {
         async.flushMicrotasks();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
 
         async.elapse(const Duration(milliseconds: 800));
@@ -118,7 +118,7 @@ void main() {
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
@@ -169,7 +169,7 @@ void main() {
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
@@ -216,7 +216,7 @@ void main() {
         // root when it goes idle with a pending question — the blocked key is
         // recorded under "child", before any parent link is learned.
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
@@ -267,10 +267,10 @@ void main() {
         // via status events, so it is its own root when it goes idle with a
         // pending question — the block is recorded under "child".
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
@@ -319,7 +319,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
@@ -359,7 +359,7 @@ void main() {
 
         harness.dispatch(SesoriSseEvent.sessionCreated(info: session));
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -380,7 +380,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -410,7 +410,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -440,7 +440,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -476,7 +476,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.questionAsked(
@@ -522,7 +522,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.permissionAsked(
@@ -586,10 +586,10 @@ void main() {
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
 
         harness.dispatch(
@@ -613,7 +613,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -621,7 +621,7 @@ void main() {
         async.elapse(const Duration(milliseconds: 200));
         async.flushMicrotasks();
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -638,7 +638,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -662,7 +662,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -684,7 +684,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -740,7 +740,7 @@ void main() {
         );
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
@@ -765,7 +765,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -783,7 +783,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -814,7 +814,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -836,7 +836,7 @@ void main() {
         final harness = _newHarness();
 
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -855,10 +855,10 @@ void main() {
 
         // Status events arrive without sessionCreated (e.g., after bridge restart).
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
@@ -899,10 +899,10 @@ void main() {
 
         // Status events arrive without parent links.
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
@@ -945,13 +945,13 @@ void main() {
 
         // Three sessions known only via status events.
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child-1", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child-1", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child-2", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child-2", status: SessionStatus.busy(since: null)),
         );
 
         // All go idle — each schedules its own debounce as "root".
@@ -996,13 +996,13 @@ void main() {
 
         // Three-level hierarchy known only via status events.
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy(since: null)),
         );
 
         // All go idle.
@@ -1052,10 +1052,10 @@ void main() {
           ),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.dispatch(
           const SesoriSseEvent.sessionStatus(sessionID: "parent", status: SessionStatus.idle()),

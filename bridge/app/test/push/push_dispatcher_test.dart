@@ -266,10 +266,10 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
@@ -304,10 +304,10 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
 
         harness.completionListener.markSessionAborted("child");
@@ -378,10 +378,10 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
@@ -419,10 +419,10 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
@@ -461,7 +461,7 @@ void main() {
           SesoriSseEvent.sessionCreated(info: _session(id: "root")),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.idle()),
@@ -527,7 +527,7 @@ void main() {
           ),
         );
         harness.completionListener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.completionListener.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),

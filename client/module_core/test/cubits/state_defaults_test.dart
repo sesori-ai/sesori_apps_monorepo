@@ -47,7 +47,9 @@ void main() {
     expect(loaded.retryErrorMessage, isNull);
     expect(
       loaded
-          .copyWith(sessionStatus: const SessionStatus.retry(attempt: 1, message: "Provider overloaded", next: 2))
+          .copyWith(
+            sessionStatus: const SessionStatus.retry(attempt: 1, message: "Provider overloaded", next: 2, since: null),
+          )
           .retryErrorMessage,
       "Provider overloaded",
     );

@@ -781,7 +781,7 @@ void main() {
           final reloading = cubit.reload();
           expect(cubit.state, isA<SessionDetailLoading>());
           snapshots.add(management(blocked: true));
-          sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()));
+          sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy(since: null)));
           metadata.complete(savedMetadata);
           await reloading;
           when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) async => savedMetadata);
@@ -791,7 +791,7 @@ void main() {
             description: "live block",
           );
           expect((cubit.state as SessionDetailLoaded).messages, (before as SessionDetailLoaded).messages);
-          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy());
+          expect((cubit.state as SessionDetailLoaded).sessionStatus, const SessionStatus.busy(since: null));
           cubit.removeFailedSend();
           expect(_failedOf(state: cubit.state as SessionDetailLoaded), isNull);
           await cubit.cancelBridgeQueuedPrompt(promptId: "remote-prompt");
@@ -1200,13 +1200,13 @@ void main() {
       when(() => mockSessionRepository.getSession(sessionId: sessionId)).thenAnswer((_) => metadata.future);
       final reloading = cubit.reload();
       expect(cubit.state, isA<SessionDetailLoading>());
-      sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()));
+      sessionEvents.add(const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy(since: null)));
       metadata.complete(ApiResponse.error(ApiError.generic()));
       await reloading;
       final after = cubit.state as SessionDetailLoaded;
       expect(after.messages, before.messages);
       expect(after.interaction.canInteract, isTrue);
-      expect(after.sessionStatus, const SessionStatus.busy());
+      expect(after.sessionStatus, const SessionStatus.busy(since: null));
     });
 
     blocTest<SessionDetailCubit, SessionDetailState>(
@@ -1557,11 +1557,12 @@ void main() {
 
         // Session becomes busy.
         sessionEvents.add(
-          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy()),
+          const SesoriSessionStatus(sessionID: sessionId, status: SessionStatus.busy(since: null)),
         );
         await awaitState(
           cubit: cubit,
-          predicate: (state) => state is SessionDetailLoaded && state.sessionStatus == const SessionStatus.busy(),
+          predicate: (state) =>
+              state is SessionDetailLoaded && state.sessionStatus == const SessionStatus.busy(since: null),
           description: "busy session",
         );
 
@@ -1579,7 +1580,7 @@ void main() {
         isA<SessionDetailLoaded>().having(
           (state) => state.sessionStatus,
           "sessionStatus",
-          const SessionStatus.busy(),
+          const SessionStatus.busy(since: null),
         ),
         _queuedSubmission("hello"),
         _sendingSubmission("hello"),
@@ -1847,7 +1848,7 @@ void main() {
       );
       when(() => mockSessionService.getSessionStatuses()).thenAnswer(
         (_) async => ApiResponse.success(
-          const SessionStatusResponse(statuses: {childId: SessionStatus.busy()}),
+          const SessionStatusResponse(statuses: {childId: SessionStatus.busy(since: null)}),
         ),
       );
       when(
@@ -1882,7 +1883,7 @@ void main() {
       );
       when(() => mockSessionService.getSessionStatuses()).thenAnswer(
         (_) async => ApiResponse.success(
-          const SessionStatusResponse(statuses: {childId: SessionStatus.busy()}),
+          const SessionStatusResponse(statuses: {childId: SessionStatus.busy(since: null)}),
         ),
       );
       final rootAbort = Completer<ApiResponse<bool>>();
@@ -2108,7 +2109,7 @@ void main() {
         sessionEvents.add(
           const SesoriSessionStatus(
             sessionID: sessionId,
-            status: SessionStatus.busy(),
+            status: SessionStatus.busy(since: null),
           ),
         );
       },
@@ -2117,7 +2118,7 @@ void main() {
         isA<SessionDetailLoaded>().having(
           (state) => state.sessionStatus,
           "sessionStatus",
-          const SessionStatus.busy(),
+          const SessionStatus.busy(since: null),
         ),
       ],
     );
@@ -2686,7 +2687,7 @@ void main() {
           () => mockSessionService.getSessionStatuses(),
         ).thenAnswer(
           (_) async => ApiResponse.success(
-            const SessionStatusResponse(statuses: {sessionId: SessionStatus.busy()}),
+            const SessionStatusResponse(statuses: {sessionId: SessionStatus.busy(since: null)}),
           ),
         );
         return buildCubit();

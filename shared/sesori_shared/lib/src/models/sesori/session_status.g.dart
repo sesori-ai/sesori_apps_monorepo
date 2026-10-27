@@ -34,16 +34,19 @@ SessionStatusIdle _$SessionStatusIdleFromJson(Map json) =>
 Map<String, dynamic> _$SessionStatusIdleToJson(SessionStatusIdle instance) =>
     <String, dynamic>{'type': instance.$type};
 
-SessionStatusBusy _$SessionStatusBusyFromJson(Map json) =>
-    SessionStatusBusy($type: json['type'] as String?);
+SessionStatusBusy _$SessionStatusBusyFromJson(Map json) => SessionStatusBusy(
+  since: (json['since'] as num?)?.toInt(),
+  $type: json['type'] as String?,
+);
 
 Map<String, dynamic> _$SessionStatusBusyToJson(SessionStatusBusy instance) =>
-    <String, dynamic>{'type': instance.$type};
+    <String, dynamic>{'since': ?instance.since, 'type': instance.$type};
 
 SessionStatusRetry _$SessionStatusRetryFromJson(Map json) => SessionStatusRetry(
   attempt: (json['attempt'] as num).toInt(),
   message: json['message'] as String,
   next: (json['next'] as num).toInt(),
+  since: (json['since'] as num?)?.toInt(),
   $type: json['type'] as String?,
 );
 
@@ -52,5 +55,6 @@ Map<String, dynamic> _$SessionStatusRetryToJson(SessionStatusRetry instance) =>
       'attempt': instance.attempt,
       'message': instance.message,
       'next': instance.next,
+      'since': ?instance.since,
       'type': instance.$type,
     };

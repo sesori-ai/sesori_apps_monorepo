@@ -255,7 +255,7 @@ void main() {
             parts: [_toolPart(id: "t1", messageId: "m1", status: ToolStatus.running)],
           ),
         ],
-        status: const SessionStatus.busy(),
+        status: const SessionStatus.busy(since: null),
       );
       final history = createTestChatHistory(sessionRepository: repository);
 
@@ -324,7 +324,7 @@ void main() {
     });
 
     test("a fresh store with a busy session keeps its running tool", () async {
-      final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.busy());
+      final repository = _FakeSessionRepository(transcript: const [], status: const SessionStatus.busy(since: null));
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.backfillSession(sessionId: "ses_a");
       await history.service.captureMessage(

@@ -639,6 +639,12 @@ class FakeSessionRepository({
   }
 
   @override
+  SessionStatus stampLiveStatus({required String sessionId, required SessionStatus status}) => status;
+
+  @override
+  void markSessionIdle({required String sessionId}) {}
+
+  @override
   Future<void> ensurePluginRoutable({required String pluginId, required SessionOperation operation}) async {
     if (pluginId == _plugin.id) return;
     throw PluginOperationException(

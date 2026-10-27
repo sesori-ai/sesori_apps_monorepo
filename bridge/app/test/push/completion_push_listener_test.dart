@@ -109,7 +109,7 @@ void main() {
         // No session created/updated event: the root was pruned for idleness or
         // predates this bridge run, so only the stored title is left.
         harness.listener.handleSseEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.busy(since: null)),
         );
         harness.listener.handleSseEvent(
           const SesoriSseEvent.sessionStatus(sessionID: "session-a", status: SessionStatus.idle()),
@@ -219,7 +219,7 @@ class _Harness({
     _dispatch(
       SesoriSseEvent.sessionStatus(
         sessionID: rootSessionId,
-        status: const SessionStatus.busy(),
+        status: const SessionStatus.busy(since: null),
       ),
     );
     _dispatch(

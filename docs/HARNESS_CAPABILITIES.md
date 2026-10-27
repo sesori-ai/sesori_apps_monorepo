@@ -285,9 +285,12 @@ and the rows show no numbers.
 While only sub-agents run (the bridge reports the main agent's turn over, and
 it streams nothing and runs no step of its own), the transcript shows "N sub-agents running in the background · time"
 and "You can keep chatting meanwhile." The time counts from the earliest
-running sub-agent's start: the `time.created` of the message holding its
-sub-agent step, else the child session's own `time.created`. With neither, the
-row shows no timer. The second line claims that a prompt sent now reaches the
+running sub-agent's start. On every harness that is when the bridge saw it go
+busy after seeing it not busy, so a resumed sub-agent counts from its resume.
+Otherwise (an older bridge, or a sub-agent first seen already busy, as after a
+bridge restart) it is the `time.created` of the message holding its sub-agent
+step, else the child session's own `time.created`, as the table lists. With
+none, the row shows no timer. The second line claims that a prompt sent now reaches the
 main agent at once; no harness where the row shows queues it behind the
 sub-agents. A main agent blocked on a foreground sub-agent is still mid-turn
 (`mainAgentRunning`), so the row stays hidden and the running sub-agent step

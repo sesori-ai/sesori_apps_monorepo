@@ -101,10 +101,10 @@ void main() {
       );
 
       expect(response.statuses["stable-idle-session"], equals(const SessionStatus.idle()));
-      expect(response.statuses["stable-busy-session"], equals(const SessionStatus.busy()));
+      expect(response.statuses["stable-busy-session"], equals(const SessionStatus.busy(since: null)));
       expect(
         response.statuses["stable-retry-session"],
-        equals(const SessionStatus.retry(attempt: 2, message: "Rate limited", next: 123456)),
+        equals(const SessionStatus.retry(attempt: 2, message: "Rate limited", next: 123456, since: null)),
       );
     });
   });
