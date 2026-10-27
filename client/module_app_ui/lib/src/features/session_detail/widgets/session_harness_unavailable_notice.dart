@@ -56,7 +56,9 @@ class const SessionHarnessUnavailableNotice({
           ? null
           : onOpenHarnessSettings,
       onShowBridgeUpdate: bridgeOutdated ? () => showBridgeUpdateSheet(context: context) : null,
-      onRecheck: canRecheck ? onRecheck : null,
+      // The session screen does not wait for the check its Recheck starts, so
+      // the press completes at once and the button never shows one.
+      onRecheck: canRecheck ? () async => onRecheck() : null,
     );
   }
 }

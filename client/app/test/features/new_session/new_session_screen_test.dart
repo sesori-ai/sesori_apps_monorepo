@@ -2013,6 +2013,255 @@ void main() {
     });
   });
 
+  group("Recheck shows that it is checking", () {
+    const loginRequired = SessionOptionsRepositoryAuthenticationRequired(
+      actionHint: "Run the harness locally and use /login.",
+    );
+    final harness = ApiResponse.success(
+      PluginDiscoverySnapshot(
+        bridgeId: "bridge-1",
+        supportsSessionOptions: true,
+        plugins: const [
+          PluginMetadata(
+            id: "plugin-1",
+            displayName: "Plugin One",
+            isDefault: true,
+            state: PluginLifecycleState.ready,
+            actionHint: null,
+          ),
+        ],
+      ),
+    );
+    final project = ApiResponse.success(
+      const Project(
+        id: "project-1",
+        name: "Project One",
+        path: "/project-one",
+        time: null,
+        supportsDedicatedWorktrees: true,
+        voiceGlossaryKey: null,
+      ),
+    );
+    final loginCard = find.byKey(const Key("new_session_login_required"));
+    final projectCard = find.byKey(const Key("new_session_project_unavailable"));
+    final recheck = find.byKey(const Key("session_harness_recheck"));
+    final spinner = find.descendant(of: recheck, matching: find.byType(PregoActivityIndicator));
+    const frame = Duration(milliseconds: 16);
+
+    /// Opens the page on the login card. The options load a Recheck starts
+    /// waits for the returned completer.
+    Future<({Completer<SessionOptionsRepositoryResult> answer, int Function() loads})> openLoginCard({
+      required WidgetTester tester,
+    }) async {
+      final answer = Completer<SessionOptionsRepositoryResult>();
+      var loads = 0;
+      when(
+        () => sessionRepository.loadSessionOptions(
+          projectId: "project-1",
+          pluginId: "plugin-1",
+          mode: any(named: "mode"),
+        ),
+      ).thenAnswer((_) {
+        loads++;
+        return loads == 1 ? Future.value(loginRequired) : answer.future;
+      });
+      await tester.pumpWidget(_buildApp());
+      await tester.pumpAndSettle();
+      expect(loginCard, findsOneWidget);
+      return (answer: answer, loads: () => loads);
+    }
+
+    /// Opens the page on the "project cannot be checked" card. The check a
+    /// Recheck starts waits for the returned completer.
+    Future<({Completer<ApiResponse<Project>> answer, int Function() checks})> openProjectCard({
+      required WidgetTester tester,
+    }) async {
+      final answer = Completer<ApiResponse<Project>>();
+      var checks = 0;
+      when(() => projectRepository.getProject(projectId: any(named: "projectId"))).thenAnswer((_) {
+        checks++;
+        return checks == 1 ? Future.value(ApiResponse<Project>.error(ApiError.generic())) : answer.future;
+      });
+      await tester.pumpWidget(_buildApp());
+      await tester.pumpAndSettle();
+      expect(projectCard, findsOneWidget);
+      return (answer: answer, checks: () => checks);
+    }
+
+    /// Presses Recheck and holds the answer for 640 ms, frame by frame: the
+    /// card and the button never move, the spinner stays away until 300 ms
+    /// after the press and shows from then on, and presses meanwhile, before
+    /// and after it shows, ask the bridge nothing more.
+    Future<void> pressAndHold({
+      required WidgetTester tester,
+      required Finder card,
+      required int Function() requests,
+    }) async {
+      final cardRect = tester.getRect(card);
+      final buttonRect = tester.getRect(recheck);
+      final asked = requests();
+      await tester.tap(recheck);
+      for (var elapsed = frame; elapsed <= const Duration(milliseconds: 640); elapsed += frame) {
+        await tester.pump(frame);
+        expect(tester.getRect(card), cardRect);
+        expect(tester.getRect(recheck), buttonRect);
+        expect(spinner, elapsed < const Duration(milliseconds: 300) ? findsNothing : findsOneWidget);
+        if (elapsed == const Duration(milliseconds: 112) || elapsed == const Duration(milliseconds: 496)) {
+          await tester.tap(recheck, warnIfMissed: false);
+        }
+      }
+      expect(requests(), asked + 1);
+    }
+
+    /// Lets the answer land and the spinner fade out.
+    Future<void> expectSpinnerGone({required WidgetTester tester}) async {
+      for (var elapsed = Duration.zero; elapsed < const Duration(milliseconds: 400); elapsed += frame) {
+        await tester.pump(frame);
+      }
+      expect(spinner, findsNothing);
+    }
+
+    testWidgets("on the login card until the harness has logged in", (tester) async {
+      final login = await openLoginCard(tester: tester);
+
+      await pressAndHold(tester: tester, card: loginCard, requests: login.loads);
+      login.answer.complete(SessionOptionsRepositoryAvailable(catalog: _testSessionOptionsCatalog(), isStale: false));
+      await expectSpinnerGone(tester: tester);
+
+      expect(loginCard, findsNothing);
+      expect(find.byType(PromptInput), findsOneWidget);
+    });
+
+    testWidgets("on the login card until the harness still needs a login, then takes a press again", (tester) async {
+      final login = await openLoginCard(tester: tester);
+      final cardRect = tester.getRect(loginCard);
+      final buttonRect = tester.getRect(recheck);
+
+      await pressAndHold(tester: tester, card: loginCard, requests: login.loads);
+      login.answer.complete(loginRequired);
+      await expectSpinnerGone(tester: tester);
+
+      expect(tester.getRect(loginCard), cardRect);
+      expect(tester.getRect(recheck), buttonRect);
+      await tester.tap(recheck);
+      await tester.pump();
+      expect(login.loads(), 3);
+    });
+
+    testWidgets("on the login card until the load fails and Retry takes its place", (tester) async {
+      final login = await openLoginCard(tester: tester);
+
+      await pressAndHold(tester: tester, card: loginCard, requests: login.loads);
+      login.answer.complete(SessionOptionsRepositoryFailure(error: ApiError.generic()));
+      await expectSpinnerGone(tester: tester);
+
+      expect(loginCard, findsNothing);
+      expect(find.byKey(const Key("new_session_options_retry")), findsOneWidget);
+    });
+
+    testWidgets("on the login card through the rediscovery and options load of an unverified bridge", (
+      tester,
+    ) async {
+      final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+      var discoveries = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) {
+        discoveries++;
+        return discoveries == 1 ? Future.value(harness) : rediscovery.future;
+      });
+      final login = await openLoginCard(tester: tester);
+      connectionStatus.add(const ConnectionStatus.disconnected());
+      await tester.pump();
+      final cardRect = tester.getRect(loginCard);
+
+      await pressAndHold(tester: tester, card: loginCard, requests: () => discoveries);
+      rediscovery.complete(harness);
+      for (var index = 0; index < 20; index++) {
+        await tester.pump(frame);
+        expect(tester.getRect(loginCard), cardRect);
+        expect(spinner, findsOneWidget);
+      }
+      expect(login.loads(), 2);
+      login.answer.complete(loginRequired);
+      await expectSpinnerGone(tester: tester);
+
+      expect(tester.getRect(loginCard), cardRect);
+    });
+
+    testWidgets("on the login card until its rediscovery fails and Retry takes its place", (tester) async {
+      final rediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+      var discoveries = 0;
+      when(pluginRepository.listPlugins).thenAnswer((_) {
+        discoveries++;
+        return discoveries == 1 ? Future.value(harness) : rediscovery.future;
+      });
+      await openLoginCard(tester: tester);
+      connectionStatus.add(const ConnectionStatus.disconnected());
+      await tester.pump();
+
+      await pressAndHold(tester: tester, card: loginCard, requests: () => discoveries);
+      rediscovery.complete(ApiResponse.error(ApiError.generic()));
+      await expectSpinnerGone(tester: tester);
+
+      expect(loginCard, findsNothing);
+      expect(find.byKey(const Key("new_session_options_retry")), findsOneWidget);
+    });
+
+    testWidgets("on the project card until the project is checked", (tester) async {
+      final check = await openProjectCard(tester: tester);
+
+      await pressAndHold(tester: tester, card: projectCard, requests: check.checks);
+      check.answer.complete(project);
+      await expectSpinnerGone(tester: tester);
+
+      expect(projectCard, findsNothing);
+      expect(find.byType(PromptInput), findsOneWidget);
+    });
+
+    testWidgets("on the project card until it still cannot be checked, then takes a press again", (tester) async {
+      final check = await openProjectCard(tester: tester);
+      final cardRect = tester.getRect(projectCard);
+      final buttonRect = tester.getRect(recheck);
+
+      await pressAndHold(tester: tester, card: projectCard, requests: check.checks);
+      check.answer.complete(ApiResponse.error(ApiError.generic()));
+      await expectSpinnerGone(tester: tester);
+
+      expect(tester.getRect(projectCard), cardRect);
+      expect(tester.getRect(recheck), buttonRect);
+      await tester.tap(recheck);
+      await tester.pump();
+      expect(check.checks(), 3);
+    });
+
+    testWidgets("on the project card until its check fails", (tester) async {
+      final check = await openProjectCard(tester: tester);
+      final cardRect = tester.getRect(projectCard);
+
+      await pressAndHold(tester: tester, card: projectCard, requests: check.checks);
+      check.answer.completeError(StateError("connection lost"));
+      await expectSpinnerGone(tester: tester);
+
+      expect(tester.getRect(projectCard), cardRect);
+    });
+
+    testWidgets("swaps at once under reduced motion", (tester) async {
+      final login = await openLoginCard(tester: tester);
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await tester.pump();
+      final fades = find.descendant(of: recheck, matching: find.byType(FadeTransition));
+      List<double> opacities() => [for (final fade in tester.widgetList<FadeTransition>(fades)) fade.opacity.value];
+
+      await tester.tap(recheck);
+      await tester.pump(const Duration(milliseconds: 304));
+      expect(spinner, findsOneWidget);
+      expect(opacities(), everyElement(anyOf(0.0, 1.0)));
+      login.answer.complete(loginRequired);
+      await tester.pump();
+      expect(spinner, findsNothing);
+    });
+  });
+
   testWidgets("keeps discovery retry when discovery fails before finding a harness", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.error(ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null)),
