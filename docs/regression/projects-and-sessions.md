@@ -494,9 +494,10 @@ state.
 - On the phone, a search field tops the home and Archived once they have
   anything to search. It narrows the loaded sessions (and the chips'
   counts) without a request, ignoring case and needing every typed word in
-  the session's title or its project's name as rows and the project filter
-  show it; each word may match either, so "sesori fix" finds "Fix the header"
-  in "sesori". A "No project" session matches on its title only.
+  the session's title or its project's name as the project filter shows it,
+  even where a filtered list's rows leave the project label out; each word
+  may match either, so "sesori fix" finds "Fix the header" in "sesori". A
+  "No project" session matches on its title only.
   Nothing matching reads "No matches"; clearing the field restores the full
   list, and a field that remounts shows the query in force.
 - Session activity stays relative for 30 days. Older rows use a compact numeric
