@@ -499,7 +499,7 @@ void main() {
                 chrome: HarnessSettingsChrome.modal,
                 connectionBanner: null,
                 onClose: () {},
-                onBack: null,
+                onBack: () {},
                 onOpenHarness: ({required pluginId}) {},
               ),
             ),

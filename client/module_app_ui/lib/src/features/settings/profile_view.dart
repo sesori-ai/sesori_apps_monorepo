@@ -75,6 +75,7 @@ class _ProfileViewState() extends State<ProfileView> {
 
     return SettingsChromePage(
       chrome: widget.chrome,
+      onRefresh: null,
       slivers: [
         SliverToBoxAdapter(
           child: Padding(

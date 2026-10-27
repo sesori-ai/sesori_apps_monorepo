@@ -293,7 +293,10 @@ void main() {
     await authenticationTerminal.close();
   });
 
-  Future<GoRouter> open({required WidgetTester tester, required DesktopSettingsTab tab}) async {
+  Future<GoRouter> openWith({
+    required WidgetTester tester,
+    required Future<void> Function({required BuildContext context}) show,
+  }) async {
     final router = GoRouter(
       initialLocation: "/session",
       routes: [
@@ -325,14 +328,7 @@ void main() {
               path: "/session",
               builder: (context, _) => Scaffold(
                 body: TextButton(
-                  onPressed: () => unawaited(
-                    showDesktopSettingsModal(
-                      context: context,
-                      initialTab: tab,
-                      onOpenArchived: () => archivedOpens++,
-                      onLogoutCompleted: () => logoutCompletions++,
-                    ),
-                  ),
+                  onPressed: () => unawaited(show(context: context)),
                   child: const Text("open"),
                 ),
               ),
@@ -367,6 +363,35 @@ void main() {
     await tester.tap(find.text("open"));
     await tester.pumpAndSettle();
     return router;
+  }
+
+  Future<GoRouter> open({required WidgetTester tester, required DesktopSettingsTab tab}) => openWith(
+    tester: tester,
+    show: ({required context}) => showDesktopSettingsModal(
+      context: context,
+      initialTab: tab,
+      onOpenArchived: () => archivedOpens++,
+      onLogoutCompleted: () => logoutCompletions++,
+    ),
+  );
+
+  /// As every Harness settings entry point opens it.
+  Future<GoRouter> openHarnesses({required WidgetTester tester}) => openWith(
+    tester: tester,
+    show: ({required context}) => showDesktopHarnessSettings(
+      context: context,
+      onOpenArchived: () => archivedOpens++,
+      onLogoutCompleted: () => logoutCompletions++,
+    ),
+  );
+
+  bool selected({required WidgetTester tester, required DesktopSettingsTab tab}) {
+    final row = find.byKey(ValueKey("desktop-settings-tab-${tab.name}"));
+    return tester
+            .widget<Semantics>(find.descendant(of: row, matching: find.byType(Semantics)).first)
+            .properties
+            .selected ??
+        false;
   }
 
   Future<void> select({required WidgetTester tester, required DesktopSettingsTab tab}) async {
@@ -551,11 +576,6 @@ void main() {
     expect(find.descendant(of: entry, matching: find.text("studio-mac")), findsOneWidget);
     expect(tester.getTopLeft(find.text("Connected bridge")).dy, lessThan(tester.getTopLeft(entry).dy));
     expect(tester.getBottomLeft(entry).dy, lessThan(tester.getTopLeft(find.text("YOLO mode")).dy));
-    // Harnesses has a tab of its own, so the section does not repeat it.
-    expect(
-      find.descendant(of: find.byKey(const Key("desktop-settings-modal")), matching: find.text("Harnesses")),
-      findsOneWidget,
-    );
 
     await tester.tap(entry);
     await tester.pumpAndSettle();
@@ -563,6 +583,34 @@ void main() {
     await tester.pumpAndSettle();
     verify(() => computerSwitchDispatcher.switchTo(bridgeId: "b", source: ComputerSwitchSource.settings)).called(1);
     expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
+  });
+
+  testWidgets("Harnesses is a Bridge row, not a tab, and opens inside the Bridge tab with Back to it", (tester) async {
+    await open(tester: tester, tab: DesktopSettingsTab.general);
+    expect(find.byKey(const ValueKey("desktop-settings-tab-harnesses")), findsNothing);
+    expect(find.text("Harnesses"), findsNothing);
+
+    await select(tester: tester, tab: DesktopSettingsTab.bridge);
+    // The connected bridge's card leads with it, as on the phone.
+    final row = find.text("Harnesses");
+    expect(row, findsOneWidget);
+    expect(tester.getBottomLeft(row).dy, lessThan(tester.getTopLeft(find.text("YOLO mode")).dy));
+
+    await tester.tap(row);
+    await tester.pumpAndSettle();
+    expect(find.byType(HarnessesSettingsView), findsOneWidget);
+    expect(find.text("OpenCode"), findsOneWidget);
+    expect(find.text("YOLO mode"), findsNothing);
+    // The page names itself under its Back while the sidebar keeps Bridge.
+    expect(find.text("Harnesses"), findsOneWidget);
+    expect(selected(tester: tester, tab: DesktopSettingsTab.bridge), isTrue);
+
+    // Back stays inside the window, on the Bridge tab.
+    await tester.tap(find.text("Back"));
+    await tester.pumpAndSettle();
+    expect(find.byType(HarnessesSettingsView), findsNothing);
+    expect(find.text("YOLO mode"), findsOneWidget);
+    expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
   });
 
   testWidgets("Archived sessions sits under the tabs on every tab and opens Archived as the window closes", (
@@ -834,11 +882,21 @@ void main() {
     }, variant: const TargetPlatformVariant({TargetPlatform.macOS, TargetPlatform.windows}));
   }
 
-  testWidgets("harness detail shares its owner; Back stays inside and Close returns to the session", (tester) async {
-    final router = await open(tester: tester, tab: DesktopSettingsTab.harnesses);
+  testWidgets("Harness settings lands on Bridge with Harnesses open; detail shares its owner and Close returns", (
+    tester,
+  ) async {
+    final router = await openHarnesses(tester: tester);
     final opener = tester.element(find.text("open", skipOffstage: false));
     final cubit = tester.element(find.byType(HarnessesSettingsView)).read<PluginManagementCubit>();
-    expect(find.bySemanticsLabel("Back"), findsNothing);
+    expect(selected(tester: tester, tab: DesktopSettingsTab.bridge), isTrue);
+    expect(find.text("YOLO mode"), findsNothing);
+    // The overview's one Back leads to Bridge's own page.
+    expect(find.bySemanticsLabel("Back"), findsOneWidget);
+    // Pulling the overview still refreshes the harness list, as the old tab did.
+    when(pluginService.refresh).thenAnswer((_) async {});
+    await tester.drag(find.text("OpenCode"), const Offset(0, 300));
+    await tester.pumpAndSettle();
+    verify(pluginService.refresh).called(1);
     await tester.tap(find.text("OpenCode"));
     await tester.pumpAndSettle();
     expect(tester.element(find.byType(HarnessSettingsDetailView)).read<PluginManagementCubit>(), same(cubit));
@@ -880,7 +938,7 @@ void main() {
         refreshError: null,
       ),
     );
-    await open(tester: tester, tab: DesktopSettingsTab.harnesses);
+    await openHarnesses(tester: tester);
     await tester.tap(find.text("OpenCode"));
     await tester.pumpAndSettle();
     final detail = tester.widget<HarnessSettingsDetailView>(find.byType(HarnessSettingsDetailView));
@@ -919,7 +977,7 @@ void main() {
         refreshError: null,
       ),
     );
-    await open(tester: tester, tab: DesktopSettingsTab.harnesses);
+    await openHarnesses(tester: tester);
     await tester.tap(find.text("OpenCode"));
     await tester.pumpAndSettle();
     await tester.tap(find.byKey(const Key("harness_authentication_opencode")));
