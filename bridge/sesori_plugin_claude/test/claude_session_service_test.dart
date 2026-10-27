@@ -917,6 +917,75 @@ void main() {
       expect(await _status(harness), isA<PluginSessionStatusBusy>(), reason: "the sub-agent still runs");
     });
 
+    test("a background sub-agent's permission asks leave the main agent idle through its tool calls", () async {
+      unawaited(harness.enqueue("first"));
+      final process = await harness.firstProcess;
+      await waitForFrame(process, "user");
+      process.emit(_taskStartedFrame());
+      process.emit(_result());
+      await pump();
+
+      for (final step in [1, 2]) {
+        process.emit({
+          ..._assistantFrame(
+            content: [
+              {
+                "type": "tool_use",
+                "id": "toolu-sub-agent-bash-$step",
+                "name": "Bash",
+                "input": {"command": "make step$step"},
+              },
+            ],
+          ),
+          "parent_tool_use_id": "toolu-agent",
+        });
+        process.emit({
+          "type": "control_request",
+          "request_id": "permission-$step",
+          "session_id": testSessionId,
+          "request": {
+            "subtype": "can_use_tool",
+            "tool_name": "Bash",
+            "input": {"command": "make step$step"},
+            "tool_use_id": "toolu-sub-agent-bash-$step",
+            "agent_id": "agent-task-1",
+          },
+        });
+        await pump();
+        expect(harness.approvals.replyPermission(id: "br-$step", reply: PluginPermissionReply.once), isTrue);
+        process.emit({
+          "type": "system",
+          "subtype": "task_started",
+          "session_id": testSessionId,
+          "task_id": "sub-agent-shell-$step",
+          "tool_use_id": "toolu-sub-agent-bash-$step",
+          "description": "Run step $step",
+          "task_type": "local_bash",
+          "owned_by_subagent": true,
+          "is_backgrounded": false,
+          "parent_task_id": "agent-task-1",
+        });
+        process.emit({
+          "type": "system",
+          "subtype": "task_notification",
+          "session_id": testSessionId,
+          "task_id": "sub-agent-shell-$step",
+          "tool_use_id": "toolu-sub-agent-bash-$step",
+          "status": "completed",
+          "summary": "Run step $step",
+        });
+        await pump();
+
+        expect(harness.service.isMainAgentRunning(sessionId: testSessionId), isFalse, reason: "after step $step");
+        expect(await _status(harness), isA<PluginSessionStatusBusy>(), reason: "the sub-agent still runs");
+      }
+
+      // The sub-agent's own completion opens the main agent's wake-up turn.
+      process.emit(_taskNotificationFrame());
+      await pump();
+      expect(harness.service.isMainAgentRunning(sessionId: testSessionId), isTrue);
+    });
+
     test("a forwarded sub-agent frame after the root result does not open a root turn", () async {
       unawaited(harness.enqueue("first"));
       final process = await harness.firstProcess;
