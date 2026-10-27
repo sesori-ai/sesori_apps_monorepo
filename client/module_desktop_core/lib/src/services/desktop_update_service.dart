@@ -48,12 +48,8 @@ class DesktopUpdateService._create({
   DesktopAutomaticUpdates get currentAutomaticUpdates => _automaticUpdates.value;
 
   /// Each "Restart to Update" chosen in the macOS app menu or update window;
-  /// `BridgeControlCubit` owns the exit it starts.
-  Stream<void> get restartRequests => switch (installKind) {
-    DesktopInstallKind.macosSparkle => _updateRepository.sparkleRestartRequests,
-    DesktopInstallKind.linuxPackage || DesktopInstallKind.velopack || DesktopInstallKind.development =>
-      const Stream<void>.empty(),
-  };
+  /// `BridgeControlCubit` owns the exit it starts. Only a started Sparkle emits.
+  Stream<void> get restartRequests => _updateRepository.sparkleRestartRequests;
 
   bool get _canCheck => installKind != DesktopInstallKind.development;
 

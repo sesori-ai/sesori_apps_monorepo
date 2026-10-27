@@ -133,9 +133,12 @@ class BridgeControlCubit._create({
     _focusRequestSubscription = _instanceService.focusRequests.listen((_) => unawaited(showWindow()));
     _updateSubscription = _updateService.states.listen((_) => _rebuildMenu());
     _restartRequestSubscription = _updateService.restartRequests.listen((_) {
-      if (!_controlsLocked) {
-        unawaited(restartToUpdate());
+      if (_controlsLocked) {
+        // The runner's menu cannot see the lock, so a restart chosen meanwhile is dropped.
+        logi("Ignoring a Sparkle restart request while desktop controls are locked");
+        return;
       }
+      unawaited(restartToUpdate());
     });
 
     await _loadLaunchAtLoginState();
