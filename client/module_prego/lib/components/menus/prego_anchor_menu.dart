@@ -10,6 +10,7 @@ import "../../icons/tabler_icons.g.dart";
 import "../../interactions/prego_interaction_scope.dart";
 import "../../theme/prego_glass.dart";
 import "../../theme/prego_theme.dart";
+import "../navigation/prego_nav_subtitle.dart";
 import "anchored_flat_panel.dart";
 import "anchored_spotlight_backdrop.dart";
 
@@ -77,6 +78,26 @@ class const PregoMenuItem({
       assert(!(isDestructive && isWarning), "A row is either destructive or a warning, not both."),
       assert(trailing == null || !isSelected, "A row ends with either its own mark or the selected check, not both.");
 }
+
+/// A tappable menu row whose subtitle reports a [status] — a computer that is
+/// online or not: the [PregoStatusLabel] dot before the [statusText]. Laid out
+/// like a [PregoMenuItem] with a leading glyph and a subtitle; tapping runs
+/// [onTap] and dismisses the menu.
+///
+/// Only a flat menu ([PregoAnchorMenu.flat]) can draw it: [GlassMenuItem]
+/// takes its subtitle as plain text, with no room for the dot.
+class const PregoMenuStatusItem({
+  /// Identifies the rendered row.
+  required final Key? key,
+  required final String title,
+  required final PregoNavStatus status,
+
+  /// The [status] in words, which the dot only repeats.
+  required final String statusText,
+  required final IconData leadingIcon,
+  required final bool isSelected,
+  required final VoidCallback onTap,
+}) extends PregoMenuEntry;
 
 /// A thin separator line between entries.
 class const PregoMenuDivider() extends PregoMenuEntry;
@@ -349,6 +370,8 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           trailing: trailing ?? (isSelected ? _selectedCheck(prego) : null),
           onTap: onTap,
         );
+      case PregoMenuStatusItem():
+        throw UnsupportedError("A status row needs the flat menu path (flat: true).");
       case PregoMenuDivider():
         return const GlassMenuDivider(height: _glassDividerHeight);
       case PregoMenuCustom(:final builder, :final height):
@@ -425,8 +448,8 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
         // Compact rows round their own highlight inside an even margin.
         ? const EdgeInsetsDirectional.all(_compactPanelPadding)
         : EdgeInsetsDirectional.only(
-            top: entries.isEmpty || entries.first is! PregoMenuItem ? 6 : 0,
-            bottom: entries.isEmpty || entries.last is! PregoMenuItem ? 6 : 0,
+            top: entries.isEmpty || !_isItem(entries.first) ? 6 : 0,
+            bottom: entries.isEmpty || !_isItem(entries.last) ? 6 : 0,
           );
     return AnchoredFlatPanel(
       triggerRect: secondaryPress == null ? triggerRect : secondaryPress & Size.zero,
@@ -494,6 +517,7 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           key: key,
           title: title,
           subtitle: subtitle,
+          subtitleStatus: null,
           isSelected: isSelected,
           compact: compact,
           shortcutLabel: compact ? shortcutLabel : null,
@@ -503,6 +527,32 @@ class _PregoAnchorMenuState() extends State<PregoAnchorMenu> {
           isEnabled: isEnabled,
           isDestructive: isDestructive,
           isWarning: isWarning,
+          onTap: () {
+            close();
+            onTap();
+          },
+        );
+      case PregoMenuStatusItem(
+        :final key,
+        :final title,
+        :final status,
+        :final statusText,
+        :final leadingIcon,
+        :final isSelected,
+        :final onTap,
+      ):
+        return _FlatMenuTile(
+          key: key,
+          title: title,
+          subtitle: statusText,
+          subtitleStatus: status,
+          isSelected: isSelected,
+          compact: compact,
+          shortcutLabel: null,
+          leadingIcon: leadingIcon,
+          isEnabled: true,
+          isDestructive: false,
+          isWarning: false,
           onTap: () {
             close();
             onTap();
@@ -528,6 +578,9 @@ const double _compactPanelRadius = PregoRadius.md;
 const double _compactPanelPadding = 4;
 const double _compactRowInset = 10;
 
+/// Whether [entry] is a tappable row, whose ink meets the panel's edge.
+bool _isItem(PregoMenuEntry entry) => entry is PregoMenuItem || entry is PregoMenuStatusItem;
+
 /// A single flat menu row — the Android counterpart of [GlassMenuItem], styled
 /// to match its glass sibling (same 44px min height, title/subtitle/check layout).
 ///
@@ -537,6 +590,9 @@ class const _FlatMenuTile({
   super.key,
   required final String title,
   required final String? subtitle,
+
+  /// Leads the [subtitle] with its status dot; a plain subtitle when null.
+  required final PregoNavStatus? subtitleStatus,
   required final bool isSelected,
   required final bool compact,
   required final String? shortcutLabel,
@@ -601,7 +657,20 @@ class const _FlatMenuTile({
                         style: _titleStyle(prego, isDestructive: isDestructive, isWarning: isWarning),
                       ),
                       if (subtitle != null && subtitle.isNotEmpty)
-                        Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis, style: _subtitleStyle(prego)),
+                        switch (subtitleStatus) {
+                          final status? => PregoStatusLabel(
+                            status: status,
+                            text: subtitle,
+                            style: _subtitleStyle(prego),
+                            maxLines: 1,
+                          ),
+                          null => Text(
+                            subtitle,
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: _subtitleStyle(prego),
+                          ),
+                        },
                     ],
                   ),
                 ),
@@ -678,6 +747,7 @@ const double _glassDividerHeight = 12;
 double _glassEntryHeight(BuildContext context, {required PregoMenuEntry entry}) => switch (entry) {
   PregoMenuLabel() => _glassLabelHeight(context),
   PregoMenuItem(:final subtitle) => _glassItemHeight(context, hasSubtitle: subtitle != null),
+  PregoMenuStatusItem() => _glassItemHeight(context, hasSubtitle: true),
   PregoMenuDivider() => _glassDividerHeight,
   PregoMenuCustom(:final height) => height,
 };

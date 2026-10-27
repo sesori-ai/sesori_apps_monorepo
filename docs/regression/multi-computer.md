@@ -34,7 +34,10 @@ area documents linked below own the detail.
   its state, and the wide sidebar footer's row, which names it and ends in a chevron, open an anchored menu
   listing every computer of the account, most recently seen first (from the button, the current one first),
   with platform icon, name, online or last-seen state, and a check on the current one
-  ([projects and sessions](projects-and-sessions.md)). From the
+  ([projects and sessions](projects-and-sessions.md)). A small dot centred on the state's line leads its grey words:
+  green for "Online", and for "Offline" or "Offline · last seen …" the red the computer button shows for a computer
+  it cannot reach, in both themes. The dot is silent for screen readers, which read only the words. The Computers
+  page rows and the Settings entry lead their presence with the same dot. From the
   Settings entry and the desktop header, and from the home while the account has more than one computer, the menu
   ends in "Manage computers…" after a divider, which closes the menu and opens the Computers page; the offline
   card's menu has no such footer.
@@ -134,6 +137,8 @@ and another while a phone works on the local bridge.
   app jumping to another computer on its own.
 - The menu, offline card, Settings entry or desktop header disagreeing about which computer is current or whether
   it is online, or a presence notice changing the app's own connection state.
+- A presence dot that disagrees with its words (green beside "Offline", red beside "Online"), shows grey, sits off
+  its text's first line, or is read aloud as a second item.
 - A linked-computer alert at launch or sign-in, for the desktop's own computer, or for a status change.
 - A tap on another computer's push opening the session on the current computer, or a push without a computer id
   switching computers.

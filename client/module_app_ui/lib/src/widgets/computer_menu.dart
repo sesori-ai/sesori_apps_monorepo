@@ -12,9 +12,10 @@ typedef ComputerSwitchCallback = void Function({required String bridgeId, requir
 /// The account's computers, anchored to the trigger [triggerBuilder] builds.
 ///
 /// Each row shows the computer's platform, name, and whether its bridge is
-/// online, with a check on the one the app is pointed at. Picking another
-/// computer calls [onSelect]; picking the current one only closes the menu.
-/// Reads [ComputerSwitcherCubit], which the product shell provides.
+/// online, led by a green or red dot, with a check on the one the app is
+/// pointed at. Picking another computer calls [onSelect]; picking the current
+/// one only closes the menu. Reads [ComputerSwitcherCubit], which the product
+/// shell provides.
 class const ComputerMenu({
   super.key,
   required final PregoMenuTriggerBuilder triggerBuilder,
@@ -45,13 +46,13 @@ class const ComputerMenu({
           if (currentFirst) ...state.computers.where((computer) => computer.id == currentId),
           ...state.computers.where((computer) => !currentFirst || computer.id != currentId),
         ])
-          PregoMenuItem(
+          PregoMenuStatusItem(
             key: ValueKey("computer-menu-${computer.id}"),
             title: computer.name,
-            subtitle: presenceLabel(context: context, computer: computer),
+            status: presenceStatus(computer: computer),
+            statusText: presenceLabel(context: context, computer: computer),
             leadingIcon: platformIcon(platform: computer.platform),
             isSelected: computer.id == currentId,
-            shortcutLabel: null,
             onTap: () {
               if (computer.id != currentId) onSelect(bridgeId: computer.id);
             },
@@ -80,6 +81,11 @@ class const ComputerMenu({
     if (lastSeenAt == null) return loc.computerMenuOffline;
     return loc.computerMenuOfflineLastSeen(context.formatTimestamp(lastSeenAt.millisecondsSinceEpoch));
   }
+
+  /// The dot before [presenceLabel]: green online, and offline the red the
+  /// phone home's computer button gives a computer it cannot reach.
+  static PregoNavStatus presenceStatus({required BridgeSummary computer}) =>
+      computer.status == BridgeRegistrationStatus.active ? PregoNavStatus.online : PregoNavStatus.error;
 
   /// The glyph every computer list shows for a computer's operating system.
   static IconData platformIcon({required BridgePlatform platform}) => switch (platform) {

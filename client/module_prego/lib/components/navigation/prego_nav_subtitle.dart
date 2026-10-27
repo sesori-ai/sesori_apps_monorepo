@@ -22,6 +22,69 @@ enum PregoNavStatus() {
   };
 }
 
+/// The small round dot that reports a [PregoNavStatus] beside text.
+///
+/// Decorative for screen readers (a bare box has no semantics): every row it
+/// leads already says the status in words, or has it announced elsewhere.
+class const _StatusDot({required final PregoNavStatus status}) extends StatelessWidget {
+  /// The Figma online-indicator size.
+  static const double _size = 6;
+
+  @override
+  Widget build(BuildContext context) => Container(
+    width: _size,
+    height: _size,
+    decoration: BoxDecoration(
+      shape: BoxShape.circle,
+      color: status.dotColor(colors: context.prego.colors),
+    ),
+  );
+}
+
+/// A status in words ("Online") led by the dot [PregoNavSubtitle] shows for
+/// it, so a list row can say at a glance what its text spells out. The dot
+/// sits centred on the text's first line, however the text wraps.
+class const PregoStatusLabel({
+  super.key,
+  required final PregoNavStatus status,
+  required final String text,
+
+  /// Applied over the ambient [DefaultTextStyle]; null keeps it as it is.
+  required final TextStyle? style,
+
+  /// Caps the text at this many lines, ending in an ellipsis; null lets it
+  /// wrap.
+  required final int? maxLines,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final TextStyle(:fontSize, :height) = DefaultTextStyle.of(context).style.merge(style);
+    if (fontSize == null || height == null) {
+      throw StateError("A status label's text style must declare font size and height.");
+    }
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      crossAxisAlignment: CrossAxisAlignment.start,
+      spacing: PregoSpacing.xs,
+      children: [
+        // As tall as the first line, so the dot centres on it.
+        SizedBox(
+          height: MediaQuery.textScalerOf(context).scale(fontSize) * height,
+          child: Center(child: _StatusDot(status: status)),
+        ),
+        Flexible(
+          child: Text(
+            text,
+            style: style,
+            maxLines: maxLines,
+            overflow: maxLines == null ? null : TextOverflow.ellipsis,
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 /// The contextual subtitle row of the top navigation bar's back-leading title
 /// block ([PregoNavLeadingTitle]), as instantiated on the sessions list
 /// (Figma node 2386:11558) and the Projects page (node 2459:26970): an
@@ -53,9 +116,6 @@ class const PregoNavSubtitle({
   /// Makes the row a button with a trailing chevron; a plain label when `null`.
   final PregoNavSubtitleAction? action,
 }) extends StatelessWidget {
-  /// Status dot diameter — the Figma online-indicator size.
-  static const double _dotSize = 6;
-
   /// Icon size, matching the row's `text-xs` glyph height.
   static const double _iconSize = 12;
 
@@ -74,18 +134,9 @@ class const PregoNavSubtitle({
         mainAxisSize: MainAxisSize.min,
         spacing: PregoSpacing.xs,
         children: [
-          if (status != null)
-            // Decorative for screen readers (a bare box has no semantics):
-            // connection changes are announced by the scaffold's banner live
-            // region, so the dot never needs to speak for itself.
-            Container(
-              width: _dotSize,
-              height: _dotSize,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: status.dotColor(colors: prego.colors),
-              ),
-            ),
+          // Connection changes are announced by the scaffold's banner live
+          // region, so the silent dot never needs to speak for itself.
+          if (status != null) _StatusDot(status: status),
           if (icon != null) Icon(icon, size: _iconSize, color: prego.colors.textTertiary),
           Flexible(
             child: PregoEllipsisText(

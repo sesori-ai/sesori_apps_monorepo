@@ -327,7 +327,8 @@ state.
   fully.
 - The phone home's computer button opens an anchored computer menu below it, also with a single computer (the
   title is the project filter). The menu lists the account's computers, each with its platform icon, name, and
-  "Online", "Offline · last seen …" or "Offline", and checks the current one (before any target is known, the
+  "Online", "Offline · last seen …" or "Offline" after a green or red dot ([multi-computer](multi-computer.md)),
+  and checks the current one (before any target is known, the
   first one, which the relay serves). From the button, which does not name it, the current computer leads the
   menu and the rest follow most recently seen first; from a row that names it, every computer keeps that order.
   Picking the current computer only closes the menu. Picking
