@@ -259,6 +259,11 @@ jobs:
           # submit_ios can apply the fixed release_notes.txt to the version being
           # submitted. Empty when no metadata repo is configured (checkout skipped).
           IOS_RELEASE_NOTES_PATH:            ${{ steps.cometa.outcome == 'success' && format('{0}/store-metadata/ios/metadata', github.workspace) || '' }}
+          # deliver waits up to 3600 s by default for App Store Connect to finish
+          # processing uploaded screenshots, which outlasts this job's 20-minute
+          # timeout when a screenshot gets stuck (build 1082 was cancelled there).
+          # After 300 s deliver re-uploads the unfinished screenshots instead.
+          DELIVER_SCREENSHOT_PROCESSING_TIMEOUT: "300"
         run: bundle exec fastlane submit_ios
 
       - name: Summary
