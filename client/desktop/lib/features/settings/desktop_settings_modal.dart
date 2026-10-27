@@ -38,45 +38,33 @@ enum _BridgeSubpage() {
 Future<void> showDesktopSettingsModal({
   required BuildContext context,
   required DesktopSettingsTab initialTab,
-
-  /// Opens the Archived pane once the window has closed.
-  required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) => _showDesktopSettings(
   context: context,
   initialTab: initialTab,
   bridgeSubpage: null,
-  onOpenArchived: onOpenArchived,
   onLogoutCompleted: onLogoutCompleted,
 );
 
 /// The settings window on its Bridge tab with the Harnesses page already open.
 Future<void> showDesktopHarnessSettings({
   required BuildContext context,
-
-  /// Opens the Archived pane once the window has closed.
-  required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) => _showDesktopSettings(
   context: context,
   initialTab: DesktopSettingsTab.bridge,
   bridgeSubpage: _BridgeSubpage.harnesses,
-  onOpenArchived: onOpenArchived,
   onLogoutCompleted: onLogoutCompleted,
 );
 
 /// The settings window on its Bridge tab with the Computers page already open.
 Future<void> showDesktopComputersSettings({
   required BuildContext context,
-
-  /// Opens the Archived pane once the window has closed.
-  required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) => _showDesktopSettings(
   context: context,
   initialTab: DesktopSettingsTab.bridge,
   bridgeSubpage: _BridgeSubpage.computers,
-  onOpenArchived: onOpenArchived,
   onLogoutCompleted: onLogoutCompleted,
 );
 
@@ -86,7 +74,6 @@ Future<void> _showDesktopSettings({
 
   /// The Bridge tab's page to open over its own, or null for none.
   required _BridgeSubpage? bridgeSubpage,
-  required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) async {
   final authGate = context.read<AuthGateCubit>();
@@ -131,11 +118,6 @@ Future<void> _showDesktopSettings({
             initialTab: initialTab,
             initialBridgeSubpage: bridgeSubpage,
             onClose: close,
-            // Archived is a pane of the cockpit, so the window steps aside for it.
-            onOpenArchived: () {
-              close();
-              onOpenArchived();
-            },
             onLogoutCompleted: () {
               close();
               onLogoutCompleted();
@@ -151,7 +133,6 @@ class const _DesktopSettingsModal({
   required final DesktopSettingsTab initialTab,
   required final _BridgeSubpage? initialBridgeSubpage,
   required final VoidCallback onClose,
-  required final VoidCallback onOpenArchived,
   required final VoidCallback onLogoutCompleted,
 }) extends StatefulWidget {
   @override
@@ -237,15 +218,6 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                                         _bridgeSubpage = null;
                                       }),
                                     ),
-                                  // Not a tab, so set apart: it opens the Archived pane.
-                                  const SizedBox(height: PregoSpacing.lg),
-                                  _SettingsTabRow(
-                                    key: const Key("desktop-settings-archived"),
-                                    icon: TablerRegular.archive,
-                                    label: context.loc.archivedSessionsTitle,
-                                    selected: false,
-                                    onPressed: widget.onOpenArchived,
-                                  ),
                                 ],
                               ),
                             ),
@@ -488,7 +460,7 @@ class const _DesktopBridgeSettingsPage({
                   description: loc.desktopSettingsConnectedBridgeDescription,
                   onOpenHarnesses: onOpenHarnesses,
                   onOpenProjects: null,
-                  // The modal's tab list holds Archived.
+                  // The main window's sidebar holds Archived.
                   onOpenArchived: null,
                   onSwitchComputer: onSwitchComputer,
                   onManageComputers: onManageComputers,

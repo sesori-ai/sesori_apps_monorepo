@@ -10,11 +10,12 @@ import "package:theme_prego/module_prego.dart";
 
 import "desktop_sidebar.dart";
 
-/// One app-wide command: the cockpit binds its shortcut and the palette lists it.
+/// One app-wide command: the palette lists it and the cockpit binds its
+/// shortcut, when it has one.
 class const DesktopCommand({
   required final String label,
   required final IconData icon,
-  required final SingleActivator shortcut,
+  required final SingleActivator? shortcut,
   required final VoidCallback run,
 });
 
@@ -130,7 +131,10 @@ class _CommandPaletteState() extends State<_CommandPalette> {
             icon: command.icon,
             title: command.label,
             detail: null,
-            trailing: desktopShortcutLabel(shortcut: command.shortcut),
+            trailing: switch (command.shortcut) {
+              final shortcut? => desktopShortcutLabel(shortcut: shortcut),
+              null => null,
+            },
             query: _query,
           ),
         ),

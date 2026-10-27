@@ -148,6 +148,7 @@ void main() {
                 sessionActions: _sessionActions,
                 onOpenBridgeSettings: _noOp,
                 onOpenSettings: _noOp,
+                onOpenArchived: _noOp,
                 onGoBack: _noOp,
                 child: GestureDetector(
                   key: const Key("cockpit-content"),
@@ -214,6 +215,7 @@ void main() {
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
+          onOpenArchived: _noOp,
           onGoBack: _noOp,
           child: SizedBox.expand(
             key: const Key("cockpit-content"),
@@ -289,6 +291,7 @@ void main() {
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
+          onOpenArchived: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.expand(key: Key("cockpit-content")),
         ),
@@ -342,6 +345,7 @@ void main() {
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
+          onOpenArchived: _noOp,
           onGoBack: _noOp,
           child: DesktopPageToolbar(
             breadcrumb: null,
@@ -376,13 +380,38 @@ void main() {
     expect(restore, findsNothing);
   }, variant: const TargetPlatformVariant({TargetPlatform.linux, TargetPlatform.macOS}));
 
-  testWidgets("the footer has no Archived button, which Settings holds", (tester) async {
-    await tester.pumpWidget(app(state: running));
+  testWidgets("Archived is the row under Search, not a footer button, and opens Archived", (tester) async {
+    var archivedOpens = 0;
+    await tester.pumpWidget(
+      app(
+        state: running,
+        child: DesktopCockpitShell(
+          selectedProjectId: null,
+          selectedSessionId: null,
+          onOpenSession: _openSession,
+          onNewSession: _newSession,
+          sessionActions: _sessionActions,
+          onOpenBridgeSettings: _noOp,
+          onOpenSettings: _noOp,
+          onOpenArchived: () => archivedOpens++,
+          onGoBack: _noOp,
+          child: const SizedBox.expand(key: Key("cockpit-content")),
+        ),
+      ),
+    );
     await tester.pumpAndSettle();
+    final search = find.byKey(const Key("desktop-sidebar-search"));
+    final archived = find.byKey(const Key("desktop-sidebar-archived"));
+    expect(find.descendant(of: archived, matching: find.text("Archived sessions")), findsOneWidget);
+    expect(find.descendant(of: archived, matching: find.byIcon(TablerRegular.archive)), findsOneWidget);
+    expect(tester.getTopLeft(archived), tester.getBottomLeft(search));
+    expect(tester.getSize(archived), tester.getSize(search));
+    expect(tester.getBottomLeft(archived).dy, lessThanOrEqualTo(tester.getTopLeft(filterTrigger).dy));
     final footer = find.byKey(const Key("desktop-sidebar-footer"));
-    expect(find.descendant(of: footer, matching: find.byKey(const Key("desktop-sidebar-settings"))), findsOneWidget);
     expect(find.descendant(of: footer, matching: find.byIcon(TablerRegular.archive)), findsNothing);
-    expect(find.byTooltip("Archived sessions"), findsNothing);
+
+    await tester.tap(archived);
+    expect(archivedOpens, 1);
   });
 
   testWidgets("Bridge opens from the footer without replacing the main pane", (tester) async {
@@ -421,6 +450,7 @@ void main() {
           sessionActions: _sessionActions,
           onOpenBridgeSettings: () => bridgeOpens++,
           onOpenSettings: () => settingsOpens++,
+          onOpenArchived: _noOp,
           onGoBack: _noOp,
           child: const SizedBox.shrink(),
         ),
@@ -786,6 +816,7 @@ void main() {
           sessionActions: _sessionActions,
           onOpenBridgeSettings: _noOp,
           onOpenSettings: _noOp,
+          onOpenArchived: _noOp,
           onGoBack: _noOp,
           child: const TextField(autofocus: true),
         ),
@@ -1225,6 +1256,7 @@ void main() {
     };
     final opened = <String>[];
     var backs = 0;
+    var archivedOpens = 0;
     await tester.pumpWidget(
       PregoInteractionScope(
         mode: PregoInteractionMode.pointer,
@@ -1239,6 +1271,7 @@ void main() {
             sessionActions: _sessionActions,
             onOpenBridgeSettings: _noOp,
             onOpenSettings: _noOp,
+            onOpenArchived: () => archivedOpens++,
             onGoBack: () => backs++,
             child: const SizedBox.expand(),
           ),
@@ -1310,6 +1343,14 @@ void main() {
     expect(backs, 1);
     await press(LogicalKeyboardKey.bracketLeft);
     expect(backs, 2);
+
+    // Archived, which has no shortcut, runs from the palette too.
+    await press(LogicalKeyboardKey.keyK);
+    await type("archived");
+    expect(inPalette("Archived sessions"), findsOneWidget);
+    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+    await tester.pumpAndSettle();
+    expect(archivedOpens, 1);
 
     // A project filters the sidebar's list, and a hidden sidebar opens to show it.
     await press(LogicalKeyboardKey.keyK);

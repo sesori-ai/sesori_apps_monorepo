@@ -141,7 +141,6 @@ void main() {
   late BehaviorSubject<Map<String, PluginAuthenticationBrowserState>> authenticationBrowserStates;
   late StreamController<PluginAuthenticationTerminalUpdate> authenticationTerminal;
   late int logoutCompletions;
-  late int archivedOpens;
   late _MockFileAccessCubit fileAccess;
   late MockRegisteredBridgesService registeredBridges;
   late _MockComputerSwitchDispatcher computerSwitchDispatcher;
@@ -158,7 +157,6 @@ void main() {
       buildSignature: "",
     );
     logoutCompletions = 0;
-    archivedOpens = 0;
     fileAccess = _MockFileAccessCubit();
     whenListen(
       fileAccess,
@@ -370,7 +368,6 @@ void main() {
     show: ({required context}) => showDesktopSettingsModal(
       context: context,
       initialTab: tab,
-      onOpenArchived: () => archivedOpens++,
       onLogoutCompleted: () => logoutCompletions++,
     ),
   );
@@ -380,7 +377,6 @@ void main() {
     tester: tester,
     show: ({required context}) => showDesktopHarnessSettings(
       context: context,
-      onOpenArchived: () => archivedOpens++,
       onLogoutCompleted: () => logoutCompletions++,
     ),
   );
@@ -613,25 +609,13 @@ void main() {
     expect(find.byKey(const Key("desktop-settings-modal")), findsOneWidget);
   });
 
-  testWidgets("Archived sessions sits under the tabs on every tab and opens Archived as the window closes", (
-    tester,
-  ) async {
+  testWidgets("the window holds no Archived row on any tab, which the main window's sidebar holds", (tester) async {
     await open(tester: tester, tab: DesktopSettingsTab.general);
-    final archived = find.byKey(const Key("desktop-settings-archived"));
-    expect(find.descendant(of: archived, matching: find.text("Archived sessions")), findsOneWidget);
-    expect(
-      tester.getTopLeft(archived).dy,
-      greaterThan(tester.getBottomLeft(find.byKey(const ValueKey("desktop-settings-tab-account"))).dy),
-    );
-    await select(tester: tester, tab: DesktopSettingsTab.bridge);
-    // The Bridge tab leaves it to the tab list.
-    expect(find.text("Archived sessions"), findsOneWidget);
-    expect(archivedOpens, 0);
-
-    await tester.tap(archived);
-    await tester.pumpAndSettle();
-    expect(find.byKey(const Key("desktop-settings-modal")), findsNothing);
-    expect(archivedOpens, 1);
+    for (final tab in DesktopSettingsTab.values) {
+      await select(tester: tester, tab: tab);
+      expect(find.byKey(const Key("desktop-settings-archived")), findsNothing);
+      expect(find.text("Archived sessions"), findsNothing, reason: "the ${tab.name} tab");
+    }
   });
 
   testWidgets("Manage computers pushes Computers inside the Bridge tab, and a switch there closes the window", (
@@ -848,7 +832,8 @@ void main() {
         await tester.pumpAndSettle();
         expect(target.hitTestable(), findsOneWidget);
         expect(MediaQuery.textScalerOf(tester.element(target)).scale(10), 10 * scale);
-        if (scale > 1) expect(Scrollable.of(tester.element(target)).position.maxScrollExtent, greaterThan(0));
+        // Only the largest scale overflows the tab list, so only it scrolls.
+        if (scale > 2) expect(Scrollable.of(tester.element(target)).position.maxScrollExtent, greaterThan(0));
         await tester.tap(target);
         await tester.pumpAndSettle();
         expect(

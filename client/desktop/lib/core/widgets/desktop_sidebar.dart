@@ -21,8 +21,8 @@ typedef SidebarSessionOpenedCallback = void Function({
   required Session session,
 });
 
-/// Desktop navigation frame: New session, Search, and the shared list of
-/// sessions across projects under its project filter (D4).
+/// Desktop navigation frame: New session, Search, Archived, and the shared
+/// list of sessions across projects under its project filter (D4).
 class const DesktopSidebar({
   super.key,
 
@@ -33,6 +33,7 @@ class const DesktopSidebar({
   required final SidebarSessionOpenedCallback onOpenSession,
   required final VoidCallback onStartNewSession,
   required final VoidCallback onOpenSearch,
+  required final VoidCallback onOpenArchived,
   required final SessionListActionDispatcher sessionActions,
   required final VoidCallback onToggleCollapsed,
   required final VoidCallback onOpenBridgeSettings,
@@ -78,6 +79,16 @@ class const DesktopSidebar({
               status: null,
               shortcut: defaultTargetPlatform == TargetPlatform.macOS ? "⌘K" : "Ctrl+K",
               onPressed: onOpenSearch,
+            ),
+            // Offline, the page itself lists nothing while the pill and the
+            // footer's recovery card say why, so the row stays enabled.
+            _SidebarButton(
+              key: const Key("desktop-sidebar-archived"),
+              label: loc.archivedSessionsTitle,
+              icon: const Icon(TablerRegular.archive, size: PregoIconSize.md),
+              status: null,
+              shortcut: null,
+              onPressed: onOpenArchived,
             ),
             _SidebarFilter(projectState: state, projectId: filterId, projectName: filterName),
             Expanded(

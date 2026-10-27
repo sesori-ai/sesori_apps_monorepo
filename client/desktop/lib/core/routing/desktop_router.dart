@@ -85,6 +85,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             ),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             onOpenSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.general),
+            onOpenArchived: () => _openArchived(context: context),
             onGoBack: () => _goBack(context: context),
             child: Builder(
               builder: (context) => SessionDetailRouteVisibility(
@@ -119,7 +120,6 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
           onManageComputers: () => unawaited(
             showDesktopComputersSettings(
               context: context,
-              onOpenArchived: _archivedOpener(context: context),
               onLogoutCompleted: _goDesktopHome,
             ),
           ),
@@ -337,7 +337,6 @@ void _openSettings({required BuildContext context, required DesktopSettingsTab i
     showDesktopSettingsModal(
       context: context,
       initialTab: initialTab,
-      onOpenArchived: _archivedOpener(context: context),
       onLogoutCompleted: _goDesktopHome,
     ),
   );
@@ -347,23 +346,16 @@ void _openHarnessSettings({required BuildContext context}) {
   unawaited(
     showDesktopHarnessSettings(
       context: context,
-      onOpenArchived: _archivedOpener(context: context),
       onLogoutCompleted: _goDesktopHome,
     ),
   );
 }
 
-/// Settings' Archived row, bound to the router of the page Settings opened over.
-VoidCallback _archivedOpener({required BuildContext context}) {
-  // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
-  final router = GoRouter.of(context);
-  return () => openDesktopArchived(router: router);
-}
-
 /// Pushes Archived over the current page, which its close returns to. Already
 /// on Archived, it keeps the one page.
-@visibleForTesting
-void openDesktopArchived({required GoRouter router}) {
+void _openArchived({required BuildContext context}) {
+  // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
+  final router = GoRouter.of(context);
   if (router.state.uri.path == AppRouteDef.archivedSessions.path) return;
   // ignore: no_slop_linter/avoid_raw_go_router, desktop router's typed route boundary
   unawaited(router.push<void>(const AppRoute.archivedSessions().buildPath()));
