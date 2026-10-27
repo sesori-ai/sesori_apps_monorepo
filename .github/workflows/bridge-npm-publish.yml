@@ -3,13 +3,11 @@ name: Bridge npm Publish
 # Publishes the bridge npm packages (5 platform packages + the @sesori/bridge
 # wrapper) when a stable v<X.Y.Z> GitHub release goes LIVE, via two triggers:
 #
-#   - workflow_dispatch: invoked directly by submit-release.yml when
-#     publish_bridge is ticked. Necessary because releases created with the
-#     default GITHUB_TOKEN do not emit workflow-triggering events.
-#   - release [released]: fires when an operator manually promotes a
-#     pre-release to a full release in the GitHub UI (a user action, so the
-#     event triggers normally). Never fires for the rolling v*-internal.*
-#     pre-releases.
+#   - release [released]: fires when submit-release.yml publishes the release
+#     (it uses the release-tagger App token, which emits events) or when an
+#     operator promotes a pre-release in the GitHub UI. Never fires for the
+#     rolling v*-internal.* pre-releases. Runs this file from the tagged commit.
+#   - workflow_dispatch: manual re-run for a tag.
 #
 # Either way, npm availability coincides with the moment the bridge
 # auto-updater starts seeing the release; the gate verifies the release is

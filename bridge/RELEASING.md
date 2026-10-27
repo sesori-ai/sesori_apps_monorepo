@@ -173,7 +173,16 @@ Private `macos-packaging` qualification can pin `source_sha` and `build_number` 
 
 ### 4. npm publish (automatic)
 
-When the stable `v<X.Y.Z>` release goes live, `bridge-npm-publish.yml` publishes the npm packages: dispatched directly by `submit-release.yml` when publishing immediately, or fired by the `release: released` event when you promote a pre-release manually in the GitHub UI.
+When the stable `v<X.Y.Z>` release goes live, its `release: released` event runs `bridge-npm-publish.yml`. That happens both when `submit-release.yml` publishes it right away and when you promote a pre-release in the GitHub UI.
+
+### Release tagger App
+
+`submit-release.yml` pushes the `v<X.Y.Z>` tag and creates the release with a token for the `sesori-release-tagger` GitHub App instead of `GITHUB_TOKEN`. There are two reasons:
+
+- The tag points at the build commit. When a workflow file has changed on `main` since that build, GitHub refuses that tag push or release from any token without Workflows write, and `GITHUB_TOKEN` can never have it.
+- A release created by an App fires `release: released`. A release created by `GITHUB_TOKEN` doesn't.
+
+The App has Contents and Workflows write on this repository only. Its client ID and private key are the `RELEASE_TAGGER_CLIENT_ID` and `RELEASE_TAGGER_PRIVATE_KEY` secrets of the `release-tagging` environment, which only `main` can deploy to. If the key is lost, generate a new one in the App settings, replace the secret, and delete the old key.
 
 ## What the release pipeline does
 
