@@ -24,6 +24,7 @@ void main() {
     when(() => service.currentState).thenAnswer((_) => states.value);
     when(() => service.automaticUpdates).thenAnswer((_) => automaticUpdates.stream);
     when(() => service.currentAutomaticUpdates).thenAnswer((_) => automaticUpdates.value);
+    when(() => service.installKind).thenReturn(DesktopInstallKind.velopack);
     cubit = DesktopUpdateCubit(service: service);
   });
 
@@ -84,6 +85,15 @@ void main() {
       return true;
     });
     await cubit.checkForUpdates();
+    expect(cubit.state.check, DesktopUpdateCheckStatus.idle);
+  });
+
+  test("a package-managed check never claims to be up to date", () async {
+    when(() => service.installKind).thenReturn(DesktopInstallKind.linuxPackage);
+    when(() => service.check()).thenAnswer((_) async => true);
+
+    await cubit.checkForUpdates();
+
     expect(cubit.state.check, DesktopUpdateCheckStatus.idle);
   });
 }

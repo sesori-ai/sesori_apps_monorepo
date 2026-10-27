@@ -114,7 +114,10 @@ class const _CheckForUpdatesRow({super.key}) extends StatelessWidget {
           duration: duration,
           layoutBuilder: (current, previous) => Stack(
             alignment: AlignmentDirectional.topStart,
-            children: [...previous, ?current],
+            children: [
+              for (final child in previous) ExcludeSemantics(child: child),
+              ?current,
+            ],
           ),
           child: Text(subtitle, key: ValueKey(check)),
         ),
@@ -131,7 +134,8 @@ class const _CheckForUpdatesRow({super.key}) extends StatelessWidget {
           DesktopUpdateCheckStatus.idle || DesktopUpdateCheckStatus.failed => const SizedBox.shrink(),
         },
       ),
-      onTap: check == DesktopUpdateCheckStatus.checking ? null : () => unawaited(cubit.checkForUpdates()),
+      // Stays tappable while checking so focus and hover remain; the cubit ignores repeat taps.
+      onTap: () => unawaited(cubit.checkForUpdates()),
     );
   }
 }

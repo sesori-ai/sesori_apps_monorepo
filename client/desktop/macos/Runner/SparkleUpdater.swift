@@ -98,12 +98,17 @@ final class SparkleUpdater: NSObject, SPUUpdaterDelegate, NSMenuItemValidation {
   }
 
   /// Runs one background check, or joins the update cycle already running,
-  /// and reports how it ended.
+  /// and reports how it ended. A downloaded update keeps Sparkle's session
+  /// open until it installs, so checks after it report that update at once.
   private func check(completion: @escaping (CheckOutcome) -> Void) {
     guard let updater else {
       completion(.failed(NSError(domain: "com.sesori.desktop.updates", code: 1, userInfo: [
         NSLocalizedDescriptionKey: "The updater has not started.",
       ])))
+      return
+    }
+    if let downloadedItem {
+      completion(.downloaded(downloadedItem))
       return
     }
     checkCompletions.append(completion)
@@ -188,19 +193,22 @@ final class SparkleUpdater: NSObject, SPUUpdaterDelegate, NSMenuItemValidation {
       "version": item.displayVersionString,
       "build": item.versionString,
     ])
+    // Returning true keeps the update cycle open, so it never reaches
+    // didFinishUpdateCycleFor; the waiting checks end here.
+    completeChecks(outcome: .downloaded(item))
     return true
   }
 
   func updater(_ updater: SPUUpdater, didFinishUpdateCycleFor updateCheck: SPUUpdateCheck, error: Error?) {
-    let outcome: CheckOutcome
-    if let downloadedItem {
-      outcome = .downloaded(downloadedItem)
-    } else if let error = error as NSError?,
-              !(error.domain == SUSparkleErrorDomain && error.code == Int(SUError.noUpdateError.rawValue)) {
-      outcome = .failed(error)
+    if let error = error as NSError?,
+       !(error.domain == SUSparkleErrorDomain && error.code == Int(SUError.noUpdateError.rawValue)) {
+      completeChecks(outcome: .failed(error))
     } else {
-      outcome = .upToDate
+      completeChecks(outcome: .upToDate)
     }
+  }
+
+  private func completeChecks(outcome: CheckOutcome) {
     let completions = checkCompletions
     checkCompletions = []
     completions.forEach { $0(outcome) }

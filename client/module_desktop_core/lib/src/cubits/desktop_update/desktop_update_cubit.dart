@@ -83,7 +83,9 @@ class DesktopUpdateCubit({required final DesktopUpdateService service}) extends 
     if (isClosed) {
       return;
     }
-    if (_service.currentState is DesktopUpdateReady) {
+    // A package-managed check only compares local bundles, so it cannot claim
+    // that no release is available; its row keeps the system-updater guidance.
+    if (_service.currentState is DesktopUpdateReady || (finished && installKind == DesktopInstallKind.linuxPackage)) {
       _emitCheck(check: DesktopUpdateCheckStatus.idle);
       return;
     }

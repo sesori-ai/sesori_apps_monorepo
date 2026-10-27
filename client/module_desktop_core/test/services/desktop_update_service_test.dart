@@ -327,6 +327,17 @@ void main() {
       verifyNever(() => velopackApi.downloadStagedRelease());
     });
 
+    test("a waiting package stays Ready when the feed cannot be fetched", () async {
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.5");
+      when(() => feedApi.fetchFeed(identity: _windowsBuild)).thenThrow(const SocketException("offline"));
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.check();
+
+      expect(updates.currentState, isA<DesktopUpdateReady>().having((state) => state.version, "version", "1.8.5"));
+    });
+
     test("a build published while one waits replaces it", () async {
       when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.4");
       final updates = service();

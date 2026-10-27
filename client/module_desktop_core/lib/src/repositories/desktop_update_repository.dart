@@ -1,4 +1,5 @@
 import "package:injectable/injectable.dart";
+import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../api/desktop_relaunch_api.dart";
 import "../api/desktop_update_feed_api.dart";
@@ -106,8 +107,24 @@ class DesktopUpdateRepository._create({
   /// feed and verifies it on every check, so a build published while an older
   /// one waits replaces it; the package downloads only when Velopack's own
   /// check names one newer than the running version that is not already waiting.
+  /// A waiting package stays Ready when the refresh fails.
   Future<DesktopUpdateState> _checkVelopack({required DesktopBundleIdentity identity}) async {
     final String? pendingVersion = await _velopackApi.readPendingVersion();
+    try {
+      return await _refreshVelopack(identity: identity, pendingVersion: pendingVersion);
+    } on Object catch (error, stackTrace) {
+      if (pendingVersion == null) {
+        rethrow;
+      }
+      logw("Failed to refresh the desktop update feed; keeping the waiting update", error, stackTrace);
+      return _velopackReady(packVersion: pendingVersion);
+    }
+  }
+
+  Future<DesktopUpdateState> _refreshVelopack({
+    required DesktopBundleIdentity identity,
+    required String? pendingVersion,
+  }) async {
     final DesktopUpdateFeed feed = await _feedApi.fetchFeed(identity: identity);
     await _feedValidator.verify(feed: feed);
     final VelopackStagedRelease? release = await _velopackApi.stageFeed(feed: feed.bytes);
