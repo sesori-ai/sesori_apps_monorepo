@@ -1266,7 +1266,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       interaction: interaction,
       historyUnavailable: historyUnavailable,
       onOpenHarnessSettings: SessionDetailPresentationScope.read(context).openHarnessSettings,
-      onRecheck: () => unawaited(context.read<SessionDetailCubit>().recheckHarnessAvailability()),
+      onRecheck: context.read<SessionDetailCubit>().recheckHarnessAvailability,
     );
   }
 

@@ -10,7 +10,7 @@ class const SessionHarnessUnavailableNotice({
   required final SessionInteractionState interaction,
   required final bool historyUnavailable,
   required final VoidCallback onOpenHarnessSettings,
-  required final VoidCallback onRecheck,
+  required final Future<void> Function() onRecheck,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {

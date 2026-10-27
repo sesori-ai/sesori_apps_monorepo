@@ -16,6 +16,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/session_harness_unavailable_notice.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -2431,6 +2432,47 @@ void main() {
     await tester.tap(find.byKey(const Key("session_harness_settings")));
     expect(settingsOpened, 1);
     expect(tester.takeException(), isNull);
+  });
+
+  testWidgets("Recheck shows that it is checking until the harness answers", (tester) async {
+    final answer = Completer<void>();
+    when(cubit.recheckHarnessAvailability).thenAnswer((_) => answer.future);
+    when(() => cubit.state).thenReturn(
+      _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(interaction: authRequired),
+    );
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+    final notice = find.byType(SessionHarnessUnavailableNotice);
+    final recheck = find.byKey(const Key("session_harness_recheck"));
+    final spinner = find.descendant(of: recheck, matching: find.byType(PregoActivityIndicator));
+    final noticeRect = tester.getRect(notice);
+    final recheckRect = tester.getRect(recheck);
+    const frame = Duration(milliseconds: 16);
+
+    await tester.tap(recheck);
+    for (var elapsed = frame; elapsed <= const Duration(milliseconds: 640); elapsed += frame) {
+      await tester.pump(frame);
+      expect(tester.getRect(notice), noticeRect);
+      expect(tester.getRect(recheck), recheckRect);
+      expect(spinner, elapsed < const Duration(milliseconds: 300) ? findsNothing : findsOneWidget);
+      if (elapsed == const Duration(milliseconds: 112) || elapsed == const Duration(milliseconds: 496)) {
+        await tester.tap(recheck, warnIfMissed: false);
+      }
+    }
+    verify(cubit.recheckHarnessAvailability).called(1);
+    // Screen readers hear a Recheck that takes no press while it checks.
+    Matcher recheckSemantics({required bool enabled}) =>
+        isSemantics(isButton: true, hasEnabledState: true, isEnabled: enabled, hasTapAction: enabled);
+    expect(find.semantics.byLabel("Recheck").evaluate().single, recheckSemantics(enabled: false));
+
+    answer.complete();
+    for (var elapsed = Duration.zero; elapsed < const Duration(milliseconds: 400); elapsed += frame) {
+      await tester.pump(frame);
+    }
+    expect(spinner, findsNothing);
+    expect(find.semantics.byLabel("Recheck").evaluate().single, recheckSemantics(enabled: true));
+    expect(tester.getRect(notice), noticeRect);
+    expect(tester.getRect(recheck), recheckRect);
   });
 
   testWidgets("owed messages hold still from the launch through a blocked first load and its Recheck", (
