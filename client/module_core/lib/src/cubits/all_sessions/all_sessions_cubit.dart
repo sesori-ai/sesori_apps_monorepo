@@ -11,6 +11,7 @@ import "../../services/project_inventory_service.dart";
 import "../../services/recent_session_inventory_service.dart";
 import "../../services/session_list_filter_tracker.dart";
 import "../../services/session_list_service.dart";
+import "../../utils/project_name.dart";
 import "../../utils/title_matcher.dart";
 import "../recent_sessions/recent_sessions_resolvers.dart";
 import "../session_list/session_list_quick_filter.dart";
@@ -153,9 +154,11 @@ class AllSessionsCubit({
     final merged = projectId == null ? everyProject : everyProject.where((row) => row.project.id == projectId).toList();
     // Only a still-unarchived session hides, as on every list.
     bool shown(AllSessionsRow row) => row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id);
-    final counted = matchTitles(
+    final counted = matchTexts(
       items: merged,
-      titleOf: (row) => row.session.title,
+      // Each word may match the title or the project's name, as its row and
+      // the project filter show it. A "No project" session has only its title.
+      textsOf: (row) => [row.session.title, projectOwnName(project: row.project)],
       query: query,
     ).where(shown).toList();
     final isLoading =

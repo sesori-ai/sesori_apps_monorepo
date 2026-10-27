@@ -197,6 +197,50 @@ void main() {
     expect(counts(cubit: cubit), [3, 1, 1]);
   });
 
+  test("each query word matches the title or the project's name, a No project session only its title", () {
+    const unnamed = ProjectSummary(id: "unnamed", name: null, path: "/work/landing", time: null);
+    const scratch = ProjectSummary(id: "scratch", name: "Scratch", path: "/s", time: null, kind: ProjectKind.scratch);
+    projects.add(
+      const ProjectListState.loaded(
+        projects: [one, unnamed, scratch],
+        folderProjects: [one, unnamed],
+        scratchProject: scratch,
+      ),
+    );
+    entries.add({
+      one.id: loaded(
+        sessions: [
+          testSession(id: "header", title: "Fix the header", updatedAt: 40),
+          testSession(id: "docs", title: "Docs", updatedAt: 30, unseen: true),
+        ],
+        activity: const {},
+      ),
+      unnamed.id: loaded(
+        sessions: [testSession(id: "parser", title: "Fix the parser", updatedAt: 20)],
+        activity: const {},
+      ),
+      scratch.id: loaded(
+        sessions: [testSession(id: "idea", title: "An idea", updatedAt: 10)],
+        activity: const {},
+      ),
+    });
+    final cubit = create(mode: AllSessionsMode.active);
+
+    cubit.setQuery(query: "ONE fix");
+    expect(ids(cubit: cubit), ["header"]);
+
+    cubit.setQuery(query: "one");
+    expect(ids(cubit: cubit), ["header", "docs"]);
+    expect(counts(cubit: cubit), [2, 0, 1]);
+
+    cubit.setQuery(query: "landing");
+    expect(ids(cubit: cubit), ["parser"], reason: "a project without a stored name goes by its folder's");
+
+    cubit.setQuery(query: "scratch");
+    expect(ids(cubit: cubit), isEmpty);
+    expect(counts(cubit: cubit), [0, 0, 0]);
+  });
+
   test("a selected project narrows the list until it leaves the list or the computer changes", () async {
     entries.add({
       one.id: loaded(
