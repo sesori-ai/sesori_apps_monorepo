@@ -211,8 +211,10 @@ defaults and queued client sends coherent.
   and its completion opens no main-agent wake-up turn: the CLI delivers it to
   the sub-agent. A background sub-agent's permission ask is its own work too:
   it never sets `mainAgentRunning`, so the sub-agent row returns once the ask
-  is answered. Failure signal: the transcript's sub-agent row vanishes
-  seconds after a background sub-agent starts running tools, once one of its
+  is answered. Under YOLO the bridge answers every ask before a client sees
+  it, so the row stays up. Failure signal: the transcript's sub-agent row
+  vanishes seconds after a background sub-agent starts running tools (under
+  YOLO, at its first tool call that misses an allow rule), once one of its
   background shells finishes, or after one of its permission asks is
   answered. The CLI's
   `<task-notification>` delivery records are internal: they finalize the

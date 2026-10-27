@@ -952,6 +952,7 @@ void main() {
           },
         });
         await pump();
+        // As the bridge's YOLO auto-approval answers it, before any client sees it.
         expect(harness.approvals.replyPermission(id: "br-$step", reply: PluginPermissionReply.once), isTrue);
         process.emit({
           "type": "system",
