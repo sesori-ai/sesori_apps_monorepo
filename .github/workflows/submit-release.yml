@@ -160,9 +160,7 @@ jobs:
     if: ${{ inputs.platforms == 'both' || inputs.platforms == 'ios' }}
     needs: resolve
     runs-on: ubuntu-latest
-    # App Store Connect can take 20+ minutes to process uploaded screenshots, and
-    # deliver waits up to its default 3600 s for them, so the job must outlast that.
-    timeout-minutes: 75
+    timeout-minutes: 20
     # Surface the metadata-publish decision so the `tag` job knows whether (and
     # which private-repo commit) to tag v<VERSION> after a successful submit.
     outputs:
