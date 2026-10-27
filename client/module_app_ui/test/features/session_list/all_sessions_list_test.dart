@@ -1147,7 +1147,7 @@ void main() {
       expect(frames[3].skeleton, 1);
     });
 
-    testWidgets("a filter tapped as the chips fade in over their pills shows at once, the chips then holding still", (
+    testWidgets("a filter tapped as the chips fade in over their pills shows at once, the chips fading on in place", (
       tester,
     ) async {
       // Another project still loads, and Running leaves no rows.
@@ -1173,11 +1173,13 @@ void main() {
       // The hand-off starts on the frame after the rows mount.
       await tester.pump(Duration.zero);
       await tester.pump(const Duration(milliseconds: 100));
-      expect(paintedOpacity(tester, runningChip), inExclusiveRange(0, 1));
+      final chipsBefore = paintedOpacity(tester, runningChip);
+      expect(chipsBefore, inExclusiveRange(0, 1));
       expect(pills, findsOneWidget);
       final chipTop = tester.getTopLeft(runningChip).dy;
+      final pillBars = find.descendant(of: pills, matching: find.byType(PregoSkeletonBar));
 
-      final frames = await framesAcross(
+      final frames = await everyFrameAcross(
         tester,
         updates: updates,
         update: filtered(SessionListQuickFilter.running),
@@ -1185,17 +1187,27 @@ void main() {
           selected: (all: selected(tester, allChip), running: selected(tester, runningChip)),
           chips: paintedOpacity(tester, runningChip),
           top: tester.getTopLeft(runningChip).dy,
-          pills: pills.evaluate().length,
+          pills: pillBars.evaluate().isEmpty ? null : paintedOpacity(tester, pillBars.first),
           tappable: allChip.hitTestable().evaluate().length,
         ),
       );
+      // The chips show the tapped filter at once and take taps, fading on in
+      // place from where they stood, never brighter by more than a frame's
+      // fade, as the pills under them fade on out.
       for (final (index, frame) in frames.indexed) {
         expect(
-          (frame.selected, frame.chips, frame.top, frame.pills, frame.tappable),
-          ((all: false, running: true), 1, chipTop, 0, 1),
-          reason: "at ${index * 100}ms",
+          (frame.selected, frame.top, frame.tappable),
+          ((all: false, running: true), chipTop, 1),
+          reason: "at ${index * 10}ms",
         );
       }
+      final chips = [chipsBefore, for (final frame in frames) frame.chips];
+      expect(steps(chips), everyElement(inInclusiveRange(0, 0.1)));
+      expect(chips.last, 1);
+      final pillOpacities = [for (final frame in frames) frame.pills];
+      expect(pillOpacities.first, inExclusiveRange(0, 1));
+      expect(steps(pillOpacities), everyElement(lessThanOrEqualTo(0)));
+      expect(pillOpacities.last, isNull);
       expect(skeletonOpacity(tester), 1);
     });
 

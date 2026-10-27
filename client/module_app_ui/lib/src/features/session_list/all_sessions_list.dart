@@ -161,7 +161,7 @@ class const _Sessions({
   State<_Sessions> createState() => _SessionsState();
 }
 
-class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMixin {
+class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   /// The hand-off from the loading skeleton to the first rows or the empty
   /// state: they fade in where the skeleton stood while it fades itself out
   /// over them, and the room no sessions take folds away. It runs backwards
@@ -181,6 +181,16 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     reverseCurve: transcriptMotionCurve.flipped,
   );
   late final Animation<double> _skeletonArrival = ReverseAnimation(_contentOpacity);
+
+  /// The chips' own fade in over their pills, taking over from the hand-off
+  /// where it stands as a load that already has their counts starts replacing
+  /// the rows, as a filter tapped meanwhile's: they go on fading in.
+  late final AnimationController _chipsIn = AnimationController(
+    vsync: this,
+    duration: transcriptMotionDuration,
+    value: 1,
+  );
+  late final CurvedAnimation _chipsOpacity = CurvedAnimation(parent: _chipsIn, curve: transcriptMotionCurve);
 
   /// Keeps the one skeleton, with its appearance delay and sheen, as it moves
   /// from its own place onto the content that replaces it.
@@ -231,10 +241,13 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   @override
   void initState() {
     super.initState();
-    _handOff.addStatusListener((status) {
-      // The faded skeleton leaves the tree.
+    // The faded skeleton or pills leave the tree.
+    void rebuildOnEnd(AnimationStatus status) {
       if (status.isCompleted) setState(() {});
-    });
+    }
+
+    _handOff.addStatusListener(rebuildOnEnd);
+    _chipsIn.addStatusListener(rebuildOnEnd);
   }
 
   /// Fades the content in where the skeleton stands, timed from the next
@@ -252,6 +265,8 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   void dispose() {
     _contentOpacity.dispose();
     _handOff.dispose();
+    _chipsOpacity.dispose();
+    _chipsIn.dispose();
     super.dispose();
   }
 
@@ -303,6 +318,11 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       // skeleton they leave.
       if (!_replacing) _fadeContentIn();
     } else if (replaceStarts) {
+      if (_heldChips && current.counts.all > 0) {
+        _chipsIn
+          ..value = _handOff.value
+          ..forward();
+      }
       // The rows glide to the top as they fade, where the skeleton they
       // leave stands with nothing to scroll.
       final position = Scrollable.maybeOf(context)?.position;
@@ -395,7 +415,8 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     // hidden; chips that showed their counts through the load stay as they
     // are. So do chips a load already has counts for as it starts replacing
     // the rows, as when a filter tapped while a project loads leaves none:
-    // they show the tapped filter at once.
+    // they show the tapped filter at once, going on fading in over their
+    // pills if they still were.
     final chipsShown = loading ? state.counts.all > 0 : roomShown;
     final chipsHeld =
         (loading && state.counts.all == 0) || (handingOff && (replaceStarts ? current.counts.all == 0 : _heldChips));
@@ -403,6 +424,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     // Chips fading out with the rows a load replaces show what those rows did.
     final chipsReplaced = _replacing && chipsHeld;
     final chipsState = chipsReplaced ? state : current;
+    final chipsArriving = _chipsIn.isAnimating;
     Widget folding({required Widget child}) => TweenAnimationBuilder<double>(
       // Its start is read once, when it first builds: arriving at rest, it
       // opens, as it folds away when the list empties at rest.
@@ -518,7 +540,11 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                         if (chipsShown)
                           FadeTransition(
                             key: const ValueKey("content"),
-                            opacity: chipsHeld ? _contentOpacity : kAlwaysCompleteAnimation,
+                            opacity: chipsArriving
+                                ? _chipsOpacity
+                                : chipsHeld
+                                ? _contentOpacity
+                                : kAlwaysCompleteAnimation,
                             child: IgnorePointer(
                               ignoring: chipsReplaced,
                               child: chips(
@@ -532,13 +558,13 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                           ),
                         // Held at the loading counts, so the pills fade out
                         // where they stood, or in with the list's skeleton.
-                        if (chipsHeld)
+                        if (chipsHeld || chipsArriving)
                           IgnorePointer(
                             key: const ValueKey("skeleton"),
                             child: FadeTransition(
-                              opacity: _replacing ? _skeletonArrival : kAlwaysCompleteAnimation,
+                              opacity: chipsReplaced ? _skeletonArrival : kAlwaysCompleteAnimation,
                               child: PregoShimmer(
-                                leaving: !loading && !_replacing,
+                                leaving: chipsArriving || (!loading && !_replacing),
                                 appearDelay: _skeletonAppearDelay,
                                 child: chips(
                                   each: (filter) => _barOver(

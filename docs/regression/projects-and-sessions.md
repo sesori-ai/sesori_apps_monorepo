@@ -304,8 +304,9 @@ state.
   and a later refresh, search or filter never repeats a fade on what is already shown: chips showing their counts
   while the load runs, as when Running or Unread leaves no rows while a project still loads, stay as they are through
   its hand-off. Tapped while a project loads, or as the chips fade in over their pills, such a chip shows as selected
-  at once, and the chips hold still as the rows it leaves fade into the skeleton. A load that replaces what the list shows, as a computer switch's, never blanks it: the rows, Retry rows
-  or empty state on screen fade out where they stand as the skeleton fades in over them
+  at once, and the chips hold still, going on fading in over their pills if they still were, as the rows it leaves
+  fade into the skeleton. A load that replaces what the list shows, as a computer switch's, never blanks it: the
+  rows, Retry rows or empty state on screen fade out where they stand as the skeleton fades in over them
   ([multi-computer](multi-computer.md)).
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
@@ -806,7 +807,7 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   already showing while a project loads flash transparent as the load hands
   off; or a filter tapped while a project loads or as the chips fade in fades
   the chips out on the old selection, then snaps them back as the skeleton
-  settles.
+  settles, or snaps chips still fading in to full opacity.
 - A launching row jumps or collapses when its session arrives, the rows below
   it move during the swap, one launch shows both a launching row and its
   session row, the new session can be opened before its launch resolves, the
