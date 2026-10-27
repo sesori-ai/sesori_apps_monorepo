@@ -613,8 +613,9 @@ guarantee.
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.
 - `bridge/sesori_plugin_claude/test/claude_plugin_impl_test.dart` ("a
-  hook-denied tool fails its step") replays a 2.1.310 hook denial: the Bash
-  step fails with the hook's text and the successful turn adds no error.
+  hook-denied tool fails its step") feeds live frames shaped like a 2.1.310
+  hook denial: the Bash step fails with the hook's text and the successful
+  turn adds no error.
 - `shared/sesori_shared/test/models/compaction_state_test.dart` decodes a
   state-less compaction part, an unknown status and an unknown trigger, and
   round-trips every state.
