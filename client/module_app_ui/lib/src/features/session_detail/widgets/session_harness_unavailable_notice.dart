@@ -10,7 +10,7 @@ class const SessionHarnessUnavailableNotice({
   required final SessionInteractionState interaction,
   required final bool historyUnavailable,
   required final VoidCallback onOpenHarnessSettings,
-  required final VoidCallback onRecheck,
+  required final Future<void> Function() onRecheck,
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
@@ -56,9 +56,7 @@ class const SessionHarnessUnavailableNotice({
           ? null
           : onOpenHarnessSettings,
       onShowBridgeUpdate: bridgeOutdated ? () => showBridgeUpdateSheet(context: context) : null,
-      // The session screen does not wait for the check its Recheck starts, so
-      // the press completes at once and the button never shows one.
-      onRecheck: canRecheck ? () async => onRecheck() : null,
+      onRecheck: canRecheck ? onRecheck : null,
     );
   }
 }
