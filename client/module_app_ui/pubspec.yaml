@@ -17,11 +17,11 @@ dependencies:
     sdk: flutter
   flutter_markdown_plus: ^1.0.12
   flutter_svg: ^2.3.0
-  go_router: ^18.1.0
+  go_router: ^18.1.1
   intl: any
   liquid_glass_widgets: 1.6.2
   markdown: ^7.3.1
-  material_ui: ^1.7.0
+  material_ui: ^1.8.0
   path: any
   re_highlight: ^0.0.3
   record: ^7.1.2
@@ -33,12 +33,12 @@ dependencies:
   theme_prego:
     path: ../module_prego
   universal_platform: ^1.1.0
-  vector_graphics: ^1.2.3
-  wakelock_plus: ^1.8.1
+  vector_graphics: ^1.2.4
+  wakelock_plus: ^1.8.2
 
 dev_dependencies:
   bloc_test: ^10.0.0
-  cupertino_ui: ^1.1.3
+  cupertino_ui: ^1.1.4
   flutter_test:
     sdk: flutter
   get_it: ^9.3.0
