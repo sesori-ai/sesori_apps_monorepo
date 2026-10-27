@@ -1,22 +1,14 @@
-import "package:path/path.dart" as p;
+import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../l10n/app_localizations.dart";
 
 /// The name shown for [project]: "No project" for the bridge's project of
-/// folderless sessions, whatever an older app renamed it to; otherwise its
-/// stored name, else its directory.
+/// folderless sessions, otherwise its [projectOwnName], the one a session
+/// list's search matches.
 String projectDisplayName({required AppLocalizations loc, required ProjectSummary project}) {
   if (project.kind == ProjectKind.scratch) return loc.projectPickerNoProject;
-  final basename = hostPathBasename(path: project.path);
-  return project.name ?? (basename.isEmpty ? loc.projectListDefaultName : basename);
-}
-
-/// The last segment of a bridge host [path], whichever separator it uses. A
-/// Windows drive root such as `C:\` keeps its full path, not a bare `C:`.
-String hostPathBasename({required String path}) {
-  final posix = _toPosix(path: path);
-  return RegExp(r"^[A-Za-z]:/?$").hasMatch(posix) ? path : p.posix.basename(posix);
+  return projectOwnName(project: project) ?? loc.projectListDefaultName;
 }
 
 /// Each project's path by id, shortened to the trailing folders that tell it

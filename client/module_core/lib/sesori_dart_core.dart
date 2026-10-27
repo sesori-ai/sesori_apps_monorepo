@@ -320,4 +320,5 @@ export "src/utils/diff/diff_engine.dart";
 export "src/utils/diff/language_detector.dart";
 export "src/utils/model_filter/default_model_selector.dart";
 export "src/utils/model_filter/model_picker_section_builder.dart";
+export "src/utils/project_name.dart";
 export "src/utils/title_matcher.dart";
