@@ -55,9 +55,9 @@ defaults and queued client sends coherent.
   harness-status recheck also retries the read, because a store-only read can fail
   for reasons enabling the harness would not fix. The notice stays up and unmoved
   while that read runs, with no loading view; a load then cross-fades the transcript
-  and composer in over it (at once under reduced motion), its Recheck keeping the
-  spinner as it fades, and a read that still finds nothing leaves the notice as it
-  was. A recovery refresh that restores a
+  and composer in over it, and a failure the error view, without moving either
+  (at once under reduced motion), its Recheck keeping the spinner as it fades, and
+  a read that still finds nothing leaves the notice as it was. A recovery refresh that restores a
   catalog the blocked load could not read replaces the placeholder agent selection
   rather than carrying it into the enabled composer.
   A live block, reload race or metadata-refresh failure preserves the rendered
@@ -820,9 +820,9 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   fast answer, outlives the check, turns back into "Recheck" before the composer
   replaces the notice, or moves the button or the notice.
 - A Recheck from the full-screen history-unavailable notice flashes the loading
-  view, moves or blinks the notice while it reads, snaps to the transcript in one
-  frame instead of cross-fading, or disturbs the notice when the harness is still
-  blocked.
+  view, moves or blinks the notice while it reads, snaps to the transcript or the
+  error view in one frame instead of cross-fading, or disturbs the notice when the
+  harness is still blocked.
 - Reconnecting a usable loaded chat replaces the composer with a harness notice,
   drops keyboard focus or interrupts typing while management is still loading;
   a known block disappears merely because its live snapshot was invalidated.

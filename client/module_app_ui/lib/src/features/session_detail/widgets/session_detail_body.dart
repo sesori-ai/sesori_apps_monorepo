@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math" as math;
 
 import "package:flutter_bloc/flutter_bloc.dart";
+import "package:liquid_glass_widgets/liquid_glass_widgets.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -162,9 +163,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// The launch-seeded composer's height as last laid out.
   double _composerHeight = 0;
 
-  /// How many times a load has replaced the unavailable notice, which keys
-  /// the content so each one fades in.
+  /// How many times the unavailable notice has given way, which keys the
+  /// content so each replacement fades in.
   int _shellHandoffs = 0;
+
+  /// Keeps the content's cross-fade running when the arriving state lays its
+  /// sliver out another way, which builds a different sliver around it.
+  final _contentSwitcherKey = GlobalKey();
 
   /// The Prompts screen while it is up: the prompts as they were when it
   /// opened or an older page last landed, so other transcript changes
@@ -490,18 +495,32 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             ],
           );
     final pageChrome = widget.pageChrome;
-    // A load cross-fades with the unavailable notice it replaces. Every other
-    // change updates the content in place. The leaving notice holds still, so
-    // its Recheck keeps the spinner rather than turning back as it fades.
+    // Whatever replaces the unavailable notice, a load or a failure,
+    // cross-fades with it. Every other change updates the content in place.
+    // The leaving notice holds still, so its Recheck keeps the spinner rather
+    // than turning back as it fades, and it fills the box the arriving content
+    // sets: only that content sizes the slot, whose sliver already lays out
+    // for the arriving state.
     final content = AnimatedSwitcher(
+      key: _contentSwitcherKey,
       duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
       layoutBuilder: (current, previous) => Stack(
         fit: StackFit.passthrough,
         children: [
-          for (final child in previous) TickerMode(key: child.key, enabled: false, child: child),
-          if (current != null) TickerMode(key: current.key, enabled: true, child: current),
+          for (final child in previous)
+            Positioned.fill(
+              key: child.key,
+              child: TickerMode(enabled: false, child: child),
+            ),
+          // A Positioned without edges stays unpositioned; it is the leaving
+          // children's widget so the content keeps its state as it leaves.
+          if (current != null)
+            Positioned(
+              key: current.key,
+              child: TickerMode(enabled: true, child: current),
+            ),
         ],
       ),
       child: KeyedSubtree(
@@ -609,7 +628,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         ),
         BlocListener<SessionDetailCubit, SessionDetailState>(
           listenWhen: (previous, current) =>
-              previous is SessionDetailHarnessUnavailable && current is SessionDetailLoaded,
+              previous is SessionDetailHarnessUnavailable && current is! SessionDetailHarnessUnavailable,
           listener: (context, state) => setState(() => _shellHandoffs++),
         ),
       ],
@@ -765,15 +784,23 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // made by whoever first asks this cubit for its state.
     final changesSummary = openDiffs == null ? null : context.watch<DiffSummaryCubit>().state;
     final actions = <Widget>[
-      if (openPrompts != null)
-        Builder(
-          builder: (buttonContext) => PregoButtonsIconGlass(
-            key: const Key("session-detail-prompts"),
-            icon: TablerRegular.list_details,
-            semanticLabel: loc.transcriptPrompts,
-            onPressed: () => openPrompts(origin: buttonContext.globalCentre),
-          ),
-        ),
+      // Prompts arrives and leaves with the transcript, in its time. A fading
+      // layer would pop the glass, so the glass materializes instead.
+      AnimatedSwitcher(
+        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+        transitionBuilder: (child, animation) =>
+            GlassMaterializeTransition(animation: animation, scaleFrom: 1, child: child),
+        child: openPrompts == null
+            ? null
+            : Builder(
+                builder: (buttonContext) => PregoButtonsIconGlass(
+                  key: const Key("session-detail-prompts"),
+                  icon: TablerRegular.list_details,
+                  semanticLabel: loc.transcriptPrompts,
+                  onPressed: () => openPrompts(origin: buttonContext.globalCentre),
+                ),
+              ),
+      ),
       // Shells restrict mutating menu entries to their valid session owners;
       // read-only entries can also inspect a child session.
       if (session != null && (openDiffs != null || menuEntriesBuilder != null || canConfigureContinuation))
@@ -830,7 +857,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       // into literal slashes and make the parent URL unmatchable.
       onBack: widget.onBack,
       automaticallyImplyLeading: widget.onBack != null,
-      actions: actions.isEmpty ? null : actions,
+      actions: actions,
       slivers: [
         // The loaded view is a Column with an Expanded chat and a pinned
         // composer. With reserveBarSpace: false there is no top spacer, so
