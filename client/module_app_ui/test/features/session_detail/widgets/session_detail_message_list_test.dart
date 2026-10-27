@@ -2156,7 +2156,7 @@ void main() {
         lastUserActivityAt: null,
         autoContinuation: null,
       );
-      harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy()});
+      harness.setChildren(children: [child], childStatuses: const {"child-1": SessionStatus.busy(since: null)});
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 100));
       // Mid-ease both rows show: Working… folds away as the sub-agent row grows in.

@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
@@ -1034,7 +1035,118 @@ void main() {
       expect(plugin.lastGetMessagesSessionId, equals("backend-s1"));
       expect(messages.messages.single.info.sessionID, equals("stable-s1"));
       expect(messages.messages.single.parts.single.sessionID, equals("stable-s1"));
-      expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy()}));
+      expect(statuses.statuses, equals({"stable-s1": const SessionStatus.busy(since: null)}));
+    });
+
+    group("busy time", () {
+      const busy = SessionStatus.busy(since: null);
+      const retry = SessionStatus.retry(attempt: 1, message: "overloaded", next: 9, since: null);
+      late AppDatabase db;
+      late SessionRepository repository;
+
+      setUp(() {
+        db = createTestDatabase();
+        addTearDown(db.close);
+        repository = singlePluginSessionRepository(
+          plugin: plugin,
+          sessionDao: db.sessionDao,
+          projectsDao: db.projectsDao,
+          unseenCalculator: const SessionUnseenCalculator(),
+        );
+      });
+
+      SessionStatus stampAt({required int now, required SessionStatus status}) => withClock(
+        Clock.fixed(DateTime.fromMillisecondsSinceEpoch(now)),
+        () => repository.stampLiveStatus(sessionId: "s1", status: status),
+      );
+
+      Future<void> insertSessions({required List<String> ids}) async {
+        for (final id in ids) {
+          await insertTestSession(
+            db: db,
+            sessionId: id,
+            backendSessionId: "backend-$id",
+            pluginId: plugin.id,
+            projectId: "/repo",
+            isDedicated: false,
+            createdAt: 1,
+            worktreePath: null,
+            baseBranch: null,
+            baseCommit: null,
+            agent: null,
+            agentModel: null,
+          );
+        }
+      }
+
+      test("starts when a session seen idle goes busy, and holds through the run", () {
+        expect(stampAt(now: 100, status: const SessionStatus.idle()), const SessionStatus.idle());
+
+        expect(stampAt(now: 200, status: busy), const SessionStatus.busy(since: 200));
+        expect(stampAt(now: 300, status: busy), const SessionStatus.busy(since: 200));
+        expect(
+          stampAt(now: 400, status: retry),
+          const SessionStatus.retry(attempt: 1, message: "overloaded", next: 9, since: 200),
+        );
+
+        stampAt(now: 500, status: const SessionStatus.idle());
+        expect(stampAt(now: 600, status: busy), const SessionStatus.busy(since: 600));
+      });
+
+      test("stays unknown for a session first seen busy", () {
+        expect(stampAt(now: 100, status: busy), busy);
+        expect(stampAt(now: 200, status: retry), retry);
+      });
+
+      test("starts after an idle event as after an idle status", () {
+        repository.markSessionIdle(sessionId: "s1");
+
+        expect(stampAt(now: 200, status: busy), const SessionStatus.busy(since: 200));
+      });
+
+      test("snapshots carry a tracked start and never invent one", () async {
+        await insertSessions(ids: ["s1", "s2", "s3"]);
+        repository.markSessionIdle(sessionId: "s1");
+        stampAt(now: 200, status: busy);
+        repository.markSessionIdle(sessionId: "s3");
+        plugin.sessionStatusesResult = const {
+          "backend-s1": PluginSessionStatus.retry(attempt: 1, message: "overloaded", next: 9),
+          "backend-s2": PluginSessionStatus.busy(),
+          "backend-s3": PluginSessionStatus.busy(),
+        };
+
+        final statuses = await withClock(
+          Clock.fixed(DateTime.fromMillisecondsSinceEpoch(300)),
+          repository.getSessionStatuses,
+        );
+
+        expect(statuses.statuses, {
+          "s1": const SessionStatus.retry(attempt: 1, message: "overloaded", next: 9, since: 200),
+          "s2": busy,
+          "s3": busy,
+        });
+      });
+
+      test("a snapshot idle times the next live busy without replacing a live start", () async {
+        await insertSessions(ids: ["s1", "s2"]);
+        repository.markSessionIdle(sessionId: "s2");
+        withClock(
+          Clock.fixed(DateTime.fromMillisecondsSinceEpoch(100)),
+          () => repository.stampLiveStatus(sessionId: "s2", status: busy),
+        );
+        plugin.sessionStatusesResult = const {
+          "backend-s1": PluginSessionStatus.idle(),
+          "backend-s2": PluginSessionStatus.idle(),
+        };
+
+        await repository.getSessionStatuses();
+
+        expect(stampAt(now: 200, status: busy), const SessionStatus.busy(since: 200));
+        expect(
+          repository.stampLiveStatus(sessionId: "s2", status: busy),
+          const SessionStatus.busy(since: 100),
+        );
+      });
     });
 
     test("replayed subtask child references map to stable ids, and unbound ones to null", () async {

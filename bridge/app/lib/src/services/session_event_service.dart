@@ -219,7 +219,27 @@ class SessionEventService({
 
   /// The value delivered to consumers for an event that passed identity,
   /// enrichment, publication and generation checks.
-  NormalizedBridgeEvent toNormalized({required BridgeSseEvent event}) => _eventMapper.normalize(event: event);
+  NormalizedBridgeEvent toNormalized({required BridgeSseEvent event}) => switch (_eventMapper.normalize(event: event)) {
+    NormalizedTerminalHandoff(:final payload) => NormalizedTerminalHandoff(payload: _observeBusy(payload: payload)),
+    final NormalizedBridgePayload payload => _observeBusy(payload: payload),
+  };
+
+  /// Gives a delivered busy or retry status the time its session went busy,
+  /// and records a delivered idle so the next busy run is timed from its start.
+  NormalizedBridgePayload _observeBusy({required NormalizedBridgePayload payload}) {
+    switch (payload) {
+      case NormalizedStatusEvent(:final sessionId, :final status):
+        return NormalizedStatusEvent(
+          sessionId: sessionId,
+          status: _sessionRepository.stampLiveStatus(sessionId: sessionId, status: status),
+        );
+      case NormalizedOtherEvent(event: BridgeSseSessionIdle(:final sessionID)):
+        _sessionRepository.markSessionIdle(sessionId: sessionID);
+        return payload;
+      case NormalizedMessageEvent() || NormalizedQuotaInterruptionEvent() || NormalizedOtherEvent():
+        return payload;
+    }
+  }
 
   Future<bool> canPublish({required BridgeSseEvent event}) async {
     if (event is! BridgeSseSessionCreated && event is! BridgeSseSessionUpdated) return true;

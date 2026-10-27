@@ -23,13 +23,23 @@ sealed class SessionStatus with _$SessionStatus {
   const factory idle() = SessionStatusIdle;
 
   @FreezedUnionValue("busy")
-  const factory busy() = SessionStatusBusy;
+  const factory busy({
+    /// When the bridge saw the session go busy, in epoch ms on the bridge
+    /// clock. Null when the bridge is older, or when it did not see the
+    /// session go busy from a non-busy state (it was first seen busy, as after
+    /// a bridge restart).
+    required int? since,
+  }) = SessionStatusBusy;
 
   @FreezedUnionValue("retry")
   const factory retry({
     required int attempt,
     required String message,
     required int next,
+
+    /// When the bridge saw the session go busy, as for [SessionStatus.busy];
+    /// a retry keeps the time of the busy run it belongs to.
+    required int? since,
   }) = SessionStatusRetry;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionStatusFromJson(json);

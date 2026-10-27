@@ -398,7 +398,10 @@ void main() {
         ],
       );
       final children = [_child(id: "c1", createdAt: 3000), _child(id: "c2", createdAt: 4000)];
-      const bothRunning = {"c1": SessionStatus.busy(), "c2": SessionStatus.retry(attempt: 1, message: "", next: 0)};
+      const bothRunning = {
+        "c1": SessionStatus.busy(since: null),
+        "c2": SessionStatus.retry(attempt: 1, message: "", next: 0, since: null),
+      };
 
       test("show while only sub-agents run, counted from their step's message", () {
         final activity = _activity(
@@ -416,13 +419,33 @@ void main() {
         );
       });
 
+      test("count a resumed sub-agent from when the bridge saw it go busy, not from its older step", () {
+        for (final status in const [
+          SessionStatus.busy(since: 5000),
+          SessionStatus.retry(attempt: 1, message: "", next: 0, since: 5000),
+        ]) {
+          final activity = _activity(
+            messages: [prompt, spawned],
+            isBusy: true,
+            children: children,
+            childStatuses: {"c1": status, "c2": const SessionStatus.idle()},
+          );
+
+          expect(
+            activity,
+            isA<TranscriptActivitySubAgents>().having((a) => a.sinceMs, "sinceMs", 5000),
+            reason: "$status",
+          );
+        }
+      });
+
       test("fall back to the earliest running child's own start", () {
         // No sub-agent step links either child, so each child's creation counts.
         final activity = _activity(
           messages: [prompt],
           isBusy: true,
           children: children,
-          childStatuses: const {"c1": SessionStatus.idle(), "c2": SessionStatus.busy()},
+          childStatuses: const {"c1": SessionStatus.idle(), "c2": SessionStatus.busy(since: null)},
         );
 
         expect(
@@ -438,7 +461,7 @@ void main() {
           messages: [prompt],
           isBusy: true,
           children: [_child(id: "c1", createdAt: null)],
-          childStatuses: const {"c1": SessionStatus.busy()},
+          childStatuses: const {"c1": SessionStatus.busy(since: null)},
         );
 
         expect(activity, isA<TranscriptActivitySubAgents>().having((a) => a.sinceMs, "sinceMs", isNull));
@@ -527,8 +550,8 @@ void main() {
   });
 
   test("isChildRunning holds for busy and retrying statuses only", () {
-    expect(isChildRunning(status: const SessionStatus.busy()), isTrue);
-    expect(isChildRunning(status: const SessionStatus.retry(attempt: 1, message: "", next: 0)), isTrue);
+    expect(isChildRunning(status: const SessionStatus.busy(since: null)), isTrue);
+    expect(isChildRunning(status: const SessionStatus.retry(attempt: 1, message: "", next: 0, since: null)), isTrue);
     expect(isChildRunning(status: const SessionStatus.idle()), isFalse);
     expect(isChildRunning(status: null), isFalse);
   });
@@ -543,8 +566,8 @@ void main() {
           _child(id: "unknown", createdAt: null),
         ],
         childStatuses: const {
-          "busy": SessionStatus.busy(),
-          "retry": SessionStatus.retry(attempt: 1, message: "", next: 0),
+          "busy": SessionStatus.busy(since: null),
+          "retry": SessionStatus.retry(attempt: 1, message: "", next: 0, since: null),
           "idle": SessionStatus.idle(),
         },
       ).map((child) => child.id),

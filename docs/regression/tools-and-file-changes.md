@@ -178,9 +178,12 @@ sub-agent parts, plus the signal that a tool changed files.
   composer's sub-agent pill (never the sparkle or a shimmer), “2 sub-agents
   running in the background · 3m 05s” and a muted second line “You can keep
   chatting meanwhile.” It counts running sub-agents as the pill does (busy or
-  retrying) and ticks from the earliest one's start: the message holding its
-  sub-agent step, else its own session's creation; with neither it shows no
-  time. Both lines always show, so the row keeps its height as the count or
+  retrying) and ticks from the earliest one's start: when the bridge saw it
+  go busy, so on every harness a resumed sub-agent counts from its resume and
+  the time survives an app reload; else (an older bridge, or a sub-agent the
+  bridge first saw already busy, as after a bridge restart) the message
+  holding its sub-agent step, else its own session's creation; with none it
+  shows no time. Both lines always show, so the row keeps its height as the count or
   time changes. It hides while a question or permission waits. Which harnesses
   show it, with a time, is under “Live timers” in
   `docs/HARNESS_CAPABILITIES.md`. A retry row replaces it, with the same

@@ -273,7 +273,7 @@ void main() {
           _assistant("m1", [_subtask("k1", taskState: _taskState(ToolStatus.error), childSessionID: "c1")]),
         ],
         children: [_child("c1")],
-        childStatuses: {"c1": const SessionStatus.busy()},
+        childStatuses: {"c1": const SessionStatus.busy(since: null)},
       );
 
       final step = _onlyGroup(transcript, "m1").steps.single as TranscriptSubAgentStep;
@@ -292,7 +292,7 @@ void main() {
           ]),
         ],
         children: [_child("c1"), _child("c2"), _child("c3")],
-        childStatuses: {"c1": const SessionStatus.busy(), "c2": const SessionStatus.idle()},
+        childStatuses: {"c1": const SessionStatus.busy(since: null), "c2": const SessionStatus.idle()},
       );
 
       final statuses = {for (final step in _onlyGroup(transcript, "m1").steps) step.id: step.status};

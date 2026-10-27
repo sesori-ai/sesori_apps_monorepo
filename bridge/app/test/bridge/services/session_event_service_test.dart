@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/accepted_prompts_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
@@ -7,6 +8,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/accepted_prompts_repository.dart";
 import "package:sesori_bridge/src/repositories/mappers/session_event_mapper.dart";
+import "package:sesori_bridge/src/repositories/models/normalized_bridge_event.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
@@ -83,6 +85,38 @@ void main() {
       await promptService.dispose();
       await promptDispatcher.dispose();
       await database.close();
+    });
+
+    test("delivered statuses carry when the session went busy, through terminal handoffs too", () {
+      SessionStatus deliveredAt({required int now, required BridgeSseEvent event}) {
+        final normalized = withClock(
+          Clock.fixed(DateTime.fromMillisecondsSinceEpoch(now)),
+          () => service.toNormalized(event: event),
+        );
+        return switch (normalized) {
+          NormalizedStatusEvent(:final status) ||
+          NormalizedTerminalHandoff(payload: NormalizedStatusEvent(:final status)) => status,
+          _ => throw StateError("expected a status, got $normalized"),
+        };
+      }
+
+      const busy = BridgeSseSessionStatus(sessionID: "s1", status: PluginSessionStatus.busy());
+      deliveredAt(
+        now: 100,
+        event: const BridgeSseSessionStatus(sessionID: "s1", status: PluginSessionStatus.idle()),
+      );
+
+      expect(deliveredAt(now: 200, event: busy), const SessionStatus.busy(since: 200));
+      expect(deliveredAt(now: 300, event: busy), const SessionStatus.busy(since: 200));
+
+      // A forced stop's synthesized idle ends the run, so the next one is timed afresh.
+      service.toNormalized(
+        event: const BridgeSseTerminalHandoff(event: BridgeSseSessionIdle(sessionID: "s1")),
+      );
+      expect(
+        deliveredAt(now: 400, event: const BridgeSseTerminalHandoff(event: busy)),
+        const SessionStatus.busy(since: 400),
+      );
     });
 
     test("settled turns publish durable recency before idle and older backend updates cannot undo it", () async {

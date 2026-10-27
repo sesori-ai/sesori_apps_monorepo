@@ -188,7 +188,7 @@ void main() {
         "a transient retry",
         const SesoriSseEvent.sessionStatus(
           sessionID: "ses-1",
-          status: SessionStatus.retry(attempt: 1, message: "rate limited", next: 0),
+          status: SessionStatus.retry(attempt: 1, message: "rate limited", next: 0, since: null),
         ),
       ),
       ("a session error", const SesoriSseEvent.sessionError(sessionID: "ses-1")),
@@ -204,7 +204,10 @@ void main() {
 
     for (final (name, event) in [
       ("an assistant message", const SesoriSseEvent.messageUpdated(info: _assistantMessage)),
-      ("a busy status", const SesoriSseEvent.sessionStatus(sessionID: "ses-1", status: SessionStatus.busy())),
+      (
+        "a busy status",
+        const SesoriSseEvent.sessionStatus(sessionID: "ses-1", status: SessionStatus.busy(since: null)),
+      ),
     ]) {
       test("$name keeps the count", () async {
         await recordPositive(times: 2);

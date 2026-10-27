@@ -11,7 +11,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
-          status: SessionStatus.busy(),
+          status: SessionStatus.busy(since: null),
         ),
       );
 
@@ -21,7 +21,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
-          status: SessionStatus.retry(attempt: 2, message: "retry", next: 1000),
+          status: SessionStatus.retry(attempt: 2, message: "retry", next: 1000, since: null),
         ),
       );
 
@@ -55,7 +55,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
           sessionID: "child",
-          status: SessionStatus.busy(),
+          status: SessionStatus.busy(since: null),
         ),
       );
 
@@ -255,7 +255,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
           sessionID: "child-1",
-          status: SessionStatus.busy(),
+          status: SessionStatus.busy(since: null),
         ),
       );
 
@@ -289,7 +289,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
           sessionID: "grandchild",
-          status: SessionStatus.busy(),
+          status: SessionStatus.busy(since: null),
         ),
       );
 
@@ -448,7 +448,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
           sessionID: "session-a",
-          status: SessionStatus.busy(),
+          status: SessionStatus.busy(since: null),
         ),
       );
       tracker.handleEvent(
@@ -476,7 +476,7 @@ void main() {
           ),
         )
         ..handleEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         )
         ..handleEvent(
           const SesoriSseEvent.questionAsked(
@@ -536,7 +536,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
         const SesoriSseEvent.questionAsked(
@@ -566,7 +566,7 @@ void main() {
           ),
         )
         ..handleEvent(
-          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+          const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
         )
         ..handleEvent(
           const SesoriSseEvent.questionAsked(
@@ -761,7 +761,7 @@ void main() {
 
       // Only child goes busy, root never does.
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
@@ -776,10 +776,10 @@ void main() {
 
       // Sessions created implicitly via status events (e.g., after bridge restart).
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
 
       // Without a projects.summary, the child appears to be a root.
@@ -917,13 +917,13 @@ void main() {
 
       // Three sessions known only via status events.
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "grandchild", status: SessionStatus.busy(since: null)),
       );
 
       // Two summaries establish root→child and child→grandchild.
@@ -988,7 +988,7 @@ void main() {
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(
           sessionID: "unknown-parent",
-          status: SessionStatus.busy(),
+          status: SessionStatus.busy(since: null),
         ),
       );
       expect(tracker.resolveRootSessionId("child"), equals("unknown-parent"));
@@ -1007,7 +1007,7 @@ void main() {
       );
       clock.advance(const Duration(seconds: 1));
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
       clock.advance(const Duration(seconds: 1));
       tracker.handleEvent(
@@ -1146,7 +1146,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "root", status: SessionStatus.busy(since: null)),
       );
 
       clock.advance(const Duration(minutes: 40));
@@ -1186,7 +1186,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
         const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.idle()),
@@ -1196,7 +1196,7 @@ void main() {
       tracker.pruneRootSubtree(rootSessionId: "root");
 
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       expect(tracker.isSessionGroupFullyIdle("child"), isFalse);
       expect(tracker.resolveRootSessionId("child"), equals("child"));
@@ -1390,7 +1390,7 @@ void main() {
         ),
       );
       tracker.handleEvent(
-        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy()),
+        const SesoriSseEvent.sessionStatus(sessionID: "child", status: SessionStatus.busy(since: null)),
       );
       tracker.handleEvent(
         SesoriSseEvent.sessionUpdated(
