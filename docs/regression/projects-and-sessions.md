@@ -299,11 +299,13 @@ state.
   the same way before a failed project's Retry row opens. With nothing loading and no project failed, a query that
   matches nothing fades in "No matches", and on an unsearched list with sessions a Running or Unread chip that leaves
   no rows fades in "No sessions match this filter", once the rows have left; the note fades out where it stands
-  before rows return, and neither moves the field or chips. Neither the empty state nor a note moves while it shows,
+  before rows return, the empty state and a note each wait for the other to fade out, and neither moves the field or
+  chips. Neither the empty state nor a note moves while it shows,
   and a load that starts as one fades out fades it out with the rest of the list. Reduced motion swaps them at once,
   and a later refresh, search or filter never repeats a fade on what is already shown: chips showing their counts
   while the load runs, as when Running or Unread leaves no rows while a project still loads, stay as they are through
-  its hand-off. Tapped while a project loads, or as the chips fade in over their pills, such a chip shows as selected
+  its hand-off, and chips whose counts arrive while it runs fade in over their pills, once the list it replaced has
+  faded out. Tapped while a project loads, or as the chips fade in over their pills, such a chip shows as selected
   at once, and the chips hold still, going on fading in over their pills if they still were, as the rows it leaves
   fade into the skeleton. A load that replaces what the list shows, as a computer switch's, never blanks it: the
   rows, Retry rows or empty state on screen fade out where they stand as the skeleton fades in over them
@@ -803,7 +805,9 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   empty state shows at once instead of fading in once they fold, or vanishes in
   one frame as they open or a Retry row opens; "No matches" or "No sessions
   match this filter" appears or vanishes in one frame; the empty state or a
-  note moves while it shows, or vanishes in one frame as a load starts; chips
+  note moves while it shows, fades in before the other has faded out, or
+  vanishes in one frame as a load starts; chips whose counts arrive while a
+  load runs replace their pills in one frame; chips
   already showing while a project loads flash transparent as the load hands
   off; or a filter tapped while a project loads or as the chips fade in fades
   the chips out on the old selection, then snaps them back as the skeleton

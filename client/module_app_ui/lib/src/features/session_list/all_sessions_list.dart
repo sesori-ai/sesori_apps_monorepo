@@ -182,9 +182,10 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   );
   late final Animation<double> _skeletonArrival = ReverseAnimation(_contentOpacity);
 
-  /// The chips' own fade in over their pills, taking over from the hand-off
-  /// where it stands as a load that already has their counts starts replacing
-  /// the rows, as a filter tapped meanwhile's: they go on fading in.
+  /// The chips' own fade in over their pills as they take over from them
+  /// during a load: from where the hand-off stands as a load that has their
+  /// counts starts replacing the rows, as a filter tapped meanwhile's, or from
+  /// nothing as their counts arrive.
   late final AnimationController _chipsIn = AnimationController(
     vsync: this,
     duration: transcriptMotionDuration,
@@ -312,17 +313,13 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     );
     final currentEntries = entriesOf(current);
     final currentlyLoading = (awaitingConnection || current.isLoading) && currentEntries.isEmpty;
-    final replaceStarts = !_wasLoading && currentlyLoading && _lastShown != null && !context.isReducedMotion;
+    final loadStarts = !_wasLoading && currentlyLoading;
+    final replaceStarts = loadStarts && _lastShown != null && !context.isReducedMotion;
     if (_wasLoading && !currentlyLoading && !context.isReducedMotion) {
       // Rows still fading out finish first, so the content follows the
       // skeleton they leave.
       if (!_replacing) _fadeContentIn();
     } else if (replaceStarts) {
-      if (_heldChips && current.counts.all > 0) {
-        _chipsIn
-          ..value = _handOff.value
-          ..forward();
-      }
       // The rows glide to the top as they fade, where the skeleton they
       // leave stands with nothing to scroll.
       final position = Scrollable.maybeOf(context)?.position;
@@ -383,21 +380,23 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
       true when state.counts.all > 0 && state.quickFilter != SessionListQuickFilter.all => loc.sessionListFilterEmpty,
       true => null,
     };
-    final emptyStateShown = settled && !hasSessions;
+    final emptyStateApplies = settled && !hasSessions;
     // Once it stops applying at rest, the empty state or a note fades out
     // where it stands, and what takes its place waits for it: the rows, a
-    // Retry row, and the search field and chips the empty state folded away.
-    // A load that starts meanwhile fades it out with the rest of the list.
+    // Retry row, the search field and chips the empty state folded away, and
+    // the note or empty state that follows the other. A load that starts
+    // meanwhile fades it out with the rest of the list.
     _emptyStateLeaving =
         !context.isReducedMotion &&
-        (_emptyStateLeaving ? !emptyStateShown || _replacing : _showedEmptyState && !emptyStateShown && atRest);
-    _showedEmptyState = emptyStateShown;
+        (_emptyStateLeaving ? !emptyStateApplies || _replacing : _showedEmptyState && !emptyStateApplies && atRest);
     _noteLeaving =
         !context.isReducedMotion &&
         (_noteLeaving ? note == null || _replacing : _note != null && note == null && atRest);
-    final shownNote = _noteLeaving ? _note : note;
-    _note = shownNote;
     final waiting = _emptyStateLeaving || _noteLeaving;
+    final emptyStateShown = emptyStateApplies && !waiting;
+    _showedEmptyState = emptyStateShown;
+    final shownNote = _noteLeaving ? _note : (waiting ? null : note);
+    _note = shownNote;
     final shownEntries = waiting ? const <SessionListEntry<_Item>>[] : entries;
     final sessionsShown = waiting ? _hadSessions : hasSessions;
     // The search field shows from a load's first frame, so nothing under it
@@ -409,17 +408,31 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final roomShown = sessionsShown || _roomFolding;
     final searchShown = roomShown || loading || handingOff;
     final roomFolds = handingOff && !sessionsShown;
-    // The chips show counts, so until the load has some, a skeleton pill
-    // holds each chip's place. Through the hand-off it fades out where it
-    // stands as the chip fades in over it, one that never showed staying
-    // hidden; chips that showed their counts through the load stay as they
-    // are. So do chips a load already has counts for as it starts replacing
-    // the rows, as when a filter tapped while a project loads leaves none:
-    // they show the tapped filter at once, going on fading in over their
-    // pills if they still were.
-    final chipsShown = loading ? state.counts.all > 0 : roomShown;
-    final chipsHeld =
-        (loading && state.counts.all == 0) || (handingOff && (replaceStarts ? current.counts.all == 0 : _heldChips));
+    // The chips show counts, so until a load has some, a skeleton pill holds
+    // each chip's place, as the load first finds them. Through the hand-off
+    // it fades out where it stands as the chip fades in over it, one that
+    // never showed staying hidden; chips that showed their counts through
+    // the load stay as they are. So do chips a load already has counts for
+    // as it starts, and those of a filter tapped as it starts, which changes
+    // none of them, as when a filter tapped while a project loads leaves no
+    // rows: they show the tapped filter at once. Chips that take over from
+    // their pills while a load runs, as their counts arrive, or still fading
+    // in as one starts, fade in by themselves from where they stood.
+    final filterTapped = (_lastShown?.quickFilter ?? current.quickFilter) != current.quickFilter;
+    final bool chipsHeld;
+    if (loadStarts) {
+      chipsHeld = current.counts.all == 0 && !filterTapped;
+    } else if (loading) {
+      chipsHeld = _heldChips && state.counts.all == 0;
+    } else {
+      chipsHeld = handingOff && _heldChips;
+    }
+    final chipsShown = loading ? !chipsHeld : roomShown;
+    if (_heldChips && !chipsHeld && (loading || replaceStarts) && !context.isReducedMotion) {
+      _chipsIn
+        ..value = replaceStarts ? _handOff.value : 0
+        ..forward();
+    }
     _heldChips = chipsHeld;
     // Chips fading out with the rows a load replaces show what those rows did.
     final chipsReplaced = _replacing && chipsHeld;

@@ -80,6 +80,9 @@ void main() {
     Widget? header,
     TextDirection textDirection = TextDirection.ltr,
     PregoInteractionMode interaction = PregoInteractionMode.touch,
+    // The inventory and launches the list's launching rows come from.
+    Map<String, RecentSessionsEntry> entries = const {},
+    SessionLaunchRepository? launches,
   }) async {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
@@ -90,7 +93,7 @@ void main() {
     whenListen(projects, projectUpdates, initialState: projectList);
     when(() => projects.retryLoadProjects()).thenAnswer((_) async {});
     final inventory = _MockRecentSessionInventoryService();
-    when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(const {}));
+    when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(entries));
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -108,7 +111,12 @@ void main() {
                 ),
               ),
               RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
-              RepositoryProvider(create: (_) => idleSessionLaunchService()),
+              RepositoryProvider(
+                create: (_) => switch (launches) {
+                  final launches? => inMemorySessionLaunchService(launchRepository: launches),
+                  null => idleSessionLaunchService(),
+                },
+              ),
             ],
             child: Scaffold(
               body: CustomScrollView(
@@ -645,6 +653,58 @@ void main() {
           if ((frame.note ?? 0) > 0) expect((frame.top, frame.row), (noteTop, false));
           expect((frame.field, frame.chips), (fieldTop, chipTop));
         }
+      });
+    }
+
+    // Running leaves no rows of a project's sessions, as the project switcher
+    // moves to a project with none, or back.
+    AllSessionsState running({required int sessions}) => state(
+      query: "",
+      failures: const [],
+      rows: const [],
+      scratchProjectId: null,
+      counts: SessionListChipCounts(all: sessions, running: 0, unread: 0),
+      quickFilter: SessionListQuickFilter.running,
+    );
+    final filterNote = find.text("No sessions match this filter");
+    final nothingHere = find.text("Nothing here");
+    for (final (name, from, to, leaving, arriving) in [
+      ("The note", running(sessions: 1), running(sessions: 0), filterNote, nothingHere),
+      ("The empty state", running(sessions: 0), running(sessions: 1), nothingHere, filterNote),
+    ]) {
+      testWidgets("$name fades out where it stands before what replaces it fades in, which then holds still", (
+        tester,
+      ) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(tester, initial: from, updates: updates.stream, mode: AllSessionsMode.active, header: header);
+        final leavingTop = tester.getTopLeft(leaving).dy;
+        expect(paintedOpacity(tester, leaving), 1);
+
+        final frames = await everyFrameAcross(
+          tester,
+          updates: updates,
+          update: to,
+          read: () => (
+            leaving: shownOpacity(tester, leaving),
+            leavingTop: topOf(tester, leaving),
+            arriving: shownOpacity(tester, arriving),
+            arrivingTop: topOf(tester, arriving),
+          ),
+        );
+        expect(steps([for (final frame in frames) frame.leaving]), everyElement(lessThanOrEqualTo(0)));
+        expect(frames.last.leaving, isNull);
+        // The search field and chips fold or open meanwhile, so what arrives
+        // is seen only where it then stands.
+        final seen = frames.where((frame) => (frame.arriving ?? 0) > 0).toList();
+        expect(seen, isNotEmpty);
+        for (final frame in frames) {
+          if (frame.leaving != null) expect((frame.leavingTop, frame.arriving ?? 0), (leavingTop, 0));
+        }
+        expect(seen.map((frame) => frame.arrivingTop).toSet(), {frames.last.arrivingTop});
+        expect(steps([for (final frame in seen) frame.arriving]), everyElement(greaterThanOrEqualTo(0)));
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(paintedOpacity(tester, arriving), 1);
       });
     }
 
@@ -1210,6 +1270,166 @@ void main() {
       expect(pillOpacities.last, isNull);
       expect(skeletonOpacity(tester), 1);
     });
+
+    testWidgets("a filter tapped while a project loads and only a launch is listed shows at once, the chips holding "
+        "still", (tester) async {
+      final launches = inMemorySessionLaunchRepository();
+      // Another project still loads, and has none counted yet.
+      AllSessionsState filtered(SessionListQuickFilter filter) => state(
+        query: "",
+        failures: const [],
+        rows: const [],
+        scratchProjectId: null,
+        quickFilter: filter,
+        isLoading: true,
+      );
+      final updates = StreamController<AllSessionsState>();
+      addTearDown(updates.close);
+      await pumpList(
+        tester,
+        initial: filtered(SessionListQuickFilter.all),
+        updates: updates.stream,
+        mode: AllSessionsMode.active,
+        entries: {
+          project.id: const RecentSessionsLoaded(
+            sourceSessions: [],
+            visibleSessions: [],
+            archivedSessions: [],
+            activityBySessionId: {},
+            listStateBySessionId: {},
+          ),
+        },
+        launches: launches,
+      );
+      launches.start(
+        launchId: "launch-1",
+        projectId: project.id,
+        pluginId: "claude",
+        startedAt: DateTime.now(),
+        projectName: project.name,
+        submission: NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: "Fix the parser"),
+          attachments: const [],
+        ),
+      );
+      // The launch's row hands off from the skeleton, the chips over their pills.
+      for (var elapsed = 0; elapsed < 700; elapsed += 50) {
+        await tester.pump(const Duration(milliseconds: 50));
+      }
+      final allChip = find.byKey(const Key("session-list-filter-all"));
+      final launchRow = find.byType(PendingSessionLaunchTile);
+      final pills = find.byKey(const ValueKey("skeleton"));
+      final chipTop = tester.getTopLeft(runningChip).dy;
+      expect(
+        (paintedOpacity(tester, runningChip), paintedOpacity(tester, launchRow), pills.evaluate().length),
+        (1, 1, 0),
+      );
+
+      ({({bool? all, bool? running}) selected, double chips, double top, int pills, int tappable}) chips() => (
+        selected: (all: selected(tester, allChip), running: selected(tester, runningChip)),
+        chips: paintedOpacity(tester, runningChip),
+        top: tester.getTopLeft(runningChip).dy,
+        pills: pills.evaluate().length,
+        tappable: allChip.hitTestable().evaluate().length,
+      );
+      final frames = await everyFrameAcross(
+        tester,
+        updates: updates,
+        update: filtered(SessionListQuickFilter.running),
+        read: () => (chips: chips(), launch: shownOpacity(tester, launchRow)),
+      );
+      // The chips show the tapped filter from the tap on, as they are, and
+      // take taps, while the launch's row fades into the skeleton.
+      for (final (index, frame) in frames.indexed) {
+        expect(frame.chips, (
+          selected: (all: false, running: true),
+          chips: 1,
+          top: chipTop,
+          pills: 0,
+          tappable: 1,
+        ), reason: "at ${index * 10}ms");
+      }
+      expect(frames[10].launch, inExclusiveRange(0, 1));
+      expect(frames.last.launch, isNull);
+      expect(skeletonOpacity(tester), 1);
+
+      // All again brings the launch's row back, the chips still as they are.
+      final back = await everyFrameAcross(
+        tester,
+        updates: updates,
+        update: filtered(SessionListQuickFilter.all),
+        read: chips,
+      );
+      for (final (index, frame) in back.indexed) {
+        expect(frame, (
+          selected: (all: true, running: false),
+          chips: 1,
+          top: chipTop,
+          pills: 0,
+          tappable: 1,
+        ), reason: "at ${index * 10}ms");
+      }
+      expect(paintedOpacity(tester, launchRow), 1);
+    });
+
+    for (final arrivesAfter in [100, 300]) {
+      testWidgets("counts that arrive ${arrivesAfter}ms into a load that replaced the chips fade them in over their "
+          "pills", (tester) async {
+        // Running leaves no rows of the next computer's first project while
+        // another still loads.
+        AllSessionsState running({required List<String> titles, required int sessions, required bool isLoading}) =>
+            state(
+              query: "",
+              failures: const [],
+              rows: [
+                for (final title in titles) row(title: title, updatedAt: now, archivedAt: null, isRunning: true),
+              ],
+              scratchProjectId: null,
+              counts: SessionListChipCounts(all: sessions, running: titles.length, unread: 0),
+              quickFilter: SessionListQuickFilter.running,
+              isLoading: isLoading,
+            );
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(
+          tester,
+          initial: running(titles: ["Fix the parser"], sessions: 1, isLoading: false),
+          updates: updates.stream,
+          mode: AllSessionsMode.active,
+        );
+        final pillBars = find.descendant(
+          of: find.byKey(const ValueKey("skeleton")),
+          matching: find.byType(PregoSkeletonBar),
+        );
+        final chipTop = tester.getTopLeft(runningChip).dy;
+
+        // A computer switch, then the next computer's counts.
+        updates.add(running(titles: const [], sessions: 0, isLoading: true));
+        await tester.pump(Duration.zero);
+        final frames = <({double chips, double pills})>[];
+        for (var elapsed = 0; elapsed < 600; elapsed += 10) {
+          if (elapsed == arrivesAfter) updates.add(running(titles: const [], sessions: 2, isLoading: true));
+          await tester.pump(const Duration(milliseconds: 10));
+          frames.add((
+            chips: shownOpacity(tester, runningChip) ?? 0,
+            pills: pillBars.evaluate().isEmpty ? 0 : paintedOpacity(tester, pillBars.first),
+          ));
+          if (runningChip.evaluate().isNotEmpty) expect(tester.getTopLeft(runningChip).dy, chipTop);
+        }
+        // Out under their pills, then in over them, never at once.
+        for (final readings in [
+          [for (final frame in frames) frame.chips],
+          [for (final frame in frames) frame.pills],
+        ]) {
+          expect(steps(readings), everyElement(inInclusiveRange(-0.1, 0.1)));
+        }
+        expect(frames.last, (chips: 1, pills: 0));
+        expect(find.text("Running · 0"), findsOneWidget);
+        expect(selected(tester, runningChip), isTrue);
+        expect(runningChip.hitTestable(), findsOneWidget);
+        expect(skeletonOpacity(tester), 1);
+      });
+    }
 
     for (final (name, initial, departing, holdsStill) in [
       ("a note", loaded(mode: AllSessionsMode.active, titles: const [], query: "zzz"), find.text("No matches"), true),
