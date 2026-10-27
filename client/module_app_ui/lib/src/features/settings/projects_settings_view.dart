@@ -67,6 +67,15 @@ class const ProjectsSettingsView({super.key, required final SettingsPageChrome c
       ProjectListLoaded() || ProjectListBridgeDisconnected() => null,
     };
     final duration = context.isReducedMotion ? Duration.zero : _offlineTransition;
+    final offlineLine = online
+        ? const SizedBox.shrink()
+        : Padding(
+            padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
+            child: Text(
+              loc.settingsProjectsOffline,
+              style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
+            ),
+          );
     return SettingsChromePage(
       chrome: chrome,
       onRefresh: null,
@@ -83,20 +92,16 @@ class const ProjectsSettingsView({super.key, required final SettingsPageChrome c
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: [
                 // The line eases in and out, so the rows below it glide rather
-                // than jump when the bridge drops or returns.
-                AnimatedSize(
-                  duration: duration,
-                  alignment: AlignmentDirectional.topStart,
-                  child: online
-                      ? const SizedBox.shrink()
-                      : Padding(
-                          padding: const EdgeInsetsDirectional.only(bottom: PregoSpacing.md),
-                          child: Text(
-                            loc.settingsProjectsOffline,
-                            style: prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary),
-                          ),
-                        ),
-                ),
+                // than jump when the bridge drops or returns. Under reduced
+                // motion no wrapper at all: a zero-length AnimatedSize would
+                // re-dirty itself mid-layout.
+                context.isReducedMotion
+                    ? offlineLine
+                    : AnimatedSize(
+                        duration: duration,
+                        alignment: AlignmentDirectional.topStart,
+                        child: offlineLine,
+                      ),
                 AnimatedOpacity(
                   opacity: online ? 1 : _offlineRowsOpacity,
                   duration: duration,

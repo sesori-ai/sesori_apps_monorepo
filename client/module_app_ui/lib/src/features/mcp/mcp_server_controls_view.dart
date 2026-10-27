@@ -162,7 +162,7 @@ class const _LiveStatus({required final String message}) extends StatelessWidget
     label: message,
     child: ExcludeSemantics(
       child: AnimatedSwitcher(
-        duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
+        duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 180),
         layoutBuilder: (current, previous) =>
             Stack(alignment: AlignmentDirectional.topStart, children: [...previous, ?current]),
         child: Text(message, key: ValueKey(message), maxLines: 2, overflow: TextOverflow.ellipsis),

@@ -66,6 +66,17 @@ void main() {
     expect(tester.getSize(find.byType(OtherComputersCard)).height, 0);
   });
 
+  testWidgets("grows to fit the list that arrives under reduced motion", (tester) async {
+    tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(disableAnimations: true);
+    addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+    await pumpCard(tester, computers: const []);
+
+    await pumpCard(tester, computers: [_online("b")]);
+
+    expect(find.text("computer-b"), findsOneWidget);
+    expect(tester.getSize(find.byType(OtherComputersCard)).height, greaterThan(0));
+  });
+
   testWidgets("says so when no other computer is online", (tester) async {
     await pumpCard(tester, computers: [_offline("b"), _offline("c")]);
 

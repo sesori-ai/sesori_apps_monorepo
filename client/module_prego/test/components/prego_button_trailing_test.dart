@@ -71,6 +71,13 @@ void main() {
         expect(width(tester), greaterThan(plain + 40));
         expect(tester.hasRunningAnimations, isFalse);
 
+        await tester.pumpWidget(
+          _harness(child: build(trailing: const SizedBox(width: 60, height: 10)), reducedMotion: true),
+        );
+        await tester.pump();
+        expect(width(tester), greaterThan(plain + 60));
+        expect(tester.hasRunningAnimations, isFalse);
+
         await tester.pumpWidget(_harness(child: build(trailing: null), reducedMotion: true));
         await tester.pump();
         expect(width(tester), plain);

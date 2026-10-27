@@ -113,7 +113,7 @@ class const _InventoryHeader({required final McpActionClientState action}) exten
             child: Semantics(
               liveRegion: true,
               child: AnimatedSwitcher(
-                duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
+                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 180),
                 layoutBuilder: (current, previous) =>
                     Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
                 child: Text(
@@ -218,23 +218,27 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
                   McpConnectorOfferAvailability.setupRequired => loc.mcpSetupRequired,
                   McpConnectorOfferAvailability.unavailable => loc.mcpUnavailable,
                 };
+                final row = PregoGroupedRow(
+                  title: Text(offer.name),
+                  subtitle: stacked && button != null
+                      ? Column(
+                          crossAxisAlignment: CrossAxisAlignment.stretch,
+                          children: [
+                            Text(status),
+                            const SizedBox(height: PregoSpacing.md),
+                            button,
+                          ],
+                        )
+                      : Text(status),
+                  trailing: stacked ? null : button,
+                );
+                // Under reduced motion no wrapper at all: a zero-length
+                // AnimatedSize would re-dirty itself mid-layout.
+                if (context.isReducedMotion) return row;
                 return AnimatedSize(
-                  duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
+                  duration: const Duration(milliseconds: 180),
                   alignment: Alignment.topCenter,
-                  child: PregoGroupedRow(
-                    title: Text(offer.name),
-                    subtitle: stacked && button != null
-                        ? Column(
-                            crossAxisAlignment: CrossAxisAlignment.stretch,
-                            children: [
-                              Text(status),
-                              const SizedBox(height: PregoSpacing.md),
-                              button,
-                            ],
-                          )
-                        : Text(status),
-                    trailing: stacked ? null : button,
-                  ),
+                  child: row,
                 );
               },
             );

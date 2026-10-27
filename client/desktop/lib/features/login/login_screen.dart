@@ -113,6 +113,12 @@ class const _SignInPane({
   Widget build(BuildContext context) {
     final prego = context.prego;
     final legalStyle = prego.textTheme.textXs.regular.copyWith(color: prego.colors.textTertiary);
+    final logo = showsLogo
+        ? const Padding(
+            padding: EdgeInsetsDirectional.only(bottom: 8),
+            child: Center(child: SesoriLogo(squareSize: 72)),
+          )
+        : const SizedBox(width: double.infinity);
 
     return LayoutBuilder(
       builder: (context, constraints) => SingleChildScrollView(
@@ -134,17 +140,16 @@ class const _SignInPane({
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      AnimatedSize(
-                        duration: prefersReducedMotion(context) ? Duration.zero : _logoDuration,
-                        curve: Curves.easeOut,
-                        alignment: Alignment.topCenter,
-                        child: showsLogo
-                            ? const Padding(
-                                padding: EdgeInsetsDirectional.only(bottom: 8),
-                                child: Center(child: SesoriLogo(squareSize: 72)),
-                              )
-                            : const SizedBox(width: double.infinity),
-                      ),
+                      // Under reduced motion no wrapper at all: a zero-length
+                      // AnimatedSize would re-dirty itself mid-layout.
+                      prefersReducedMotion(context)
+                          ? logo
+                          : AnimatedSize(
+                              duration: _logoDuration,
+                              curve: Curves.easeOut,
+                              alignment: Alignment.topCenter,
+                              child: logo,
+                            ),
                       child,
                     ],
                   ),
