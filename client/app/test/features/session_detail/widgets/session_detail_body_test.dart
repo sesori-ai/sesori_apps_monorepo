@@ -878,7 +878,7 @@ void main() {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
-      sessionStatus: const SessionStatus.busy(),
+      sessionStatus: const SessionStatus.busy(since: null),
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -1256,7 +1256,7 @@ void main() {
     final state = _loadedState(
       pendingQuestions: const [],
       pendingPermissions: const [],
-      sessionStatus: const SessionStatus.busy(),
+      sessionStatus: const SessionStatus.busy(since: null),
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
@@ -3663,7 +3663,7 @@ void main() {
       pendingQuestions: const [],
       pendingPermissions: const [],
       messages: [testMessageWithParts()],
-      sessionStatus: const SessionStatus.busy(),
+      sessionStatus: const SessionStatus.busy(since: null),
     );
     when(() => cubit.state).thenReturn(state);
     whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);

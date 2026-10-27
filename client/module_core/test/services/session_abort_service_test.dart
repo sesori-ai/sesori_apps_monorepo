@@ -53,8 +53,10 @@ void main() {
       "sibling": () async => ApiResponse.success(true),
     });
     repository.statusResponses.addAll(const [
-      SessionStatusResponse(statuses: {"child": SessionStatus.busy(), "sibling": SessionStatus.busy()}),
-      SessionStatusResponse(statuses: {"grandchild": SessionStatus.busy()}),
+      SessionStatusResponse(
+        statuses: {"child": SessionStatus.busy(since: null), "sibling": SessionStatus.busy(since: null)},
+      ),
+      SessionStatusResponse(statuses: {"grandchild": SessionStatus.busy(since: null)}),
     ]);
 
     final aborting = _abort(repository);
@@ -94,8 +96,8 @@ void main() {
       "sibling": () => siblingAbort.future,
     });
     repository.statusResponses.addAll(const [
-      SessionStatusResponse(statuses: {"sibling": SessionStatus.busy()}, unavailablePluginIds: ["down"]),
-      SessionStatusResponse(statuses: {"grandchild": SessionStatus.busy()}),
+      SessionStatusResponse(statuses: {"sibling": SessionStatus.busy(since: null)}, unavailablePluginIds: ["down"]),
+      SessionStatusResponse(statuses: {"grandchild": SessionStatus.busy(since: null)}),
     ]);
 
     final aborting = _abort(repository);

@@ -87,6 +87,20 @@ final class const ClaudeTrackedTask({
   required super.todoRefreshRequired,
 }) extends ClaudeTrackedTool;
 
+/// A sub-agent run this process started without having seen its launch:
+/// Claude resumed an agent whose launching process had exited (idle shutdown,
+/// stop, respawn or bridge restart). It has no tile, since the launch's tile
+/// keeps its earlier outcome; it moves only the child session's status.
+final class const ClaudeResumedTask({
+  /// The session whose process reported the run.
+  required final String sessionId,
+  required final String childSessionId,
+
+  /// The sub-agent's description as the task frame reports it: the CLI reads
+  /// it from the agent's meta file, which also supplies its catalog title.
+  required final String? title,
+});
+
 /// Tracks Claude `tool_use` blocks from their streamed start through the
 /// matching `tool_result` block.
 ///
@@ -102,6 +116,12 @@ final class ClaudeToolTracker() {
   /// carried its `tool_use`, so tasks resolve by the process-unique tool id
   /// and remember the session that owns their part.
   final Map<String, _TrackedTool> _tasks = {};
+
+  /// Running [ClaudeResumedTask]s by task id. They stay out of [_tasks], so no
+  /// tool result or `<task-notification>` envelope can claim them: the
+  /// resumed run's envelope names the call that resumed it and stays its own
+  /// Automation step, as it does on replay.
+  final Map<String, ClaudeResumedTask> _resumedTasks = {};
 
   ClaudeTrackedTool start({
     required String sessionId,
@@ -354,6 +374,21 @@ final class ClaudeToolTracker() {
         _ => null,
       };
 
+  /// Starts a [ClaudeResumedTask] for a sub-agent `task_started` frame that
+  /// names no known task.
+  ClaudeResumedTask resumedTaskStarted({
+    required String sessionId,
+    required String taskId,
+    required String? title,
+  }) => _resumedTasks[taskId] = ClaudeResumedTask(
+    sessionId: sessionId,
+    childSessionId: ClaudeSubagentSessionId.fromAgentId(taskId),
+    title: title,
+  );
+
+  /// Ends the resumed run [taskId] names; null when it names none.
+  ClaudeResumedTask? resumedTaskEnded({required String taskId}) => _resumedTasks.remove(taskId);
+
   bool isKnownTask({required String toolUseId}) => _tasks.containsKey(toolUseId);
 
   ClaudeTrackedTool? task({required String toolUseId}) => _tasks[toolUseId]?.snapshot(sessionDiffRequired: false);
@@ -390,12 +425,24 @@ final class ClaudeToolTracker() {
     return cancelled;
   }
 
+  /// Ends every resumed run owned by [sessionId], whose process is gone, and
+  /// returns them.
+  List<ClaudeResumedTask> cancelResumedTasks({required String sessionId}) {
+    final cancelled = [
+      for (final task in _resumedTasks.values)
+        if (task.sessionId == sessionId) task,
+    ];
+    _resumedTasks.removeWhere((_, task) => task.sessionId == sessionId);
+    return cancelled;
+  }
+
   /// Starts a new turn with no retained block or result correlation state.
   void beginTurn({required String sessionId}) => _sessions.remove(sessionId);
 
   void forgetSession({required String sessionId}) {
     _sessions.remove(sessionId);
     _tasks.removeWhere((_, task) => task.sessionId == sessionId);
+    _resumedTasks.removeWhere((_, task) => task.sessionId == sessionId);
   }
 }
 

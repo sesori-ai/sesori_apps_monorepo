@@ -91,7 +91,7 @@ const _nonEmptyState = SessionDetailState.loaded(
   userMessagesBeforeOldest: null,
   promptIndex: null,
   streamingText: {},
-  sessionStatus: SessionStatus.busy(),
+  sessionStatus: SessionStatus.busy(since: null),
   pendingQuestions: [],
   pendingPermissions: [],
   sessionTitle: null,

@@ -102,13 +102,31 @@ class NewSessionCubit({
     if (isClosed) return;
     final isConnected = status is ConnectionConnected;
     final reconnected = isConnected && !_wasConnected;
+    final dropped = !isConnected && _wasConnected;
     _wasConnected = isConnected;
+    // Answers to requests sent before the drop never land during it: a late
+    // failure would show Retry, a late success re-verify a bridge nobody has
+    // reached. The reconnect asks again.
+    if (dropped) {
+      ++_loadGeneration;
+      ++_projectLoadGeneration;
+    }
     if (!isConnected) {
-      final backendScope = state.agentModelData?.backendScope;
-      if (backendScope != null) {
+      final data = state.agentModelData;
+      if (data != null) {
         _emitStateUpdate(
-          options: null,
-          backendScope: backendScope.invalidate(),
+          // The pills on screen wait for the rediscovery to vouch for them
+          // again, as they do while it runs: shown, not pickable, and not
+          // swapped for Retry by the blip alone. A login card waits as it is.
+          options: switch (data.optionsState) {
+            NewSessionOptionsAvailableState(:final options, :final source) ||
+            NewSessionOptionsFailureRetainedState(:final options, :final source) => NewSessionOptionsRefreshingState(
+              options: options,
+              source: source,
+            ),
+            final other => other,
+          },
+          backendScope: data.backendScope.invalidate(),
           isPluginDiscoveryInFlight: null,
           projectWorktreeCapability: null,
         );
@@ -124,7 +142,7 @@ class NewSessionCubit({
     final beforeDiscovery = state.agentModelData;
     _emitStateUpdate(
       options: _loadingState(
-        previousOptions: beforeDiscovery?.optionsState.data,
+        previous: beforeDiscovery?.optionsState,
         source: beforeDiscovery?.optionsState.source,
       ),
       backendScope: null,
@@ -146,21 +164,22 @@ class NewSessionCubit({
           _selectionTracker.applyBackendScopeTransition(transition: scopeTransition);
           final selectedPlugin = data.selected;
           final source = data.optionsSource;
-          final previousOptions =
+          final retained =
               _canRetainOptions(
                 transition: scopeTransition,
                 previousData: beforeDiscovery,
                 selectedPlugin: selectedPlugin,
                 source: source,
               )
-              ? beforeDiscovery?.optionsState.data
+              ? beforeDiscovery?.optionsState
               : null;
+          final previousOptions = retained?.data;
           final canLoad = selectedPlugin?.isRoutable ?? false;
           _emitDiscoverySuccess(
             availablePlugins: data.plugins,
             selectedPlugin: selectedPlugin,
             options: canLoad
-                ? _loadingState(previousOptions: previousOptions, source: source)
+                ? _loadingState(previous: retained, source: source)
                 : source == NewSessionOptionsSource.aggregate
                 ? const NewSessionOptionsUnavailableState()
                 : const NewSessionOptionsUnsupportedState(),
@@ -234,14 +253,21 @@ class NewSessionCubit({
   void _emitDiscoveryError({required RemoteFailureReason reason}) {
     if (isClosed) return;
     final data = state.agentModelData;
+    // What the rediscovery held on screen gives way to its error and Retry.
     final options = switch (data?.optionsState) {
-      NewSessionOptionsRefreshingState(:final options, :final source) => NewSessionOptionsAvailableState(
-        options: options,
-        source: source,
-      ),
+      NewSessionOptionsRefreshingState(:final options, :final source) ||
+      NewSessionOptionsAuthenticationRequiredRetainedState(
+        :final options,
+        :final source,
+      ) => NewSessionOptionsAvailableState(options: options, source: source),
       NewSessionOptionsLoadingState(source: final source?) => NewSessionOptionsFailureState(
         reason: reason,
         source: source,
+      ),
+      // Only a bridge with session options reports a login.
+      NewSessionOptionsAuthenticationRequiredUnavailableState() => NewSessionOptionsFailureState(
+        reason: reason,
+        source: NewSessionOptionsSource.aggregate,
       ),
       NewSessionOptionsLoadingState(source: null) || null => const NewSessionOptionsLoadingState(source: null),
       final current => current,
@@ -273,12 +299,17 @@ class NewSessionCubit({
 
   Future<void> _loadProjectCapability() async {
     final generation = ++_projectLoadGeneration;
-    _emitStateUpdate(
-      options: null,
-      backendScope: null,
-      isPluginDiscoveryInFlight: null,
-      projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
-    );
+    // A project that could not be checked keeps its card, and creation stays
+    // blocked, until the bridge answers again: a recheck, a reconnect's too,
+    // never swaps the card for the composer only to bring it back.
+    if (state.agentModelData?.projectWorktreeCapability != NewSessionProjectWorktreeCapability.unavailable) {
+      _emitStateUpdate(
+        options: null,
+        backendScope: null,
+        isPluginDiscoveryInFlight: null,
+        projectWorktreeCapability: NewSessionProjectWorktreeCapability.loading,
+      );
+    }
     try {
       final response = await _projectRepository.getProject(projectId: _projectId);
       if (isClosed || generation != _projectLoadGeneration || state is NewSessionCreated) return;
@@ -373,27 +404,24 @@ class NewSessionCubit({
     final current = state;
     final data = current.agentModelData;
     final source = data?.optionsState.source;
+    // A project check still under way, such as a reconnect's, answers on its
+    // own; it does not hold back the options this press asks for.
     if (current.phase is NewSessionPhaseSending ||
         current is NewSessionCreated ||
         !(data?.backendScope.isVerified ?? false) ||
         data == null ||
-        data.isLoading ||
+        data.optionsState.isLoading ||
         source == null) {
       return;
     }
 
     final previousOptions = data.optionsState.data;
-    // A recheck of a harness known to need a login keeps that state on screen —
-    // the login card, and creation blocked — until the bridge answers.
-    void showLoading() {
-      if (data.optionsState.authenticationRequired) return;
-      _emitStateUpdate(
-        options: _loadingState(previousOptions: previousOptions, source: source),
-        backendScope: null,
-        isPluginDiscoveryInFlight: false,
-        projectWorktreeCapability: null,
-      );
-    }
+    void showLoading() => _emitStateUpdate(
+      options: _loadingState(previous: data.optionsState, source: source),
+      backendScope: null,
+      isPluginDiscoveryInFlight: false,
+      projectWorktreeCapability: null,
+    );
 
     // A background refresh that can still deliver is already asking the bridge
     // for exactly this list. Surface it instead of starting a second discovery
@@ -568,12 +596,20 @@ class NewSessionCubit({
     return identical(state.agentModelData?.optionsState.data, startedFrom);
   }
 
+  /// What the options show while the bridge is asked again after [previous].
+  /// A harness known to need a login keeps its card on screen, and creation
+  /// blocked, until the bridge answers, whether a recheck or a rediscovery
+  /// asks; options on screen stay but take no pick.
   NewSessionOptionsLoadState _loadingState({
-    required NewSessionOptionsData? previousOptions,
+    required NewSessionOptionsLoadState? previous,
     required NewSessionOptionsSource? source,
-  }) => previousOptions == null || source == null
-      ? NewSessionOptionsLoadingState(source: source)
-      : NewSessionOptionsRefreshingState(options: previousOptions, source: source);
+  }) {
+    if (previous != null && previous.authenticationRequired) return previous;
+    final previousOptions = previous?.data;
+    return previousOptions == null || source == null
+        ? NewSessionOptionsLoadingState(source: source)
+        : NewSessionOptionsRefreshingState(options: previousOptions, source: source);
+  }
 
   bool _canApplyLoad({required int generation, required String? pluginId}) {
     if (isClosed || generation != _loadGeneration) return false;
@@ -650,8 +686,15 @@ class NewSessionCubit({
     if (plugin == null) {
       return data.isPluginDiscoveryInFlight ? const NewSessionComposerPending() : const NewSessionComposerRetry();
     }
-    // A failed rediscovery keeps the options on screen but cannot send.
-    if (!data.backendScope.isVerified && !data.isPluginDiscoveryInFlight) return const NewSessionComposerRetry();
+    // A failed rediscovery keeps the options on screen but cannot send. Options
+    // still loading or a login card, waiting for a rediscovery after a
+    // disconnect, are not a failure yet; a failed rediscovery turns each into one.
+    if (!data.backendScope.isVerified &&
+        !data.isPluginDiscoveryInFlight &&
+        !data.optionsState.isLoading &&
+        !data.optionsState.authenticationRequired) {
+      return const NewSessionComposerRetry();
+    }
     // The project check comes first because Recheck retries it first.
     if (data.projectWorktreeCapability == NewSessionProjectWorktreeCapability.unavailable) {
       return const NewSessionComposerProjectUnavailable();

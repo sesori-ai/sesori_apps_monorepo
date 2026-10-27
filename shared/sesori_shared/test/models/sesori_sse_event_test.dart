@@ -247,7 +247,7 @@ void main() {
     test('busy status serializes and deserializes correctly', () {
       const event = SesoriSseEvent.sessionStatus(
         sessionID: 'ses_abc',
-        status: SessionStatus.busy(),
+        status: SessionStatus.busy(since: null),
       );
       final json = event.toJson();
 
@@ -283,7 +283,7 @@ void main() {
     test('retry status serializes and deserializes correctly', () {
       const event = SesoriSseEvent.sessionStatus(
         sessionID: 'ses_retry',
-        status: SessionStatus.retry(attempt: 3, message: 'overload', next: 5000),
+        status: SessionStatus.retry(attempt: 3, message: 'overload', next: 5000, since: null),
       );
       final json = event.toJson();
 
@@ -304,6 +304,24 @@ void main() {
       expect(retry.attempt, 3);
       expect(retry.message, 'overload');
       expect(retry.next, 5000);
+    });
+
+    test('busy and retry carry an optional busy time that older bridges omit', () {
+      const statuses = [
+        SessionStatus.busy(since: 1234),
+        SessionStatus.retry(attempt: 1, message: 'overload', next: 5000, since: 1234),
+      ];
+      for (final status in statuses) {
+        expect(status.toJson()['since'], 1234);
+        expect(SessionStatus.fromJson(status.toJson()), status);
+      }
+
+      expect(SessionStatus.fromJson(const {'type': 'busy'}), const SessionStatus.busy(since: null));
+      expect(const SessionStatus.busy(since: null).toJson(), {'type': 'busy'});
+      expect(
+        SessionStatus.fromJson(const {'type': 'retry', 'attempt': 1, 'message': 'overload', 'next': 5000}),
+        const SessionStatus.retry(attempt: 1, message: 'overload', next: 5000, since: null),
+      );
     });
   });
 
@@ -1008,7 +1026,7 @@ void main() {
     test('sessionStatus uses session.status', () {
       final json = const SesoriSseEvent.sessionStatus(
         sessionID: 'x',
-        status: SessionStatus.busy(),
+        status: SessionStatus.busy(since: null),
       ).toJson();
       expect(json['type'], 'session.status');
     });

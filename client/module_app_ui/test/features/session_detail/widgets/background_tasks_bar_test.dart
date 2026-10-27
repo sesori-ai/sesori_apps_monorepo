@@ -62,7 +62,7 @@ void main() {
                 children: children,
                 childStatuses: {
                   for (final (index, session) in children.indexed)
-                    session.id: index < running ? const SessionStatus.busy() : const SessionStatus.idle(),
+                    session.id: index < running ? const SessionStatus.busy(since: null) : const SessionStatus.idle(),
                 },
               ),
             ),

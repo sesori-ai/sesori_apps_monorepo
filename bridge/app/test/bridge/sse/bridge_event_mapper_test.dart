@@ -86,7 +86,7 @@ void main() {
     });
 
     test("builds the public status event from the normalized shared status", () {
-      const status = SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000);
+      const status = SessionStatus.retry(attempt: 1, message: "provider overloaded", next: 2000, since: null);
 
       final event = mapper.buildSessionStatusEvent(sessionId: "s1", status: status) as SesoriSessionStatus;
 

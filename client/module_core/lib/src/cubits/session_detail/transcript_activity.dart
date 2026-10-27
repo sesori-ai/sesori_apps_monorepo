@@ -77,7 +77,12 @@ class const TranscriptActivityBuilder() {
     if (running.isNotEmpty && !mainAgentRunning && !compacting && !_hasOwnRunningStep(transcript: transcript)) {
       return TranscriptActivitySubAgents(
         count: running.length,
-        sinceMs: _earliestStart(running: running, transcript: transcript, messages: messages),
+        sinceMs: _earliestStart(
+          running: running,
+          childStatuses: childStatuses,
+          transcript: transcript,
+          messages: messages,
+        ),
       );
     }
     if (transcript.liveStep != null || compacting) return const TranscriptActivityIdle();
@@ -129,10 +134,12 @@ class const TranscriptActivityBuilder() {
     ),
   );
 
-  /// A sub-agent starts with the message holding its first step, else with
-  /// its own session; the earliest known start among [running] wins.
+  /// A sub-agent starts when the bridge saw it go busy, so a resumed one
+  /// counts from its resume; else with the message holding its first step,
+  /// else with its own session. The earliest known start among [running] wins.
   static int? _earliestStart({
     required List<Session> running,
+    required Map<String, SessionStatus> childStatuses,
     required Transcript transcript,
     required List<MessageWithParts> messages,
   }) {
@@ -157,7 +164,11 @@ class const TranscriptActivityBuilder() {
     }
     int? earliest;
     for (final child in running) {
-      final start = stepStartByChildId[child.id] ?? child.time?.created;
+      final busySince = switch (childStatuses[child.id]) {
+        SessionStatusBusy(:final since) || SessionStatusRetry(:final since) => since,
+        SessionStatusIdle() || null => null,
+      };
+      final start = busySince ?? stepStartByChildId[child.id] ?? child.time?.created;
       if (start != null && (earliest == null || start < earliest)) earliest = start;
     }
     return earliest;

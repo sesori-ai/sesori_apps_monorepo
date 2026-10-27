@@ -1332,56 +1332,13 @@ void main() {
       await harness.createSession();
       final process = harness.processes.single;
       await waitForFrame(process, "user");
-      Map<String, Object?> taskFrame({required String subtype, required String toolUseId}) => {
-        "type": "system",
-        "subtype": subtype,
-        "session_id": testSessionId,
-        "task_id": "abc123",
-        "tool_use_id": toolUseId,
-        "task_type": "local_agent",
-        "status": "completed",
-        "summary": "done",
-      };
-      Map<String, Object?> assistantToolUse({required String id, required String name, required Object input}) => {
-        "type": "assistant",
-        "session_id": testSessionId,
-        "message": {
-          "id": "msg-$id",
-          "model": "claude-opus-5",
-          "content": [
-            {"type": "tool_use", "id": id, "name": name, "input": input},
-          ],
-        },
-      };
-
-      process.emit(
-        assistantToolUse(
-          id: "toolu-agent",
-          name: "Agent",
-          input: {"description": "Say hi", "prompt": "hi", "subagent_type": "general-purpose"},
-        ),
-      );
-      process.emit({
-        "type": "user",
-        "session_id": testSessionId,
-        "uuid": "launch-result",
-        "message": {
-          "role": "user",
-          "content": [
-            {"type": "tool_result", "tool_use_id": "toolu-agent", "content": "Async agent launched successfully."},
-          ],
-        },
-        "tool_use_result": {"isAsync": true, "status": "async_launched", "agentId": "abc123"},
-      });
-      process.emit(taskFrame(subtype: "task_started", toolUseId: "toolu-agent"));
-      process.emit(taskFrame(subtype: "task_notification", toolUseId: "toolu-agent"));
+      _runAgentToCompletion(process);
       await pump();
       expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusIdle>());
 
       // Resuming the finished agent registers it under the SendMessage call.
-      process.emit(assistantToolUse(id: "toolu-send", name: "SendMessage", input: {"to": "abc123", "message": "more"}));
-      process.emit(taskFrame(subtype: "task_started", toolUseId: "toolu-send"));
-      process.emit({"type": "result", "subtype": "success", "session_id": testSessionId, "is_error": false});
+      _resumeAgent(process);
+      process.emit(_result());
       await pump();
 
       expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusBusy>());
@@ -1399,10 +1356,98 @@ void main() {
         isA<PluginAbortRejectedSubAgentsRunning>().having((it) => it.runningSubAgentCount, "runningSubAgentCount", 1),
       );
 
-      process.emit(taskFrame(subtype: "task_notification", toolUseId: "toolu-send"));
+      process.emit(_agentTaskFrame(subtype: "task_notification", toolUseId: "toolu-send"));
       await pump();
       expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusIdle>());
     });
+
+    test(
+      "a sub-agent resumed after its process exited runs in its child status, the summary and the stop count alike",
+      () async {
+        final events = <BridgeSseEvent>[];
+        final subscription = harness.plugin.events.listen(events.add);
+        await harness.createSession();
+        final first = harness.processes.single;
+        await waitForFrame(first, "user");
+        _runAgentToCompletion(first);
+        first.emit(_result());
+        await pump();
+        // The idle shutdown, a stop or a respawn ends the process, and its
+        // tasks with it; the next prompt resumes the session in a new one.
+        first.exit(0);
+        await pump();
+        await harness.plugin.sendPrompt(
+          fastMode: false,
+          promptId: "prompt-resume",
+          sessionId: testSessionId,
+          parts: const [PluginPromptPart.text(text: "ask the agent for more")],
+          variant: null,
+          agent: null,
+          model: null,
+        );
+        for (var attempt = 0; attempt < 50 && harness.processes.length < 2; attempt++) {
+          await pump();
+        }
+        final second = harness.processes.last;
+        await waitForFrame(second, "user");
+        events.clear();
+
+        _resumeAgent(second);
+        second.emit(_result());
+        await pump();
+
+        expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusBusy>());
+        final session = harness.plugin.getActiveSessionsSummary().single.activeSessions.single;
+        expect(session.mainAgentRunning, isFalse);
+        expect(session.childSessionIds, ["agent-abc123"]);
+        final rejection = await harness.plugin.abortSession(
+          sessionId: testSessionId,
+          subAgents: PluginAbortSubAgentPolicy.confirm,
+          useAtomicStop: false,
+          knownSubAgentSessionIds: const {},
+        );
+        expect(
+          rejection,
+          isA<PluginAbortRejectedSubAgentsRunning>().having((it) => it.runningSubAgentCount, "runningSubAgentCount", 1),
+        );
+
+        second.emit(_agentTaskFrame(subtype: "task_notification", toolUseId: "toolu-send"));
+        second.emit({
+          "type": "user",
+          "session_id": testSessionId,
+          "uuid": "resumed-notification",
+          "origin": {"kind": "task-notification"},
+          "message": {
+            "role": "user",
+            "content":
+                "<task-notification>\n<task-id>abc123</task-id>\n<tool-use-id>toolu-send</tool-use-id>\n"
+                "<status>completed</status>\n<summary>Agent finished</summary>\n<result>done</result>\n"
+                "</task-notification>",
+          },
+        });
+        await pump();
+        expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusIdle>());
+        expect(
+          events.whereType<BridgeSseMessageUpdated>().map((event) => event.info.id),
+          contains("resumed-notification"),
+          reason: "the resumed run's completion stays its own Automation step",
+        );
+
+        // A resumed run still working when its process exits ends with it.
+        _resumeAgent(second);
+        await pump();
+        expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusBusy>());
+        second.exit(0);
+        await pump();
+        expect((await harness.plugin.getSessionStatuses())["agent-abc123"], isA<PluginSessionStatusIdle>());
+        expect(
+          events.whereType<BridgeSseMessagePartUpdated>().where((event) => event.part is PluginMessagePartSubtask),
+          isEmpty,
+          reason: "the launch's tile keeps its outcome",
+        );
+        await subscription.cancel();
+      },
+    );
 
     test("persisted cleanup is idempotent for an absent transcript", () async {
       await harness.plugin.deletePersistedSession(backendSessionId: testSessionId);
@@ -1588,6 +1633,62 @@ Map<String, Object?> _result() => {
   "session_id": testSessionId,
   "is_error": false,
 };
+
+Map<String, Object?> _agentTaskFrame({required String subtype, required String toolUseId}) => {
+  "type": "system",
+  "subtype": subtype,
+  "session_id": testSessionId,
+  "task_id": "abc123",
+  "tool_use_id": toolUseId,
+  "description": "Say hi",
+  "task_type": "local_agent",
+  "status": "completed",
+  "summary": "done",
+};
+
+Map<String, Object?> _assistantToolUse({required String id, required String name, required Object input}) => {
+  "type": "assistant",
+  "session_id": testSessionId,
+  "message": {
+    "id": "msg-$id",
+    "model": "claude-opus-5",
+    "content": [
+      {"type": "tool_use", "id": id, "name": name, "input": input},
+    ],
+  },
+};
+
+/// Launches the background sub-agent `abc123` and has it finish.
+void _runAgentToCompletion(FakeClaudeProcess process) {
+  process.emit(
+    _assistantToolUse(
+      id: "toolu-agent",
+      name: "Agent",
+      input: {"description": "Say hi", "prompt": "hi", "subagent_type": "general-purpose"},
+    ),
+  );
+  process.emit({
+    "type": "user",
+    "session_id": testSessionId,
+    "uuid": "launch-result",
+    "message": {
+      "role": "user",
+      "content": [
+        {"type": "tool_result", "tool_use_id": "toolu-agent", "content": "Async agent launched successfully."},
+      ],
+    },
+    "tool_use_result": {"isAsync": true, "status": "async_launched", "agentId": "abc123"},
+  });
+  process.emit(_agentTaskFrame(subtype: "task_started", toolUseId: "toolu-agent"));
+  process.emit(_agentTaskFrame(subtype: "task_notification", toolUseId: "toolu-agent"));
+}
+
+/// Resumes `abc123` through `SendMessage`; the CLI registers the run under
+/// that call.
+void _resumeAgent(FakeClaudeProcess process) {
+  process.emit(_assistantToolUse(id: "toolu-send", name: "SendMessage", input: {"to": "abc123", "message": "more"}));
+  process.emit(_agentTaskFrame(subtype: "task_started", toolUseId: "toolu-send"));
+}
 
 /// The CLI's `--replay-user-messages` echo of a stdin user frame [written],
 /// stamped with its transcript [uuid].

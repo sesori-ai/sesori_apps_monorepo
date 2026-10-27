@@ -296,7 +296,7 @@ void main() {
                   _childSession(id: "task-1", title: "Idle one"),
                   _childSession(id: "task-2", title: "Working one"),
                 ],
-                childStatuses: const {"task-2": SessionStatus.busy()},
+                childStatuses: const {"task-2": SessionStatus.busy(since: null)},
               ),
             ),
           ),

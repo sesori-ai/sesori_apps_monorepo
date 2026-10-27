@@ -1,6 +1,7 @@
 import "dart:async";
 import "dart:math";
 
+import "package:clock/clock.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         BridgeDerivedProjectsPluginApi,
@@ -36,7 +37,10 @@ import "package:sesori_shared/sesori_shared.dart"
         SessionApprovalMode,
         SessionPromptDefaults,
         SessionStatus,
+        SessionStatusBusy,
+        SessionStatusIdle,
         SessionStatusResponse,
+        SessionStatusRetry,
         SessionVariant;
 
 import "../api/database/daos/projects_dao.dart";
@@ -100,6 +104,7 @@ class SessionRepository({
       StreamController<SessionBindingsCommitted>.broadcast(sync: true);
   final Map<String, Future<void>> _tombstoneLoads = <String, Future<void>>{};
   final Set<String> _tombstonesLoaded = <String>{};
+  final Map<String, _BusyObservation> _busyObservations = <String, _BusyObservation>{};
   int _lastProjectionTimestamp = 0;
 
   Stream<SessionBindingsCommitted> get bindingCommits => _bindingCommitsController.stream;
@@ -672,6 +677,7 @@ class SessionRepository({
     _deletedSessionIds.addAll(subtree.map((binding) => binding.sessionId));
     for (final binding in subtree) {
       _tombstonesFor(binding.pluginId).add(binding.backendSessionId);
+      _busyObservations.remove(binding.sessionId);
     }
     return (
       session: deletionSnapshot,
@@ -1091,7 +1097,11 @@ class SessionRepository({
             pluginId: pluginId,
             statuses: {
               for (final entry in pluginStatuses.entries)
-                if (bindings[entry.key] case final binding?) binding.sessionId: entry.value.toSharedSessionStatus(),
+                if (bindings[entry.key] case final binding?)
+                  binding.sessionId: _stampSnapshotStatus(
+                    sessionId: binding.sessionId,
+                    status: entry.value.toSharedSessionStatus(),
+                  ),
             },
           );
         } on Object catch (error, stackTrace) {
@@ -1110,6 +1120,59 @@ class SessionRepository({
       ],
     );
   }
+
+  /// [status] as a client receives it live: a busy or retry status carries when
+  /// the bridge saw [sessionId] go busy, the same time for the whole busy run.
+  ///
+  /// Only a busy run that starts after an idle seen live or in the status
+  /// snapshot has a known start; a session first seen busy, as after a bridge
+  /// restart, stays without one until it next goes idle.
+  SessionStatus stampLiveStatus({required String sessionId, required SessionStatus status}) {
+    if (status is SessionStatusIdle) {
+      markSessionIdle(sessionId: sessionId);
+      return status;
+    }
+    final int? since;
+    switch (_busyObservations[sessionId]) {
+      case _BusySince(since: final stamped):
+        since = stamped;
+      case _ObservedNotBusy():
+        final now = clock.now().millisecondsSinceEpoch;
+        _busyObservations[sessionId] = _BusySince(since: now);
+        since = now;
+      case null:
+        since = null;
+    }
+    return _withBusySince(status: status, since: since);
+  }
+
+  /// Records that [sessionId] went idle, so its next busy run is timed.
+  void markSessionIdle({required String sessionId}) {
+    _busyObservations[sessionId] = const _ObservedNotBusy();
+  }
+
+  /// [status] as a plugin snapshot reports it. A busy or retry status carries
+  /// the tracked start but never creates one, since the run began at an unknown
+  /// time; an idle counts as seen idle unless a live status is already tracked.
+  SessionStatus _stampSnapshotStatus({required String sessionId, required SessionStatus status}) {
+    if (status is SessionStatusIdle) {
+      _busyObservations.putIfAbsent(sessionId, () => const _ObservedNotBusy());
+      return status;
+    }
+    return _withBusySince(
+      status: status,
+      since: switch (_busyObservations[sessionId]) {
+        _BusySince(:final since) => since,
+        _ObservedNotBusy() || null => null,
+      },
+    );
+  }
+
+  static SessionStatus _withBusySince({required SessionStatus status, required int? since}) => switch (status) {
+    SessionStatusIdle() => status,
+    final SessionStatusBusy busy => busy.copyWith(since: since),
+    final SessionStatusRetry retry => retry.copyWith(since: since),
+  };
 
   /// The single session's live status, or null when it cannot be observed —
   /// the session has no binding, its plugin is not active, or the plugin read
@@ -1635,6 +1698,15 @@ class const _PluginActivityObservation({
   required final Set<String> backendSessionIds,
   required final List<_ActiveRootHydration> hydrations,
 });
+
+/// What the bridge saw of a session's busy runs in this process.
+sealed class const _BusyObservation();
+
+/// The session was seen not busy, so its next busy run starts when seen.
+final class const _ObservedNotBusy() extends _BusyObservation;
+
+/// The session went busy at [since], in epoch ms, after being seen not busy.
+final class const _BusySince({required final int since}) extends _BusyObservation;
 
 class const _ActiveRootHydration({
   required final String summaryId,

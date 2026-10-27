@@ -178,9 +178,12 @@ sub-agent parts, plus the signal that a tool changed files.
   composer's sub-agent pill (never the sparkle or a shimmer), “2 sub-agents
   running in the background · 3m 05s” and a muted second line “You can keep
   chatting meanwhile.” It counts running sub-agents as the pill does (busy or
-  retrying) and ticks from the earliest one's start: the message holding its
-  sub-agent step, else its own session's creation; with neither it shows no
-  time. Both lines always show, so the row keeps its height as the count or
+  retrying) and ticks from the earliest one's start: when the bridge saw it
+  go busy, so on every harness a resumed sub-agent counts from its resume and
+  the time survives an app reload; else (an older bridge, or a sub-agent the
+  bridge first saw already busy, as after a bridge restart) the message
+  holding its sub-agent step, else its own session's creation; with none it
+  shows no time. Both lines always show, so the row keeps its height as the count or
   time changes. It hides while a question or permission waits. Which harnesses
   show it, with a time, is under “Live timers” in
   `docs/HARNESS_CAPABILITIES.md`. A retry row replaces it, with the same
@@ -289,9 +292,15 @@ sub-agent parts, plus the signal that a tool changed files.
   to busy until the resumed run's own notification. A `SendMessage` resume
   names the `SendMessage` call in its typed task frames, so they match the
   part by the sub-agent's task id; its `<task-notification>` envelope still
-  renders as its own Automation step. Failure signal: the composer's sub-agent
-  pill and the transcript's sub-agent row count fewer running sub-agents than
-  the stop dialog. A part appears only once its input names the description
+  renders as its own Automation step. A resume after the launching process
+  exited (idle shutdown, stop, respawn or bridge restart) has no part to
+  reopen: the old tile keeps its outcome and only the child session runs,
+  announced after a bridge restart with the sub-agent's description as its
+  title, until the resumed run's notification or the process's exit idles it.
+  Failure signal: the composer's sub-agent pill, the transcript's sub-agent
+  row or the session list count fewer running sub-agents than the stop
+  dialog, including after a resume that follows an idle shutdown, stop or
+  bridge restart. A part appears only once its input names the description
   and prompt, never with placeholder text. On replay the same parts render from the
   transcript, current resident state overrides an earlier terminal notification,
   and a still-running task the session's resident process no longer owns renders
