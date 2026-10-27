@@ -3,7 +3,8 @@ import "package:material_ui/material_ui.dart";
 
 import "../../motion/prego_reduced_motion.dart";
 
-const Duration _itemTransitionDuration = Duration(milliseconds: 260);
+/// How long a row of a [PregoAnimatedSliverList] takes to open or close.
+const Duration pregoAnimatedListItemDuration = Duration(milliseconds: 260);
 
 /// A sliver list that reconciles keyed [items] and animates rows as they enter
 /// or leave.
@@ -52,7 +53,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       return;
     }
 
-    final duration = prefersReducedMotion(context) ? Duration.zero : _itemTransitionDuration;
+    final duration = prefersReducedMotion(context) ? Duration.zero : pregoAnimatedListItemDuration;
     final landsOnScreen = _landsOnScreen();
     final nextKeys = nextEntries.map((entry) => entry.key).toSet();
 

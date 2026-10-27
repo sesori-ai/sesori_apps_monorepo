@@ -293,17 +293,18 @@ state.
   that ends before they show just fades them in). The header, search field and Retry rows never move as a load
   hands off, with one exception: a load that ends with no sessions and no query folds the search field and chips
   away as the empty state fades in. A list shown with no query whose last session or launch leaves, as when it is
-  archived, deleted or restored, folds them away and fades the empty state in the same way, while a filter chip that
-  leaves no rows keeps them; they open again, easing what is below down, when a session or launch returns, as on an
-  archive's Undo or a first session, while the empty state fades out where it stands. It fades out the same way as
-  a project fails and its Retry row opens. With nothing loading and no project failed, a query that matches nothing
-  fades in "No matches", and on an unsearched list with sessions a Running or Unread chip that leaves no rows fades
-  in "No sessions match this filter", under the rows as they leave; the note fades out where it stands as rows
-  return, and neither moves the field or chips. Reduced motion swaps them at once, and a later refresh, search or
-  filter never repeats a fade on what is already shown: chips showing their counts while the load runs, as when
-  Running or Unread leaves no rows while a project still loads, stay as they are through its hand-off. Tapped while
-  a project loads, such a chip shows as selected at once, and the chips hold still as the rows it leaves fade into
-  the skeleton. A load that replaces what the list shows, as a computer switch's, never blanks it: the rows, Retry rows
+  archived, deleted or restored, folds them away, and the empty state fades in under them once they have gone, while
+  a filter chip that leaves no rows keeps them. When a session or launch returns, as on an archive's Undo or a first
+  session, the empty state fades out where it stands, then they open again, easing what is below down; it fades out
+  the same way before a failed project's Retry row opens. With nothing loading and no project failed, a query that
+  matches nothing fades in "No matches", and on an unsearched list with sessions a Running or Unread chip that leaves
+  no rows fades in "No sessions match this filter", once the rows have left; the note fades out where it stands
+  before rows return, and neither moves the field or chips. Neither the empty state nor a note moves while it shows,
+  and a load that starts as one fades out fades it out with the rest of the list. Reduced motion swaps them at once,
+  and a later refresh, search or filter never repeats a fade on what is already shown: chips showing their counts
+  while the load runs, as when Running or Unread leaves no rows while a project still loads, stay as they are through
+  its hand-off. Tapped while a project loads, or as the chips fade in over their pills, such a chip shows as selected
+  at once, and the chips hold still as the rows it leaves fade into the skeleton. A load that replaces what the list shows, as a computer switch's, never blanks it: the rows, Retry rows
   or empty state on screen fade out where they stand as the skeleton fades in over them
   ([multi-computer](multi-computer.md)).
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
@@ -798,12 +799,14 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
 - With reduced motion off, a session list's search field, chips or Retry rows
   appear or vanish in one frame, so the header or rows below jump, when the
   list empties or fills again at rest or a project fails or loads again; the
-  empty state shows at once instead of fading in as they fold, or vanishes in
+  empty state shows at once instead of fading in once they fold, or vanishes in
   one frame as they open or a Retry row opens; "No matches" or "No sessions
-  match this filter" appears or vanishes in one frame; chips already showing
-  while a project loads flash transparent as the load hands off; or a filter
-  tapped while a project loads fades the chips out on the old selection, then
-  snaps them back as the skeleton settles.
+  match this filter" appears or vanishes in one frame; the empty state or a
+  note moves while it shows, or vanishes in one frame as a load starts; chips
+  already showing while a project loads flash transparent as the load hands
+  off; or a filter tapped while a project loads or as the chips fade in fades
+  the chips out on the old selection, then snaps them back as the skeleton
+  settles.
 - A launching row jumps or collapses when its session arrives, the rows below
   it move during the swap, one launch shows both a launching row and its
   session row, the new session can be opened before its launch resolves, the

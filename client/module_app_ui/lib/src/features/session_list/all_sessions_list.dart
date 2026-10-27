@@ -219,13 +219,14 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   bool _heldChips = false;
 
   /// Whether the last frame showed the empty state, and whether it now fades
-  /// out, as it stopped applying at rest.
+  /// out where it stood, as it stopped applying at rest.
   bool _showedEmptyState = false;
   bool _emptyStateLeaving = false;
 
-  /// The note under the rows, kept as it fades out where it stood once it no
-  /// longer applies at rest.
+  /// The note under the rows on the last frame, and whether it now fades out
+  /// where it stood, as it stopped applying at rest.
   String? _note;
+  bool _noteLeaving = false;
 
   @override
   void initState() {
@@ -296,11 +297,12 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
     final currentEntries = entriesOf(current);
     final currentlyLoading = (awaitingConnection || current.isLoading) && currentEntries.isEmpty;
+    final replaceStarts = !_wasLoading && currentlyLoading && _lastShown != null && !context.isReducedMotion;
     if (_wasLoading && !currentlyLoading && !context.isReducedMotion) {
       // Rows still fading out finish first, so the content follows the
       // skeleton they leave.
       if (!_replacing) _fadeContentIn();
-    } else if (!_wasLoading && currentlyLoading && _lastShown != null && !context.isReducedMotion) {
+    } else if (replaceStarts) {
       // The rows glide to the top as they fade, where the skeleton they
       // leave stands with nothing to scroll.
       final position = Scrollable.maybeOf(context)?.position;
@@ -314,8 +316,11 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       unawaited(
         _handOff.reverse().then((_) {
           if (!mounted) return;
-          // Its Retry rows faded out with the rest, leaving none to fold.
+          // Its Retry rows faded out with the rest, leaving none to fold, and
+          // so did an empty state or note fading out where it stood.
           _failureRows = const [];
+          _emptyStateLeaving = false;
+          _noteLeaving = false;
           // Back at rest as the load goes on, or on to the content that
           // ended it while the rows faded out.
           if (_wasLoading) {
@@ -350,25 +355,50 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         handingOff && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
     final heldAboveFailures = handingOff && !heldUnderFailures;
     final motion = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
+    final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
+    final note = switch (settled) {
+      false => null,
+      true when searching => loc.listSearchNoMatches,
+      // Unsearched, All can only be empty while its last session hides.
+      true when state.counts.all > 0 && state.quickFilter != SessionListQuickFilter.all => loc.sessionListFilterEmpty,
+      true => null,
+    };
+    final emptyStateShown = settled && !hasSessions;
+    // Once it stops applying at rest, the empty state or a note fades out
+    // where it stands, and what takes its place waits for it: the rows, a
+    // Retry row, and the search field and chips the empty state folded away.
+    // A load that starts meanwhile fades it out with the rest of the list.
+    _emptyStateLeaving =
+        !context.isReducedMotion &&
+        (_emptyStateLeaving ? !emptyStateShown || _replacing : _showedEmptyState && !emptyStateShown && atRest);
+    _showedEmptyState = emptyStateShown;
+    _noteLeaving =
+        !context.isReducedMotion &&
+        (_noteLeaving ? note == null || _replacing : _note != null && note == null && atRest);
+    final shownNote = _noteLeaving ? _note : note;
+    _note = shownNote;
+    final waiting = _emptyStateLeaving || _noteLeaving;
+    final shownEntries = waiting ? const <SessionListEntry<_Item>>[] : entries;
+    final sessionsShown = waiting ? _hadSessions : hasSessions;
     // The search field shows from a load's first frame, so nothing under it
     // moves when the rows arrive. A load that ends with nothing to search
     // folds it and the chips' room away as the empty state fades in, and so
     // does a list that empties at rest.
-    _roomFolding = !hasSessions && atRest && !context.isReducedMotion && (_roomFolding || _hadSessions);
-    _hadSessions = hasSessions;
-    final roomShown = hasSessions || _roomFolding;
+    _roomFolding = !sessionsShown && atRest && !context.isReducedMotion && (_roomFolding || _hadSessions);
+    _hadSessions = sessionsShown;
+    final roomShown = sessionsShown || _roomFolding;
     final searchShown = roomShown || loading || handingOff;
-    final roomFolds = handingOff && !hasSessions;
+    final roomFolds = handingOff && !sessionsShown;
     // The chips show counts, so until the load has some, a skeleton pill
     // holds each chip's place. Through the hand-off it fades out where it
     // stands as the chip fades in over it, one that never showed staying
     // hidden; chips that showed their counts through the load stay as they
-    // are. So do chips a load already has counts for as it replaces the rows,
-    // as when a filter tapped while a project loads leaves none: they show
-    // the tapped filter at once, unless pills already stand for them.
+    // are. So do chips a load already has counts for as it starts replacing
+    // the rows, as when a filter tapped while a project loads leaves none:
+    // they show the tapped filter at once.
     final chipsShown = loading ? state.counts.all > 0 : roomShown;
     final chipsHeld =
-        (loading && state.counts.all == 0) || (handingOff && (_heldChips || (_replacing && current.counts.all == 0)));
+        (loading && state.counts.all == 0) || (handingOff && (replaceStarts ? current.counts.all == 0 : _heldChips));
     _heldChips = chipsHeld;
     // Chips fading out with the rows a load replaces show what those rows did.
     final chipsReplaced = _replacing && chipsHeld;
@@ -398,7 +428,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     );
     // A project that no longer fails folds its Retry row away where it stood.
     final failing = {for (final failure in state.failures) failure.project.id};
-    final failureRows = [...state.failures];
+    final failureRows = [if (!waiting) ...state.failures];
     if (!context.isReducedMotion) {
       for (final (index, shown) in _failureRows.indexed) {
         if (!failing.contains(shown.project.id)) failureRows.insert(math.min(index, failureRows.length), shown);
@@ -437,25 +467,20 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         children: [for (final filter in SessionListQuickFilter.values) each(filter)],
       ),
     );
-    final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
-    final note = switch (settled) {
-      false => null,
-      true when searching => loc.listSearchNoMatches,
-      // Unsearched, All can only be empty while its last session hides.
-      true when state.counts.all > 0 && state.quickFilter != SessionListQuickFilter.all => loc.sessionListFilterEmpty,
-      true => null,
-    };
-    // At rest, a note that no longer applies fades out where it stood.
-    final noteLeaving = note == null && _note != null && atRest && !context.isReducedMotion;
-    final shownNote = note ?? (noteLeaving ? _note : null);
-    _note = shownNote;
-    final emptyStateShown = settled && !hasSessions;
-    // At rest, it fades out where it stands once it no longer applies, as a
-    // session returns and the search field and chips open, the reverse of its
-    // fade in as they fold away, or as a project fails and its Retry row opens.
-    _emptyStateLeaving =
-        !emptyStateShown && atRest && !context.isReducedMotion && (_emptyStateLeaving || _showedEmptyState);
-    _showedEmptyState = emptyStateShown;
+    // The empty state or a note, arriving or leaving at rest, fading by itself:
+    // in once what leaves above it has gone, so only where it will stand.
+    Widget fadingInPlace({required bool leaving, required VoidCallback onLeft, required Widget child}) =>
+        TweenAnimationBuilder<double>(
+          tween: Tween(begin: atRest ? 0 : 1, end: leaving ? 0 : 1),
+          duration: leaving || context.isReducedMotion ? motion : _arrivalDuration,
+          curve: leaving ? transcriptMotionCurve : _arrivalCurve,
+          onEnd: () {
+            // One a load replaces fades out with the rest.
+            if (leaving && !_replacing) setState(onLeft);
+          },
+          builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+          child: child,
+        );
 
     return SliverMainAxisGroup(
       slivers: [
@@ -618,7 +643,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
             key: ValueKey(_contentFades),
             opacity: _contentOpacity,
             sliver: PregoAnimatedSliverList<SessionListEntry<_Item>>(
-              items: entries,
+              items: shownEntries,
               itemKey: (entry) => switch (entry) {
                 final SessionListHeadingEntry<_Item> heading => heading.key,
                 SessionListItemEntry(item: _LaunchItem(:final launch)) => ValueKey<Object>(launch.launchId),
@@ -635,7 +660,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                     context: context,
                     launching: true,
                     child: Padding(
-                      padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? endPadding : 0),
+                      padding: EdgeInsetsDirectional.only(bottom: index == shownEntries.length - 1 ? endPadding : 0),
                       child: PendingSessionLaunchTile(launch: launch),
                     ),
                   ),
@@ -643,7 +668,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                 SessionListItemEntry(item: _SessionItem(:final row)) => _sessionRow(
                   context: context,
                   row: row,
-                  bottomPadding: index == entries.length - 1 ? endPadding : 0,
+                  bottomPadding: index == shownEntries.length - 1 ? endPadding : 0,
                   tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
                   // A "No project" session has no project to name.
                   labelsProject: state.projectId == null && row.project.id != state.scratchProjectId,
@@ -655,15 +680,12 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
           SliverFadeTransition(
             opacity: _contentOpacity,
             sliver: SliverToBoxAdapter(
-              // Arriving or leaving at rest, it fades by itself.
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: atRest ? 0 : 1, end: noteLeaving ? 0 : 1),
-                duration: motion,
-                curve: transcriptMotionCurve,
-                onEnd: () {
-                  if (noteLeaving) setState(() => _note = null);
+              child: fadingInPlace(
+                leaving: _noteLeaving,
+                onLeft: () {
+                  _noteLeaving = false;
+                  _note = null;
                 },
-                builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
                 child: Padding(
                   padding: const EdgeInsets.all(PregoSpacing.x3l),
                   child: Text(
@@ -680,15 +702,9 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
             hasScrollBody: false,
             child: FadeTransition(
               opacity: _contentOpacity,
-              // Arriving or leaving at rest, it fades by itself.
-              child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: atRest ? 0 : 1, end: _emptyStateLeaving ? 0 : 1),
-                duration: motion,
-                curve: transcriptMotionCurve,
-                onEnd: () {
-                  if (_emptyStateLeaving) setState(() => _emptyStateLeaving = false);
-                },
-                builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+              child: fadingInPlace(
+                leaving: _emptyStateLeaving,
+                onLeft: () => _emptyStateLeaving = false,
                 child: list.emptyState,
               ),
             ),
@@ -784,6 +800,16 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
 }
 
 const EdgeInsetsGeometry _searchFieldPadding = EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0);
+
+/// The empty state or a note arriving at rest first waits out the rows, search
+/// field and chips, or Retry row leaving above it, a row's the longest, then
+/// fades in.
+final Duration _arrivalDuration = pregoAnimatedListItemDuration + transcriptMotionDuration;
+final Curve _arrivalCurve = Interval(
+  pregoAnimatedListItemDuration.inMicroseconds / _arrivalDuration.inMicroseconds,
+  1,
+  curve: transcriptMotionCurve,
+);
 
 /// [child] at [size] of its height, folded from its bottom: the same widgets
 /// at rest and in motion, so it keeps its state, and clipped only while it
