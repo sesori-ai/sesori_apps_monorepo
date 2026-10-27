@@ -206,6 +206,18 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   /// from under that row while the row is still listed.
   String? _skeletonUnderFailureId;
 
+  /// The Retry rows on screen: the failed projects', and those of projects
+  /// that no longer fail, folding away where they stood.
+  List<AllSessionsFailure> _failureRows = const [];
+
+  /// Whether the last frame listed sessions, and whether the search field and
+  /// chips now fold away, as the list emptied at rest.
+  bool _hadSessions = false;
+  bool _roomFolding = false;
+
+  /// Whether pills held the chips' places on the last frame.
+  bool _heldChips = false;
+
   @override
   void initState() {
     super.initState();
@@ -293,6 +305,8 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       unawaited(
         _handOff.reverse().then((_) {
           if (!mounted) return;
+          // Its Retry rows faded out with the rest, leaving none to fold.
+          _failureRows = const [];
           // Back at rest as the load goes on, or on to the content that
           // ended it while the rows faded out.
           if (_wasLoading) {
@@ -307,6 +321,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     if (currentlyLoading) _skeletonUnderFailureId = current.failures.lastOrNull?.project.id;
     final state = (_replacing ? _lastShown : null) ?? current;
     final entries = identical(state, current) ? currentEntries : entriesOf(state);
+    final shownBefore = _lastShown != null;
     if (!currentlyLoading && !_replacing) _lastShown = current;
     final searching = state.query.trim().isNotEmpty;
     // A launching row counts, so the search field and chips are already in
@@ -319,32 +334,62 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     // hanging from the failed project it stands under, else from the room
     // above the failed projects. At most one place holds it.
     final handingOff = !loading && !_handOff.isCompleted;
+    // Resting on what it already showed, the list eases in what arrives by
+    // itself, rather than at once as on its first frame or with a hand-off.
+    final atRest = shownBefore && !loading && !handingOff;
     final heldUnderFailures =
         handingOff && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
     final heldAboveFailures = handingOff && !heldUnderFailures;
+    final motion = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
     // The search field shows from a load's first frame, so nothing under it
     // moves when the rows arrive. A load that ends with nothing to search
-    // folds it and the chips' room away as the empty state fades in.
-    final searchShown = hasSessions || loading || handingOff;
+    // folds it and the chips' room away as the empty state fades in, and so
+    // does a list that empties at rest.
+    _roomFolding = !hasSessions && atRest && !context.isReducedMotion && (_roomFolding || _hadSessions);
+    _hadSessions = hasSessions;
+    final roomShown = hasSessions || _roomFolding;
+    final searchShown = roomShown || loading || handingOff;
     final roomFolds = handingOff && !hasSessions;
     // The chips show counts, so until the load has some, a skeleton pill
     // holds each chip's place. Through the hand-off it fades out where it
     // stands as the chip fades in over it, one that never showed staying
-    // hidden.
-    final chipsShown = loading ? state.counts.all > 0 : hasSessions;
-    final chipsHeld = (loading && state.counts.all == 0) || handingOff;
-    Widget folding({required Widget child}) => ListenableBuilder(
-      listenable: _contentOpacity,
-      // The fade's ease-out, run backwards: an ease-in fold, as a transcript row's.
-      builder: (_, child) {
-        final size = roomFolds ? 1 - _contentOpacity.value : 1.0;
-        return _sized(
-          size: size,
-          child: Opacity(opacity: size, child: child),
-        );
+    // hidden; chips that showed their counts through the load stay as they
+    // are.
+    final chipsShown = loading ? state.counts.all > 0 : roomShown;
+    final chipsHeld = (loading && state.counts.all == 0) || (handingOff && (_replacing || _heldChips));
+    _heldChips = chipsHeld;
+    Widget folding({required Widget child}) => TweenAnimationBuilder<double>(
+      // Its start is read once, when it first builds: arriving at rest, it
+      // opens, as it folds away when the list empties at rest.
+      tween: Tween(begin: atRest ? 0 : 1, end: _roomFolding ? 0 : 1),
+      duration: motion,
+      curve: transcriptMotionCurve,
+      onEnd: () {
+        if (_roomFolding) setState(() => _roomFolding = false);
       },
+      builder: (_, open, child) => ListenableBuilder(
+        listenable: _contentOpacity,
+        // The fade's ease-out, run backwards: an ease-in fold, as a transcript row's.
+        builder: (_, child) {
+          final size = (roomFolds ? 1 - _contentOpacity.value : 1.0) * open;
+          return _sized(
+            size: size,
+            child: Opacity(opacity: size, child: child),
+          );
+        },
+        child: child,
+      ),
       child: child,
     );
+    // A project that no longer fails folds its Retry row away where it stood.
+    final failing = {for (final failure in state.failures) failure.project.id};
+    final failureRows = [...state.failures];
+    if (!context.isReducedMotion) {
+      for (final (index, shown) in _failureRows.indexed) {
+        if (!failing.contains(shown.project.id)) failureRows.insert(math.min(index, failureRows.length), shown);
+      }
+    }
+    _failureRows = failureRows;
     final searchField = ListSearchField(
       query: state.query,
       hintText: loc.sessionListSearchHint,
@@ -422,7 +467,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
                         if (chipsShown)
                           FadeTransition(
                             key: const ValueKey("content"),
-                            opacity: _contentOpacity,
+                            opacity: chipsHeld ? _contentOpacity : kAlwaysCompleteAnimation,
                             child: IgnorePointer(
                               ignoring: _replacing,
                               child: chips(
@@ -459,23 +504,33 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               ),
             ),
           ),
-        for (final failure in state.failures)
+        for (final failure in failureRows)
           SliverToBoxAdapter(
             key: ValueKey("all-sessions-failure-${failure.project.id}"),
             child: _holding(
               skeleton: heldUnderFailures && failure.project.id == _skeletonUnderFailureId,
               // Shown as soon as the project fails. Read once, when it first
               // builds: one failing while the skeleton shows opens over it,
-              // easing it down, while one arriving with the hand-off only
-              // fades in alongside the first rows, so nothing moves under them.
+              // easing it down, as one failing at rest opens over the rows,
+              // while one arriving with the hand-off only fades in alongside
+              // the first rows, so nothing moves under them.
               child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: loading ? 0 : 1, end: 1),
-                duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+                tween: Tween(begin: loading || atRest ? 0 : 1, end: failing.contains(failure.project.id) ? 1 : 0),
+                duration: motion,
                 curve: transcriptMotionCurve,
+                onEnd: () {
+                  if (failing.contains(failure.project.id)) return;
+                  setState(
+                    () => _failureRows = [
+                      for (final row in _failureRows)
+                        if (row.project.id != failure.project.id) row,
+                    ],
+                  );
+                },
                 builder: (_, size, child) => _sized(size: size, child: child),
                 child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: 1),
-                  duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+                  tween: Tween(begin: 0, end: failing.contains(failure.project.id) ? 1 : 0),
+                  duration: motion,
                   curve: transcriptMotionCurve,
                   builder: (_, opacity, child) => Opacity(
                     opacity: opacity,
@@ -587,7 +642,17 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
         if (settled && !hasSessions)
           SliverFillRemaining(
             hasScrollBody: false,
-            child: FadeTransition(opacity: _contentOpacity, child: list.emptyState),
+            child: FadeTransition(
+              opacity: _contentOpacity,
+              // Arriving at rest, it fades in by itself.
+              child: TweenAnimationBuilder<double>(
+                tween: Tween(begin: atRest ? 0 : 1, end: 1),
+                duration: motion,
+                curve: transcriptMotionCurve,
+                builder: (_, opacity, child) => Opacity(opacity: opacity, child: child),
+                child: list.emptyState,
+              ),
+            ),
           ),
       ],
     );

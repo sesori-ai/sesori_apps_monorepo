@@ -278,8 +278,10 @@ state.
   refreshes every project and imports, as above. Until the project list loads the home shows a skeleton, a failed
   project list shows its error with Retry, a computer with no projects at all, "No project" included, shows the
   add-project call to action, and the disconnected pages below replace the list. A failed project's Retry row shows
-  as soon as it fails: one failing while the skeleton shows opens over it, easing the skeleton down, and one arriving
-  with the first rows only fades in with them. Every session list loads the same way: the phone home, the wide
+  as soon as it fails: one failing while the skeleton shows opens over it, easing the skeleton down, one failing
+  once the list shows, as on a refresh, opens over the rows, easing them down, and one arriving with the first rows
+  only fades in with them. A Retry row whose project no longer fails, as once Retry runs, fades and folds away where
+  it stands, easing what is below up. Every session list loads the same way: the phone home, the wide
   phone sidebar, the desktop sidebar and Archived. The search field shows from a load's first frame, in its final
   place and usable: a query typed while loading filters the rows as they arrive and keeps the field. Until the
   counts arrive, a pill skeleton stands for each status chip of the active list at its size and place, and the list
@@ -288,11 +290,15 @@ state.
   and cut off there, so the skeleton itself never adds anything to scroll; all of them fade in on one frame. The
   first rows or the empty state fade in where the skeleton stood, each chip over its pill and each start-aligned
   date heading over its bar, as the skeletons fade out over them from wherever their own fade-in had reached (a load
-  that ends before they show just fades them in). The header, search field and Retry rows never move, with one
-  exception: a load that ends with no sessions and no query folds the search field and chips away as the empty
-  state fades in. Reduced motion swaps them at once, and a later refresh, search or filter never repeats a fade on
-  what is already shown. A load that replaces what the list shows, as a computer switch's, never blanks it: the rows,
-  Retry rows or empty state on screen fade out where they stand as the skeleton fades in over them
+  that ends before they show just fades them in). The header, search field and Retry rows never move as a load
+  hands off, with one exception: a load that ends with no sessions and no query folds the search field and chips
+  away as the empty state fades in. A list that empties once shown, as when its last session is archived, deleted
+  or restored, folds them away and fades the empty state in the same way, and they open again, easing what is below
+  down, when a session or launch returns, as on an archive's Undo. Reduced motion swaps them at once, and a later
+  refresh, search or filter never repeats a fade on what is already shown: chips showing their counts while the
+  load runs, as when Running or Unread leaves no rows while a project still loads, stay as they are through its
+  hand-off. A load that replaces what the list shows, as a computer switch's, never blanks it: the rows, Retry rows
+  or empty state on screen fade out where they stand as the skeleton fades in over them
   ([multi-computer](multi-computer.md)).
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no
@@ -783,6 +789,11 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   section opens, an awaiting-only row leaves its updated-time bucket, rows use
   archive time instead of updated time, or render an epoch date when a
   timestamp is missing.
+- A session list's search field, chips or Retry rows appear or vanish in one
+  frame, so the header or rows below jump, when the list empties or fills again
+  at rest or a project fails or loads again; the empty state shows at once
+  instead of fading in as they fold; or chips already showing while a project
+  loads flash transparent as the load hands off.
 - A launching row jumps or collapses when its session arrives, the rows below
   it move during the swap, one launch shows both a launching row and its
   session row, the new session can be opened before its launch resolves, the
