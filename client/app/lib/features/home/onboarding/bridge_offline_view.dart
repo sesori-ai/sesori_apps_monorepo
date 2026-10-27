@@ -40,6 +40,19 @@ class _BridgeOfflineViewState() extends State<BridgeOfflineView> {
   Widget build(BuildContext context) {
     final loc = context.loc;
     final prego = context.prego;
+    // maintainState keeps the install boxes mounted while collapsed so the
+    // selected install method survives closing and reopening the disclosure.
+    final installCommands = Visibility(
+      visible: _showInstallCommands,
+      maintainState: true,
+      child: const Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: [
+          SizedBox(height: PregoSpacing.lg),
+          _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline),
+        ],
+      ),
+    );
 
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.xl),
@@ -94,25 +107,16 @@ class _BridgeOfflineViewState() extends State<BridgeOfflineView> {
               ),
             ),
           ),
-          AnimatedSize(
-            duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-            curve: Curves.easeInOut,
-            alignment: Alignment.topCenter,
-            // maintainState keeps the install boxes mounted while collapsed so
-            // the selected install method survives closing and reopening the
-            // disclosure.
-            child: Visibility(
-              visible: _showInstallCommands,
-              maintainState: true,
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  SizedBox(height: PregoSpacing.lg),
-                  _InstallCommandBoxes(surface: OnboardingSurface.bridgeOffline),
-                ],
-              ),
-            ),
-          ),
+          // Under reduced motion no wrapper at all: a zero-length AnimatedSize
+          // would re-dirty itself mid-layout.
+          context.isReducedMotion
+              ? installCommands
+              : AnimatedSize(
+                  duration: const Duration(milliseconds: 220),
+                  curve: Curves.easeInOut,
+                  alignment: Alignment.topCenter,
+                  child: installCommands,
+                ),
         ],
       ),
     );

@@ -421,12 +421,16 @@ class const _ThisComputerExplanation({required final WidgetBuilder? turnOffActio
           ),
           const SizedBox(height: PregoSpacing.x2l),
           if (turnOffActionBuilder != null)
-            AnimatedSize(
-              duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 200),
-              curve: Curves.easeOut,
-              alignment: AlignmentDirectional.topCenter,
-              child: Builder(builder: turnOffActionBuilder),
-            ),
+            // Under reduced motion no wrapper at all: a zero-length
+            // AnimatedSize would re-dirty itself mid-layout.
+            context.isReducedMotion
+                ? Builder(builder: turnOffActionBuilder)
+                : AnimatedSize(
+                    duration: const Duration(milliseconds: 200),
+                    curve: Curves.easeOut,
+                    alignment: AlignmentDirectional.topCenter,
+                    child: Builder(builder: turnOffActionBuilder),
+                  ),
           PregoButtonsSolid(
             key: const Key("computers-this-computer-close"),
             label: loc.computersThisComputerClose,
