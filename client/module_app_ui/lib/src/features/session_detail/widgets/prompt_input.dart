@@ -252,6 +252,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// Locates the cancel target so the drag can measure its distance to it.
   final GlobalKey _cancelTargetKey = GlobalKey();
 
+  /// Carries the composer's layouts, and the input's focus, across the
+  /// [AnimatedSize] that [_morphSize] adds or drops as reduced motion toggles.
+  final GlobalKey _composerBodyKey = GlobalKey();
+
   /// Images staged for the next submission. Not part of the persisted
   /// draft — they live and die with this composer.
   final List<ComposerAttachment> _attachments = [];
@@ -1237,6 +1241,7 @@ class _PromptInputState() extends State<PromptInput> {
               child: _morphSize(
                 alignment: Alignment.bottomCenter,
                 child: AnimatedSwitcher(
+                  key: _composerBodyKey,
                   duration: _morphDuration,
                   switchInCurve: Curves.easeOut,
                   switchOutCurve: Curves.easeIn,
