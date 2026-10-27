@@ -113,7 +113,7 @@ class const _InventoryHeader({required final McpActionClientState action}) exten
             child: Semantics(
               liveRegion: true,
               child: AnimatedSwitcher(
-                duration: MediaQuery.disableAnimationsOf(context) ? Duration.zero : const Duration(milliseconds: 180),
+                duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 180),
                 layoutBuilder: (current, previous) =>
                     Stack(alignment: AlignmentDirectional.centerStart, children: [...previous, ?current]),
                 child: Text(
@@ -234,7 +234,7 @@ class const _Catalog({required final McpInventorySnapshot inventory}) extends St
                 );
                 // Under reduced motion no wrapper at all: a zero-length
                 // AnimatedSize would re-dirty itself mid-layout.
-                if (MediaQuery.disableAnimationsOf(context)) return row;
+                if (context.isReducedMotion) return row;
                 return AnimatedSize(
                   duration: const Duration(milliseconds: 180),
                   alignment: Alignment.topCenter,
