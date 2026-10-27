@@ -280,6 +280,11 @@ sub-agent parts, plus the signal that a tool changed files.
   reload with the same identity and status; shell commands also retain their
   command and result. Unknown status renders as the fallback. A backend abort
   without a turn identifier still finalizes tools in the active turn.
+- A Claude tool refused without a permission request, by a `PreToolUse` hook
+  or a settings `permissions.deny` rule, fails its own step, live and after
+  replay; a shell command keeps the refusal text as its error. The model sees
+  that failed result and carries on, so a turn that otherwise succeeds ends
+  without a turn error message.
 - Claude `Agent`/`Task` calls render as subtask parts keyed by the tool-use
   id, with the sub-agent description, prompt, and agent type, a lifecycle of
   their own (`pending`/`running` → `completed`, `error`, or `cancelled`), and
@@ -409,6 +414,8 @@ guarantee.
   pattern, or skill, or only the path without the tool name.
 - A tool stays running after the backend finished, or an error renders as a
   completion.
+- A Claude turn in which a hook or deny rule refused a tool ends with a red
+  "denied a tool" error message, or the refused step renders as completed.
 - A v1.9.0 app, or a request without `toolOutputDelivery`, receives a summary
   tool part; a summary reaches a live event; or `POST /session/tool-output`
   answers a part that a page summarized with 404.
@@ -605,6 +612,10 @@ guarantee.
 - `client/module_app_ui/test/features/session_detail/widgets/transcript_step_row_test.dart`
   measures every step kind's icon, label inset, height and label weight at
   phone and desktop density.
+- `bridge/sesori_plugin_claude/test/claude_plugin_impl_test.dart` ("a
+  hook-denied tool fails its step") feeds live frames shaped like a 2.1.310
+  hook denial: the Bash step fails with the hook's text and the successful
+  turn adds no error.
 - `shared/sesori_shared/test/models/compaction_state_test.dart` decodes a
   state-less compaction part, an unknown status and an unknown trigger, and
   round-trips every state.

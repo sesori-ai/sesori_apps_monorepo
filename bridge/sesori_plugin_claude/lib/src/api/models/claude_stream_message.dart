@@ -691,13 +691,6 @@ final class const ClaudeResultMessage({
   required final String? result,
   required final String? stopReason,
   required final ClaudeTerminalReason terminalReason,
-
-  /// Tools refused during the turn.
-  ///
-  /// Rejections answered through `can_use_tool` are correlated by `tool_use_id`
-  /// before presentation. An unmatched entry on an otherwise successful turn
-  /// indicates that the host was not asked, so it remains a diagnostic error.
-  required final List<Map<String, Object?>> permissionDenials,
   required final List<String> errors,
   required final int? apiErrorStatus,
   required super.sessionId,
@@ -709,19 +702,12 @@ final class const ClaudeResultMessage({
     required String? sessionId,
     required String? uuid,
   }) {
-    final denials = json["permission_denials"];
     return ClaudeResultMessage(
       subtype: ClaudeResultSubtype.parse(json["subtype"]),
       isError: json["is_error"] == true,
       result: _stringOrNull(json["result"]),
       stopReason: _stringOrNull(json["stop_reason"]),
       terminalReason: ClaudeTerminalReason.parse(json["terminal_reason"]),
-      permissionDenials: denials is List
-          ? [
-              for (final entry in denials)
-                if (entry is Map) entry.cast<String, Object?>(),
-            ]
-          : const <Map<String, Object?>>[],
       errors: _stringList(json["errors"]),
       apiErrorStatus: _intOrNull(json["api_error_status"]),
       sessionId: sessionId,
