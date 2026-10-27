@@ -115,7 +115,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
               fromLaunch: false,
             ),
           ),
-          onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+          onOpenHarnessSettings: () => _openHarnessSettings(context: context),
           onManageComputers: () => unawaited(
             showDesktopComputersSettings(
               context: context,
@@ -189,7 +189,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
             projectId: projectId,
             projectName: route.projectName,
             onBack: () => _popRouteOrGo(context: context, fallback: const AppRoute.home()),
-            onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+            onOpenHarnessSettings: () => _openHarnessSettings(context: context),
             onSessionCreated: ({required session}) => _replaceRoute(
               context: context,
               route: AppRoute.sessionDetail(
@@ -239,7 +239,7 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
                 sessionId: route.sessionId,
               ),
             ),
-            onOpenHarnessSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.harnesses),
+            onOpenHarnessSettings: () => _openHarnessSettings(context: context),
             onOpenBridgeSettings: () => _openSettings(context: context, initialTab: DesktopSettingsTab.bridge),
             sessionActions: _desktopSessionActions,
             onMarkedUnread: () => _goRoute(context: context, route: const AppRoute.home()),
@@ -337,6 +337,16 @@ void _openSettings({required BuildContext context, required DesktopSettingsTab i
     showDesktopSettingsModal(
       context: context,
       initialTab: initialTab,
+      onOpenArchived: _archivedOpener(context: context),
+      onLogoutCompleted: _goDesktopHome,
+    ),
+  );
+}
+
+void _openHarnessSettings({required BuildContext context}) {
+  unawaited(
+    showDesktopHarnessSettings(
+      context: context,
       onOpenArchived: _archivedOpener(context: context),
       onLogoutCompleted: _goDesktopHome,
     ),

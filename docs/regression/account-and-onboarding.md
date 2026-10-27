@@ -80,7 +80,8 @@ participates.
   the computer list names the current computer and grows in without a jump.
   Offline, Harnesses and the YOLO and warm-up rows dim and do not respond to taps.
 - The desktop Bridge settings tab shows the same entry above its description;
-  switching closes the settings window and then switches.
+  switching closes the settings window and then switches. Its card leads with the
+  same Harnesses row, which opens harness management inside the tab.
 - Auth-server URLs behave identically with or without trailing slashes, and
   deadline expiry actively aborts registration and token-refresh transport,
   including response-body consumption.

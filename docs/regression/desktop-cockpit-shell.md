@@ -260,12 +260,15 @@ The main pane hosts one full-width routed page.
   preferences belong to application controls, not local bridge controls.
 - Settings is a root modal, preserving the current route, session element and
   live composer. Sidebar/⌘, (Ctrl+, elsewhere) open General; the This computer popover
-  opens Bridge; session setup opens Harnesses. All tabs and Close remain usable
+  opens Bridge; every harness settings entry (the home and New session composers' notices, a session's harness
+  notice) opens Bridge with its Harnesses page already open. All tabs and Close remain usable
   at 560 × 480, with independently scrollable tabs/content through 250% text scale and no scale reduction.
   A title-only line's natural height fits the toolbar without vertical clipping.
   Longer tab labels wrap while the tab rail itself scrolls.
   Pages draw no title bar: the tab rail names the page, and one small X at the
-  top-right closes the window. The selected tab uses the main sidebar's fill.
+  top-right closes the window. A page pushed inside a tab (Bridge's Harnesses and Computers) names itself under
+  its in-window Back, which fades back to the tab's own page; picking any tab leaves it. The selected tab uses
+  the main sidebar's fill.
   Theme is a Light/Dark/System segmented control that drops below its label at
   large text sizes. Bridge's connected-bridge intro sits inside its section.
   Escape/outside dismiss;
@@ -274,15 +277,16 @@ The main pane hosts one full-width routed page.
   Desktop's composer always leads with text (the mic is an extra click-to-talk control), so General does not
   advertise an ineffective Voice/Text preference.
   Bridge distinguishes connected-bridge configuration from local
-  status/logs. Notifications exposes desktop attention, not mobile push options.
-  Projects, after Harnesses, lists the cockpit's own project list with the shared Settings › Projects page
+  status/logs. Its connected-bridge card leads with the same Harnesses row as the phone's Bridge settings, dimmed
+  and disabled offline. Notifications exposes desktop attention, not mobile push options.
+  Projects, after General, lists the cockpit's own project list with the shared Settings › Projects page
   (see `projects-and-sessions.md`); its folder browser opens over the settings window, which stays open. The
   Bridge tab has no Projects row, since the tab rail already names the page.
   Account owns supervised logout; failed logout stays open, and delayed success
   cannot pop the opener. External auth rejection also dismisses the root modal.
-- One harness controller spans its modal overview/detail navigator. Back stays
-  inside that flow; Close removes its dialogs without cancelling upstream auth.
-  Only harness detail has Back; Account's title and Close do not duplicate it.
+- One harness controller spans its overview/detail navigator inside the Bridge tab. Detail's Back returns to the
+  overview and the overview's Back to Bridge, both inside the window; Close removes its dialogs without cancelling
+  upstream auth. Account has no Back, and its title and Close do not duplicate it.
   Modal blur/dim respects Prego accessibility/quality policy; macOS uses dim
   rather than sampling native indicators. Reduced motion removes the fade.
 - On macOS, home shows optional local-agent file-access guidance while the
@@ -374,6 +378,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The settings window's Archived row closing the window and opening Archived (`desktop_settings_screens_test`);
   the Archived page pushed once over its opener, its rows opening read-only over it, and its close returning to
   the opener or, reached directly, home (`desktop_router_test`).
+- Bridge's Harnesses row opening the page inside the tab and its Back returning to Bridge; the harness entry point
+  landing on Bridge with Harnesses open (`desktop_settings_screens_test`), including from New
+  session with its draft kept (`desktop_new_session_screen_test`).
 - Live inventory mutations, action-scope viewing isolation, invalidation/disposal. All-project admission happens
   once per entering ID, including offscreen projects. Empty/loading/failed entries keep project-local retry. Keep
   loaded rows

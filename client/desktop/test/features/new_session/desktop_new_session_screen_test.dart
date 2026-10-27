@@ -31,6 +31,8 @@ BlocProvider<ProjectListCubit> _projectList({required List<ProjectSummary> proje
 }
 
 class _MockChatInputModeCubit() extends MockCubit<ChatInputMode> implements ChatInputModeCubit;
+class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements BridgeControlCubit;
+class _MockFileAccessCubit() extends MockCubit<FileAccessState> implements FileAccessCubit;
 
 class _MockPluginManagementService() extends Mock implements PluginManagementService;
 class _MockCatalogRescanService() extends Mock implements CatalogRescanService;
@@ -341,6 +343,39 @@ void main() {
       getIt.registerSingleton<PluginManagementService>(service);
       getIt.registerSingleton<CatalogRescanService>(scans);
       getIt.registerSingleton<UrlLauncher>(_MockUrlLauncher());
+      // Harnesses opens inside the Bridge tab, whose own page stays built beneath it.
+      final connection = MockConnectionService();
+      final statuses = BehaviorSubject<ConnectionStatus>.seeded(const ConnectionStatus.disconnected());
+      addTearDown(statuses.close);
+      when(() => connection.currentStatus).thenAnswer((_) => statuses.value);
+      when(() => connection.status).thenAnswer((_) => statuses.stream);
+      getIt.registerSingleton<ConnectionService>(connection);
+      getIt.registerSingleton<BridgeSettingsService>(MockBridgeSettingsService());
+      getIt.registerSingleton<RegisteredBridgesService>(MockRegisteredBridgesService());
+      getIt.registerSingleton<SelectedComputerService>(FakeSelectedComputerService());
+      getIt.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
+      final bridgeControl = _MockBridgeControlCubit();
+      whenListen(
+        bridgeControl,
+        const Stream<BridgeControlState>.empty(),
+        initialState: const BridgeControlState(
+          trayAvailability: SystemTrayAvailability.available,
+          activity: BridgeControlActivity.idle,
+          statusLabel: "Off",
+          processState: BridgeProcessStopped(),
+          desiredState: BridgeProcessDesiredState.off,
+          toggleTarget: BridgeProcessDesiredState.on,
+          launchAtLoginEnabled: false,
+          controlStatus: BridgeControlStatus.offline,
+          updateState: DesktopUpdateManagedBySystem(),
+        ),
+      );
+      final fileAccess = _MockFileAccessCubit();
+      whenListen(
+        fileAccess,
+        const Stream<FileAccessState>.empty(),
+        initialState: const FileAccessState(status: FileAccessStatus.unsupported, dismissed: false),
+      );
       final router = GoRouter(
         initialLocation: "/sessions/new?project=p",
         routes: [
@@ -374,8 +409,10 @@ void main() {
             BlocProvider<NewSessionCubit>.value(value: newSessionCubit),
             BlocProvider<ChatInputModeCubit>.value(value: inputModeCubit),
             BlocProvider<AuthGateCubit>.value(value: authGateCubit),
+            BlocProvider<BridgeControlCubit>.value(value: bridgeControl),
+            BlocProvider<FileAccessCubit>.value(value: fileAccess),
             _projectList(projects: const []),
-            RepositoryProvider<ConnectionService>.value(value: MockConnectionService()),
+            RepositoryProvider<ConnectionService>.value(value: connection),
           ],
           child: MaterialApp.router(
             routerConfig: router,
@@ -395,6 +432,10 @@ void main() {
       tester.widget<DesktopNewSessionView>(find.byType(DesktopNewSessionView)).onOpenHarnessSettings();
       await tester.pumpAndSettle();
       expect(router.state.uri.toString(), "/sessions/new?project=p");
+      // The settings window, on its Bridge tab with the Harnesses page open.
+      final bridgeTab = find.byKey(const ValueKey("desktop-settings-tab-bridge"));
+      final bridgeTabSemantics = find.descendant(of: bridgeTab, matching: find.byType(Semantics)).first;
+      expect(tester.widget<Semantics>(bridgeTabSemantics).properties.selected, isTrue);
       final overview = tester.element(find.byType(HarnessesSettingsView));
       final harnessCubit = overview.read<PluginManagementCubit>();
       if (closeFromDetail) {

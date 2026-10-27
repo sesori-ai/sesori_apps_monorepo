@@ -61,6 +61,7 @@ class const ComputersView({
       },
       child: SettingsChromePage(
         chrome: chrome,
+        onRefresh: null,
         slivers: [
           SliverPadding(
             padding: EdgeInsetsDirectional.fromSTEB(

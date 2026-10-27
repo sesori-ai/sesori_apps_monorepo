@@ -21,7 +21,7 @@ part "harnesses_settings_view.dart";
 
 /// Who draws the harness pages' chrome: their own bar, closed as a modal or
 /// left by going back, or the desktop settings window, which owns the close
-/// button and names the page.
+/// button while the pages keep their way back.
 enum HarnessSettingsChrome() { modal, pushed, window }
 
 /// Owns transient presentation once for the entire nested harness navigator.

@@ -69,6 +69,7 @@ class const ProjectsSettingsView({super.key, required final SettingsPageChrome c
     final duration = context.isReducedMotion ? Duration.zero : _offlineTransition;
     return SettingsChromePage(
       chrome: chrome,
+      onRefresh: null,
       slivers: [
         SliverPadding(
           padding: EdgeInsetsDirectional.fromSTEB(

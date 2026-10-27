@@ -22,11 +22,16 @@ import "desktop_profile_screen.dart";
 
 enum DesktopSettingsTab() {
   general,
-  harnesses,
   projects,
   bridge,
   notifications,
   account,
+}
+
+/// A page the Bridge tab pushes over its own settings page.
+enum _BridgeSubpage() {
+  harnesses,
+  computers,
 }
 
 /// Root presentation, not a product route: the underlying session stays mounted.
@@ -40,7 +45,22 @@ Future<void> showDesktopSettingsModal({
 }) => _showDesktopSettings(
   context: context,
   initialTab: initialTab,
-  opensComputers: false,
+  bridgeSubpage: null,
+  onOpenArchived: onOpenArchived,
+  onLogoutCompleted: onLogoutCompleted,
+);
+
+/// The settings window on its Bridge tab with the Harnesses page already open.
+Future<void> showDesktopHarnessSettings({
+  required BuildContext context,
+
+  /// Opens the Archived pane once the window has closed.
+  required VoidCallback onOpenArchived,
+  required VoidCallback onLogoutCompleted,
+}) => _showDesktopSettings(
+  context: context,
+  initialTab: DesktopSettingsTab.bridge,
+  bridgeSubpage: _BridgeSubpage.harnesses,
   onOpenArchived: onOpenArchived,
   onLogoutCompleted: onLogoutCompleted,
 );
@@ -55,7 +75,7 @@ Future<void> showDesktopComputersSettings({
 }) => _showDesktopSettings(
   context: context,
   initialTab: DesktopSettingsTab.bridge,
-  opensComputers: true,
+  bridgeSubpage: _BridgeSubpage.computers,
   onOpenArchived: onOpenArchived,
   onLogoutCompleted: onLogoutCompleted,
 );
@@ -63,7 +83,9 @@ Future<void> showDesktopComputersSettings({
 Future<void> _showDesktopSettings({
   required BuildContext context,
   required DesktopSettingsTab initialTab,
-  required bool opensComputers,
+
+  /// The Bridge tab's page to open over its own, or null for none.
+  required _BridgeSubpage? bridgeSubpage,
   required VoidCallback onOpenArchived,
   required VoidCallback onLogoutCompleted,
 }) async {
@@ -107,7 +129,7 @@ Future<void> _showDesktopSettings({
           listener: (_, _) => close(),
           child: _DesktopSettingsModal(
             initialTab: initialTab,
-            opensComputers: opensComputers,
+            initialBridgeSubpage: bridgeSubpage,
             onClose: close,
             // Archived is a pane of the cockpit, so the window steps aside for it.
             onOpenArchived: () {
@@ -127,7 +149,7 @@ Future<void> _showDesktopSettings({
 
 class const _DesktopSettingsModal({
   required final DesktopSettingsTab initialTab,
-  required final bool opensComputers,
+  required final _BridgeSubpage? initialBridgeSubpage,
   required final VoidCallback onClose,
   required final VoidCallback onOpenArchived,
   required final VoidCallback onLogoutCompleted,
@@ -139,9 +161,9 @@ class const _DesktopSettingsModal({
 class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
   late DesktopSettingsTab _tab = widget.initialTab;
 
-  /// Whether the Bridge tab shows its Computers page. Picking any tab,
-  /// including the Bridge tab again, leaves it.
-  late bool _showsComputers = widget.opensComputers;
+  /// The page the Bridge tab shows over its own, or null for its own page.
+  /// Picking any tab, including the Bridge tab again, leaves it.
+  late _BridgeSubpage? _bridgeSubpage = widget.initialBridgeSubpage;
 
   @override
   Widget build(BuildContext context) {
@@ -212,7 +234,7 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                                       selected: tab == _tab,
                                       onPressed: () => setState(() {
                                         _tab = tab;
-                                        _showsComputers = false;
+                                        _bridgeSubpage = null;
                                       }),
                                     ),
                                   // Not a tab, so set apart: it opens the Archived pane.
@@ -273,7 +295,6 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
       create: (_) => DesktopUpdateCubit(service: getIt<DesktopUpdateService>()),
       child: const DesktopGeneralSettingsScreen(),
     ),
-    DesktopSettingsTab.harnesses => _DesktopHarnessSettingsPage(onClose: widget.onClose),
     DesktopSettingsTab.projects => ProjectsSettingsView(chrome: SettingsPageInWindow()),
     DesktopSettingsTab.bridge => MultiBlocProvider(
       providers: [
@@ -300,8 +321,8 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
       ],
       child: _DesktopBridgeSettingsTab(
         onClose: widget.onClose,
-        showsComputers: _showsComputers,
-        onShowComputers: ({required shows}) => setState(() => _showsComputers = shows),
+        subpage: _bridgeSubpage,
+        onShowSubpage: ({required subpage}) => setState(() => _bridgeSubpage = subpage),
       ),
     ),
     DesktopSettingsTab.notifications => BlocProvider(
@@ -314,7 +335,6 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
 
 String _tabLabel({required BuildContext context, required DesktopSettingsTab tab}) => switch (tab) {
   DesktopSettingsTab.general => context.loc.desktopSettingsGeneral,
-  DesktopSettingsTab.harnesses => context.loc.settingsHarnessesTitle,
   DesktopSettingsTab.projects => context.loc.settingsProjectsTitle,
   DesktopSettingsTab.bridge => context.loc.settingsSectionBridge,
   DesktopSettingsTab.notifications => context.loc.settingsNotificationsTitle,
@@ -323,7 +343,6 @@ String _tabLabel({required BuildContext context, required DesktopSettingsTab tab
 
 IconData _tabIcon({required DesktopSettingsTab tab}) => switch (tab) {
   DesktopSettingsTab.general => TablerRegular.settings,
-  DesktopSettingsTab.harnesses => TablerRegular.plug,
   DesktopSettingsTab.projects => TablerRegular.folder,
   DesktopSettingsTab.bridge => TablerRegular.server,
   DesktopSettingsTab.notifications => TablerRegular.bell,
@@ -371,15 +390,14 @@ class const _SettingsTabRow({
   }
 }
 
-/// The Bridge tab: its settings page, with the Computers page pushed over it
-/// from the computer entry's menu.
+/// The Bridge tab: its settings page, with the Harnesses page pushed over it
+/// from its Harnesses row, or the Computers page from the computer entry's
+/// menu.
 class const _DesktopBridgeSettingsTab({
   required final VoidCallback onClose,
-  required final bool showsComputers,
-  required final void Function({required bool shows}) onShowComputers,
+  required final _BridgeSubpage? subpage,
+  required final void Function({required _BridgeSubpage? subpage}) onShowSubpage,
 }) extends StatelessWidget {
-  static const _computersPageKey = ValueKey("desktop-settings-computers");
-
   /// A switch lands on the new computer's Projects root, so the window steps
   /// aside for it.
   void _switchComputer({required String bridgeId, required ComputerSwitchSource source}) {
@@ -387,30 +405,33 @@ class const _DesktopBridgeSettingsTab({
     unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source));
   }
 
+  void _back() => onShowSubpage(subpage: null);
+
   @override
   Widget build(BuildContext context) => _FadeThroughPages(
     child: Navigator(
       onDidRemovePage: (page) {
-        if (page.key == _computersPageKey) onShowComputers(shows: false);
+        if (page.key case ValueKey<_BridgeSubpage>()) _back();
       },
       pages: [
         MaterialPage<void>(
           child: _DesktopBridgeSettingsPage(
+            onOpenHarnesses: () => onShowSubpage(subpage: _BridgeSubpage.harnesses),
             onSwitchComputer: _switchComputer,
-            onManageComputers: () => onShowComputers(shows: true),
+            onManageComputers: () => onShowSubpage(subpage: _BridgeSubpage.computers),
           ),
         ),
-        if (showsComputers)
+        if (subpage case final subpage?)
           MaterialPage<void>(
-            key: _computersPageKey,
-            child: ComputersView(
-              chrome: SettingsPageInWindowSubpage(
-                title: context.loc.computersTitle,
-                onBack: () => onShowComputers(shows: false),
+            key: ValueKey(subpage),
+            child: switch (subpage) {
+              _BridgeSubpage.harnesses => _DesktopHarnessSettingsPage(onClose: onClose, onBack: _back),
+              _BridgeSubpage.computers => ComputersView(
+                chrome: SettingsPageInWindowSubpage(title: context.loc.computersTitle, onBack: _back),
+                onSwitchComputer: _switchComputer,
+                localBridgeTurnOffActionBuilder: (_) => const _TurnOffLocalBridgeAction(),
               ),
-              onSwitchComputer: _switchComputer,
-              localBridgeTurnOffActionBuilder: (_) => const _TurnOffLocalBridgeAction(),
-            ),
+            },
           ),
       ],
     ),
@@ -443,6 +464,7 @@ class const _TurnOffLocalBridgeAction() extends StatelessWidget {
 }
 
 class const _DesktopBridgeSettingsPage({
+  required final VoidCallback onOpenHarnesses,
   required final ComputerSwitchCallback onSwitchComputer,
   required final VoidCallback onManageComputers,
 }) extends StatelessWidget {
@@ -464,8 +486,7 @@ class const _DesktopBridgeSettingsPage({
                 BridgeSettingsSection(
                   title: loc.desktopSettingsConnectedBridge,
                   description: loc.desktopSettingsConnectedBridgeDescription,
-                  // Harnesses has a tab of its own.
-                  onOpenHarnesses: null,
+                  onOpenHarnesses: onOpenHarnesses,
                   onOpenProjects: null,
                   // The modal's tab list holds Archived.
                   onOpenArchived: null,
@@ -526,7 +547,13 @@ class const _DesktopNotificationSettingsPage() extends StatelessWidget {
   );
 }
 
-class const _DesktopHarnessSettingsPage({required final VoidCallback onClose}) extends StatefulWidget {
+/// The harness overview and its detail pages, inside the Bridge tab.
+class const _DesktopHarnessSettingsPage({
+  required final VoidCallback onClose,
+
+  /// Returns from the overview to the Bridge tab's own page.
+  required final VoidCallback onBack,
+}) extends StatefulWidget {
   @override
   State<_DesktopHarnessSettingsPage> createState() => _DesktopHarnessSettingsPageState();
 }
@@ -536,43 +563,42 @@ class _DesktopHarnessSettingsPageState() extends State<_DesktopHarnessSettingsPa
 
   @override
   Widget build(BuildContext context) => DesktopHarnessesSettingsScreen(
-    child: _FadeThroughPages(
-      child: Navigator(
-        onDidRemovePage: (page) {
-          if (page.key case ValueKey<String>(:final value) when value == _pluginId) {
-            setState(() => _pluginId = null);
-          }
-        },
-        pages: [
+    // The Bridge tab's fade-through moves these pages too.
+    child: Navigator(
+      onDidRemovePage: (page) {
+        if (page.key case ValueKey<String>(:final value) when value == _pluginId) {
+          setState(() => _pluginId = null);
+        }
+      },
+      pages: [
+        MaterialPage<void>(
+          child: HarnessesSettingsView(
+            chrome: HarnessSettingsChrome.window,
+            connectionBanner: null,
+            onClose: widget.onClose,
+            onBack: widget.onBack,
+            onOpenHarness: ({required pluginId}) => setState(() => _pluginId = pluginId),
+          ),
+        ),
+        if (_pluginId case final pluginId?)
           MaterialPage<void>(
-            child: HarnessesSettingsView(
+            key: ValueKey(pluginId),
+            child: HarnessSettingsDetailView(
+              pluginId: pluginId,
+              onShowMcp: () => showMcpInventory(
+                context: context,
+                request: McpInventoryRequest(pluginId: pluginId, scope: const McpHarnessScope()),
+                createService: getIt.call<McpService>,
+                authenticationService: getIt.call<McpAuthenticationService>,
+                mutationsAllowed: true,
+              ),
               chrome: HarnessSettingsChrome.window,
-              connectionBanner: null,
+              onBack: () => setState(() => _pluginId = null),
               onClose: widget.onClose,
-              onBack: null,
-              onOpenHarness: ({required pluginId}) => setState(() => _pluginId = pluginId),
+              connectionBanner: null,
             ),
           ),
-          if (_pluginId case final pluginId?)
-            MaterialPage<void>(
-              key: ValueKey(pluginId),
-              child: HarnessSettingsDetailView(
-                pluginId: pluginId,
-                onShowMcp: () => showMcpInventory(
-                  context: context,
-                  request: McpInventoryRequest(pluginId: pluginId, scope: const McpHarnessScope()),
-                  createService: getIt.call<McpService>,
-                  authenticationService: getIt.call<McpAuthenticationService>,
-                  mutationsAllowed: true,
-                ),
-                chrome: HarnessSettingsChrome.window,
-                onBack: () => setState(() => _pluginId = null),
-                onClose: widget.onClose,
-                connectionBanner: null,
-              ),
-            ),
-        ],
-      ),
+      ],
     ),
   );
 }

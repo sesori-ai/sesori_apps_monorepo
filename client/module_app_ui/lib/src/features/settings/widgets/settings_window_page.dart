@@ -28,6 +28,9 @@ final class SettingsPageInWindowSubpage({
 class const SettingsChromePage({
   super.key,
   required final SettingsPageChrome chrome,
+
+  /// Pull-to-refresh; `null` for none.
+  required final Future<void> Function()? onRefresh,
   required final List<Widget> slivers,
 }) extends StatelessWidget {
   @override
@@ -36,11 +39,12 @@ class const SettingsChromePage({
       title: title,
       titleMode: PregoTopNavigationTitleMode.inline,
       banner: connectionBanner,
+      onRefresh: onRefresh,
       slivers: slivers,
     ),
-    SettingsPageInWindow() => SettingsWindowPage(onRefresh: null, slivers: slivers),
+    SettingsPageInWindow() => SettingsWindowPage(onRefresh: onRefresh, slivers: slivers),
     SettingsPageInWindowSubpage(:final title, :final onBack) => SettingsWindowPage(
-      onRefresh: null,
+      onRefresh: onRefresh,
       slivers: [
         SliverPadding(
           padding: const EdgeInsetsDirectional.fromSTEB(PregoSpacing.md, 0, PregoSpacing.xl, PregoSpacing.sm),

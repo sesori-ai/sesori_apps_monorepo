@@ -8,7 +8,10 @@ class const HarnessesSettingsView({
   required final HarnessSettingsChrome chrome,
   required final Widget? connectionBanner,
   required final VoidCallback onClose,
-  required final VoidCallback? onBack,
+
+  /// Returns to the page that opened harness management; a modal flow
+  /// offers only [onClose].
+  required final VoidCallback onBack,
   required final void Function({required String pluginId}) onOpenHarness,
 }) extends StatelessWidget {
   @override
@@ -43,8 +46,13 @@ class const HarnessesSettingsView({
       case HarnessSettingsChrome.pushed:
         isModal = false;
       case HarnessSettingsChrome.window:
-        // The settings window names the page and owns the close button.
-        return SettingsWindowPage(onRefresh: cubit.refresh, slivers: slivers);
+        // Pushed inside the settings window's Bridge tab, which owns the close
+        // button, so the page names itself under its way back to Bridge.
+        return SettingsChromePage(
+          chrome: SettingsPageInWindowSubpage(title: loc.settingsHarnessesTitle, onBack: onBack),
+          onRefresh: cubit.refresh,
+          slivers: slivers,
+        );
     }
 
     return PregoGlassScaffold(
