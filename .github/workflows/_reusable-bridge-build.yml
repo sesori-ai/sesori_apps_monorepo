@@ -188,15 +188,22 @@ jobs:
           APPLE_TEAM_ID: ${{ vars.APPLE_TEAM_ID }}
         run: |
           identity="Developer ID Application: DigitalBlock Labs LTD ($APPLE_TEAM_ID)"
+          # Apple's timestamp server fails now and then ("A timestamp was expected but was not found").
+          sign() {
+            for attempt in 1 2 3; do
+              codesign -s "$identity" --timestamp --force --verbose "$1" && return 0
+              if [ "$attempt" -lt 3 ]; then
+                echo "::warning::codesign of $1 failed (attempt $attempt of 3); retrying"
+                sleep 15
+              fi
+            done
+            return 1
+          }
           for library in build/cli/bundle/lib/*.dylib; do
-            codesign -s "$identity" --timestamp --force --verbose "$library"
+            sign "$library"
             codesign --verify --strict --verbose=2 "$library"
           done
-          codesign -s "$identity" \
-            --timestamp \
-            --force \
-            --verbose \
-            build/cli/bundle/bin/sesori-bridge
+          sign build/cli/bundle/bin/sesori-bridge
           codesign --verify --strict --verbose=2 build/cli/bundle/bin/sesori-bridge
           codesign -dv --verbose=4 build/cli/bundle/bin/sesori-bridge
         working-directory: bridge/app
