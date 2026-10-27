@@ -1152,6 +1152,12 @@ class _PromptInputState() extends State<PromptInput> {
   static const Duration _morphDuration = Duration(milliseconds: 220);
   static const Curve _morphCurve = Curves.easeOutCubic;
 
+  /// Eases [child]'s size changes in the house timing. Reduced motion resizes
+  /// at once: a zero-duration [AnimatedSize] would re-dirty itself mid-layout.
+  Widget _morphSize({required AlignmentGeometry alignment, required Widget child}) => prefersReducedMotion(context)
+      ? child
+      : AnimatedSize(duration: _morphDuration, curve: _morphCurve, alignment: alignment, child: child);
+
   @override
   Widget build(BuildContext context) {
     final capabilities = ComposerPresentationScope.of(context);
@@ -1228,9 +1234,7 @@ class _PromptInputState() extends State<PromptInput> {
             child: PregoPageHalo(
               radius: PregoRadius.x3l,
               reachesLayerBottom: true,
-              child: AnimatedSize(
-                duration: _morphDuration,
-                curve: _morphCurve,
+              child: _morphSize(
                 alignment: Alignment.bottomCenter,
                 child: AnimatedSwitcher(
                   duration: _morphDuration,
@@ -2095,9 +2099,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// owners elsewhere in the row must keep their elements.
   Widget _buildCollapsibleTrailing({required bool visible, required Widget child}) {
     return ClipRect(
-      child: AnimatedSize(
-        duration: _morphDuration,
-        curve: _morphCurve,
+      child: _morphSize(
         alignment: AlignmentDirectional.centerStart,
         child: visible ? child : const SizedBox.shrink(),
       ),

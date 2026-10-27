@@ -907,13 +907,14 @@ class const _AnimatedOptions({super.key, required final double gap, required fin
 /// its room opens as it fades in and folds away as it fades out, so the pills
 /// and a centred page glide rather than jump as an error comes or clears.
 /// Another error while one shows takes its place without fading, its room
-/// easing to the new text's height. Reduced motion changes it at once.
+/// easing to the new text's height. Reduced motion changes it at once, with
+/// no [AnimatedSize], which would re-dirty itself mid-layout at zero duration.
 class const _AnimatedBanner({required final Widget? banner}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final duration = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
+    if (context.isReducedMotion) return banner ?? const SizedBox.shrink();
     return AnimatedSwitcher(
-      duration: duration,
+      duration: transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
       transitionBuilder: (child, animation) => SizeTransition(
@@ -924,7 +925,7 @@ class const _AnimatedBanner({required final Widget? banner}) extends StatelessWi
       child: switch (banner) {
         null => null,
         final banner => AnimatedSize(
-          duration: duration,
+          duration: transcriptMotionDuration,
           curve: transcriptMotionCurve,
           alignment: Alignment.topCenter,
           child: banner,
