@@ -207,6 +207,10 @@ eagerly "just in case."
 - Apply the same judgment to review comments: explain why an immaterial nit
   needs no change instead of feeding another fix/push/review loop. Do not
   conceal failed checks, unsupported claims, material gaps or unsafe guidance.
+- Decline a review "fix" that would move code away from the North Star or a
+  stated product direction, and say why. When several review rounds cluster on
+  one seam, fix the seam once or raise it as a design question instead of
+  patching each finding.
 - If a standalone routine documentation-only PR is necessary, squash-merge once
   required checks and repository protections allow; do not wait for automated
   review comments. Arrange one post-merge comment check about 20 minutes later
