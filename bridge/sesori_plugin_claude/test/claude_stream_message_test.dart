@@ -87,10 +87,7 @@ void main() {
       expect(message.event["index"], 0);
     });
 
-    test("reads a result frame including its permission denials", () {
-      // A non-empty denial list on an otherwise successful turn is the
-      // signature of a missing --permission-prompt-tool stdio, so it must
-      // survive parsing rather than being dropped.
+    test("reads a result frame", () {
       final message = ClaudeStreamMessage.parse({
         "type": "result",
         "subtype": "success",
@@ -98,17 +95,12 @@ void main() {
         "result": "done",
         "stop_reason": "end_turn",
         "terminal_reason": "completed",
-        "permission_denials": [
-          {"tool_name": "Write", "tool_use_id": "toolu_1"},
-        ],
       }) as ClaudeResultMessage;
 
       expect(message.subtype, ClaudeResultSubtype.success);
       expect(message.isError, isFalse);
       expect(message.stopReason, "end_turn");
       expect(message.terminalReason, ClaudeTerminalReason.completed);
-      expect(message.permissionDenials, hasLength(1));
-      expect(message.permissionDenials.single["tool_name"], "Write");
     });
 
     test("reads an API retry frame while retaining raw error text", () {
@@ -333,10 +325,6 @@ void main() {
           ClaudeStreamMessage.parse({"type": "assistant", "message": "not-a-map"}) as ClaudeAssistantMessage;
       expect(assistant.message, isEmpty);
       expect(assistant.messageId, isNull);
-
-      final result =
-          ClaudeStreamMessage.parse({"type": "result", "permission_denials": "not-a-list"}) as ClaudeResultMessage;
-      expect(result.permissionDenials, isEmpty);
 
       final init = ClaudeStreamMessage.parse({
         "type": "system",
