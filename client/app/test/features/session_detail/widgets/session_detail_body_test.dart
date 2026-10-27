@@ -2475,7 +2475,7 @@ void main() {
     expect(tester.getRect(recheck), recheckRect);
   });
 
-  testWidgets("owed messages hold still from the launch through a blocked first load and its Recheck", (
+  testWidgets("owed messages hold still from the launch through a blocked first load", (
     tester,
   ) async {
     tester.view.padding = const FakeViewPadding(bottom: 102);
@@ -2549,22 +2549,114 @@ void main() {
     verify(() => cubit.removeLaunchFollowUp(promptId: "prm_launch")).called(1);
     await tester.tap(cancels.last);
     verify(() => cubit.cancelQueuedMessage(0)).called(1);
-
-    // Recheck reloads without hiding or moving what is still owed.
-    states.add(
-      SessionDetailState.loading(
-        launchHandoff: null,
-        seededComposer: null,
-        launchFollowUps: launchFollowUps,
-        queuedMessages: queuedMessages,
-      ),
-    );
-    await tester.pump();
-    await tester.pump();
-    expect(find.byType(PregoLaunchStatus), findsOneWidget);
-    expect(tester.getRect(followUp), followUpRect);
-    expect(tester.getRect(last), lastRect);
     expect(tester.takeException(), isNull);
+  });
+
+  group("Recheck from the unavailable notice", () {
+    const frame = Duration(milliseconds: 16);
+    final notice = find.byType(SessionHarnessUnavailableNotice);
+    final transcript = find.text("Hello, world!");
+    SessionDetailState shell() =>
+        SessionDetailState.harnessUnavailable(session: testSession(), interaction: authRequired);
+    double opacityOf({required WidgetTester tester, required Finder finder}) => tester
+        .widgetList<FadeTransition>(find.ancestor(of: finder, matching: find.byType(FadeTransition)))
+        .fold(1, (opacity, fade) => opacity * fade.opacity.value);
+
+    /// Presses Recheck and holds the check open past its spinner's delay,
+    /// with the notice up and unmoved throughout. Returns where it sits.
+    Future<Rect> pressRecheck({
+      required WidgetTester tester,
+      required Stream<SessionDetailState> states,
+      required Completer<void> answer,
+    }) async {
+      whenListen(cubit, states, initialState: shell());
+      when(cubit.recheckHarnessAvailability).thenAnswer((_) => answer.future);
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final noticeRect = tester.getRect(notice);
+      await tester.tap(find.byKey(const Key("session_harness_recheck")));
+      for (var elapsed = frame; elapsed <= const Duration(milliseconds: 640); elapsed += frame) {
+        await tester.pump(frame);
+        expect(find.byType(PregoLaunchStatus), findsNothing);
+        expect(tester.getRect(notice), noticeRect);
+        expect(opacityOf(tester: tester, finder: notice), 1);
+      }
+      return noticeRect;
+    }
+
+    testWidgets("cross-fades the notice into the transcript once it loads", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+
+      states.add(
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+      );
+      answer.complete();
+      final fades = <({double notice, double transcript})>[];
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+        await tester.pump(frame);
+        if (notice.evaluate().isEmpty) break;
+        // The notice fades where it was, never moving or giving way at once,
+        // and its Recheck keeps the spinner rather than turning back.
+        expect(tester.getRect(notice), noticeRect);
+        expect(find.byKey(const ValueKey("session_harness_recheck_spinner")), findsOneWidget);
+        expect(opacityOf(tester: tester, finder: find.text("Recheck")), 0);
+        fades.add((
+          notice: opacityOf(tester: tester, finder: notice),
+          transcript: opacityOf(tester: tester, finder: transcript),
+        ));
+      }
+      expect(notice, findsNothing);
+      expect(opacityOf(tester: tester, finder: transcript), 1);
+      expect(find.byType(PromptInput), findsOneWidget);
+      expect(find.byType(PregoLaunchStatus), findsNothing);
+      for (var i = 1; i < fades.length; i++) {
+        expect(fades[i].notice, lessThanOrEqualTo(fades[i - 1].notice));
+        expect(fades[i].transcript, greaterThanOrEqualTo(fades[i - 1].transcript));
+      }
+      expect(
+        fades.where((fade) => fade.notice > 0 && fade.notice < 1 && fade.transcript > 0 && fade.transcript < 1),
+        hasLength(greaterThanOrEqualTo(10)),
+      );
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("leaves the notice where it was when the harness is still blocked", (tester) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      final noticeRect = await pressRecheck(tester: tester, states: states.stream, answer: answer);
+
+      states.add(shell());
+      answer.complete();
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 400); elapsed += frame) {
+        await tester.pump(frame);
+        expect(tester.getRect(notice), noticeRect);
+        expect(opacityOf(tester: tester, finder: notice), 1);
+        expect(find.byType(PregoLaunchStatus), findsNothing);
+      }
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("swaps at once with reduced motion", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      await pressRecheck(tester: tester, states: states.stream, answer: answer);
+
+      states.add(
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+      );
+      answer.complete();
+      await tester.pump(frame);
+      expect(notice, findsNothing);
+      expect(opacityOf(tester: tester, finder: transcript), 1);
+      expect(tester.takeException(), isNull);
+    });
   });
 
   for (final hasHistory in [false, true]) {

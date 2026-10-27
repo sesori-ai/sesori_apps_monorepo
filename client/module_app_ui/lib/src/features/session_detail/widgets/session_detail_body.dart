@@ -23,6 +23,7 @@ import "session_detail_scaffold_sections.dart";
 import "session_harness_unavailable_notice.dart";
 import "session_launch_submission_view.dart";
 import "transcript_jump_notifier.dart";
+import "transcript_motion.dart";
 import "transcript_pinch_detector.dart";
 
 typedef SessionDetailHeaderBuilder = Widget Function({
@@ -160,6 +161,10 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
 
   /// The launch-seeded composer's height as last laid out.
   double _composerHeight = 0;
+
+  /// How many times a load has replaced the unavailable notice, which keys
+  /// the content so each one fades in.
+  int _shellHandoffs = 0;
 
   /// The Prompts screen while it is up: the prompts as they were when it
   /// opened or an older page last landed, so other transcript changes
@@ -485,7 +490,25 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             ],
           );
     final pageChrome = widget.pageChrome;
-    final content = _buildContent(context: context, state: state, columnWidths: pageChrome?.columnWidths);
+    // A load cross-fades with the unavailable notice it replaces. Every other
+    // change updates the content in place. The leaving notice holds still, so
+    // its Recheck keeps the spinner rather than turning back as it fades.
+    final content = AnimatedSwitcher(
+      duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+      switchInCurve: transcriptMotionCurve,
+      switchOutCurve: transcriptMotionReverseCurve,
+      layoutBuilder: (current, previous) => Stack(
+        fit: StackFit.passthrough,
+        children: [
+          for (final child in previous) TickerMode(key: child.key, enabled: false, child: child),
+          if (current != null) TickerMode(key: current.key, enabled: true, child: current),
+        ],
+      ),
+      child: KeyedSubtree(
+        key: ValueKey(_shellHandoffs),
+        child: _buildContent(context: context, state: state, columnWidths: pageChrome?.columnWidths),
+      ),
+    );
     final openPrompts = state is SessionDetailLoaded ? _openPromptsFromBar : null;
     final prompts = _prompts;
     final promptsState = state is SessionDetailLoaded ? state : null;
@@ -572,15 +595,24 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // prompt index once it arrives. A load and a refresh both drop the index
     // before fetching it, so it only ever arrives onto none. Dropping it
     // leaves the open list as it was, like any other transcript change.
-    return BlocListener<SessionDetailCubit, SessionDetailState>(
-      listenWhen: (previous, current) =>
-          previous is SessionDetailLoaded &&
-          current is SessionDetailLoaded &&
-          ((previous.isLoadingOlderMessages && !current.isLoadingOlderMessages) ||
-              (previous.promptIndex == null && current.promptIndex != null)),
-      listener: (context, state) {
-        if (state is SessionDetailLoaded) _relistPrompts(state: state);
-      },
+    return MultiBlocListener(
+      listeners: [
+        BlocListener<SessionDetailCubit, SessionDetailState>(
+          listenWhen: (previous, current) =>
+              previous is SessionDetailLoaded &&
+              current is SessionDetailLoaded &&
+              ((previous.isLoadingOlderMessages && !current.isLoadingOlderMessages) ||
+                  (previous.promptIndex == null && current.promptIndex != null)),
+          listener: (context, state) {
+            if (state is SessionDetailLoaded) _relistPrompts(state: state);
+          },
+        ),
+        BlocListener<SessionDetailCubit, SessionDetailState>(
+          listenWhen: (previous, current) =>
+              previous is SessionDetailHarnessUnavailable && current is SessionDetailLoaded,
+          listener: (context, state) => setState(() => _shellHandoffs++),
+        ),
+      ],
       child: page,
     );
   }
