@@ -52,6 +52,7 @@ export 'interactions/prego_horizontal_drag_gesture_detector.dart';
 export 'interactions/prego_interaction_scope.dart';
 export 'interactions/prego_swipe_actions.dart';
 export 'motion/prego_reduced_motion.dart';
+export 'motion/prego_slide_from_last_position.dart';
 export 'theme/prego_glass.dart';
 export 'theme/prego_theme.dart';
 export 'utils/prego_system_date_patterns.dart';

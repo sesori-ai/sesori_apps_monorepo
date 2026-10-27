@@ -8,7 +8,6 @@ import "../../extensions/build_context_x.dart";
 import "../project_list/project_path_labels.dart";
 import "../project_picker/project_picker.dart";
 import "../session_detail/widgets/transcript_motion.dart";
-import "slide_from_last_position.dart";
 
 /// [projectId]'s name in the live project list, which knows a rename the
 /// route's [projectName] can miss.
@@ -106,7 +105,7 @@ class _NewSessionHeaderState() extends State<NewSessionHeader> with SingleTicker
             // paints from where it was and slides to its new place. Across
             // only: the column moving around the header carries it with the
             // heading.
-            SlideFromLastPosition(
+            PregoSlideFromLastPosition(
               progress: _harnessMotion,
               forward: harness != null,
               horizontalOnly: true,

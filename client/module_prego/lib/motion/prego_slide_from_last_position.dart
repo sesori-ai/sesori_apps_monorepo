@@ -5,7 +5,7 @@ import "package:material_ui/material_ui.dart";
 /// along [progress], each time [forward] flips: [progress] runs toward 1 while
 /// [forward] is true and back toward 0 while it is false. Only the painting
 /// moves; layout and the child's state are already in their new place.
-class const SlideFromLastPosition({
+class const PregoSlideFromLastPosition({
   super.key,
   required final Animation<double> progress,
   required final bool forward,
@@ -16,16 +16,16 @@ class const SlideFromLastPosition({
   required super.child,
 }) extends SingleChildRenderObjectWidget {
   @override
-  RenderSlideFromLastPosition createRenderObject(BuildContext context) =>
-      RenderSlideFromLastPosition(progress: progress, forward: forward, horizontalOnly: horizontalOnly);
+  RenderPregoSlideFromLastPosition createRenderObject(BuildContext context) =>
+      RenderPregoSlideFromLastPosition(progress: progress, forward: forward, horizontalOnly: horizontalOnly);
 
   @override
-  void updateRenderObject(BuildContext context, RenderSlideFromLastPosition renderObject) {
+  void updateRenderObject(BuildContext context, RenderPregoSlideFromLastPosition renderObject) {
     renderObject.update(progress: progress, forward: forward, horizontalOnly: horizontalOnly);
   }
 }
 
-class RenderSlideFromLastPosition({
+class RenderPregoSlideFromLastPosition({
   required Animation<double> progress,
   required bool forward,
   required bool horizontalOnly,
@@ -40,8 +40,8 @@ class RenderSlideFromLastPosition({
   /// How far the child was from its new place when the move began.
   Offset _from = Offset.zero;
 
-  /// Where the child paints relative to its layout, so taps and semantics
-  /// follow what is on screen during the move.
+  /// Where the child paints relative to its layout, so semantics and taps
+  /// within its layout box follow what is on screen during the move.
   Offset _shift = Offset.zero;
   bool _moved = false;
 

@@ -21,7 +21,6 @@ import "../session_detail/widgets/transcript_motion.dart";
 import "new_session_header.dart";
 import "new_session_no_harness_notice.dart";
 import "new_session_plugin_chooser.dart";
-import "slide_from_last_position.dart";
 
 typedef NewSessionComposerScopeBuilder = Widget Function({required Widget child});
 typedef NewSessionCreatedCallback = void Function({required Session session});
@@ -661,7 +660,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           ? composerColumn
           // The composer's one move between the centred column and the
           // bottom edge (D8).
-          : SlideFromLastPosition(
+          : PregoSlideFromLastPosition(
               progress: _sendingMotion,
               forward: isSending,
               horizontalOnly: false,

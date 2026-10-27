@@ -248,7 +248,8 @@ variant, and worktree mode, and creating the session with its first input.
   centred project pill glides to its new place. When discovery fails or finds no harness, the harness pill's room
   leaves at once; the project pill paints from where it was and slides across over about 200 ms to rest exactly
   centred, on one line or wrapped (`new_session_screen_test`), moving with the heading as the page re-centres.
-  Reduced motion places it at once. The attach button holds its place, inert, until the harness says
+  When Retry brings the harness pill's room back, the project pill slides back to its loading place the same way.
+  Reduced motion places it at once both ways. The attach button holds its place, inert, until the harness says
   whether it takes images; only a harness that does not (Grok) folds it away. The
   "New worktree" row shimmers in the room the last project left it while a folder
   project is checked; a page's first composer gives a folder that room. "No project"
