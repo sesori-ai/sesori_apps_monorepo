@@ -2460,12 +2460,17 @@ void main() {
       }
     }
     verify(cubit.recheckHarnessAvailability).called(1);
+    // Screen readers hear a Recheck that takes no press while it checks.
+    Matcher recheckSemantics({required bool enabled}) =>
+        containsSemantics(isButton: true, hasEnabledState: true, isEnabled: enabled, hasTapAction: enabled);
+    expect(find.semantics.byLabel("Recheck").evaluate().single, recheckSemantics(enabled: false));
 
     answer.complete();
     for (var elapsed = Duration.zero; elapsed < const Duration(milliseconds: 400); elapsed += frame) {
       await tester.pump(frame);
     }
     expect(spinner, findsNothing);
+    expect(find.semantics.byLabel("Recheck").evaluate().single, recheckSemantics(enabled: true));
     expect(tester.getRect(notice), noticeRect);
     expect(tester.getRect(recheck), recheckRect);
   });

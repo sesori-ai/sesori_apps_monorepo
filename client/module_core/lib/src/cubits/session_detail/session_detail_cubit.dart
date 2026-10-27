@@ -414,9 +414,14 @@ class SessionDetailCubit(
     if (state is SessionDetailLoaded) {
       _silentRefresh(trigger: _SessionRefreshTrigger.harnessAvailable);
       // Recheck shows it is checking until this returns, so it waits for the
-      // refresh that swaps the notice for the composer. That refresh catches
-      // its own failures.
-      if (_activeRefresh case final refresh?) await refresh;
+      // refresh that swaps the notice for the composer. Joining one already in
+      // flight queued another behind it, which starts as that one completes
+      // and may be the one that applies the harness, so it waits for that one
+      // too, but no further. Refreshes catch their own failures.
+      if (_activeRefresh case final refresh?) {
+        await refresh;
+        if (_activeRefresh case final queued? when !identical(queued, refresh)) await queued;
+      }
     } else if (state is SessionDetailHarnessUnavailable || state is SessionDetailFailed) {
       await reload();
     }

@@ -270,11 +270,12 @@ variant, and worktree mode, and creating the session with its first input.
   "Recheck" pressed before the bridge is verified again rediscovers instead of loading options from it; pressed
   while the reconnect still rechecks the project, it loads the options at once. Pills still loading when the
   connection drops keep their shimmer, with no Retry, until the reconnect's answer, and the "project cannot be
-  checked" card holds still, with creation blocked, until the bridge answers its recheck. On either card, a
-  "Recheck" the bridge has not answered within about 300 ms cross-fades into a spinner in its own room (at once
-  under reduced motion), so nothing moves, and takes no press until the answer, whichever it is; a faster answer
-  never shows the spinner. When options cannot be loaded, one "Retry loading models" button stands in the pills'
-  place; a bridge that can load options only by starting the harness offers "Load models" there instead.
+  checked" card holds still, with creation blocked, until the bridge answers its recheck. On either card, when
+  the bridge has not answered the check a Recheck starts within about 300 ms, "Recheck" cross-fades into a spinner
+  in its own room (at once under reduced motion), so nothing moves, and takes no press, reading to screen readers
+  as disabled, until the answer, whichever it is; a faster answer never shows the spinner. When options cannot
+  be loaded, one "Retry loading models" button stands in the pills' place; a bridge that can load options only by
+  starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
   themselves is decided behind it. When discovery or creation fails, the error above the composer's pills opens as
   it fades in over about 200 ms, and folds as it fades out once Retry clears it. On desktop the centred heading and
@@ -593,9 +594,9 @@ startup-extension file failure, retry once the filesystem is usable.
 - A connection blip during an options load shows Retry before the reconnect answers; the "project cannot be
   checked" card gives way to the composer while its recheck runs; or "Recheck" pressed on the login card while
   the reconnect rechecks the project does nothing.
-- "Recheck" on the login or "project cannot be checked" card shows nothing while the bridge takes its time, or
-  takes a second press; its spinner flashes on a fast answer, outlives the answer (logged in, still blocked, or
-  failed), or moves the button or the card.
+- "Recheck" on the login or "project cannot be checked" card shows nothing while the bridge takes its time, takes
+  a second press, or reads to screen readers as enabled; its spinner flashes on a fast answer, outlives the
+  answer (logged in, still blocked, or failed), or moves the button or the card.
 - The error above the composer appears or clears in one frame, so the desktop heading and pills jump or the
   phone's pills shift; one error replacing another flashes; or the error animates under reduced motion.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch

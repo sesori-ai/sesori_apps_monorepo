@@ -130,37 +130,47 @@ class _RecheckButtonState() extends State<_RecheckButton> {
   Widget build(BuildContext context) {
     final checking = _phase == _RecheckPhase.checking;
     final duration = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
-    return IgnorePointer(
-      ignoring: checking,
-      child: TextButton(
-        key: const Key("session_harness_recheck"),
-        onPressed: () => unawaited(_recheck()),
-        child: Stack(
-          alignment: Alignment.center,
-          children: [
-            // The label keeps the button its size while the spinner stands in.
-            AnimatedOpacity(
-              opacity: checking ? 0 : 1,
-              duration: duration,
-              curve: transcriptMotionCurve,
-              alwaysIncludeSemantics: true,
-              child: Text(context.loc.sessionDetailRecheck),
-            ),
-            Positioned.fill(
-              child: AnimatedSwitcher(
+    // While checking, screen readers hear a disabled Recheck in the button's
+    // place. Disabling the button itself would also drop its hover highlight
+    // and keyboard focus at once.
+    return Semantics(
+      container: checking,
+      excludeSemantics: checking,
+      button: checking ? true : null,
+      enabled: checking ? false : null,
+      label: checking ? context.loc.sessionDetailRecheck : null,
+      child: IgnorePointer(
+        ignoring: checking,
+        child: TextButton(
+          key: const Key("session_harness_recheck"),
+          onPressed: () => unawaited(_recheck()),
+          child: Stack(
+            alignment: Alignment.center,
+            children: [
+              // The label keeps the button its size while the spinner stands in.
+              AnimatedOpacity(
+                opacity: checking ? 0 : 1,
                 duration: duration,
-                switchInCurve: transcriptMotionCurve,
-                switchOutCurve: transcriptMotionReverseCurve,
-                child: checking
-                    ? const SizedBox.square(
-                        key: ValueKey("session_harness_recheck_spinner"),
-                        dimension: PregoIconSize.md,
-                        child: PregoActivityIndicator(color: null),
-                      )
-                    : const SizedBox.shrink(),
+                curve: transcriptMotionCurve,
+                alwaysIncludeSemantics: true,
+                child: Text(context.loc.sessionDetailRecheck),
               ),
-            ),
-          ],
+              Positioned.fill(
+                child: AnimatedSwitcher(
+                  duration: duration,
+                  switchInCurve: transcriptMotionCurve,
+                  switchOutCurve: transcriptMotionReverseCurve,
+                  child: checking
+                      ? const SizedBox.square(
+                          key: ValueKey("session_harness_recheck_spinner"),
+                          dimension: PregoIconSize.md,
+                          child: PregoActivityIndicator(color: null),
+                        )
+                      : const SizedBox.shrink(),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );
