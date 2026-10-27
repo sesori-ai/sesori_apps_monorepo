@@ -82,8 +82,9 @@ class const ComputerMenu({
     return loc.computerMenuOfflineLastSeen(context.formatTimestamp(lastSeenAt.millisecondsSinceEpoch));
   }
 
-  /// The dot before [presenceLabel]: green online, and offline the red the
-  /// phone home's computer button gives a computer it cannot reach.
+  /// The dot before [presenceLabel]: green while the computer's bridge is
+  /// registered as active, red otherwise. Like the words, it follows the
+  /// registration, not the live connection the home's computer button shows.
   static PregoNavStatus presenceStatus({required BridgeSummary computer}) =>
       computer.status == BridgeRegistrationStatus.active ? PregoNavStatus.online : PregoNavStatus.error;
 

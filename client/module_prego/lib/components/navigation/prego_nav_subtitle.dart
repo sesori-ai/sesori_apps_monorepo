@@ -58,10 +58,14 @@ class const PregoStatusLabel({
 }) extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final TextStyle(:fontSize, :height) = DefaultTextStyle.of(context).style.merge(style);
-    if (fontSize == null || height == null) {
-      throw StateError("A status label's text style must declare font size and height.");
-    }
+    // Measured rather than computed, so a style without a height still works.
+    final line = TextPainter(
+      text: TextSpan(style: DefaultTextStyle.of(context).style.merge(style)),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    )..layout();
+    final lineHeight = line.preferredLineHeight;
+    line.dispose();
     return Row(
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -69,7 +73,7 @@ class const PregoStatusLabel({
       children: [
         // As tall as the first line, so the dot centres on it.
         SizedBox(
-          height: MediaQuery.textScalerOf(context).scale(fontSize) * height,
+          height: lineHeight,
           child: Center(child: _StatusDot(status: status)),
         ),
         Flexible(

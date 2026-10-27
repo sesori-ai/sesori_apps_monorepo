@@ -37,4 +37,36 @@ void main() {
       isA<BoxDecoration>().having((d) => d.color, "color", PregoDesignSystem.light.colors.fgErrorPrimary),
     );
   });
+
+  testWidgets("PregoStatusLabel keeps an ambient style that declares no line height", (tester) async {
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: const Scaffold(
+          body: Align(
+            alignment: AlignmentDirectional.topStart,
+            child: SizedBox(
+              width: 80,
+              child: DefaultTextStyle(
+                style: TextStyle(fontSize: 12),
+                child: PregoStatusLabel(
+                  status: PregoNavStatus.online,
+                  text: "Offline · last seen 3h ago",
+                  style: null,
+                  maxLines: null,
+                ),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final text = find.text("Offline · last seen 3h ago");
+    final dot = find.descendant(of: find.byType(PregoStatusLabel), matching: find.byType(Container));
+    final textRect = tester.getRect(text);
+    expect(textRect.height, greaterThan(24), reason: "the text wraps");
+    // Centred on the first of the wrapped lines, not the whole block.
+    expect(tester.getCenter(dot).dy, lessThan(textRect.top + 12));
+  });
 }

@@ -35,8 +35,8 @@ area documents linked below own the detail.
   listing every computer of the account, most recently seen first (from the button, the current one first),
   with platform icon, name, online or last-seen state, and a check on the current one
   ([projects and sessions](projects-and-sessions.md)). A small dot centred on the state's line leads its grey words:
-  green for "Online", and for "Offline" or "Offline · last seen …" the red the computer button shows for a computer
-  it cannot reach, in both themes. The dot is silent for screen readers, which read only the words. The Computers
+  green for "Online", and red for "Offline" or "Offline · last seen …", in the computer button's dot colours, in
+  both themes. The dot is silent for screen readers, which read only the words. The Computers
   page rows and the Settings entry lead their presence with the same dot. From the
   Settings entry and the desktop header, and from the home while the account has more than one computer, the menu
   ends in "Manage computers…" after a divider, which closes the menu and opens the Computers page; the offline
