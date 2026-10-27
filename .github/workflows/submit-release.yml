@@ -18,8 +18,8 @@ name: Submit Release
 # Bridge publish modes (production):
 #   - publish_bridge ticked (default): the GitHub release is published
 #     immediately — bridge auto-update goes live for all users right away —
-#     and this workflow dispatches bridge-npm-publish.yml to publish npm
-#     (GITHUB_TOKEN-created releases don't fire workflow-triggering events).
+#     and, because the release-tagger App creates it, `release: released`
+#     runs bridge-npm-publish.yml to publish npm.
 #   - unticked: the release is created as a PRE-RELEASE (invisible to the
 #     auto-updater); promote it manually in the GitHub UI when ready — that
 #     user action fires `release: released`, which runs bridge-npm-publish.yml.
@@ -160,7 +160,10 @@ jobs:
     if: ${{ inputs.platforms == 'both' || inputs.platforms == 'ios' }}
     needs: resolve
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # App Store Connect can take 20+ minutes to process uploaded screenshots,
+    # and deliver waits up to its default 3600 s for them, so the job must
+    # outlast that.
+    timeout-minutes: 75
     # Surface the metadata-publish decision so the `tag` job knows whether (and
     # which private-repo commit) to tag v<VERSION> after a successful submit.
     outputs:
@@ -553,13 +556,29 @@ jobs:
       (inputs.platforms == 'bridge-only' || !(needs.submit-ios.result == 'skipped' && needs.submit-android.result == 'skipped'))
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    # The tag points at the build commit. When a workflow file changed on main
+    # since that build, GitHub treats the tag push as a workflow change, which
+    # GITHUB_TOKEN can never make (v1.10.1 was refused this way). The
+    # sesori-release-tagger App token has Workflows write; its key lives only in
+    # this main-only environment.
+    environment: release-tagging
     permissions:
-      contents: write
+      contents: read
     steps:
+      - name: Get release tagger token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.RELEASE_TAGGER_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_TAGGER_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
       - uses: actions/checkout@v6
         with:
           ref: ${{ needs.resolve.outputs.commit_sha }}
           fetch-depth: 0
+          token: ${{ steps.app-token.outputs.token }}
 
       - name: Create and push tag
         id: tag
@@ -670,13 +689,14 @@ jobs:
 
   # Create the v<VERSION> GitHub release with the bridge binaries attached
   # (production only). When publish_bridge is ticked the release goes live
-  # immediately — the bridge auto-updater picks it up within minutes — and
-  # this job DISPATCHES bridge-npm-publish.yml explicitly: releases created
-  # with the default GITHUB_TOKEN do not emit workflow-triggering events
-  # (workflow_dispatch is the documented exception). When unticked, the
-  # release is created as a pre-release, invisible to the updater until
-  # manually promoted in the GitHub UI — that promotion is a user action, so
-  # the `release: released` trigger on bridge-npm-publish.yml fires normally.
+  # immediately — the bridge auto-updater picks it up within minutes. When
+  # unticked, the release is created as a pre-release, invisible to the
+  # updater until manually promoted in the GitHub UI. Either way
+  # `release: released` runs bridge-npm-publish.yml: the release-tagger App
+  # token (unlike GITHUB_TOKEN) emits workflow-triggering events.
+  #
+  # The App token is also what lets the release name a build commit whose
+  # workflow files differ from main; GITHUB_TOKEN got a 403 for v1.10.1.
   release:
     name: Create GitHub release
     needs: [resolve, submit-ios, submit-android, build-bridge, tag]
@@ -686,13 +706,23 @@ jobs:
       needs.build-bridge.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    # release-tagging only holds the App key (main-only, no reviewers). Every
+    # path already passed store-production approval upstream (store jobs for
+    # regular submits, approve-bridge-only for bridge-only) — re-declaring that
+    # one would pause the run a second time.
+    environment: release-tagging
     permissions:
-      contents: write
-      actions: write
-    # No environment gate here: every path already passed store-production
-    # approval upstream (store jobs for regular submits, approve-bridge-only
-    # for bridge-only) — re-declaring it would pause the run a second time.
+      contents: read
     steps:
+      - name: Get release tagger token
+        id: app-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.RELEASE_TAGGER_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_TAGGER_PRIVATE_KEY }}
+          permission-contents: write
+          permission-workflows: write
+
       # Deliberately NOT the resolved commit: this job needs nothing from the
       # release's tree (notes are API-driven, checksums come from artifacts,
       # the tag is already pushed) — only tool/generate_release_notes.dart,
@@ -740,6 +770,7 @@ jobs:
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
+          token: ${{ steps.app-token.outputs.token }}
           tag_name: v${{ needs.resolve.outputs.version }}
           target_commitish: ${{ needs.resolve.outputs.commit_sha }}
           name: "v${{ needs.resolve.outputs.version }} (build ${{ needs.resolve.outputs.build_number }})"
@@ -759,15 +790,6 @@ jobs:
         run: |
           python3 .github/scripts/publish_bridge_linux_signatures.py verify \
             --repository "$GITHUB_REPOSITORY" --tag "$RELEASE_TAG" --root artifacts
-
-      # Releases created with GITHUB_TOKEN don't fire the `release: released`
-      # event, so kick off npm publishing directly when the release went live.
-      - name: Trigger npm publish
-        if: ${{ inputs.publish_bridge }}
-        env:
-          GH_TOKEN: ${{ github.token }}
-          VERSION: ${{ needs.resolve.outputs.version }}
-        run: gh workflow run bridge-npm-publish.yml --repo "$GITHUB_REPOSITORY" -f tag="v${VERSION}"
 
       - name: Summary
         env:
