@@ -2980,6 +2980,103 @@ void main() {
         });
       }
 
+      for (final (outcome, rediscovery, settledAgents, settled) in [
+        (
+          "the same options come back",
+          answer(bridgeId: "bridge-1", plugins: [defaultPlugin]),
+          ["build", "plan"],
+          isA<NewSessionComposerReady>(),
+        ),
+        (
+          "the options changed",
+          answer(bridgeId: "bridge-1", plugins: [defaultPlugin]),
+          ["build", "review"],
+          isA<NewSessionComposerReady>(),
+        ),
+        (
+          "rediscovery fails",
+          ApiResponse<PluginDiscoverySnapshot>.error(ApiError.generic()),
+          ["build", "plan"],
+          isA<NewSessionComposerRetry>(),
+        ),
+      ]) {
+        test("keeps the option pills through a reconnect until $outcome", () async {
+          final pendingRediscovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+          var discoveries = 0;
+          when(mockPluginRepository.listPlugins).thenAnswer((_) {
+            discoveries++;
+            return discoveries == 1
+                ? Future.value(answer(bridgeId: "bridge-1", plugins: [defaultPlugin]))
+                : pendingRediscovery.future;
+          });
+          var agentLoads = 0;
+          when(
+            () => mockSessionService.listAgents(
+              projectId: any(named: "projectId"),
+              pluginId: any(named: "pluginId"),
+            ),
+          ).thenAnswer((_) async {
+            agentLoads++;
+            return ApiResponse.success(
+              Agents(
+                agents: [
+                  for (final name in agentLoads == 1 ? const ["build", "plan"] : settledAgents)
+                    AgentInfo(name: name, description: name, model: null, mode: AgentMode.primary),
+                ],
+              ),
+            );
+          });
+          final cubit = buildCubit();
+          addTearDown(cubit.close);
+          List<String> agentNames() => [for (final agent in cubit.state.availableAgents) agent.name];
+          Future<void> settle() async {
+            while ((cubit.state.agentModelData?.isPluginDiscoveryInFlight ?? true) ||
+                (cubit.state.agentModelData?.optionsState.isLoading ?? true)) {
+              await Future<void>.delayed(Duration.zero);
+            }
+          }
+
+          await settle();
+          expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+          final selectedAgent = cubit.state.selectedAgent;
+
+          final shown = <(NewSessionComposerPresentation, List<String>)>[];
+          final subscription = cubit.stream.listen((_) => shown.add((cubit.composerPresentation, agentNames())));
+          addTearDown(subscription.cancel);
+          connectionStatus.add(const ConnectionStatus.disconnected());
+          await Future<void>.delayed(Duration.zero);
+
+          // The pills stay, but nothing reaches the unverified bridge.
+          expect(cubit.composerPresentation, isA<NewSessionComposerReady>());
+          expect(cubit.canCreateSession, isFalse);
+          cubit.selectAgent("plan");
+          expect(cubit.state.selectedAgent, selectedAgent);
+
+          connectionStatus.add(
+            const ConnectionStatus.connected(
+              config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: null, bridgeId: null),
+              health: HealthResponse(healthy: true, version: "test", filesystemAccessDegraded: false),
+            ),
+          );
+          while (discoveries < 2) {
+            await Future<void>.delayed(Duration.zero);
+          }
+          expect(cubit.canCreateSession, isFalse);
+
+          // Neither the blip nor the rediscovery under way moves the pills.
+          expect(shown, isNotEmpty);
+          for (final (presentation, agents) in shown) {
+            expect(presentation, isA<NewSessionComposerReady>());
+            expect(agents, ["build", "plan"]);
+          }
+
+          pendingRediscovery.complete(rediscovery);
+          await settle();
+          expect(cubit.composerPresentation, settled);
+          expect(agentNames(), settledAgents);
+        });
+      }
+
       test("is LoadOnDemand for a legacy bridge whose selected plugin cannot be routed yet", () async {
         when(mockPluginRepository.listPlugins).thenAnswer(
           (_) async => ApiResponse.success(

@@ -260,7 +260,11 @@ variant, and worktree mode, and creating the session with its first input.
   harness returns, so the heading barely moves. That answer stands through a disconnect and the rediscovery after
   it: the notice holds still, the composer stays folded, and neither Retry nor the harness pill's shimmer appears
   until discovery answers otherwise, a harness (on that computer or another) opening the composer and a failed
-  rediscovery showing its error and Retry. When options cannot be loaded,
+  rediscovery showing its error and Retry. With a harness and its options on screen, a disconnect and the
+  rediscovery after it likewise hold the option pills and the "New worktree" toggle still: neither Retry nor a
+  shimmer replaces them, and the project recheck keeps the toggle in place. Until the rediscovery verifies the
+  bridge, the pills and the harness menu take no pick and Send waits; the pills then change only if its answer
+  does, and a failed rediscovery shows its error and Retry. When options cannot be loaded,
   one "Retry loading models" button stands in the pills' place; a bridge that can
   load options only by starting the harness offers "Load models" there instead.
   Whether a press repeats harness discovery, the project check, or the options
@@ -572,6 +576,9 @@ startup-extension file failure, retry once the filesystem is usable.
 - A connection blip reopens the composer folded under the no-harness notice, or brings Retry or the harness pill's
   shimmer back over it, before rediscovery answers differently; or a harness found by rediscovery, on that computer
   or another, or a failed rediscovery, leaves the notice standing.
+- A connection blip swaps the loaded option pills for Retry, or shimmers them, the harness pill or the "New worktree"
+  toggle, although rediscovery gives the same answer; the held pills take a pick or Send before rediscovery
+  verifies the bridge; or changed options leave the old pills standing, or a failed rediscovery shows no Retry.
 - The error above the composer appears or clears in one frame, so the desktop heading and pills jump or the
   phone's pills shift; one error replacing another flashes; or the error animates under reduced motion.
 - Hermes model discovery falls back solely because an empty, unpersisted scratch
