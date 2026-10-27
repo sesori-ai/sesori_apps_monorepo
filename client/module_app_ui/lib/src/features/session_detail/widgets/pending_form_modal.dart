@@ -88,9 +88,7 @@ class const PendingFormModal({
                     child: Semantics(
                       liveRegion: true,
                       child: AnimatedSwitcher(
-                        duration: MediaQuery.disableAnimationsOf(context)
-                            ? Duration.zero
-                            : const Duration(milliseconds: 180),
+                        duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 180),
                         layoutBuilder: (current, previous) =>
                             Stack(alignment: AlignmentDirectional.topStart, children: [...previous, ?current]),
                         child: Text(

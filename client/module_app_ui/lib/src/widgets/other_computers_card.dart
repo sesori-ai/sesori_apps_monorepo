@@ -30,21 +30,25 @@ class const OtherComputersCard({
   Widget build(BuildContext context) {
     final state = context.watch<ComputerSwitcherCubit>().state;
     final others = state.computers.where((computer) => computer.id != state.currentId).toList();
-    return AnimatedSize(
-      duration: context.isReducedMotion ? Duration.zero : const Duration(milliseconds: 220),
-      curve: Curves.easeInOut,
-      alignment: Alignment.topCenter,
-      child: others.isEmpty
-          ? const SizedBox(width: double.infinity)
-          : Padding(
-              padding: const EdgeInsetsDirectional.only(top: PregoSpacing.x3l),
-              child: SettingsSection(
-                title: context.loc.projectsBridgeOfflineOtherComputers,
-                child: PregoGroupedRows(
-                  children: _rows(context: context, others: others),
-                ),
+    final card = others.isEmpty
+        ? const SizedBox(width: double.infinity)
+        : Padding(
+            padding: const EdgeInsetsDirectional.only(top: PregoSpacing.x3l),
+            child: SettingsSection(
+              title: context.loc.projectsBridgeOfflineOtherComputers,
+              child: PregoGroupedRows(
+                children: _rows(context: context, others: others),
               ),
             ),
+          );
+    // Under reduced motion no wrapper at all: a zero-length AnimatedSize would
+    // re-dirty itself mid-layout.
+    if (context.isReducedMotion) return card;
+    return AnimatedSize(
+      duration: const Duration(milliseconds: 220),
+      curve: Curves.easeInOut,
+      alignment: Alignment.topCenter,
+      child: card,
     );
   }
 

@@ -13,7 +13,8 @@ class const PregoButtonTrailing({super.key, required final double gap, required 
 
   @override
   Widget build(BuildContext context) {
-    final duration = prefersReducedMotion(context) ? Duration.zero : _duration;
+    final reducedMotion = prefersReducedMotion(context);
+    final duration = reducedMotion ? Duration.zero : _duration;
     return AnimatedSwitcher(
       duration: duration,
       switchInCurve: Curves.easeOut,
@@ -30,12 +31,16 @@ class const PregoButtonTrailing({super.key, required final double gap, required 
       child: switch (child) {
         final child? => Padding(
           padding: EdgeInsetsDirectional.only(start: gap),
-          child: AnimatedSize(
-            duration: duration,
-            curve: Curves.easeOut,
-            alignment: AlignmentDirectional.centerStart,
-            child: child,
-          ),
+          // Under reduced motion no wrapper at all: a zero-length AnimatedSize
+          // would re-dirty itself mid-layout.
+          child: reducedMotion
+              ? child
+              : AnimatedSize(
+                  duration: duration,
+                  curve: Curves.easeOut,
+                  alignment: AlignmentDirectional.centerStart,
+                  child: child,
+                ),
         ),
         null => const SizedBox.shrink(),
       },
