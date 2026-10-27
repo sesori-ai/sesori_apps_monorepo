@@ -19,7 +19,7 @@ dependencies:
   flutter_svg: ^2.3.0
   go_router: ^18.1.0
   intl: any
-  liquid_glass_widgets: 1.6.2
+  liquid_glass_widgets: 1.15.1
   markdown: ^7.3.1
   material_ui: ^1.7.0
   path: any
