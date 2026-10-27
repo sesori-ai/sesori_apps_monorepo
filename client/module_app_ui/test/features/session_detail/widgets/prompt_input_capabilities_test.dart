@@ -430,6 +430,22 @@ void main() {
     });
   }
 
+  testWidgets("turning on Remove animations mid-draft keeps the input and its focus", (tester) async {
+    final command = ValueNotifier<CommandInfo?>(null);
+    addTearDown(command.dispose);
+    await _pumpCommandComposer(tester: tester, command: command, voiceCubit: null, disableAnimations: false);
+    await tester.pumpAndSettle();
+    await tester.tap(find.byType(TextField));
+    await tester.pump();
+    final editor = tester.state(find.byType(EditableText));
+
+    await _pumpCommandComposer(tester: tester, command: command, voiceCubit: null, disableAnimations: true);
+    await tester.pump();
+
+    expect(tester.state(find.byType(EditableText)), same(editor));
+    expect(tester.widget<TextField>(find.byType(TextField)).focusNode?.hasFocus, isTrue);
+  });
+
   testWidgets("unsupported voice forces a text-first composer without a VoiceInputCubit", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
     addTearDown(surfaceStyle.dispose);
