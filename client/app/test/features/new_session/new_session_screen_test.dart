@@ -1624,6 +1624,57 @@ void main() {
     expect(find.text(loc.newSessionDedicatedWorkspace), findsNothing);
   });
 
+  group("the project slides to the centre as the harness's room leaves", () {
+    final failed = ApiResponse<PluginDiscoverySnapshot>.error(
+      ApiError.nonSuccessCode(errorCode: 503, rawErrorString: null),
+    );
+    final noHarness = ApiResponse.success(
+      PluginDiscoverySnapshot(bridgeId: null, supportsSessionOptions: true, plugins: const []),
+    );
+    for (final (name, outcome, width) in [
+      ("discovery fails", failed, 800.0),
+      ("the bridge has no harness", noHarness, 800.0),
+      // Too narrow for both pills, so the shimmer waits on a line of its own.
+      ("the pills wrap and discovery fails", failed, 360.0),
+    ]) {
+      testWidgets("when $name", (tester) async {
+        tester.view.physicalSize = Size(width, 800);
+        tester.view.devicePixelRatio = 1;
+        addTearDown(tester.view.reset);
+        final discovery = Completer<ApiResponse<PluginDiscoverySnapshot>>();
+        when(pluginRepository.listPlugins).thenAnswer((_) => discovery.future);
+        final project = find.byKey(const Key("new_session_project"));
+        final harnessRoom = find.descendant(of: find.byType(NewSessionHeader), matching: find.byType(PregoShimmer));
+        double projectX() => tester.getCenter(project).dx;
+
+        await tester.pumpWidget(_buildApp());
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(harnessRoom, findsOneWidget);
+        final centre = tester.getCenter(find.byType(NewSessionHeader)).dx;
+        final wrapped = tester.getRect(harnessRoom).top > tester.getRect(project).bottom;
+        expect(wrapped, width < 800);
+        final loading = projectX();
+        // Beside the room the pair is centred; alone on its line it is.
+        expect(loading, wrapped ? moreOrLessEquals(centre) : lessThan(centre - 50));
+
+        discovery.complete(outcome);
+        // Frames with no time passing, until the room is gone.
+        for (var frame = 0; frame < 10 && harnessRoom.evaluate().isNotEmpty; frame++) {
+          await tester.pump();
+        }
+        expect(harnessRoom, findsNothing);
+
+        // The first frame without the room paints the project where it was,
+        // and the rest of the motion carries it to the centre.
+        expect(projectX(), moreOrLessEquals(loading));
+        await tester.pump(const Duration(milliseconds: 100));
+        if (!wrapped) expect(projectX(), allOf(greaterThan(loading + 10), lessThan(centre - 1)));
+        await tester.pumpAndSettle();
+        expect(projectX(), moreOrLessEquals(centre));
+      });
+    }
+  });
+
   testWidgets("opens harness settings from the empty harness notice", (tester) async {
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
