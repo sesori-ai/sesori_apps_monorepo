@@ -1,3 +1,6 @@
+import "dart:async";
+
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -34,7 +37,7 @@ void main() {
     expect(cubit.state.update, isA<DesktopUpdateManagedBySystem>());
     expect(cubit.state.automaticUpdates, DesktopAutomaticUpdates.enabled);
 
-    states.add(const DesktopUpdateReady(version: "1.8.5"));
+    states.add(const DesktopUpdateReady(version: "1.8.5", internalBuildNumber: null));
     automaticUpdates.add(DesktopAutomaticUpdates.disabled);
     await pumpEventQueue();
 
@@ -52,10 +55,36 @@ void main() {
     verify(() => service.setAutomaticUpdates(preference: DesktopAutomaticUpdates.disabled)).called(1);
   });
 
-  test("Check for updates runs the service's single check", () {
-    when(() => service.check()).thenAnswer((_) async {});
-    cubit.checkForUpdates();
-    verify(() => service.check()).called(1);
+  test("Check for updates shows the check running, then up to date for a few seconds", () {
+    fakeAsync((async) {
+      final Completer<bool> check = Completer<bool>();
+      when(() => service.check()).thenAnswer((_) => check.future);
+
+      unawaited(cubit.checkForUpdates());
+      unawaited(cubit.checkForUpdates());
+      expect(cubit.state.check, DesktopUpdateCheckStatus.checking);
+      verify(() => service.check()).called(1);
+
+      check.complete(true);
+      async.flushMicrotasks();
+      expect(cubit.state.check, DesktopUpdateCheckStatus.upToDate);
+
+      async.elapse(DesktopUpdateCubit.checkResultDuration);
+      expect(cubit.state.check, DesktopUpdateCheckStatus.idle);
+    });
+  });
+
+  test("a failed check says so, and a found update needs no message", () async {
+    when(() => service.check()).thenAnswer((_) async => false);
+    await cubit.checkForUpdates();
+    expect(cubit.state.check, DesktopUpdateCheckStatus.failed);
+
+    when(() => service.check()).thenAnswer((_) async {
+      states.add(const DesktopUpdateReady(version: "1.8.5", internalBuildNumber: null));
+      return true;
+    });
+    await cubit.checkForUpdates();
+    expect(cubit.state.check, DesktopUpdateCheckStatus.idle);
   });
 }
 

@@ -112,6 +112,7 @@ class BridgeControlCubit._create({
   StreamSubscription<DesktopLogoutStatus>? _logoutSubscription;
   StreamSubscription<void>? _focusRequestSubscription;
   StreamSubscription<DesktopUpdateState>? _updateSubscription;
+  StreamSubscription<void>? _restartRequestSubscription;
   SystemTrayAvailability _trayAvailability = SystemTrayAvailability.initializing;
   BridgeControlActivity _activity = BridgeControlActivity.idle;
   DesktopLogoutStatus _logoutStatus = DesktopLogoutStatus.idle;
@@ -131,6 +132,11 @@ class BridgeControlCubit._create({
     _logoutSubscription = _logoutTracker.statuses.listen(_onLogoutStatus);
     _focusRequestSubscription = _instanceService.focusRequests.listen((_) => unawaited(showWindow()));
     _updateSubscription = _updateService.states.listen((_) => _rebuildMenu());
+    _restartRequestSubscription = _updateService.restartRequests.listen((_) {
+      if (!_controlsLocked) {
+        unawaited(restartToUpdate());
+      }
+    });
 
     await _loadLaunchAtLoginState();
     if (!isClosed) {
@@ -547,6 +553,7 @@ class BridgeControlCubit._create({
   @override
   Future<void> close() async {
     await _updateSubscription?.cancel();
+    await _restartRequestSubscription?.cancel();
     await _focusRequestSubscription?.cancel();
     await _logoutSubscription?.cancel();
     await _windowSubscription?.cancel();

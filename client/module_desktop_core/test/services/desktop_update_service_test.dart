@@ -25,7 +25,7 @@ void main() {
   late _MockDesktopUpdateFeedValidator feedValidator;
   late _MockVelopackUpdateApi velopackApi;
   late _MockSparkleUpdateEngine sparkleEngine;
-  late StreamController<String> sparkleDownloads;
+  late StreamController<SparkleDownloadedUpdate> sparkleDownloads;
 
   setUp(() {
     bundleSource = _FakeInstalledDesktopBundleSource(
@@ -44,9 +44,9 @@ void main() {
     feedValidator = _MockDesktopUpdateFeedValidator();
     velopackApi = _MockVelopackUpdateApi();
     sparkleEngine = _MockSparkleUpdateEngine();
-    sparkleDownloads = StreamController<String>.broadcast(sync: true);
+    sparkleDownloads = StreamController<SparkleDownloadedUpdate>.broadcast(sync: true);
     addTearDown(sparkleDownloads.close);
-    when(() => sparkleEngine.downloadedVersions).thenAnswer((_) => sparkleDownloads.stream);
+    when(() => sparkleEngine.downloadedUpdates).thenAnswer((_) => sparkleDownloads.stream);
   });
 
   DesktopUpdateService service() => DesktopUpdateService(
@@ -190,6 +190,7 @@ void main() {
         () => sparkleEngine.start(
           feedUri: any(named: "feedUri"),
           automaticChecks: any(named: "automaticChecks"),
+          showsBuildNumber: any(named: "showsBuildNumber"),
         ),
       ).thenAnswer((_) async {});
       when(() => sparkleEngine.setAutomaticChecks(enabled: any(named: "enabled"))).thenAnswer((_) async {});
@@ -205,7 +206,7 @@ void main() {
       await updates.start();
 
       verify(() => feedApi.appcastUri(identity: macBuild)).called(1);
-      verify(() => sparkleEngine.start(feedUri: appcast, automaticChecks: false)).called(1);
+      verify(() => sparkleEngine.start(feedUri: appcast, automaticChecks: false, showsBuildNumber: true)).called(1);
       expect(updates.currentState, isA<DesktopUpdateIdle>());
     });
 
@@ -233,9 +234,14 @@ void main() {
       addTearDown(updates.dispose);
       await updates.start();
 
-      sparkleDownloads.add("1.8.5");
+      sparkleDownloads.add(const SparkleDownloadedUpdate(version: "1.8.5", buildNumber: 25));
 
-      expect(updates.currentState, isA<DesktopUpdateReady>().having((state) => state.version, "version", "1.8.5"));
+      expect(
+        updates.currentState,
+        isA<DesktopUpdateReady>()
+            .having((state) => state.version, "version", "1.8.5")
+            .having((state) => state.internalBuildNumber, "internalBuildNumber", 25),
+      );
     });
 
     test("a failed start stays idle", () async {
@@ -243,6 +249,7 @@ void main() {
         () => sparkleEngine.start(
           feedUri: any(named: "feedUri"),
           automaticChecks: any(named: "automaticChecks"),
+          showsBuildNumber: any(named: "showsBuildNumber"),
         ),
       ).thenThrow(StateError("updater failed to start"));
       final updates = service();
@@ -260,7 +267,7 @@ void main() {
       await updates.applyDownloadedUpdate(restart: true);
       verifyNever(() => sparkleEngine.installAndRelaunch());
 
-      sparkleDownloads.add("1.8.5");
+      sparkleDownloads.add(const SparkleDownloadedUpdate(version: "1.8.5", buildNumber: 25));
       await updates.applyDownloadedUpdate(restart: false);
       verifyNever(() => sparkleEngine.installAndRelaunch());
       await updates.applyDownloadedUpdate(restart: true);
@@ -308,15 +315,47 @@ void main() {
       ]);
     });
 
-    test("a package Velopack already downloaded is Ready without fetching", () async {
+    test("a waiting package stays Ready without a second download while the feed names it", () async {
       when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.5");
       final updates = service();
       addTearDown(updates.dispose);
 
       await updates.check();
 
-      expect(updates.currentState, isA<DesktopUpdateReady>());
-      verifyNever(() => feedApi.fetchFeed(identity: any(named: "identity")));
+      expect(updates.currentState, isA<DesktopUpdateReady>().having((state) => state.version, "version", "1.8.5"));
+      verify(() => feedApi.fetchFeed(identity: _windowsBuild)).called(1);
+      verifyNever(() => velopackApi.downloadStagedRelease());
+    });
+
+    test("a build published while one waits replaces it", () async {
+      when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.4");
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.check();
+
+      expect(updates.currentState, isA<DesktopUpdateReady>().having((state) => state.version, "version", "1.8.5"));
+      verify(() => velopackApi.downloadStagedRelease()).called(1);
+    });
+
+    test("an internal package splits its SemVer into the version and build", () async {
+      bundleSource = _FakeInstalledDesktopBundleSource(
+        compiledIdentity: _windowsBuild,
+        isAppImage: false,
+        channel: DesktopReleaseChannel.internal,
+      );
+      when(() => velopackApi.downloadStagedRelease()).thenAnswer((_) async => "1.10.0-internal.1066");
+      final updates = service();
+      addTearDown(updates.dispose);
+
+      await updates.check();
+
+      expect(
+        updates.currentState,
+        isA<DesktopUpdateReady>()
+            .having((state) => state.version, "version", "1.10.0")
+            .having((state) => state.internalBuildNumber, "internalBuildNumber", 1066),
+      );
     });
 
     test("a feed with nothing newer stays idle and downloads nothing", () async {
@@ -335,7 +374,7 @@ void main() {
       final updates = service();
       addTearDown(updates.dispose);
 
-      await updates.check();
+      expect(await updates.check(), isFalse);
 
       expect(updates.currentState, isA<DesktopUpdateIdle>());
       verifyNever(() => velopackApi.stageFeed(feed: any(named: "feed")));
@@ -347,8 +386,8 @@ void main() {
       final updates = service();
       addTearDown(updates.dispose);
 
-      final Future<void> first = updates.check();
-      final Future<void> second = updates.check();
+      final Future<bool> first = updates.check();
+      final Future<bool> second = updates.check();
       feed.complete(_feed);
       await Future.wait([first, second]);
 
@@ -368,6 +407,9 @@ void main() {
         channel: DesktopReleaseChannel.stable,
       );
       when(() => velopackApi.readPendingVersion()).thenAnswer((_) async => "1.8.5");
+      when(() => feedApi.fetchFeed(identity: any(named: "identity"))).thenAnswer((_) async => _feed);
+      when(() => feedValidator.verify(feed: any(named: "feed"))).thenAnswer((_) async {});
+      when(() => velopackApi.stageFeed(feed: any(named: "feed"))).thenAnswer((_) async => null);
       final updates = service();
       addTearDown(updates.dispose);
       await updates.check();

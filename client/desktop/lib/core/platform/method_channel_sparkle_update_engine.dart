@@ -15,17 +15,24 @@ class MethodChannelSparkleUpdateEngine.forTesting({required final MethodChannel 
   @visibleForTesting
   this;
 
-  final StreamController<String> _downloads = StreamController<String>.broadcast(sync: true);
+  final StreamController<SparkleDownloadedUpdate> _downloads = StreamController<SparkleDownloadedUpdate>.broadcast(
+    sync: true,
+  );
+  final StreamController<void> _restartRequests = StreamController<void>.broadcast(sync: true);
 
   @override
-  Stream<String> get downloadedVersions => _downloads.stream;
+  Stream<SparkleDownloadedUpdate> get downloadedUpdates => _downloads.stream;
 
   @override
-  Future<void> start({required Uri feedUri, required bool automaticChecks}) {
+  Stream<void> get restartRequests => _restartRequests.stream;
+
+  @override
+  Future<void> start({required Uri feedUri, required bool automaticChecks, required bool showsBuildNumber}) {
     _channel.setMethodCallHandler(_onRunnerCall);
     return _channel.invokeMethod<void>("start", <String, Object>{
       "feedUrl": feedUri.toString(),
       "automaticChecks": automaticChecks,
+      "showsBuildNumber": showsBuildNumber,
     });
   }
 
@@ -41,8 +48,13 @@ class MethodChannelSparkleUpdateEngine.forTesting({required final MethodChannel 
 
   Future<void> _onRunnerCall(MethodCall call) async {
     switch (call) {
-      case MethodCall(method: "updateDownloaded", arguments: final String version):
-        _downloads.add(version);
+      case MethodCall(
+        method: "updateDownloaded",
+        arguments: {"version": final String version, "build": final String build},
+      ):
+        _downloads.add(SparkleDownloadedUpdate(version: version, buildNumber: int.parse(build)));
+      case MethodCall(method: "restartRequested"):
+        _restartRequests.add(null);
       default:
         throw MissingPluginException();
     }

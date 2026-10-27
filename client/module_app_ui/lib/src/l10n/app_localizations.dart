@@ -451,6 +451,30 @@ abstract class AppLocalizations {
   /// **'Sesori downloads verified updates in the background and installs them when you quit or restart to update.'**
   String get desktopUpdatesCheckDescription;
 
+  /// Replaces the Check for updates description while a check runs.
+  ///
+  /// In en, this message translates to:
+  /// **'Checking for updates…'**
+  String get desktopUpdatesChecking;
+
+  /// Shown for a few seconds after a check finds no newer version.
+  ///
+  /// In en, this message translates to:
+  /// **'You\'re up to date'**
+  String get desktopUpdatesUpToDate;
+
+  /// Shown for a few seconds after a check fails, for example offline.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn\'t check for updates. Try again later.'**
+  String get desktopUpdatesCheckFailed;
+
+  /// An internal build's version; internal builds share the product version, so the build number tells them apart.
+  ///
+  /// In en, this message translates to:
+  /// **'{version} (build {build})'**
+  String desktopUpdatesInternalBuildVersion(String version, int build);
+
   /// Linux package installs receive updates from the system package manager.
   ///
   /// In en, this message translates to:

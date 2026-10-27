@@ -203,6 +203,20 @@ class AppLocalizationsEn extends AppLocalizations {
       'Sesori downloads verified updates in the background and installs them when you quit or restart to update.';
 
   @override
+  String get desktopUpdatesChecking => 'Checking for updates…';
+
+  @override
+  String get desktopUpdatesUpToDate => 'You\'re up to date';
+
+  @override
+  String get desktopUpdatesCheckFailed => 'Couldn\'t check for updates. Try again later.';
+
+  @override
+  String desktopUpdatesInternalBuildVersion(String version, int build) {
+    return '$version (build $build)';
+  }
+
+  @override
   String get desktopUpdatesCheckPackageDescription =>
       'Your system\'s software updater installs new versions from Sesori\'s signed repository.';
 
