@@ -786,6 +786,38 @@ void main() {
       expect(paintedOpacity(tester, searchField), 1);
     });
 
+    for (final (name, initial, shown) in [
+      ("the empty state", empty, find.text("Nothing here")),
+      (
+        "Retry rows",
+        state(query: "", failures: const [failure], rows: const [], scratchProjectId: null),
+        failureRow,
+      ),
+    ]) {
+      testWidgets("a load that replaces $name fades it into the skeleton as the search field opens", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(tester, initial: initial, updates: updates.stream);
+        // A Retry row fades in as it first shows.
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(searchField, findsNothing);
+
+        updates.add(loading);
+        await tester.pump(Duration.zero);
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(shown, findsOneWidget);
+        expect(paintedOpacity(tester, shown), inExclusiveRange(0, 1));
+        expect(find.text("Retry").hitTestable(), findsNothing);
+        expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
+        expect(paintedOpacity(tester, searchField), inExclusiveRange(0, 1));
+
+        await tester.pump(const Duration(milliseconds: 150));
+        expect(shown, findsNothing);
+        expect(skeletonOpacity(tester), 1);
+        expect(paintedOpacity(tester, searchField), 1);
+      });
+    }
+
     group("layout across every frame", () {
       const header = SizedBox(key: Key("header"), height: 36, child: Text("All projects"));
       final headerBox = find.byKey(const Key("header"));
@@ -916,6 +948,71 @@ void main() {
         // The rows stay where they are as they fade out, gone once they have.
         expect(rowTops.take(40), everyElement(rowTop));
         expect(rowTops.last, isNull);
+      });
+
+      testWidgets("a load that replaces a scrolled list glides it to the top as the rows fade", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(
+          tester,
+          initial: loaded(mode: AllSessionsMode.active, titles: [for (var i = 0; i < 20; i++) "Session $i"]),
+          updates: updates.stream,
+          mode: AllSessionsMode.active,
+          header: header,
+        );
+        final headerTop = tester.getTopLeft(headerBox).dy;
+        final position = tester
+            .state<ScrollableState>(
+              find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first,
+            )
+            .position;
+        position.jumpTo(100);
+        await tester.pump();
+
+        final [headerTops, skeletonTops] = await topsAcross(
+          tester,
+          updates: updates,
+          update: loading,
+          finders: [headerBox, skeleton],
+        );
+        final skeletonTop = tester.getTopLeft(skeleton).dy;
+        for (final tops in [headerTops, skeletonTops]) {
+          expect(steps(tops), everyElement(inInclusiveRange(0, maxStep)));
+        }
+        // From the fade's end, 200 ms after the update's frame, both rest.
+        expect(headerTops.skip(41), everyElement(moreOrLessEquals(headerTop, epsilon: 0.5)));
+        expect(skeletonTops.skip(41), everyElement(moreOrLessEquals(skeletonTop, epsilon: 0.5)));
+        expect(position.pixels, 0);
+      });
+
+      testWidgets("a load that replaces the empty state opens the search field and chips smoothly", (tester) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        final skeletonTop = await pumpLoading(
+          tester,
+          updates: updates.stream,
+          mode: AllSessionsMode.active,
+          header: header,
+        );
+        final headerTop = tester.getTopLeft(headerBox).dy;
+        updates.add(empty);
+        await tester.pump();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.getTopLeft(headerBox).dy, 0);
+
+        final [headerTops, skeletonTops, emptyTops] = await topsAcross(
+          tester,
+          updates: updates,
+          update: loading,
+          finders: [headerBox, skeleton, find.text("Nothing here")],
+        );
+        for (final tops in [headerTops, skeletonTops, emptyTops]) {
+          expect(steps(tops), everyElement(inInclusiveRange(0, maxStep)));
+        }
+        expect(headerTops.last, headerTop);
+        expect(skeletonTops.last, skeletonTop);
+        expect(emptyTops.last, isNull);
       });
 
       testWidgets("counts that wrap the chips onto another line ease the room open", (tester) async {

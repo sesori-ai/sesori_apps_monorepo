@@ -286,7 +286,7 @@ state.
   that ends before they show just fades them in). The header, search field and Retry rows never move, with one
   exception: a load that ends with no sessions and no query folds the search field and chips away as the empty
   state fades in. Reduced motion swaps them at once, and a later refresh, search or filter never repeats a fade on
-  what is already shown. A load that replaces rows on screen, as a computer switch's, runs the hand-off backwards,
+  what is already shown. A load that replaces what the list shows, as a computer switch's, runs the hand-off backwards,
   leaving nothing blank ([multi-computer](multi-computer.md)).
 - From 700 pt the home is a fixed-width sidebar beside a content pane, and below 700 pt each page is its own page
   over the home. As on desktop, the sidebar is a floating panel (rounded, with a hairline edge and a shadow, and no

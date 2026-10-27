@@ -21,10 +21,12 @@ area documents linked below own the detail.
   records the pick and retargets the connection, so no deeper screen ever has its computer change underneath it. The
   previous computer's socket is detached first, its late answers are dropped, and its bridge-scoped caches reset. The
   home's project filter returns to All projects. The list is never blank: under the new name, the previous
-  computer's rows, Retry rows and chips stay where they are, fading out without taking taps, as the loading skeleton
-  fades in over them at once (without the delay a first load waits) from where it then stands; the new computer's
-  content then fades in from the skeleton as a first load's does, and a load that ends sooner lets the old rows finish
-  fading first. Reduced motion cuts straight to the skeleton. Each switch reports `computer_switched` with its
+  computer's rows, Retry rows, chips or empty state stay where they are, fading out without taking taps, as the
+  loading skeleton fades in over them at once (without the delay a first load waits) from where it then stands. A
+  list scrolled down glides back to the top as they fade, and one that showed no sessions opens its search field and
+  chips' room as a load ending with none folds it. The new computer's content then fades in from the skeleton as a
+  first load's does, and a load that ends sooner lets the old content finish fading first. Reduced motion cuts
+  straight to the skeleton. Each switch reports `computer_switched` with its
   `source` (`menu`, `offline_screen`, `settings`, `computers_page`, `alert`, `notification`) and whether the target
   was online, never a name or id
   ([analytics](analytics.md)). Picking the current computer in a menu only closes the menu.
@@ -125,8 +127,9 @@ and another while a phone works on the local bridge.
 - A switch leaving the previous computer's projects, sessions, activity, project filter or a pushed page on
   screen once the skeleton has faded in, the header keeping the old name, or a late answer from the previous computer
   repopulating the new one.
-- A blank session list between computers, or the previous rows, chips or search field vanishing, moving or staying
-  tappable instead of fading into the skeleton, or the skeleton flashing brighter as the new rows arrive.
+- A blank session list between computers, the previous rows, Retry rows, chips, search field or empty state
+  vanishing, jumping or staying tappable instead of fading into the skeleton, a scrolled list snapping to the top as
+  the fade ends, or the skeleton flashing brighter as the new rows arrive.
 - A bridge with a different id displacing another, a same-id restart reading as offline to the other apps, or the
   app jumping to another computer on its own.
 - The menu, offline card, Settings entry or desktop header disagreeing about which computer is current or whether

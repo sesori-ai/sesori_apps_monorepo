@@ -165,10 +165,10 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   /// The hand-off from the loading skeleton to the first rows or the empty
   /// state: they fade in where the skeleton stood while it fades itself out
   /// over them, and the room no sessions take folds away. It runs backwards
-  /// as a load replaces the rows on screen, such as a computer switch's: they
-  /// stay where they are, fading out, as the skeleton fades in over them from
-  /// where it will stand. Complete at rest, so later updates show as they
-  /// always do.
+  /// as a load replaces what the list shows, such as a computer switch's: it
+  /// stays, fading out, as the skeleton fades in over it from where it will
+  /// stand and the folded room opens. Complete at rest, so later updates show
+  /// as they always do.
   late final AnimationController _handOff = AnimationController(
     vsync: this,
     duration: transcriptMotionDuration,
@@ -186,14 +186,15 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
   /// their own instead of moving in among the rows a load replaced.
   int _contentFades = 0;
 
-  /// The list as it last showed rows, kept through a load that replaces them.
+  /// What the list last showed when not loading, kept through a load that
+  /// replaces it.
   AllSessionsState? _lastShown;
 
-  /// Whether the rows a load replaces still show, fading out.
+  /// Whether what a load replaces still shows, fading out.
   bool get _replacing => _handOff.status == AnimationStatus.reverse;
 
   /// A skeleton waits before it shows, so a fast load never flashes it, but
-  /// not over rows it replaces: they leave nothing blank to hide.
+  /// not over what it replaces, which leaves nothing blank to hide.
   Duration get _skeletonAppearDelay => _lastShown == null ? PregoShimmer.defaultAppearDelay : Duration.zero;
 
   /// The failed project listed last above the loading skeleton: it leaves
@@ -274,6 +275,16 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
       // skeleton they leave.
       if (!_replacing) _fadeContentIn();
     } else if (!_wasLoading && currentlyLoading && _lastShown != null && !context.isReducedMotion) {
+      // The rows glide to the top as they fade, where the skeleton they
+      // leave stands with nothing to scroll.
+      final position = Scrollable.maybeOf(context)?.position;
+      if (position != null && position.pixels > 0) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          if (mounted) {
+            unawaited(position.animateTo(0, duration: transcriptMotionDuration, curve: transcriptMotionCurve));
+          }
+        });
+      }
       unawaited(
         _handOff.reverse().then((_) {
           if (!mounted) return;
@@ -291,7 +302,7 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
     if (currentlyLoading) _skeletonUnderFailureId = current.failures.lastOrNull?.project.id;
     final state = (_replacing ? _lastShown : null) ?? current;
     final entries = identical(state, current) ? currentEntries : entriesOf(state);
-    if (!currentlyLoading && !_replacing) _lastShown = entries.isEmpty ? null : current;
+    if (!currentlyLoading && !_replacing) _lastShown = current;
     final searching = state.query.trim().isNotEmpty;
     // A launching row counts, so the search field and chips are already in
     // place when a first session takes its row.
@@ -532,12 +543,15 @@ class _SessionsState() extends State<_Sessions> with SingleTickerProviderStateMi
               },
               itemBuilder: (_, index, entry) => switch (entry) {
                 SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
-                SessionListItemEntry(item: _LaunchItem(:final launch)) => _launchRowSettling(
-                  context: context,
-                  launching: true,
-                  child: Padding(
-                    padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? endPadding : 0),
-                    child: PendingSessionLaunchTile(launch: launch),
+                SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
+                  ignoring: _replacing,
+                  child: _launchRowSettling(
+                    context: context,
+                    launching: true,
+                    child: Padding(
+                      padding: EdgeInsetsDirectional.only(bottom: index == entries.length - 1 ? endPadding : 0),
+                      child: PendingSessionLaunchTile(launch: launch),
+                    ),
                   ),
                 ),
                 SessionListItemEntry(item: _SessionItem(:final row)) => _sessionRow(
