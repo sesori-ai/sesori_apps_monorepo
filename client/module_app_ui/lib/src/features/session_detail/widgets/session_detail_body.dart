@@ -56,6 +56,40 @@ class const SessionDetailPageChrome({
   required final SessionDetailColumnWidths columnWidths,
 });
 
+/// What a header action is drawn with, which decides how it comes and goes.
+enum SessionDetailActionSurface() {
+  /// Liquid glass materializes: a fading layer would pop its backdrop.
+  glass,
+
+  /// Anything else fades.
+  plain,
+}
+
+/// A header action present only while [child] is non-null, such as Prompts on
+/// a loaded session. It arrives and leaves with the transcript, in its time,
+/// rather than popping as the page changes state; at once under reduced motion.
+class const SessionDetailActionSwitcher({
+  super.key,
+  required final SessionDetailActionSurface surface,
+  required final Widget? child,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => AnimatedSwitcher(
+    duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+    switchInCurve: transcriptMotionCurve,
+    switchOutCurve: transcriptMotionReverseCurve,
+    transitionBuilder: switch (surface) {
+      SessionDetailActionSurface.glass => (child, animation) => GlassMaterializeTransition(
+        animation: animation,
+        scaleFrom: 1,
+        child: child,
+      ),
+      SessionDetailActionSurface.plain => (child, animation) => FadeTransition(opacity: animation, child: child),
+    },
+    child: child,
+  );
+}
+
 class const SessionDetailBody({
   super.key,
   required final String projectId,
@@ -166,10 +200,6 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// How many times the unavailable notice has given way, which keys the
   /// content so each replacement fades in.
   int _shellHandoffs = 0;
-
-  /// Keeps the content's cross-fade running when the arriving state lays its
-  /// sliver out another way, which builds a different sliver around it.
-  final _contentSwitcherKey = GlobalKey();
 
   /// The Prompts screen while it is up: the prompts as they were when it
   /// opened or an older page last landed, so other transcript changes
@@ -498,29 +528,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // Whatever replaces the unavailable notice, a load or a failure,
     // cross-fades with it. Every other change updates the content in place.
     // The leaving notice holds still, so its Recheck keeps the spinner rather
-    // than turning back as it fades, and it fills the box the arriving content
-    // sets: only that content sizes the slot, whose sliver already lays out
-    // for the arriving state.
+    // than turning back as it fades.
     final content = AnimatedSwitcher(
-      key: _contentSwitcherKey,
       duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
       switchInCurve: transcriptMotionCurve,
       switchOutCurve: transcriptMotionReverseCurve,
       layoutBuilder: (current, previous) => Stack(
         fit: StackFit.passthrough,
         children: [
-          for (final child in previous)
-            Positioned.fill(
-              key: child.key,
-              child: TickerMode(enabled: false, child: child),
-            ),
-          // A Positioned without edges stays unpositioned; it is the leaving
-          // children's widget so the content keeps its state as it leaves.
-          if (current != null)
-            Positioned(
-              key: current.key,
-              child: TickerMode(enabled: true, child: current),
-            ),
+          for (final child in previous) TickerMode(key: child.key, enabled: false, child: child),
+          if (current != null) TickerMode(key: current.key, enabled: true, child: current),
         ],
       ),
       child: KeyedSubtree(
@@ -784,12 +801,8 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     // made by whoever first asks this cubit for its state.
     final changesSummary = openDiffs == null ? null : context.watch<DiffSummaryCubit>().state;
     final actions = <Widget>[
-      // Prompts arrives and leaves with the transcript, in its time. A fading
-      // layer would pop the glass, so the glass materializes instead.
-      AnimatedSwitcher(
-        duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
-        transitionBuilder: (child, animation) =>
-            GlassMaterializeTransition(animation: animation, scaleFrom: 1, child: child),
+      SessionDetailActionSwitcher(
+        surface: SessionDetailActionSurface.glass,
         child: openPrompts == null
             ? null
             : Builder(
@@ -803,35 +816,39 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       ),
       // Shells restrict mutating menu entries to their valid session owners;
       // read-only entries can also inspect a child session.
-      if (session != null && (openDiffs != null || menuEntriesBuilder != null || canConfigureContinuation))
-        PregoAnchorMenu(
-          flat: true,
-          menuWidth: 240,
-          acquireOpenLease: null,
-          entriesBuilder: () => [
-            if (openDiffs != null)
-              PregoMenuItem(
-                key: const Key("session-detail-changes"),
-                leadingIcon: TablerRegular.git_compare,
-                title: loc.sessionChangesLabel,
-                subtitle: null,
-                isSelected: false,
-                shortcutLabel: null,
-                trailing: changesSummary == null
-                    ? null
-                    : sessionChangesCounts(state: changesSummary, style: context.prego.textTheme.textSm.medium),
-                onTap: openDiffs,
+      SessionDetailActionSwitcher(
+        surface: SessionDetailActionSurface.glass,
+        child: session == null || (openDiffs == null && menuEntriesBuilder == null && !canConfigureContinuation)
+            ? null
+            : PregoAnchorMenu(
+                flat: true,
+                menuWidth: 240,
+                acquireOpenLease: null,
+                entriesBuilder: () => [
+                  if (openDiffs != null)
+                    PregoMenuItem(
+                      key: const Key("session-detail-changes"),
+                      leadingIcon: TablerRegular.git_compare,
+                      title: loc.sessionChangesLabel,
+                      subtitle: null,
+                      isSelected: false,
+                      shortcutLabel: null,
+                      trailing: changesSummary == null
+                          ? null
+                          : sessionChangesCounts(state: changesSummary, style: context.prego.textTheme.textSm.medium),
+                      onTap: openDiffs,
+                    ),
+                  if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
+                  if (menuEntriesBuilder != null) ...menuEntriesBuilder(context: context, session: session),
+                ],
+                triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
+                  key: const Key("session-detail-more"),
+                  icon: TablerRegular.dots,
+                  semanticLabel: loc.sessionDetailMoreActions,
+                  onPressed: openMenu,
+                ),
               ),
-            if (canConfigureContinuation) sessionAutoContinuationMenuEntry(context: context, session: session),
-            if (menuEntriesBuilder != null) ...menuEntriesBuilder(context: context, session: session),
-          ],
-          triggerBuilder: (context, openMenu) => PregoButtonsIconGlass(
-            key: const Key("session-detail-more"),
-            icon: TablerRegular.dots,
-            semanticLabel: loc.sessionDetailMoreActions,
-            onPressed: openMenu,
-          ),
-        ),
+      ),
     ];
     return PregoGlassScaffold(
       title: title,
@@ -870,18 +887,16 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
         SliverFillRemaining(
           hasScrollBody: switch (state) {
             SessionDetailLoading(launchHandoff: _?) => true,
-            SessionDetailLoaded() || SessionDetailHarnessUnavailable() => true,
+            // The notice and the error view scroll within the viewport, so
+            // large text never runs them past a page that does not scroll.
+            SessionDetailLoaded() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => true,
             // Queued messages sit below the status, which then fills the rest.
-            SessionDetailLoading(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) ||
-            SessionDetailFailed(
-              :final awaitingBridgeSubmissions,
-              :final launchFollowUps,
-              :final queuedMessages,
-            ) => _owesMessages(
-              awaitingBridgeSubmissions: awaitingBridgeSubmissions,
-              launchFollowUps: launchFollowUps,
-              queuedMessages: queuedMessages,
-            ),
+            SessionDetailLoading(:final awaitingBridgeSubmissions, :final launchFollowUps, :final queuedMessages) =>
+              _owesMessages(
+                awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+                launchFollowUps: launchFollowUps,
+                queuedMessages: queuedMessages,
+              ),
           },
           child: content,
         ),
@@ -964,26 +979,20 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       ) =>
         _withOwedMessages(
           context: context,
-          status: Center(
-            child: PregoTopBarInsetBuilder(
-              builder: (context, topInset, child) => Padding(
-                padding: EdgeInsetsDirectional.only(top: topInset),
-                child: SingleChildScrollView(child: child),
-              ),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  if (!widget.readOnly && session.time?.archived == null)
-                    SessionAutoContinuationNotice(
-                      view: session.autoContinuation,
-                      updating: state.autoContinuationUpdatePending,
-                      canInteract: interaction.canInteract,
-                      onEnabledChanged: (enabled) =>
-                          unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
-                    ),
-                  _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
-                ],
-              ),
+          status: _scrollingStatus(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                if (!widget.readOnly && session.time?.archived == null)
+                  SessionAutoContinuationNotice(
+                    view: session.autoContinuation,
+                    updating: state.autoContinuationUpdatePending,
+                    canInteract: interaction.canInteract,
+                    onEnabledChanged: (enabled) =>
+                        unawaited(context.read<SessionDetailCubit>().setAutoContinuation(enabled: enabled)),
+                  ),
+                _buildHarnessNotice(interaction: interaction, historyUnavailable: true),
+              ],
             ),
           ),
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
@@ -1000,7 +1009,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
       ) =>
         _withOwedMessages(
           context: context,
-          status: SessionDetailErrorView(reason: reason, onRetry: () => context.read<SessionDetailCubit>().reload()),
+          status: _scrollingStatus(
+            child: SessionDetailErrorView(reason: reason, onRetry: () => context.read<SessionDetailCubit>().reload()),
+          ),
           awaitingBridgeSubmissions: awaitingBridgeSubmissions,
           launchFollowUps: launchFollowUps,
           queuedMessages: queuedMessages,
@@ -1015,6 +1026,17 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required List<LaunchFollowUp> launchFollowUps,
     required List<QueuedSessionSubmission> queuedMessages,
   }) => awaitingBridgeSubmissions.isNotEmpty || launchFollowUps.isNotEmpty || queuedMessages.isNotEmpty;
+
+  /// A status centred below the bar that scrolls once it outgrows its room.
+  static Widget _scrollingStatus({required Widget child}) => Center(
+    child: PregoTopBarInsetBuilder(
+      builder: (context, topInset, child) => Padding(
+        padding: EdgeInsetsDirectional.only(top: topInset),
+        child: SingleChildScrollView(child: child),
+      ),
+      child: child,
+    ),
+  );
 
   /// A first load that failed, found the harness blocked, or is loading again,
   /// with [status] above the messages still owed. They keep the launch view's

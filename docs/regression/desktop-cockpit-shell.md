@@ -173,7 +173,7 @@ The main pane hosts one full-width routed page.
   page when it was opened from there). A root session's title stands alone. The amber awaiting glyph leads
   the title when a question or permission waits; a running session instead leads it with the turning
   sparkle, still under reduced motion. The title itself never shimmers. No harness or model line sits under the title. The Changes button shows
-  on a root unarchived session; and a menu with
+  on a root unarchived session, fading in with the transcript and out when it leaves; and a menu with
   Mark as unread labelled with its shortcut, Rename, Archive, Archive keeping the worktree when the
   session has one, and Delete, the last four run by the same dispatcher as a row's menu. Session actions
   stay disabled until the page has the hydrated session, and work for child sessions and sessions opened

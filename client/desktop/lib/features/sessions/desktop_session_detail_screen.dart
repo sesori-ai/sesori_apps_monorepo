@@ -233,27 +233,35 @@ class const DesktopSessionDetailView({
       title: title,
       subtitle: null,
       actions: [
-        if (onShowDiffs != null)
-          BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
-            builder: (context, summary) => PregoButtonsSolid(
-              key: const Key("desktop-session-page-changes"),
-              label: loc.sessionChangesLabel,
-              leadingIcon: TablerRegular.git_compare,
-              labelTrailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: PregoButtonsSolidSize.sm,
-              onPressed: onShowDiffs,
-            ),
-          ),
-        if (onShowPrompts != null)
-          Builder(
-            builder: (buttonContext) => IconButton(
-              key: const Key("desktop-session-page-prompts"),
-              tooltip: loc.transcriptPrompts,
-              onPressed: () => onShowPrompts(origin: buttonContext.globalCentre),
-              icon: const Icon(TablerRegular.list_details, size: PregoIconSize.md),
-            ),
-          ),
+        SessionDetailActionSwitcher(
+          surface: SessionDetailActionSurface.plain,
+          child: onShowDiffs == null
+              ? null
+              : BlocBuilder<DiffSummaryCubit, DiffSummaryState>(
+                  builder: (context, summary) => PregoButtonsSolid(
+                    key: const Key("desktop-session-page-changes"),
+                    label: loc.sessionChangesLabel,
+                    leadingIcon: TablerRegular.git_compare,
+                    labelTrailing: sessionChangesCounts(state: summary, style: context.prego.textTheme.textSm.medium),
+                    hierarchy: PregoButtonsSolidHierarchy.secondary,
+                    size: PregoButtonsSolidSize.sm,
+                    onPressed: onShowDiffs,
+                  ),
+                ),
+        ),
+        SessionDetailActionSwitcher(
+          surface: SessionDetailActionSurface.plain,
+          child: onShowPrompts == null
+              ? null
+              : Builder(
+                  builder: (buttonContext) => IconButton(
+                    key: const Key("desktop-session-page-prompts"),
+                    tooltip: loc.transcriptPrompts,
+                    onPressed: () => onShowPrompts(origin: buttonContext.globalCentre),
+                    icon: const Icon(TablerRegular.list_details, size: PregoIconSize.md),
+                  ),
+                ),
+        ),
         PregoAnchorMenu(
           flat: true,
           menuWidth: 220,

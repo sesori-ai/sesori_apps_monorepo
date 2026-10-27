@@ -2586,6 +2586,26 @@ void main() {
       return noticeRect;
     }
 
+    /// The materialize progress of [button]'s glass, frame by frame, until it
+    /// has had time to settle or has left.
+    Future<List<double>> materializing({required WidgetTester tester, required Finder button}) async {
+      final progress = <double>[];
+      for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
+        await tester.pump(frame);
+        if (button.evaluate().isEmpty) break;
+        final transition = find.ancestor(of: button, matching: find.byType(GlassMaterializeTransition));
+        progress.add(tester.widget<GlassMaterializeTransition>(transition).animation.value);
+      }
+      return progress;
+    }
+
+    void expectGradual({required List<double> progress, required bool arriving}) {
+      expect(progress.where((value) => value > 0 && value < 1), hasLength(greaterThanOrEqualTo(10)));
+      for (var i = 1; i < progress.length; i++) {
+        expect(progress[i], arriving ? greaterThanOrEqualTo(progress[i - 1]) : lessThanOrEqualTo(progress[i - 1]));
+      }
+    }
+
     testWidgets("cross-fades the notice into the transcript once it loads", (tester) async {
       final states = StreamController<SessionDetailState>();
       addTearDown(states.close);
@@ -2689,9 +2709,8 @@ void main() {
           errorRect ??= tester.getRect(error);
           expect(tester.getRect(error), errorRect);
           if (notice.evaluate().isEmpty) break;
-          // Neither does the leaving notice, unless the error view overflows
-          // the page, which then grows past the screen by as much.
-          if (!enlarged) expect(tester.getRect(notice), noticeRect);
+          // Neither does the leaving notice.
+          expect(tester.getRect(notice), noticeRect);
           expect(find.byKey(const ValueKey("session_harness_recheck_spinner")), findsOneWidget);
           fades.add((
             notice: opacityOf(tester: tester, finder: notice),
@@ -2731,38 +2750,68 @@ void main() {
           await tester.pump(const Duration(seconds: 1));
           final prompts = find.byKey(const Key("session-detail-prompts"));
           expect(prompts, findsNothing);
-          Future<List<double>> materializing() async {
-            final progress = <double>[];
-            for (var elapsed = Duration.zero; elapsed <= const Duration(milliseconds: 320); elapsed += frame) {
-              await tester.pump(frame);
-              if (prompts.evaluate().isEmpty) break;
-              final transition = find.ancestor(of: prompts, matching: find.byType(GlassMaterializeTransition));
-              progress.add(tester.widget<GlassMaterializeTransition>(transition).animation.value);
-            }
-            return progress;
-          }
 
           states.add(
             _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
           );
-          final arriving = await materializing();
+          final arriving = await materializing(tester: tester, button: prompts);
           expect(arriving.last, 1);
-          expect(arriving.where((value) => value > 0 && value < 1), hasLength(greaterThanOrEqualTo(10)));
-          for (var i = 1; i < arriving.length; i++) {
-            expect(arriving[i], greaterThanOrEqualTo(arriving[i - 1]));
-          }
+          expectGradual(progress: arriving, arriving: true);
 
           states.add(shell());
-          final leaving = await materializing();
+          final leaving = await materializing(tester: tester, button: prompts);
           expect(prompts, findsNothing);
-          expect(leaving.where((value) => value > 0 && value < 1), hasLength(greaterThanOrEqualTo(10)));
-          for (var i = 1; i < leaving.length; i++) {
-            expect(leaving[i], lessThanOrEqualTo(leaving[i - 1]));
-          }
+          expectGradual(progress: leaving, arriving: false);
           expect(tester.takeException(), isNull);
         },
       );
     }
+
+    testWidgets("the menu leaves with the notice when its reload fails and returns with the transcript", (
+      tester,
+    ) async {
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      final answer = Completer<void>();
+      await pressRecheck(tester: tester, states: states.stream, answer: answer);
+      final menu = find.byKey(const Key("session-detail-more"));
+      expect(menu, findsOneWidget);
+
+      states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
+      answer.complete();
+      final leaving = await materializing(tester: tester, button: menu);
+      expect(menu, findsNothing);
+      expectGradual(progress: leaving, arriving: false);
+
+      states.add(
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: [testMessageWithParts()]),
+      );
+      final arriving = await materializing(tester: tester, button: menu);
+      expect(arriving.last, 1);
+      expectGradual(progress: arriving, arriving: true);
+      expect(tester.takeException(), isNull);
+    });
+
+    testWidgets("the error view scrolls under enlarged text instead of running past the page", (tester) async {
+      tester.view.physicalSize = const Size(320, 480);
+      tester.view.devicePixelRatio = 1;
+      tester.platformDispatcher.textScaleFactorTestValue = 2;
+      addTearDown(tester.view.reset);
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      whenListen(
+        cubit,
+        const Stream<SessionDetailState>.empty(),
+        initialState: const SessionDetailState.failed(reason: RemoteFailureReason.unknown),
+      );
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pumpAndSettle();
+      final error = find.byType(SessionDetailErrorView);
+
+      await tester.drag(error, const Offset(0, -480));
+      await tester.pumpAndSettle();
+      expect(tester.getRect(error).bottom, lessThanOrEqualTo(480));
+      expect(tester.takeException(), isNull);
+    });
   });
 
   for (final hasHistory in [false, true]) {
