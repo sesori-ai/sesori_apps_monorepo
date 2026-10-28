@@ -1,7 +1,6 @@
 import "dart:convert";
 
 import "package:bloc_test/bloc_test.dart";
-import "package:flutter/gestures.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:markdown/markdown.dart" as md;
@@ -10,6 +9,7 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_preview_screen.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_reference_code_syntax.dart";
+import "package:sesori_app_ui/src/widgets/chat_link.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -126,9 +126,9 @@ void main() {
         ),
       ),
     );
-    final span = _spanWithText(tester, "lib/main.dart:2");
-    expect(span?.recognizer, isA<TapGestureRecognizer>());
-    (span?.recognizer as TapGestureRecognizer?)?.onTap?.call();
+    final link = find.byType(ChatLink);
+    expect(tester.widget<ChatLink>(link).presentation.label, "main.dart (line 2)");
+    await tester.tap(link);
     await tester.pumpAndSettle();
 
     expect(find.byType(FilePreviewScreen), findsOneWidget);

@@ -40,13 +40,17 @@ final _separator = RegExp(r"[\\/]");
 /// Characters that never appear in a path a message means to point at.
 final _excluded = RegExp(r"""[\s*?<>|"'`~]""");
 
-typedef _Recognized = ({String path, int? line});
+/// A path as written in a message, before it is resolved, with its line.
+typedef RecognizedFilePath = ({String path, int? line});
+
+/// The last segment of a recognised [path], split on either separator.
+String recognizedFileName({required String path}) => path.split(_separator).last;
 
 /// Recognises [raw] as a path to a file: a local `file://` URI, an absolute
 /// POSIX or Windows path, or a relative path, each containing a separator and
 /// ending in a file extension, with an optional `:line` or `:line:col` suffix.
 /// Returns `null` for anything else, including URLs with any other scheme.
-_Recognized? _recognize({required String raw}) {
+RecognizedFilePath? recognizeFilePath({required String raw}) {
   var text = raw.trim();
   final isUri = text.toLowerCase().startsWith("file://");
   if (isUri) {
@@ -63,7 +67,7 @@ _Recognized? _recognize({required String raw}) {
   final encoded = match.group(1);
   if (encoded == null || !encoded.contains(_separator) || _excluded.hasMatch(encoded)) return null;
   final path = isUri ? Uri.decodeComponent(encoded) : encoded;
-  if (!_extension.hasMatch(path.split(_separator).last)) return null;
+  if (!_extension.hasMatch(recognizedFileName(path: path))) return null;
   final lineText = match.group(2);
   final line = lineText == null ? null : int.tryParse(lineText);
   return (path: path, line: line == null || line < 1 ? null : line);
@@ -74,13 +78,13 @@ p.Context _pathContextFor({required String path}) => _windowsDrive.hasMatch(path
 
 /// Whether [raw] reads as a reference to a file, before it is resolved
 /// against a session's directory.
-bool looksLikeFileReference({required String raw}) => _recognize(raw: raw) != null;
+bool looksLikeFileReference({required String raw}) => recognizeFilePath(raw: raw) != null;
 
 /// Parses [raw] as a [FileReference], resolving a relative path against
 /// [sessionDirectory], with the path semantics of that directory's host.
 /// Returns `null` when [raw] is not a file reference.
 FileReference? parseFileReference({required String raw, required String sessionDirectory}) {
-  final recognized = _recognize(raw: raw);
+  final recognized = recognizeFilePath(raw: raw);
   if (recognized == null) return null;
   final path = recognized.path;
   final context = _pathContextFor(path: sessionDirectory);

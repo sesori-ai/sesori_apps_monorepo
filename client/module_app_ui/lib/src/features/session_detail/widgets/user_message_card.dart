@@ -100,6 +100,7 @@ class const UserMessageBubbleContent({
   @override
   Widget build(BuildContext context) {
     final markdown = this.markdown;
+    final onTapLink = buildSessionDetailMarkdownLinkTapHandler(context: context);
     return Column(
       crossAxisAlignment: .end,
       mainAxisSize: MainAxisSize.min,
@@ -111,7 +112,7 @@ class const UserMessageBubbleContent({
               data: markdown,
               selectable: false,
               softLineBreak: true,
-              onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
+              onTapLink: onTapLink,
               imageBuilder: (uri, title, alt) =>
                   buildUserPromptMarkdownImage(context: context, uri: uri, semanticLabel: alt),
               styleSheet: buildChatMessageMarkdownStyleSheet(prego: context.prego),
@@ -120,6 +121,7 @@ class const UserMessageBubbleContent({
               builders: buildSessionMarkdownBuilders(
                 highlightEnabled: true,
                 copyTooltip: context.loc.sessionDetailCopy,
+                onTapLink: onTapLink,
               ),
             ),
           ),

@@ -41,6 +41,18 @@ default app; otherwise it shows a read-only preview.
   tappable. Other inline code stays plain. A local `file://` URI (no host or
   `localhost`, percent-escapes decoded) or any other non-web link href is
   treated the same way; web and `mailto` links keep opening in the browser.
+- Every chat link is one inline unit in the brand link colour, with no
+  underline, that dims while pressed:
+  - A file reference shows a type badge for common languages (dart, js, jsx,
+    ts, tsx, py, rs, go, swift, kt, java, md, json, yaml/yml, sh) or a plain
+    file icon, then the file name and " (line N)" when it has a line.
+  - A bare GitHub URL shows the GitHub mark and "<repo> PR #n",
+    "<repo> #n" or "<repo> @<short sha>"; any other bare URL shows a globe and
+    its host. Labels are built locally, with nothing fetched.
+  - A web link with its own text keeps that text, led by the GitHub mark or a
+    globe. Other links, such as `mailto`, keep their text with no icon.
+  - A desktop hover shows the full target, and copying a selection that
+    touches a link copies its full URL or path, never the short label.
 - A relative path resolves against the session's directory, with Windows path
   rules when that directory is on a drive.
 - When the active bridge runs on this computer, the file opens in the system's
@@ -73,6 +85,8 @@ default app; otherwise it shows a read-only preview.
 - A `500` without a bridge log line naming the path.
 - Ordinary inline code such as `foo()` or `v1.2` becomes tappable, or a web
   link inside inline code stops opening in the browser.
+- A link shows the wrong icon or label, or copying it yields the short label
+  instead of the full URL or path.
 - The transcript jumps or scrolls when a preview opens or closes.
 - A remote bridge's path is opened on this computer instead of previewed.
 
@@ -90,4 +104,7 @@ default app; otherwise it shows a read-only preview.
 - `client/module_core/lib/src/cubits/file_preview/file_preview_cubit.dart`
 - `client/module_app_ui/lib/src/features/session_detail/file_preview/`
 - `client/module_app_ui/lib/src/features/session_detail/session_detail_markdown_link_handler.dart`
+- `client/module_core/lib/src/foundation/models/chat_link/chat_link_presentation.dart`
+- `client/module_app_ui/lib/src/widgets/chat_link.dart`
+- `client/module_app_ui/test/widgets/chat_link_test.dart`
 - `client/module_app_ui/test/features/session_detail/file_preview/file_preview_screen_test.dart`
