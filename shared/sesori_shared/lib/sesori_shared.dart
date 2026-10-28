@@ -45,6 +45,7 @@ export "src/models/sesori/create_session_request.dart";
 export "src/models/sesori/delete_session_request.dart";
 export "src/models/sesori/device_platform.dart";
 export "src/models/sesori/file_diff.dart";
+export "src/models/sesori/file_preview.dart";
 export "src/models/sesori/filesystem_suggestion.dart";
 export "src/models/sesori/form_field.dart";
 export "src/models/sesori/form_value.dart";

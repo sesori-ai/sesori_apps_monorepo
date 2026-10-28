@@ -148,6 +148,7 @@ import "routing/post_mcp_entry_action_handler.dart";
 import "routing/post_mcp_inventory_handler.dart";
 import "routing/post_plugin_lifecycle_command_handler.dart";
 import "routing/post_session_options_handler.dart";
+import "routing/read_file_preview_handler.dart";
 import "routing/reject_question_handler.dart";
 import "routing/rename_project_handler.dart";
 import "routing/rename_session_handler.dart";
@@ -760,6 +761,7 @@ class Orchestrator({
         GetBaseBranchHandler(projectRepository: projectRepository),
         SetBaseBranchHandler(projectRepository: projectRepository),
         FilesystemSuggestionsHandler(filesystemRepository: filesystemRepository),
+        ReadFilePreviewHandler(filesystemRepository: filesystemRepository),
         CreateDirectoryHandler(filesystemRepository: filesystemRepository),
         StartCatalogImportHandler(service: catalogImportService),
         CancelCatalogImportHandler(service: catalogImportService),

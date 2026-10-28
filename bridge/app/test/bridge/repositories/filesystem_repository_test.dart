@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:convert";
 import "dart:io";
 
 import "package:fake_async/fake_async.dart";
@@ -7,6 +8,7 @@ import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/foundation/filesystem_permission_validator.dart";
 import "package:sesori_bridge/src/repositories/filesystem_repository.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
+import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 import "../../helpers/fake_process_runner.dart";
@@ -286,6 +288,213 @@ void main() {
       );
     });
   });
+
+  group("FilesystemRepository.readPreviewFile", () {
+    late Directory tempDir;
+    late FilesystemRepository repository;
+
+    setUp(() {
+      tempDir = Directory.systemTemp.createTempSync("fs_preview_test_");
+      repository = FilesystemRepository(
+        filesystemApi: const FilesystemApi(),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+    });
+
+    tearDown(() {
+      if (tempDir.existsSync()) tempDir.deleteSync(recursive: true);
+    });
+
+    FilePreviewResponse preview(String name) => repository.readPreviewFile(absolutePath: "${tempDir.path}/$name");
+
+    test("returns UTF-8 text", () {
+      File("${tempDir.path}/notes.md").writeAsStringSync("# Héllo\n");
+
+      expect(preview("notes.md"), const FilePreviewResponse.text(content: "# Héllo\n"));
+    });
+
+    test("returns text at exactly the cap and refuses one byte more", () {
+      File("${tempDir.path}/fits.txt").writeAsBytesSync(List.filled(maxFilePreviewTextBytes, 0x61));
+      File("${tempDir.path}/over.txt").writeAsBytesSync(List.filled(maxFilePreviewTextBytes + 1, 0x61));
+
+      expect(preview("fits.txt"), isA<FilePreviewText>());
+      expect(preview("over.txt"), const FilePreviewResponse.tooLarge());
+    });
+
+    test("returns a known image as base64 with its MIME type", () {
+      final bytes = [0x89, 0x50, 0x4E, 0x47, 0x00, 0x01];
+      File("${tempDir.path}/shot.PNG").writeAsBytesSync(bytes);
+
+      expect(
+        preview("shot.PNG"),
+        FilePreviewResponse.image(mime: "image/png", base64: base64Encode(bytes), byteLength: bytes.length),
+      );
+    });
+
+    test("refuses an image over the transcript image cap", () {
+      final oversizedRepository = FilesystemRepository(
+        filesystemApi: _PrefixFilesystemApi(bytes: List.filled(maxTranscriptImageBytes + 1, 0), error: null),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(oversizedRepository.readPreviewFile(absolutePath: "/big.jpg"), const FilePreviewResponse.tooLarge());
+    });
+
+    test("reports a missing file", () {
+      expect(preview("absent.txt"), const FilePreviewResponse.missing());
+    });
+
+    test("reports a file in a missing folder as missing", () {
+      final windowsRepository = FilesystemRepository(
+        filesystemApi: _LookupFilesystemApi(
+          type: FileSystemEntityType.notFound,
+          resolveError: const PathNotFoundException(
+            r"C:\absent\a.txt",
+            OSError("The system cannot find the path specified.", 3),
+          ),
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(preview("absent-folder/a.txt"), const FilePreviewResponse.missing());
+      expect(windowsRepository.readPreviewFile(absolutePath: r"C:\absent\a.txt"), const FilePreviewResponse.missing());
+    });
+
+    test("reports a link whose target is missing as missing", () {
+      Link("${tempDir.path}/dangling.txt").createSync("${tempDir.path}/absent.txt");
+
+      expect(preview("dangling.txt"), const FilePreviewResponse.missing());
+    });
+
+    test("refuses other binary extensions, NUL bytes, invalid UTF-8 and directories", () {
+      File("${tempDir.path}/archive.zip").writeAsStringSync("plain");
+      File("${tempDir.path}/nul.txt").writeAsBytesSync([0x61, 0x00, 0x62]);
+      File("${tempDir.path}/latin1.txt").writeAsBytesSync([0x61, 0xE9, 0x62]);
+      Directory("${tempDir.path}/folder").createSync();
+      Link("${tempDir.path}/folder-link").createSync("${tempDir.path}/folder");
+
+      for (final name in ["archive.zip", "nul.txt", "latin1.txt", "folder", "folder-link"]) {
+        expect(preview(name), const FilePreviewResponse.unsupported(), reason: name);
+      }
+    });
+
+    test("follows a link to a file outside its folder", () {
+      final outside = Directory.systemTemp.createTempSync("fs_preview_outside_");
+      addTearDown(() => outside.deleteSync(recursive: true));
+      File("${outside.path}/target.txt").writeAsStringSync("linked");
+      Link("${tempDir.path}/link.txt").createSync("${outside.path}/target.txt");
+
+      expect(preview("link.txt"), const FilePreviewResponse.text(content: "linked"));
+    });
+
+    test("reports a permission denial as denied", () {
+      final deniedRepository = FilesystemRepository(
+        filesystemApi: _PrefixFilesystemApi(
+          bytes: const [],
+          error: const FileSystemException("denied", "/secret.txt", OSError("Permission denied", 13)),
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(deniedRepository.readPreviewFile(absolutePath: "/secret.txt"), const FilePreviewResponse.denied());
+    });
+
+    test("reports a denied lookup as denied rather than missing", () {
+      final deniedRepository = FilesystemRepository(
+        filesystemApi: _LookupFilesystemApi(
+          type: FileSystemEntityType.notFound,
+          resolveError: const FileSystemException("denied", "/locked/a.txt", OSError("Permission denied", 13)),
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(deniedRepository.readPreviewFile(absolutePath: "/locked/a.txt"), const FilePreviewResponse.denied());
+    });
+
+    test("refuses pipes and sockets without opening them", () {
+      for (final type in [FileSystemEntityType.pipe, FileSystemEntityType.unixDomainSock]) {
+        final repository = FilesystemRepository(
+          filesystemApi: _LookupFilesystemApi(type: type, resolveError: null),
+          permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
+        );
+
+        expect(repository.readPreviewFile(absolutePath: "/run/a.txt"), const FilePreviewResponse.unsupported());
+      }
+    });
+
+    test(
+      "never opens a FIFO, a link to one, or a device",
+      () {
+        Process.runSync("mkfifo", ["${tempDir.path}/queue.txt"]);
+        Link("${tempDir.path}/queue-link.txt").createSync("${tempDir.path}/queue.txt");
+
+        expect(preview("queue.txt"), const FilePreviewResponse.unsupported());
+        expect(preview("queue-link.txt"), const FilePreviewResponse.unsupported());
+        expect(repository.readPreviewFile(absolutePath: "/dev/null"), isNot(isA<FilePreviewText>()));
+      },
+      testOn: "!windows",
+    );
+
+    test("rethrows other filesystem failures", () {
+      final failingRepository = FilesystemRepository(
+        filesystemApi: _PrefixFilesystemApi(
+          bytes: const [],
+          error: const FileSystemException("read failed", "/broken.txt", OSError("Input/output error", 5)),
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(
+        () => failingRepository.readPreviewFile(absolutePath: "/broken.txt"),
+        throwsA(isA<FileSystemException>()),
+      );
+    });
+  });
+}
+
+/// Fake that reports a plain file and returns [bytes] or throws [error] when read.
+class _PrefixFilesystemApi({required final List<int> bytes, required final FileSystemException? error})
+    implements FilesystemApi {
+  @override
+  FileSystemEntityType entityType(String path) => FileSystemEntityType.file;
+
+  @override
+  List<int> readFilePrefix({required String path, required int maxBytes}) {
+    final failure = error;
+    if (failure != null) throw failure;
+    return bytes;
+  }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Fake that reports [type] for every path, throws [resolveError] when
+/// resolving, and fails the test if anything is opened.
+class _LookupFilesystemApi({required final FileSystemEntityType type, required final FileSystemException? resolveError})
+    implements FilesystemApi {
+  @override
+  FileSystemEntityType entityType(String path) => type;
+
+  @override
+  String resolveFilePath(String path) {
+    final failure = resolveError;
+    if (failure != null) throw failure;
+    return path;
+  }
+
+  @override
+  List<int> readFilePrefix({required String path, required int maxBytes}) => fail("opened $path");
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
 /// Fake that reports the directory exists but raises an EACCES on listing.

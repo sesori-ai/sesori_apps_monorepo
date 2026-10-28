@@ -4,7 +4,13 @@ import "dart:io";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show resolveUserHomeDirectory;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
-import "package:sesori_shared/sesori_shared.dart" show FilesystemSuggestion, FilesystemSuggestions;
+import "package:sesori_shared/sesori_shared.dart"
+    show
+        FilePreviewResponse,
+        FilesystemSuggestion,
+        FilesystemSuggestions,
+        maxFilePreviewTextBytes,
+        maxTranscriptImageBytes;
 
 import "../api/drive_roots_api.dart";
 import "../api/filesystem_api.dart";
@@ -102,6 +108,14 @@ class FilesystemRepository({
     "db",
   };
 
+  /// Image extensions a file preview returns as an image, with their MIME types.
+  static const _previewImageMimeTypes = <String, String>{
+    "png": "image/png",
+    "jpg": "image/jpeg",
+    "jpeg": "image/jpeg",
+    "gif": "image/gif",
+    "webp": "image/webp",
+  };
 
   bool directoryExists({required String path}) {
     return _guard(path: path, () => _filesystemApi.directoryExists(path));
@@ -158,8 +172,61 @@ class FilesystemRepository({
   }
 
   bool isKnownBinaryFile({required String relativePath}) {
-    final extension = p.extension(relativePath).toLowerCase();
-    return extension.isNotEmpty && _binaryExtensions.contains(extension.substring(1));
+    return _binaryExtensions.contains(_extensionOf(path: relativePath));
+  }
+
+  /// The lowercase extension of [path] without its dot, or null without one.
+  String? _extensionOf({required String path}) {
+    final extension = p.extension(path).toLowerCase();
+    return extension.isEmpty ? null : extension.substring(1);
+  }
+
+  /// A read-only preview of the file at [absolutePath], following links: its
+  /// text up to [maxFilePreviewTextBytes], or a known image up to
+  /// [maxTranscriptImageBytes].
+  ///
+  /// Rethrows a [FileSystemException] that is neither a permission denial nor
+  /// a missing file.
+  FilePreviewResponse readPreviewFile({required String absolutePath}) {
+    try {
+      var entityType = _filesystemApi.entityType(absolutePath);
+      // Resolving follows a link to its target. A failed lookup also reports
+      // notFound, so resolving surfaces its real cause, such as a denied
+      // parent folder, as a FileSystemException. Neither opens the file.
+      if (entityType == FileSystemEntityType.link || entityType == FileSystemEntityType.notFound) {
+        entityType = _filesystemApi.entityType(_filesystemApi.resolveFilePath(absolutePath));
+      }
+      if (entityType == FileSystemEntityType.notFound) return const FilePreviewResponse.missing();
+      // Only a regular file is opened: reading a pipe, socket or device could
+      // block the bridge.
+      if (entityType != FileSystemEntityType.file) return const FilePreviewResponse.unsupported();
+
+      final extension = _extensionOf(path: absolutePath);
+      final imageMime = _previewImageMimeTypes[extension];
+      if (imageMime != null) {
+        final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxTranscriptImageBytes);
+        if (bytes.length > maxTranscriptImageBytes) return const FilePreviewResponse.tooLarge();
+        return FilePreviewResponse.image(mime: imageMime, base64: base64Encode(bytes), byteLength: bytes.length);
+      }
+      if (_binaryExtensions.contains(extension)) return const FilePreviewResponse.unsupported();
+
+      final bytes = _filesystemApi.readFilePrefix(path: absolutePath, maxBytes: maxFilePreviewTextBytes);
+      if (bytes.length > maxFilePreviewTextBytes) return const FilePreviewResponse.tooLarge();
+      if (bytes.contains(0)) return const FilePreviewResponse.unsupported();
+      try {
+        return FilePreviewResponse.text(content: utf8.decode(bytes));
+      } on FormatException {
+        return const FilePreviewResponse.unsupported();
+      }
+    } on FileSystemException catch (error) {
+      if (_permissionValidator.isPermissionDenied(error)) return const FilePreviewResponse.denied();
+      // Dart raises PathNotFoundException for Windows' missing-folder error
+      // (code 3), which isFileMissing does not recognise.
+      if (error is PathNotFoundException || _permissionValidator.isFileMissing(error)) {
+        return const FilePreviewResponse.missing();
+      }
+      rethrow;
+    }
   }
 
   BoundedTextFileReadResult readBoundedTextFile({
