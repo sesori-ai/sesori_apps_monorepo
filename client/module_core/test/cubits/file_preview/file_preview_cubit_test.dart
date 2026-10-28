@@ -48,7 +48,8 @@ void main() {
     ])
       FilePreviewContentUnavailable(reason: reason): reason,
     const FilePreviewBridgeTooOld(): FilePreviewUnavailableReason.bridgeTooOld,
-    FilePreviewFailed(innerError: ApiError.generic(), stackTrace: null): FilePreviewUnavailableReason.failed,
+    FilePreviewFailed(innerError: ApiError.generic(), stackTrace: StackTrace.empty):
+        FilePreviewUnavailableReason.failed,
   };
   for (final MapEntry(key: result, value: reason) in unavailable.entries) {
     test("explains ${reason.name}", () async {

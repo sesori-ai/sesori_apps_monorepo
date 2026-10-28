@@ -15,8 +15,6 @@ import "../../../widgets/markdown_styles.dart";
 import "../session_detail_presentation_scope.dart";
 import "../widgets/image_attachment_viewer.dart";
 
-typedef FilePreviewCubitFactory = FilePreviewCubit Function({required FileReference reference});
-
 const _openDuration = Duration(milliseconds: 320);
 const _closeDuration = Duration(milliseconds: 240);
 const _contentDuration = Duration(milliseconds: 200);
@@ -25,6 +23,11 @@ const _headerHeight = 52.0;
 /// Text up to this many characters is syntax highlighted; larger files show
 /// as plain text so opening them stays quick.
 const _maxHighlightedLength = 200 * 1024;
+
+const _maxDecodedImageDimension = 2048;
+
+/// Text with only these characters is as wide as its length in digits.
+final _nonAscii = RegExp(r"[^\x00-\x7F]");
 
 /// Slides [reference]'s preview up over the session. Its cubit comes from the
 /// session's [SessionDetailPresentationScope] and lives as long as the route.
@@ -149,7 +152,14 @@ class _FilePreviewScreenState() extends State<FilePreviewScreen> {
     FilePreviewShowsImage(:final bytes, :final mime) => _ImagePreview(
       image: LoadedMessageImage(
         bytes: bytes,
-        provider: MemoryImage(bytes),
+        // Bounded like the chat's attachment viewer, so a huge image cannot
+        // exhaust memory when decoded.
+        provider: ResizeImage(
+          MemoryImage(bytes),
+          width: _maxDecodedImageDimension,
+          height: _maxDecodedImageDimension,
+          policy: ResizeImagePolicy.fit,
+        ),
         mime: mime,
         actionFilename: widget.reference.fileName,
         originalUri: null,
@@ -256,20 +266,39 @@ class const _CodePreview({
 
 class _CodePreviewState() extends State<_CodePreview> {
   ScrollController? _controller;
-  (Brightness, TextStyle)? _linesKey;
-  List<TextSpan> _lines = const [];
+  (Brightness, TextStyle, TextScaler)? _linesKey;
+  ({List<TextSpan> lines, double widest}) _laidOut = (lines: const [], widest: 0);
 
-  List<TextSpan> _linesFor({required Brightness brightness, required TextStyle style}) {
-    final key = (brightness, style);
-    if (key == _linesKey) return _lines;
+  /// The highlighted lines and the width of the widest one.
+  ({List<TextSpan> lines, double widest}) _layOut({
+    required Brightness brightness,
+    required TextStyle style,
+    required TextScaler textScaler,
+    required double charWidth,
+  }) {
+    final key = (brightness, style, textScaler);
+    if (key == _linesKey) return _laidOut;
     _linesKey = key;
     final code = widget.content.replaceAll("\t", "    ");
     final highlighted = code.length > _maxHighlightedLength
         ? null
         : CodeHighlighter.highlight(code: code, language: widget.language, brightness: brightness, baseStyle: style);
-    return _lines = highlighted == null
+    final lines = highlighted == null
         ? [for (final text in code.split("\n")) TextSpan(text: text, style: style)]
         : splitSpanIntoLines(span: highlighted);
+    var widest = 0.0;
+    for (final line in lines) {
+      final text = line.toPlainText();
+      // Wide and fallback-font glyphs only show their width when laid out.
+      if (!_nonAscii.hasMatch(text)) {
+        widest = math.max(widest, text.length * charWidth);
+        continue;
+      }
+      final painter = TextPainter(text: line, textDirection: TextDirection.ltr, textScaler: textScaler)..layout();
+      widest = math.max(widest, painter.width.ceilToDouble());
+      painter.dispose();
+    }
+    return _laidOut = (lines: lines, widest: widest);
   }
 
   @override
@@ -282,7 +311,6 @@ class _CodePreviewState() extends State<_CodePreview> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final style = prego.textTheme.code.copyWith(color: prego.colors.textPrimary);
-    final lines = _linesFor(brightness: Theme.of(context).brightness, style: style);
     final textScaler = MediaQuery.textScalerOf(context);
     final glyph = TextPainter(
       text: TextSpan(text: "0", style: style),
@@ -292,8 +320,13 @@ class _CodePreviewState() extends State<_CodePreview> {
     final rowHeight = glyph.height;
     final charWidth = glyph.width;
     glyph.dispose();
+    final (:lines, :widest) = _layOut(
+      brightness: Theme.of(context).brightness,
+      style: style,
+      textScaler: textScaler,
+      charWidth: charWidth,
+    );
     final gutterWidth = "${lines.length}".length * charWidth;
-    final longest = lines.fold<int>(0, (longest, line) => math.max(longest, line.toPlainText().length));
     const gap = PregoSpacing.md;
     const horizontalPadding = PregoSpacing.md;
     final targetIndex = switch (widget.line) {
@@ -316,7 +349,7 @@ class _CodePreviewState() extends State<_CodePreview> {
         // whole text scrolls sideways together.
         final contentWidth = math.max(
           constraints.maxWidth,
-          horizontalPadding * 2 + gutterWidth + gap + longest * charWidth,
+          horizontalPadding * 2 + gutterWidth + gap + widest,
         );
         return Scrollbar(
           controller: controller,
@@ -403,6 +436,10 @@ class const _ImagePreview({
 class _ImagePreviewState() extends State<_ImagePreview> {
   final _heroTag = UniqueKey();
 
+  /// Whether the viewer is showing, so a tap during the preview's slide and
+  /// the open that follows the slide push only one viewer.
+  bool _viewerShowing = false;
+
   @override
   void initState() {
     super.initState();
@@ -430,13 +467,21 @@ class _ImagePreviewState() extends State<_ImagePreview> {
     if (mounted) await _open();
   }
 
-  Future<void> _open() => showImageAttachmentViewer(
-    context: context,
-    image: widget.image,
-    heroPresentation: ImageAttachmentHeroPresentation.contained,
-    filename: widget.fileName,
-    heroTag: _heroTag,
-  );
+  Future<void> _open() async {
+    if (_viewerShowing) return;
+    _viewerShowing = true;
+    try {
+      await showImageAttachmentViewer(
+        context: context,
+        image: widget.image,
+        heroPresentation: ImageAttachmentHeroPresentation.contained,
+        filename: widget.fileName,
+        heroTag: _heroTag,
+      );
+    } finally {
+      _viewerShowing = false;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {

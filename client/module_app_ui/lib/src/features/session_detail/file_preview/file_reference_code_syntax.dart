@@ -3,7 +3,8 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 
 /// Inline code that reads as a file path, such as `lib/main.dart:12`, becomes a
 /// link to that path, so a tap opens the file. Other inline code renders as
-/// usual. Code that is already a link's text keeps the link it is in.
+/// usual. Code that is the whole text of a link keeps that link; code that is
+/// only part of a link's text becomes its own file link.
 class FileReferenceCodeSyntax() extends md.CodeSyntax {
   @override
   bool onMatch(md.InlineParser parser, Match match) {

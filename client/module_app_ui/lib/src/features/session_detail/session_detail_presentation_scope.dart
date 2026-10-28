@@ -2,11 +2,9 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../platform/external_link_opener.dart";
-import "file_preview/file_preview_screen.dart";
 import "widgets/external_action_modal.dart";
 import "widgets/pending_form_modal.dart";
 
-export "file_preview/file_preview_screen.dart" show FilePreviewCubitFactory;
 export "widgets/external_action_modal.dart" show SessionExternalActionCubitFactory;
 export "widgets/pending_form_modal.dart" show PendingFormCubitFactory;
 
@@ -89,6 +87,8 @@ class const SessionDetailPresentationScope({
 }
 
 typedef SessionDetailCapabilityProvider<T> = T Function();
+
+typedef FilePreviewCubitFactory = FilePreviewCubit Function({required FileReference reference});
 
 typedef SessionDetailSessionOpener = void Function({
   required String projectId,

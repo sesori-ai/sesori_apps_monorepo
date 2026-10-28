@@ -13,9 +13,9 @@ import "session_detail_presentation_scope.dart";
 /// link is actually activated. Rendering transcript Markdown does not itself
 /// exercise a platform capability.
 ///
-/// Web and mail links follow the outbound-link policy. Any other link is
-/// treated as a file reference: the session opens it in this computer's
-/// default app, or this handler shows the in-app preview.
+/// Web and mail links follow the outbound-link policy. Any other link that
+/// reads as a file reference opens in this computer's default app or in the
+/// in-app preview; a link that does not is ignored.
 MarkdownTapLinkCallback buildSessionDetailMarkdownLinkTapHandler({required BuildContext context}) {
   // ignore: no_slop_linter/prefer_required_named_parameters, callback signature is defined by MarkdownBody.onTapLink
   return (String text, String? href, String title) {

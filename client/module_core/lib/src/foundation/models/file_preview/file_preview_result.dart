@@ -23,7 +23,7 @@ final class const FilePreviewBridgeTooOld() extends FilePreviewResult;
 final class const FilePreviewFailed({
   // ignore: no_slop_linter/prefer_specific_type, transport errors and decode failures share this path
   required final Object innerError,
-  required final StackTrace? stackTrace,
+  required final StackTrace stackTrace,
 }) extends FilePreviewResult;
 
 enum FilePreviewUnavailableReason() {

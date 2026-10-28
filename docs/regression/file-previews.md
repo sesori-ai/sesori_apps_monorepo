@@ -35,11 +35,14 @@ default app; otherwise it shows a read-only preview.
 ### Client flow
 
 - Inline code in text parts and user messages is tappable, in the link colour,
-  when it reads as a path: it contains `/`, has an extension with a letter, and
-  may end in `:line` or `:line:col`. Other inline code stays plain. A
-  `file://` URI or any other non-web link href is treated the same way; web and
-  `mailto` links keep opening in the browser.
-- A relative path resolves against the session's directory.
+  when it reads as a path: it contains `/` (or `\` on Windows), has an
+  extension with a letter, and may end in `:line` or `:line:col`. A path with
+  whitespace, `~`, quotes, backticks, `*`, `?`, `<`, `>`, or `|` is not
+  tappable. Other inline code stays plain. A local `file://` URI (no host or
+  `localhost`, percent-escapes decoded) or any other non-web link href is
+  treated the same way; web and `mailto` links keep opening in the browser.
+- A relative path resolves against the session's directory, with Windows path
+  rules when that directory is on a drive.
 - When the active bridge runs on this computer, the file opens in the system's
   default app and the line is dropped. If that launch fails, the preview opens
   instead.

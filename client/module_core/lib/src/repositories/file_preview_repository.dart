@@ -19,7 +19,10 @@ class FilePreviewRepository({required final FilesystemApi _api}) {
       // /filesystem/file route answers 404, while every outcome of a bridge
       // that has it is a 200. Remove once no supported bridge predates the route.
       ErrorResponse(error: NonSuccessCodeError(errorCode: 404)) => const FilePreviewBridgeTooOld(),
-      ErrorResponse(:final error) => FilePreviewFailed(innerError: error, stackTrace: error.stackTrace),
+      ErrorResponse(:final error) => FilePreviewFailed(
+        innerError: error,
+        stackTrace: error.stackTrace ?? StackTrace.current,
+      ),
     };
   }
 

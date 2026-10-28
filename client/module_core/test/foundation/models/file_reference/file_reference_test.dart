@@ -24,6 +24,19 @@ void main() {
 
     test("accepts a file:// URI", () {
       expect(_parse("file:///Users/me/notes.md"), const FileReference(absolutePath: "/Users/me/notes.md", line: null));
+      expect(_parse("file://localhost/a/b.md"), const FileReference(absolutePath: "/a/b.md", line: null));
+    });
+
+    test("decodes a file:// URI's escapes", () {
+      expect(_parse("file:///My%20Project/a.md"), const FileReference(absolutePath: "/My Project/a.md", line: null));
+    });
+
+    test("uses Windows paths when the session directory is on a drive", () {
+      FileReference? parse(String raw) => parseFileReference(raw: raw, sessionDirectory: r"C:\work\repo");
+      expect(parse(r"src\app.cs:12"), const FileReference(absolutePath: r"C:\work\repo\src\app.cs", line: 12));
+      expect(parse("lib/main.dart"), const FileReference(absolutePath: r"C:\work\repo\lib\main.dart", line: null));
+      expect(parse(r"D:\other\notes.md"), const FileReference(absolutePath: r"D:\other\notes.md", line: null));
+      expect(parse("file:///C:/a%20b/c.md"), const FileReference(absolutePath: r"C:\a b\c.md", line: null));
     });
 
     test("trims surrounding whitespace", () {
@@ -51,6 +64,7 @@ void main() {
 
     test("names the file", () {
       expect(const FileReference(absolutePath: "/a/b/c.md", line: null).fileName, "c.md");
+      expect(const FileReference(absolutePath: r"C:\a\c.md", line: null).fileName, "c.md");
     });
   });
 

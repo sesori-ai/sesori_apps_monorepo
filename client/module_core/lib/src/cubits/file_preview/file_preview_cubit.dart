@@ -31,7 +31,7 @@ class FilePreviewCubit({
   FilePreviewState _failed({
     // ignore: no_slop_linter/prefer_specific_type, transport errors and decode failures share this path
     required Object error,
-    required StackTrace? stackTrace,
+    required StackTrace stackTrace,
   }) {
     loge("Failed to load the preview of ${reference.absolutePath}", error, stackTrace);
     return const FilePreviewUnavailable(reason: FilePreviewUnavailableReason.failed);
