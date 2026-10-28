@@ -159,6 +159,7 @@ export "src/errors/remote_failure_reason.dart";
 export "src/foundation/io/file_attachment_thumbnail_storage.dart";
 export "src/foundation/io/plugin_authentication_loopback_server.dart";
 export "src/foundation/io/temporary_directory_client.dart";
+export "src/foundation/models/chat_link/chat_link_presentation.dart";
 export "src/foundation/models/composer/composer_attachment.dart";
 export "src/foundation/models/composer/composer_draft.dart";
 export "src/foundation/models/composer/new_session_submission_snapshot.dart";

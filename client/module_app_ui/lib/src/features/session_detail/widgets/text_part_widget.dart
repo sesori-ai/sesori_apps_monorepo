@@ -22,12 +22,13 @@ class const TextPartWidget({
   Widget build(BuildContext context) {
     if (text.isEmpty) return const SizedBox.shrink();
 
+    final onTapLink = buildSessionDetailMarkdownLinkTapHandler(context: context);
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 4),
       child: MarkdownBody(
         data: text,
         selectable: false,
-        onTapLink: buildSessionDetailMarkdownLinkTapHandler(context: context),
+        onTapLink: onTapLink,
         imageBuilder: (uri, title, alt) => MarkdownMessageImage(
           uri: uri,
           semanticLabel: alt,
@@ -38,6 +39,7 @@ class const TextPartWidget({
         builders: buildSessionMarkdownBuilders(
           highlightEnabled: !isStreaming,
           copyTooltip: context.loc.sessionDetailCopy,
+          onTapLink: onTapLink,
         ),
       ),
     );

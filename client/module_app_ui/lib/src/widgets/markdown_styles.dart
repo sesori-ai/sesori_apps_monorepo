@@ -7,6 +7,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../platform/external_link_opener.dart";
+import "chat_link.dart";
 import "code_block.dart";
 
 /// Creates a [MarkdownBody.onTapLink] handler backed by product-owned link
@@ -90,10 +91,9 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
   );
 
   return base.copyWith(
-    a: body.copyWith(
-      decoration: TextDecoration.underline,
-      decorationColor: foreground,
-    ),
+    // [ChatLinkMarkdownBuilder] keeps the surrounding text's size and weight
+    // and takes only this colour.
+    a: body.copyWith(color: prego.colors.textBrandSecondary),
     // Chat renders fenced blocks as a [CodeBlock], so this only reaches inline code.
     //
     // The chip must stay translucent: a paragraph paints its selection
@@ -119,17 +119,20 @@ MarkdownStyleSheet buildChatMessageMarkdownStyleSheet({required PregoDesignSyste
 
 /// Custom [MarkdownBody.builders] for session chat markdown. Replaces the
 /// default fenced-code-block rendering with a syntax-highlighted, copyable
-/// [CodeBlock]. Pass `highlightEnabled: false` while a message is streaming so
-/// code is not re-tokenized on every token delta.
+/// [CodeBlock], and links with an icon and a short label that [onTapLink]
+/// opens. Pass `highlightEnabled: false` while a message is streaming so code
+/// is not re-tokenized on every token delta.
 Map<String, MarkdownElementBuilder> buildSessionMarkdownBuilders({
   required bool highlightEnabled,
   required String? copyTooltip,
+  required MarkdownTapLinkCallback onTapLink,
 }) {
   return <String, MarkdownElementBuilder>{
     "pre": CodeBlockMarkdownBuilder(
       highlightEnabled: highlightEnabled,
       copyTooltip: copyTooltip,
     ),
+    "a": ChatLinkMarkdownBuilder(onTapLink: onTapLink),
   };
 }
 

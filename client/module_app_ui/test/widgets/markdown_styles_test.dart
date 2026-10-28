@@ -77,12 +77,13 @@ void main() {
         expect(style?.fontSize, 14);
         expect(style?.height, 20 / 14);
         expect(style?.letterSpacing, 0.14);
+      }
+      for (final style in [styleSheet.p, styleSheet.strong, styleSheet.listBullet, styleSheet.tableBody]) {
         expect(style?.color, theme.colors.textPrimary);
       }
       expect(styleSheet.p?.fontWeight, FontWeight.w400);
       expect(styleSheet.strong?.fontWeight, FontWeight.bold);
-      expect(styleSheet.a?.decoration, TextDecoration.underline);
-      expect(styleSheet.a?.decorationColor, theme.colors.textPrimary);
+      expect(styleSheet.a?.color, theme.colors.textBrandSecondary);
       expect(styleSheet.code?.color, theme.colors.textPrimary);
       expect(styleSheet.code?.fontFamily, "monospace");
       expect(styleSheet.code?.fontSize, 13);

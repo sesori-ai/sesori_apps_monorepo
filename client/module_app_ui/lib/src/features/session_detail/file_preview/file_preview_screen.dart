@@ -232,6 +232,7 @@ class const _MarkdownPreview({required final String content}) extends StatelessW
   @override
   Widget build(BuildContext context) {
     final scope = SessionDetailPresentationScope.read(context);
+    final onTapLink = buildMarkdownLinkTapHandler(openExternalLink: scope.openExternalLink);
     return PregoReadableSelectionArea(
       child: SingleChildScrollView(
         padding: EdgeInsetsDirectional.fromSTEB(
@@ -243,10 +244,14 @@ class const _MarkdownPreview({required final String content}) extends StatelessW
         child: MarkdownBody(
           data: content,
           selectable: false,
-          onTapLink: buildMarkdownLinkTapHandler(openExternalLink: scope.openExternalLink),
+          onTapLink: onTapLink,
           styleSheet: buildChatMessageMarkdownStyleSheet(prego: context.prego),
           blockSyntaxes: sessionMarkdownBlockSyntaxes,
-          builders: buildSessionMarkdownBuilders(highlightEnabled: true, copyTooltip: context.loc.sessionDetailCopy),
+          builders: buildSessionMarkdownBuilders(
+            highlightEnabled: true,
+            copyTooltip: context.loc.sessionDetailCopy,
+            onTapLink: onTapLink,
+          ),
         ),
       ),
     );
