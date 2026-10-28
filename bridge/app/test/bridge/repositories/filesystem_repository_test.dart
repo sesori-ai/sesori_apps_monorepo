@@ -346,6 +346,23 @@ void main() {
       expect(preview("absent.txt"), const FilePreviewResponse.missing());
     });
 
+    test("reports a file in a missing folder as missing", () {
+      final windowsRepository = FilesystemRepository(
+        filesystemApi: _LookupFilesystemApi(
+          type: FileSystemEntityType.notFound,
+          resolveError: const PathNotFoundException(
+            r"C:\absent\a.txt",
+            OSError("The system cannot find the path specified.", 3),
+          ),
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(preview("absent-folder/a.txt"), const FilePreviewResponse.missing());
+      expect(windowsRepository.readPreviewFile(absolutePath: r"C:\absent\a.txt"), const FilePreviewResponse.missing());
+    });
+
     test("reports a link whose target is missing as missing", () {
       Link("${tempDir.path}/dangling.txt").createSync("${tempDir.path}/absent.txt");
 
