@@ -68,7 +68,7 @@ class MacProbeSafetyTests(unittest.TestCase):
                 patch("probe_desktop_macos.subprocess.run", side_effect=[host, missing, missing, shown]) as inspector:
             probe(app=Path("app"), fixture=None, output=Path(directory) / "evidence")
             self.assertEqual(inspector.call_count, 4)
-            self.assertEqual(sleep.call_count, 2)
+            self.assertEqual([call.args for call in sleep.call_args_list], [(2.0,), (2.0,)])
             self.assertIn("ATTEMPT 3\nSCREEN_COUNT 1\nWINDOW_ID 7",
                           (Path(directory) / "evidence/window.log").read_text())
 

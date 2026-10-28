@@ -93,10 +93,12 @@ def probe(*, app: Path, fixture: Path | None, output: Path) -> None:
                     window = subprocess.run([str(inspector), str(app_pid)], text=True, capture_output=True)
                     attempts.append(f"ATTEMPT {len(attempts) + 1}\n{window.stdout}{window.stderr}")
                     (output / "window.log").write_text("\n".join(attempts))
-                    if window.returncode != 1 or time.monotonic() >= deadline:
+                    if window.returncode != 1:
                         break
                     if process.poll() is not None:
                         raise RuntimeError(f"Installed desktop exited before showing a window: {process.returncode}")
+                    if time.monotonic() >= deadline:
+                        break
                     time.sleep(WINDOW_POLL_INTERVAL_SECONDS)
                 if window.returncode == 2:
                     raise RuntimeError("BLOCKED installed GUI: this runner has no active screen")
