@@ -18,9 +18,11 @@ bridge owns this route, and no plugin takes part in it.
     `webp`, up to `maxTranscriptImageBytes` (20 MiB).
   - `too_large`: over the cap for its kind.
   - `missing`: no file, including a link whose target is gone.
-  - `unsupported`: a directory, another known binary extension, a NUL byte, or
-    invalid UTF-8.
-  - `denied`: the host refused the read, for example macOS Full Disk Access.
+  - `unsupported`: a directory, a pipe, socket, or other non-regular file
+    (never opened), another known binary extension, a NUL byte, or invalid
+    UTF-8.
+  - `denied`: the host refused the lookup or read, for example macOS Full Disk
+    Access or an unreadable parent folder.
 - Another filesystem failure gets `500`, and the local bridge log keeps the
   path and error.
 - An older bridge without the route answers `404`. Because every domain
@@ -30,7 +32,7 @@ bridge owns this route, and no plugin takes part in it.
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated: repository outcomes for text, image, cap edges, missing, dangling link, binary, NUL, invalid UTF-8, directory, followed link, and denial; handler `400` and passthrough; wire tags. |
+| L1 Smoke | Automated: repository outcomes for text, image, cap edges, missing, dangling link, binary, NUL, invalid UTF-8, directory, FIFO and device left unopened, followed link, denied read, and denied lookup; handler `400` and passthrough; wire tags. |
 | L2 Routine | Headless bridge: request a text file, an image, and a missing path, and confirm each outcome. |
 | L3 Release | Not included. |
 | L4 Extended | Headless bridge: on macOS, request a file under a Full Disk Access-protected folder without access and confirm `denied`. |
@@ -50,3 +52,4 @@ bridge owns this route, and no plugin takes part in it.
 - `bridge/app/lib/src/routing/read_file_preview_handler.dart`
 - `bridge/app/test/bridge/repositories/filesystem_repository_test.dart`
 - `bridge/app/test/bridge/routing/read_file_preview_handler_test.dart`
+- `shared/sesori_shared/test/models/file_preview_test.dart`

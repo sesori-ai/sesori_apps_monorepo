@@ -386,6 +386,44 @@ void main() {
       expect(deniedRepository.readPreviewFile(absolutePath: "/secret.txt"), const FilePreviewResponse.denied());
     });
 
+    test("reports a denied lookup as denied rather than missing", () {
+      final deniedRepository = FilesystemRepository(
+        filesystemApi: _LookupFilesystemApi(
+          type: FileSystemEntityType.notFound,
+          resolveError: const FileSystemException("denied", "/locked/a.txt", OSError("Permission denied", 13)),
+        ),
+        permissionValidator: const FilesystemPermissionValidator(),
+        driveRootsApi: windowsDriveRootsApi,
+      );
+
+      expect(deniedRepository.readPreviewFile(absolutePath: "/locked/a.txt"), const FilePreviewResponse.denied());
+    });
+
+    test("refuses pipes and sockets without opening them", () {
+      for (final type in [FileSystemEntityType.pipe, FileSystemEntityType.unixDomainSock]) {
+        final repository = FilesystemRepository(
+          filesystemApi: _LookupFilesystemApi(type: type, resolveError: null),
+          permissionValidator: const FilesystemPermissionValidator(),
+          driveRootsApi: windowsDriveRootsApi,
+        );
+
+        expect(repository.readPreviewFile(absolutePath: "/run/a.txt"), const FilePreviewResponse.unsupported());
+      }
+    });
+
+    test(
+      "never opens a FIFO, a link to one, or a device",
+      () {
+        Process.runSync("mkfifo", ["${tempDir.path}/queue.txt"]);
+        Link("${tempDir.path}/queue-link.txt").createSync("${tempDir.path}/queue.txt");
+
+        expect(preview("queue.txt"), const FilePreviewResponse.unsupported());
+        expect(preview("queue-link.txt"), const FilePreviewResponse.unsupported());
+        expect(repository.readPreviewFile(absolutePath: "/dev/null"), isNot(isA<FilePreviewText>()));
+      },
+      testOn: "!windows",
+    );
+
     test("rethrows other filesystem failures", () {
       final failingRepository = FilesystemRepository(
         filesystemApi: _PrefixFilesystemApi(
@@ -416,6 +454,27 @@ class _PrefixFilesystemApi({required final List<int> bytes, required final FileS
     if (failure != null) throw failure;
     return bytes;
   }
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Fake that reports [type] for every path, throws [resolveError] when
+/// resolving, and fails the test if anything is opened.
+class _LookupFilesystemApi({required final FileSystemEntityType type, required final FileSystemException? resolveError})
+    implements FilesystemApi {
+  @override
+  FileSystemEntityType entityType(String path) => type;
+
+  @override
+  String resolveFilePath(String path) {
+    final failure = resolveError;
+    if (failure != null) throw failure;
+    return path;
+  }
+
+  @override
+  List<int> readFilePrefix({required String path, required int maxBytes}) => fail("opened $path");
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

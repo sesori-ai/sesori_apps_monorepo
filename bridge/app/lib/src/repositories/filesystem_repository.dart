@@ -189,12 +189,17 @@ class FilesystemRepository({
   /// a missing file.
   FilePreviewResponse readPreviewFile({required String absolutePath}) {
     try {
-      final entityType = _filesystemApi.entityType(absolutePath);
-      if (entityType == FileSystemEntityType.notFound) return const FilePreviewResponse.missing();
-      if (entityType == FileSystemEntityType.directory ||
-          (entityType == FileSystemEntityType.link && _filesystemApi.directoryExists(absolutePath))) {
-        return const FilePreviewResponse.unsupported();
+      var entityType = _filesystemApi.entityType(absolutePath);
+      // Resolving follows a link to its target. A failed lookup also reports
+      // notFound, so resolving surfaces its real cause, such as a denied
+      // parent folder, as a FileSystemException. Neither opens the file.
+      if (entityType == FileSystemEntityType.link || entityType == FileSystemEntityType.notFound) {
+        entityType = _filesystemApi.entityType(_filesystemApi.resolveFilePath(absolutePath));
       }
+      if (entityType == FileSystemEntityType.notFound) return const FilePreviewResponse.missing();
+      // Only a regular file is opened: reading a pipe, socket or device could
+      // block the bridge.
+      if (entityType != FileSystemEntityType.file) return const FilePreviewResponse.unsupported();
 
       final extension = _extensionOf(path: absolutePath);
       final imageMime = _previewImageMimeTypes[extension];
