@@ -1,5 +1,7 @@
 import "dart:typed_data";
 
+import "../../foundation/models/file_preview/file_preview_result.dart";
+
 sealed class const FilePreviewState();
 
 final class const FilePreviewLoading() extends FilePreviewState;
@@ -15,16 +17,3 @@ final class const FilePreviewShowsImage({
 
 /// Nothing to show, for [reason].
 final class const FilePreviewUnavailable({required final FilePreviewUnavailableReason reason}) extends FilePreviewState;
-
-enum FilePreviewUnavailableReason() {
-  missing,
-  tooLarge,
-
-  /// A directory, a binary file, or text that is not UTF-8.
-  unsupported,
-  denied,
-
-  /// The connected bridge cannot serve previews until it is updated.
-  bridgeTooOld,
-  failed,
-}

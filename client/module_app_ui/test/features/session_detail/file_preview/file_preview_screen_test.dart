@@ -11,7 +11,6 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_preview_screen.dart";
 import "package:sesori_app_ui/src/features/session_detail/file_preview/file_reference_code_syntax.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockSessionDetailCubit() extends MockCubit<SessionDetailState> implements SessionDetailCubit;
@@ -114,7 +113,7 @@ void main() {
     when(() => sessionCubit.openFileReference(raw: "lib/main.dart:2")).thenAnswer((_) async => reference);
     final repository = _MockFilePreviewRepository();
     when(() => repository.load(path: "/repo/lib/main.dart")).thenAnswer(
-      (_) async => const FilePreviewLoaded(response: FilePreviewResponse.text(content: "one\ntwo\nthree")),
+      (_) async => const FilePreviewTextContent(content: "one\ntwo\nthree"),
     );
 
     await tester.pumpWidget(

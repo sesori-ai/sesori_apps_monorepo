@@ -1,9 +1,6 @@
 import "dart:async";
-import "dart:convert";
-import "dart:isolate";
 
 import "package:bloc/bloc.dart";
-import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/models/file_preview/file_preview_result.dart";
 import "../../foundation/models/file_reference/file_reference.dart";
@@ -22,32 +19,13 @@ class FilePreviewCubit({
 
   Future<void> _load() async {
     final next = switch (await _repository.load(path: reference.absolutePath)) {
-      FilePreviewLoaded(:final response) => await _stateFor(response: response),
+      FilePreviewTextContent(:final content) => FilePreviewShowsText(content: content),
+      FilePreviewImageContent(:final bytes, :final mime) => FilePreviewShowsImage(bytes: bytes, mime: mime),
+      FilePreviewContentUnavailable(:final reason) => FilePreviewUnavailable(reason: reason),
       FilePreviewBridgeTooOld() => const FilePreviewUnavailable(reason: FilePreviewUnavailableReason.bridgeTooOld),
-      FilePreviewFailed(:final innerError) => _failed(error: innerError, stackTrace: innerError.stackTrace),
+      FilePreviewFailed(:final innerError, :final stackTrace) => _failed(error: innerError, stackTrace: stackTrace),
     };
     if (!isClosed) emit(next);
-  }
-
-  Future<FilePreviewState> _stateFor({required FilePreviewResponse response}) async {
-    switch (response) {
-      case FilePreviewText(:final content):
-        return FilePreviewShowsText(content: content);
-      case FilePreviewImage(:final mime, :final base64):
-        try {
-          return FilePreviewShowsImage(bytes: await Isolate.run(() => base64Decode(base64)), mime: mime);
-        } on FormatException catch (error, stackTrace) {
-          return _failed(error: error, stackTrace: stackTrace);
-        }
-      case FilePreviewMissing():
-        return const FilePreviewUnavailable(reason: FilePreviewUnavailableReason.missing);
-      case FilePreviewTooLarge():
-        return const FilePreviewUnavailable(reason: FilePreviewUnavailableReason.tooLarge);
-      case FilePreviewUnsupported():
-        return const FilePreviewUnavailable(reason: FilePreviewUnavailableReason.unsupported);
-      case FilePreviewDenied():
-        return const FilePreviewUnavailable(reason: FilePreviewUnavailableReason.denied);
-    }
   }
 
   FilePreviewState _failed({

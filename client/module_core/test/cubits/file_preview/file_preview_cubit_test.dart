@@ -1,8 +1,7 @@
-import "dart:convert";
+import "dart:typed_data";
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 class _MockFilePreviewRepository() extends Mock implements FilePreviewRepository;
@@ -24,17 +23,13 @@ void main() {
   }
 
   test("shows text", () async {
-    final state = await settledState(
-      result: const FilePreviewLoaded(response: FilePreviewResponse.text(content: "# Notes")),
-    );
+    final state = await settledState(result: const FilePreviewTextContent(content: "# Notes"));
     expect(state, isA<FilePreviewShowsText>().having((s) => s.content, "content", "# Notes"));
   });
 
-  test("decodes an image", () async {
+  test("shows an image", () async {
     final state = await settledState(
-      result: FilePreviewLoaded(
-        response: FilePreviewResponse.image(mime: "image/png", base64: base64Encode([1, 2, 3]), byteLength: 3),
-      ),
+      result: FilePreviewImageContent(bytes: Uint8List.fromList([1, 2, 3]), mime: "image/png"),
     );
     expect(
       state,
@@ -45,15 +40,15 @@ void main() {
   });
 
   final unavailable = <FilePreviewResult, FilePreviewUnavailableReason>{
-    const FilePreviewLoaded(response: FilePreviewResponse.missing()): FilePreviewUnavailableReason.missing,
-    const FilePreviewLoaded(response: FilePreviewResponse.tooLarge()): FilePreviewUnavailableReason.tooLarge,
-    const FilePreviewLoaded(response: FilePreviewResponse.unsupported()): FilePreviewUnavailableReason.unsupported,
-    const FilePreviewLoaded(response: FilePreviewResponse.denied()): FilePreviewUnavailableReason.denied,
+    for (final reason in [
+      FilePreviewUnavailableReason.missing,
+      FilePreviewUnavailableReason.tooLarge,
+      FilePreviewUnavailableReason.unsupported,
+      FilePreviewUnavailableReason.denied,
+    ])
+      FilePreviewContentUnavailable(reason: reason): reason,
     const FilePreviewBridgeTooOld(): FilePreviewUnavailableReason.bridgeTooOld,
-    FilePreviewFailed(innerError: ApiError.generic()): FilePreviewUnavailableReason.failed,
-    const FilePreviewLoaded(
-      response: FilePreviewResponse.image(mime: "image/png", base64: "not base64!", byteLength: 3),
-    ): FilePreviewUnavailableReason.failed,
+    FilePreviewFailed(innerError: ApiError.generic(), stackTrace: null): FilePreviewUnavailableReason.failed,
   };
   for (final MapEntry(key: result, value: reason) in unavailable.entries) {
     test("explains ${reason.name}", () async {
