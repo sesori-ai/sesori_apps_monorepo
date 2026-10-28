@@ -2916,6 +2916,8 @@ void main() {
               sessionRepository: () => throw UnimplementedError("Prompt search is not under test"),
               createPendingFormCubit: ({required requestId, required sessionId}) =>
                   throw StateError("Unused fixture form"),
+              createFilePreviewCubit: ({required reference}) =>
+                  throw UnimplementedError("File previews are not under test"),
               createExternalActionCubit: ({required requestId, required sessionId}) =>
                   throw UnimplementedError("External actions are not under test"),
               canShareImages: true,

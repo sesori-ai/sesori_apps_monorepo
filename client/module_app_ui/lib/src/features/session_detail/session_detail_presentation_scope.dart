@@ -2,9 +2,11 @@ import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 
 import "../../platform/external_link_opener.dart";
+import "file_preview/file_preview_screen.dart";
 import "widgets/external_action_modal.dart";
 import "widgets/pending_form_modal.dart";
 
+export "file_preview/file_preview_screen.dart" show FilePreviewCubitFactory;
 export "widgets/external_action_modal.dart" show SessionExternalActionCubitFactory;
 export "widgets/pending_form_modal.dart" show PendingFormCubitFactory;
 
@@ -24,6 +26,9 @@ class const SessionDetailPresentationScope({
   required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final SessionExternalActionCubitFactory createExternalActionCubit,
   required final PendingFormCubitFactory createPendingFormCubit,
+
+  /// Loads one file's preview from the connected bridge.
+  required final FilePreviewCubitFactory createFilePreviewCubit,
   required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
@@ -57,6 +62,7 @@ class const SessionDetailPresentationScope({
     sessionRepository: sessionRepository,
     createExternalActionCubit: createExternalActionCubit,
     createPendingFormCubit: createPendingFormCubit,
+    createFilePreviewCubit: createFilePreviewCubit,
     canShareImages: canShareImages,
     openExternalLink: openExternalLink,
     openSession: openSession,
@@ -74,6 +80,7 @@ class const SessionDetailPresentationScope({
       sessionRepository != oldWidget.sessionRepository ||
       createExternalActionCubit != oldWidget.createExternalActionCubit ||
       createPendingFormCubit != oldWidget.createPendingFormCubit ||
+      createFilePreviewCubit != oldWidget.createFilePreviewCubit ||
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||

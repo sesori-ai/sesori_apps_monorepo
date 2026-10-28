@@ -132,6 +132,8 @@ import 'package:sesori_dart_core/src/repositories/feedback_prompt_repository.dar
     as _i723;
 import 'package:sesori_dart_core/src/repositories/feedback_repository.dart'
     as _i860;
+import 'package:sesori_dart_core/src/repositories/file_preview_repository.dart'
+    as _i703;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -183,6 +185,8 @@ import 'package:sesori_dart_core/src/services/connection_notification_observatio
     as _i959;
 import 'package:sesori_dart_core/src/services/feedback_prompt_service.dart'
     as _i905;
+import 'package:sesori_dart_core/src/services/file_reference_open_service.dart'
+    as _i996;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
@@ -215,7 +219,7 @@ import 'package:sesori_dart_core/src/services/product_analytics_service.dart'
 import 'package:sesori_dart_core/src/services/project_inventory_service.dart'
     as _i870;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
-    as _i703;
+    as _i704;
 import 'package:sesori_dart_core/src/services/recent_session_inventory_service.dart'
     as _i623;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
@@ -551,6 +555,13 @@ extension GetItInjectableX on _i174.GetIt {
         storage: gh<_i945.FeedbackPromptStorage>(),
       ),
     );
+    gh.lazySingleton<_i996.FileReferenceOpenService>(
+      () => _i996.FileReferenceOpenService(
+        connectionService: gh<_i369.ConnectionService>(),
+        locality: gh<_i1023.ActiveBridgeLocality>(),
+        urlLauncher: gh<_i305.UrlLauncher>(),
+      ),
+    );
     gh.lazySingleton<_i678.ConnectionNotificationObservationRepository>(
       () => _i678.ConnectionNotificationObservationRepository(
         api: gh<_i479.ConnectionNotificationObservationApi>(),
@@ -604,6 +615,9 @@ extension GetItInjectableX on _i174.GetIt {
         preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i703.FilePreviewRepository>(
+      () => _i703.FilePreviewRepository(api: gh<_i1068.FilesystemApi>()),
     );
     gh.lazySingleton<_i285.InstallationAnalyticsService>(
       () => _i285.InstallationAnalyticsService(
@@ -737,8 +751,8 @@ extension GetItInjectableX on _i174.GetIt {
         pluginPreferenceRepository: gh<_i594.PluginPreferenceRepository>(),
       ),
     );
-    gh.lazySingleton<_i703.ProjectListService>(
-      () => _i703.ProjectListService(
+    gh.lazySingleton<_i704.ProjectListService>(
+      () => _i704.ProjectListService(
         repository: gh<_i80.ProjectRepository>(),
         activityCalculator: gh<_i84.SessionActivityCalculator>(),
       ),
@@ -807,7 +821,7 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
         sseEventTracker: gh<_i508.SseEventTracker>(),
         routeSource: gh<_i366.RouteSource>(),
-        projectListService: gh<_i703.ProjectListService>(),
+        projectListService: gh<_i704.ProjectListService>(),
         sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
         registeredBridgesService: gh<_i699.RegisteredBridgesService>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
@@ -824,7 +838,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i1070.SessionListFilterTracker>(
       () => _i1070.SessionListFilterTracker(
         connectionService: gh<_i369.ConnectionService>(),
-        projectListService: gh<_i703.ProjectListService>(),
+        projectListService: gh<_i704.ProjectListService>(),
       ),
       dispose: (i) => i.dispose(),
     );
@@ -860,7 +874,7 @@ extension GetItInjectableX on _i174.GetIt {
     gh.factory<_i623.RecentSessionInventoryService>(
       () => _i623.RecentSessionInventoryService(
         sessionListService: gh<_i763.SessionListService>(),
-        projectListService: gh<_i703.ProjectListService>(),
+        projectListService: gh<_i704.ProjectListService>(),
         connectionService: gh<_i369.ConnectionService>(),
         sseEventTracker: gh<_i508.SseEventTracker>(),
         sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),

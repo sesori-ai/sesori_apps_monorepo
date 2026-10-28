@@ -36,4 +36,13 @@ class FilesystemApi({required final RelayHttpApiClient _client}) {
       fromJson: FilesystemSuggestion.fromJson,
     );
   }
+
+  /// Reads a preview of the file at the absolute [path] on the bridge's computer.
+  Future<ApiResponse<FilePreviewResponse>> readFilePreview({required String path}) {
+    return _client.post(
+      "/filesystem/file",
+      body: FilePreviewRequest(path: path),
+      fromJson: FilePreviewResponse.fromJson,
+    );
+  }
 }

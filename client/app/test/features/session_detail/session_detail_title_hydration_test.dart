@@ -182,6 +182,7 @@ void _registerDependencies({
     inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
   );
   getIt.registerSingleton<ProductAnalyticsService>(productAnalyticsService);
+  getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
   getIt.registerSingleton<FeedbackPromptService>(FakeFeedbackPromptService());
   // The page's own action cubit runs its menu actions.
   final projectRepository = MockProjectRepository();

@@ -16,6 +16,7 @@ import "../../foundation/models/composer/composer_draft.dart";
 import "../../foundation/models/composer/prompt_send_failure.dart";
 import "../../foundation/models/composer/queued_session_submission.dart";
 import "../../foundation/models/composer/unsent_composer.dart";
+import "../../foundation/models/file_reference/file_reference.dart";
 import "../../foundation/models/product_analytics/product_analytics_event.dart";
 import "../../foundation/models/session_interaction_state.dart";
 import "../../foundation/models/session_launch/launch_follow_up.dart";
@@ -39,6 +40,8 @@ import "../../repositories/session_repository.dart";
 import "../../services/bridge_settings_service.dart";
 import "../../services/fast_mode_toggle_calculator.dart";
 import "../../services/feedback_prompt_service.dart";
+import "../../services/file_reference_open_service.dart";
+import "../../services/models/file_reference_open_outcome.dart";
 import "../../services/models/session_activity_info.dart";
 import "../../services/plugin_management_service.dart";
 import "../../services/product_analytics_service.dart";
@@ -121,6 +124,7 @@ class SessionDetailCubit(
   required final BridgeSettingsService _bridgeSettingsService,
   required final SseEventTracker _sseEventTracker,
   required final SessionLaunchService _sessionLaunchService,
+  required final FileReferenceOpenService _fileReferenceOpenService,
 
   /// Cooldown between silent refreshes triggered by staleness events.
   /// Overridable so tests can exercise the coalescing without real waits.
@@ -1637,6 +1641,21 @@ class SessionDetailCubit(
         isArchived: sessionTime == null ? current.isArchived : sessionTime.archived != null,
       ),
     );
+  }
+
+  /// Opens the file [raw] names, resolving a relative path against this
+  /// session's directory. Returns the reference when it needs the in-app
+  /// preview, and `null` when [raw] is not a file reference, the session has
+  /// not loaded, or the file opened in this computer's default app.
+  Future<FileReference?> openFileReference({required String raw}) async {
+    final session = state.hydratedSession;
+    if (session == null) return null;
+    final reference = parseFileReference(raw: raw, sessionDirectory: session.directory);
+    if (reference == null) return null;
+    return switch (await _fileReferenceOpenService.open(reference: reference)) {
+      FileReferenceOpenedLocally() => null,
+      FileReferenceNeedsPreview() => reference,
+    };
   }
 
   /// Reports that the Prompts screen opened from [entry].

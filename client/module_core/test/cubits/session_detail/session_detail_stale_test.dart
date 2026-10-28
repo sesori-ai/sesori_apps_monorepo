@@ -138,6 +138,7 @@ void main() {
       eventRefreshMinInterval: eventRefreshMinInterval,
       bridgeSettingsService: stubbedBridgeSettingsService(),
       sseEventTracker: MockSseEventTracker(),
+      fileReferenceOpenService: MockFileReferenceOpenService(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
 
