@@ -21,7 +21,8 @@
 - Every harness lists its sessions without re-reading every transcript on each import or send.
 - After phase 2, the app's work to open the list is the same at 500 sessions as at 50,000. The bridge sends the
   newest page across all projects, more pages arrive as you scroll, and the bridge answers search, chips and chip
-  counts, each with one database query. Older bridges keep today's full load.
+  counts. One DAO query computes a page's rows and counts. The visible-project read, the activity lookup and the
+  enrichment are separate, and none of them reads every session. Older bridges keep today's full load.
 
 ## Decisions
 
