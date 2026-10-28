@@ -819,6 +819,17 @@ final class ClaudePlugin({
       }
       _eventDispatcher.map(message: message).forEach(_eventBuffer.add);
       if (message is ClaudeResultMessage) _eventDispatcher.completeTurn(sessionId: event.sessionId);
+      // `claude auth status` still reports logged in when the stored OAuth
+      // session can no longer refresh; only the turn reveals it.
+      if (message case ClaudeAssistantMessage(error: ClaudeAssistantError.authenticationFailed)) {
+        _eventBuffer.addError(
+          const PluginAuthenticationRequiredException(
+            "claude session",
+            actionHint: "Log in from Sesori, or run `claude auth login` on this machine.",
+            message: "Claude Code authentication failed",
+          ),
+        );
+      }
     }
   }
 
