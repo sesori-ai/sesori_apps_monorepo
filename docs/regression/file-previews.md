@@ -47,8 +47,9 @@ default app; otherwise it shows a read-only preview.
     ts, tsx, py, rs, go, swift, kt, java, md, json, yaml/yml, sh) or a plain
     file icon, then the file name and " (line N)" when it has a line.
   - A bare GitHub URL shows the GitHub mark and "<repo> PR #n",
-    "<repo> #n" or "<repo> @<short sha>"; any other bare URL shows a globe and
-    its host. Labels are built locally, with nothing fetched.
+    "<repo> #n" or "<repo> @<short sha>", or its host on other GitHub pages;
+    any other bare URL shows a globe and its host. Labels are built locally,
+    with nothing fetched.
   - A web link with its own text keeps that text, led by the GitHub mark or a
     globe. Other links, such as `mailto`, keep their text with no icon.
   - A desktop hover shows the full target, and copying a selection that
@@ -107,4 +108,5 @@ default app; otherwise it shows a read-only preview.
 - `client/module_core/lib/src/foundation/models/chat_link/chat_link_presentation.dart`
 - `client/module_app_ui/lib/src/widgets/chat_link.dart`
 - `client/module_app_ui/test/widgets/chat_link_test.dart`
+- `client/module_core/test/foundation/models/chat_link/chat_link_presentation_test.dart`
 - `client/module_app_ui/test/features/session_detail/file_preview/file_preview_screen_test.dart`

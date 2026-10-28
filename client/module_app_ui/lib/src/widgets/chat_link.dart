@@ -16,7 +16,9 @@ class ChatLinkMarkdownBuilder({required final MarkdownTapLinkCallback onTapLink}
     TextStyle? parentStyle,
   ) {
     final href = element.attributes["href"];
-    if (href == null) return null;
+    // Image links keep the default rendering so the image still shows.
+    final hasImage = element.children?.any((child) => child is md.Element && child.tag == "img") ?? false;
+    if (href == null || hasImage) return null;
     final text = element.textContent;
     // The surrounding text's size and weight, in the link colour.
     final style = (parentStyle ?? preferredStyle)?.copyWith(
