@@ -161,8 +161,8 @@ fixed path; it [updates itself](#updates) in place there. Its app destination is
 Linux (x64) and the community Arch Linux ARM port (ARM64); it is not a universal-distro claim.
 
 Linux preview anchors are `internal-linux-<x64|arm64>-<deb|rpm>`, in addition to the
-unchanged `linux-package-managers` app destination. Each available row links the
-experimental limitations note; direct links must not bypass disclosure.
+unchanged `linux-package-managers` app destination. Linux builds are not labelled
+experimental; the downloads page lists their tested environments.
 
 Installing a DEB or RPM registers its channel's repository, so later versions arrive
 through the system's software updater ([updates](#updates)); replacement stays

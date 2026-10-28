@@ -26,8 +26,8 @@ other-platform release cannot replace the last completed preview for this platfo
 Preview navigation stays visible beside stable downloads. Linux-only availability cannot
 claim macOS notarization; preview metadata never creates stable schema/offer availability.
 The preview group leaves 32px before the selector and wraps without mobile overflow.
-Linux rows link the experimental limitations note below the sticky header. They describe
-how each package format updates. Actual-widget demo imagery
+Linux builds are not labelled experimental; the page lists their tested environments.
+Linux rows describe how each package format updates. Actual-widget demo imagery
 discloses native-control differences, not native account QA.
 
 Staging accepts `--channel stable|internal` (default stable) and emits
