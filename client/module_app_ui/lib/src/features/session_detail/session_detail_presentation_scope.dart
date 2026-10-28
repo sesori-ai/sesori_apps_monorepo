@@ -24,6 +24,9 @@ class const SessionDetailPresentationScope({
   required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final SessionExternalActionCubitFactory createExternalActionCubit,
   required final PendingFormCubitFactory createPendingFormCubit,
+
+  /// Loads one file's preview from the connected bridge.
+  required final FilePreviewCubitFactory createFilePreviewCubit,
   required final bool canShareImages,
   required final ExternalLinkOpener openExternalLink,
   required final SessionDetailSessionOpener openSession,
@@ -57,6 +60,7 @@ class const SessionDetailPresentationScope({
     sessionRepository: sessionRepository,
     createExternalActionCubit: createExternalActionCubit,
     createPendingFormCubit: createPendingFormCubit,
+    createFilePreviewCubit: createFilePreviewCubit,
     canShareImages: canShareImages,
     openExternalLink: openExternalLink,
     openSession: openSession,
@@ -74,6 +78,7 @@ class const SessionDetailPresentationScope({
       sessionRepository != oldWidget.sessionRepository ||
       createExternalActionCubit != oldWidget.createExternalActionCubit ||
       createPendingFormCubit != oldWidget.createPendingFormCubit ||
+      createFilePreviewCubit != oldWidget.createFilePreviewCubit ||
       canShareImages != oldWidget.canShareImages ||
       openExternalLink != oldWidget.openExternalLink ||
       openSession != oldWidget.openSession ||
@@ -82,6 +87,8 @@ class const SessionDetailPresentationScope({
 }
 
 typedef SessionDetailCapabilityProvider<T> = T Function();
+
+typedef FilePreviewCubitFactory = FilePreviewCubit Function({required FileReference reference});
 
 typedef SessionDetailSessionOpener = void Function({
   required String projectId,

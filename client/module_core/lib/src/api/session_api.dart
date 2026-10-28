@@ -437,6 +437,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
         storedOnly: storedOnly,
         toolOutputDelivery: ToolOutputDelivery.onExpand,
       ),
+      sensitiveResponse: false,
     );
   }
 
@@ -457,6 +458,7 @@ class SessionApi({required final RelayHttpApiClient _client}) {
       path: "/session/prompts/search",
       fromJson: SessionPromptSearchResponse.fromJson,
       body: SessionPromptSearchRequest(sessionId: sessionId, query: query),
+      sensitiveResponse: false,
     );
   }
 

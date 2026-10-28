@@ -98,6 +98,8 @@ Widget _buildApp({
             createPendingFormCubit:
                 createPendingFormCubit ??
                 ({required requestId, required sessionId}) => throw StateError("Unused fixture form"),
+            createFilePreviewCubit: ({required reference}) =>
+                throw UnimplementedError("File previews are not under test"),
             createExternalActionCubit:
                 createExternalActionCubit ??
                 ({required requestId, required sessionId}) =>

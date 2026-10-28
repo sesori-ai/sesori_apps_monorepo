@@ -116,6 +116,10 @@ class const _MobileSessionDetailBody({
         requestId: requestId,
         sessionId: sessionId,
       ),
+      createFilePreviewCubit: ({required reference}) => FilePreviewCubit(
+        repository: getIt<FilePreviewRepository>(),
+        reference: reference,
+      ),
       canShareImages: kIsWeb || defaultTargetPlatform != TargetPlatform.linux,
       openExternalLink: openExternalLink,
       openBridgeSettings: () => context.pushRoute(const AppRoute.settings()),

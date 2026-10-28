@@ -1437,6 +1437,33 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionDetailToolUnknown => 'Tool';
 
   @override
+  String get filePreviewClose => 'Close preview';
+
+  @override
+  String get filePreviewShowSource => 'Show source';
+
+  @override
+  String get filePreviewShowFormatted => 'Show formatted';
+
+  @override
+  String get filePreviewMissing => 'File not found';
+
+  @override
+  String get filePreviewTooLarge => 'File too large to preview';
+
+  @override
+  String get filePreviewUnsupported => 'This file can’t be previewed';
+
+  @override
+  String get filePreviewDenied => 'The bridge isn’t allowed to read this file';
+
+  @override
+  String get filePreviewBridgeTooOld => 'Update the bridge to preview files';
+
+  @override
+  String get filePreviewFailed => 'Couldn’t load this file';
+
+  @override
   String get sessionDetailImageOpen => 'Open image';
 
   @override

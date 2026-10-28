@@ -15,6 +15,7 @@ import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/feedback_prompt_service.dart";
+import "../services/file_reference_open_service.dart";
 import "../services/new_session_options_service.dart";
 import "../services/new_session_plugin_service.dart";
 import "../services/new_session_selection_tracker.dart";
@@ -66,6 +67,7 @@ SessionDetailCubit createSessionDetailCubit({
     bridgeSettingsService: locator<BridgeSettingsService>(),
     sseEventTracker: locator<SseEventTracker>(),
     sessionLaunchService: locator<SessionLaunchService>(),
+    fileReferenceOpenService: locator<FileReferenceOpenService>(),
   );
 }
 

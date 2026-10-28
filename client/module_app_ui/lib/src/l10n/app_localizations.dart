@@ -2647,6 +2647,60 @@ abstract class AppLocalizations {
   /// **'Tool'**
   String get sessionDetailToolUnknown;
 
+  /// No description provided for @filePreviewClose.
+  ///
+  /// In en, this message translates to:
+  /// **'Close preview'**
+  String get filePreviewClose;
+
+  /// No description provided for @filePreviewShowSource.
+  ///
+  /// In en, this message translates to:
+  /// **'Show source'**
+  String get filePreviewShowSource;
+
+  /// No description provided for @filePreviewShowFormatted.
+  ///
+  /// In en, this message translates to:
+  /// **'Show formatted'**
+  String get filePreviewShowFormatted;
+
+  /// No description provided for @filePreviewMissing.
+  ///
+  /// In en, this message translates to:
+  /// **'File not found'**
+  String get filePreviewMissing;
+
+  /// No description provided for @filePreviewTooLarge.
+  ///
+  /// In en, this message translates to:
+  /// **'File too large to preview'**
+  String get filePreviewTooLarge;
+
+  /// No description provided for @filePreviewUnsupported.
+  ///
+  /// In en, this message translates to:
+  /// **'This file can’t be previewed'**
+  String get filePreviewUnsupported;
+
+  /// No description provided for @filePreviewDenied.
+  ///
+  /// In en, this message translates to:
+  /// **'The bridge isn’t allowed to read this file'**
+  String get filePreviewDenied;
+
+  /// Shown in the file preview when the connected bridge predates file previews.
+  ///
+  /// In en, this message translates to:
+  /// **'Update the bridge to preview files'**
+  String get filePreviewBridgeTooOld;
+
+  /// No description provided for @filePreviewFailed.
+  ///
+  /// In en, this message translates to:
+  /// **'Couldn’t load this file'**
+  String get filePreviewFailed;
+
   /// No description provided for @sessionDetailImageOpen.
   ///
   /// In en, this message translates to:

@@ -107,6 +107,7 @@ void main() {
         failureReporter: MockFailureReporter(),
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
+        fileReferenceOpenService: MockFileReferenceOpenService(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );
       addTearDown(cubit.close);

@@ -101,6 +101,10 @@ class const DesktopSessionDetailScreen({
               requestId: requestId,
               sessionId: sessionId,
             ),
+            createFilePreviewCubit: ({required reference}) => FilePreviewCubit(
+              repository: getIt<FilePreviewRepository>(),
+              reference: reference,
+            ),
             canShareImages: defaultTargetPlatform != TargetPlatform.linux,
           ),
         ),
@@ -134,6 +138,7 @@ class const DesktopSessionDetailView({
   required final SessionDetailCapabilityProvider<SessionRepository> sessionRepository,
   required final SessionExternalActionCubitFactory createExternalActionCubit,
   required final PendingFormCubitFactory createPendingFormCubit,
+  required final FilePreviewCubitFactory createFilePreviewCubit,
   required final bool canShareImages,
 }) extends StatelessWidget {
   @override
@@ -146,6 +151,7 @@ class const DesktopSessionDetailView({
       sessionRepository: sessionRepository,
       createExternalActionCubit: createExternalActionCubit,
       createPendingFormCubit: createPendingFormCubit,
+      createFilePreviewCubit: createFilePreviewCubit,
       canShareImages: canShareImages,
       openExternalLink: openDesktopExternalLink,
       openSession: onOpenSession,

@@ -5,6 +5,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/markdown_styles.dart";
+import "../file_preview/file_reference_code_syntax.dart";
 import "../session_detail_markdown_link_handler.dart";
 import "attachment_collection_widget.dart";
 import "user_prompt_markdown_image.dart";
@@ -115,6 +116,7 @@ class const UserMessageBubbleContent({
                   buildUserPromptMarkdownImage(context: context, uri: uri, semanticLabel: alt),
               styleSheet: buildChatMessageMarkdownStyleSheet(prego: context.prego),
               blockSyntaxes: sessionMarkdownBlockSyntaxes,
+              inlineSyntaxes: sessionMarkdownInlineSyntaxes,
               builders: buildSessionMarkdownBuilders(
                 highlightEnabled: true,
                 copyTooltip: context.loc.sessionDetailCopy,

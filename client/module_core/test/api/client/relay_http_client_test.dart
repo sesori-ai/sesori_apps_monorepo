@@ -128,11 +128,13 @@ void main() {
           path: "/session/messages/through",
           fromJson: _countedValue,
           body: {"key": "value"},
+          sensitiveResponse: false,
         );
         final malformed = await client.postDecodedInBackground<String>(
           path: "/session/messages/through",
           fromJson: _countedValue,
           body: {"key": "value"},
+          sensitiveResponse: false,
         );
 
         expect(decoded, isA<SuccessResponse<String>>().having((response) => response.data, "data", "ok"));

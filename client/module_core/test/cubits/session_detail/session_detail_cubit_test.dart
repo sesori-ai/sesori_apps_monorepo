@@ -18,6 +18,7 @@ import "package:sesori_dart_core/src/foundation/models/composer/composer_attachm
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/prompt_send_failure.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/queued_session_submission.dart";
+import "package:sesori_dart_core/src/foundation/models/file_reference/file_reference.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
 import "package:sesori_dart_core/src/foundation/models/session_interaction_state.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
@@ -32,6 +33,8 @@ import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
+import "package:sesori_dart_core/src/services/file_reference_open_service.dart";
+import "package:sesori_dart_core/src/services/models/file_reference_open_outcome.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/plugin_management_service.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
@@ -156,6 +159,7 @@ void main() {
       PluginManagementService? pluginManagementService,
       BridgeSettingsService? bridgeSettingsService,
       SseEventTracker? sseEventTracker,
+      FileReferenceOpenService? fileReferenceOpenService,
       ClockProvider clock = const ClockProvider(),
       String pageSessionId = sessionId,
     }) => SessionDetailCubit(
@@ -179,6 +183,7 @@ void main() {
       failureReporter: mockFailureReporter,
       bridgeSettingsService: bridgeSettingsService ?? stubbedBridgeSettingsService(),
       sseEventTracker: sseEventTracker ?? MockSseEventTracker(),
+      fileReferenceOpenService: fileReferenceOpenService ?? MockFileReferenceOpenService(),
       sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       clock: clock,
     );
@@ -386,6 +391,50 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(2);
+    });
+
+    group("openFileReference", () {
+      late MockFileReferenceOpenService openService;
+
+      setUp(() {
+        openService = MockFileReferenceOpenService();
+        registerFallbackValue(const FileReference(absolutePath: "/fallback.txt", line: null));
+      });
+
+      Future<SessionDetailCubit> loadedCubit() async {
+        final cubit = buildCubit(fileReferenceOpenService: openService);
+        addTearDown(cubit.close);
+        await awaitState(cubit: cubit, predicate: (state) => state is SessionDetailLoaded, description: "loaded");
+        return cubit;
+      }
+
+      test("resolves against the session directory and returns a reference that needs the preview", () async {
+        when(() => openService.open(reference: any(named: "reference"))).thenAnswer(
+          (_) async => const FileReferenceNeedsPreview(),
+        );
+        final cubit = await loadedCubit();
+        final directory = cubit.state.hydratedSession?.directory;
+
+        final reference = await cubit.openFileReference(raw: "lib/main.dart:9");
+
+        expect(reference, FileReference(absolutePath: "$directory/lib/main.dart", line: 9));
+      });
+
+      test("returns nothing once the file opened locally", () async {
+        when(() => openService.open(reference: any(named: "reference"))).thenAnswer(
+          (_) async => const FileReferenceOpenedLocally(),
+        );
+        final cubit = await loadedCubit();
+
+        expect(await cubit.openFileReference(raw: "/a/b.txt"), isNull);
+      });
+
+      test("ignores text that is not a file reference", () async {
+        final cubit = await loadedCubit();
+
+        expect(await cubit.openFileReference(raw: "foo()"), isNull);
+        verifyNever(() => openService.open(reference: any(named: "reference")));
+      });
     });
 
     group("auto continuation", () {
@@ -2306,6 +2355,7 @@ void main() {
         failureReporter: mockFailureReporter,
         bridgeSettingsService: stubbedBridgeSettingsService(),
         sseEventTracker: MockSseEventTracker(),
+        fileReferenceOpenService: MockFileReferenceOpenService(),
         sessionLaunchService: inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
       );
       addTearDown(cubit.close);

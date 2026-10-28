@@ -36,4 +36,17 @@ class FilesystemApi({required final RelayHttpApiClient _client}) {
       fromJson: FilesystemSuggestion.fromJson,
     );
   }
+
+  /// Reads a preview of the file at the absolute [path] on the bridge's computer.
+  ///
+  /// An image preview can be tens of megabytes of base64, so it decodes off the
+  /// UI isolate, and the file's content stays out of error reports.
+  Future<ApiResponse<FilePreviewResponse>> readFilePreview({required String path}) {
+    return _client.postDecodedInBackground(
+      path: "/filesystem/file",
+      body: FilePreviewRequest(path: path),
+      fromJson: FilePreviewResponse.fromJson,
+      sensitiveResponse: true,
+    );
+  }
 }

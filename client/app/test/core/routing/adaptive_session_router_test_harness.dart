@@ -308,6 +308,7 @@ class AdaptiveSessionRouterTestHarness() {
       ),
     );
     getIt.registerSingleton<AuthSession>(authSession);
+    getIt.registerSingleton<FileReferenceOpenService>(MockFileReferenceOpenService());
     // No dispose: the tracker lives in the test's fake-async zone, whose
     // microtasks no longer run when GetIt resets, so closing it would hang.
     getIt.registerLazySingleton<SessionListFilterTracker>(

@@ -1057,6 +1057,18 @@
   "sessionDetailWorking": "Working…",
   "sessionDetailThought": "Thought",
   "sessionDetailToolUnknown": "Tool",
+  "filePreviewClose": "Close preview",
+  "filePreviewShowSource": "Show source",
+  "filePreviewShowFormatted": "Show formatted",
+  "filePreviewMissing": "File not found",
+  "filePreviewTooLarge": "File too large to preview",
+  "filePreviewUnsupported": "This file can’t be previewed",
+  "filePreviewDenied": "The bridge isn’t allowed to read this file",
+  "filePreviewBridgeTooOld": "Update the bridge to preview files",
+  "@filePreviewBridgeTooOld": {
+    "description": "Shown in the file preview when the connected bridge predates file previews."
+  },
+  "filePreviewFailed": "Couldn’t load this file",
   "sessionDetailImageOpen": "Open image",
   "sessionDetailImageClose": "Close image",
   "sessionDetailImageShare": "Share image",
