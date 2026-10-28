@@ -5,7 +5,7 @@
 - Date: 2026-10-28. Planning base: `origin/main` at `4ed73c331b`.
 - Source: a real user with more than 10,000 sessions, almost all Claude Code, sees the apps freeze, worst around
   imports. Two read-only code investigations (bridge and client) ranked every path that grows with the session
-  count. The review page `heavy-users-r1` settled D1–D7 with the user on 2026-10-28.
+  count. The review page `heavy-users-r1` settled D1–D6 with the user on 2026-10-28; D7 followed in chat.
 - Status: plan raised. Phase 1 (steps 2–11) and phase 2 (steps 12–17) are both planned in full, at the user's
   request (D7).
 - Repositories: this monorepo only. Every PR uses the `[heavy-users]` slug and the step numbering below.
@@ -19,13 +19,13 @@
 - An import that finds nothing new writes nothing, sends a handful of progress events, and makes the apps reload
   nothing.
 - Every harness lists its sessions without re-reading every transcript on each import or send.
-- After phase 2, opening the list costs the same at 500 sessions as at 50,000: the bridge sends the newest page
-  across all projects, more pages arrive as you scroll, and search, chips and chip counts are answered by the
-  bridge. Older bridges keep today's full load.
+- After phase 2, the app's work to open the list is the same at 500 sessions as at 50,000. The bridge sends the
+  newest page across all projects, more pages arrive as you scroll, and the bridge answers search, chips and chip
+  counts, each with one database query. Older bridges keep today's full load.
 
 ## Decisions
 
-| # | Decision (user, 2026-10-28, review page `heavy-users-r1`) |
+| # | Decision (user, 2026-10-28: D1–D6 on review page `heavy-users-r1`, D7 in chat afterwards) |
 |---|---|
 | D1 | Phase 1 first, then phase 2 (windowed loading). |
 | D2 | Phase 2 shape: newest first across all projects, more pages as you scroll; search, filter chips and their counts answered by the bridge; older bridges keep today's full download. |
@@ -196,8 +196,10 @@ plugin's lifetime. API classes stay stateless.
 
 **Row action cubits (step 11).** `SessionListCubit` keeps only the sessions it was given or updated with by
 `updateActionSession`. It follows them through session events, and rolls back failed renames and deletes from its
-own snapshot. It stops fetching project lists. The fetch, catalog-refresh drain and paused-after-failure machinery
-are deleted. Before removing it, check every `state.sessions` consumer.
+own snapshot. A failed mark read or unread restores the `SessionUnseenTracker` value it held before its optimistic
+write. Today a project fetch repairs it (`session_list_cubit.dart:170-201`). The cubit stops fetching project lists.
+The fetch, catalog-refresh drain and paused-after-failure machinery are deleted. Before removing them, check every
+`state.sessions` consumer.
 
 ### Phase 2: stop loading every session
 
@@ -244,7 +246,8 @@ SessionPageResponse {
 - **Search.**
   - The query splits into words with the shared rule. Every word must match, case-insensitively, either the title
     the mapper sends or the project's own name.
-  - Titles match in SQL (`LIKE` with `%` and `_` escaped). Project names are matched in Dart with the shared
+  - Titles match in SQL with `LIKE ... ESCAPE '\'`. Each word is matched literally: `\`, `%` and `_` are escaped,
+    with `\` escaped first. Project names are matched in Dart with the shared
     `projectOwnName` over the visible projects, which gives each word's matching project ids.
   - SQLite folds only ASCII case.
 - **Running.** Running ids come from `SessionRepository.getProjectActivitySummaries()`, filtered with the shared
@@ -264,8 +267,10 @@ SessionPageResponse {
     `SessionUnseenCalculator.isUnseen` and to the mapper's displayed time. The calculator stays pure Dart, and no
     Drift code leaves the database layer.
 - The unused `getArchivedCatalogSessions` is replaced by this query.
-- No new index or migration. A sort over about 10,000 roots on the database isolate takes a few milliseconds. Add an
-  expression index if a page query exceeds about 50 ms at 50,000 sessions.
+- No new index or migration. The page query scans the mode's root sessions once to sort them and count them. At
+  10,000 roots on the database isolate this is a few milliseconds, and the client does no per-session work.
+  Step 13 times it with a 50,000-session fixture. If it exceeds about 50 ms, step 13 adds an expression index on the
+  displayed time in the same PR. Counts stay a scan of the filtered set either way.
 
 **Client window (step 14).**
 
@@ -292,9 +297,10 @@ SessionPageResponse {
 - The bridge request follows the last query change by 250 ms. A cleared query, a project change or a chip change
   requests at once.
 - `loadMore` appends the next page (200 rows), deduplicated by id.
-- `reload` refetches from the start with `limit = min(max(200, loaded rows), 1000)`. It runs on `reload()` from
-  `SessionListRefreshService`, on `catalogChanged` and on `dataMayBeStale`. A plain reconnect relies on SSE replay,
-  as today.
+- `reload` refetches the loaded range from the start: at least 200 rows, in consecutive pages of up to 1,000. It
+  swaps the rows once every page has arrived, so a reader 1,500 rows down keeps their place. It runs on `reload()`
+  from `SessionListRefreshService`, on `catalogChanged` and on `dataMayBeStale`. A plain reconnect relies on SSE
+  replay, as today.
 - A bridge switch, seen through the existing `TargetBridgeChangeTracker`, resets the window.
 - A request generation drops answers the user has moved past.
 - Each page seeds `SessionUnseenTracker`, which merges seeds instead of replacing a project's map.
@@ -534,8 +540,10 @@ Scope as in Design → Harness scanners.
 ### Step 11 — Row action cubits (⚙️)
 
 Scope as in Design → Row action cubits.
-- Tests: rename and delete success, failure rollback and event updates still work; reconnect, `catalogChanged` and
-  `dataMayBeStale` make no requests.
+- Tests:
+  - rename and delete success, failure rollback and event updates still work;
+  - a failed mark read or unread restores the tracker's previous value;
+  - reconnect, `catalogChanged` and `dataMayBeStale` make no requests.
 - Check the session detail and row action flows on the iOS simulator.
 
 ### Step 12 — Shared rules (🌿)
@@ -553,7 +561,7 @@ Wire models, handler, repository and DAO query, as in Design → Wire contract.
   - active and archived;
   - project filter and hidden projects;
   - scratch project;
-  - search words over titles and project names, with `%` and `_` escaped;
+  - search words over titles and project names, with `\`, `%` and `_` matched literally;
   - running from summaries;
   - unseen and displayed-time parity with the Dart rules;
   - counts;
@@ -561,14 +569,15 @@ Wire models, handler, repository and DAO query, as in Design → Wire contract.
   - invalid cursor → 400;
   - items are enriched;
   - JSON omits nulls.
-- Time a page query over the fixture.
+- Time a page query over the fixture at 10,000 and 50,000 sessions, and record both in the tracker.
 - Run `architecture-implementation-review`.
 
 ### Step 14 — Client window (🚧)
 
 As in Design → Client window. Wired into `SessionScope` and both shells, but not yet consumed by the list.
 - Tests:
-  - first page, `loadMore`, dedup and reload size;
+  - first page, `loadMore` and dedup;
+  - a reload with 1,500 rows loaded refetches all of them in two requests and swaps once;
   - local narrowing on a key change, then the answer;
   - query debounce, with an immediate request for other key changes;
   - generation drops stale answers;
@@ -650,8 +659,10 @@ Flutter code is exercised on iOS and macOS.
 - **A launch made during a search** keeps its launching row until the search clears. Accepted.
 - **Each page request asks every active plugin for activity.** This is bounded by the 1 s debounce; a cached summary
   is the upgrade if it shows in profiles.
-- **A skipped import row keeps an older `projectionUpdatedAt`,** so a slightly older live write to an unchanged row
-  can apply. Harmless, since the row didn't change; tested.
+- **A skipped import row keeps an older `projectionUpdatedAt`.** Only the import reads this value, to yield to live
+  writes made after it started (`catalog_import_repository.dart:593`). Live writes are not gated by it, and imports
+  are single-flight per plugin (`catalog_import_service.dart:39`), so keeping the older value changes no outcome.
+  Tested.
 - **Scanner caches cost memory and are lost on restart.** They hold roughly a few MB at 10,000 sessions and are
   rebuilt by one scan. Codex's is also lost on idle suspension.
 - **A same-size, same-mtime rewrite isn't noticed** by the Pi and Claude caches. Not a plausible flow.
