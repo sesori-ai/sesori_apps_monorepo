@@ -918,6 +918,30 @@ void main() {
       await subscription.cancel();
     });
 
+    test("signals authentication required when a turn fails to authenticate", () async {
+      await harness.createSession();
+      final errors = <Object>[];
+      final subscription = harness.plugin.events.listen((_) {}, onError: errors.add);
+      harness.processes.single.emit({
+        "type": "assistant",
+        "session_id": testSessionId,
+        "uuid": "auth-1",
+        "parent_tool_use_id": null,
+        "error": "authentication_failed",
+        "message": {
+          "id": "msg-auth",
+          "model": "<synthetic>",
+          "content": [
+            {"type": "text", "text": "Failed to authenticate: OAuth session expired and could not be refreshed"},
+          ],
+        },
+      });
+      await pump();
+
+      expect(errors.single, isA<PluginAuthenticationRequiredException>());
+      await subscription.cancel();
+    });
+
     test("a hook-denied tool fails its step and leaves a successful turn without an error", () async {
       final events = <BridgeSseEvent>[];
       final subscription = harness.plugin.events.listen(events.add);
