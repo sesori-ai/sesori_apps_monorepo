@@ -9,9 +9,13 @@ import shutil
 import signal
 import subprocess
 import sys
+import time
 
 from package_desktop_macos import execute
 from qualify_desktop import ROOT
+
+WINDOW_WAIT_SECONDS = 45.0
+WINDOW_POLL_INTERVAL_SECONDS = 2.0
 
 
 def probe_platform_fixture(*, fixture: Path, output: Path) -> None:
@@ -81,12 +85,24 @@ def probe(*, app: Path, fixture: Path | None, output: Path) -> None:
                 # The fresh-host guard and exact installed path exclude unrelated applications.
                 app_pid = int(subprocess.check_output(
                     ["pgrep", "-f", r"^/Applications/Sesori\.app/Contents/MacOS/Sesori($| )"], text=True).strip())
-                window = subprocess.run([str(inspector), str(app_pid)], text=True, capture_output=True)
-                (output / "window.log").write_text(window.stdout + window.stderr)
+                # A first launch on a slow Intel runner can take longer than the startup observation to show
+                # its window, so poll like the upgrade qualifier instead of judging a single snapshot.
+                deadline = time.monotonic() + WINDOW_WAIT_SECONDS
+                attempts: list[str] = []
+                while True:
+                    window = subprocess.run([str(inspector), str(app_pid)], text=True, capture_output=True)
+                    attempts.append(f"ATTEMPT {len(attempts) + 1}\n{window.stdout}{window.stderr}")
+                    (output / "window.log").write_text("\n".join(attempts))
+                    if window.returncode != 1 or time.monotonic() >= deadline:
+                        break
+                    if process.poll() is not None:
+                        raise RuntimeError(f"Installed desktop exited before showing a window: {process.returncode}")
+                    time.sleep(WINDOW_POLL_INTERVAL_SECONDS)
                 if window.returncode == 2:
                     raise RuntimeError("BLOCKED installed GUI: this runner has no active screen")
                 elif window.returncode:
-                    raise RuntimeError("Installed desktop has no visible main window; see window.log")
+                    raise RuntimeError(
+                        f"Installed desktop has no visible main window after {WINDOW_WAIT_SECONDS:.0f} s; see window.log")
                 else:
                     print("PASS installed desktop survived startup with a visible native main window")
                     window_id = re.search(r"WINDOW_ID (\d+)", window.stdout)[1]
