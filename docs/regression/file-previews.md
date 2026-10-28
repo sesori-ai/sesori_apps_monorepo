@@ -35,7 +35,7 @@ default app; otherwise it shows a read-only preview.
 ### Client flow
 
 - Inline code in text parts and user messages is tappable, in the link colour,
-  when it reads as a path: it contains `/` (or `\` on Windows), has an
+  when it reads as a path: it contains `/` or `\`, has an
   extension with a letter, and may end in `:line` or `:line:col`. A path with
   whitespace, `~`, quotes, backticks, `*`, `?`, `<`, `>`, or `|` is not
   tappable. Other inline code stays plain. A local `file://` URI (no host or

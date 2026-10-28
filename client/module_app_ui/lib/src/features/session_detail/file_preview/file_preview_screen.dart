@@ -26,7 +26,8 @@ const _maxHighlightedLength = 200 * 1024;
 
 const _maxDecodedImageDimension = 2048;
 
-/// Text with only these characters is as wide as its length in digits.
+/// Matches lines with non-ASCII characters, which are measured with a
+/// [TextPainter] because their glyph widths differ from the digit width.
 final _nonAscii = RegExp(r"[^\x00-\x7F]");
 
 /// Slides [reference]'s preview up over the session. Its cubit comes from the
@@ -287,14 +288,24 @@ class _CodePreviewState() extends State<_CodePreview> {
         ? [for (final text in code.split("\n")) TextSpan(text: text, style: style)]
         : splitSpanIntoLines(span: highlighted);
     var widest = 0.0;
+    final measured = <InlineSpan>[];
     for (final line in lines) {
       final text = line.toPlainText();
-      // Wide and fallback-font glyphs only show their width when laid out.
       if (!_nonAscii.hasMatch(text)) {
         widest = math.max(widest, text.length * charWidth);
         continue;
       }
-      final painter = TextPainter(text: line, textDirection: TextDirection.ltr, textScaler: textScaler)..layout();
+      if (measured.isNotEmpty) measured.add(const TextSpan(text: "\n"));
+      measured.add(line);
+    }
+    // Wide and fallback-font glyphs only show their width when laid out, so
+    // those lines share one layout pass whose width is their widest line.
+    if (measured.isNotEmpty) {
+      final painter = TextPainter(
+        text: TextSpan(style: style, children: measured),
+        textDirection: TextDirection.ltr,
+        textScaler: textScaler,
+      )..layout();
       widest = math.max(widest, painter.width.ceilToDouble());
       painter.dispose();
     }
