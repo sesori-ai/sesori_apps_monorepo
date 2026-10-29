@@ -149,7 +149,38 @@ class BenchmarkPluginRuntime({required Map<String, BridgePluginApi> plugins}) ex
   bool isCurrentGeneration({required String pluginId, required int generation}) {
     return generation == 1 && _plugins.containsKey(pluginId);
   }
+
+  @override
+  Stream<T> useCatalogImportStream<T>({
+    required String pluginId,
+    required Enum operation,
+    required PluginCatalogCancellationSignal cancellation,
+    required Stream<T> Function(PluginCatalogImportSource source) body,
+  }) {
+    final plugin = _plugins[pluginId];
+    if (plugin == null) return Stream.error(PluginOperationException(operation.name, statusCode: 503));
+    return body(
+      PluginCatalogImportLiveSource(
+        authority: const _BenchmarkCatalogImportAuthority(),
+        cancellation: cancellation,
+        api: plugin,
+      ),
+    );
+  }
+
+  @override
+  void requireCatalogImportAuthority({required PluginCatalogImportAuthority authority, required Enum operation}) {}
+
+  @override
+  Future<R> commitCatalogImport<R>({
+    required PluginCatalogImportAuthority authority,
+    required Enum operation,
+    required Future<R> Function() commit,
+  }) => commit();
 }
+
+/// The benchmark runtime's plugins never change generation mid-import.
+class const _BenchmarkCatalogImportAuthority() implements PluginCatalogImportAuthority;
 
 class const _UnusedGenerationFactory() implements PluginGenerationFactory {
   @override
