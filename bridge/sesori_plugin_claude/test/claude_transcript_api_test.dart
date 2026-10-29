@@ -291,7 +291,7 @@ void main() {
 
       expect(() => api.readTranscript(transcriptPath: path), throwsA(isA<FileSystemException>()));
       expect(() => api.readHeader(transcriptPath: path), throwsA(isA<FileSystemException>()));
-      expect(api.lastModified(transcriptPath: path), isNull);
+      expect(api.statFile(path: path), isNull);
     });
 
     test("deletes a transcript and tolerates a repeat delete", () {

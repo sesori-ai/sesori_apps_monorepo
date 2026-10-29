@@ -187,9 +187,9 @@ void main() {
     );
     expect((stored.info as PluginMessageAssistant).sender, PluginMessageSender.system);
     expect((stored.parts.single as PluginMessagePartTool).state.output, "Synthetic result");
-    final queued = transcripts
-        .readTranscriptRecords(sessionId: _sessionId)
-        .whereType<ClaudeTranscriptQueuedCommandRecord>();
+    final queued = (await transcripts.readTranscriptRecordsInIsolate(
+      sessionId: _sessionId,
+    )).whereType<ClaudeTranscriptQueuedCommandRecord>();
     expect(queued.single.originKind, ClaudeMessageOriginKind.taskNotification);
   });
 
