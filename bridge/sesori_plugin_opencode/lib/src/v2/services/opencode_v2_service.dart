@@ -147,6 +147,8 @@ class OpenCodeV2Service({
   };
 
   Future<List<PluginProject>> getProjects() => _repository.getProjects();
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({required PluginCatalogCancellationSignal cancellation}) =>
+      _repository.readCatalogSnapshot(cancellation: cancellation);
   Future<PluginProject> getProject({required String projectId}) => _repository.getProject(directory: projectId);
   Future<PluginProject> renameProject({required String projectId, required String name}) =>
       _repository.renameProject(directory: projectId, name: name);

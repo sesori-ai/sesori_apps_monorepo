@@ -429,6 +429,92 @@ void main() {
     });
   });
 
+  group("OpenCodeRepository.readCatalogSnapshot", () {
+    GlobalSession session({
+      required String id,
+      required String projectId,
+      required String directory,
+      required String? parentId,
+      double? archived,
+    }) => GlobalSession(
+      slug: id,
+      title: id,
+      version: "v",
+      project: null,
+      id: id,
+      projectID: projectId,
+      directory: directory,
+      time: GlobalSessionTime(created: 10, updated: 20, compacting: null, archived: archived),
+      workspaceID: null,
+      path: null,
+      parentID: parentId,
+      summary: null,
+      cost: null,
+      tokens: null,
+      share: null,
+      agent: null,
+      model: null,
+      metadata: null,
+      permission: null,
+      revert: null,
+    );
+    const projects = [
+      Project(
+        sandboxes: <String>[],
+        id: "repo-project",
+        worktree: "/repo",
+        time: ProjectTime(created: 1, updated: 2, initialized: null),
+        vcs: null,
+        name: null,
+        icon: null,
+        commands: null,
+      ),
+      Project(
+        sandboxes: <String>[],
+        id: "global",
+        worktree: "/",
+        time: ProjectTime(created: 1, updated: 2, initialized: null),
+        vcs: null,
+        name: null,
+        icon: null,
+        commands: null,
+      ),
+    ];
+
+    test("groups one listing of every session, children and archived included, into families", () async {
+      final api = FakeOpenCodeApi(
+        projects: projects,
+        globalSessions: [
+          session(id: "root", projectId: "repo-project", directory: "/repo", parentId: null),
+          session(id: "child", projectId: "repo-project", directory: "/repo", parentId: "root"),
+          session(id: "grandchild", projectId: "repo-project", directory: "/repo/sub", parentId: "child"),
+          session(id: "archived", projectId: "repo-project", directory: "/repo", parentId: null, archived: 30),
+          session(id: "folder-root", projectId: "global", directory: "/folder", parentId: null),
+        ],
+      );
+
+      final result = await OpenCodeRepository(api).readCatalogSnapshot(cancellation: const _NeverCancelled());
+
+      final families = {
+        for (final family in (result as PluginCatalogSnapshotAvailable).snapshot.projects)
+          family.project.directory: {for (final session in family.sessions) session.id: session},
+      };
+      expect(families.keys, unorderedEquals(["/repo", "/folder"]));
+      expect(families["/repo"]?.keys, unorderedEquals(["root", "child", "grandchild", "archived"]));
+      expect(families["/repo"]?["grandchild"]?.parentID, "child");
+      expect(families["/repo"]?["archived"]?.time?.archived, 30);
+      expect(families["/folder"]?.keys, ["folder-root"]);
+    });
+
+    test("is unavailable when one listing cannot hold every session", () async {
+      final api = FakeOpenCodeApi(projects: projects, catalogListingComplete: false);
+
+      final result = await OpenCodeRepository(api).readCatalogSnapshot(cancellation: const _NeverCancelled());
+
+      expect(result, isA<PluginCatalogSnapshotUnavailable>());
+    });
+  });
+
   group("OpenCodeRepository.getProjects", () {
     test("ignores the raw project startup timestamp and derives activity from root sessions", () async {
       // OpenCode stamps the raw project update time at server startup, making
@@ -1228,4 +1314,9 @@ void main() {
       expect(withoutVariant.containsKey("variant"), isFalse);
     });
   });
+}
+
+class const _NeverCancelled() implements PluginCatalogCancellationSignal {
+  @override
+  bool get isCancelled => false;
 }

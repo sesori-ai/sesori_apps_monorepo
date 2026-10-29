@@ -27,6 +27,9 @@ import "open_code_raw_http_client.dart";
 
 const _directoryOpenCodeHeader = "x-opencode-directory";
 
+/// Far above any real session count; the server applies no cap of its own.
+const _catalogSessionLimit = 1000000;
+
 /// HTTP header values must be ASCII, so a non-ASCII directory is
 /// percent-encoded; OpenCode `decodeURIComponent`s this header, like its own SDK
 /// sends it. ASCII paths stay raw so they reach older servers byte-for-byte.
@@ -583,6 +586,21 @@ class OpenCodeApi({required final OpenCodeRawHttpClient _client}) {
 
     final decoded = jsonDecodeListMap(response.body);
     return decoded.map(GlobalSession.fromJson).toList();
+  }
+
+  /// Every session, including archived and child sessions, in one request.
+  ///
+  /// Returns null when the server holds more than [_catalogSessionLimit]
+  /// sessions, which it signals with `x-next-cursor`. That cursor is the last
+  /// row's update time and the next page is strictly older, so following it
+  /// would skip sessions that share a millisecond.
+  Future<List<GlobalSession>?> listCatalogSessions() async {
+    final response = await _client.get(
+      path: "/experimental/session",
+      queryParameters: const {"archived": "true", "limit": "$_catalogSessionLimit"},
+    );
+    if (response.headers.containsKey("x-next-cursor")) return null;
+    return jsonDecodeListMap(response.body).map(GlobalSession.fromJson).toList();
   }
 
   Future<ProviderListResponse> listProviders() async {

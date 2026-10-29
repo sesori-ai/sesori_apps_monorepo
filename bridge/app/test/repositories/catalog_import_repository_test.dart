@@ -1229,6 +1229,128 @@ void main() {
       expect(walk, isNotEmpty, reason: "a walk longer than 250 ms still reports progress");
     });
 
+    group("a live catalog snapshot", () {
+      late String projectPath;
+      late List<PluginSession> sessions;
+
+      setUp(() {
+        projectPath = "${directory.path}/live";
+        sessions = [
+          for (var index = 0; index < 600; index++) ...[
+            _pluginSession(id: "root-$index", directory: projectPath),
+            _pluginSession(id: "child-$index", parentId: "root-$index", directory: projectPath),
+            _pluginSession(id: "grandchild-$index", parentId: "child-$index", directory: projectPath),
+          ],
+        ];
+      });
+
+      PluginCatalogSnapshotResult snapshot() => PluginCatalogSnapshotAvailable(
+        snapshot: PluginCatalogSnapshot(
+          projects: [
+            PluginProjectCatalogSnapshot(
+              project: PluginProject(id: "live", directory: projectPath),
+              sessions: sessions,
+            ),
+          ],
+        ),
+      );
+
+      test("imports every session with no per-project, per-parent or per-session call", () async {
+        final plugin = _NativeImportPlugin(
+          projects: const [],
+          rootsByProject: const {},
+          childrenByParent: const {},
+          onReadCatalogSnapshot: () async => snapshot(),
+        );
+        final statuses = await _repository(database: database, plugin: plugin)
+            .importCatalog(
+              pluginId: plugin.id,
+              control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
+            )
+            .toList();
+
+        expect(plugin.readCatalogSnapshotCalls, 1);
+        expect(plugin.getProjectsCalls, 0);
+        expect(plugin.getSessionsCalls, 0);
+        expect(plugin.getChildSessionsCalls, 0);
+        expect(statuses.whereType<CatalogImportEnumerating>().length, lessThanOrEqualTo(3));
+        final completed = statuses.last as CatalogImportCompleted;
+        expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 1800));
+        final child = await database.sessionDao.getSessionByBinding(pluginId: plugin.id, backendSessionId: "child-7");
+        final grandchild = await database.sessionDao.getSessionByBinding(
+          pluginId: plugin.id,
+          backendSessionId: "grandchild-7",
+        );
+        expect(child?.sessionId, startsWith("ses_"));
+        expect(grandchild?.parentSessionId, child?.sessionId);
+      });
+
+      test("Unavailable falls back to the walk", () async {
+        final plugin = _NativeImportPlugin(
+          projects: [PluginProject(id: "live", directory: projectPath)],
+          rootsByProject: {
+            projectPath: [_pluginSession(id: "root", directory: projectPath)],
+          },
+          childrenByParent: {
+            "root": [_pluginSession(id: "child", parentId: "root", directory: projectPath)],
+          },
+          onReadCatalogSnapshot: () async => const PluginCatalogSnapshotUnavailable(),
+        );
+
+        final completed = await _importCompletion(database: database, plugin: plugin);
+
+        expect(plugin.readCatalogSnapshotCalls, 1);
+        expect(plugin.getProjectsCalls, 1);
+        expect(plugin.getChildSessionsCalls, 2);
+        expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 2));
+      });
+
+      test("a failed snapshot falls back to the walk", () async {
+        final plugin = _NativeImportPlugin(
+          projects: [PluginProject(id: "live", directory: projectPath)],
+          rootsByProject: {
+            projectPath: [_pluginSession(id: "root", directory: projectPath)],
+          },
+          childrenByParent: const {},
+          onReadCatalogSnapshot: () => Future.error(StateError("listing failed")),
+        );
+
+        final completed = await _importCompletion(database: database, plugin: plugin);
+
+        expect(plugin.getProjectsCalls, 1);
+        expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
+      });
+
+      test("cancellation during the snapshot publishes nothing and does not walk", () async {
+        final gate = Completer<PluginCatalogSnapshotResult>();
+        final started = Completer<void>();
+        final plugin = _NativeImportPlugin(
+          projects: [PluginProject(id: "live", directory: projectPath)],
+          rootsByProject: const {},
+          childrenByParent: const {},
+          onReadCatalogSnapshot: () {
+            started.complete();
+            return gate.future;
+          },
+        );
+        final control = CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false);
+        final result = _repository(
+          database: database,
+          plugin: plugin,
+        ).importCatalog(pluginId: plugin.id, control: control).toList();
+        await started.future;
+
+        control.cancellationRequested = true;
+        gate.complete(snapshot());
+        final statuses = await result;
+
+        expect(statuses.whereType<CatalogImportCancelled>(), hasLength(1));
+        expect(statuses.last, isA<CatalogImportCancelled>());
+        expect(plugin.getProjectsCalls, 0);
+        expect(await database.projectsDao.getAllProjects(), isEmpty);
+      });
+    });
+
     test("native re-import counts only the rows the catalog did not already hold", () async {
       final firstPath = "${directory.path}/kept";
       final secondPath = "${directory.path}/added";
@@ -1874,14 +1996,28 @@ class _NativeImportPlugin({
   final Completer<void>? getProjectsGate,
   final Future<void> Function(String projectId)? onGetSessions,
   final Duration? getChildSessionsDelay,
+  final Future<PluginCatalogSnapshotResult> Function()? onReadCatalogSnapshot,
 }) implements NativeProjectsPluginApi {
   final Completer<void> getProjectsStarted = Completer<void>();
+  int readCatalogSnapshotCalls = 0;
+  int getProjectsCalls = 0;
+  int getSessionsCalls = 0;
+  int getChildSessionsCalls = 0;
 
   @override
   String get id => "native";
 
   @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async {
+    readCatalogSnapshotCalls++;
+    return await onReadCatalogSnapshot?.call() ?? const PluginCatalogSnapshotUnavailable();
+  }
+
+  @override
   Future<List<PluginProject>> getProjects() async {
+    getProjectsCalls++;
     if (!getProjectsStarted.isCompleted) getProjectsStarted.complete();
     await getProjectsGate?.future;
     return projects;
@@ -1889,12 +2025,14 @@ class _NativeImportPlugin({
 
   @override
   Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
+    getSessionsCalls++;
     await onGetSessions?.call(projectId);
     return rootsByProject[projectId] ?? const [];
   }
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    getChildSessionsCalls++;
     if (getChildSessionsDelay case final delay?) await Future<void>.delayed(delay);
     return childrenByParent[sessionId] ?? const [];
   }

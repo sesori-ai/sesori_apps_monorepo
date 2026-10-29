@@ -396,6 +396,11 @@ class OpenCodePlugin._({
   Future<List<PluginProject>> getProjects() => _call(_service.getProjects);
 
   @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) => _call(() => _service.readCatalogSnapshot(cancellation: cancellation));
+
+  @override
   Future<List<PluginSession>> getSessions({
     required String projectId,
     required int? start,

@@ -1,6 +1,7 @@
 import "bridge_sse_event.dart";
 import "models/plugin_abort.dart";
 import "models/plugin_agent.dart";
+import "models/plugin_catalog_snapshot.dart";
 import "models/plugin_command.dart";
 import "models/plugin_message.dart";
 import "models/plugin_pending_permission.dart";
@@ -294,6 +295,14 @@ abstract class NativeProjectsPluginApi() extends BridgePluginApi {
 
   /// Rename a project.
   Future<PluginProject> renameProject({required String projectId, required String name});
+
+  /// Reads every project and every root and descendant session in one bulk
+  /// listing, for catalog import.
+  ///
+  /// Must not call the backend once per project, session or parent.
+  /// Unavailable means no complete bulk listing exists; the bridge then walks
+  /// projects and child sessions. Unexpected failures throw.
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({required PluginCatalogCancellationSignal cancellation});
 }
 
 /// A plugin whose backend has no project concept (Codex and every ACP

@@ -191,6 +191,41 @@ class OpenCodeV2Repository({
     ];
   }
 
+  /// Every listed project with all of its sessions, children included, from
+  /// one cursor-paged listing. Sessions of unlisted (archived) projects are
+  /// skipped, as [getProjects] skips those projects.
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async {
+    final (projects, sessions) = await shared.wait2(
+      _api.listProjects(),
+      _api.listAllSessions(cancellation: cancellation),
+    );
+    if (cancellation.isCancelled) throw const PluginStartAbortedException();
+    final sessionsByProject = <String, List<SessionInfo>>{};
+    for (final session in sessions) {
+      sessionsByProject.putIfAbsent(session.projectID, () => []).add(session);
+    }
+    final families = <PluginProjectCatalogSnapshot>[];
+    for (final project in projects) {
+      final projectSessions = sessionsByProject[project.id] ?? const <SessionInfo>[];
+      final roots = projectSessions.where((session) => session.parentID == null).toList();
+      families.add(
+        PluginProjectCatalogSnapshot(
+          project: _modelMapper.mapProject(
+            project: project,
+            activity: _activity(sessions: roots),
+          ),
+          sessions: List.unmodifiable([
+            for (final session in projectSessions)
+              _modelMapper.mapSession(session: session, projectId: project.canonical),
+          ]),
+        ),
+      );
+    }
+    return PluginCatalogSnapshotAvailable(snapshot: PluginCatalogSnapshot(projects: List.unmodifiable(families)));
+  }
+
   Future<PluginProject> getProject({required String directory}) async {
     final location = await _api.getLocation(directory: directory);
     final projects = await _api.listProjects();

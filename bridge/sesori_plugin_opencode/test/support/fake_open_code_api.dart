@@ -16,6 +16,7 @@ class FakeOpenCodeApi({
   final Session? createdSession,
   final Project? currentProject,
   final bool filterRootSessions = false,
+  final bool catalogListingComplete = true,
 }) implements OpenCodeApi {
   String? lastCreateDirectory;
   String? lastCreateParentSessionId;
@@ -157,6 +158,7 @@ class FakeOpenCodeApi({
 
   Future<List<GlobalSession>> listAllSessions({required String? directory, required bool roots}) async =>
       globalSessions;
+  Future<List<GlobalSession>?> listCatalogSessions() async => catalogListingComplete ? globalSessions : null;
   Future<Map<String, SessionStatus>> getSessionStatuses({required String? directory}) async {
     if (directory == null) return statuses;
     final ids = sessions

@@ -435,6 +435,11 @@ class _ThrowingSummaryPlugin() implements NativeProjectsPluginApi {
   Future<void> close() => _controller.close();
 
   @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async => const PluginCatalogSnapshotUnavailable();
+
+  @override
   Future<List<PluginProject>> getProjects() async => [];
 
   @override

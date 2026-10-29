@@ -161,35 +161,15 @@ class CatalogImportRepository({
     switch (source) {
       case PluginCatalogImportSnapshotSource(:final snapshot):
         plugin = null;
-        for (final family in snapshot.projects) {
-          final project = family.project;
-          final projectPath = _normalizeRequiredPath(project.directory);
-          _mergeObservedProject(
-            observedProjects,
-            _ObservedProject(
-              preferredId: project.id,
-              path: projectPath,
-              displayName: _usefulText(project.name),
-              createdAt: project.activity?.createdAt,
-              updatedAt: project.activity?.updatedAt,
-            ),
-          );
-          for (final session in family.sessions) {
-            _recordObservedSession(
-              observedSessions,
-              _ObservedSession(
-                session: session,
-                rootProjectPath: session.parentID == null ? projectPath : null,
-              ),
-            );
-            if (observedSessions.length % _responsivenessBatchSize == 0) {
-              if (cancellation.isCancelled) {
-                yield CatalogImportProgress.cancelled(pluginId: pluginId);
-                return;
-              }
-              await Future<void>.delayed(Duration.zero);
-            }
-          }
+        final observed = await _observeSnapshot(
+          snapshot: snapshot,
+          cancellation: cancellation,
+          observedProjects: observedProjects,
+          observedSessions: observedSessions,
+        );
+        if (!observed) {
+          yield CatalogImportProgress.cancelled(pluginId: pluginId);
+          return;
         }
         yield CatalogImportProgress.enumerating(
           pluginId: pluginId,
@@ -201,6 +181,35 @@ class CatalogImportRepository({
         switch (api) {
           case NativeProjectsPluginApi():
             final plugin = api;
+            final liveSnapshot = await _readLiveCatalogSnapshot(
+              pluginId: pluginId,
+              plugin: plugin,
+              cancellation: cancellation,
+            );
+            if (cancellation.isCancelled) {
+              yield CatalogImportProgress.cancelled(pluginId: pluginId);
+              return;
+            }
+            if (liveSnapshot case PluginCatalogSnapshotAvailable(:final snapshot)) {
+              final observed = await _observeSnapshot(
+                snapshot: snapshot,
+                cancellation: cancellation,
+                observedProjects: observedProjects,
+                observedSessions: observedSessions,
+              );
+              if (!observed) {
+                yield CatalogImportProgress.cancelled(pluginId: pluginId);
+                return;
+              }
+              yield CatalogImportProgress.enumerating(
+                pluginId: pluginId,
+                projectsSeen: observedProjects.length,
+                sessionsSeen: observedSessions.length,
+              );
+              break;
+            }
+
+            // No bulk listing: walk the projects and each parent's children.
             final projects = await plugin.getProjects();
             if (cancellation.isCancelled) {
               yield CatalogImportProgress.cancelled(pluginId: pluginId);
@@ -409,6 +418,59 @@ class CatalogImportRepository({
       sessionsSeen: ancestryValidated.length,
     );
     await publicationFinished;
+  }
+
+  /// The plugin's bulk listing, or Unavailable when it has none or it fails.
+  Future<PluginCatalogSnapshotResult> _readLiveCatalogSnapshot({
+    required String pluginId,
+    required NativeProjectsPluginApi plugin,
+    required PluginCatalogCancellationSignal cancellation,
+  }) async {
+    try {
+      return await plugin.readCatalogSnapshot(cancellation: cancellation);
+    } on Object catch (error, stackTrace) {
+      if (!cancellation.isCancelled) {
+        Log.w('Plugin "$pluginId" catalog snapshot failed; walking its projects instead', error, stackTrace);
+      }
+      return const PluginCatalogSnapshotUnavailable();
+    }
+  }
+
+  /// Records every project family of [snapshot]. Returns false when cancelled.
+  Future<bool> _observeSnapshot({
+    required PluginCatalogSnapshot snapshot,
+    required PluginCatalogCancellationSignal cancellation,
+    required Map<String, _ObservedProject> observedProjects,
+    required Map<String, _ObservedSession> observedSessions,
+  }) async {
+    for (final family in snapshot.projects) {
+      final project = family.project;
+      final projectPath = _normalizeRequiredPath(project.directory);
+      _mergeObservedProject(
+        observedProjects,
+        _ObservedProject(
+          preferredId: project.id,
+          path: projectPath,
+          displayName: _usefulText(project.name),
+          createdAt: project.activity?.createdAt,
+          updatedAt: project.activity?.updatedAt,
+        ),
+      );
+      for (final session in family.sessions) {
+        _recordObservedSession(
+          observedSessions,
+          _ObservedSession(
+            session: session,
+            rootProjectPath: session.parentID == null ? projectPath : null,
+          ),
+        );
+        if (observedSessions.length % _responsivenessBatchSize == 0) {
+          if (cancellation.isCancelled) return false;
+          await Future<void>.delayed(Duration.zero);
+        }
+      }
+    }
+    return true;
   }
 
   Future<({int projectsImported, int sessionsImported, CatalogImportNewItems newItems, int completedAt})>

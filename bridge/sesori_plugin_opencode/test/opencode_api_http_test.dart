@@ -134,6 +134,45 @@ void main() {
     });
   });
 
+  group("OpenCodeApi.listCatalogSessions", () {
+    OpenCodeApi apiReturning({required http.Response response, required void Function(http.BaseRequest) onRequest}) {
+      return OpenCodeApi(
+        client: OpenCodeRawHttpClient(
+          serverURL: "http://localhost:1234",
+          password: "test-pass",
+          client: MockClient((request) async {
+            onRequest(request);
+            return response;
+          }),
+        ),
+      );
+    }
+
+    test("asks for archived sessions in one page and returns them", () async {
+      late http.BaseRequest capturedRequest;
+      final api = apiReturning(
+        response: http.Response("[]", 200),
+        onRequest: (request) => capturedRequest = request,
+      );
+
+      final sessions = await api.listCatalogSessions();
+
+      expect(capturedRequest.method, equals("GET"));
+      expect(capturedRequest.url.path, equals("/experimental/session"));
+      expect(capturedRequest.url.queryParameters, equals({"archived": "true", "limit": "1000000"}));
+      expect(sessions, isEmpty);
+    });
+
+    test("returns null when the server reports another page", () async {
+      final api = apiReturning(
+        response: http.Response("[]", 200, headers: {"x-next-cursor": "1700000000000"}),
+        onRequest: (_) {},
+      );
+
+      expect(await api.listCatalogSessions(), isNull);
+    });
+  });
+
   group("OpenCodeApi.listAgents", () {
     test("uses GET /agent and forwards the directory header", () async {
       late http.BaseRequest capturedRequest;

@@ -236,13 +236,20 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
   }
 
   Future<List<SessionInfo>> listSessions({required String? directory, required String? parentId}) =>
-      _sessionPages(filters: {"directory": ?directory, "parentID": ?parentId});
+      _sessionPages(filters: {"directory": ?directory, "parentID": ?parentId}, cancellation: null);
+
+  /// Every root and child session; stops paging once [cancellation] is set.
+  Future<List<SessionInfo>> listAllSessions({required PluginCatalogCancellationSignal cancellation}) =>
+      _sessionPages(filters: const {}, cancellation: cancellation);
 
   /// Native `parentID=null` selects roots; omitting that query includes children.
   Future<List<SessionInfo>> listRootSessions({required String? projectId}) =>
-      _sessionPages(filters: {"project": ?projectId, "parentID": "null"});
+      _sessionPages(filters: {"project": ?projectId, "parentID": "null"}, cancellation: null);
 
-  Future<List<SessionInfo>> _sessionPages({required Map<String, String> filters}) async {
+  Future<List<SessionInfo>> _sessionPages({
+    required Map<String, String> filters,
+    required PluginCatalogCancellationSignal? cancellation,
+  }) async {
     const path = "/api/session";
     final sessions = <SessionInfo>[];
     String? cursor;
@@ -264,6 +271,7 @@ class OpenCodeV2Api({required final OpenCodeRawHttpClient _client}) {
       );
       sessions.addAll(page.data);
       cursor = page.cursor.next;
+      if (cancellation != null && cancellation.isCancelled) throw const PluginStartAbortedException();
     } while (cursor != null);
     return sessions;
   }
