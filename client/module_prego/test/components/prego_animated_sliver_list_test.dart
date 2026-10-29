@@ -153,6 +153,64 @@ void main() {
     expect(tester.getSize(rowTransition("13")).height, _rowHeight);
   });
 
+  testWidgets("swapping 10,000 rows for 5 animates only the rows on screen", (tester) async {
+    await tester.pumpWidget(_harness([for (var i = 0; i < 10000; i++) "row $i"]));
+
+    await tester.pumpWidget(_harness(["A", "B", "C", "D", "E"]));
+    // One ticker per animated row: the five new rows and the first 13 old
+    // ones, as many as the 600 px test surface fits at 48 px or more each.
+    expect(tester.binding.transientCallbackCount, 5 + 13);
+    await tester.pump(const Duration(milliseconds: 130));
+    expect(find.text("A"), findsOneWidget);
+    expect(find.text("row 0"), findsOneWidget);
+    expect(find.text("row 20"), findsNothing);
+
+    await tester.pumpAndSettle();
+    expect(find.textContaining("row "), findsNothing);
+    expect(find.byType(SizeTransition), findsNWidgets(5));
+  });
+
+  testWidgets("a row that returns while it is still closing gets a key of its own", (tester) async {
+    await tester.pumpWidget(_harness(["A", "B"]));
+    await tester.pumpWidget(_harness(["B"]));
+    await tester.pump(const Duration(milliseconds: 100));
+
+    await tester.pumpWidget(_harness(["A", "B"]));
+    await tester.pump(const Duration(milliseconds: 40));
+    final copies = find.ancestor(of: find.text("A"), matching: find.byType(SizeTransition));
+    final keys = [for (final element in copies.evaluate()) element.widget.key];
+    expect(keys, hasLength(2));
+    expect(keys.toSet(), hasLength(2));
+  });
+
+  testWidgets("rows appended below the viewport appear without animating", (tester) async {
+    final items = [for (var i = 0; i < 20; i++) "$i"];
+    await tester.pumpWidget(_harness(items));
+
+    await tester.pumpWidget(_harness([...items, "20", "21"]));
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets("a scrolled list animates only the rows that land in view", (tester) async {
+    final items = [for (var i = 0; i < 100; i++) "$i"];
+    await tester.pumpWidget(_harness(items));
+    tester.state<ScrollableState>(find.byType(Scrollable)).position.jumpTo(10 * _rowHeight);
+    await tester.pump();
+
+    // Rows leaving above the viewport go at once and shift every index after
+    // them; the added row lands at index 13, in view.
+    final next = [...items.sublist(5, 18), "new", ...items.sublist(18)];
+    await tester.pumpWidget(_harness(next));
+    expect(tester.binding.transientCallbackCount, 1);
+    await tester.pump(const Duration(milliseconds: 130));
+    final opening = find.ancestor(of: find.text("new"), matching: find.byType(SizeTransition));
+    expect(tester.getSize(opening).height, inExclusiveRange(0, _rowHeight));
+
+    await tester.pumpAndSettle();
+    await tester.pumpWidget(_harness(["above", ...next]));
+    expect(tester.binding.transientCallbackCount, 0);
+  });
+
   testWidgets("reduced motion removes a row without a transition delay", (tester) async {
     await tester.pumpWidget(_harness(["A"], disableAnimations: true));
 
