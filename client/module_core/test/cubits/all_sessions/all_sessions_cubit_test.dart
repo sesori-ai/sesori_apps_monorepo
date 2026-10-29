@@ -352,6 +352,36 @@ void main() {
     });
   });
 
+  test("on a bridge without pages a project that fails to list is the list's failure, and Retry lists it", () {
+    bridge.answer = (_) async => const SessionPageUnsupported();
+    var fail = true;
+    when(
+      () => projectRepository.listSessions(projectId: "one"),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [_session(id: "a", updatedAt: 1)])));
+    when(() => projectRepository.listSessions(projectId: "two")).thenAnswer(
+      (_) async => fail
+          ? ApiResponse.error(ApiError.generic())
+          : ApiResponse.success(
+              SessionListResponse(
+                items: [_session(id: "b", updatedAt: 2, projectId: "two")],
+              ),
+            ),
+    );
+    when(
+      () => projectRepository.listSessions(projectId: "scratch"),
+    ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+    withCubit((cubit, async) {
+      expect(ids(cubit), ["a"]);
+      expect(cubit.state.failure, isNotNull);
+
+      fail = false;
+      unawaited(cubit.retry());
+      async.elapse(Duration.zero);
+      expect(ids(cubit), ["b", "a"]);
+      expect(cubit.state.failure, isNull);
+    });
+  });
+
   test("an unchanged resolve emits nothing", () {
     bridge.sessions = [_session(id: "a", updatedAt: 1)];
     withCubit((cubit, async) {

@@ -83,7 +83,8 @@ class SessionWindowService({
   bool _connected = false;
 
   /// A load failed and left older rows on screen, so the next reconnect
-  /// loads them again instead of relying on the replayed events.
+  /// loads them again instead of relying on the replayed events. In complete
+  /// mode: some project's sessions failed to list.
   bool _rowsOutdated = false;
   Timer? _queryTimer;
   Timer? _reloadTimer;
@@ -382,6 +383,7 @@ class SessionWindowService({
       );
     }
     _completeSessions = complete;
+    _rowsOutdated = !succeeded;
     _emitComplete(sessions: complete);
     // The inventory may have changed while the projects were read.
     unawaited(_admitProjects(inventory: _projectInventory.state));
@@ -478,7 +480,9 @@ class SessionWindowService({
           unread: counted.where(_isUnseen).length,
         ),
         nextCursor: null,
-        loadMore: SessionWindowLoadMore.idle,
+        // No page follows, so a failed one marks a project read that failed;
+        // reload retries it.
+        loadMore: _rowsOutdated ? SessionWindowLoadMore.failed : SessionWindowLoadMore.idle,
         awaitingAnswer: false,
       ),
     );

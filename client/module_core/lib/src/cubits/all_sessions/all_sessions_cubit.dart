@@ -5,6 +5,7 @@ import "package:collection/collection.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../errors/remote_failure_reason.dart";
 import "../../services/models/all_sessions_mode.dart";
 import "../../services/models/project_list_state.dart";
 import "../../services/models/session_list_quick_filter.dart";
@@ -175,6 +176,9 @@ class AllSessionsCubit({
       awaitingAnswer: window is SessionWindowLoaded && window.awaitingAnswer,
       failure: switch (window) {
         SessionWindowFailed(:final reason) when !_retrying => reason,
+        // Its row offers Retry beside the rows that did load, and shows no reason.
+        SessionWindowLoaded(nextCursor: null, loadMore: SessionWindowLoadMore.failed) when !_retrying =>
+          RemoteFailureReason.unknown,
         SessionWindowFailed() || SessionWindowLoading() || SessionWindowLoaded() => null,
       },
       isLoading: _retrying || window is SessionWindowLoading || _projectInventory.state is ProjectListLoading,
