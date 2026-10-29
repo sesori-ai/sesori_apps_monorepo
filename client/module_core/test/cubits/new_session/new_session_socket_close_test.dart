@@ -70,7 +70,6 @@ void main() {
       projectRepository: ProjectRepository(
         api: ProjectApi(client: client),
         filesystemApi: FilesystemApi(client: client),
-        sessionApi: SessionApi(client: client),
       ),
       selectionTracker: selectionTracker,
       composerDraftRepository: inMemoryComposerDraftRepository(),

@@ -187,7 +187,7 @@ void _registerDependencies({
   final projectRepository = MockProjectRepository();
   getIt.registerSingleton<ProjectRepository>(projectRepository);
   getIt.registerSingleton<SessionListService>(
-    SessionListService(repository: projectRepository),
+    SessionListService(),
   );
   getIt.registerSingleton<SessionCleanupService>(SessionCleanupService(repository: promptDispatcher));
   getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());

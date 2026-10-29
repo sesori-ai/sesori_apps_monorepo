@@ -17,7 +17,7 @@ class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements All
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
-class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+class _MockSessionWindowService() extends Mock implements SessionWindowService;
 
 void main() {
   const project = ProjectSummary(id: "p1", name: "Project One", path: "/p1", time: null);
@@ -83,8 +83,7 @@ void main() {
     Widget? header,
     TextDirection textDirection = TextDirection.ltr,
     PregoInteractionMode interaction = PregoInteractionMode.touch,
-    // The inventory and launches the list's launching rows come from.
-    Map<String, RecentSessionsEntry> entries = const {},
+    // The launches the list's launching rows come from.
     SessionLaunchRepository? launches,
   }) async {
     final cubit = _MockAllSessionsCubit();
@@ -96,8 +95,19 @@ void main() {
     projects = _MockProjectListCubit();
     whenListen(projects, projectUpdates, initialState: projectList);
     when(() => projects.retryLoadProjects()).thenAnswer((_) async {});
-    final inventory = _MockRecentSessionInventoryService();
-    when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(entries));
+    final window = _MockSessionWindowService();
+    when(() => window.state).thenAnswer(
+      (_) => BehaviorSubject.seeded(
+        const SessionWindowLoaded(
+          sessions: [],
+          counts: SessionPageCounts(all: 0, running: 0, unread: 0),
+          nextCursor: null,
+          loadMore: SessionWindowLoadMore.idle,
+          awaitingAnswer: false,
+        ),
+      ),
+    );
+    when(() => window.key).thenReturn((projectId: null, query: null, filter: SessionListQuickFilter.all));
     await tester.pumpWidget(
       MaterialApp(
         theme: ThemeData(extensions: [PregoDesignSystem.light]),
@@ -114,7 +124,7 @@ void main() {
                   cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                 ),
               ),
-              RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
+              RepositoryProvider<SessionWindowService>.value(value: window),
               RepositoryProvider(
                 create: (_) => switch (launches) {
                   final launches? => inMemorySessionLaunchService(launchRepository: launches),
@@ -1332,15 +1342,6 @@ void main() {
         initial: filtered(SessionListQuickFilter.all),
         updates: updates.stream,
         mode: AllSessionsMode.active,
-        entries: {
-          project.id: const RecentSessionsLoaded(
-            sourceSessions: [],
-            visibleSessions: [],
-            archivedSessions: [],
-            activityBySessionId: {},
-            listStateBySessionId: {},
-          ),
-        },
         launches: launches,
       );
       launches.start(

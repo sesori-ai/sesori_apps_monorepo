@@ -274,8 +274,8 @@ class ProjectInventoryService({
   /// The timestamp merge can only move listed projects. An update for a project
   /// the list does not hold means the bridge opened, created or unhid it,
   /// possibly on another surface, or that a hidden project saw activity. Read the
-  /// list again: it then holds the project, and the recent-session inventory
-  /// loads its sessions. Forced, so a read started before the bridge committed
+  /// list again: it then holds the project, so its sessions can be listed.
+  /// Forced, so a read started before the bridge committed
   /// the project cannot stand in for one started after.
   void _onProjectTimestampsAdvanced({required Map<String, int> previous, required Map<String, int> current}) {
     if (_state.isClosed) return;

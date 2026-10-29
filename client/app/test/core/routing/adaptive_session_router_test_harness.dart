@@ -255,18 +255,6 @@ class AdaptiveSessionRouterTestHarness() {
       projectRepository: projectRepository,
       productAnalyticsService: productAnalyticsService,
     );
-    // The real inventory, so the home reads each project's sessions.
-    await getIt.unregister<RecentSessionInventoryService>();
-    getIt.registerFactory<RecentSessionInventoryService>(
-      () => RecentSessionInventoryService(
-        sessionListService: getIt<SessionListService>(),
-        projectListService: getIt<ProjectListService>(),
-        connectionService: connectionService,
-        sseEventTracker: sseEventTracker,
-        sessionUnseenTracker: getIt<SessionUnseenTracker>(),
-        catalogRescanService: getIt<CatalogRescanService>(),
-      ),
-    );
     getIt.registerSingleton<BridgeRepository>(bridgeRepository);
     getIt.registerSingleton<RegisteredBridgesService>(registeredBridgesService);
     getIt.registerSingleton<SessionRepository>(sessionRepository);

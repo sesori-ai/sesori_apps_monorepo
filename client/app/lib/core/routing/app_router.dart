@@ -291,7 +291,6 @@ List<RouteBase> _buildAppRoutes({
       builder: (context, state, child) => _shellBackHandler(
         navigatorKey: signedInNavigatorKey,
         child: SessionScope(
-          createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
           createProjectInventory: getIt.call<ProjectInventoryService>,
           createSessionWindow: ({required mode, required projectInventory}) =>
               getIt<SessionWindowService>(param1: mode, param2: projectInventory),

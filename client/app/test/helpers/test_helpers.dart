@@ -18,7 +18,8 @@ import "package:sesori_dart_core/testing.dart";
 
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/features/home/home_screen.dart";
-import "package:sesori_shared/sesori_shared.dart" show FailureReporter, ProjectSummary, Session, SessionPageRequest;
+import "package:sesori_shared/sesori_shared.dart"
+    show FailureReporter, ProjectSummary, Session, SessionPageCounts, SessionPageRequest;
 import "package:theme_prego/module_prego.dart" show PregoDesignSystem;
 export "package:sesori_dart_core/testing.dart";
 
@@ -118,9 +119,7 @@ void _registerListServices({
     ),
   );
   getIt.registerSingleton<SessionListService>(
-    SessionListService(
-      repository: projectRepository,
-    ),
+    SessionListService(),
   );
   getIt.registerSingleton<ProductAnalyticsService>(analyticsService);
   if (getIt.isRegistered<SessionCleanupService>()) {
@@ -192,14 +191,7 @@ void _registerListServices({
       catalogRescanService: getIt<CatalogRescanService>(),
     ),
   );
-  // The home lists every project's recent sessions. Screens under test see
-  // none unless a test registers its own inventory.
-  if (!getIt.isRegistered<RecentSessionInventoryService>()) {
-    getIt.registerFactory<RecentSessionInventoryService>(() => stubRecentSessionInventory(entries: const {}));
-  }
 }
-
-class MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
 
 class _PagelessSessionRepository() extends Mock implements SessionRepository {
   @override
@@ -217,7 +209,6 @@ Widget testHome() {
   final filterTracker = _MockSessionListFilterTracker();
   when(() => filterTracker.projectId).thenAnswer((_) => BehaviorSubject<String?>.seeded(null).stream);
   return SessionScope(
-    createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
         getIt<SessionWindowService>(param1: mode, param2: projectInventory),
@@ -338,7 +329,7 @@ Widget sessionRowApp({
         create: (_) =>
             PendingSessionArchiveCubit(cleanupService: SessionCleanupService(repository: MockSessionRepository())),
       ),
-      RepositoryProvider<RecentSessionInventoryService>.value(value: stubRecentSessionInventory(entries: const {})),
+      RepositoryProvider<SessionWindowService>.value(value: _emptySessionWindow()),
       RepositoryProvider(create: (_) => idleSessionLaunchService()),
     ],
     child: MaterialApp.router(
@@ -350,22 +341,25 @@ Widget sessionRowApp({
   );
 }
 
-/// A project's loaded recent sessions: [sessions], none running or archived.
-RecentSessionsLoaded loadedRecentSessions({required List<Session> sessions}) => RecentSessionsLoaded(
-  sourceSessions: sessions,
-  visibleSessions: sessions,
-  archivedSessions: const [],
-  activityBySessionId: const {},
-  listStateBySessionId: const {},
-);
+class _MockSessionWindowService() extends Mock implements SessionWindowService;
 
-/// A recent-session inventory that holds [entries] and never reads.
-MockRecentSessionInventoryService stubRecentSessionInventory({required Map<String, RecentSessionsEntry> entries}) {
-  final inventory = MockRecentSessionInventoryService();
-  when(() => inventory.state).thenAnswer((_) => BehaviorSubject.seeded(entries).stream);
-  when(inventory.refresh).thenAnswer((_) async => true);
-  when(inventory.dispose).thenAnswer((_) async {});
-  return inventory;
+/// A window that lists no sessions and never loads, for the launching rows of
+/// a list whose rows a test provides itself.
+SessionWindowService _emptySessionWindow() {
+  final window = _MockSessionWindowService();
+  when(() => window.state).thenAnswer(
+    (_) => BehaviorSubject<SessionWindowState>.seeded(
+      const SessionWindowLoaded(
+        sessions: [],
+        counts: SessionPageCounts(all: 0, running: 0, unread: 0),
+        nextCursor: null,
+        loadMore: SessionWindowLoadMore.idle,
+        awaitingAnswer: false,
+      ),
+    ).stream,
+  );
+  when(() => window.key).thenReturn((projectId: null, query: null, filter: SessionListQuickFilter.all));
+  return window;
 }
 
 class MockFirebaseCrashlytics() extends Mock implements FirebaseCrashlytics;

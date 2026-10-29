@@ -22,7 +22,6 @@ import "desktop_window_drag_area.dart";
 class const DesktopCockpitCubitProvider({super.key, required final Widget child}) extends StatelessWidget {
   @override
   Widget build(BuildContext context) => SessionScope(
-    createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
         getIt<SessionWindowService>(param1: mode, param2: projectInventory),

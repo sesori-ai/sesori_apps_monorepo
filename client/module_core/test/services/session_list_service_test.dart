@@ -1,18 +1,12 @@
-import "package:mocktail/mocktail.dart";
-import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/models/session_list_filter.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
-class _MockProjectRepository() extends Mock implements ProjectRepository;
-
 void main() {
   test("archive projection excludes live rows and orders by retirement, not activity", () {
-    final service = SessionListService(
-      repository: _MockProjectRepository(),
-    );
+    final service = SessionListService();
     final live = _session(id: "live", title: "Live", updatedAt: 500);
     final earlier = _session(
       id: "earlier",
@@ -37,9 +31,7 @@ void main() {
     expect(project(filter: SessionListFilter.active), ["live"]);
   });
   test("running sessions use activity markers while inactive sessions stay timestamp ordered", () {
-    final service = SessionListService(
-      repository: _MockProjectRepository(),
-    );
+    final service = SessionListService();
 
     final result = service.visibleSessions(
       sessions: [
@@ -82,9 +74,7 @@ void main() {
   });
 
   test("live activity advances displayed recency without regressing a newer backend time", () {
-    final service = SessionListService(
-      repository: _MockProjectRepository(),
-    );
+    final service = SessionListService();
 
     final result = service.visibleSessions(
       sessions: [
@@ -107,9 +97,7 @@ void main() {
   });
 
   test("running sessions use REST markers before updated-time fallback", () {
-    final service = SessionListService(
-      repository: _MockProjectRepository(),
-    );
+    final service = SessionListService();
 
     final result = service.visibleSessions(
       sessions: [
@@ -138,9 +126,7 @@ void main() {
   });
 
   test("running ties use session ID, and update ties session ID descending as the bridge pages them", () {
-    final service = SessionListService(
-      repository: _MockProjectRepository(),
-    );
+    final service = SessionListService();
 
     final result = service.visibleSessions(
       sessions: [
@@ -174,9 +160,7 @@ void main() {
   });
 
   test("session updates keep the later user-activity marker", () {
-    final service = SessionListService(
-      repository: _MockProjectRepository(),
-    );
+    final service = SessionListService();
     final existing = _session(id: "session", title: "Original", updatedAt: 1).copyWith(lastUserActivityAt: 20);
     final incoming = _session(id: "session", title: "Updated", updatedAt: 2).copyWith(lastUserActivityAt: 10);
 

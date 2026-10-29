@@ -17,12 +17,12 @@ class _MockAllSessionsCubit() extends MockCubit<AllSessionsState> implements All
 
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
 
-class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+class _MockSessionWindowService() extends Mock implements SessionWindowService;
 
 void main() {
   const project = ProjectSummary(id: "project-1", name: "Sesori", path: "/sesori", time: null);
   late StreamController<AllSessionsState> listStates;
-  late BehaviorSubject<Map<String, RecentSessionsEntry>> entries;
+  late BehaviorSubject<SessionWindowState> windowState;
   late SessionLaunchRepository launches;
   late int opened;
   final now = DateTime.now().millisecondsSinceEpoch;
@@ -57,18 +57,18 @@ void main() {
     );
   }
 
-  RecentSessionsEntry loaded({required List<Session> sessions}) => RecentSessionsLoaded(
-    sourceSessions: sessions,
-    visibleSessions: sessions,
-    archivedSessions: const [],
-    activityBySessionId: const {},
-    listStateBySessionId: const {},
+  SessionWindowState loaded({required List<Session> sessions}) => SessionWindowLoaded(
+    sessions: sessions,
+    counts: SessionPageCounts(all: sessions.length, running: 0, unread: 0),
+    nextCursor: null,
+    loadMore: SessionWindowLoadMore.idle,
+    awaitingAnswer: false,
   );
 
-  /// The project's sessions reach the inventory the launching rows read and the
-  /// list's rows together, as one scope's inventory feeds both.
+  /// The sessions reach the window the launching rows read and the list's
+  /// rows together, as one scope's window feeds both.
   void showSessions({required List<Session> sessions}) {
-    entries.add({project.id: loaded(sessions: sessions)});
+    windowState.add(loaded(sessions: sessions));
     listStates.add(list(sessions: sessions));
   }
 
@@ -81,8 +81,8 @@ void main() {
   }) async {
     listStates = StreamController<AllSessionsState>();
     addTearDown(listStates.close);
-    entries = BehaviorSubject.seeded({project.id: loaded(sessions: sessions)});
-    addTearDown(entries.close);
+    windowState = BehaviorSubject.seeded(loaded(sessions: sessions));
+    addTearDown(windowState.close);
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, listStates.stream, initialState: list(sessions: sessions));
     when(() => cubit.mode).thenReturn(AllSessionsMode.active);
@@ -93,8 +93,9 @@ void main() {
       const Stream<ProjectListState>.empty(),
       initialState: const ProjectListState.loaded(projects: [project], folderProjects: [project], scratchProject: null),
     );
-    final inventory = _MockRecentSessionInventoryService();
-    when(() => inventory.state).thenAnswer((_) => entries);
+    final window = _MockSessionWindowService();
+    when(() => window.state).thenAnswer((_) => windowState.stream);
+    when(() => window.key).thenReturn((projectId: null, query: null, filter: SessionListQuickFilter.all));
     launches = inMemorySessionLaunchRepository();
     opened = 0;
     await tester.pumpWidget(
@@ -121,7 +122,7 @@ void main() {
                           cleanupService: SessionCleanupService(repository: MockSessionRepository()),
                         ),
                       ),
-                      RepositoryProvider<RecentSessionInventoryService>.value(value: inventory),
+                      RepositoryProvider<SessionWindowService>.value(value: window),
                       RepositoryProvider(
                         create: (_) => inMemorySessionLaunchService(launchRepository: launches),
                       ),

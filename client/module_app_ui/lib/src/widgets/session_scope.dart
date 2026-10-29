@@ -8,18 +8,17 @@ import "catalog_scan_failure_alerts.dart";
 import "pending_archive_alerts.dart";
 import "session_launch_failure_alerts.dart";
 
-/// The signed-in session scope: one pair of inventories, the active sessions
-/// window, created once read, the cubits every signed-in surface shares, and
-/// the alerts they raise. Its [AllSessionsCubit]
-/// is the active list every all-projects surface shares, created once read.
+/// The signed-in session scope: the project inventory, the active sessions
+/// window, the cubits every signed-in surface shares, and the alerts they
+/// raise. Its [AllSessionsCubit] is the active list every all-projects
+/// surface shares, created once read.
 ///
 /// Product shells mount it under auth, above every route that lists or
-/// launches sessions, so no route creates its own inventory. It outlives each
+/// launches sessions, so no route creates its own inventory or window. It outlives each
 /// page, so an archive's Undo window and a launch's failure alert survive
 /// navigation.
 class const SessionScope({
   super.key,
-  required final RecentSessionInventoryService Function() createRecentSessionInventory,
   required final ProjectInventoryService Function() createProjectInventory,
   required final SessionWindowService Function({
     required AllSessionsMode mode,
@@ -45,54 +44,49 @@ class const SessionScope({
   required final Widget child,
 }) extends StatelessWidget {
   @override
-  Widget build(BuildContext context) => RepositoryProvider<RecentSessionInventoryService>(
-    lazy: false,
-    create: (_) => createRecentSessionInventory(),
+  Widget build(BuildContext context) => RepositoryProvider<ProjectInventoryService>(
+    create: (_) => createProjectInventory(),
     dispose: (inventory) => unawaited(inventory.dispose()),
-    child: RepositoryProvider<ProjectInventoryService>(
-      create: (_) => createProjectInventory(),
-      dispose: (inventory) => unawaited(inventory.dispose()),
-      // The active sessions window every all-projects surface shares.
-      child: RepositoryProvider<SessionWindowService>(
-        create: (context) => createSessionWindow(
-          mode: AllSessionsMode.active,
-          projectInventory: context.read<ProjectInventoryService>(),
-        ),
-        dispose: (window) => unawaited(window.dispose()),
-        child: MultiBlocProvider(
-          providers: [
-            BlocProvider(
-              create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
-            ),
-            BlocProvider(
-              create: (context) => SessionListRefreshCubit(
-                service: createRefreshService(
-                  projectInventory: context.read<ProjectInventoryService>(),
-                  window: context.read<SessionWindowService>(),
-                ),
+    // The active sessions window every all-projects surface shares.
+    child: RepositoryProvider<SessionWindowService>(
+      create: (context) => createSessionWindow(
+        mode: AllSessionsMode.active,
+        projectInventory: context.read<ProjectInventoryService>(),
+      ),
+      dispose: (window) => unawaited(window.dispose()),
+      child: MultiBlocProvider(
+        providers: [
+          BlocProvider(
+            create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
+          ),
+          BlocProvider(
+            create: (context) => SessionListRefreshCubit(
+              service: createRefreshService(
+                projectInventory: context.read<ProjectInventoryService>(),
+                window: context.read<SessionWindowService>(),
               ),
             ),
-            BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: sessionCleanupService)),
-            BlocProvider(create: (_) => SessionLaunchCubit(launchService: sessionLaunchService)),
-            BlocProvider(
-              create: (context) => createAllSessionsCubit(
-                context: context,
-                filterTracker: filterTracker,
-                sseEventTracker: sseEventTracker,
-                sessionUnseenTracker: sessionUnseenTracker,
-              ),
+          ),
+          BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: sessionCleanupService)),
+          BlocProvider(create: (_) => SessionLaunchCubit(launchService: sessionLaunchService)),
+          BlocProvider(
+            create: (context) => createAllSessionsCubit(
+              context: context,
+              filterTracker: filterTracker,
+              sseEventTracker: sseEventTracker,
+              sessionUnseenTracker: sessionUnseenTracker,
             ),
-            // For each list's own launching rows.
-            RepositoryProvider<SessionLaunchService>.value(value: sessionLaunchService),
-            // For the folder browser, which every signed-in surface can open.
-            RepositoryProvider<ConnectionService>.value(value: connectionService),
-          ],
-          child: PendingArchiveAlerts(
+          ),
+          // For each list's own launching rows.
+          RepositoryProvider<SessionLaunchService>.value(value: sessionLaunchService),
+          // For the folder browser, which every signed-in surface can open.
+          RepositoryProvider<ConnectionService>.value(value: connectionService),
+        ],
+        child: PendingArchiveAlerts(
+          navigatorKey: alertNavigatorKey,
+          child: SessionLaunchFailureAlerts(
             navigatorKey: alertNavigatorKey,
-            child: SessionLaunchFailureAlerts(
-              navigatorKey: alertNavigatorKey,
-              child: CatalogScanFailureAlerts(navigatorKey: alertNavigatorKey, child: child),
-            ),
+            child: CatalogScanFailureAlerts(navigatorKey: alertNavigatorKey, child: child),
           ),
         ),
       ),

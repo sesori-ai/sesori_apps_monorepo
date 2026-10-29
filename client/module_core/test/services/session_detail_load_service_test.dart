@@ -23,7 +23,6 @@ void main() {
 
   group("SessionDetailLoadService", () {
     late MockSessionRepository repository;
-    late MockProjectRepository projectRepository;
     late MockPluginRepository pluginRepository;
     late MockConnectionService connectionService;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
@@ -31,7 +30,6 @@ void main() {
 
     setUp(() {
       repository = MockSessionRepository();
-      projectRepository = MockProjectRepository();
       pluginRepository = stubbedPluginRepository(
         plugins: const [
           PluginMetadata(
@@ -101,7 +99,6 @@ void main() {
           pluginId: any(named: "pluginId"),
         ),
       );
-      verifyNever(() => projectRepository.findSessionContext(sessionId: any(named: "sessionId")));
     });
 
     test("initial load keeps the transcript available when provider authentication is required", () async {

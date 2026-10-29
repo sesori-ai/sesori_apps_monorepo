@@ -29,7 +29,6 @@ import "package:sesori_dart_core/src/repositories/models/session_abort_rejected_
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
 import "package:sesori_dart_core/src/repositories/permission_repository.dart";
 import "package:sesori_dart_core/src/repositories/plugin_repository.dart";
-import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/bridge_settings_service.dart";
 import "package:sesori_dart_core/src/services/fast_mode_toggle_calculator.dart";
@@ -68,7 +67,6 @@ void main() {
     late MockSessionRepository mockSessionService;
     late MockSessionRepository mockSessionRepository;
     late MockPluginRepository mockPluginRepository;
-    late MockProjectRepository mockProjectRepository;
     late MockConnectionService mockConnectionService;
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
@@ -85,7 +83,6 @@ void main() {
       mockSessionService = MockSessionRepository();
       mockSessionRepository = MockSessionRepository();
       mockPluginRepository = MockPluginRepository();
-      mockProjectRepository = MockProjectRepository();
       mockConnectionService = MockConnectionService();
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
@@ -129,13 +126,6 @@ void main() {
 
       delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
       stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: sessionId);
-      when(() => mockProjectRepository.findSessionContext(sessionId: any(named: "sessionId"))).thenAnswer(
-        (_) async => const ProjectSessionContext(
-          projectId: "test-project",
-          pluginId: "plugin-1",
-          sessionTitle: null,
-        ),
-      );
 
       _stubAllDefaults(
         mockSessionService,

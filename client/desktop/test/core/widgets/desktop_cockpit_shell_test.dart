@@ -27,7 +27,6 @@ void main() {
   late _MockConnectionOverlayCubit overlay;
   late int contentTaps;
   late _MockProjectListCubit projects;
-  late _MockRecentSessionInventoryService recentInventory;
   late _MockProjectInventoryService projectInventory;
   late _MockSessionWindowService window;
 
@@ -79,9 +78,6 @@ void main() {
       initialState: const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
     );
     // The inventories behind the mocked cubits, as the shared list reads them.
-    // Launching rows still read the recent inventory.
-    recentInventory = _MockRecentSessionInventoryService();
-    when(() => recentInventory.state).thenAnswer((_) => BehaviorSubject.seeded(const {}));
     projectInventory = _MockProjectInventoryService();
     when(() => projectInventory.state).thenAnswer((_) => projects.state);
     when(() => projectInventory.stateStream).thenAnswer((_) => projects.stream.shareValueSeeded(projects.state));
@@ -101,6 +97,9 @@ void main() {
     String? windowProjectId;
     when(() => window.select(key: any(named: "key"))).thenAnswer(
       (invocation) => windowProjectId = (invocation.namedArguments[#key] as SessionWindowKey).projectId,
+    );
+    when(() => window.key).thenAnswer(
+      (_) => (projectId: windowProjectId, query: null, filter: SessionListQuickFilter.all),
     );
     when(window.reload).thenAnswer((_) async => true);
     when(() => window.state).thenAnswer(
@@ -180,7 +179,6 @@ void main() {
         home: MultiBlocProvider(
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
-            RepositoryProvider<RecentSessionInventoryService>.value(value: recentInventory),
             RepositoryProvider<ProjectInventoryService>.value(value: projectInventory),
             RepositoryProvider<SessionWindowService>.value(value: window),
             RepositoryProvider.value(value: launchService),
@@ -1509,7 +1507,6 @@ class _MockBridgeControlCubit() extends MockCubit<BridgeControlState> implements
 class _MockConnectionOverlayCubit() extends MockCubit<ConnectionOverlayState> implements ConnectionOverlayCubit;
 class _MockLocalBridgeStartupCubit() extends MockCubit<LocalBridgeStartupState> implements LocalBridgeStartupCubit;
 class _MockProjectListCubit() extends MockCubit<ProjectListState> implements ProjectListCubit;
-class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
 
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;
 

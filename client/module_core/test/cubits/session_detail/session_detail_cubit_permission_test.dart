@@ -10,7 +10,6 @@ import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
 import "package:sesori_dart_core/src/foundation/models/composer/composer_draft.dart";
 import "package:sesori_dart_core/src/foundation/models/product_analytics/product_analytics_event.dart";
-import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
 import "package:sesori_dart_core/src/services/feedback_prompt_service.dart";
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
@@ -44,7 +43,6 @@ void main() {
     late MockNotificationCanceller mockNotificationCanceller;
     late MockPermissionRepository mockPermissionRepository;
     late MockFailureReporter mockFailureReporter;
-    late MockProjectRepository mockProjectRepository;
     late SessionDetailLoadService loadService;
     late SessionRepository promptDispatcher;
     late StreamController<SesoriSessionEvent> sessionEvents;
@@ -58,7 +56,6 @@ void main() {
       mockNotificationCanceller = MockNotificationCanceller();
       mockPermissionRepository = MockPermissionRepository();
       mockFailureReporter = MockFailureReporter();
-      mockProjectRepository = MockProjectRepository();
       loadService = SessionDetailLoadService(
         repository: mockSessionRepository,
         pluginRepository: stubbedPluginRepository(),
@@ -96,13 +93,6 @@ void main() {
           reply: any(named: "reply"),
         ),
       ).thenAnswer((_) async => ApiResponse<void>.success(null));
-      when(() => mockProjectRepository.findSessionContext(sessionId: sessionId)).thenAnswer(
-        (_) async => const ProjectSessionContext(
-          projectId: "test-project",
-          pluginId: "plugin-1",
-          sessionTitle: null,
-        ),
-      );
       when(
         () => mockSessionService.listCommands(
           projectId: any(named: "projectId"),
