@@ -273,6 +273,41 @@ void main() {
       expect(tracker.currentProjectUnseen["p1"], isTrue);
     });
 
+    test("restoreLocalSessionUnseen puts back the value a local apply replaced", () async {
+      connectionService.emitUnseenChanged(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: true,
+        projectHasUnseenChanges: true,
+        lastUserActivityAt: 20,
+      );
+      await pump();
+
+      final write = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false);
+      tracker.restoreLocalSessionUnseen(projectId: "p1", sessionId: "s1", write: write);
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: true, lastUserActivityAt: 20)}));
+
+      final absent = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s2", unseen: true);
+      tracker.restoreLocalSessionUnseen(projectId: "p1", sessionId: "s2", write: absent);
+      expect(tracker.currentSessionUnseen["p1"]?.containsKey("s2"), isFalse);
+    });
+
+    test("restoreLocalSessionUnseen keeps a newer update that landed after the local apply", () async {
+      final write = tracker.applyLocalSessionUnseen(projectId: "p1", sessionId: "s1", unseen: false);
+      connectionService.emitUnseenChanged(
+        projectId: "p1",
+        sessionId: "s1",
+        unseen: true,
+        projectHasUnseenChanges: true,
+        lastUserActivityAt: 50,
+      );
+      await pump();
+
+      tracker.restoreLocalSessionUnseen(projectId: "p1", sessionId: "s1", write: write);
+
+      expect(tracker.currentSessionUnseen["p1"], equals({"s1": (unseen: true, lastUserActivityAt: 50)}));
+    });
+
     test("a local apply is protected from an in-flight stale snapshot", () async {
       final preFetchTick = tracker.tick;
 

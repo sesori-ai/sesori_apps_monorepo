@@ -16,7 +16,7 @@ import "models/session_list_item_state.dart";
 /// REST-fetched values (via the `seed*` methods) — and never derives state
 /// itself. Momentary inconsistency in a rare
 /// event-vs-fetch interleaving is accepted; it self-heals on the next event or
-/// refetch (both list cubits already refetch on reconnect).
+/// refetch.
 ///
 /// One guard exists: [tick]. A REST response is a snapshot from the past, so a
 /// seed must not overwrite a project that received a LIVE update (or a local
@@ -104,23 +104,46 @@ class SessionUnseenTracker(
   /// mark-read/unread, so the row updates immediately. The project aggregate is
   /// deliberately NOT touched: only the bridge knows which sessions count
   /// toward it (archived rows are excluded), and its echo lands within the
-  /// round trip. On request failure the caller refetches, which re-seeds the
-  /// authoritative state — there is no local rollback bookkeeping.
-  void applyLocalSessionUnseen({
+  /// round trip. Returns the write, which the caller hands to
+  /// [restoreLocalSessionUnseen] when the request fails.
+  LocalSessionUnseenWrite applyLocalSessionUnseen({
     required String projectId,
     required String sessionId,
     required bool unseen,
   }) {
-    if (_sessionUnseen.isClosed) return;
+    // Disposed: nothing is written, and the matching restore does nothing.
+    if (_sessionUnseen.isClosed) return (previous: null, written: (unseen: unseen, lastUserActivityAt: null));
     // Stamp the tick so an in-flight stale snapshot can't clobber the user's
     // explicit action before the bridge echo settles it.
     _projectTick[projectId] = ++_tick;
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
-    projectSessions[sessionId] = (
-      unseen: unseen,
-      lastUserActivityAt: projectSessions[sessionId]?.lastUserActivityAt,
-    );
+    final previous = projectSessions[sessionId];
+    final SessionListItemState written = (unseen: unseen, lastUserActivityAt: previous?.lastUserActivityAt);
+    projectSessions[sessionId] = written;
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+    return (previous: previous, written: written);
+  }
+
+  /// Undoes a failed [applyLocalSessionUnseen]: puts back the replaced entry,
+  /// or drops the entry when there was none, so the row falls back to its
+  /// payload. Does nothing when the entry is no longer the one [write] wrote:
+  /// a newer live update or another local write has landed since.
+  void restoreLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required LocalSessionUnseenWrite write,
+  }) {
+    if (_sessionUnseen.isClosed) return;
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    if (projectSessions[sessionId] != write.written) return;
+    if (write.previous case final previous?) {
+      projectSessions[sessionId] = previous;
+    } else {
+      projectSessions.remove(sessionId);
+    }
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
   }

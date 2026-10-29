@@ -13,7 +13,6 @@ import "../repositories/permission_repository.dart";
 import "../repositories/project_repository.dart";
 import "../repositories/session_repository.dart";
 import "../services/bridge_settings_service.dart";
-import "../services/catalog_rescan_service.dart";
 import "../services/feedback_prompt_service.dart";
 import "../services/file_reference_open_service.dart";
 import "../services/new_session_options_service.dart";
@@ -86,7 +85,6 @@ SessionListCubit createSessionListCubit({
     sessionUnseenTracker: locator<SessionUnseenTracker>(),
     projectId: projectId,
     failureReporter: locator<FailureReporter>(),
-    catalogRescanService: locator<CatalogRescanService>(),
   );
 }
 
