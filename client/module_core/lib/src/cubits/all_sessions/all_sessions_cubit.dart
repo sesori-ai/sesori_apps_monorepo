@@ -114,16 +114,6 @@ class AllSessionsCubit({
     // after it.
     _window.select(key: (projectId: projectId, query: searched ? query : null, filter: quickFilter));
     final window = _window.state.value;
-    switch (window) {
-      case SessionWindowLoaded(:final sessions, awaitingAnswer: false)
-          when projectId == null && !searched && quickFilter == SessionListQuickFilter.all:
-        _newestProjectId = sessions.firstOrNull?.projectID;
-      case SessionWindowLoaded():
-        break;
-      // Nothing listed, as on another computer, names no newest session.
-      case SessionWindowLoading() || SessionWindowFailed():
-        _newestProjectId = null;
-    }
     final (projects, scratchProjectId) = switch (_projectInventory.state) {
       ProjectListLoaded(:final projects, :final scratchProject) => (
         {for (final project in projects) project.id: project},
@@ -134,6 +124,17 @@ class AllSessionsCubit({
         null,
       ),
     };
+    switch (window) {
+      // The newest listed session: one whose project the inventory knows.
+      case SessionWindowLoaded(:final sessions, awaitingAnswer: false)
+          when projectId == null && !searched && quickFilter == SessionListQuickFilter.all:
+        _newestProjectId = sessions.firstWhereOrNull((session) => projects.containsKey(session.projectID))?.projectID;
+      case SessionWindowLoaded():
+        break;
+      // Nothing listed, as on another computer, names no newest session.
+      case SessionWindowLoading() || SessionWindowFailed():
+        _newestProjectId = null;
+    }
     final activity = _sseEventTracker.currentSessionActivity;
     final unseen = _sessionUnseenTracker.currentSessionUnseen;
     final sessions = switch (window) {

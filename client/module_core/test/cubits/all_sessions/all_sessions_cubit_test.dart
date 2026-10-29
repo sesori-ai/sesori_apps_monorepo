@@ -291,6 +291,18 @@ void main() {
     });
   });
 
+  test("the newest session of a project the inventory lacks is never the default", () {
+    inventory.add(const ProjectListState.loaded(projects: [_one], folderProjects: [_one], scratchProject: null));
+    bridge.sessions = [
+      _session(id: "b", updatedAt: 2, projectId: "gone"),
+      _session(id: "a", updatedAt: 1),
+    ];
+    withCubit((cubit, async) {
+      expect(ids(cubit), ["a"]);
+      expect(cubit.state.defaultProjectId, "one");
+    });
+  });
+
   test("a failed load is the list's failure, and Retry loads while it asks again", () {
     var fail = true;
     bridge.sessions = [_session(id: "a", updatedAt: 1)];

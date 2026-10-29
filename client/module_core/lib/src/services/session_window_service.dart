@@ -99,9 +99,11 @@ class SessionWindowService({
           .listen((_) => _onLiveStateChanged()),
     );
     // Seeding from a page moves this tracker too, so paged mode follows the
-    // bridge's unseen events instead; complete mode only re-reads it.
+    // bridge's unseen events instead; complete mode only re-reads it. Both
+    // follow fresh user activity.
     _subscriptions.add(
-      _sessionUnseenTracker.sessionUnseen.skip(1).listen((_) {
+      _sessionUnseenTracker.sessionUnseen.skip(1).listen((unseen) {
+        _applyUserActivity(unseen: unseen);
         if (_completeSessions case final sessions?) _emitComplete(sessions: sessions);
       }),
     );
@@ -564,6 +566,29 @@ class SessionWindowService({
     );
   }
 
+  /// A prompt the bridge reports only as user activity still makes its session
+  /// the newest, as the bridge folds that activity into a session's update
+  /// time. Only loaded rows move; a page brings the others already folded.
+  void _applyUserActivity({required Map<String, Map<String, SessionListItemState>> unseen}) {
+    final loaded =
+        _completeSessions ??
+        switch (_state.value) {
+          SessionWindowLoaded(:final sessions) => sessions,
+          SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
+        };
+    for (final session in loaded) {
+      final activityAt = unseen[session.projectID]?[session.id]?.lastUserActivityAt;
+      final time = session.time;
+      if (activityAt == null || time == null || activityAt <= time.updated) continue;
+      final _SessionChange change = (
+        session: session.copyWith(time: time.copyWith(updated: activityAt), lastUserActivityAt: activityAt),
+        removed: false,
+      );
+      _replay?.add(change);
+      _applyChange(change);
+    }
+  }
+
   /// [sessions] without [session], then with it in order when [keep] and it
   /// sorts no later than the last loaded row, or anywhere when [inRange]. The
   /// same list when nothing changes.
@@ -748,8 +773,12 @@ class SessionWindowService({
   void _fail({required RemoteFailureReason reason}) {
     _replay = null;
     switch (_state.value) {
+      // A key narrowed to no rows has nothing to show but the failure.
+      case SessionWindowLoaded(awaitingAnswer: true, sessions: []):
+        _emit(SessionWindowFailed(reason: reason));
       // Nothing more is coming for rows narrowed from the previous key, and a
-      // page request the failed load superseded never answers.
+      // page request the failed load superseded never answers: its row offers
+      // Retry rather than asking again by itself.
       case final SessionWindowLoaded loaded
           when loaded.awaitingAnswer || loaded.loadMore == SessionWindowLoadMore.loading:
         _rowsOutdated = true;
@@ -758,7 +787,9 @@ class SessionWindowService({
             sessions: loaded.sessions,
             counts: loaded.counts,
             nextCursor: loaded.nextCursor,
-            loadMore: SessionWindowLoadMore.idle,
+            loadMore: loaded.loadMore == SessionWindowLoadMore.loading
+                ? SessionWindowLoadMore.failed
+                : loaded.loadMore,
             awaitingAnswer: false,
           ),
         );
