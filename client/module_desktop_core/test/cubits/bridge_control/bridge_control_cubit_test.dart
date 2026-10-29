@@ -204,6 +204,11 @@ void main() {
       await pumpEventQueue();
       expect(systemTray.menus.last.status, SystemTrayStatus.connecting);
 
+      // A failed stop leaves the bridge running, so it keeps its live colour.
+      processService.emit(state: const BridgeProcessRunning(pid: 42), desiredState: BridgeProcessDesiredState.off);
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.connecting);
+
       processService.emit(state: const BridgeProcessStopping(pid: 42), desiredState: BridgeProcessDesiredState.off);
       await pumpEventQueue();
       expect(systemTray.menus.last.status, SystemTrayStatus.off);
