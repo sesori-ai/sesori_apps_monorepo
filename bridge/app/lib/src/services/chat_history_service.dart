@@ -9,6 +9,7 @@ import "../api/attachment_spill_storage.dart";
 import "../api/models/archived_session_file_dto.dart";
 import "../auth/bridge_id_provider.dart";
 import "../repositories/attachment_thumbnail_builder.dart";
+import "../repositories/catalog_import_repository.dart" show SessionBackendActivity;
 import "../repositories/chat_history_repository.dart";
 import "../repositories/models/history_window.dart";
 import "../repositories/models/stored_session.dart";
@@ -473,9 +474,40 @@ class ChatHistoryService({
   /// Records backend activity observed outside the live event stream, so a
   /// session advanced through the backend's own CLI is detected as stale.
   ///
-  /// Only sessions the store already knows about are tracked; an unknown
-  /// session has nothing to be stale against.
-  Future<void> observeBackendActivity({required String sessionId, required int activityAt}) {
+  /// Only sessions the store already holds are tracked; an unknown session has
+  /// nothing to be stale against. One read finds them, so the rest of the
+  /// batch, usually most of an import, costs no lock and no per-session read.
+  /// Never throws: a missed observation only costs a redundant plugin fetch
+  /// later, so each failure is logged and skipped.
+  Future<void> observeBackendActivity({required List<SessionBackendActivity> activity}) async {
+    if (activity.isEmpty) return;
+    final Set<String> storedSessionIds;
+    try {
+      storedSessionIds = await _chatHistoryRepository.getStoredSessionIds();
+    } on Object catch (error, stackTrace) {
+      Log.w(
+        "Failed to read stored history sessions; skipping ${activity.length} backend activity update(s)",
+        error,
+        stackTrace,
+      );
+      return;
+    }
+    // Enqueue every session before awaiting any of them. Each session has its
+    // own write queue, so awaiting one at a time would let a read for a later
+    // session slip in before its staleness update was even queued.
+    await Future.wait([
+      for (final observed in activity)
+        if (storedSessionIds.contains(observed.sessionId))
+          _observeSessionActivity(
+            sessionId: observed.sessionId,
+            activityAt: observed.activityAt,
+          ).catchError((Object error, StackTrace stackTrace) {
+            Log.w("Failed to record backend activity for session ${observed.sessionId}", error, stackTrace);
+          }),
+    ]);
+  }
+
+  Future<void> _observeSessionActivity({required String sessionId, required int activityAt}) {
     return _enqueue(
       sessionId: sessionId,
       write: () async {

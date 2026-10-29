@@ -45,6 +45,7 @@ class CatalogImportRepository({
   /// tombstoned sessions stay deleted.
   static const int projectionVersion = 2;
   static const int _responsivenessBatchSize = 512;
+  static const Duration _walkProgressInterval = Duration(milliseconds: 250);
   static final Random _secureRandom = Random.secure();
 
   final String? _normalizedUserHomeDirectory = _resolveNormalizedUserHomeDirectory();
@@ -224,6 +225,20 @@ class CatalogImportRepository({
               sessionsSeen: observedSessions.length,
             );
 
+            // The walk calls the backend once per parent, so unthrottled it
+            // would send about one progress event per session. The project
+            // count is fixed by now; only the session count can change.
+            final sinceProgress = Stopwatch()..start();
+            var progressedSessions = observedSessions.length;
+            bool progressDue() {
+              if (observedSessions.length == progressedSessions || sinceProgress.elapsed < _walkProgressInterval) {
+                return false;
+              }
+              progressedSessions = observedSessions.length;
+              sinceProgress.reset();
+              return true;
+            }
+
             for (final project in projects) {
               if (cancellation.isCancelled) {
                 yield CatalogImportProgress.cancelled(pluginId: pluginId);
@@ -246,11 +261,13 @@ class CatalogImportRepository({
                   await Future<void>.delayed(Duration.zero);
                 }
               }
-              yield CatalogImportProgress.enumerating(
-                pluginId: pluginId,
-                projectsSeen: observedProjects.length,
-                sessionsSeen: observedSessions.length,
-              );
+              if (progressDue()) {
+                yield CatalogImportProgress.enumerating(
+                  pluginId: pluginId,
+                  projectsSeen: observedProjects.length,
+                  sessionsSeen: observedSessions.length,
+                );
+              }
 
               final expanded = <String>{};
               while (pendingChildren.isNotEmpty) {
@@ -273,11 +290,13 @@ class CatalogImportRepository({
                   );
                   pendingChildren.add(observedChild);
                 }
-                yield CatalogImportProgress.enumerating(
-                  pluginId: pluginId,
-                  projectsSeen: observedProjects.length,
-                  sessionsSeen: observedSessions.length,
-                );
+                if (progressDue()) {
+                  yield CatalogImportProgress.enumerating(
+                    pluginId: pluginId,
+                    projectsSeen: observedProjects.length,
+                    sessionsSeen: observedSessions.length,
+                  );
+                }
               }
             }
           case BridgeDerivedProjectsPluginApi():
@@ -487,7 +506,11 @@ class CatalogImportRepository({
             hiddenWhenNew: _shouldHideDiscoveredProject(projectPath: observation.path),
             importStartedAt: importStartedAt,
           );
-          projectRows.add(row);
+          // The stamp alone differs on every import, so it does not make a row
+          // worth writing.
+          if (existing == null || row.copyWith(projectionUpdatedAt: existing.projectionUpdatedAt) != existing) {
+            projectRows.add(row);
+          }
           final previousPath = existing == null ? null : _normalizeRequiredPath(existing.path);
           final nextPath = _normalizeRequiredPath(row.path);
           if (previousPath != null &&
@@ -510,7 +533,7 @@ class CatalogImportRepository({
         final observedActivity = <SessionBackendActivity>[];
         final finalBindingsByBackendId = <String, ({String sessionId, String projectId})>{};
         var sessionsImported = 0;
-        for (final observation in orderedSessions) {
+        for (final (index, observation) in orderedSessions.indexed) {
           final session = observation.session;
           final existing = currentBindings[session.id];
           final parent = session.parentID == null ? null : finalBindingsByBackendId[session.parentID];
@@ -531,7 +554,12 @@ class CatalogImportRepository({
             projectId: projectId,
             importStartedAt: importStartedAt,
           );
-          sessionRows.add(row);
+          // Skipped rows still bind their children and report backend activity
+          // below; only the write is saved.
+          if (existing == null || row.copyWith(projectionUpdatedAt: existing.projectionUpdatedAt) != existing) {
+            sessionRows.add(row);
+            sessionsImported++;
+          }
           // Only the backend's own reported time counts as backend activity.
           //
           // There is deliberately no fallback for a plugin that omits it. The
@@ -549,9 +577,8 @@ class CatalogImportRepository({
             sessionId: row.sessionId,
             projectId: row.projectId,
           );
-          sessionsImported++;
           if (existing == null) sessionsAdded++;
-          if (sessionRows.length == _responsivenessBatchSize) {
+          if ((index + 1) % _responsivenessBatchSize == 0) {
             requireCurrentGeneration();
             await _sessionDao.upsertSessionRows(rows: sessionRows);
             sessionRows = <SessionDto>[];

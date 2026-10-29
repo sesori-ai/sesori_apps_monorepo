@@ -1071,23 +1071,162 @@ void main() {
       expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 2));
     });
 
-    test("native re-import of an unchanged catalog reports nothing new", () async {
+    test("native re-import of an unchanged catalog writes and reports nothing", () async {
       final projectPath = "${directory.path}/unchanged";
       final plugin = _NativeImportPlugin(
         projects: [PluginProject(id: "project", directory: projectPath)],
         rootsByProject: {
           projectPath: [_pluginSession(id: "root", directory: projectPath)],
         },
-        childrenByParent: const {},
+        childrenByParent: {
+          "root": [_pluginSession(id: "child", parentId: "root", directory: projectPath)],
+        },
       );
 
       await _importCompletion(database: database, plugin: plugin);
-      final second = await _importCompletion(database: database, plugin: plugin);
+      final projectBefore = await database.projectsDao.getProject(projectId: "project");
+      final rootBefore = await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "root");
+      final sessionDao = _RecordingSessionDao(database: database, failOnWriteCall: null);
+      final projectsDao = _RecordingProjectsDao(database: database);
+      final repository = CatalogImportRepository(
+        runtime: createTestPluginRuntime(plugins: [plugin]),
+        projectsDao: projectsDao,
+        sessionDao: sessionDao,
+        catalogHydrationsDao: database.catalogHydrationsDao,
+        projectCatalogIdentityCalculator: ProjectCatalogIdentityCalculator(
+          scratchRoot: "/scratch",
+          pathContext: p.context,
+        ),
+      );
+      final activity = <List<SessionBackendActivity>>[];
+      final activitySubscription = repository.backendActivity.listen(activity.add);
+      addTearDown(activitySubscription.cancel);
 
-      // The totals stay at the full catalog size; only the delta goes to zero.
-      expect(second.projectsImported, 1);
-      expect(second.sessionsImported, 1);
+      final statuses = await repository
+          .importCatalog(
+            pluginId: plugin.id,
+            control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
+          )
+          .toList();
+      final second = statuses.whereType<CatalogImportCompleted>().single;
+
+      expect(second.projectsImported, 0);
+      expect(second.sessionsImported, 0);
       expect(second.newItems, const CatalogImportNewItems(projects: 0, sessions: 0));
+      expect(sessionDao.writeBatchSizes.fold<int>(0, (sum, size) => sum + size), 0);
+      expect(projectsDao.writtenRows, 0);
+      // Skipped rows keep the stamp of the import that last wrote them.
+      expect(await database.projectsDao.getProject(projectId: "project"), projectBefore);
+      expect(
+        await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "root"),
+        rootBefore,
+      );
+      // Skipped rows still report backend activity.
+      expect(activity.single, hasLength(2));
+    });
+
+    test("a changed title writes only its own row", () async {
+      final projectPath = "${directory.path}/retitled";
+      PluginSession root({required String title}) => _pluginSession(id: "root", directory: projectPath, title: title);
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "project", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [
+            root(title: "Before"),
+            _pluginSession(id: "other", directory: projectPath, title: "Other"),
+          ],
+        },
+        childrenByParent: const {},
+      );
+      await _importCompletion(database: database, plugin: plugin);
+
+      final retitled = _NativeImportPlugin(
+        projects: [PluginProject(id: "project", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [
+            root(title: "After"),
+            _pluginSession(id: "other", directory: projectPath, title: "Other"),
+          ],
+        },
+        childrenByParent: const {},
+      );
+      final completed = await _importCompletion(database: database, plugin: retitled);
+
+      expect(completed.projectsImported, 0);
+      expect(completed.sessionsImported, 1);
+      expect(
+        (await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "root"))?.catalogTitle,
+        "After",
+      );
+    });
+
+    test("a skipped row keeps its stamp and a later live write still applies", () async {
+      final projectPath = "${directory.path}/live-after-skip";
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "project", directory: projectPath)],
+        rootsByProject: {
+          projectPath: [_pluginSession(id: "root", directory: projectPath, title: "Catalog")],
+        },
+        childrenByParent: const {},
+      );
+      await _importCompletion(database: database, plugin: plugin);
+      final first = await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "root");
+      await _importCompletion(database: database, plugin: plugin);
+      final skipped = await database.sessionDao.getSessionByBinding(pluginId: "native", backendSessionId: "root");
+      if (skipped == null) fail("the imported root is missing");
+      expect(skipped.projectionUpdatedAt, first?.projectionUpdatedAt);
+
+      final liveAt = DateTime.now().millisecondsSinceEpoch;
+      final applied = await database.sessionDao.updateObservedSessionProjection(
+        sessionId: skipped.sessionId,
+        directory: projectPath,
+        catalogTitle: "Live",
+        updateCatalogTitle: true,
+        updatedAt: liveAt,
+        projectionUpdatedAt: liveAt,
+      );
+
+      expect(applied, isTrue);
+      final live = await database.sessionDao.getSession(sessionId: skipped.sessionId);
+      expect(live?.catalogTitle, "Live");
+      expect(live?.projectionUpdatedAt, liveAt);
+    });
+
+    test("the native walk sends at most one progress event per 250 ms", () async {
+      final projectPath = "${directory.path}/walk";
+      final roots = [
+        for (var index = 0; index < 200; index++) _pluginSession(id: "root-$index", directory: projectPath),
+      ];
+      final plugin = _NativeImportPlugin(
+        projects: [PluginProject(id: "walk", directory: projectPath)],
+        rootsByProject: {projectPath: roots},
+        childrenByParent: {
+          for (final root in roots)
+            root.id: [_pluginSession(id: "${root.id}-child", parentId: root.id, directory: projectPath)],
+        },
+        getChildSessionsDelay: const Duration(milliseconds: 2),
+      );
+      final stopwatch = Stopwatch()..start();
+      final enumeratedAt = <Duration>[];
+
+      await for (final status in _repository(database: database, plugin: plugin).importCatalog(
+        pluginId: plugin.id,
+        control: CatalogImportControl(rescanRequested: true, hydrationMarkerRequested: false),
+      )) {
+        if (status is CatalogImportEnumerating) enumeratedAt.add(stopwatch.elapsed);
+      }
+
+      // The start, the project list and the closing count are not throttled;
+      // every event between them is at least 250 ms after the one before,
+      // less a little delivery jitter.
+      final walk = enumeratedAt.sublist(2, enumeratedAt.length - 1);
+      final walkStartedAt = enumeratedAt[1];
+      expect(walk.length, lessThanOrEqualTo(stopwatch.elapsed.inMilliseconds ~/ 250 + 1));
+      for (final (index, at) in walk.indexed) {
+        final previous = index == 0 ? walkStartedAt : walk[index - 1];
+        expect(at - previous, greaterThanOrEqualTo(const Duration(milliseconds: 240)));
+      }
+      expect(walk, isNotEmpty, reason: "a walk longer than 250 ms still reports progress");
     });
 
     test("native re-import counts only the rows the catalog did not already hold", () async {
@@ -1115,8 +1254,9 @@ void main() {
       );
       final completed = await _importCompletion(database: database, plugin: after);
 
-      expect(completed.projectsImported, 2);
-      expect(completed.sessionsImported, 2);
+      // Only the added rows are written; the kept ones are unchanged.
+      expect(completed.projectsImported, 1);
+      expect(completed.sessionsImported, 1);
       expect(completed.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
     });
 
@@ -1142,7 +1282,7 @@ void main() {
       );
       final second = await _importCompletion(database: database, plugin: after);
 
-      expect(second.sessionsImported, 2);
+      expect(second.sessionsImported, 1);
       expect(second.newItems, const CatalogImportNewItems(projects: 1, sessions: 1));
       final addedProject = (await database.projectsDao.getProjectsByPath(path: addedDirectory)).single;
       expect(addedProject.hidden, isFalse);
@@ -1545,6 +1685,18 @@ class _BlockingProjectsDao({required AppDatabase database}) extends ProjectsDao 
   }
 }
 
+class _RecordingProjectsDao({required AppDatabase database}) extends ProjectsDao {
+  this : super(database);
+
+  int writtenRows = 0;
+
+  @override
+  Future<void> upsertProjectRows({required List<ProjectDto> rows}) async {
+    writtenRows += rows.length;
+    await super.upsertProjectRows(rows: rows);
+  }
+}
+
 class _RecordingSessionDao({
   required AppDatabase database,
   required final int? failOnWriteCall,
@@ -1721,6 +1873,7 @@ class _NativeImportPlugin({
   required final Map<String, List<PluginSession>> childrenByParent,
   final Completer<void>? getProjectsGate,
   final Future<void> Function(String projectId)? onGetSessions,
+  final Duration? getChildSessionsDelay,
 }) implements NativeProjectsPluginApi {
   final Completer<void> getProjectsStarted = Completer<void>();
 
@@ -1742,6 +1895,7 @@ class _NativeImportPlugin({
 
   @override
   Future<List<PluginSession>> getChildSessions(String sessionId) async {
+    if (getChildSessionsDelay case final delay?) await Future<void>.delayed(delay);
     return childrenByParent[sessionId] ?? const [];
   }
 

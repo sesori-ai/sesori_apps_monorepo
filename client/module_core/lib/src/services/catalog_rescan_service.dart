@@ -233,9 +233,9 @@ class CatalogRescanService({
   }
 
   void _applyProgress(CatalogImportProgress progress) {
-    // An automatic hydration marker completes without catalog publication and
-    // reports zero totals. Imports are non-destructive, so an actual empty
-    // publication also leaves every list row unchanged. Announce a committed
+    // The counts are the rows the import wrote (totals on a bridge up to
+    // v1.10.1). Imports are non-destructive, so a completion that wrote
+    // nothing leaves every list row unchanged. Announce a committed
     // snapshot before the operation bookkeeping below, which drops a
     // completion for a harness outside the live operation: its rows changed
     // all the same.

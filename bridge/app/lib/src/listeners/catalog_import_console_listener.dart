@@ -37,7 +37,7 @@ class CatalogImportConsoleListener({required final Stream<CatalogImportProgress>
       ):
         Console.message(
           [
-            "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s).",
+            "Imported $pluginId catalog: $projectsImported project(s), $sessionsImported session(s) written.",
             ?_newItemsSentence(newItems),
           ].join(" "),
         );
