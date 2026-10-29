@@ -15,7 +15,7 @@ class FakePiSessionStorageApi({
   late PiPendingNewSession? pendingNewSession = initialPendingNewSession;
   final List<Set<String>> listedKnownDirectories = [];
   Set<String>? clearedKnownDirectories;
-  int resolveCalls = 0;
+  int scanCalls = 0;
 
   Future<List<PiSessionMetadata>> list() async {
     await listGate?.future;
@@ -23,9 +23,49 @@ class FakePiSessionStorageApi({
     return sessions;
   }
 
+  /// The persisted sessions a scan reports, each at `/sessions/<id>.jsonl`.
+  Future<List<PiResolvedSession>> scannedSessions({required Set<String> knownDirectories}) async => [
+    for (final metadata in await list()) PiResolvedSession(metadata: metadata, path: fakeSessionPath(metadata.id)),
+  ];
+
+  /// Reports every session as a new file, so each scan replaces the catalog.
+  @override
+  Future<PiSessionFileScan> scanSessionFiles({
+    required Set<String> knownDirectories,
+    required Map<String, PiKnownSessionFile> known,
+  }) async {
+    scanCalls++;
+    listedKnownDirectories.add(Set.unmodifiable(knownDirectories));
+    final parsed = {
+      for (final PiResolvedSession(:metadata, :path) in await scannedSessions(knownDirectories: knownDirectories))
+        path: PiScannedSessionFile(
+          stamp: (size: 0, modified: metadata.updatedAt),
+          session: PiSessionFile(
+            path: path,
+            id: metadata.id,
+            cwd: metadata.cwd,
+            parentPath: switch (metadata.parentId) {
+              final parentId? => fakeSessionPath(parentId),
+              null => null,
+            },
+            title: metadata.title,
+            createdAt: metadata.createdAt,
+            updatedAt: metadata.updatedAt,
+          ),
+        ),
+    };
+    return PiSessionFileScan(present: parsed.keys.toSet(), parsed: parsed, externalParents: const []);
+  }
+
+  @override
+  List<PiResolvedSession> linkSessionFiles({required Iterable<PiSessionFile> files}) =>
+      PiSessionStorageApi(environment: const {}).linkSessionFiles(files: files);
+
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
+
+String fakeSessionPath(String sessionId) => "/sessions/$sessionId.jsonl";
 
 final class FakePiCatalogSessionStorageApi({
   super.initialSessions,
@@ -33,20 +73,7 @@ final class FakePiCatalogSessionStorageApi({
   super.listError,
 }) extends FakePiSessionStorageApi {
   @override
-  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) {
-    listedKnownDirectories.add(Set.unmodifiable(knownDirectories));
-    return list();
-  }
-
-  @override
   Future<String?> resolveEffectiveSessionDirectory({required String directory}) async => null;
-
-  @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async =>
-      null;
-
-  @override
-  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async => null;
 }
 
 final class FakePiExtensionSessionStorageApi({
@@ -55,23 +82,7 @@ final class FakePiExtensionSessionStorageApi({
   super.listError,
 }) extends FakePiSessionStorageApi {
   @override
-  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) => list();
-
-  @override
   Future<String?> resolveEffectiveSessionDirectory({required String directory}) async => null;
-
-  @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
-    for (final metadata in sessions) {
-      if (metadata.id == sessionId) {
-        return PiResolvedSession(metadata: metadata, path: "/sessions/$sessionId.jsonl");
-      }
-    }
-    return null;
-  }
-
-  @override
-  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async => null;
 
   @override
   Future<PiPendingNewSession?> readPendingNewSession({
@@ -96,14 +107,9 @@ class FakePiServiceSessionStorageApi({
   super.clearError,
 }) extends FakePiSessionStorageApi {
   @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
-    resolveCalls++;
-    return resolvedSession;
-  }
-
-  @override
-  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async =>
-      (await resolveSession(sessionId: sessionId, knownDirectories: knownDirectories))?.path;
+  Future<List<PiResolvedSession>> scannedSessions({required Set<String> knownDirectories}) async => [
+    ?resolvedSession,
+  ];
 
   @override
   Future<PiPendingNewSession?> readPendingNewSession({
@@ -128,5 +134,7 @@ class FakePiServiceSessionStorageApi({
   }
 
   @override
-  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async => sessions;
+  void deleteSessionFile({required String path}) {
+    if (resolvedSession?.path == path) resolvedSession = null;
+  }
 }

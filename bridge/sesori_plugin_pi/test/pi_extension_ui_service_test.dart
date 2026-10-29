@@ -512,6 +512,9 @@ final class _ProcessFixture({required final FakePiExtensionSessionStorageApi sto
     final process = processes.last;
     final connecting = repository.ensureResident(
       sessionId: sessionId,
+      resolved: await PiSessionCatalogRepository(
+        storageApi: storage,
+      ).resolveSession(sessionId: sessionId, knownDirectories: {directory}),
       knownDirectories: {directory},
       model: null,
       variant: null,

@@ -25,6 +25,7 @@ void main() {
     addTearDown(subscription.cancel);
     final connecting = repository.ensureResident(
       sessionId: "session",
+      resolved: _resolved(),
       knownDirectories: const {},
       model: null,
       variant: null,
@@ -95,7 +96,7 @@ void main() {
         },
       );
 
-      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {"/known"});
+      final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       final command = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
         id: command["id"]! as String,
@@ -127,6 +128,7 @@ void main() {
       addTearDown(repository.dispose);
       final connecting = repository.ensureResident(
         sessionId: "session",
+        resolved: _resolved(),
         knownDirectories: const {},
         model: null,
         variant: null,
@@ -139,7 +141,7 @@ void main() {
       );
       await connecting;
 
-      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       final replay = await _waitForNthCommand(process: process, type: "get_entries", count: 2);
       expect(
         identities.forSession(sessionId: "session").next(role: PiMessageIdentityRole.user, timestamp: 1),
@@ -165,7 +167,7 @@ void main() {
         historyRpcTimeout: const Duration(milliseconds: 10),
       );
 
-      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       await waitForCommand(process: process, type: "get_entries");
 
       await expectLater(
@@ -190,7 +192,7 @@ void main() {
 
       final warnings = await _captureWarnings(
         () async {
-          final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+          final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
           final command = await waitForCommand(process: process, type: "get_entries");
           process.emitResponse(
             id: command["id"]! as String,
@@ -218,7 +220,6 @@ void main() {
     test("missing session throws cause-preserving not found without starting a process", () async {
       var starts = 0;
       final repository = _repository(
-        storageApi: _MissingProcessStorage(),
         processFactory: ({required spec}) async {
           starts++;
           return FakePiProcess();
@@ -226,7 +227,7 @@ void main() {
       );
 
       await expectLater(
-        repository.loadHistory(sessionId: "missing", knownDirectories: const {"/known"}),
+        repository.loadHistory(sessionId: "missing", resolved: null),
         throwsA(
           isA<PluginOperationException>()
               .having((error) => error.isNotFound, "isNotFound", isTrue)
@@ -269,7 +270,10 @@ void main() {
       );
 
       final warnings = await _captureWarnings(() async {
-        final messages = await repository.loadHistory(sessionId: "session", knownDirectories: const {});
+        final messages = await repository.loadHistory(
+          sessionId: "session",
+          resolved: _resolved(path: path),
+        );
         expect(messages.single.parts.single.text, "from file");
       });
 
@@ -334,7 +338,7 @@ void main() {
       );
 
       await expectLater(
-        repository.loadHistory(sessionId: "session", knownDirectories: const {}),
+        repository.loadHistory(sessionId: "session", resolved: _resolved()),
         throwsA(
           isA<PluginOperationException>().having(
             (error) => error.cause,
@@ -364,7 +368,7 @@ void main() {
         processFactory: ({required spec}) async => process,
       );
 
-      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       await waitForCommand(process: process, type: "get_entries");
       process.emitStderrRaw(bytes: utf8.encode("${PiRpcClient.noModelsDiagnosticPrefix}\n"));
       process.failStdin(error: const SocketException("closed during startup"));
@@ -380,7 +384,7 @@ void main() {
         startupExitTimeout: const Duration(milliseconds: 10),
       );
 
-      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       await waitForCommand(process: process, type: "get_entries");
       process.failStdin(error: const SocketException("stalled startup"));
 
@@ -407,7 +411,7 @@ void main() {
       final repository = _repository(processFactory: ({required spec}) async => process);
 
       final warnings = await _captureWarnings(() async {
-        final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+        final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
         final command = await waitForCommand(process: process, type: "get_entries");
         process.emitFailure(id: command["id"]! as String, command: "get_entries", error: detail);
         await expectLater(
@@ -436,7 +440,7 @@ void main() {
       );
 
       await expectLater(
-        repository.loadHistory(sessionId: "session", knownDirectories: const {}),
+        repository.loadHistory(sessionId: "session", resolved: _resolved()),
         throwsA(
           isA<PluginOperationException>().having(
             (error) => error.cause,
@@ -496,7 +500,7 @@ void main() {
       final process = FakePiProcess();
       final repository = _repository(processFactory: ({required spec}) async => process);
 
-      final pending = repository.loadHistory(sessionId: "session", knownDirectories: const {});
+      final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       final command = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
         id: command["id"]! as String,
@@ -517,10 +521,7 @@ void main() {
         userVisibleText: "visible authored text",
       );
 
-      final pending = repository.loadHistory(
-        sessionId: "session",
-        knownDirectories: const {},
-      );
+      final pending = repository.loadHistory(sessionId: "session", resolved: _resolved());
       final command = await waitForCommand(process: process, type: "get_entries");
       process.emitResponse(
         id: command["id"]! as String,
@@ -614,20 +615,23 @@ Future<List<PluginMessageWithParts>> _loadFileFallback({required _ProcessStorage
       process.exit(code: 1);
       return process;
     },
-  ).loadHistory(sessionId: "session", knownDirectories: const {});
+  ).loadHistory(
+    sessionId: "session",
+    resolved: _resolved(path: storage.path),
+  );
 }
 
-final class _MissingProcessStorage() implements PiSessionStorageApi {
-  @override
-  Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {}
-
-  @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async =>
-      null;
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
+PiResolvedSession _resolved({String path = "/exact/session.jsonl"}) => PiResolvedSession(
+  metadata: PiSessionMetadata(
+    id: "session",
+    cwd: "/exact/header-cwd",
+    parentId: null,
+    title: null,
+    createdAt: null,
+    updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
+  ),
+  path: path,
+);
 
 final class _ProcessStorage({
   final String path = "/exact/session.jsonl",
@@ -635,21 +639,6 @@ final class _ProcessStorage({
 }) implements PiSessionStorageApi {
   @override
   Future<void> clearPendingNewSession({required String sessionId, required Set<String> knownDirectories}) async {}
-
-  @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
-    return PiResolvedSession(
-      metadata: PiSessionMetadata(
-        id: sessionId,
-        cwd: "/exact/header-cwd",
-        parentId: null,
-        title: null,
-        createdAt: null,
-        updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
-      ),
-      path: path,
-    );
-  }
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

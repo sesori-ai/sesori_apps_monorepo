@@ -134,12 +134,13 @@ void main() {
     expect(storage.clearedDirectories, contains("/project"));
   });
 
-  test("persisted turns do not rescan pending marker storage", () async {
+  test("a turn on a listed session resolves it without scanning storage", () async {
     final process = FakePiProcess();
     final storage = _Storage(initialResolvedSession: _resolved());
     final fixture = _Fixture(processes: [process], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    await fixture.catalogRepository.listAllSessions(knownDirectories: const {"/project"});
 
     await service.sendPrompt(
       sessionId: "session",
@@ -157,7 +158,7 @@ void main() {
     await _waitForIdle(service: service, sessionId: "session");
     await pump();
 
-    expect(storage.resolveCalls, 1);
+    expect(storage.scanCalls, 1);
   });
 
   test("connect hydrates before exposing startup frames and shares one spawn", () async {
@@ -169,12 +170,14 @@ void main() {
 
     final first = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
     );
     final second = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -201,6 +204,7 @@ void main() {
 
     final resident = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -224,6 +228,7 @@ void main() {
     final warnings = await _captureWarnings(() async {
       final connection = failedCleanupFixture.repository.ensureResident(
         sessionId: "other",
+        resolved: failedCleanupFixture.storage.resolved,
         knownDirectories: const {"/project"},
         model: null,
         variant: null,
@@ -270,6 +275,7 @@ void main() {
 
     final resident = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -284,6 +290,7 @@ void main() {
       ..pending = const PiPendingNewSession(id: "session", cwd: "/pending", parentSessionPath: null);
     final pending = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/pending"},
       model: null,
       variant: null,
@@ -320,10 +327,10 @@ void main() {
 
     expect(storage.pending, isNull);
     expect(storage.clearedDirectories, contains("/project"));
-    expect(storage.resolveCalls, 2);
+    expect(storage.scanCalls, 2);
   });
 
-  test("fork preparation resolves a parent from its own project directory", () async {
+  test("fork preparation resolves a parent listed under its own project directory", () async {
     final storage = _Storage(
       initialResolvedSession: PiResolvedSession(
         metadata: PiSessionMetadata(
@@ -341,10 +348,13 @@ void main() {
     final fixture = _Fixture(processes: const [], storageOverride: storage);
     addTearDown(fixture.dispose);
     final service = fixture.service();
+    await fixture.catalogRepository.listAllSessions(knownDirectories: {"/parent-project"});
+    final scans = storage.scanCalls;
 
     await service.prepareNewSession(directory: "/child-project", parentSessionId: "parent");
 
     expect(storage.pending?.parentSessionPath, "/sessions/parent.jsonl");
+    expect(storage.scanCalls, scans);
   });
 
   test("teardown promptly disposes a connecting process waiting on history", () async {
@@ -354,6 +364,7 @@ void main() {
 
     final connecting = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -388,6 +399,7 @@ void main() {
 
     final connecting = repository.ensureResident(
       sessionId: "session",
+      resolved: storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -409,6 +421,7 @@ void main() {
 
     final firstConnection = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -419,6 +432,7 @@ void main() {
 
     final secondConnection = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -435,15 +449,16 @@ void main() {
 
     final connecting = fixture.repository.ensureResident(
       sessionId: "session",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
     );
-    final history = fixture.repository.loadHistory(sessionId: "session", knownDirectories: const {"/project"});
+    final history = fixture.repository.loadHistory(sessionId: "session", resolved: fixture.storage.resolved);
     final rename = fixture.repository.renameSession(
       sessionId: "session",
       title: "Resident",
-      knownDirectories: const {"/project"},
+      resolved: fixture.storage.resolved,
     );
     await pump();
     expect(fixture.spawned, hasLength(1));
@@ -460,7 +475,7 @@ void main() {
     final transientRename = fixture.repository.renameSession(
       sessionId: "session",
       title: "Transient",
-      knownDirectories: const {"/project"},
+      resolved: fixture.storage.resolved,
     );
     final transientCommand = await waitForCommand(process: transient, type: "set_session_name");
     transient.emitResponse(id: transientCommand["id"]! as String, command: "set_session_name");
@@ -472,31 +487,29 @@ void main() {
     test("$operation starting before residency never overlaps another process", () async {
       final transient = FakePiProcess();
       final resident = FakePiProcess();
-      final gate = Completer<void>();
-      final storage = _Storage(initialResolvedSession: _resolved(), resolveGate: gate);
-      final fixture = _Fixture(processes: [transient, resident], storageOverride: storage);
+      final fixture = _Fixture(processes: [transient, resident]);
       addTearDown(fixture.dispose);
 
       final Future<void> firstOperation;
       if (operation == "history") {
         firstOperation = fixture.repository
-            .loadHistory(sessionId: "session", knownDirectories: const {"/project"})
+            .loadHistory(sessionId: "session", resolved: fixture.storage.resolved)
             .then<void>((_) {});
       } else {
         firstOperation = fixture.repository.renameSession(
           sessionId: "session",
           title: "Transient",
-          knownDirectories: const {"/project"},
+          resolved: fixture.storage.resolved,
         );
       }
       await pump();
       final connecting = fixture.repository.ensureResident(
         sessionId: "session",
+        resolved: fixture.storage.resolved,
         knownDirectories: const {"/project"},
         model: null,
         variant: null,
       );
-      gate.complete();
 
       if (operation == "history") {
         await _answerEntries(transient);
@@ -853,7 +866,13 @@ void main() {
   test("prompt admission is immediate, busy follow-ups steer in FIFO, and sessions run concurrently", () async {
     final first = FakePiProcess();
     final other = FakePiProcess();
-    final fixture = _Fixture(processes: [first, other]);
+    final fixture = _Fixture(
+      processes: [first, other],
+      storageOverride: _Storage(
+        initialResolvedSession: _resolved(id: "one"),
+        otherSessionIds: {"two"},
+      ),
+    );
     addTearDown(fixture.dispose);
     final service = fixture.service();
     final events = <BridgeSseEvent>[];
@@ -1210,7 +1229,7 @@ void main() {
     process.emit(frame: {"type": "agent_start"});
     process.emitResponse(id: firstPrompt["id"]! as String, command: "prompt");
 
-    final history = fixture.repository.loadHistory(sessionId: "session", knownDirectories: const {"/project"});
+    final history = fixture.repository.loadHistory(sessionId: "session", resolved: fixture.storage.resolved);
     final historyCommand = await _waitForNthCommand(process: process, type: "get_entries", count: 2);
     final admitted = service.sendPrompt(
       sessionId: "session",
@@ -2481,7 +2500,13 @@ void main() {
 
   test("child retry and question state aggregate into its active root", () async {
     final process = FakePiProcess();
-    final fixture = _Fixture(processes: [process]);
+    final fixture = _Fixture(
+      processes: [process],
+      storageOverride: _Storage(
+        initialResolvedSession: _resolved(id: "child", parentId: "root"),
+        otherSessionIds: {"root"},
+      ),
+    );
     addTearDown(fixture.dispose);
     final service = fixture.service();
     final events = <BridgeSseEvent>[];
@@ -2836,7 +2861,13 @@ void main() {
   test("idle reap and disposal terminate residents", () async {
     final first = FakePiProcess();
     final second = FakePiProcess();
-    final fixture = _Fixture(processes: [first, second]);
+    final fixture = _Fixture(
+      processes: [first, second],
+      storageOverride: _Storage(
+        initialResolvedSession: _resolved(id: "one"),
+        otherSessionIds: {"two"},
+      ),
+    );
     final clock = _ManualClock();
     final service = fixture.service(clock: clock);
 
@@ -2860,6 +2891,7 @@ void main() {
 
     final resident = fixture.repository.ensureResident(
       sessionId: "two",
+      resolved: fixture.storage.resolved,
       knownDirectories: const {"/project"},
       model: null,
       variant: null,
@@ -3277,11 +3309,11 @@ Future<Map<String, Object?>> _waitForNthCommand({
   throw StateError("no command type=$type count=$count");
 }
 
-PiResolvedSession _resolved({String id = "session"}) => PiResolvedSession(
+PiResolvedSession _resolved({String id = "session", String? parentId}) => PiResolvedSession(
   metadata: PiSessionMetadata(
     id: id,
     cwd: "/project",
-    parentId: null,
+    parentId: parentId,
     title: null,
     createdAt: null,
     updatedAt: DateTime.fromMillisecondsSinceEpoch(0),
@@ -3365,9 +3397,9 @@ final class _Fixture({
 final class _Storage({
   required super.initialResolvedSession,
   super.initialPendingNewSession,
-  final Completer<void>? resolveGate,
   super.clearError,
   final String? requiredKnownDirectory,
+  final Set<String> otherSessionIds = const {},
 }) extends FakePiServiceSessionStorageApi {
   PiResolvedSession? get resolved => resolvedSession;
   set resolved(PiResolvedSession? value) => resolvedSession = value;
@@ -3382,17 +3414,10 @@ final class _Storage({
   }
 
   @override
-  Future<PiResolvedSession?> resolveSession({required String sessionId, required Set<String> knownDirectories}) async {
-    resolveCalls++;
-    await resolveGate?.future;
-    if (requiredKnownDirectory case final required? when !knownDirectories.contains(required)) return null;
-    return resolved == null || resolved?.metadata.id == sessionId ? resolved : _resolved(id: sessionId);
+  Future<List<PiResolvedSession>> scannedSessions({required Set<String> knownDirectories}) async {
+    if (requiredKnownDirectory case final required? when !knownDirectories.contains(required)) return const [];
+    return [?resolved, for (final id in otherSessionIds) _resolved(id: id)];
   }
-
-  @override
-  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async => [
-    if (resolved case PiResolvedSession(:final metadata)) metadata,
-  ];
 }
 
 final class _HistoryStorage({required super.storageApi}) extends PiSessionHistoryStorageApi {

@@ -898,7 +898,7 @@ void main() {
         cwd: project,
       );
 
-      await api.deleteSession(sessionId: "secure-id", directory: null);
+      await PiSessionCatalogRepository(storageApi: api).deleteSession(sessionId: "secure-id", directory: null);
 
       expect(await api.readPendingNewSession(sessionId: "secure-id", knownDirectories: {project}), isNull);
     });
@@ -1002,6 +1002,30 @@ void main() {
     expect(sessions.every((session) => session.id.isNotEmpty && p.isAbsolute(session.cwd)), isTrue);
     expect(sessions.map((session) => session.id).toSet(), hasLength(sessions.length));
   });
+}
+
+/// A full scan with no cache, linked the way the catalog links it.
+extension on PiSessionStorageApi {
+  Future<List<PiResolvedSession>> _resolveAll({required Set<String> knownDirectories}) async {
+    final scan = await scanSessionFiles(knownDirectories: knownDirectories, known: const {});
+    return linkSessionFiles(
+      files: [
+        for (final file in scan.parsed.values) ?file.session,
+        ...scan.externalParents,
+      ],
+    );
+  }
+
+  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async => [
+    for (final session in await _resolveAll(knownDirectories: knownDirectories)) session.metadata,
+  ];
+
+  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async {
+    for (final session in await _resolveAll(knownDirectories: knownDirectories)) {
+      if (session.metadata.id == sessionId) return session.path;
+    }
+    return null;
+  }
 }
 
 final class _StorageFixture({final bool useExplicitAgentDirectory = true}) {

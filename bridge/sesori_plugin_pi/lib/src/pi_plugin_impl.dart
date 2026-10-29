@@ -242,7 +242,7 @@ final class PiPlugin._({
       await _processRepository.renameSession(
         sessionId: sessionId,
         title: title,
-        knownDirectories: {session.directory},
+        resolved: await _catalogRepository.resolveSession(sessionId: sessionId, knownDirectories: {session.directory}),
       );
     } on PluginOperationException {
       rethrow;
@@ -274,10 +274,10 @@ final class PiPlugin._({
 
   @override
   Future<void> deletePersistedSession({required String backendSessionId}) =>
-      // Startup-retry cleanup has no directory context; the storage API falls
-      // back to scanning Pi's known session directories and simply misses
-      // files whose cwd is no longer discoverable (accepted low-damage leak).
-      _processRepository.deletePersistedSession(sessionId: backendSessionId, directory: null);
+      // Startup-retry cleanup has no directory context; the catalog falls
+      // back to Pi's known session directories and simply misses files whose
+      // cwd is no longer discoverable (accepted low-damage leak).
+      _catalogRepository.deleteSession(sessionId: backendSessionId, directory: null);
 
   @override
   Future<void> archiveSession({required String sessionId}) async {}
@@ -303,7 +303,7 @@ final class PiPlugin._({
     try {
       final history = await _processRepository.loadHistory(
         sessionId: sessionId,
-        knownDirectories: {session.directory},
+        resolved: await _catalogRepository.resolveSession(sessionId: sessionId, knownDirectories: {session.directory}),
       );
       return _sessionService.withLiveMessages(sessionId: sessionId, history: history);
     } on PluginOperationException {

@@ -1,3 +1,8 @@
+import "dart:async";
+import "dart:convert";
+import "dart:io";
+
+import "package:path/path.dart" as p;
 import "package:pi_plugin/pi_plugin.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show normalizeProjectDirectory;
 import "package:test/test.dart";
@@ -124,6 +129,149 @@ void main() {
       );
     });
   });
+
+  group("PiSessionCatalogRepository cache", () {
+    late _DiskFixture disk;
+    late PiSessionCatalogRepository repository;
+
+    setUp(() {
+      disk = _DiskFixture();
+      repository = PiSessionCatalogRepository(storageApi: disk.api);
+    });
+    tearDown(() => disk.dispose());
+
+    test("an unchanged rescan reads no file and a rename re-reads only that file", () async {
+      final renamed = disk.writeSession(id: "renamed");
+      disk.writeSession(id: "untouched");
+
+      await repository.listAllSessions(knownDirectories: const {});
+      expect(disk.api.scans.last.parsed, hasLength(2));
+
+      final unchanged = await repository.listAllSessions(knownDirectories: const {});
+      expect(disk.api.scans.last.parsed, isEmpty);
+      expect(unchanged.map((session) => session.id), unorderedEquals(["renamed", "untouched"]));
+
+      disk.append(path: renamed, record: {"type": "session_info", "name": "New name"});
+      final afterRename = await repository.listAllSessions(knownDirectories: const {});
+      expect(disk.api.scans.last.parsed.keys, [File(renamed).resolveSymbolicLinksSync()]);
+      expect(afterRename.firstWhere((session) => session.id == "renamed").title, "New name");
+    });
+
+    test("a deleted file is evicted", () async {
+      final deleted = disk.writeSession(id: "deleted");
+      disk.writeSession(id: "kept");
+      await repository.listAllSessions(knownDirectories: const {});
+
+      File(deleted).deleteSync();
+      final sessions = await repository.listAllSessions(knownDirectories: const {});
+
+      expect(sessions.map((session) => session.id), ["kept"]);
+      expect(repository.sessionSnapshot.keys, ["kept"]);
+    });
+
+    test("a lookup hit does not scan and a miss rescans once", () async {
+      final path = disk.writeSession(id: "known");
+      await repository.listAllSessions(knownDirectories: const {});
+      final scans = disk.api.scans.length;
+
+      expect((await repository.findSessionById(sessionId: "known"))?.id, "known");
+      expect(
+        (await repository.resolveSession(sessionId: "known", knownDirectories: const {}))?.path,
+        File(path).resolveSymbolicLinksSync(),
+      );
+      expect(disk.api.scans, hasLength(scans));
+
+      expect(await repository.findSessionById(sessionId: "missing"), isNull);
+      expect(disk.api.scans, hasLength(scans + 1));
+    });
+
+    test("calls during a scan share one follow-up scan", () async {
+      disk.writeSession(id: "session");
+      final gate = Completer<void>();
+      disk.api.gate = gate;
+      final first = repository.listAllSessions(knownDirectories: const {});
+      await disk.api.waitForScans(count: 1);
+      disk.api.gate = null;
+
+      final second = repository.listAllSessions(knownDirectories: const {});
+      final third = repository.findSessionById(sessionId: "missing");
+      gate.complete();
+      await Future.wait([first, second, third]);
+
+      expect(disk.api.scans, hasLength(2));
+    });
+
+    test("a delete during a running scan does not bring the session back", () async {
+      final path = disk.writeSession(id: "deleted");
+      await repository.listAllSessions(knownDirectories: const {});
+      // A changed file makes the running scan read it again.
+      disk.append(path: path, record: {"type": "session_info", "name": "Changed"});
+      final gate = Completer<void>();
+      disk.api.gate = gate;
+      final listing = repository.listAllSessions(knownDirectories: const {});
+      await disk.api.waitForScans(count: 2);
+      expect(disk.api.scans.last.parsed, hasLength(1));
+
+      await repository.deleteSession(sessionId: "deleted", directory: null);
+      gate.complete();
+
+      expect(await listing, isEmpty);
+      expect(File(path).existsSync(), isFalse);
+      expect(repository.sessionSnapshot, isEmpty);
+    });
+  });
+}
+
+final class _DiskFixture() {
+  final Directory root = Directory.systemTemp.createTempSync("pi-session-catalog-");
+  late final String sessions = (Directory(p.join(root.path, "sessions"))..createSync()).path;
+  late final String project = (Directory(p.join(root.path, "project"))..createSync()).path;
+  late final _ScanRecordingStorageApi api = _ScanRecordingStorageApi(
+    environment: {
+      "HOME": p.join(root.path, "home"),
+      "PI_CODING_AGENT_DIR": p.join(root.path, "agent"),
+      "PI_CODING_AGENT_SESSION_DIR": sessions,
+    },
+  );
+
+  String writeSession({required String id}) {
+    final path = p.join(sessions, "$id.jsonl");
+    File(path).writeAsStringSync(
+      "${jsonEncode({"type": "session", "version": 3, "id": id, "timestamp": "2026-08-01T00:00:00Z", "cwd": project})}\n",
+    );
+    return path;
+  }
+
+  void append({required String path, required Map<String, Object?> record}) =>
+      File(path).writeAsStringSync("${jsonEncode(record)}\n", mode: FileMode.append);
+
+  void dispose() => root.deleteSync(recursive: true);
+}
+
+/// The real storage API, recording each scan and optionally holding it before
+/// the catalog merges it.
+final class _ScanRecordingStorageApi({required super.environment}) extends PiSessionStorageApi {
+  final List<PiSessionFileScan> scans = [];
+  Completer<void>? gate;
+
+  @override
+  Future<PiSessionFileScan> scanSessionFiles({
+    required Set<String> knownDirectories,
+    required Map<String, PiKnownSessionFile> known,
+  }) async {
+    final held = gate;
+    final scan = await super.scanSessionFiles(knownDirectories: knownDirectories, known: known);
+    scans.add(scan);
+    await held?.future;
+    return scan;
+  }
+
+  Future<void> waitForScans({required int count}) async {
+    for (var attempt = 0; attempt < 500 && scans.length < count; attempt++) {
+      await Future<void>.delayed(const Duration(milliseconds: 5));
+    }
+    expect(scans, hasLength(count));
+  }
 }
 
 PiSessionMetadata _metadata({
