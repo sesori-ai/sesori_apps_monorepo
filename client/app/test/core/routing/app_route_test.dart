@@ -4,8 +4,10 @@ import "package:cupertino_ui/cupertino_ui.dart" show CupertinoPage;
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/core/platform/go_router_route_dispatcher.dart";
 import "package:sesori_mobile/core/routing/app_router.dart";
 import "package:sesori_mobile/core/routing/circular_reveal_page.dart";
@@ -215,6 +217,20 @@ void main() {
     // Archived is a Settings page, so it pushes with the platform transition
     // instead of rising as a modal.
     test("archive shell pushes as a standard page", () {
+      // The archived list reads the shared trackers as its page is built.
+      final activity = MockSseEventTracker();
+      final unseen = FakeSessionUnseenTracker();
+      getIt
+        ..registerSingleton<SessionListFilterTracker>(_MockSessionListFilterTracker())
+        ..registerSingleton<SseEventTracker>(activity)
+        ..registerSingleton<SessionUnseenTracker>(unseen);
+      addTearDown(() async {
+        await getIt.unregister<SessionListFilterTracker>();
+        await getIt.unregister<SseEventTracker>();
+        await getIt.unregister<SessionUnseenTracker>();
+        await activity.onDispose();
+        await unseen.onDispose();
+      });
       final page = buildArchivedSessionsRoute().pageBuilder!(
         _FakeBuildContext(),
         _FakeGoRouterState(),
@@ -610,3 +626,5 @@ class _FakeGoRouterState({
   ValueKey<String> get pageKey => const ValueKey<String>("/login");
 }
 // ignore_for_file: avoid_implementing_value_types, tests use a lightweight GoRouterState fake
+
+class _MockSessionListFilterTracker() extends Mock implements SessionListFilterTracker;

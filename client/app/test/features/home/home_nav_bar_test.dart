@@ -46,8 +46,12 @@ void main() {
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+    when(() => mockConnectionService.events).thenAnswer((_) => const Stream.empty());
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockProjectRepository.listProjects()).thenAnswer((_) async => ApiResponse.error(ApiError.generic()));
+    when(
+      () => mockProjectRepository.listSessions(projectId: any(named: "projectId")),
+    ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
 
     getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
     registerListServices(

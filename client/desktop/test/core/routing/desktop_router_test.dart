@@ -1,12 +1,14 @@
 import "dart:async";
 
 import "package:flutter/services.dart";
-import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
+import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/testing.dart";
+import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/platform/desktop_route_dispatcher.dart";
 import "package:sesori_desktop/core/routing/desktop_router.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
@@ -19,6 +21,23 @@ import "package:sesori_desktop/features/sessions/desktop_session_detail_screen.d
 import "package:sesori_shared/sesori_shared.dart";
 
 void main() {
+  // The archived page reads the shared trackers as it is built.
+  setUp(() {
+    final activity = MockSseEventTracker();
+    final unseen = FakeSessionUnseenTracker();
+    getIt
+      ..registerSingleton<SessionListFilterTracker>(_MockSessionListFilterTracker())
+      ..registerSingleton<SseEventTracker>(activity)
+      ..registerSingleton<SessionUnseenTracker>(unseen);
+    addTearDown(() async {
+      await getIt.unregister<SessionListFilterTracker>();
+      await getIt.unregister<SseEventTracker>();
+      await getIt.unregister<SessionUnseenTracker>();
+      await activity.onDispose();
+      await unseen.onDispose();
+    });
+  });
+
   test("desktop registers typed new-session and diff routes", () {
     final paths = _routeRegistrations().map((registration) => registration.path);
 
@@ -522,7 +541,7 @@ GoRouter _callbackRouter({required AppRoute initialRoute}) {
                         ),
                         button(label: "mark unread", action: screen.onMarkedUnread),
                       ],
-                      BlocProvider(child: final ArchivedSessionsView archived) => [
+                      ArchivedSessionsScope(child: final ArchivedSessionsView archived) => [
                         button(
                           label: "open archived row",
                           action: () => archived.onSessionTap(
@@ -588,3 +607,5 @@ Future<void> _commandBracket(WidgetTester tester) async {
 }
 
 // ignore_for_file: avoid_implementing_value_types, tests use lightweight framework fakes
+
+class _MockSessionListFilterTracker() extends Mock implements SessionListFilterTracker;

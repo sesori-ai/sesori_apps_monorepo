@@ -2323,6 +2323,12 @@ abstract class AppLocalizations {
   /// **'Loading sessions'**
   String get sessionListLoadingSemantics;
 
+  /// Accessibility label of the loader row at the end of a session list while older sessions follow.
+  ///
+  /// In en, this message translates to:
+  /// **'Loading more sessions'**
+  String get sessionListLoadingMoreSemantics;
+
   /// Headline on the sessions list when a project has no active sessions yet, inviting the user to begin.
   ///
   /// In en, this message translates to:
@@ -5149,11 +5155,11 @@ abstract class AppLocalizations {
   /// **'Close archived sessions'**
   String get archivedSessionsClose;
 
-  /// Retry row of a session list across projects, for one project whose sessions failed to load.
+  /// Retry row of a session list across projects, when its sessions failed to load.
   ///
   /// In en, this message translates to:
-  /// **'Couldn’t load {projectName}'**
-  String allSessionsProjectFailed(String projectName);
+  /// **'Couldn’t load sessions'**
+  String get allSessionsFailed;
 
   /// The home's title and the desktop sidebar's project filter while the list shows every project's sessions, and the button pinned below the project filter's list that clears the filter; checked while it already does.
   ///

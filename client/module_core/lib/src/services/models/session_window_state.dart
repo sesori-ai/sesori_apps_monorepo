@@ -25,6 +25,10 @@ final class const SessionWindowLoaded({
   /// loaded.
   required final String? nextCursor,
   required final SessionWindowLoadMore loadMore,
+
+  /// Whether [sessions] are the previous key's rows narrowed to this one,
+  /// shown until the bridge answers for it: what they lack may still come.
+  required final bool awaitingAnswer,
 }) extends SessionWindowState;
 
 /// The first answer failed, with no rows to keep showing.

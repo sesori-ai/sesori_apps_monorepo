@@ -1,6 +1,5 @@
 import "dart:async";
 
-import "package:flutter_bloc/flutter_bloc.dart";
 import "package:go_router/go_router.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
@@ -127,14 +126,15 @@ List<RouteBase> buildDesktopRoutes() => <RouteBase>[
       ),
       GoRoute(
         path: AppRouteDef.archivedSessions.path,
-        builder: (BuildContext context, GoRouterState state) => BlocProvider(
-          // Archived reads the sidebar's shared filter (D6).
-          create: (context) => createAllSessionsCubit(
-            context: context,
-            mode: AllSessionsMode.archived,
-            filterTracker: getIt<SessionListFilterTracker>(),
-            sessionListService: getIt<SessionListService>(),
-          ),
+        // Archived reads the sidebar's shared filter (D6).
+        builder: (BuildContext context, GoRouterState state) => ArchivedSessionsScope(
+          createWindow: ({required projectInventory}) =>
+              getIt<SessionWindowService>(param1: AllSessionsMode.archived, param2: projectInventory),
+          createRefreshService: ({required projectInventory, required window}) =>
+              getIt<SessionListRefreshService>(param1: projectInventory, param2: window),
+          filterTracker: getIt<SessionListFilterTracker>(),
+          sseEventTracker: getIt<SseEventTracker>(),
+          sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           child: ArchivedSessionsView(
             emptyState: const SessionArchivedEmptyState(artwork: null),
             // The connection pill and the sidebar's recovery card already say so.

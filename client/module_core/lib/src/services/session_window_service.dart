@@ -125,6 +125,8 @@ class SessionWindowService({
 
   ValueStream<SessionWindowState> get state => _state.stream;
 
+  AllSessionsMode get mode => _mode;
+
   SessionWindowKey get key => _key;
 
   /// Lists [key] instead. The rows already loaded narrow to it at once; the
@@ -153,6 +155,7 @@ class SessionWindowService({
           counts: loaded.counts,
           nextCursor: loaded.nextCursor,
           loadMore: SessionWindowLoadMore.idle,
+          awaitingAnswer: true,
         ),
       );
     }
@@ -204,6 +207,8 @@ class SessionWindowService({
             counts: page.counts,
             nextCursor: page.nextCursor,
             loadMore: SessionWindowLoadMore.idle,
+            // A key change stops pages until its own answer.
+            awaitingAnswer: false,
           ),
         );
         _reapply(replay);
@@ -324,6 +329,7 @@ class SessionWindowService({
         counts: counts,
         nextCursor: cursor,
         loadMore: SessionWindowLoadMore.idle,
+        awaitingAnswer: false,
       ),
     );
     _reapply(replay);
@@ -471,6 +477,7 @@ class SessionWindowService({
         ),
         nextCursor: null,
         loadMore: SessionWindowLoadMore.idle,
+        awaitingAnswer: false,
       ),
     );
   }
@@ -552,6 +559,7 @@ class SessionWindowService({
         counts: loaded.counts,
         nextCursor: loaded.nextCursor,
         loadMore: loaded.loadMore,
+        awaitingAnswer: loaded.awaitingAnswer,
       ),
     );
   }
@@ -619,6 +627,7 @@ class SessionWindowService({
               counts: page.counts,
               nextCursor: loaded.nextCursor,
               loadMore: loaded.loadMore,
+              awaitingAnswer: loaded.awaitingAnswer,
             ),
           );
         }
@@ -739,10 +748,20 @@ class SessionWindowService({
   void _fail({required RemoteFailureReason reason}) {
     _replay = null;
     switch (_state.value) {
-      // A page request the failed load superseded never answers.
-      case final SessionWindowLoaded loaded when loaded.loadMore == SessionWindowLoadMore.loading:
+      // Nothing more is coming for rows narrowed from the previous key, and a
+      // page request the failed load superseded never answers.
+      case final SessionWindowLoaded loaded
+          when loaded.awaitingAnswer || loaded.loadMore == SessionWindowLoadMore.loading:
         _rowsOutdated = true;
-        _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.idle));
+        _emit(
+          SessionWindowLoaded(
+            sessions: loaded.sessions,
+            counts: loaded.counts,
+            nextCursor: loaded.nextCursor,
+            loadMore: SessionWindowLoadMore.idle,
+            awaitingAnswer: false,
+          ),
+        );
       case SessionWindowLoaded():
         _rowsOutdated = true;
       case SessionWindowLoading() || SessionWindowFailed():
@@ -756,6 +775,7 @@ class SessionWindowService({
         counts: loaded.counts,
         nextCursor: loaded.nextCursor,
         loadMore: loadMore,
+        awaitingAnswer: loaded.awaitingAnswer,
       );
 
   void _cancelTimers() {

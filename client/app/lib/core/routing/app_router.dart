@@ -295,13 +295,14 @@ List<RouteBase> _buildAppRoutes({
           createProjectInventory: getIt.call<ProjectInventoryService>,
           createSessionWindow: ({required mode, required projectInventory}) =>
               getIt<SessionWindowService>(param1: mode, param2: projectInventory),
-          createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
-              getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
+          createRefreshService: ({required projectInventory, required window}) =>
+              getIt<SessionListRefreshService>(param1: projectInventory, param2: window),
           sessionCleanupService: getIt<SessionCleanupService>(),
           sessionLaunchService: getIt<SessionLaunchService>(),
           connectionService: getIt<ConnectionService>(),
           filterTracker: getIt<SessionListFilterTracker>(),
-          sessionListService: getIt<SessionListService>(),
+          sseEventTracker: getIt<SseEventTracker>(),
+          sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           // Above that navigator, so its alerts join the pages' alert slot.
           alertNavigatorKey: signedInNavigatorKey,
           // The home and Archived both name the computer they reach.
@@ -596,14 +597,15 @@ ShellRoute buildArchivedSessionsRoute() {
       key: state.pageKey,
       child: _shellBackHandler(
         navigatorKey: navigatorKey,
-        child: BlocProvider(
-          // Archived reads the home's shared filter (D6).
-          create: (context) => createAllSessionsCubit(
-            context: context,
-            mode: AllSessionsMode.archived,
-            filterTracker: getIt<SessionListFilterTracker>(),
-            sessionListService: getIt<SessionListService>(),
-          ),
+        // Archived reads the home's shared filter (D6).
+        child: ArchivedSessionsScope(
+          createWindow: ({required projectInventory}) =>
+              getIt<SessionWindowService>(param1: AllSessionsMode.archived, param2: projectInventory),
+          createRefreshService: ({required projectInventory, required window}) =>
+              getIt<SessionListRefreshService>(param1: projectInventory, param2: window),
+          filterTracker: getIt<SessionListFilterTracker>(),
+          sseEventTracker: getIt<SseEventTracker>(),
+          sessionUnseenTracker: getIt<SessionUnseenTracker>(),
           child: child,
         ),
       ),

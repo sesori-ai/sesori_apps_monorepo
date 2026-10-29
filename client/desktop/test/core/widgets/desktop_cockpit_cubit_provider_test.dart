@@ -13,6 +13,8 @@ import "package:sesori_shared/sesori_shared.dart";
 
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;
 
+class _MockSessionWindowService() extends Mock implements SessionWindowService;
+
 void main() {
   setUpAll(registerCoreFallbackValues);
 
@@ -27,6 +29,8 @@ void main() {
     final instances = <RecentSessionInventoryService>[];
     final closed = <RecentSessionInventoryService>[];
     final projectInstances = <ProjectInventoryService>[];
+    final windows = <SessionWindowService>[];
+    final closedWindows = <SessionWindowService>[];
     final closedProjects = <ProjectInventoryService>[];
     var workflowCount = 0;
     when(() => connection.events).thenAnswer((_) => events.stream);
@@ -88,21 +92,34 @@ void main() {
       unawaited(projects.listProjects());
       return inventory;
     });
-    getIt.registerFactoryParam<SessionListRefreshService, ProjectInventoryService, RecentSessionInventoryService>((
+    getIt.registerSingleton<SseEventTracker>(activity);
+    getIt.registerSingleton<SessionUnseenTracker>(unseen);
+    getIt.registerFactoryParam<SessionWindowService, AllSessionsMode, ProjectInventoryService>((mode, project) {
+      expect(mode, AllSessionsMode.active);
+      expect(project, same(projectInstances.last));
+      final window = _MockSessionWindowService();
+      when(window.dispose).thenAnswer((_) async => closedWindows.add(window));
+      windows.add(window);
+      return window;
+    });
+    getIt.registerFactoryParam<SessionListRefreshService, ProjectInventoryService, SessionWindowService>((
       project,
-      recent,
+      window,
     ) {
       expect(project, same(projectInstances.last));
-      expect(recent, same(instances.last));
+      expect(window, same(windows.last));
       workflowCount++;
       return SessionListRefreshService(
         projectInventory: project,
-        recentInventory: recent,
+        window: window,
         catalogRescanService: catalog,
       );
     });
     addTearDown(() async {
       await getIt.unregister<SessionListRefreshService>();
+      await getIt.unregister<SessionWindowService>();
+      await getIt.unregister<SseEventTracker>();
+      await getIt.unregister<SessionUnseenTracker>();
       await getIt.unregister<SessionCleanupService>();
       await getIt.unregister<RegisteredBridgesService>();
       await getIt.unregister<ConnectionService>();
@@ -161,6 +178,7 @@ void main() {
     await tester.pump();
     expect(closed, instances);
     expect(closedProjects, projectInstances);
+    expect(closedWindows, windows);
     expect(events.hasListener, isFalse);
   });
 }

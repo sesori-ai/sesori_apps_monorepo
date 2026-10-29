@@ -436,7 +436,8 @@ void main() {
     await _pumpRouteFrames(tester);
     expect(identical(listCubit(), first), isTrue);
     expect(find.byKey(const ValueKey("session-detail-session-2")), findsOneWidget);
-    // Each project's sessions are read once, not again per route.
-    verify(() => harness.projectRepository.listSessions(projectId: "p2")).called(1);
+    // Each project's sessions are read once by the window and once by the
+    // recent inventory the launching rows still read, not again per route.
+    verify(() => harness.projectRepository.listSessions(projectId: "p2")).called(2);
   });
 }

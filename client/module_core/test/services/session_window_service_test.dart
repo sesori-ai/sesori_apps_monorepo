@@ -435,11 +435,21 @@ void main() {
         // The project's own name matches too.
         window.select(key: (projectId: null, query: "fix beta", filter: SessionListQuickFilter.all));
         expect(ids(window), ["beta-fix"]);
+        expect(loaded(window).awaitingAnswer, isTrue);
         async.elapse(const Duration(milliseconds: 249));
         expect(bridge.requests, isEmpty);
         async.elapse(const Duration(milliseconds: 1));
         expect(bridge.requests.single.query, "fix beta");
         expect(ids(window), ["beta-fix"]);
+        expect(loaded(window).awaitingAnswer, isFalse);
+
+        // A failed answer leaves the narrowed rows as all there is.
+        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        window.select(key: (projectId: null, query: "beta", filter: SessionListQuickFilter.all));
+        async.elapse(SessionWindowService.queryDelay);
+        expect(ids(window), ["beta-fix"]);
+        expect(loaded(window).awaitingAnswer, isFalse);
+        bridge.answer = null;
 
         bridge.requests.clear();
         window.select(key: (projectId: null, query: null, filter: SessionListQuickFilter.all));

@@ -18,7 +18,7 @@ import "package:sesori_dart_core/testing.dart";
 
 import "package:sesori_mobile/core/di/injection.dart";
 import "package:sesori_mobile/features/home/home_screen.dart";
-import "package:sesori_shared/sesori_shared.dart" show FailureReporter, ProjectSummary, Session;
+import "package:sesori_shared/sesori_shared.dart" show FailureReporter, ProjectSummary, Session, SessionPageRequest;
 import "package:theme_prego/module_prego.dart" show PregoDesignSystem;
 export "package:sesori_dart_core/testing.dart";
 
@@ -168,10 +168,27 @@ void _registerListServices({
   if (getIt.isRegistered<SessionListRefreshService>()) {
     getIt.unregister<SessionListRefreshService>();
   }
-  getIt.registerFactoryParam<SessionListRefreshService, ProjectInventoryService, RecentSessionInventoryService>(
-    (projectInventory, recentInventory) => SessionListRefreshService(
+  getIt.registerFactoryParam<SessionListRefreshService, ProjectInventoryService, SessionWindowService>(
+    (projectInventory, window) => SessionListRefreshService(
       projectInventory: projectInventory,
-      recentInventory: recentInventory,
+      window: window,
+      catalogRescanService: getIt<CatalogRescanService>(),
+    ),
+  );
+  if (getIt.isRegistered<SessionWindowService>()) {
+    getIt.unregister<SessionWindowService>();
+  }
+  // The test bridges predate session pages: the window lists each project.s
+  // sessions through [projectRepository], as the screens stub them.
+  getIt.registerFactoryParam<SessionWindowService, AllSessionsMode, ProjectInventoryService>(
+    (mode, projectInventory) => SessionWindowService(
+      mode: mode,
+      projectInventory: projectInventory,
+      sessionRepository: _PagelessSessionRepository(),
+      projectRepository: projectRepository,
+      connectionService: getIt<ConnectionService>(),
+      sseEventTracker: getIt<SseEventTracker>(),
+      sessionUnseenTracker: getIt<SessionUnseenTracker>(),
       catalogRescanService: getIt<CatalogRescanService>(),
     ),
   );
@@ -183,6 +200,12 @@ void _registerListServices({
 }
 
 class MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
+
+class _PagelessSessionRepository() extends Mock implements SessionRepository {
+  @override
+  Future<SessionPageResult> getSessionPage({required SessionPageRequest request}) async =>
+      const SessionPageUnsupported();
+}
 
 class _MockSessionListFilterTracker() extends Mock implements SessionListFilterTracker;
 
@@ -198,13 +221,14 @@ Widget testHome() {
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
         getIt<SessionWindowService>(param1: mode, param2: projectInventory),
-    createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
-        getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
+    createRefreshService: ({required projectInventory, required window}) =>
+        getIt<SessionListRefreshService>(param1: projectInventory, param2: window),
     sessionCleanupService: SessionCleanupService(repository: MockSessionRepository()),
     sessionLaunchService: idleSessionLaunchService(),
     connectionService: getIt<ConnectionService>(),
     filterTracker: filterTracker,
-    sessionListService: getIt<SessionListService>(),
+    sseEventTracker: getIt<SseEventTracker>(),
+    sessionUnseenTracker: getIt<SessionUnseenTracker>(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [
@@ -265,7 +289,9 @@ Widget sessionRowApp({
       quickFilter: SessionListQuickFilter.all,
       rows: rows,
       counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
-      failures: const [],
+      loadMore: null,
+      awaitingAnswer: false,
+      failure: null,
       isLoading: false,
       scratchProjectId: null,
       defaultProjectId: null,

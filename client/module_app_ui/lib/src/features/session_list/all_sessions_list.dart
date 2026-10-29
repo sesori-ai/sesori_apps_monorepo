@@ -49,6 +49,9 @@ typedef AllSessionsDisconnectedBuilder = Widget? Function({
 /// launches leading Today. It leaves out the sessions inside an archive's Undo
 /// window and those a launch still holds.
 ///
+/// While older sessions follow, a loader row ends the list, and rows built
+/// within reach of the end ask for the next page, which lands above it.
+///
 /// A row's actions run on its own action-mode [SessionListCubit], built only
 /// once a swipe or menu needs it.
 class const AllSessionsList({
@@ -141,12 +144,19 @@ class _ActiveSessionsState() extends State<_ActiveSessions> {
   );
 }
 
-/// One item of the list: a session, or a launch leading Today.
+/// One item of the list: a session, a launch leading Today, or the loader
+/// row at the end.
 sealed class const _Item();
 
-final class const _SessionItem({required final AllSessionsRow row, required final String heading}) extends _Item;
+/// An item listed under a date heading.
+sealed class const _HeadedItem() extends _Item;
 
-final class const _LaunchItem({required final LaunchingSession launch}) extends _Item;
+final class const _SessionItem({required final AllSessionsRow row, required final String heading}) extends _HeadedItem;
+
+final class const _LaunchItem({required final LaunchingSession launch}) extends _HeadedItem;
+
+/// The row after the rows while more sessions follow, asking for them.
+final class const _LoaderItem({required final SessionWindowLoadMore status}) extends _Item;
 
 class const _Sessions({
   required final AllSessionsList list,
@@ -214,13 +224,13 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   /// not over what it replaces, which leaves nothing blank to hide.
   Duration get _skeletonAppearDelay => _lastShown == null ? PregoShimmer.defaultAppearDelay : Duration.zero;
 
-  /// The failed project listed last above the loading skeleton: it leaves
-  /// from under that row while the row is still listed.
-  String? _skeletonUnderFailureId;
+  /// Whether the loading skeleton stands under the Retry row: it leaves from
+  /// under that row while the row is still listed.
+  bool _skeletonUnderFailure = false;
 
-  /// The Retry rows on screen: the failed projects', and those of projects
-  /// that no longer fail, folding away where they stood.
-  List<AllSessionsFailure> _failureRows = const [];
+  /// Whether the Retry row is on screen: while the sessions fail, and folding
+  /// away where it stood once they no longer do.
+  bool _failureRowShown = false;
 
   /// Whether the last frame listed sessions, and whether the search field and
   /// chips now fold away, as the list emptied at rest.
@@ -306,7 +316,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           loc: loc,
         ),
       );
-      return groupUnderHeadings<_Item>(
+      return groupUnderHeadings<_HeadedItem>(
         items: [
           for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
           // Only a still-unarchived session hides, as on every list.
@@ -344,9 +354,9 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
       unawaited(
         _handOff.reverse().then((_) {
           if (!mounted) return;
-          // Its Retry rows faded out with the rest, leaving none to fold, and
+          // Its Retry row faded out with the rest, leaving none to fold, and
           // so did an empty state or note fading out where it stood.
-          _failureRows = const [];
+          _failureRowShown = false;
           _emptyStateLeaving = false;
           _noteLeaving = false;
           // Back at rest as the load goes on, or on to the content that
@@ -360,7 +370,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
       );
     }
     _wasLoading = currentlyLoading;
-    if (currentlyLoading) _skeletonUnderFailureId = current.failures.lastOrNull?.project.id;
+    if (currentlyLoading) _skeletonUnderFailure = current.failure != null;
     final state = (_replacing ? _lastShown : null) ?? current;
     final entries = identical(state, current) ? currentEntries : entriesOf(state);
     final shownBefore = _lastShown != null;
@@ -373,17 +383,18 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     final loading = isLoading && entries.isEmpty;
     final isActive = cubit.mode == AllSessionsMode.active;
     // The skeleton fades out where it stood, or in where it will stand:
-    // hanging from the failed project it stands under, else from the room
-    // above the failed projects. At most one place holds it.
+    // hanging from the Retry row it stands under, else from the room above
+    // that row. At most one place holds it.
     final handingOff = !loading && !_handOff.isCompleted;
     // Resting on what it already showed, the list eases in what arrives by
     // itself, rather than at once as on its first frame or with a hand-off.
     final atRest = shownBefore && !loading && !handingOff;
-    final heldUnderFailures =
-        handingOff && state.failures.any((failure) => failure.project.id == _skeletonUnderFailureId);
-    final heldAboveFailures = handingOff && !heldUnderFailures;
+    final heldUnderFailure = handingOff && state.failure != null && _skeletonUnderFailure;
+    final heldAboveFailure = handingOff && !heldUnderFailure;
     final motion = context.isReducedMotion ? Duration.zero : transcriptMotionDuration;
-    final settled = !isLoading && state.failures.isEmpty && entries.isEmpty;
+    // Rows narrowed to a new search or chip may still be joined by the
+    // bridge's answer, so their emptiness says nothing yet.
+    final settled = !isLoading && !state.awaitingAnswer && state.failure == null && entries.isEmpty;
     final note = switch (settled) {
       false => null,
       true when searching => loc.listSearchNoMatches,
@@ -408,7 +419,13 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     _showedEmptyState = emptyStateShown;
     final shownNote = _noteLeaving ? _note : (waiting ? null : note);
     _note = shownNote;
-    final shownEntries = waiting ? const <SessionListEntry<_Item>>[] : entries;
+    final shownEntries = waiting
+        ? const <SessionListEntry<_Item>>[]
+        : [
+            ...entries,
+            if ((state.loadMore, entries.isNotEmpty) case (final status?, true))
+              SessionListItemEntry<_Item>(item: _LoaderItem(status: status)),
+          ];
     final sessionsShown = waiting ? _hadSessions : hasSessions;
     // The search field shows from a load's first frame, so nothing under it
     // moves when the rows arrive. A load that ends with nothing to search
@@ -472,15 +489,10 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
       ),
       child: child,
     );
-    // A project that no longer fails folds its Retry row away where it stood.
-    final failing = {for (final failure in state.failures) failure.project.id};
-    final failureRows = [if (!waiting) ...state.failures];
-    if (!context.isReducedMotion) {
-      for (final (index, shown) in _failureRows.indexed) {
-        if (!failing.contains(shown.project.id)) failureRows.insert(math.min(index, failureRows.length), shown);
-      }
-    }
-    _failureRows = failureRows;
+    // Once the sessions no longer fail, the Retry row folds away where it
+    // stood.
+    final failing = state.failure != null;
+    _failureRowShown = (failing && !waiting) || (_failureRowShown && !failing && !context.isReducedMotion);
     final searchField = ListSearchField(
       query: state.query,
       hintText: loc.sessionListSearchHint,
@@ -535,9 +547,9 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           SliverToBoxAdapter(
             key: const ValueKey("all-sessions-search"),
             child: _holding(
-              // The archived list's last box above the failed projects: only
-              // the active list has a header.
-              skeleton: heldAboveFailures && !isActive,
+              // The archived list's last box above the Retry row: only the
+              // active list has a header.
+              skeleton: heldAboveFailure && !isActive,
               child: folding(
                 child: Padding(padding: _searchFieldPadding, child: searchField),
               ),
@@ -549,8 +561,8 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
           SliverToBoxAdapter(
             key: const ValueKey("all-sessions-chips"),
             child: _holding(
-              // The active list's last box above the failed projects.
-              skeleton: heldAboveFailures,
+              // The active list's last box above the Retry row.
+              skeleton: heldAboveFailure,
               child: folding(
                 // The arriving counts can wrap the chips onto another line;
                 // the room eases to it rather than snapping what is below.
@@ -605,32 +617,26 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
               ),
             ),
           ),
-        for (final failure in failureRows)
+        if (_failureRowShown)
           SliverToBoxAdapter(
-            key: ValueKey("all-sessions-failure-${failure.project.id}"),
+            key: const ValueKey("all-sessions-failure"),
             child: _holding(
-              skeleton: heldUnderFailures && failure.project.id == _skeletonUnderFailureId,
-              // Shown as soon as the project fails. Read once, when it first
+              skeleton: heldUnderFailure,
+              // Shown as soon as the sessions fail. Read once, when it first
               // builds: one failing while the skeleton shows opens over it,
               // easing it down, as one failing at rest opens over the rows,
               // while one arriving with the hand-off only fades in alongside
               // the first rows, so nothing moves under them.
               child: TweenAnimationBuilder<double>(
-                tween: Tween(begin: loading || atRest ? 0 : 1, end: failing.contains(failure.project.id) ? 1 : 0),
+                tween: Tween(begin: loading || atRest ? 0 : 1, end: failing ? 1 : 0),
                 duration: motion,
                 curve: transcriptMotionCurve,
                 onEnd: () {
-                  if (failing.contains(failure.project.id)) return;
-                  setState(
-                    () => _failureRows = [
-                      for (final row in _failureRows)
-                        if (row.project.id != failure.project.id) row,
-                    ],
-                  );
+                  if (!failing) setState(() => _failureRowShown = false);
                 },
                 builder: (_, size, child) => _sized(size: size, child: child),
                 child: TweenAnimationBuilder<double>(
-                  tween: Tween(begin: 0, end: failing.contains(failure.project.id) ? 1 : 0),
+                  tween: Tween(begin: 0, end: failing ? 1 : 0),
                   duration: motion,
                   curve: transcriptMotionCurve,
                   builder: (_, opacity, child) => Opacity(
@@ -650,7 +656,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                       children: [
                         Expanded(
                           child: Text(
-                            loc.allSessionsProjectFailed(projectDisplayName(loc: loc, project: failure.project)),
+                            loc.allSessionsFailed,
                             style: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                           ),
                         ),
@@ -658,7 +664,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
                           label: loc.sessionListRetry,
                           hierarchy: PregoButtonsSolidHierarchy.secondary,
                           size: PregoButtonsSolidSize.sm,
-                          onPressed: () => unawaited(cubit.retry(projectId: failure.project.id)),
+                          onPressed: () => unawaited(cubit.retry()),
                         ),
                       ],
                     ),
@@ -697,32 +703,47 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
               itemKey: (entry) => switch (entry) {
                 final SessionListHeadingEntry<_Item> heading => heading.key,
                 SessionListItemEntry(item: _LaunchItem(:final launch)) => ValueKey<Object>(launch.launchId),
+                SessionListItemEntry(item: _LoaderItem()) => const ValueKey<Object>("all-sessions-loader"),
                 // A session that took a launch's place keeps that row's key.
                 SessionListItemEntry(item: _SessionItem(:final row)) => ValueKey<Object>(
                   launchRows[row.project.id]?.rowKeys[row.session.id] ?? (row.project.id, row.session.id),
                 ),
               },
-              itemBuilder: (_, index, entry) => switch (entry) {
-                SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
-                SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
-                  ignoring: _replacing,
-                  child: _launchRowSettling(
-                    context: context,
-                    launching: true,
-                    child: Padding(
-                      padding: EdgeInsetsDirectional.only(bottom: index == shownEntries.length - 1 ? endPadding : 0),
-                      child: PendingSessionLaunchTile(launch: launch),
+              itemBuilder: (_, index, entry) {
+                // Rows built near the end ask for the next page before it
+                // shows; a failed one waits for its Retry.
+                if (state.loadMore == SessionWindowLoadMore.idle &&
+                    !_replacing &&
+                    index >= shownEntries.length - _loadMoreReach) {
+                  unawaited(cubit.loadMore());
+                }
+                final bottomPadding = index == shownEntries.length - 1 ? endPadding : 0.0;
+                return switch (entry) {
+                  SessionListHeadingEntry(:final heading) => SessionListHeading(heading: heading, isFirst: index == 0),
+                  SessionListItemEntry(item: _LaunchItem(:final launch)) => IgnorePointer(
+                    ignoring: _replacing,
+                    child: _launchRowSettling(
+                      context: context,
+                      launching: true,
+                      child: Padding(
+                        padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
+                        child: PendingSessionLaunchTile(launch: launch),
+                      ),
                     ),
                   ),
-                ),
-                SessionListItemEntry(item: _SessionItem(:final row)) => _sessionRow(
-                  context: context,
-                  row: row,
-                  bottomPadding: index == shownEntries.length - 1 ? endPadding : 0,
-                  tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
-                  // A "No project" session has no project to name.
-                  labelsProject: state.projectId == null && row.project.id != state.scratchProjectId,
-                ),
+                  SessionListItemEntry(item: _SessionItem(:final row)) => _sessionRow(
+                    context: context,
+                    row: row,
+                    bottomPadding: bottomPadding,
+                    tookLaunchRow: launchRows[row.project.id]?.rowKeys.containsKey(row.session.id) ?? false,
+                    // A "No project" session has no project to name.
+                    labelsProject: state.projectId == null && row.project.id != state.scratchProjectId,
+                  ),
+                  SessionListItemEntry(item: _LoaderItem(:final status)) => IgnorePointer(
+                    ignoring: _replacing,
+                    child: _loaderRow(context: context, status: status, bottomPadding: bottomPadding),
+                  ),
+                };
               },
             ),
           ),
@@ -810,6 +831,41 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
     ],
   );
 
+  /// The row after the rows while more sessions follow: the sparkle while
+  /// the next page is on its way or about to be asked for, or Retry once it
+  /// failed. Both stand in the same room, so nothing moves as they swap.
+  Widget _loaderRow({
+    required BuildContext context,
+    required SessionWindowLoadMore status,
+    required double bottomPadding,
+  }) => Padding(
+    padding: EdgeInsetsDirectional.only(bottom: bottomPadding),
+    child: SizedBox(
+      height: _loaderRowHeight,
+      child: Center(
+        child: AnimatedSwitcher(
+          duration: context.isReducedMotion ? Duration.zero : transcriptMotionDuration,
+          switchInCurve: transcriptMotionCurve,
+          switchOutCurve: transcriptMotionCurve.flipped,
+          child: switch (status) {
+            SessionWindowLoadMore.failed => PregoButtonsSolid(
+              key: const ValueKey("retry"),
+              label: context.loc.sessionListRetry,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.sm,
+              onPressed: () => unawaited(context.read<AllSessionsCubit>().loadMore()),
+            ),
+            SessionWindowLoadMore.idle || SessionWindowLoadMore.loading => Semantics(
+              key: const ValueKey("loader"),
+              label: context.loc.sessionListLoadingMoreSemantics,
+              child: PregoAiLoader(fillMode: .outline, color: context.prego.colors.textSecondary),
+            ),
+          },
+        ),
+      ),
+    ),
+  );
+
   Widget _sessionRow({
     required BuildContext context,
     required AllSessionsRow row,
@@ -865,6 +921,13 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
 }
 
 const EdgeInsetsGeometry _searchFieldPadding = EdgeInsetsDirectional.fromSTEB(16, 8, 16, 0);
+
+/// How many entries from the end a built row asks for the next page: about a
+/// screenful or two, so a steady scroll rarely reaches the loader row.
+const int _loadMoreReach = 30;
+
+/// Room for the loader row's sparkle or its Retry button.
+const double _loaderRowHeight = 56;
 
 /// The empty state or a note arriving at rest first waits out the rows, search
 /// field and chips, or Retry row leaving above it, a row's the longest, then
