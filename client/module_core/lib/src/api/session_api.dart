@@ -441,6 +441,18 @@ class SessionApi({required final RelayHttpApiClient _client}) {
     );
   }
 
+  /// One page of root sessions across the bridge's visible projects, with the
+  /// counts behind each chip. A bridge that predates the route answers 404.
+  Future<ApiResponse<SessionPageResponse>> getSessionPage({required SessionPageRequest request}) {
+    // A page can hold a thousand sessions; decode off the UI isolate.
+    return _client.postDecodedInBackground(
+      path: "/sessions/page",
+      fromJson: SessionPageResponse.fromJson,
+      body: request,
+      sensitiveResponse: false,
+    );
+  }
+
   /// Every prompt in the session's history, oldest first. A bridge that
   /// predates the route answers 404.
   Future<ApiResponse<SessionPromptIndexResponse>> getPromptIndex({required String sessionId}) {

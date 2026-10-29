@@ -5,14 +5,15 @@ import "package:collection/collection.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../services/models/all_sessions_mode.dart";
 import "../../services/models/project_list_state.dart";
 import "../../services/models/recent_sessions_entry.dart";
+import "../../services/models/session_list_quick_filter.dart";
 import "../../services/project_inventory_service.dart";
 import "../../services/recent_session_inventory_service.dart";
 import "../../services/session_list_filter_tracker.dart";
 import "../../services/session_list_service.dart";
 import "../recent_sessions/recent_sessions_resolvers.dart";
-import "../session_list/session_list_quick_filter.dart";
 import "all_sessions_state.dart";
 
 /// The session list across every listed project: one flat list from the

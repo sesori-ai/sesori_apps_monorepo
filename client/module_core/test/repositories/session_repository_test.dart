@@ -9,6 +9,7 @@ import "package:sesori_dart_core/src/repositories/models/session_abort_not_accep
 import "package:sesori_dart_core/src/repositories/models/session_diff_summary_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_messages_through_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_options_repository_result.dart";
+import "package:sesori_dart_core/src/repositories/models/session_page_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_index_result.dart";
 import "package:sesori_dart_core/src/repositories/models/session_prompt_search_result.dart";
 import "package:sesori_dart_core/src/repositories/session_repository.dart";
@@ -701,6 +702,49 @@ void main() {
 
       expect(unsupported, isA<SessionPromptIndexUnsupported>());
       expect(failed, isA<SessionPromptIndexFailure>());
+    });
+  });
+
+  group("getSessionPage", () {
+    const request = SessionPageRequest(
+      mode: SessionPageMode.active,
+      projectId: null,
+      query: null,
+      filter: SessionPageFilter.all,
+      cursor: null,
+      limit: 200,
+    );
+
+    Future<SessionPageResult> pageFor({required ApiResponse<SessionPageResponse> response}) {
+      final api = MockSessionApi();
+      when(() => api.getSessionPage(request: request)).thenAnswer((_) async => response);
+      return SessionRepository(api: api).getSessionPage(request: request);
+    }
+
+    test("passes the page through", () async {
+      const page = SessionPageResponse(
+        items: [],
+        nextCursor: null,
+        counts: SessionPageCounts(all: 0, running: 0, unread: 0),
+      );
+
+      final result = await pageFor(response: ApiResponse.success(page));
+
+      expect(result, isA<SessionPageLoaded>().having((value) => value.page, "page", page));
+    });
+
+    test("only the router's missing-route 404 reads as unsupported", () async {
+      final unsupported = await pageFor(
+        response: ApiResponse.error(
+          ApiError.nonSuccessCode(errorCode: 404, rawErrorString: "no handler found for POST /sessions/page"),
+        ),
+      );
+      final failed = await pageFor(
+        response: ApiResponse.error(ApiError.nonSuccessCode(errorCode: 400, rawErrorString: "invalid cursor")),
+      );
+
+      expect(unsupported, isA<SessionPageUnsupported>());
+      expect(failed, isA<SessionPageFailure>());
     });
   });
 

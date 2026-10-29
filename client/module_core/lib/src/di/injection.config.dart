@@ -196,6 +196,8 @@ import 'package:sesori_dart_core/src/services/mcp_authentication_service.dart'
 import 'package:sesori_dart_core/src/services/mcp_service.dart' as _i948;
 import 'package:sesori_dart_core/src/services/message_thumbnail_cache_service.dart'
     as _i72;
+import 'package:sesori_dart_core/src/services/models/all_sessions_mode.dart'
+    as _i208;
 import 'package:sesori_dart_core/src/services/new_session_options_service.dart'
     as _i74;
 import 'package:sesori_dart_core/src/services/new_session_plugin_service.dart'
@@ -252,6 +254,8 @@ import 'package:sesori_dart_core/src/services/session_unseen_tracker.dart'
     as _i28;
 import 'package:sesori_dart_core/src/services/session_viewing_service.dart'
     as _i18;
+import 'package:sesori_dart_core/src/services/session_window_service.dart'
+    as _i206;
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
 import 'package:sesori_dart_core/src/services/voice_transcription_service.dart'
     as _i680;
@@ -848,6 +852,22 @@ extension GetItInjectableX on _i174.GetIt {
         authSession: gh<_i442.AuthSession>(),
       ),
       dispose: (i) => i.dispose(),
+    );
+    gh.factoryParam<
+      _i206.SessionWindowService,
+      _i208.AllSessionsMode,
+      _i870.ProjectInventoryService
+    >(
+      (mode, projectInventory) => _i206.SessionWindowService(
+        mode: mode,
+        projectInventory: projectInventory,
+        sessionRepository: gh<_i7.SessionRepository>(),
+        projectRepository: gh<_i80.ProjectRepository>(),
+        connectionService: gh<_i369.ConnectionService>(),
+        sseEventTracker: gh<_i508.SseEventTracker>(),
+        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
+        catalogRescanService: gh<_i572.CatalogRescanService>(),
+      ),
     );
     gh.factoryParam<
       _i478.SessionListRefreshService,

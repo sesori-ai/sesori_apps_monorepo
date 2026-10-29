@@ -8,7 +8,8 @@ import "catalog_scan_failure_alerts.dart";
 import "pending_archive_alerts.dart";
 import "session_launch_failure_alerts.dart";
 
-/// The signed-in session scope: one pair of inventories, the cubits every
+/// The signed-in session scope: one pair of inventories, the active sessions
+/// window, created once read, the cubits every
 /// signed-in surface shares, and the alerts they raise. Its [AllSessionsCubit]
 /// is the active list every all-projects surface shares, created once read.
 ///
@@ -20,6 +21,11 @@ class const SessionScope({
   super.key,
   required final RecentSessionInventoryService Function() createRecentSessionInventory,
   required final ProjectInventoryService Function() createProjectInventory,
+  required final SessionWindowService Function({
+    required AllSessionsMode mode,
+    required ProjectInventoryService projectInventory,
+  })
+  createSessionWindow,
   required final SessionListRefreshService Function({
     required ProjectInventoryService projectInventory,
     required RecentSessionInventoryService recentSessionInventory,
@@ -45,39 +51,47 @@ class const SessionScope({
     child: RepositoryProvider<ProjectInventoryService>(
       create: (_) => createProjectInventory(),
       dispose: (inventory) => unawaited(inventory.dispose()),
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
-          ),
-          BlocProvider(
-            create: (context) => SessionListRefreshCubit(
-              service: createRefreshService(
-                projectInventory: context.read<ProjectInventoryService>(),
-                recentSessionInventory: context.read<RecentSessionInventoryService>(),
+      // The active sessions window every all-projects surface shares.
+      child: RepositoryProvider<SessionWindowService>(
+        create: (context) => createSessionWindow(
+          mode: AllSessionsMode.active,
+          projectInventory: context.read<ProjectInventoryService>(),
+        ),
+        dispose: (window) => unawaited(window.dispose()),
+        child: MultiBlocProvider(
+          providers: [
+            BlocProvider(
+              create: (context) => ProjectListCubit(inventoryService: context.read<ProjectInventoryService>()),
+            ),
+            BlocProvider(
+              create: (context) => SessionListRefreshCubit(
+                service: createRefreshService(
+                  projectInventory: context.read<ProjectInventoryService>(),
+                  recentSessionInventory: context.read<RecentSessionInventoryService>(),
+                ),
               ),
             ),
-          ),
-          BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: sessionCleanupService)),
-          BlocProvider(create: (_) => SessionLaunchCubit(launchService: sessionLaunchService)),
-          BlocProvider(
-            create: (context) => createAllSessionsCubit(
-              context: context,
-              mode: AllSessionsMode.active,
-              filterTracker: filterTracker,
-              sessionListService: sessionListService,
+            BlocProvider(create: (_) => PendingSessionArchiveCubit(cleanupService: sessionCleanupService)),
+            BlocProvider(create: (_) => SessionLaunchCubit(launchService: sessionLaunchService)),
+            BlocProvider(
+              create: (context) => createAllSessionsCubit(
+                context: context,
+                mode: AllSessionsMode.active,
+                filterTracker: filterTracker,
+                sessionListService: sessionListService,
+              ),
             ),
-          ),
-          // For each list's own launching rows.
-          RepositoryProvider<SessionLaunchService>.value(value: sessionLaunchService),
-          // For the folder browser, which every signed-in surface can open.
-          RepositoryProvider<ConnectionService>.value(value: connectionService),
-        ],
-        child: PendingArchiveAlerts(
-          navigatorKey: alertNavigatorKey,
-          child: SessionLaunchFailureAlerts(
+            // For each list's own launching rows.
+            RepositoryProvider<SessionLaunchService>.value(value: sessionLaunchService),
+            // For the folder browser, which every signed-in surface can open.
+            RepositoryProvider<ConnectionService>.value(value: connectionService),
+          ],
+          child: PendingArchiveAlerts(
             navigatorKey: alertNavigatorKey,
-            child: CatalogScanFailureAlerts(navigatorKey: alertNavigatorKey, child: child),
+            child: SessionLaunchFailureAlerts(
+              navigatorKey: alertNavigatorKey,
+              child: CatalogScanFailureAlerts(navigatorKey: alertNavigatorKey, child: child),
+            ),
           ),
         ),
       ),
