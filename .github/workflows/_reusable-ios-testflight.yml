@@ -22,7 +22,9 @@ on:
         required: true
       MATCH_PASSWORD:
         required: true
-      MATCH_GIT_BASIC_AUTHORIZATION:
+      MATCH_APP_CLIENT_ID:
+        required: true
+      MATCH_APP_PRIVATE_KEY:
         required: true
       MATCH_GIT_URL:
         required: true
@@ -50,7 +52,6 @@ jobs:
       APP_STORE_CONNECT_API_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_API_ISSUER_ID }}
       APP_STORE_CONNECT_API_KEY_CONTENT: ${{ secrets.APP_STORE_CONNECT_API_KEY_CONTENT }}
       MATCH_PASSWORD: ${{ secrets.MATCH_PASSWORD }}
-      MATCH_GIT_BASIC_AUTHORIZATION: ${{ secrets.MATCH_GIT_BASIC_AUTHORIZATION }}
       MATCH_GIT_URL: ${{ secrets.MATCH_GIT_URL }}
       APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
       ITC_TEAM_ID: ${{ secrets.ITC_TEAM_ID }}
@@ -135,8 +136,26 @@ jobs:
           flutter build "${flutter_args[@]}"
         working-directory: client/app
 
+      # A per-run App token replaces a long-lived PAT, which expired silently
+      # and broke every TestFlight build until someone rotated it.
+      - name: Get certificates repo token
+        id: match-token
+        uses: actions/create-github-app-token@v3
+        with:
+          client-id: ${{ secrets.MATCH_APP_CLIENT_ID }}
+          private-key: ${{ secrets.MATCH_APP_PRIVATE_KEY }}
+          repositories: certificates
+          permission-contents: read
+
       - name: Deploy to TestFlight
-        run: bundle exec fastlane deploy_testflight
+        env:
+          MATCH_APP_TOKEN: ${{ steps.match-token.outputs.token }}
+        run: |
+          set -euo pipefail
+          MATCH_GIT_BASIC_AUTHORIZATION="$(printf 'x-access-token:%s' "$MATCH_APP_TOKEN" | base64)"
+          echo "::add-mask::$MATCH_GIT_BASIC_AUTHORIZATION"
+          export MATCH_GIT_BASIC_AUTHORIZATION
+          bundle exec fastlane deploy_testflight
         working-directory: client/app/ios
 
       - name: Upload build artifacts on failure
