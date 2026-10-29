@@ -91,27 +91,32 @@ class _ChatLinkState() extends State<ChatLink> {
       triggerMode: TooltipTriggerMode.manual,
       child: MouseRegion(
         cursor: SystemMouseCursors.click,
-        child: GestureDetector(
-          onTap: widget.onTap,
-          onTapDown: (_) => _setPressed(isPressed: true),
-          onTapUp: (_) => _setPressed(isPressed: false),
-          onTapCancel: () => _setPressed(isPressed: false),
-          child: AnimatedOpacity(
-            opacity: _isPressed ? 0.5 : 1,
-            duration: const Duration(milliseconds: 100),
-            child: SelectionContainer(
-              delegate: _selection,
-              child: Text.rich(
-                TextSpan(
-                  style: style,
-                  children: [
-                    if (icon != null)
-                      WidgetSpan(
-                        alignment: PlaceholderAlignment.middle,
-                        child: Padding(padding: const EdgeInsetsDirectional.only(end: 4), child: icon),
-                      ),
-                    TextSpan(text: widget.presentation.label),
-                  ],
+        // Selectable text sets its own cursor inside this region, the text
+        // cursor unless the selection style names another.
+        child: DefaultSelectionStyle.merge(
+          mouseCursor: SystemMouseCursors.click,
+          child: GestureDetector(
+            onTap: widget.onTap,
+            onTapDown: (_) => _setPressed(isPressed: true),
+            onTapUp: (_) => _setPressed(isPressed: false),
+            onTapCancel: () => _setPressed(isPressed: false),
+            child: AnimatedOpacity(
+              opacity: _isPressed ? 0.5 : 1,
+              duration: const Duration(milliseconds: 100),
+              child: SelectionContainer(
+                delegate: _selection,
+                child: Text.rich(
+                  TextSpan(
+                    style: style,
+                    children: [
+                      if (icon != null)
+                        WidgetSpan(
+                          alignment: PlaceholderAlignment.middle,
+                          child: Padding(padding: const EdgeInsetsDirectional.only(end: 4), child: icon),
+                        ),
+                      TextSpan(text: widget.presentation.label),
+                    ],
+                  ),
                 ),
               ),
             ),
