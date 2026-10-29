@@ -147,23 +147,20 @@ class SessionListCubit({
   /// optimistically to the tracker so the row updates immediately; the bridge
   /// echo delivers the authoritative state (including the project aggregate)
   /// within the round trip. On failure, the tracker gets back the value it
-  /// held before the optimistic write.
+  /// held before the optimistic write, unless something newer replaced it.
   Future<void> markSessionSeen({required String sessionId, required bool read}) => _runActionScopeOperation(
     operation: () => _markSessionSeen(sessionId: sessionId, read: read),
   );
 
   Future<void> _markSessionSeen({required String sessionId, required bool read}) async {
-    final previous = _sessionUnseenTracker.applyLocalSessionUnseen(
+    final write = _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
       unseen: !read,
     );
     _emitFiltered();
-    void restore() => _sessionUnseenTracker.restoreLocalSessionUnseen(
-      projectId: _projectId,
-      sessionId: sessionId,
-      previous: previous,
-    );
+    void restore() =>
+        _sessionUnseenTracker.restoreLocalSessionUnseen(projectId: _projectId, sessionId: sessionId, write: write);
     try {
       final response = await _sessionRepository.markSessionSeen(sessionId: sessionId, read: read);
       if (response case ErrorResponse(:final error)) {

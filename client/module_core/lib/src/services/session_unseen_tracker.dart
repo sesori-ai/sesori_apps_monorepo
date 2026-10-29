@@ -104,43 +104,45 @@ class SessionUnseenTracker(
   /// mark-read/unread, so the row updates immediately. The project aggregate is
   /// deliberately NOT touched: only the bridge knows which sessions count
   /// toward it (archived rows are excluded), and its echo lands within the
-  /// round trip. Returns the session's previous entry, which the caller hands
-  /// to [restoreLocalSessionUnseen] when the request fails.
-  SessionListItemState? applyLocalSessionUnseen({
+  /// round trip. Returns the write, which the caller hands to
+  /// [restoreLocalSessionUnseen] when the request fails.
+  LocalSessionUnseenWrite applyLocalSessionUnseen({
     required String projectId,
     required String sessionId,
     required bool unseen,
   }) {
-    if (_sessionUnseen.isClosed) return null;
+    // Disposed: nothing is written, and the matching restore does nothing.
+    if (_sessionUnseen.isClosed) return (previous: null, written: (unseen: unseen, lastUserActivityAt: null));
     // Stamp the tick so an in-flight stale snapshot can't clobber the user's
     // explicit action before the bridge echo settles it.
     _projectTick[projectId] = ++_tick;
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
     final previous = projectSessions[sessionId];
-    projectSessions[sessionId] = (
-      unseen: unseen,
-      lastUserActivityAt: previous?.lastUserActivityAt,
-    );
+    final SessionListItemState written = (unseen: unseen, lastUserActivityAt: previous?.lastUserActivityAt);
+    projectSessions[sessionId] = written;
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
-    return previous;
+    return (previous: previous, written: written);
   }
 
-  /// Undoes a failed [applyLocalSessionUnseen]: puts back [previous], or drops
-  /// the entry when there was none, so the row falls back to its payload.
+  /// Undoes a failed [applyLocalSessionUnseen]: puts back the replaced entry,
+  /// or drops the entry when there was none, so the row falls back to its
+  /// payload. Does nothing when the entry is no longer the one [write] wrote:
+  /// a newer live update or another local write has landed since.
   void restoreLocalSessionUnseen({
     required String projectId,
     required String sessionId,
-    required SessionListItemState? previous,
+    required LocalSessionUnseenWrite write,
   }) {
     if (_sessionUnseen.isClosed) return;
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
-    if (previous == null) {
-      projectSessions.remove(sessionId);
-    } else {
+    if (projectSessions[sessionId] != write.written) return;
+    if (write.previous case final previous?) {
       projectSessions[sessionId] = previous;
+    } else {
+      projectSessions.remove(sessionId);
     }
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
