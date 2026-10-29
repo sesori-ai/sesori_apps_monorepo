@@ -1,8 +1,13 @@
 import "package:meta/meta.dart" show visibleForTesting;
+import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformTarget;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
     show
         Log,
         PluginAgent,
+        PluginCatalogCancellationSignal,
+        PluginCatalogSnapshotAvailable,
+        PluginCatalogSnapshotResult,
+        PluginCatalogSnapshotUnavailable,
         PluginCommand,
         PluginCommandSource,
         PluginMcpAuthenticationCallbackRejectedException,
@@ -24,9 +29,11 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginPromptPart,
         PluginProvidersResult,
         PluginSession,
-        PluginSessionVariant;
+        PluginSessionVariant,
+        PluginStartAbortedException;
 import "package:sesori_shared/sesori_shared.dart" show StringExtensions, maxTranscriptImageCollectionBytes, wait2;
 
+import "api/open_code_catalog_database_api.dart";
 import "message_part_mapper.dart";
 import "models/open_code_mcp_api_exception.dart";
 import "models/open_code_mcp_authentication.dart";
@@ -56,6 +63,7 @@ import "models/update_project_body.dart";
 import "opencode_api.dart";
 import "plugin_model_mapper.dart";
 import "provider_mapper.dart";
+import "repositories/open_code_catalog_snapshot_mapper.dart";
 import "repositories/open_code_mcp_mapper.dart";
 
 const String _globalProjectId = "global";
@@ -539,6 +547,53 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     );
 
     return [...mappedRealProjects, ...virtualProjects];
+  }
+
+  /// Every project and session from one bulk listing, grouped exactly like
+  /// the dormant database snapshot. Unavailable when one listing cannot return
+  /// every session.
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async {
+    final (projects, sessions) = await wait2(_api.listProjects(), _api.listCatalogSessions());
+    if (sessions == null) return const PluginCatalogSnapshotUnavailable();
+    if (cancellation.isCancelled) throw const PluginStartAbortedException();
+    final rows = OpenCodeCatalogDatabaseSnapshot(
+      projects: [
+        for (final project in projects)
+          OpenCodeCatalogProjectRow(
+            id: project.id,
+            worktree: project.worktree,
+            name: project.name,
+            createdAt: project.time.created,
+            updatedAt: project.time.updated,
+            sandboxes: project.sandboxes,
+          ),
+      ],
+      // The API does not list project directories; the live walk never used
+      // them either.
+      projectDirectories: const [],
+      sessions: [
+        for (final session in sessions)
+          OpenCodeCatalogSessionRow(
+            id: session.id,
+            projectId: session.projectID,
+            parentId: session.parentID,
+            directory: session.directory,
+            title: session.title,
+            createdAt: session.time.created,
+            updatedAt: session.time.updated,
+            archivedAt: session.time.archived?.toInt(),
+          ),
+      ],
+    );
+    final mapper = OpenCodeCatalogSnapshotMapper(
+      modelMapper: _pluginModelMapper,
+      operatingSystem: PlatformTarget.current().os,
+    );
+    return PluginCatalogSnapshotAvailable(
+      snapshot: await mapper.map(raw: rows, cancellation: cancellation),
+    );
   }
 
   Future<void> replyToPermission({

@@ -1068,6 +1068,11 @@ class _FakeBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionAware
   Future<void> get eventsSubscribed => _eventsSubscribed.future;
 
   @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async => const PluginCatalogSnapshotUnavailable();
+
+  @override
   Future<List<PluginProject>> getProjects() async {
     if (throwOnGetProjects) throw Exception("fake error");
     return projectsResult;
@@ -1339,6 +1344,11 @@ class _TrackingBridgePlugin() implements NativeProjectsPluginApi, _SubscriptionA
 
   @override
   Future<void> get eventsSubscribed => _eventsSubscribed.future;
+
+  @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async => const PluginCatalogSnapshotUnavailable();
 
   @override
   Future<List<PluginProject>> getProjects() async => [];

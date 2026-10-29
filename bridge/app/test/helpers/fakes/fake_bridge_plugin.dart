@@ -133,6 +133,11 @@ class FakeBridgePlugin() implements NativeProjectsPluginApi {
   }
 
   @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async => const PluginCatalogSnapshotUnavailable();
+
+  @override
   Future<List<PluginProject>> getProjects() async {
     getProjectsCallCount++;
     if (throwOnGetProjectsError case final error?) throw error;

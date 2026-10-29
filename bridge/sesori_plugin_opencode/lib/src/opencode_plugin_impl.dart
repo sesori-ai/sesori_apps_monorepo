@@ -396,6 +396,25 @@ class OpenCodePlugin._({
   Future<List<PluginProject>> getProjects() => _call(_service.getProjects);
 
   @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async {
+    final result = await _call(() => _service.repository.readCatalogSnapshot(cancellation: cancellation));
+    if (result case PluginCatalogSnapshotAvailable(:final snapshot)) {
+      // Like the walk's root listing, teach the tracker each session's
+      // directory so later session operations need no lookup.
+      for (final session in snapshot.projects.expand((family) => family.sessions)) {
+        _service.tracker.registerSession(
+          sessionId: session.id,
+          directory: session.directory,
+          parentId: session.parentID,
+        );
+      }
+    }
+    return result;
+  }
+
+  @override
   Future<List<PluginSession>> getSessions({
     required String projectId,
     required int? start,

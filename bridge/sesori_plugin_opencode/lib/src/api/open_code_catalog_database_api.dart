@@ -30,7 +30,7 @@ class const OpenCodeCatalogSessionRow({
   required final String projectId,
   required final String? parentId,
   required final String directory,
-  required final String title,
+  required final String? title,
   required final int createdAt,
   required final int updatedAt,
   required final int? archivedAt,

@@ -121,6 +121,36 @@ void main() {
     expect(api.agentDirectories, isEmpty);
   });
 
+  test("reads the catalog snapshot from one global listing, children included", () async {
+    api.sessions = [
+      api.initialSession.copyWith(time: api.initialSession.time.copyWith(created: 10, updated: 20)),
+      api.initialSession.copyWith(
+        id: "child",
+        parentID: "session-fixture",
+        location: const LocationPublicRef(directory: worktree),
+        time: api.initialSession.time.copyWith(created: 1, updated: 999),
+      ),
+      api.initialSession.copyWith(id: "grandchild", parentID: "child"),
+      api.initialSession.copyWith(id: "archived-project-root", projectID: "archived-project"),
+    ];
+
+    final result = await repository.readCatalogSnapshot(cancellation: const _NeverCancelled());
+
+    expect(api.sessionQueries, [(directory: null, parentId: null)]);
+    expect(api.rootQueries, isEmpty);
+    final family = (result as PluginCatalogSnapshotAvailable).snapshot.projects.single;
+    expect(family.project.id, directory);
+    expect(family.project.activity?.createdAt, 10);
+    expect(family.project.activity?.updatedAt, 20, reason: "activity comes from roots only");
+    expect(family.sessions.map((session) => (session.id, session.parentID)), [
+      ("session-fixture", null),
+      ("child", "session-fixture"),
+      ("grandchild", "child"),
+    ]);
+    expect(family.sessions.map((session) => session.projectID).toSet(), {directory});
+    expect(family.sessions[1].directory, worktree);
+  });
+
   test("skips sessions of archived projects that OpenCode omits from the project list", () async {
     api.sessions = [
       api.initialSession,
@@ -587,4 +617,9 @@ class FakeV2Api({
 
   @override
   dynamic noSuchMethod(Invocation invocation) => throw StateError("Unexpected API call: ${invocation.memberName}");
+}
+
+class const _NeverCancelled() implements PluginCatalogCancellationSignal {
+  @override
+  bool get isCancelled => false;
 }

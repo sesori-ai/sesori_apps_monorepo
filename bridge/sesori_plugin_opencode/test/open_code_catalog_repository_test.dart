@@ -5,6 +5,7 @@ import "package:opencode_plugin/src/api/open_code_catalog_database_api.dart";
 import "package:opencode_plugin/src/message_part_mapper.dart";
 import "package:opencode_plugin/src/plugin_model_mapper.dart";
 import "package:opencode_plugin/src/repositories/open_code_catalog_repository.dart";
+import "package:opencode_plugin/src/repositories/open_code_catalog_snapshot_mapper.dart";
 import "package:opencode_plugin/src/runtime/open_code_plugin_descriptor.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
@@ -315,9 +316,12 @@ void main() {
         databaseApi: OpenCodeCatalogDatabaseApi(
           worker: _GatedCatalogDatabaseWorker(started: workerStarted.sendPort).read,
         ),
-        modelMapper: const PluginModelMapper(
-          messagePartMapper: MessagePartMapper(),
-          maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+        snapshotMapper: const OpenCodeCatalogSnapshotMapper(
+          modelMapper: PluginModelMapper(
+            messagePartMapper: MessagePartMapper(),
+            maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+          ),
+          operatingSystem: PlatformOs.macos,
         ),
         operatingSystem: PlatformOs.macos,
         fileExists: ({required path}) => true,
@@ -373,9 +377,12 @@ void main() {
       );
       final repository = OpenCodeCatalogRepository(
         databaseApi: databaseApi,
-        modelMapper: const PluginModelMapper(
-          messagePartMapper: MessagePartMapper(),
-          maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+        snapshotMapper: const OpenCodeCatalogSnapshotMapper(
+          modelMapper: PluginModelMapper(
+            messagePartMapper: MessagePartMapper(),
+            maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+          ),
+          operatingSystem: PlatformOs.windows,
         ),
         operatingSystem: PlatformOs.windows,
         fileExists: ({required path}) => true,
@@ -456,9 +463,12 @@ void main() {
 OpenCodeCatalogRepository _repository() {
   return OpenCodeCatalogRepository(
     databaseApi: OpenCodeCatalogDatabaseApi.production(),
-    modelMapper: const PluginModelMapper(
-      messagePartMapper: MessagePartMapper(),
-      maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+    snapshotMapper: const OpenCodeCatalogSnapshotMapper(
+      modelMapper: PluginModelMapper(
+        messagePartMapper: MessagePartMapper(),
+        maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+      ),
+      operatingSystem: PlatformOs.macos,
     ),
     operatingSystem: PlatformOs.macos,
     fileExists: openCodeCatalogFileExists,

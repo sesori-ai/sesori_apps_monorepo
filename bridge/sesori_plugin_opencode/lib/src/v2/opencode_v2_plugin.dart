@@ -190,6 +190,9 @@ class OpenCodeV2Plugin._({
   @override
   Future<List<PluginProject>> getProjects() => _service.getProjects();
   @override
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({required PluginCatalogCancellationSignal cancellation}) =>
+      _service.readCatalogSnapshot(cancellation: cancellation);
+  @override
   Future<PluginProject> getProject(String projectId) => _service.getProject(projectId: projectId);
   @override
   Future<PluginProject> renameProject({required String projectId, required String name}) =>

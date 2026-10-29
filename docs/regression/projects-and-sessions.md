@@ -152,8 +152,16 @@ state.
   non-overridden OpenCode installs use the public-channel `opencode.db`; an explicit
   custom binary does not guess that default or a channel-specific filename. OpenCode
   attach/no-auto-start mode always retains its existing server path.
-- OpenCode v2 live import follows every cursor page and requests roots separately
-  from children. Bridge project identity stays the canonical project directory;
+- A running OpenCode imports from one bulk listing of every project and session,
+  children and archived sessions included, never one backend call per project,
+  parent or session. OpenCode v2 follows every cursor page of its global session
+  list. OpenCode v1 requests every session at once from its experimental global
+  list and groups them exactly like the dormant SQLite snapshot (without
+  project-directory aliases, which its API does not list). The import walks
+  projects and each parent's children only when that listing fails (logged) or
+  a v1 server reports more sessions than one request holds; the v1 cursor is not
+  followed because it skips sessions that share an update millisecond. Bridge
+  project identity stays the canonical project directory;
   a session's actual worktree location is not replaced by that directory. Only
   the native session parent establishes hierarchy: fork provenance must never
   turn a standalone fork into a child of its source.

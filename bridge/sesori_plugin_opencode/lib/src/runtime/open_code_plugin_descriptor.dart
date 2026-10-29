@@ -15,6 +15,7 @@ import "../message_part_mapper.dart";
 import "../opencode_plugin_impl.dart";
 import "../plugin_model_mapper.dart";
 import "../repositories/open_code_catalog_repository.dart";
+import "../repositories/open_code_catalog_snapshot_mapper.dart";
 import "../repositories/open_code_shared_server_repository.dart";
 import "../services/open_code_shared_server_service.dart";
 import "../v2/opencode_v2_plugin.dart";
@@ -118,13 +119,17 @@ class const OpenCodePluginDescriptor({
     required Map<String, String> environment,
     required PluginCatalogCancellationSignal cancellation,
   }) {
+    final operatingSystem = PlatformTarget.current().os;
     return OpenCodeCatalogRepository(
       databaseApi: OpenCodeCatalogDatabaseApi.production(),
-      modelMapper: const PluginModelMapper(
-        messagePartMapper: MessagePartMapper(),
-        maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+      snapshotMapper: OpenCodeCatalogSnapshotMapper(
+        modelMapper: const PluginModelMapper(
+          messagePartMapper: MessagePartMapper(),
+          maxTranscriptAttachmentBytes: maxTranscriptImageCollectionBytes,
+        ),
+        operatingSystem: operatingSystem,
       ),
-      operatingSystem: PlatformTarget.current().os,
+      operatingSystem: operatingSystem,
       fileExists: openCodeCatalogFileExists,
       // Ordinary PATH/managed selection targets OpenCode's public latest
       // channel. An explicit binary can carry a custom compile-time channel,
