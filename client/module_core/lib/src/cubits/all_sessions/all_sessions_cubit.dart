@@ -35,6 +35,10 @@ class AllSessionsCubit({
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Set<String> _hiddenSessionIds = const {};
   bool _awaitingReload = _mode == AllSessionsMode.archived;
+  Timer? _queryTimer;
+
+  /// How long [setQuery] waits for typing to pause.
+  static const queryDelay = Duration(milliseconds: 150);
 
   this
     : super(
@@ -50,13 +54,16 @@ class AllSessionsCubit({
           sessionListService: _sessionListService,
         ),
       ) {
-    _subscriptions
-      ..add(_recentInventory.state.skip(1).listen((_) => _update()))
-      ..add(_projectInventory.stateStream.skip(1).listen((_) => _update()))
-      // [selectProject] already shows its own selection.
-      ..add(
-        _filterTracker.projectId.skip(1).where((projectId) => projectId != state.projectId).listen((_) => _update()),
-      );
+    // One live change often moves several of these at once, such as a
+    // projects summary updating both inventories: one resolve follows them all.
+    _subscriptions.add(
+      Rx.merge<void>([
+        _recentInventory.state.skip(1),
+        _projectInventory.stateStream.distinct().skip(1),
+        // [selectProject] already shows its own selection.
+        _filterTracker.projectId.skip(1).where((projectId) => projectId != state.projectId),
+      ]).debounceTime(Duration.zero).listen((_) => _update()),
+    );
     if (_awaitingReload) unawaited(_reload());
   }
 
@@ -72,7 +79,17 @@ class AllSessionsCubit({
     _update();
   }
 
-  void setQuery({required String query}) => _emit(query: query, quickFilter: state.quickFilter);
+  /// Narrows the list [queryDelay] after the last change, so typing does not
+  /// resolve the whole list on every keystroke. A cleared query applies at
+  /// once.
+  void setQuery({required String query}) {
+    _queryTimer?.cancel();
+    if (query.trim().isEmpty) {
+      _emit(query: query, quickFilter: state.quickFilter);
+    } else {
+      _queryTimer = Timer(queryDelay, () => _emit(query: query, quickFilter: state.quickFilter));
+    }
+  }
 
   void setQuickFilter({required SessionListQuickFilter filter}) => _emit(query: state.query, quickFilter: filter);
 
@@ -93,8 +110,8 @@ class AllSessionsCubit({
 
   void _update() => _emit(query: state.query, quickFilter: state.quickFilter);
 
-  void _emit({required String query, required SessionListQuickFilter quickFilter}) => emit(
-    _resolve(
+  void _emit({required String query, required SessionListQuickFilter quickFilter}) {
+    final next = _resolve(
       mode: _mode,
       projects: _projectInventory.state,
       entries: _recentInventory.state.value,
@@ -104,8 +121,10 @@ class AllSessionsCubit({
       hiddenSessionIds: _hiddenSessionIds,
       awaitingReload: _awaitingReload,
       sessionListService: _sessionListService,
-    ),
-  );
+    );
+    // A cubit's first emit goes out even when equal to its initial state.
+    if (next != state) emit(next);
+  }
 
   static AllSessionsState _resolve({
     required AllSessionsMode mode,
@@ -204,6 +223,7 @@ class AllSessionsCubit({
 
   @override
   Future<void> close() async {
+    _queryTimer?.cancel();
     await _subscriptions.dispose();
     await super.close();
   }

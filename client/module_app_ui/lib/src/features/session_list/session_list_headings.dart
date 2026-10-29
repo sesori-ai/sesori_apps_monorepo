@@ -24,6 +24,30 @@ String sessionListHeading({
   );
 }
 
+/// The headings of a list's rows, kept with the rows list itself: a list
+/// rebuilds far more often than its rows or the local day change.
+class SessionListHeadingCache<T>() {
+  final Expando<({DateTime day, String localeName, List<String> headings})> _byRows = Expando();
+
+  /// [headingOf] each of [rows], in order. The same [rows] list, on the same
+  /// local day and in the same locale, reuses the headings it had.
+  List<String> headingsOf({
+    required List<T> rows,
+    required DateTime now,
+    required AppLocalizations loc,
+    required String Function(T row) headingOf,
+  }) {
+    final day = DateTime(now.year, now.month, now.day);
+    if (_byRows[rows] case (day: final cachedDay, :final localeName, :final headings)
+        when cachedDay == day && localeName == loc.localeName) {
+      return headings;
+    }
+    final headings = [for (final row in rows) headingOf(row)];
+    _byRows[rows] = (day: day, localeName: loc.localeName, headings: headings);
+    return headings;
+  }
+}
+
 /// One entry of a date-grouped session list: a heading or an item under it.
 ///
 /// Headings are entries of their own, so removing the first item of a group

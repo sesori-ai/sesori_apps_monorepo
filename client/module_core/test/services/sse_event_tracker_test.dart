@@ -296,6 +296,51 @@ void main() {
       await tracker.onDispose();
     });
 
+    test("a summary equal to the previous one emits nothing", () async {
+      final tracker = SseEventTracker(mockConnectionService, failureReporter: mockFailureReporter);
+      final sessionEmissions = <Map<String, Map<String, SessionActivityInfo>>>[];
+      final projectEmissions = <Map<String, int>>[];
+      final subscriptions = [
+        tracker.sessionActivity.skip(1).listen(sessionEmissions.add),
+        tracker.projectActivity.skip(1).listen(projectEmissions.add),
+      ];
+      // A new instance each time, as each event decodes its own.
+      SseEvent summary({required bool running}) => SseEvent(
+        data: SesoriProjectsSummary(
+          projects: [
+            ProjectActivitySummary(
+              id: "/foo",
+              activeSessions: [
+                ActiveSession(
+                  id: "s1",
+                  mainAgentRunning: running,
+                  childSessionIds: [],
+                  lastUserActivityAt: null,
+                  updatedAt: null,
+                ),
+              ],
+            ),
+          ],
+        ),
+      );
+
+      eventController
+        ..add(summary(running: true))
+        ..add(summary(running: true))
+        ..add(summary(running: false));
+      await Future<void>.delayed(const Duration(milliseconds: 10));
+
+      expect([for (final activity in sessionEmissions) activity["/foo"]?["s1"]?.mainAgentRunning], [true, false]);
+      expect(projectEmissions, [
+        {"/foo": 1},
+      ], reason: "the count never changed after the first summary");
+
+      for (final subscription in subscriptions) {
+        await subscription.cancel();
+      }
+      await tracker.onDispose();
+    });
+
     // -------------------------------------------------------------------------
     // 6. projectActivity defaults to empty map
     // -------------------------------------------------------------------------

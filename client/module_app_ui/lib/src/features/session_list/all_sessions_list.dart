@@ -144,7 +144,7 @@ class _ActiveSessionsState() extends State<_ActiveSessions> {
 /// One item of the list: a session, or a launch leading Today.
 sealed class const _Item();
 
-final class const _SessionItem({required final AllSessionsRow row}) extends _Item;
+final class const _SessionItem({required final AllSessionsRow row, required final String heading}) extends _Item;
 
 final class const _LaunchItem({required final LaunchingSession launch}) extends _Item;
 
@@ -196,6 +196,7 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
   /// Keeps the one skeleton, with its appearance delay and sheen, as it moves
   /// from its own place onto the content that replaces it.
   final GlobalKey _skeletonKey = GlobalKey(debugLabel: "all-sessions-skeleton");
+  final SessionListHeadingCache<AllSessionsRow> _headings = SessionListHeadingCache();
   bool _wasLoading = false;
 
   /// Counts the content's fades in, so the rows of each start as a list of
@@ -291,26 +292,36 @@ class _SessionsState() extends State<_Sessions> with TickerProviderStateMixin {
             for (final MapEntry(key: projectId, value: rows) in launchRows.entries)
               if (state.projectId == null || state.projectId == projectId) ...rows.placeholders,
           ];
-    List<SessionListEntry<_Item>> entriesOf(AllSessionsState state) => groupUnderHeadings<_Item>(
-      items: [
-        for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
-        // Only a still-unarchived session hides, as on every list.
-        for (final row in state.rows)
-          if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id)) _SessionItem(row: row),
-      ],
-      headingOf: (item) => switch (item) {
-        // A launch is the newest running thing, so it leads Today.
-        _LaunchItem() => sessionDateLabel(date: now, now: now, loc: loc),
+    List<SessionListEntry<_Item>> entriesOf(AllSessionsState state) {
+      final headings = _headings.headingsOf(
+        rows: state.rows,
+        now: now,
+        loc: loc,
         // Only the archived mode lists archived rows, and it sorts them by
         // archive time alone, running or not.
-        _SessionItem(:final row) => sessionListHeading(
+        headingOf: (row) => sessionListHeading(
           timestamp: row.session.time?.archived ?? row.session.time?.updated,
           isRunning: row.isRunning && row.session.time?.archived == null,
           now: now,
           loc: loc,
         ),
-      },
-    );
+      );
+      return groupUnderHeadings<_Item>(
+        items: [
+          for (final launch in launchesOf(state)) _LaunchItem(launch: launch),
+          // Only a still-unarchived session hides, as on every list.
+          for (final (index, row) in state.rows.indexed)
+            if (row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id))
+              _SessionItem(row: row, heading: headings[index]),
+        ],
+        headingOf: (item) => switch (item) {
+          // A launch is the newest running thing, so it leads Today.
+          _LaunchItem() => sessionDateLabel(date: now, now: now, loc: loc),
+          _SessionItem(:final heading) => heading,
+        },
+      );
+    }
+
     final currentEntries = entriesOf(current);
     final currentlyLoading = (awaitingConnection || current.isLoading) && currentEntries.isEmpty;
     final loadStarts = !_wasLoading && currentlyLoading;
