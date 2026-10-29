@@ -37,9 +37,7 @@ void main() {
     setUp(() {
       mockSessionService = MockSessionRepository();
       mockProjectRepository = MockProjectRepository();
-      sessionListService = SessionListService(
-        repository: mockProjectRepository,
-      );
+      sessionListService = SessionListService();
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
       fakeSessionUnseenTracker = FakeSessionUnseenTracker();

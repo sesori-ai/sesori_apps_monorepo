@@ -8,7 +8,6 @@ import "package:sesori_dart_core/src/capabilities/server_connection/models/sse_e
 import "package:sesori_dart_core/src/capabilities/server_connection/server_connection_config.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_cubit.dart";
 import "package:sesori_dart_core/src/cubits/session_detail/session_detail_state.dart";
-import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/session_abort_service.dart";
 import "package:sesori_dart_core/src/services/session_approval_service.dart";
 import "package:sesori_dart_core/src/services/session_auto_continuation_service.dart";
@@ -36,7 +35,6 @@ void main() {
   test("disconnected startup reaches loaded automatically once connection becomes available", () async {
     final mockSessionService = MockSessionRepository();
     final mockSessionRepository = MockSessionRepository();
-    final mockProjectRepository = MockProjectRepository();
     final mockConnectionService = MockConnectionService();
     final mockNotificationCanceller = MockNotificationCanceller();
     final mockPermissionRepository = MockPermissionRepository();
@@ -72,13 +70,6 @@ void main() {
     ).thenAnswer((_) async => ApiResponse.success(null));
     delegateSessionRepository(repository: mockSessionRepository, source: mockSessionService);
     stubSessionRepositoryGetSession(repository: mockSessionRepository, sessionId: _sessionId);
-    when(() => mockProjectRepository.findSessionContext(sessionId: _sessionId)).thenAnswer(
-      (_) async => const ProjectSessionContext(
-        projectId: "project-1",
-        pluginId: "plugin-1",
-        sessionTitle: null,
-      ),
-    );
     _stubLoadApis(mockSessionService);
 
     final cubit = SessionDetailCubit(

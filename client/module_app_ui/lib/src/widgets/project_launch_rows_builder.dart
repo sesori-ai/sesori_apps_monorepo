@@ -14,7 +14,7 @@ class const ProjectLaunchRowsBuilder({
   @override
   Widget build(BuildContext context) => BlocProvider(
     create: (context) => ProjectLaunchRowsCubit(
-      inventoryService: context.read<RecentSessionInventoryService>(),
+      window: context.read<SessionWindowService>(),
       launchService: context.read<SessionLaunchService>(),
       initialRows: initialRows,
     ),

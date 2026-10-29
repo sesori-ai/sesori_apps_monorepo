@@ -2,7 +2,6 @@ import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../foundation/models/session_launch/session_launch.dart";
-import "../../services/models/recent_sessions_entry.dart";
 import "session_launch_state.dart";
 
 SessionLaunchState resolveSessionLaunchState({required List<SessionLaunch> launches}) => SessionLaunchState(
@@ -237,14 +236,24 @@ LaunchRows latchLaunchSessions({
 }
 
 /// Each project's launching rows on a surface that leads each project's
-/// sessions with its launches (see [resolveHeldLaunchSessions]). A project
-/// whose sessions are not loaded keeps its rows.
+/// sessions with its launches (see [resolveHeldLaunchSessions]).
+///
+/// [sessionsByProject] holds, in list order, the sessions of each project the
+/// surface lists; every other project keeps its rows (see
+/// [latchLaunchSessions]). [appendedSessionIds] are sessions the surface added
+/// at its end, such as a further page: they count as listed and shown on the
+/// last update already, so they never settle or hold a launch.
 Map<String, LaunchRows> resolveProjectLaunchRows({
   required Map<String, LaunchRows> previous,
   required SessionLaunchState launches,
-  required Map<String, RecentSessionsEntry> entries,
+  required Map<String, List<Session>> sessionsByProject,
+  required Set<String> appendedSessionIds,
 }) => {
-  for (final MapEntry(key: projectId, value: entry) in entries.entries)
+  for (final projectId in {
+    ...previous.keys,
+    for (final launch in launches.launching) launch.projectId,
+    ...sessionsByProject.keys,
+  })
     projectId: _projectLaunchRows(
       previous: previous[projectId] ?? LaunchRows.none,
       launching: [
@@ -252,7 +261,8 @@ Map<String, LaunchRows> resolveProjectLaunchRows({
           if (launch.projectId == projectId) launch,
       ],
       sessionIds: launches.sessionIds,
-      entry: entry,
+      sessions: sessionsByProject[projectId],
+      appendedSessionIds: appendedSessionIds,
     ),
 };
 
@@ -260,20 +270,41 @@ LaunchRows _projectLaunchRows({
   required LaunchRows previous,
   required List<LaunchingSession> launching,
   required Map<String, String> sessionIds,
-  required RecentSessionsEntry entry,
-}) => switch (entry) {
-  RecentSessionsLoaded(:final visibleSessions) => resolveHeldLaunchSessions(
-    previous: previous,
+  required List<Session>? sessions,
+  required Set<String> appendedSessionIds,
+}) => switch (sessions) {
+  final sessions? => resolveHeldLaunchSessions(
+    previous: _withAppended(previous: previous, sessions: sessions, appendedSessionIds: appendedSessionIds),
     launching: launching,
     sessionIds: sessionIds,
-    sessions: visibleSessions,
+    sessions: sessions,
   ),
-  RecentSessionsLoading() || RecentSessionsFailed() => latchLaunchSessions(
-    previous: previous,
-    launching: launching,
-    sessionIds: sessionIds,
-  ),
+  null => latchLaunchSessions(previous: previous, launching: launching, sessionIds: sessionIds),
 };
+
+/// [previous] as if [sessions] appended at the end had been listed and shown
+/// on that update already.
+LaunchRows _withAppended({
+  required LaunchRows previous,
+  required List<Session> sessions,
+  required Set<String> appendedSessionIds,
+}) {
+  final LaunchRows(:shownSessionIds, :listedSessionIds) = previous;
+  final appended = [
+    for (final session in sessions)
+      if (appendedSessionIds.contains(session.id)) session.id,
+  ];
+  // Before its first update a surface has shown nothing to append to.
+  if (appended.isEmpty || shownSessionIds == null || listedSessionIds == null) return previous;
+  return LaunchRows(
+    placeholders: previous.placeholders,
+    named: previous.named,
+    rowKeys: previous.rowKeys,
+    shownSessionIds: {...shownSessionIds, ...appended},
+    listedSessionIds: [...listedSessionIds, ...appended],
+    heldSessionIds: previous.heldSessionIds,
+  );
+}
 
 /// How many of the last [rows] can give way to their sessions in place: the
 /// longest tail whose sessions open [sessions] in the rows' order.

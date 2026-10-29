@@ -133,7 +133,7 @@ import 'package:sesori_dart_core/src/repositories/feedback_prompt_repository.dar
 import 'package:sesori_dart_core/src/repositories/feedback_repository.dart'
     as _i860;
 import 'package:sesori_dart_core/src/repositories/file_preview_repository.dart'
-    as _i703;
+    as _i704;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -146,7 +146,7 @@ import 'package:sesori_dart_core/src/repositories/notification_preferences_repos
 import 'package:sesori_dart_core/src/repositories/notification_repository.dart'
     as _i471;
 import 'package:sesori_dart_core/src/repositories/permission_repository.dart'
-    as _i679;
+    as _i680;
 import 'package:sesori_dart_core/src/repositories/plugin_preference_repository.dart'
     as _i594;
 import 'package:sesori_dart_core/src/repositories/plugin_repository.dart'
@@ -221,9 +221,7 @@ import 'package:sesori_dart_core/src/services/product_analytics_service.dart'
 import 'package:sesori_dart_core/src/services/project_inventory_service.dart'
     as _i870;
 import 'package:sesori_dart_core/src/services/project_list_service.dart'
-    as _i704;
-import 'package:sesori_dart_core/src/services/recent_session_inventory_service.dart'
-    as _i623;
+    as _i703;
 import 'package:sesori_dart_core/src/services/registered_bridges_service.dart'
     as _i699;
 import 'package:sesori_dart_core/src/services/selected_computer_service.dart'
@@ -258,7 +256,7 @@ import 'package:sesori_dart_core/src/services/session_window_service.dart'
     as _i206;
 import 'package:sesori_dart_core/src/services/sse_event_tracker.dart' as _i508;
 import 'package:sesori_dart_core/src/services/voice_transcription_service.dart'
-    as _i680;
+    as _i679;
 import 'package:sesori_persistence/sesori_persistence.dart' as _i903;
 import 'package:sesori_shared/sesori_shared.dart' as _i553;
 
@@ -283,6 +281,9 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i414.SessionInteractionCalculator>(
       () => const _i414.SessionInteractionCalculator(),
+    );
+    gh.lazySingleton<_i763.SessionListService>(
+      () => _i763.SessionListService(),
     );
     gh.lazySingleton<_i176.VoiceApi>(
       () => _i176.VoiceApi(gh<_i442.AuthenticatedHttpApiClient>()),
@@ -607,6 +608,16 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i143.ViewDeclarationRepository>(
       () => _i143.ViewDeclarationRepository(api: gh<_i37.ViewDeclarationApi>()),
     );
+    gh.lazySingleton<_i80.ProjectRepository>(
+      () => _i80.ProjectRepository(
+        api: gh<_i733.ProjectApi>(),
+        filesystemApi: gh<_i1068.FilesystemApi>(),
+      ),
+    );
+    gh.lazySingleton<_i703.ProjectListService>(
+      () => _i703.ProjectListService(repository: gh<_i80.ProjectRepository>()),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i204.ProductAnalyticsService>(
       () => _i204.ProductAnalyticsService(
         analyticsRepository: gh<_i274.AnalyticsRepository>(),
@@ -615,8 +626,15 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i703.FilePreviewRepository>(
-      () => _i703.FilePreviewRepository(api: gh<_i1068.FilesystemApi>()),
+    gh.lazySingleton<_i679.VoiceTranscriptionService>(
+      () => _i679.VoiceTranscriptionService(
+        repository: gh<_i107.VoiceRepository>(),
+        projectRepository: gh<_i80.ProjectRepository>(),
+        capture: gh<_i359.VoiceCapture>(),
+      ),
+    );
+    gh.lazySingleton<_i704.FilePreviewRepository>(
+      () => _i704.FilePreviewRepository(api: gh<_i1068.FilesystemApi>()),
     );
     gh.lazySingleton<_i285.InstallationAnalyticsService>(
       () => _i285.InstallationAnalyticsService(
@@ -683,6 +701,13 @@ extension GetItInjectableX on _i174.GetIt {
         activeBridgeLocality: gh<_i1023.ActiveBridgeLocality>(),
       ),
     );
+    gh.lazySingleton<_i1070.SessionListFilterTracker>(
+      () => _i1070.SessionListFilterTracker(
+        connectionService: gh<_i369.ConnectionService>(),
+        projectListService: gh<_i703.ProjectListService>(),
+      ),
+      dispose: (i) => i.dispose(),
+    );
     gh.lazySingleton<_i102.BridgeSettingsRepository>(
       () => _i102.BridgeSettingsRepository(
         bridgeSettingsApi: gh<_i415.BridgeSettingsApi>(),
@@ -731,31 +756,17 @@ extension GetItInjectableX on _i174.GetIt {
         attachmentThumbnailStorage: gh<_i894.AttachmentThumbnailStorage>(),
       ),
     );
-    gh.lazySingleton<_i679.PermissionRepository>(
-      () => _i679.PermissionRepository(api: gh<_i231.PermissionApi>()),
+    gh.lazySingleton<_i680.PermissionRepository>(
+      () => _i680.PermissionRepository(api: gh<_i231.PermissionApi>()),
     );
     gh.lazySingleton<_i349.McpRepository>(
       () => _i349.McpRepository(api: gh<_i187.McpApi>()),
-    );
-    gh.lazySingleton<_i80.ProjectRepository>(
-      () => _i80.ProjectRepository(
-        api: gh<_i733.ProjectApi>(),
-        filesystemApi: gh<_i1068.FilesystemApi>(),
-        sessionApi: gh<_i603.SessionApi>(),
-      ),
     );
     gh.lazySingleton<_i177.NewSessionPluginService>(
       () => _i177.NewSessionPluginService(
         pluginRepository: gh<_i337.PluginRepository>(),
         pluginPreferenceRepository: gh<_i594.PluginPreferenceRepository>(),
       ),
-    );
-    gh.lazySingleton<_i704.ProjectListService>(
-      () => _i704.ProjectListService(repository: gh<_i80.ProjectRepository>()),
-      dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i763.SessionListService>(
-      () => _i763.SessionListService(repository: gh<_i80.ProjectRepository>()),
     );
     gh.lazySingleton<_i585.McpAuthenticationService>(
       () => _i585.McpAuthenticationService(
@@ -794,13 +805,6 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i680.VoiceTranscriptionService>(
-      () => _i680.VoiceTranscriptionService(
-        repository: gh<_i107.VoiceRepository>(),
-        projectRepository: gh<_i80.ProjectRepository>(),
-        capture: gh<_i359.VoiceCapture>(),
-      ),
-    );
     gh.lazySingleton<_i572.CatalogRescanService>(
       () => _i572.CatalogRescanService(
         pluginRepository: gh<_i337.PluginRepository>(),
@@ -814,7 +818,7 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
         sseEventTracker: gh<_i508.SseEventTracker>(),
         routeSource: gh<_i366.RouteSource>(),
-        projectListService: gh<_i704.ProjectListService>(),
+        projectListService: gh<_i703.ProjectListService>(),
         sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
         registeredBridgesService: gh<_i699.RegisteredBridgesService>(),
         productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
@@ -838,13 +842,6 @@ extension GetItInjectableX on _i174.GetIt {
         repository: gh<_i102.BridgeSettingsRepository>(),
         connectionService: gh<_i369.ConnectionService>(),
       ),
-    );
-    gh.lazySingleton<_i1070.SessionListFilterTracker>(
-      () => _i1070.SessionListFilterTracker(
-        connectionService: gh<_i369.ConnectionService>(),
-        projectListService: gh<_i704.ProjectListService>(),
-      ),
-      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i516.NotificationOpenDispatcher>(
       () => _i516.NotificationOpenDispatcher(
@@ -874,16 +871,6 @@ extension GetItInjectableX on _i174.GetIt {
         projectInventory: projectInventory,
         sessionRepository: gh<_i7.SessionRepository>(),
         projectRepository: gh<_i80.ProjectRepository>(),
-        connectionService: gh<_i369.ConnectionService>(),
-        sseEventTracker: gh<_i508.SseEventTracker>(),
-        sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
-        catalogRescanService: gh<_i572.CatalogRescanService>(),
-      ),
-    );
-    gh.factory<_i623.RecentSessionInventoryService>(
-      () => _i623.RecentSessionInventoryService(
-        sessionListService: gh<_i763.SessionListService>(),
-        projectListService: gh<_i704.ProjectListService>(),
         connectionService: gh<_i369.ConnectionService>(),
         sseEventTracker: gh<_i508.SseEventTracker>(),
         sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),

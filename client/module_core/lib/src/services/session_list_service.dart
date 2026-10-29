@@ -1,26 +1,12 @@
 import "package:injectable/injectable.dart";
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../repositories/project_repository.dart";
 import "models/session_activity_info.dart";
 import "models/session_list_filter.dart";
 import "models/session_list_item_state.dart";
 
 @lazySingleton
-class SessionListService({
-  required final ProjectRepository _repository,
-}) {
-  Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) async {
-    final response = await _repository.listSessions(projectId: projectId);
-    return switch (response) {
-      SuccessResponse(:final data) => ApiResponse.success(
-        SessionListResponse(items: _sortSessions(data.items)),
-      ),
-      ErrorResponse(:final error) => ApiResponse.error(error),
-    };
-  }
-
+class SessionListService() {
   List<Session> visibleSessions({
     required Iterable<Session> sessions,
     required SessionListFilter filter,

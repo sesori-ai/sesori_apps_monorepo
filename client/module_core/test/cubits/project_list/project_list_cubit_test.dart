@@ -2018,7 +2018,7 @@ void main() {
       );
 
       verify(() => mockProjectRepository.listProjects()).called(2);
-      // The recent-session inventory admits the project from this snapshot.
+      // The listed projects include the project from this snapshot.
       expect(listedProjects.last.map((project) => project.id), containsAll(["A", "opened"]));
     });
 

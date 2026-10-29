@@ -18,7 +18,7 @@ class _MockSessionWindowService() extends Mock implements SessionWindowService;
 void main() {
   setUpAll(registerCoreFallbackValues);
 
-  testWidgets("cockpits own both inventories, admit initial projects, and dispose their scopes", (tester) async {
+  testWidgets("cockpits own the project inventory and the sessions window, and dispose their scopes", (tester) async {
     final repository = MockProjectRepository();
     final connection = MockConnectionService();
     final activity = MockSseEventTracker();
@@ -26,8 +26,6 @@ void main() {
     final catalog = FakeCatalogRescanService();
     final events = StreamController<SseEvent>.broadcast(sync: true);
     final projects = ProjectListService(repository: repository);
-    final instances = <RecentSessionInventoryService>[];
-    final closed = <RecentSessionInventoryService>[];
     final projectInstances = <ProjectInventoryService>[];
     final windows = <SessionWindowService>[];
     final closedWindows = <SessionWindowService>[];
@@ -45,9 +43,6 @@ void main() {
         ),
       ),
     );
-    when(() => repository.listSessions(projectId: "one")).thenAnswer(
-      (_) async => ApiResponse.success(const SessionListResponse(items: [])),
-    );
     // Register only owned fake-backed factories, never production DI/bootstrap.
     getIt.registerFactory<SessionCleanupService>(() => SessionCleanupService(repository: MockSessionRepository()));
     getIt.registerSingleton<RegisteredBridgesService>(MockRegisteredBridgesService());
@@ -55,31 +50,10 @@ void main() {
     getIt.registerSingleton<ActiveBridgeLocality>(const FakeActiveBridgeLocality());
     final filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projects);
     getIt.registerSingleton<SessionListFilterTracker>(filterTracker);
-    getIt.registerSingleton<SessionListService>(
-      SessionListService(repository: repository),
-    );
     getIt.registerFactory<SessionLaunchService>(
       () => inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
     );
-    getIt.registerFactory<RecentSessionInventoryService>(() {
-      final inventory = RecentSessionInventoryService(
-        sessionListService: SessionListService(
-          repository: repository,
-        ),
-        projectListService: projects,
-        connectionService: connection,
-        sseEventTracker: activity,
-        sessionUnseenTracker: unseen,
-        catalogRescanService: catalog,
-      );
-      instances.add(inventory);
-      inventory.state.listen((_) {}, onDone: () => closed.add(inventory));
-      return inventory;
-    });
     getIt.registerFactory<ProjectInventoryService>(() {
-      // Recent admission must already exist before project startup publishes.
-      expect(instances, hasLength(projectInstances.length + 1));
-      expect(instances.last.state.value, isEmpty);
       final inventory = _MockProjectInventoryService();
       final states = BehaviorSubject<ProjectListState>.seeded(const ProjectListState.loading());
       when(() => inventory.state).thenAnswer((_) => states.value);
@@ -125,11 +99,9 @@ void main() {
       await getIt.unregister<ConnectionService>();
       await getIt.unregister<ActiveBridgeLocality>();
       await getIt.unregister<SessionListFilterTracker>();
-      await getIt.unregister<SessionListService>();
       await filterTracker.dispose();
       await getIt.unregister<SessionLaunchService>();
       await getIt.unregister<ProjectInventoryService>();
-      await getIt.unregister<RecentSessionInventoryService>();
       await projects.dispose();
       await events.close();
       await activity.onDispose();
@@ -141,18 +113,17 @@ void main() {
       builder: (context) {
         context.read<ProjectListCubit>();
         context.read<SessionListRefreshCubit>();
+        context.read<SessionWindowService>();
         return const SizedBox.shrink();
       },
     );
     await tester.pumpWidget(DesktopCockpitCubitProvider(child: child));
     await tester.pump();
-    expect(instances, hasLength(1));
     expect(projectInstances, hasLength(1));
-    final first = instances.single;
-    expect(first.state.value["one"], isA<RecentSessionsLoaded>());
+    expect(windows, hasLength(1));
     final context = tester.element(find.byType(SizedBox));
-    expect(context.read<RecentSessionInventoryService>(), same(first));
     expect(context.read<ProjectInventoryService>(), same(projectInstances.single));
+    expect(context.read<SessionWindowService>(), same(windows.single));
     final projectConsumer = context.read<ProjectListCubit>();
     final refreshConsumer = context.read<SessionListRefreshCubit>();
     expect(workflowCount, 1);
@@ -164,19 +135,17 @@ void main() {
     expect(projectConsumer.isClosed, isTrue);
     expect(refreshConsumer.isClosed, isTrue);
     expect(events.hasListener, isFalse);
-    expect(closed, [first]);
+    expect(closedWindows, windows);
     expect(closedProjects, projectInstances);
 
     await tester.pumpWidget(DesktopCockpitCubitProvider(child: child));
-    expect(instances, hasLength(2));
     expect(projectInstances, hasLength(2));
+    expect(windows, hasLength(2));
     expect(workflowCount, 2);
-    expect(instances.last, isNot(same(first)));
     expect(projectInstances.last, isNot(same(projectInstances.first)));
     await tester.pumpWidget(const SizedBox.shrink());
     await tester.runAsync(() async {});
     await tester.pump();
-    expect(closed, instances);
     expect(closedProjects, projectInstances);
     expect(closedWindows, windows);
     expect(events.hasListener, isFalse);

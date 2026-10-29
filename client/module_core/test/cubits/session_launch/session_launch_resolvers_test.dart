@@ -285,49 +285,110 @@ void main() {
   });
 
   group("per-project rows", () {
-    RecentSessionsEntry loaded(List<Session> sessions) => RecentSessionsLoaded(
-      sourceSessions: sessions,
-      visibleSessions: sessions,
-      archivedSessions: const [],
-      activityBySessionId: const {},
-      listStateBySessionId: const {},
-    );
     Map<String, LaunchRows> resolveProject({
       required Map<String, LaunchRows> previous,
       required SessionLaunchState launches,
-      required RecentSessionsEntry entry,
-    }) => resolveProjectLaunchRows(previous: previous, launches: launches, entries: {"project-1": entry});
+      required List<Session>? sessions,
+      Set<String> appendedSessionIds = const {},
+    }) => resolveProjectLaunchRows(
+      previous: previous,
+      launches: launches,
+      sessionsByProject: {"project-1": ?sessions},
+      appendedSessionIds: appendedSessionIds,
+    );
 
-    test("keeps a project's row and its session while the project reloads", () {
+    test("keeps a project's row and its session while the project is not listed", () {
       final opened = resolveProject(
         previous: const {},
         launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
-        entry: loaded([existing]),
+        sessions: [existing],
       );
       final reloading = resolveProject(
         previous: opened,
         launches: const SessionLaunchState(launching: [], sessionIds: {"launch-1": "created"}),
-        entry: RecentSessionsLoading(),
+        sessions: null,
       );
 
       expect(reloading["project-1"]?.placeholders, [launch]);
       expect(reloading["project-1"]?.named, {"launch-1": (sessionId: "created", arrived: false)});
     });
 
-    test("drops a failed launch's row while the project's read is unavailable", () {
+    test("drops a failed launch's row while the project is not listed", () {
       final waiting = resolveProject(
         previous: const {},
         launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
-        entry: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
+        sessions: null,
       );
       expect(waiting["project-1"]?.placeholders, [launch]);
 
       final failed = resolveProject(
         previous: waiting,
         launches: const SessionLaunchState(launching: [], sessionIds: {}),
-        entry: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
+        sessions: null,
       );
       expect(failed["project-1"]?.placeholders, isEmpty, reason: "no Creating… outlives the failure alert");
+    });
+
+    test("appended sessions are neither held nor settle a launch", () {
+      final older = testSession(id: "older");
+      final opened = resolveProject(
+        previous: const {},
+        launches: const SessionLaunchState(launching: [], sessionIds: {}),
+        sessions: [existing],
+      );
+      final waiting = resolveProject(
+        previous: opened,
+        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+        sessions: [existing],
+      );
+      final paged = resolveProject(
+        previous: waiting,
+        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+        sessions: [existing, older],
+        appendedSessionIds: {"older"},
+      );
+
+      expect(paged["project-1"]?.heldSessionIds, isEmpty, reason: "an older page is never the launch's session");
+      expect(paged["project-1"]?.placeholders, [launch]);
+      expect(paged["project-1"]?.listedSessionIds, ["existing", "older"]);
+
+      final unpaged = resolveProject(
+        previous: waiting,
+        launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+        sessions: [existing, older],
+      );
+      expect(unpaged["project-1"]?.heldSessionIds, {
+        "older",
+      }, reason: "an unseen session otherwise may be the launch's");
+    });
+
+    test("an appended page does not settle a held row as an ordinary change", () {
+      final older = testSession(id: "older");
+      const promoted = SessionLaunchState(launching: [], sessionIds: {"launch-1": "created"});
+      final named = resolveProject(
+        previous: resolveProject(
+          previous: const {},
+          launches: SessionLaunchState(launching: [launch], sessionIds: const {}),
+          sessions: [existing],
+        ),
+        launches: promoted,
+        sessions: [existing],
+      );
+      // Arrived below the head, so it cannot take the row's place yet.
+      final arrived = resolveProject(previous: named, launches: promoted, sessions: [existing, created]);
+      expect(arrived["project-1"]?.heldSessionIds, {"created"});
+
+      final paged = resolveProject(
+        previous: arrived,
+        launches: promoted,
+        sessions: [existing, created, older],
+        appendedSessionIds: {"older"},
+      );
+      expect(paged["project-1"]?.placeholders, [launch]);
+      expect(paged["project-1"]?.heldSessionIds, {"created"});
+
+      final changed = resolveProject(previous: arrived, launches: promoted, sessions: [existing, created, older]);
+      expect(changed["project-1"]?.placeholders, isEmpty, reason: "any other sessions update places it");
     });
   });
 }
