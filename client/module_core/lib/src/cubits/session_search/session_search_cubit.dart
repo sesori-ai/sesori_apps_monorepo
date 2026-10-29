@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
+import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../services/models/project_list_state.dart";
@@ -25,7 +26,7 @@ class SessionSearchCubit({
   static const int limit = 20;
   static const Duration searchDelay = Duration(milliseconds: 200);
 
-  late final StreamSubscription<SessionWindowState> _windowState;
+  late final StreamSubscription<void> _loaded;
   String _query = "";
 
   /// Bumped by every query, so an answer the user has typed past is dropped.
@@ -34,8 +35,9 @@ class SessionSearchCubit({
 
   this : super(const SessionSearchState(matches: [], isSearching: false)) {
     _showLoaded(isSearching: false);
-    // Rows loaded later fill an empty list, but never move rows already shown.
-    _windowState = _window.state.skip(1).listen((_) {
+    // Rows, or the projects they open in, that load later fill an empty
+    // list, but never move rows already shown.
+    _loaded = Rx.merge<void>([_window.state.skip(1), _projectInventory.stateStream.skip(1)]).listen((_) {
       if (state.matches.isEmpty) _showLoaded(isSearching: state.isSearching);
     });
   }
@@ -98,7 +100,7 @@ class SessionSearchCubit({
   @override
   Future<void> close() async {
     _searchTimer?.cancel();
-    await _windowState.cancel();
+    await _loaded.cancel();
     await super.close();
   }
 }

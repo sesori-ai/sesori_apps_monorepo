@@ -109,4 +109,48 @@ void main() {
     }
     expect(focusedPill(), "Trailing");
   });
+
+  testWidgets("rows added for the same query keep the option the user moved to; a new query starts from the top", (
+    tester,
+  ) async {
+    final names = ValueNotifier(["first", "second"]);
+    addTearDown(names.dispose);
+    await tester.pumpWidget(
+      PregoInteractionScope(
+        mode: PregoInteractionMode.pointer,
+        child: MaterialApp(
+          theme: buildPregoThemeData(brightness: Brightness.light),
+          home: Scaffold(
+            body: ValueListenableBuilder(
+              valueListenable: names,
+              builder: (context, names, _) => PregoPickerSearchList(
+                searchHint: "Search",
+                onQueryChanged: (_) {},
+                footer: null,
+                rows: [
+                  for (final name in names)
+                    PregoPickerSearchOption(isSelected: false, onPick: () => picked.add(name), child: Text(name)),
+                ],
+                emptyText: null,
+                onClose: () {},
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await press(tester: tester, key: LogicalKeyboardKey.arrowDown);
+    names.value = ["first", "second", "third"];
+    await tester.pumpAndSettle();
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(picked, ["second"]);
+
+    await tester.enterText(find.byType(TextField), "s");
+    names.value = ["first", "second"];
+    await tester.pumpAndSettle();
+    await press(tester: tester, key: LogicalKeyboardKey.enter);
+    expect(picked, ["second", "first"]);
+  });
 }

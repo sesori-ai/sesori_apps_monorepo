@@ -156,6 +156,26 @@ void main() {
     });
   });
 
+  test("fills an empty list once the projects load after the rows", () {
+    fakeAsync((async) {
+      final loadedProjects = inventory.value;
+      inventory.add(const ProjectListState.loading());
+      final window = createWindow();
+      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      async.flushMicrotasks();
+      expect(window.state.value, isA<SessionWindowLoaded>());
+      expect(cubit.state.matches, isEmpty);
+
+      inventory.add(loadedProjects);
+      async.flushMicrotasks();
+      expect(ids(cubit), hasLength(20));
+
+      unawaited(cubit.close());
+      unawaited(window.dispose());
+      async.flushMicrotasks();
+    });
+  });
+
   test("shows the loaded rows' matches at once, then the bridge's 200 ms after the last keystroke", () {
     fakeAsync((async) {
       final window = createWindow();
