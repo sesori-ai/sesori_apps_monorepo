@@ -36,12 +36,33 @@ class CodexRolloutTailer({
 
   Stream<CodexRolloutAppend> get appends => _appends.stream;
 
-  void start({required String sessionId}) {
-    if (_cursors.containsKey(sessionId)) return;
+  /// Starts in-flight, so concurrent callers share one path resolution.
+  final Map<String, Future<void>> _starting = {};
+
+  /// Bumped by [stopAll], so a start still awaiting its lookup when the
+  /// app-server disconnects does not install a cursor that nothing stops.
+  int _generation = 0;
+
+  /// Resolves the rollout and captures its EOF, so a turn dispatched after this
+  /// completes is tailed from its first appended byte. A rollout Codex has not
+  /// created yet is tailed from offset 0 once a drain discovers it.
+  Future<void> start({required String sessionId}) {
+    if (_cursors.containsKey(sessionId)) return Future.value();
+    final pending = _starting[sessionId];
+    if (pending != null) return pending;
+    late final Future<void> started;
+    started = _start(sessionId: sessionId).whenComplete(() {
+      if (identical(_starting[sessionId], started)) _starting.remove(sessionId);
+    });
+    return _starting[sessionId] = started;
+  }
+
+  Future<void> _start({required String sessionId}) async {
+    final generation = _generation;
     final String? path;
     final CodexRolloutTailPosition position;
     try {
-      path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+      path = await _catalogRepository.findRolloutPath(sessionId: sessionId);
       position = path == null
           ? const CodexRolloutTailPosition(
               offset: 0,
@@ -58,6 +79,7 @@ class CodexRolloutTailer({
       );
       return;
     }
+    if (generation != _generation) return;
     _cursors[sessionId] = _CodexRolloutCursor(
       path: path,
       offset: position.offset,
@@ -80,7 +102,9 @@ class CodexRolloutTailer({
     try {
       var path = cursor.path;
       if (path == null) {
-        path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+        // A rollout created after the turn started; polls look only where a
+        // new rollout is filed instead of rescanning the catalog.
+        path = _catalogRepository.findRecentRolloutPath(sessionId: sessionId);
         if (path == null) return;
         cursor.path = path;
       }
@@ -122,6 +146,9 @@ class CodexRolloutTailer({
   /// ten normal poll intervals so Codex's writer can finish without a missing
   /// or broken writer holding `session.idle` indefinitely.
   Future<void> finish({required String sessionId}) async {
+    // A start still resolving its path must install its cursor first, or the
+    // turn would end undrained and leave that cursor behind.
+    await _starting[sessionId];
     drain(sessionId: sessionId);
     var cursor = _cursors[sessionId];
     if (cursor == null) return;
@@ -158,6 +185,10 @@ class CodexRolloutTailer({
   }
 
   void stopAll() {
+    _generation++;
+    // A turn after reconnect must look its rollout up afresh, not share a
+    // start that this stop already overtook.
+    _starting.clear();
     _cursors.clear();
     _timer?.cancel();
     _timer = null;

@@ -1876,8 +1876,9 @@ void main() {
         agent: null,
         model: null,
       );
-      for (var attempt = 0; attempt < 100 && !fake.sentMethods.contains("turn/start"); attempt++) {
-        await Future<void>.delayed(Duration.zero);
+      // The send first resolves the rollout to tail, which may scan the catalog.
+      for (var attempt = 0; attempt < 400 && !fake.sentMethods.contains("turn/start"); attempt++) {
+        await Future<void>.delayed(const Duration(milliseconds: 5));
       }
 
       expect(

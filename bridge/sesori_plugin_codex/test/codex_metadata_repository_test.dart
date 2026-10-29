@@ -227,7 +227,8 @@ void _writeRollout(
     "sessions/$day/rollout-$stamp-$id.jsonl",
   );
   Directory(p.dirname(full)).createSync(recursive: true);
-  File(full).writeAsStringSync(
+  final file = File(full);
+  file.writeAsStringSync(
     "${jsonEncode({
       "type": "session_meta",
       "payload": {
@@ -242,4 +243,8 @@ void _writeRollout(
       "payload": {"model": model},
     })}\n",
   );
+  // A real rollout's mtime is its last write. Files written back to back here
+  // can share one mtime tick, which would leave the recency order to the
+  // directory listing.
+  file.setLastModifiedSync(DateTime.parse(timestamp));
 }

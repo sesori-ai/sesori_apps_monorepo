@@ -824,7 +824,7 @@ class _StubCatalogRepository({required final List<CodexSessionRecord> records}) 
   Future<List<CodexSessionRecord>> listSessionRecords() async => records;
 
   @override
-  bool deleteSession({required String sessionId}) {
+  Future<bool> deleteSession({required String sessionId}) async {
     deletedSessionIds.add(sessionId);
     return true;
   }

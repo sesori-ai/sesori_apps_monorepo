@@ -684,7 +684,7 @@ class CodexSessionService({
     required CodexCollaborationMode? collaborationMode,
   }) async {
     final resumedThread = await resumeThreadIfNeeded(threadId: threadId, force: forceResume);
-    final turnModel = _resolveTurnModel(
+    final turnModel = await _resolveTurnModel(
       threadId: threadId,
       requestedModel: model,
       collaborationMode: collaborationMode,
@@ -724,17 +724,17 @@ class CodexSessionService({
     );
   }
 
-  String? _resolveTurnModel({
+  Future<String?> _resolveTurnModel({
     required String threadId,
     required String? requestedModel,
     required CodexCollaborationMode? collaborationMode,
-  }) {
+  }) async {
     if (requestedModel != null && requestedModel.isNotEmpty) {
       return requestedModel;
     }
     if (collaborationMode == null) return null;
     return _threadModels[threadId] ??
-        _catalogRepository.findSessionById(sessionId: threadId)?.model ??
+        (await _catalogRepository.findSessionById(sessionId: threadId))?.model ??
         _metadataRepository.readConfigDefaults().model;
   }
 
@@ -783,12 +783,12 @@ class CodexSessionService({
   /// The normalized cwd recorded in [sessionId]'s rollout, or null before the
   /// rollout exists.
   String? rolloutDirectoryForSession({required String sessionId}) {
-    final cwd = _catalogRepository.findSessionById(sessionId: sessionId)?.cwd;
+    final cwd = _catalogRepository.cachedSessionById(sessionId: sessionId)?.cwd;
     return cwd == null ? null : normalizeProjectDirectory(directory: cwd);
   }
 
   Future<void> _deleteSession({required String sessionId}) async {
-    final deleted = _catalogRepository.deleteSession(sessionId: sessionId);
+    final deleted = await _catalogRepository.deleteSession(sessionId: sessionId);
     if (deleted) {
       try {
         await _toolOutcomeRepository.deleteSession(sessionId: sessionId);
@@ -807,7 +807,7 @@ class CodexSessionService({
   Future<CodexSessionMessageRead?> prepareSessionMessageRead({
     required String sessionId,
   }) async {
-    final path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+    final path = await _catalogRepository.findRolloutPath(sessionId: sessionId);
     if (path == null) return null;
     final messages = _messageRepository.prepareMessageRead(rolloutPath: path, sessionId: sessionId);
     final childReplayDataById = <String, CodexSubAgentReplayData>{};
