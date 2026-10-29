@@ -199,7 +199,7 @@ class OpenCodeV2Repository({
   }) async {
     final (projects, sessions) = await shared.wait2(
       _api.listProjects(),
-      _api.listSessions(directory: null, parentId: null),
+      _api.listAllSessions(cancellation: cancellation),
     );
     if (cancellation.isCancelled) throw const PluginStartAbortedException();
     final sessionsByProject = <String, List<SessionInfo>>{};

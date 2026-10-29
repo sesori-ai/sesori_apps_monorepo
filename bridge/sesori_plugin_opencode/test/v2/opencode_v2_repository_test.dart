@@ -136,7 +136,8 @@ void main() {
 
     final result = await repository.readCatalogSnapshot(cancellation: const _NeverCancelled());
 
-    expect(api.sessionQueries, [(directory: null, parentId: null)]);
+    expect(api.allSessionQueries, 1);
+    expect(api.sessionQueries, isEmpty);
     expect(api.rootQueries, isEmpty);
     final family = (result as PluginCatalogSnapshotAvailable).snapshot.projects.single;
     expect(family.project.id, directory);
@@ -444,6 +445,14 @@ class FakeV2Api({
   Future<List<SessionInfo>> listSessions({required String? directory, required String? parentId}) async {
     sessionQueries.add((directory: directory, parentId: parentId));
     return parentId == null ? sessions : sessions.where((session) => session.parentID == parentId).toList();
+  }
+
+  int allSessionQueries = 0;
+
+  @override
+  Future<List<SessionInfo>> listAllSessions({required PluginCatalogCancellationSignal cancellation}) async {
+    allSessionQueries++;
+    return sessions;
   }
 
   @override

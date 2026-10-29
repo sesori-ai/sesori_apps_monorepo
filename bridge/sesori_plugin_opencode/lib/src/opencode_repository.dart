@@ -549,9 +549,10 @@ class OpenCodeRepository(final OpenCodeApi _api) {
     return [...mappedRealProjects, ...virtualProjects];
   }
 
-  /// Every project and session from one bulk listing, grouped exactly like
-  /// the dormant database snapshot. Unavailable when one listing cannot return
-  /// every session.
+  /// Every project and session from one bulk listing, grouped by the dormant
+  /// database snapshot's rules. The server exposes no project-directory
+  /// aliases, so only worktrees and sandboxes match a root to its project.
+  /// Unavailable when one listing cannot return every session.
   Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
     required PluginCatalogCancellationSignal cancellation,
   }) async {

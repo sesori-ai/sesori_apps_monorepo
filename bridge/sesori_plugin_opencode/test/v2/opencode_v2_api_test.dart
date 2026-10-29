@@ -85,6 +85,33 @@ void main() {
     expect(calls, 2);
   });
 
+  test("stops paging every session once the import is cancelled", () async {
+    final cancellation = _Cancellation();
+    var calls = 0;
+    final api = makeApi(
+      handler: (request) async {
+        calls++;
+        expect(request.url.queryParameters.containsKey("parentID"), isFalse);
+        cancellation.isCancelled = true;
+        return http.Response(
+          jsonEncode(<String, dynamic>{
+            "data": <Object>[
+              <String, dynamic>{...v2SessionFixture, "id": "session-$calls"},
+            ],
+            "cursor": <String, dynamic>{"next": "cursor-${calls + 1}"},
+          }),
+          200,
+        );
+      },
+    );
+
+    await expectLater(
+      api.listAllSessions(cancellation: cancellation),
+      throwsA(isA<PluginStartAbortedException>()),
+    );
+    expect(calls, 1);
+  });
+
   for (final projectId in const <String?>["project-fixture", null]) {
     test("pages roots for ${projectId ?? "all projects"} without a directory filter", () async {
       var calls = 0;
@@ -486,4 +513,9 @@ void main() {
       throwsA(isA<PluginOperationException>().having((error) => error.statusCode, "status", 503)),
     );
   });
+}
+
+class _Cancellation() implements PluginCatalogCancellationSignal {
+  @override
+  bool isCancelled = false;
 }

@@ -11,6 +11,9 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         PluginAbortSubAgentPolicy,
         PluginAgent,
         PluginApiException,
+        PluginCatalogCancellationSignal,
+        PluginCatalogSnapshotAvailable,
+        PluginCatalogSnapshotResult,
         PluginCommand,
         PluginMcpActionCompleted,
         PluginMcpActionEffectScope,
@@ -217,6 +220,24 @@ class OpenCodeService(
       directory = normalized;
     }
     return repository.getAgents(directory: directory);
+  }
+
+  Future<PluginCatalogSnapshotResult> readCatalogSnapshot({
+    required PluginCatalogCancellationSignal cancellation,
+  }) async {
+    final result = await repository.readCatalogSnapshot(cancellation: cancellation);
+    if (result case PluginCatalogSnapshotAvailable(:final snapshot)) {
+      // Like the walk's root listing, teach the tracker each session's
+      // directory so later session operations need no lookup.
+      for (final session in snapshot.projects.expand((family) => family.sessions)) {
+        tracker.registerSession(
+          sessionId: session.id,
+          directory: session.directory,
+          parentId: session.parentID,
+        );
+      }
+    }
+    return result;
   }
 
   Future<List<Session>> getSessions({

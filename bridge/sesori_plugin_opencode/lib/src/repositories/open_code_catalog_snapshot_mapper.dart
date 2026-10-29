@@ -112,11 +112,15 @@ class const OpenCodeCatalogSnapshotMapper({
       families[project.id] = _CatalogFamily(project: project, roots: [], sessions: []);
     }
 
+    final comparisonAliases = [
+      for (final entry in aliasesByProjectId.entries)
+        for (final alias in entry.value) (projectId: entry.key, alias: alias, path: _comparisonPath(value: alias)),
+    ];
     for (final root in sessionsById.values.where((session) => session.parentId == null)) {
       // A validated project id retains roots whose directory is no longer
       // recorded. Only the global project has no real family and falls through.
       final familyId =
-          _bestFamilyFor(directory: root.directory, aliasesByProjectId: aliasesByProjectId) ?? root.projectId;
+          _bestFamilyFor(directory: root.directory, comparisonAliases: comparisonAliases) ?? root.projectId;
       final family = families[familyId];
       if (family != null) {
         family.roots.add(root);
@@ -209,15 +213,18 @@ class const OpenCodeCatalogSnapshotMapper({
     }
   }
 
-  String? _bestFamilyFor({required String directory, required Map<String, Set<String>> aliasesByProjectId}) {
+  String? _bestFamilyFor({
+    required String directory,
+    required List<({String projectId, String alias, String path})> comparisonAliases,
+  }) {
+    final normalizedDirectory = _comparisonPath(value: directory);
     String? result;
     var longest = -1;
-    for (final entry in aliasesByProjectId.entries) {
-      for (final alias in entry.value) {
-        if (_isUnder(directory: directory, root: alias) && alias.length > longest) {
-          result = entry.key;
-          longest = alias.length;
-        }
+    for (final candidate in comparisonAliases) {
+      if (_isUnder(normalizedDirectory: normalizedDirectory, normalizedRoot: candidate.path) &&
+          candidate.alias.length > longest) {
+        result = candidate.projectId;
+        longest = candidate.alias.length;
       }
     }
     return result;
@@ -241,9 +248,7 @@ class const OpenCodeCatalogSnapshotMapper({
     return context.normalize(value);
   }
 
-  bool _isUnder({required String directory, required String root}) {
-    final normalizedDirectory = _comparisonPath(value: directory);
-    final normalizedRoot = _comparisonPath(value: root);
+  bool _isUnder({required String normalizedDirectory, required String normalizedRoot}) {
     if (normalizedRoot == "/") return true;
     return normalizedDirectory == normalizedRoot || normalizedDirectory.startsWith("$normalizedRoot/");
   }
