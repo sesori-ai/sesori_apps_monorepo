@@ -1,3 +1,5 @@
+import "package:flutter/gestures.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_markdown_plus/flutter_markdown_plus.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -101,6 +103,17 @@ void main() {
     await tester.tap(link(label: "widgets PR #12"));
     await tester.tap(link(label: "path.dart (line 12)"));
     expect(tapped, ["https://github.com/acme/widgets/pull/12", "lib/src/path.dart:12"]);
+  });
+
+  testWidgets("a hovered link shows the click cursor", (tester) async {
+    await pumpMessage(tester: tester);
+
+    final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+    addTearDown(mouse.removePointer);
+    await mouse.addPointer(location: tester.getCenter(link(label: "the guide")));
+    await tester.pump();
+
+    expect(RendererBinding.instance.mouseTracker.debugDeviceActiveCursor(1), SystemMouseCursors.click);
   });
 
   testWidgets("copying a selection copies the full targets", (tester) async {

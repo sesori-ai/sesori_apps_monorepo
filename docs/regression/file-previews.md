@@ -52,7 +52,8 @@ default app; otherwise it shows a read-only preview.
     with nothing fetched.
   - A web link with its own text keeps that text, led by the GitHub mark or a
     globe. Other links, such as `mailto`, keep their text with no icon.
-  - A desktop hover shows the full target, and copying a selection that
+  - A desktop hover shows the full target under the click cursor, never the
+    text cursor, and copying a selection that
     touches a link copies its full URL or path, never the short label.
 - A relative path resolves against the session's directory, with Windows path
   rules when that directory is on a drive.
@@ -86,8 +87,8 @@ default app; otherwise it shows a read-only preview.
 - A `500` without a bridge log line naming the path.
 - Ordinary inline code such as `foo()` or `v1.2` becomes tappable, or a web
   link inside inline code stops opening in the browser.
-- A link shows the wrong icon or label, or copying it yields the short label
-  instead of the full URL or path.
+- A link shows the wrong icon or label, the text cursor on hover, or copying it
+  yields the short label instead of the full URL or path.
 - The transcript jumps or scrolls when a preview opens or closes.
 - A remote bridge's path is opened on this computer instead of previewed.
 
