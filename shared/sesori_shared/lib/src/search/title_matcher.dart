@@ -16,7 +16,7 @@ List<T> matchTexts<T>({
   required List<String?> Function(T item) textsOf,
   required String query,
 }) {
-  final words = _words(query: query);
+  final words = searchWords(query: query);
   if (words.isEmpty) return items.toList();
   return items.where((item) {
     final texts = [for (final text in textsOf(item)) ?text?.toLowerCase()];
@@ -31,7 +31,7 @@ List<({int start, int end})> titleMatchRanges({required String title, required S
   // ponytail: assumes lowercasing keeps the title's length, true outside rare Unicode.
   if (lower.length != title.length) return const [];
   final marked = List.filled(title.length, false);
-  for (final word in _words(query: query)) {
+  for (final word in searchWords(query: query)) {
     for (var at = lower.indexOf(word); at >= 0; at = lower.indexOf(word, at + 1)) {
       marked.fillRange(at, at + word.length, true);
     }
@@ -48,5 +48,7 @@ List<({int start, int end})> titleMatchRanges({required String title, required S
   return ranges;
 }
 
-List<String> _words({required String query}) =>
+/// The lowercase whitespace-separated words of [query] that a search matches;
+/// empty for a blank query.
+List<String> searchWords({required String query}) =>
     query.toLowerCase().split(RegExp(r"\s+")).where((word) => word.isNotEmpty).toList();

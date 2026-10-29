@@ -9,7 +9,10 @@
 //   progress events, and backend-activity entries handed to the chat-history
 //   listener;
 // - the `/sessions` response body for every project, built by the route's own
-//   repository read and encoded as the relay sends it.
+//   repository read and encoded as the relay sends it;
+// - `/sessions/page` across all projects: the route's repository read,
+//   enrichment and encoding for a first page, a deep page, a counts-only
+//   request, a search and the Unread chip (best of five runs each).
 
 import "dart:convert";
 import "dart:ffi" show Abi;
@@ -26,6 +29,7 @@ import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
 import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
+import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
 import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -159,6 +163,7 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
         largest = (bytes: bytes, sessions: items.length, milliseconds: stopwatch.elapsedMilliseconds);
       }
     }
+    final pageRoute = await _timeSessionPages(sessions: sessions, sessionViews: sessionViews);
     await sessions.dispose();
 
     return {
@@ -178,11 +183,80 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
         "largestProjectSessions": largest.sessions,
         "largestProjectReadAndEncodeMilliseconds": largest.milliseconds,
       },
+      "sessionsPageRoute": pageRoute,
     };
   } finally {
     await database.close();
     await temporaryDirectory.delete(recursive: true);
   }
+}
+
+/// Best-of-five milliseconds for `/sessions/page` requests, read, enriched and
+/// encoded as `GetSessionPageHandler` does.
+Future<Map<String, Object?>> _timeSessionPages({
+  required SessionRepository sessions,
+  required SessionViewService sessionViews,
+}) async {
+  Future<({int microseconds, SessionPage page, int bytes})> timePage({
+    required SessionPageFilter filter,
+    required String? query,
+    required SessionPageCursor? cursor,
+    required int limit,
+  }) async {
+    ({int microseconds, SessionPage page, int bytes})? best;
+    for (var run = 0; run < 5; run++) {
+      final stopwatch = Stopwatch()..start();
+      final page = await sessions.getSessionPage(
+        mode: SessionPageMode.active,
+        projectId: null,
+        query: query,
+        filter: filter,
+        cursor: cursor,
+        limit: limit,
+      );
+      final response = SessionPageResponse(
+        items: await sessionViews.enrichMany(sessions: page.items),
+        nextCursor: page.nextCursor?.encode(),
+        counts: page.counts,
+      );
+      final bytes = utf8.encode(jsonEncode(response.toJson())).length;
+      stopwatch.stop();
+      if (best == null || stopwatch.elapsedMicroseconds < best.microseconds) {
+        best = (microseconds: stopwatch.elapsedMicroseconds, page: page, bytes: bytes);
+      }
+    }
+    return best ?? (throw StateError("no runs"));
+  }
+
+  Map<String, Object?> report(({int microseconds, SessionPage page, int bytes}) result) => {
+    "milliseconds": result.microseconds / 1000,
+    "items": result.page.items.length,
+    "bytes": result.bytes,
+    "counts": result.page.counts.toJson(),
+  };
+
+  final first = await timePage(filter: SessionPageFilter.all, query: null, cursor: null, limit: 200);
+  var cursor = first.page.nextCursor;
+  // Walk 20 pages in, so the deep page starts after 4,000 rows.
+  for (var index = 0; index < 19 && cursor != null; index++) {
+    cursor = (await sessions.getSessionPage(
+      mode: SessionPageMode.active,
+      projectId: null,
+      query: null,
+      filter: SessionPageFilter.all,
+      cursor: cursor,
+      limit: 200,
+    )).nextCursor;
+  }
+  return {
+    "firstPage": report(first),
+    "page21": report(await timePage(filter: SessionPageFilter.all, query: null, cursor: cursor, limit: 200)),
+    "countsOnly": report(await timePage(filter: SessionPageFilter.all, query: null, cursor: null, limit: 0)),
+    "searchTwoWords": report(
+      await timePage(filter: SessionPageFilter.all, query: "fix test", cursor: null, limit: 200),
+    ),
+    "unreadChip": report(await timePage(filter: SessionPageFilter.unread, query: null, cursor: null, limit: 200)),
+  };
 }
 
 /// Exposes the real Claude catalog as the bridge-derived plugin the import
@@ -197,6 +271,9 @@ class _ClaudeCatalogPlugin({
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
       _catalog.listAllSessions(knownDirectories: knownDirectories);
+
+  @override
+  List<PluginProjectActivitySummary> getActiveSessionsSummary() => const [];
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);

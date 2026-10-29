@@ -129,10 +129,6 @@ void main() {
       "root-new",
     );
     expect(
-      (await db.sessionDao.getArchivedCatalogSessions(offset: 0, limit: 10)).single.sessionId,
-      "root-new",
-    );
-    expect(
       (await db.projectsDao.getProjectsByPath(path: "/projects/one")).single.projectId,
       "project-1",
     );

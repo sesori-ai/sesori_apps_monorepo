@@ -22,12 +22,14 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
 import "package:sesori_shared/sesori_shared.dart"
     show
         ActiveSession,
+        ActiveSessionRunningCalculator,
         AgentModel,
         AutoContinuationAvailability,
         CommandListResponse,
         MessagePartSubtask,
         MessageWithParts,
         ProjectActivitySummary,
+        ProjectKind,
         PromptModel,
         PromptPart,
         QueuedSessionPrompt,
@@ -35,13 +37,19 @@ import "package:sesori_shared/sesori_shared.dart"
         SessionAbortNotPerformedRefusal,
         SessionAbortSubAgentPolicy,
         SessionApprovalMode,
+        SessionPageCounts,
+        SessionPageFilter,
+        SessionPageMode,
         SessionPromptDefaults,
         SessionStatus,
         SessionStatusBusy,
         SessionStatusIdle,
         SessionStatusResponse,
         SessionStatusRetry,
-        SessionVariant;
+        SessionVariant,
+        matchTexts,
+        projectOwnName,
+        searchWords;
 
 import "../api/database/daos/projects_dao.dart";
 import "../api/database/daos/session_dao.dart";
@@ -53,6 +61,7 @@ import "mappers/plugin_command_mapper.dart";
 import "mappers/plugin_message_mapper.dart";
 import "mappers/plugin_session_status_mapper.dart";
 import "mappers/plugin_to_shared_mapping.dart";
+import "mappers/project_catalog_mapper.dart";
 import "mappers/prompt_part_mapper.dart";
 import "mappers/session_catalog_mapper.dart";
 import "mappers/stored_session_mapper.dart";
@@ -60,6 +69,7 @@ import "models/project_not_found_exception.dart";
 import "models/session_abort_result.dart";
 import "models/session_continuation_record.dart";
 import "models/session_operation.dart";
+import "models/session_page_cursor.dart";
 import "models/stored_session.dart";
 import "project_catalog_identity_calculator.dart";
 import "random_hex_id.dart";
@@ -83,6 +93,8 @@ typedef SessionFamilyScope = ({String rootSessionId, String pluginId});
 /// The deleted root as clients see it, plus every session id removed with it.
 typedef DeletedSessionSubtree = ({Session session, List<String> sessionIds});
 
+typedef SessionPage = ({List<Session> items, SessionPageCursor? nextCursor, SessionPageCounts counts});
+
 typedef SessionMessagesSnapshot = ({
   List<MessageWithParts> messages,
   SessionPromptDefaults? promptDefaults,
@@ -97,6 +109,8 @@ class SessionRepository({
   required final Duration _aggregateSourceDeadline,
 }) {
   static const SessionCatalogMapper _sessionCatalogMapper = SessionCatalogMapper();
+  static const ProjectCatalogMapper _projectCatalogMapper = ProjectCatalogMapper();
+  static const ActiveSessionRunningCalculator _runningCalculator = ActiveSessionRunningCalculator();
 
   final Map<String, Set<String>> _tombstonedBackendSessionIds = <String, Set<String>>{};
   final Set<String> _deletedSessionIds = <String>{};
@@ -168,6 +182,68 @@ class SessionRepository({
         offset: start ?? 0,
         limit: effectiveLimit,
       ),
+    );
+  }
+
+  /// One page of root sessions across the visible projects, or only
+  /// [projectId] when it is visible, with the counts behind each chip. Every
+  /// word of [query] must occur in a session's title or its project's own
+  /// name; Running sessions come from the plugins' live activity.
+  Future<SessionPage> getSessionPage({
+    required SessionPageMode mode,
+    required String? projectId,
+    required String? query,
+    required SessionPageFilter filter,
+    required SessionPageCursor? cursor,
+    required int limit,
+  }) async {
+    final projects = [
+      for (final row in await _projectsDao.getCatalogProjects())
+        if (projectId == null || row.projectId == projectId)
+          // Only the name and kind feed the search; the flags are unused.
+          _projectCatalogMapper.mapSummary(
+            row: row,
+            hasUnseenChanges: false,
+            directoryMissing: false,
+            kind: _projectCatalogIdentityCalculator.isScratchRoot(path: row.projectId)
+                ? ProjectKind.scratch
+                : ProjectKind.folder,
+          ),
+    ];
+    final runningIds = {
+      for (final summary in await getProjectActivitySummaries())
+        for (final active in summary.activeSessions)
+          if (_runningCalculator.isRunning(session: active)) active.id,
+    };
+    final page = await _sessionDao.getSessionPage(
+      mode: mode,
+      projectIds: [for (final project in projects) project.id],
+      words: [
+        for (final word in query == null ? const <String>[] : searchWords(query: query))
+          (
+            word: word,
+            projectIds: [
+              for (final project in matchTexts(
+                items: projects,
+                textsOf: (project) => [projectOwnName(project: project)],
+                query: word,
+              ))
+                project.id,
+            ],
+          ),
+      ],
+      filter: filter,
+      runningIds: runningIds,
+      after: cursor == null ? null : (sortAt: cursor.sortAt, sessionId: cursor.sessionId),
+      limit: limit,
+    );
+    return (
+      items: _mapCatalogSessions(rows: page.rows),
+      nextCursor: switch (page.nextKey) {
+        (:final sortAt, :final sessionId) => SessionPageCursor(sortAt: sortAt, sessionId: sessionId),
+        null => null,
+      },
+      counts: SessionPageCounts(all: page.counts.all, running: page.counts.running, unread: page.counts.unread),
     );
   }
 
