@@ -151,7 +151,9 @@ class NewSessionCubit({
     );
     try {
       final response = await _newSessionPluginService.discover(
-        currentSelectedPluginId: beforeDiscovery?.plugin?.id,
+        // A composer opened for another project starts on the harness the user
+        // picked in the previous one.
+        currentSelectedPluginId: beforeDiscovery?.plugin?.id ?? _selectionTracker.selectedPluginId,
         currentSelectionBridgeId: beforeDiscovery?.backendScope.lastIdentifiedBridgeId,
       );
       if (!_canApplyLoad(generation: generation, pluginId: null)) return;
@@ -360,6 +362,7 @@ class NewSessionCubit({
     final source = data.optionsState.source;
     if (selectedPlugin == null || !selectedPlugin.isRoutable || source == null) return;
 
+    _selectionTracker.recordPlugin(pluginId: pluginId);
     final generation = ++_loadGeneration;
     _emitConfigurationUpdate(
       availablePlugins: data.plugins,

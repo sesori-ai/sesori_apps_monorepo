@@ -157,6 +157,9 @@ variant, and worktree mode, and creating the session with its first input.
   current plugin defaults. A failed creation never replaces the remembered
   selection. Preference read/write failures stay observable locally but never hide
   usable options or turn an already-created session into a retryable failure.
+- A harness the user picks on the New Session screen carries over when the
+  project changes before the session is created, on the same bridge and while
+  that harness stays routable; otherwise the saved or default harness applies.
 - Hermes Agent seeds its configured model and provider from `hermes status`,
   then discovers the available model catalog in a separate empty ACP session
   before the user creates one. The discovery process must exit before Sesori
