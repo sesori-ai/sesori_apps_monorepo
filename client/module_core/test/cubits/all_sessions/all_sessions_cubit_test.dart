@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -107,7 +108,13 @@ void main() {
   List<int> counts({required AllSessionsCubit cubit}) => [
     for (final filter in SessionListQuickFilter.values) cubit.state.counts.of(filter: filter),
   ];
-  Future<void> settle() => Future<void>.delayed(Duration.zero);
+  // Service changes reach the list together, a turn of the event loop later.
+  Future<void> settle() => pumpEventQueue();
+  // A query applies once typing pauses.
+  void search({required AllSessionsCubit cubit, required String query}) => fakeAsync((async) {
+    cubit.setQuery(query: query);
+    async.elapse(AllSessionsCubit.queryDelay);
+  });
 
   test("every listed project's active sessions merge newest first, without archived or unlisted ones", () {
     entries.add({
@@ -181,7 +188,7 @@ void main() {
     expect(ids(cubit: cubit), ["login", "build", "docs"]);
     expect(counts(cubit: cubit), [3, 1, 1]);
 
-    cubit.setQuery(query: "fix");
+    search(cubit: cubit, query: "fix");
     expect(ids(cubit: cubit), ["login", "build"]);
     expect(counts(cubit: cubit), [2, 1, 1]);
 
@@ -226,17 +233,17 @@ void main() {
     });
     final cubit = create(mode: AllSessionsMode.active);
 
-    cubit.setQuery(query: "ONE fix");
+    search(cubit: cubit, query: "ONE fix");
     expect(ids(cubit: cubit), ["header"]);
 
-    cubit.setQuery(query: "one");
+    search(cubit: cubit, query: "one");
     expect(ids(cubit: cubit), ["header", "docs"]);
     expect(counts(cubit: cubit), [2, 0, 1]);
 
-    cubit.setQuery(query: "landing");
+    search(cubit: cubit, query: "landing");
     expect(ids(cubit: cubit), ["parser"], reason: "a project without a stored name goes by its folder's");
 
-    cubit.setQuery(query: "scratch");
+    search(cubit: cubit, query: "scratch");
     expect(ids(cubit: cubit), isEmpty);
     expect(counts(cubit: cubit), [0, 0, 0]);
   });
@@ -377,7 +384,7 @@ void main() {
     });
     await settle();
     expect(cubit.state.defaultProjectId, two.id);
-    cubit.setQuery(query: "matches nothing");
+    search(cubit: cubit, query: "matches nothing");
     expect(cubit.state.defaultProjectId, two.id, reason: "the query narrows the rows, not the default");
 
     cubit.selectProject(projectId: one.id);
@@ -466,8 +473,92 @@ void main() {
     expect(cubit.state.isLoading, isFalse, reason: "the filter leaves the loading project out");
 
     projects.add(const ProjectListState.loading());
+    await settle();
     expect(cubit.state.isLoading, isTrue);
     expect(cubit.state.rows, isEmpty);
+  });
+
+  test("a burst of service changes resolves the list once", () async {
+    final cubit = create(mode: AllSessionsMode.active);
+    final emitted = <AllSessionsState>[];
+    final subscription = cubit.stream.listen(emitted.add);
+    addTearDown(subscription.cancel);
+
+    entries.add({
+      one.id: loaded(
+        sessions: [session(id: "a", project: one, updatedAt: 10)],
+        activity: const {},
+      ),
+    });
+    projects.add(const ProjectListState.loaded(projects: [one], folderProjects: [one], scratchProject: null));
+    entries.add({
+      one.id: loaded(
+        sessions: [session(id: "a", project: one, updatedAt: 10)],
+        activity: const {"a": running},
+      ),
+    });
+    await settle();
+    expect(emitted, hasLength(1));
+    expect(ids(cubit: cubit), ["a"]);
+    expect(cubit.state.rows.single.isRunning, isTrue);
+  });
+
+  test("an unchanged resolve emits nothing", () async {
+    List<Session> sessions() => [session(id: "a", project: one, updatedAt: 10)];
+    entries.add({one.id: loaded(sessions: sessions(), activity: const {})});
+    final cubit = create(mode: AllSessionsMode.active);
+    final emitted = <AllSessionsState>[];
+    final subscription = cubit.stream.listen(emitted.add);
+    addTearDown(subscription.cancel);
+
+    // Equal, though none of it is the same instance.
+    entries.add({one.id: loaded(sessions: sessions(), activity: const {})});
+    final listed = [one, two];
+    projects.add(ProjectListState.loaded(projects: listed, folderProjects: listed, scratchProject: null));
+    await settle();
+    cubit
+      ..setQuickFilter(filter: SessionListQuickFilter.all)
+      ..setHiddenSessionIds(sessionIds: const {})
+      ..setQuery(query: "");
+    expect(emitted, isEmpty);
+  });
+
+  test("a query applies once typing pauses, and a cleared one at once", () {
+    entries.add({
+      one.id: loaded(
+        sessions: [
+          testSession(id: "login", title: "Fix login", updatedAt: 20),
+          testSession(id: "docs", title: "Docs", updatedAt: 10),
+        ],
+        activity: const {},
+      ),
+    });
+    fakeAsync((async) {
+      final cubit = create(mode: AllSessionsMode.active);
+      final emitted = <String>[];
+      final subscription = cubit.stream.listen((state) => emitted.add(state.query));
+      addTearDown(subscription.cancel);
+
+      for (final query in ["f", "fi", "fix"]) {
+        cubit.setQuery(query: query);
+        async.elapse(const Duration(milliseconds: 100));
+      }
+      expect(cubit.state.query, isEmpty, reason: "still typing");
+      expect(ids(cubit: cubit), ["login", "docs"]);
+
+      async.elapse(AllSessionsCubit.queryDelay - const Duration(milliseconds: 100));
+      expect(emitted, ["fix"]);
+      expect(ids(cubit: cubit), ["login"]);
+
+      cubit
+        ..setQuery(query: "fixes")
+        ..setQuery(query: "");
+      async.flushMicrotasks();
+      expect(emitted, ["fix", ""]);
+      expect(ids(cubit: cubit), ["login", "docs"]);
+      async.elapse(AllSessionsCubit.queryDelay);
+      expect(emitted, ["fix", ""], reason: "clearing drops the pending query");
+    });
   });
 }
 

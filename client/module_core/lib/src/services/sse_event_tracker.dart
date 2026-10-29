@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:collection/collection.dart";
 import "package:get_it/get_it.dart";
 import "package:injectable/injectable.dart";
 import "package:rxdart/rxdart.dart";
@@ -182,8 +183,11 @@ class SseEventTracker(
         sessionMap[summary.id] = infoMap;
       }
     }
-    _projectActivity.add(projectMap);
-    _sessionActivity.add(sessionMap);
+    // The bridge repeats a summary that changed nothing; listeners rebuild
+    // only on a change.
+    const equality = DeepCollectionEquality();
+    if (!equality.equals(projectMap, _projectActivity.value)) _projectActivity.add(projectMap);
+    if (!equality.equals(sessionMap, _sessionActivity.value)) _sessionActivity.add(sessionMap);
   }
 
   @override

@@ -15,5 +15,8 @@ String sessionDateLabel({required DateTime? date, required DateTime now, require
   if (!calendarDate.isBefore(week)) return loc.archivedSessionsThisWeek;
   if (!calendarDate.isBefore(lastWeek)) return loc.archivedSessionsLastWeek;
   if (!calendarDate.isBefore(DateTime(today.year, today.month))) return loc.archivedSessionsThisMonth;
-  return DateFormat.yMMMM(loc.localeName).format(calendarDate);
+  return _monthFormats.putIfAbsent(loc.localeName, () => DateFormat.yMMMM(loc.localeName)).format(calendarDate);
 }
+
+/// One month heading format per locale, rather than one per row.
+final Map<String, DateFormat> _monthFormats = {};

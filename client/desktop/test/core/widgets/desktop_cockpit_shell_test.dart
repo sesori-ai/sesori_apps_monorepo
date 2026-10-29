@@ -1028,7 +1028,7 @@ void main() {
         starts.add(LocalBridgeStartupState.settled);
         if (throughProjectLoad) {
           projectUpdates.add(const ProjectListState.loading());
-          await tester.pump();
+          await tester.pump(Duration.zero);
           expect(tester.element(skeleton), same(first));
           await tester.pump(const Duration(milliseconds: 300));
           expect(tester.element(skeleton), same(first));
@@ -1036,7 +1036,8 @@ void main() {
         projectUpdates.add(
           const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
         );
-        await tester.pump();
+        // The list resolves on a zero timer after the projects arrive.
+        await tester.pump(Duration.zero);
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 100));
         final row = find.descendant(of: list, matching: find.text("Fix the build"));
