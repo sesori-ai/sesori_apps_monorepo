@@ -229,12 +229,12 @@ class _FixedCatalogRepository({
   required final String path,
 }) extends CodexCatalogRepository {
   @override
-  String? findRolloutPath({required String sessionId}) => path;
+  String? cachedRolloutPath({required String sessionId}) => path;
 }
 
 class _MutableCatalogRepository({required super.rolloutApi}) extends CodexCatalogRepository {
   String? path;
 
   @override
-  String? findRolloutPath({required String sessionId}) => path;
+  String? cachedRolloutPath({required String sessionId}) => path;
 }

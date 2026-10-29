@@ -70,14 +70,8 @@ void main() {
         expect(await repository.listSessionRecords(), hasLength(1));
       });
 
-      expect(
-        logs,
-        contains(
-          "rollout catalog scan: files=3, recognizedRollouts=1, "
-          "parsedHeaders=1, indexEntries=2, unreadableOrMissingMetadata=0, "
-          "mismatchedMetadata=0, records=1",
-        ),
-      );
+      expect(logs, contains("rollout catalog scan: files=3, recognizedRollouts=1, parsedHeaders=1, indexEntries=2"));
+      expect(logs, contains("rollout catalog records: unreadableOrMissingMetadata=0, mismatchedMetadata=0, records=1"));
       expect(logs, isNot(contains(rolloutId)));
       expect(logs, isNot(contains("private-project")));
     });
@@ -96,21 +90,18 @@ void main() {
       }
     });
 
-    test("an unreadable rollout modification time logs the cause and keeps index activity", () async {
+    // The scan isolate logs the stat failure to its own stderr, which a test
+    // zone cannot capture.
+    test("an unreadable rollout modification time keeps index activity", () async {
       const rolloutId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       final repository = CodexCatalogRepository(
         rolloutApi: _UnreadableActivityRolloutApi(rolloutId: rolloutId),
       );
 
-      final logs = await _captureDebugLogs(() async {
-        final record = (await repository.listSessionRecords()).single;
-        expect(record.createdAt, DateTime.utc(2026, 8, 1));
-        expect(record.updatedAt, DateTime.utc(2026, 8, 1, 12));
-      });
+      final record = (await repository.listSessionRecords()).single;
 
-      expect(logs, contains("failed to read rollout modification time"));
-      expect(logs, contains("fixture stat failure"));
-      expect(logs, contains(rolloutId));
+      expect(record.createdAt, DateTime.utc(2026, 8, 1));
+      expect(record.updatedAt, DateTime.utc(2026, 8, 1, 12));
     });
 
     test("filters normalized project directories before paginating", () async {
@@ -248,11 +239,11 @@ void main() {
       expect(discovered.map((session) => session.id), ["normal"]);
     });
 
-    test("keeps the index entry when rollout deletion fails", () {
+    test("keeps the index entry when rollout deletion fails", () async {
       final rolloutApi = _DeleteFailingRolloutApi();
       final repository = CodexCatalogRepository(rolloutApi: rolloutApi);
 
-      final deleted = repository.deleteSession(
+      final deleted = await repository.deleteSession(
         sessionId: "019a0000-1111-2222-3333-aaaaaaaaaaaa",
       );
 
@@ -260,30 +251,194 @@ void main() {
       expect(rolloutApi.wroteIndex, isFalse);
     });
 
-    test("reports failure when rollout absence cannot be confirmed", () {
+    test("reports failure when rollout absence cannot be confirmed", () async {
       final repository = CodexCatalogRepository(
         rolloutApi: _EnumerationFailingRolloutApi(),
       );
 
-      expect(repository.deleteSession(sessionId: "session-1"), isFalse);
+      expect(await repository.deleteSession(sessionId: "session-1"), isFalse);
     });
 
-    test("reports failure when the session index cannot be read", () {
+    test("reports failure when the session index cannot be read", () async {
       final repository = CodexCatalogRepository(
         rolloutApi: _IndexReadFailingRolloutApi(),
       );
 
-      expect(repository.deleteSession(sessionId: "session-1"), isFalse);
+      expect(await repository.deleteSession(sessionId: "session-1"), isFalse);
     });
 
-    test("reports failure when the session index cannot be updated", () {
+    test("reports failure when the session index cannot be updated", () async {
       final repository = CodexCatalogRepository(
         rolloutApi: _IndexWriteFailingRolloutApi(),
       );
 
-      expect(repository.deleteSession(sessionId: "session-1"), isFalse);
+      expect(await repository.deleteSession(sessionId: "session-1"), isFalse);
+    });
+
+    group("scan cache", () {
+      late _InMemoryRolloutApi rolloutApi;
+      late CodexCatalogRepository repository;
+
+      setUp(() {
+        rolloutApi = _InMemoryRolloutApi(sessionIds: [for (var i = 0; i < 200; i++) _sessionId(i)]);
+        repository = CodexCatalogRepository(rolloutApi: rolloutApi);
+      });
+
+      test("enumeration does no file I/O on the main isolate, however many sessions", () async {
+        expect(await repository.listSessionRecords(), hasLength(200));
+        // A second scan reuses every cached header.
+        final logs = await _captureDebugLogs(() async {
+          expect(await repository.listSessionRecords(), hasLength(200));
+        });
+
+        // Every API call in the isolate counts on its own copy of the API.
+        expect(rolloutApi.mainIsolateCalls, 0);
+        expect(_scanLines(logs), ["files=200, recognizedRollouts=200, parsedHeaders=0, indexEntries=0"]);
+      });
+
+      test("a lookup hit answers from the index without scanning or file I/O", () async {
+        await repository.listSessionRecords();
+
+        final logs = await _captureDebugLogs(() async {
+          expect(repository.cachedRolloutPath(sessionId: _sessionId(7)), rolloutApi.pathOf(_sessionId(7)));
+          expect(repository.cachedSessionById(sessionId: _sessionId(7))?.cwd, "/repo/app");
+          expect(await repository.findRolloutPath(sessionId: _sessionId(7)), rolloutApi.pathOf(_sessionId(7)));
+        });
+
+        expect(_scanLines(logs), isEmpty);
+        expect(rolloutApi.mainIsolateCalls, 0);
+      });
+
+      test("a synchronous miss rescans once in the background", () async {
+        await repository.listSessionRecords();
+        rolloutApi.sessionIds.add(_sessionId(200));
+
+        final logs = await _captureDebugLogs(() async {
+          expect(repository.cachedRolloutPath(sessionId: _sessionId(200)), isNull);
+          // A miss while that rescan runs starts no other.
+          expect(repository.cachedSessionById(sessionId: _sessionId(200)), isNull);
+          while (repository.cachedRolloutPath(sessionId: _sessionId(200)) == null) {
+            await Future<void>.delayed(const Duration(milliseconds: 5));
+          }
+        });
+
+        expect(_scanLines(logs), ["files=201, recognizedRollouts=201, parsedHeaders=1, indexEntries=0"]);
+        expect(rolloutApi.mainIsolateCalls, 0);
+      });
+
+      test("an awaited miss rescans once", () async {
+        await repository.listSessionRecords();
+
+        final logs = await _captureDebugLogs(() async {
+          expect(await repository.findRolloutPath(sessionId: _sessionId(999)), isNull);
+        });
+
+        expect(_scanLines(logs), hasLength(1));
+      });
+
+      test("callers during a scan share one follow-up scan", () async {
+        final logs = await _captureDebugLogs(() async {
+          await Future.wait([
+            repository.listSessionRecords(),
+            repository.listSessionRecords(),
+            repository.findRolloutPath(sessionId: _sessionId(999)),
+            repository.listSessionRecords(),
+          ]);
+        });
+
+        expect(_scanLines(logs), hasLength(2));
+      });
+
+      test("a delete during a running scan does not resurrect the session", () async {
+        await repository.listSessionRecords();
+
+        // The isolate has copied the API, so this scan still lists the rollout.
+        final listing = repository.listSessionRecords();
+        expect(await repository.deleteSession(sessionId: _sessionId(3)), isTrue);
+
+        expect((await listing).map((record) => record.id), isNot(contains(_sessionId(3))));
+        expect(repository.cachedSessionById(sessionId: _sessionId(3)), isNull);
+        expect(rolloutApi.deletedPaths, [rolloutApi.pathOf(_sessionId(3))]);
+      });
     });
   });
+}
+
+String _sessionId(int index) => "019a0000-1111-2222-3333-${index.toString().padLeft(12, "0")}";
+
+List<String> _scanLines(String logs) => [
+  for (final match in RegExp("rollout catalog scan: (.*)").allMatches(logs)) ?match.group(1),
+];
+
+/// Rollouts held in memory. Each scan isolate receives a copy, so
+/// [mainIsolateCalls] counts only the calls made on the main isolate.
+class _InMemoryRolloutApi({required final List<String> sessionIds}) extends CodexRolloutApi {
+  this : super(environment: const {});
+
+  int mainIsolateCalls = 0;
+  final List<String> deletedPaths = [];
+
+  String pathOf(String sessionId) => "/sessions/rollout-2026-08-01T00-00-00-$sessionId.jsonl";
+
+  @override
+  List<String> listRolloutPaths() {
+    mainIsolateCalls++;
+    return [for (final id in sessionIds) pathOf(id)];
+  }
+
+  @override
+  DateTime? lastModified({required String rolloutPath}) {
+    mainIsolateCalls++;
+    return DateTime.utc(2026, 8, 1, 12);
+  }
+
+  @override
+  int? rolloutLength({required String rolloutPath}) {
+    mainIsolateCalls++;
+    return 1;
+  }
+
+  @override
+  List<CodexSessionIndexEntryDto> readSessionIndex() {
+    mainIsolateCalls++;
+    return const [];
+  }
+
+  @override
+  CodexRolloutHeader readHeader({required String rolloutPath}) {
+    mainIsolateCalls++;
+    final id = p.basenameWithoutExtension(rolloutPath).substring("rollout-2026-08-01T00-00-00-".length);
+    return CodexRolloutHeader(
+      lines: [
+        CodexRolloutLineDto.sessionMetadata(
+          timestamp: "2026-08-01T00:00:00Z",
+          payload: CodexRolloutSessionMetadataPayloadDto(
+            id: id,
+            cwd: "/repo/app",
+            timestamp: "2026-08-01T00:00:00Z",
+            modelProvider: "openai",
+            cliVersion: "0.147.0",
+            parentThreadId: null,
+            threadSource: null,
+            agentNickname: null,
+            agentPath: null,
+          ),
+        ),
+      ],
+      reachedLineLimit: true,
+      fileLength: 1,
+    );
+  }
+
+  /// Deletion runs on the main isolate; it is not counted as enumeration.
+  @override
+  void deleteRollout({required String rolloutPath}) {
+    deletedPaths.add(rolloutPath);
+    sessionIds.removeWhere((id) => pathOf(id) == rolloutPath);
+  }
+
+  @override
+  List<CodexSessionIndexLine> readSessionIndexLines() => const [];
 }
 
 CodexSessionRecord _record({

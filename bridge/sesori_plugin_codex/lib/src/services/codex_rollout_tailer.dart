@@ -41,7 +41,7 @@ class CodexRolloutTailer({
     final String? path;
     final CodexRolloutTailPosition position;
     try {
-      path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+      path = _catalogRepository.cachedRolloutPath(sessionId: sessionId);
       position = path == null
           ? const CodexRolloutTailPosition(
               offset: 0,
@@ -80,7 +80,7 @@ class CodexRolloutTailer({
     try {
       var path = cursor.path;
       if (path == null) {
-        path = _catalogRepository.findRolloutPath(sessionId: sessionId);
+        path = _catalogRepository.cachedRolloutPath(sessionId: sessionId);
         if (path == null) return;
         cursor.path = path;
       }

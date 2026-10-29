@@ -457,7 +457,7 @@ class _DeleteFailingCatalogRepository() extends CodexCatalogRepository {
   this : super(rolloutApi: CodexRolloutApi(environment: const {}));
 
   @override
-  bool deleteSession({required String sessionId}) => false;
+  Future<bool> deleteSession({required String sessionId}) async => false;
 }
 
 class _DelayedToolOutcomeRepository() extends CodexToolOutcomeRepository {
@@ -481,7 +481,7 @@ class _FixedPathCatalogRepository() extends CodexCatalogRepository {
   this : super(rolloutApi: CodexRolloutApi(environment: const {}));
 
   @override
-  String? findRolloutPath({required String sessionId}) => "/rollout.jsonl";
+  Future<String?> findRolloutPath({required String sessionId}) async => "/rollout.jsonl";
 }
 
 class _RecordingMessageRepository() extends CodexMessageRepository {

@@ -1010,7 +1010,7 @@ void main() {
         expect(sessions.first.time?.created, DateTime.utc(2026, 4, 17, 9).millisecondsSinceEpoch);
         expect(sessions.first.title, hasIndexEntry ? "Resumed" : null);
         expect(index.readAsStringSync(), originalIndex);
-        expect(catalogRepository.findSessionById(sessionId: resumedId)?.updatedAt, activityAt);
+        expect(catalogRepository.cachedSessionById(sessionId: resumedId)?.updatedAt, activityAt);
       });
     }
 
@@ -1115,29 +1115,6 @@ void main() {
         (await catalogRepository.listSessionRecords()).map((record) => record.cwd),
         ["/repo/app", "/repo/app"],
       );
-    });
-
-    test("catalog session lookup reads only the named rollout", () {
-      const targetId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
-      const otherId = "019a0000-1111-2222-3333-bbbbbbbbbbbb";
-      _writeRollout(
-        codexHome,
-        path: "sessions/2026/04/17/rollout-2026-04-17T10-00-00-$targetId.jsonl",
-        sessionId: targetId,
-        cwd: "/repo/target",
-      );
-      _writeRollout(
-        codexHome,
-        path: "sessions/2026/04/17/rollout-2026-04-17T11-00-00-$otherId.jsonl",
-        sessionId: otherId,
-        cwd: "/repo/other",
-      );
-      final countingApi = _HeaderCountingRolloutApi(environment: {"CODEX_HOME": codexHome.path});
-
-      final record = CodexCatalogRepository(rolloutApi: countingApi).findSessionById(sessionId: targetId);
-
-      expect(record?.cwd, "/repo/target");
-      expect(countingApi.headerReads.single, contains(targetId));
     });
 
     test("catalog isolate enumeration keeps the main isolate responsive", () async {
@@ -3006,16 +2983,6 @@ final class _MetadataFailingFile({
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-class _HeaderCountingRolloutApi({required super.environment}) extends CodexRolloutApi {
-  final List<String> headerReads = [];
-
-  @override
-  CodexRolloutHeader readHeader({required String rolloutPath}) {
-    headerReads.add(p.basename(rolloutPath));
-    return super.readHeader(rolloutPath: rolloutPath);
-  }
 }
 
 Future<String> _captureWarningsAsync(
