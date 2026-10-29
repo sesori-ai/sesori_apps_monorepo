@@ -136,6 +136,9 @@ class CodexRolloutTailer({
   /// ten normal poll intervals so Codex's writer can finish without a missing
   /// or broken writer holding `session.idle` indefinitely.
   Future<void> finish({required String sessionId}) async {
+    // A start still resolving its path must install its cursor first, or the
+    // turn would end undrained and leave that cursor behind.
+    await _starting[sessionId];
     drain(sessionId: sessionId);
     var cursor = _cursors[sessionId];
     if (cursor == null) return;

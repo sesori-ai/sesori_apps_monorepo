@@ -1076,9 +1076,9 @@ class CodexPlugin._({
     if (model != null) {
       _eventMapper.setThreadModel(sessionId, model.modelID);
     }
-    await _rolloutTailer.start(sessionId: sessionId);
     final evidenceRevision = _recordPendingTurnRequest(sessionId);
     try {
+      await _rolloutTailer.start(sessionId: sessionId);
       final dispatch = await _sessionService.sendCommand(
         threadId: sessionId,
         command: command,
@@ -1361,10 +1361,11 @@ class CodexPlugin._({
     // defaultReasoningEffort when no collaboration mode was selected.
     final effort = variant?.id;
     // Capture the current EOF before Codex can append this turn's response
-    // items. `start` is idempotent when turn/started arrives afterwards.
-    await _rolloutTailer.start(sessionId: threadId);
+    // items. `start` is idempotent when turn/started arrives afterwards. The
+    // pending request is recorded first so a stop during the lookup sees it.
     final evidenceRevision = _recordPendingTurnRequest(threadId);
     try {
+      await _rolloutTailer.start(sessionId: threadId);
       final dispatch = await _sessionService.startTurn(
         threadId: threadId,
         parts: parts,

@@ -28,6 +28,36 @@ void main() {
       await expectLater(tailer.start(sessionId: "session-1"), completes);
     });
 
+    test("finish waits for a start still resolving its rollout", () async {
+      final directory = Directory.systemTemp.createTempSync("codex-tail-");
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final path = p.join(directory.path, "rollout.jsonl");
+      File(path).writeAsStringSync("${_record(callId: "history-call")}\n");
+      final api = CodexRolloutApi(environment: const {});
+      final lookup = Completer<String?>();
+      final tailer = CodexRolloutTailer(
+        rolloutApi: api,
+        catalogRepository: _DeferredCatalogRepository(rolloutApi: api, lookup: lookup.future),
+        pollInterval: const Duration(milliseconds: 5),
+      );
+      final appends = <CodexRolloutAppend>[];
+      final subscription = tailer.appends.listen(appends.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await tailer.dispose();
+      });
+
+      unawaited(tailer.start(sessionId: "session-1"));
+      final finished = tailer.finish(sessionId: "session-1");
+      lookup.complete(path);
+      Timer(const Duration(milliseconds: 10), () {
+        File(path).writeAsStringSync("${_record(callId: "live-call")}\n", mode: FileMode.append);
+      });
+      await finished;
+
+      expect(appends.map((append) => _responseItemCallId(line: append.line)), ["live-call"]);
+    });
+
     group("on a cold catalog", () {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       late Directory codexHome;
@@ -305,6 +335,14 @@ class _MutableCatalogRepository({required super.rolloutApi}) extends CodexCatalo
 
   @override
   String? findRecentRolloutPath({required String sessionId}) => path;
+}
+
+class _DeferredCatalogRepository({
+  required super.rolloutApi,
+  required final Future<String?> lookup,
+}) extends CodexCatalogRepository {
+  @override
+  Future<String?> findRolloutPath({required String sessionId}) => lookup;
 }
 
 String _record({required String callId}) => jsonEncode({
