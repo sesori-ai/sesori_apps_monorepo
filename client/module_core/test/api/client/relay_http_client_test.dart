@@ -145,6 +145,31 @@ void main() {
         );
       });
 
+      test("a background-decoded GET parses off this isolate", () async {
+        when(
+          () => mockRelayClient.sendRequest(
+            request: any(named: "request"),
+            timeout: any(named: "timeout"),
+          ),
+        ).thenAnswer((_) async => const RelayResponse(id: "req", status: 200, headers: {}, body: '{"value":"ok"}'));
+
+        final decodesBefore = _decodesOnThisIsolate;
+        final decoded = await client.getDecodedInBackground<String>(path: "/projects", fromJson: _countedValue);
+
+        expect(decoded, isA<SuccessResponse<String>>().having((response) => response.data, "data", "ok"));
+        expect(_decodesOnThisIsolate, decodesBefore, reason: "the decode ran on another isolate");
+        final request =
+            verify(
+                  () => mockRelayClient.sendRequest(
+                    request: captureAny(named: "request"),
+                    timeout: const Duration(seconds: 30),
+                  ),
+                ).captured.single
+                as RelayRequest;
+        expect(request.method, equals("GET"));
+        expect(request.acceptsDeflatedResponse, isTrue);
+      });
+
       test("attachment POST uses its longer timeout and asks for a plain response", () async {
         const timeout = Duration(minutes: 2);
         when(

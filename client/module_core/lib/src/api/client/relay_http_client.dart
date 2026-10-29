@@ -38,6 +38,25 @@ class RelayHttpApiClient(final ConnectionService _connectionService) {
     decodesInBackground: false,
   );
 
+  /// A GET whose response is large enough that decoding it on the UI isolate
+  /// would stall frames, so it decodes on a short-lived isolate instead.
+  Future<ApiResponse<T>> getDecodedInBackground<T>({
+    required String path,
+    // ignore: no_slop_linter/prefer_specific_type, JSON parsing callback requires dynamic payload
+    required T Function(Map<String, dynamic> json) fromJson,
+  }) => _request(
+    method: HttpMethod.get,
+    path: path,
+    fromJson: fromJson,
+    queryParameters: null,
+    body: null,
+    extraHeaders: null,
+    timeout: _defaultRequestTimeout,
+    acceptsDeflatedResponse: true,
+    sensitiveResponse: false,
+    decodesInBackground: true,
+  );
+
   // ignore: no_slop_linter/prefer_required_named_parameters, optional HTTP parameters
   Future<ApiResponse<T>> post<T>(
     String path, {

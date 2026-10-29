@@ -16,35 +16,73 @@ void main() {
   });
 
   group("listProjects", () {
-    test("returns projects from GET /projects", () async {
+    test("returns projects from GET /projects, decoded in the background", () async {
       const projects = Projects(
         data: [
           ProjectSummary(id: "project-1", name: "Project 1", path: "/project-1", time: null),
         ],
       );
       when(
-        () => client.get<Projects>("/projects", fromJson: any(named: "fromJson")),
+        () => client.getDecodedInBackground<Projects>(
+          path: "/projects",
+          fromJson: any(named: "fromJson"),
+        ),
       ).thenAnswer((_) async => ApiResponse.success(projects));
 
       final response = await api.listProjects();
 
       expect(response, ApiResponse<Projects>.success(projects));
       verify(
-        () => client.get<Projects>("/projects", fromJson: any(named: "fromJson")),
+        () => client.getDecodedInBackground<Projects>(
+          path: "/projects",
+          fromJson: any(named: "fromJson"),
+        ),
       ).called(1);
     });
 
     test("propagates GET /projects errors", () async {
       final error = ApiError.generic();
       when(
-        () => client.get<Projects>("/projects", fromJson: any(named: "fromJson")),
+        () => client.getDecodedInBackground<Projects>(
+          path: "/projects",
+          fromJson: any(named: "fromJson"),
+        ),
       ).thenAnswer((_) async => ApiResponse.error(error));
 
       final response = await api.listProjects();
 
       expect(response, ApiResponse<Projects>.error(error));
       verify(
-        () => client.get<Projects>("/projects", fromJson: any(named: "fromJson")),
+        () => client.getDecodedInBackground<Projects>(
+          path: "/projects",
+          fromJson: any(named: "fromJson"),
+        ),
+      ).called(1);
+    });
+  });
+
+  group("listSessions", () {
+    test("posts the whole-project request to /sessions and decodes it in the background", () async {
+      const sessions = SessionListResponse(items: []);
+      when(
+        () => client.postDecodedInBackground<SessionListResponse>(
+          path: "/sessions",
+          fromJson: any(named: "fromJson"),
+          body: any(named: "body"),
+          sensitiveResponse: false,
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(sessions));
+
+      final response = await api.listSessions(projectId: "project-1");
+
+      expect(response, ApiResponse<SessionListResponse>.success(sessions));
+      verify(
+        () => client.postDecodedInBackground<SessionListResponse>(
+          path: "/sessions",
+          fromJson: any(named: "fromJson"),
+          body: const SessionListRequest(projectId: "project-1", start: null, limit: null),
+          sensitiveResponse: false,
+        ),
       ).called(1);
     });
   });

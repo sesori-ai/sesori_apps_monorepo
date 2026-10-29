@@ -73,6 +73,10 @@ class CatalogRescanService({
   /// True when the live operation was discovered rather than started here.
   bool _observed = false;
 
+  /// True when a member of the live operation completed having written rows,
+  /// so [catalogChanged] fires once when the operation closes.
+  bool _operationWroteRows = false;
+
   Timer? _clearTimer;
   bool _connected = _connectionService.currentStatus is ConnectionConnected;
   String? _activeBridgeId;
@@ -84,9 +88,11 @@ class CatalogRescanService({
   ///
   /// List cubits use this durable-data signal rather than the progress row's
   /// lifecycle, because an observed run settles without a summary and a
-  /// completion can arrive for a harness outside the live operation. Automatic
-  /// hydration markers complete with zero published rows and do not invalidate
-  /// the lists.
+  /// completion can arrive for a harness outside the live operation. A live
+  /// operation fires once when it closes, however many members wrote rows, so
+  /// a rescan of every harness reloads the lists once. A completion outside
+  /// one, such as startup hydration, fires at once. A completion that wrote no
+  /// rows never fires.
   Stream<void> get catalogChanged => _catalogChanged.stream;
 
   /// Rescans every harness this bridge can import from.
@@ -215,6 +221,7 @@ class CatalogRescanService({
       _progressByPluginId.clear();
       _operationBridgeId = operationBridgeId;
       _observed = observed;
+      _operationWroteRows = false;
     } else if (observed) {
       // A harness someone else started joined a run this client owned. The
       // operation can no longer claim it saw every member, so it stops being
@@ -233,18 +240,21 @@ class CatalogRescanService({
   }
 
   void _applyProgress(CatalogImportProgress progress) {
+    final pluginId = progress.pluginId;
     // The counts are the rows the import wrote (totals on a bridge up to
     // v1.10.1). Imports are non-destructive, so a completion that wrote
-    // nothing leaves every list row unchanged. Announce a committed
-    // snapshot before the operation bookkeeping below, which drops a
-    // completion for a harness outside the live operation: its rows changed
-    // all the same.
+    // nothing leaves every list row unchanged. A member's rows wait for the
+    // operation to close. Any other completion announces now, before the
+    // bookkeeping below drops it: its rows changed all the same.
     if (progress case CatalogImportCompleted(:final projectsImported, :final sessionsImported)
-        when (projectsImported > 0 || sessionsImported > 0) && !_catalogChanged.isClosed) {
-      _catalogChanged.add(null);
+        when projectsImported > 0 || sessionsImported > 0) {
+      if (_members.contains(pluginId)) {
+        _operationWroteRows = true;
+      } else {
+        _announceCatalogChanged();
+      }
     }
 
-    final pluginId = progress.pluginId;
     // The row and the alert name only the harness; the bridge's own message is
     // kept here, in the local log.
     if (progress case CatalogImportFailed(:final message)) logw("Catalog import failed for $pluginId: $message");
@@ -428,13 +438,16 @@ class CatalogRescanService({
     return CatalogRescanCounts.totals(projects: projects, sessions: sessions);
   }
 
-  /// Ends the live operation and publishes [next].
+  /// Ends the live operation, publishes [next], and announces its rows.
   void _closeOperation(CatalogRescanState next) {
+    final wroteRows = _operationWroteRows;
     _members.clear();
     _progressByPluginId.clear();
     _operationBridgeId = null;
     _observed = false;
+    _operationWroteRows = false;
     _publish(next);
+    if (wroteRows) _announceCatalogChanged();
     // The row has no Dismiss, so every result clears itself: the row fades out
     // once read, and a failure has already raised its alert.
     if (next is! CatalogRescanIdle) {
@@ -443,15 +456,20 @@ class CatalogRescanService({
     }
   }
 
+  /// Drops any live operation. Rows a member already wrote are committed, so
+  /// they are announced rather than lost with the operation.
   void _reset() {
     if (_disposed) return;
+    final wroteRows = _operationWroteRows;
     _clearTimer?.cancel();
     _clearTimer = null;
     _members.clear();
     _progressByPluginId.clear();
     _operationBridgeId = null;
     _observed = false;
+    _operationWroteRows = false;
     _publish(const CatalogRescanState.idle());
+    if (wroteRows) _announceCatalogChanged();
   }
 
   void _onConnectionStatus(ConnectionStatus status) {
@@ -534,6 +552,11 @@ class CatalogRescanService({
     CatalogImportCompleted() || CatalogImportCancelled() || CatalogImportFailed() => true,
     CatalogImportEnumerating() || CatalogImportCommitting() => false,
   };
+
+  void _announceCatalogChanged() {
+    if (_catalogChanged.isClosed) return;
+    _catalogChanged.add(null);
+  }
 
   void _publish(CatalogRescanState next) {
     if (_disposed || _state.isClosed || _state.value == next) return;
