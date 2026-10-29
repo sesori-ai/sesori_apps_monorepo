@@ -184,7 +184,7 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
   }
 
   @override
-  void applyLocalSessionUnseen({
+  SessionListItemState? applyLocalSessionUnseen({
     required String projectId,
     required String sessionId,
     required bool unseen,
@@ -192,10 +192,29 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
     _projectTick[projectId] = ++_tick;
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
     final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    final previous = projectSessions[sessionId];
     projectSessions[sessionId] = (
       unseen: unseen,
-      lastUserActivityAt: projectSessions[sessionId]?.lastUserActivityAt,
+      lastUserActivityAt: previous?.lastUserActivityAt,
     );
+    sessions[projectId] = projectSessions;
+    _sessionUnseen.add(sessions);
+    return previous;
+  }
+
+  @override
+  void restoreLocalSessionUnseen({
+    required String projectId,
+    required String sessionId,
+    required SessionListItemState? previous,
+  }) {
+    final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
+    final projectSessions = Map<String, SessionListItemState>.from(sessions[projectId] ?? const {});
+    if (previous == null) {
+      projectSessions.remove(sessionId);
+    } else {
+      projectSessions[sessionId] = previous;
+    }
     sessions[projectId] = projectSessions;
     _sessionUnseen.add(sessions);
   }

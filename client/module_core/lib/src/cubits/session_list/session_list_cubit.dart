@@ -6,12 +6,10 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart" hide SessionCleanupRejection;
 
 import "../../capabilities/server_connection/connection_service.dart";
-import "../../capabilities/server_connection/models/connection_status.dart";
 import "../../capabilities/server_connection/models/sse_event.dart";
 import "../../logging/logging.dart";
 import "../../repositories/models/session_cleanup_rejection.dart";
 import "../../repositories/session_repository.dart";
-import "../../services/catalog_rescan_service.dart";
 import "../../services/models/optimistic_rename_tracker.dart";
 import "../../services/models/session_cleanup_outcome.dart";
 import "../../services/models/session_list_filter.dart";
@@ -22,15 +20,10 @@ import "../../services/session_unseen_tracker.dart";
 import "../../services/sse_event_tracker.dart";
 import "session_list_state.dart";
 
-enum _SessionFetchOutcome() {
-  applied,
-  failed,
-  superseded,
-}
-
 /// One project's session actions (rename, delete, mark seen) for the
-/// rows a list already shows. It starts from the caller's [sessions] and keeps
-/// them in step with bridge events and silent refreshes.
+/// rows a list already shows. It holds only the caller's [sessions] and those
+/// passed to [updateActionSession], and keeps them in step with bridge events.
+/// It never fetches the project's session list.
 class SessionListCubit({
   required List<Session> sessions,
   required final SessionRepository _sessionRepository,
@@ -41,33 +34,25 @@ class SessionListCubit({
   required final SessionUnseenTracker _sessionUnseenTracker,
   required final String _projectId,
   required final FailureReporter _failureReporter,
-  required final CatalogRescanService _catalogRescanService,
 }) extends Cubit<SessionListState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   int _pendingActionOperations = 0;
   Completer<void>? _actionOperationsDrained;
   SessionCleanupRejection? _lastCleanupRejection;
 
-  /// The caller-supplied rows until the first successful refresh, then the full server response; the state
-  /// shows only the unarchived sessions.
+  /// The sessions this cubit acts on; the state shows only the unarchived ones.
   List<Session> _allSessions = sessions;
 
   this : super(const SessionListState(sessions: [], activeSessionIds: {}, unseenBySessionId: {})) {
     _emitFiltered();
-    // A committed import raises no list invalidation of its own.
-    _subscriptions.add(_catalogRescanService.catalogChanged.listen((_) => _onCatalogChanged()));
     _subscriptions.add(_connectionService.events.listen(_handleEvent));
-    // skip(1) ignores the BehaviorSubject replay of the current status —
-    // we only want to react to actual transitions (e.g. disconnected → connected).
-    _subscriptions.add(_connectionService.status.skip(1).listen(_onConnectionStatusChanged));
     _subscriptions.add(_sseEventTracker.sessionActivity.listen((_) => _emitFiltered()));
     _subscriptions.add(_sessionUnseenTracker.sessionUnseen.listen((_) => _emitFiltered()));
-    _subscriptions.add(_connectionService.dataMayBeStale.listen((_) => unawaited(refreshSessions())));
   }
 
-  /// An action scope can outlive a failed refresh. Synchronize the named menu
-  /// target from the consumer's current inventory without replacing other rows
-  /// (which may still have their own mutation in flight).
+  /// Synchronizes the named menu target from the consumer's current inventory
+  /// without replacing other rows (which may still have their own mutation in
+  /// flight).
   void updateActionSession({required Session session}) {
     _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
     _emitFiltered();
@@ -83,13 +68,13 @@ class SessionListCubit({
       logt("[SessionList] event received: ${event.data.runtimeType}");
       final data = event.data;
       switch (data) {
-        case SesoriSessionCreated(:final info):
-          _onSessionCreated(info);
         case SesoriSessionUpdated(:final info):
           _onSessionUpdated(info);
         case SesoriSessionDeleted(:final info):
           _onSessionDeleted(info);
-        case SesoriServerConnected() ||
+        // A new session is not one this cubit was given.
+        case SesoriSessionCreated() ||
+            SesoriServerConnected() ||
             SesoriServerHeartbeat() ||
             SesoriServerInstanceDisposed() ||
             SesoriGlobalDisposed() ||
@@ -161,26 +146,29 @@ class SessionListCubit({
   /// Marks a session read (clears its bold) or unread (forces bold). Applied
   /// optimistically to the tracker so the row updates immediately; the bridge
   /// echo delivers the authoritative state (including the project aggregate)
-  /// within the round trip. On failure, a silent refetch re-seeds the
-  /// authoritative flags instead of local rollback bookkeeping.
+  /// within the round trip. On failure, the tracker gets back the value it
+  /// held before the optimistic write.
   Future<void> markSessionSeen({required String sessionId, required bool read}) => _runActionScopeOperation(
     operation: () => _markSessionSeen(sessionId: sessionId, read: read),
   );
 
   Future<void> _markSessionSeen({required String sessionId, required bool read}) async {
-    _sessionUnseenTracker.applyLocalSessionUnseen(
+    final previous = _sessionUnseenTracker.applyLocalSessionUnseen(
       projectId: _projectId,
       sessionId: sessionId,
       unseen: !read,
     );
     _emitFiltered();
+    void restore() => _sessionUnseenTracker.restoreLocalSessionUnseen(
+      projectId: _projectId,
+      sessionId: sessionId,
+      previous: previous,
+    );
     try {
       final response = await _sessionRepository.markSessionSeen(sessionId: sessionId, read: read);
       if (response case ErrorResponse(:final error)) {
         loge("Failed to mark session ${read ? "read" : "unread"}", error);
-        if (!isClosed) {
-          await _fetchSessions(catalogRefresh: false);
-        }
+        restore();
       }
     } catch (e, st) {
       unawaited(
@@ -197,9 +185,7 @@ class SessionListCubit({
               loge("Failed to report mark-seen error", error, stackTrace);
             }),
       );
-      if (!isClosed) {
-        await _fetchSessions(catalogRefresh: false);
-      }
+      restore();
     }
   }
 
@@ -226,28 +212,6 @@ class SessionListCubit({
     _actionOperationsDrained = null;
   }
 
-  void _onSessionCreated(Session session) {
-    // Only add root sessions that belong to this project.
-    if (session.parentID != null) {
-      logt("[SessionList] session.created ignored id=${session.id} reason=child");
-      return;
-    }
-    if (session.projectID != _projectId) {
-      logd("[SessionList] session.created ignored id=${session.id} reason=project_mismatch");
-      return;
-    }
-
-    // Avoid duplicates.
-    if (_allSessions.any((s) => s.id == session.id)) {
-      logd("[SessionList] session.created ignored id=${session.id} reason=duplicate");
-      return;
-    }
-
-    _allSessions = _sessionListService.upsertSession(sessions: _allSessions, session: session);
-    logd("[SessionList] session.created added id=${session.id}");
-    _emitFiltered();
-  }
-
   void _onSessionUpdated(Session session) {
     if (session.projectID != _projectId) {
       logt("[SessionList] session.updated ignored id=${session.id} reason=project_mismatch");
@@ -255,13 +219,7 @@ class SessionListCubit({
     }
 
     final index = _allSessions.indexWhere((s) => s.id == session.id);
-
-    if (index < 0) {
-      // Session was created elsewhere — add it if it belongs here.
-      logt("[SessionList] session.updated not_found id=${session.id} action=add_via_created");
-      _onSessionCreated(session);
-      return;
-    }
+    if (index < 0) return;
 
     _allSessions = _sessionListService.applySessionUpdatedEvent(
       sessions: _allSessions,
@@ -290,12 +248,6 @@ class SessionListCubit({
 
     logd("[SessionList] session.deleted removed id=${session.id}");
     _emitFiltered();
-  }
-
-  void _onConnectionStatusChanged(ConnectionStatus status) {
-    logd("[SessionList] connection status: ${status.runtimeType}");
-    if (isClosed) return;
-    if (status is ConnectionConnected) unawaited(refreshSessions());
   }
 
   // ---------------------------------------------------------------------------
@@ -345,9 +297,6 @@ class SessionListCubit({
           title: title,
           succeeded: true,
         );
-        if (!isClosed) {
-          unawaited(_refreshSessions(force: true, catalogRefresh: false));
-        }
         return true;
       case ErrorResponse():
         _completeSessionRename(
@@ -457,8 +406,8 @@ class SessionListCubit({
 
   // ---------------------------------------------------------------------------
 
-  /// Keeps pre-rename list responses from repainting an old title while the
-  /// mutation is still pending.
+  /// Keeps session events from repainting an old title while the mutation is
+  /// still pending, and settles overlapping renames on the last confirmed one.
   final Map<String, OptimisticRenameTracker> _renameStateBySessionId = {};
   int _nextRenameToken = 0;
 
@@ -482,188 +431,6 @@ class SessionListCubit({
         unseenBySessionId: _unseenBySessionId(visible),
       ),
     );
-  }
-
-  /// In-flight silent refresh, used for coalescing.
-  Future<_SessionFetchOutcome>? _activeRefresh;
-
-  /// Most recently started read. This is not a coalescing barrier: a refresh
-  /// whose response was superseded uses it only to observe the winning result.
-  Future<_SessionFetchOutcome>? _latestFetch;
-
-  /// Monotonically orders list reads so an older response cannot overwrite a
-  /// snapshot requested after it.
-  int _fetchGeneration = 0;
-
-  /// Durable catalog commits observed by this cubit, and the newest commit a
-  /// successfully applied list snapshot has covered.
-  int _catalogChangeGeneration = 0;
-  int _catalogChangeConsumedGeneration = 0;
-  bool _catalogRefreshPausedAfterFailure = false;
-  Future<void>? _catalogRefresh;
-
-  /// Re-fetches sessions silently. Concurrent ordinary calls coalesce onto the
-  /// current refresh.
-  Future<bool> refreshSessions() {
-    return _awaitRefreshResult(refresh: _refreshSessions(force: false, catalogRefresh: false));
-  }
-
-  /// A catalog refresh can supersede an explicit pull. Wait for the newer read
-  /// so the caller reports that read's outcome rather than premature success.
-  Future<bool> _awaitRefreshResult({required Future<_SessionFetchOutcome> refresh}) async {
-    var latest = refresh;
-    while (true) {
-      switch (await latest) {
-        case _SessionFetchOutcome.applied:
-          return true;
-        case _SessionFetchOutcome.failed:
-          return false;
-        case _SessionFetchOutcome.superseded:
-          final winningFetch = _latestFetch;
-          if (winningFetch == null || identical(winningFetch, latest)) return false;
-          latest = winningFetch;
-      }
-    }
-  }
-
-  Future<_SessionFetchOutcome> _refreshSessions({required bool force, required bool catalogRefresh}) {
-    final active = _activeRefresh;
-    if (!force && active != null) return active;
-
-    late final Future<_SessionFetchOutcome> refresh;
-    refresh = _fetchSessions(catalogRefresh: catalogRefresh).whenComplete(() {
-      if (identical(_activeRefresh, refresh)) _activeRefresh = null;
-    });
-    _activeRefresh = refresh;
-    return refresh;
-  }
-
-  Future<_SessionFetchOutcome> _fetchSessions({required bool catalogRefresh}) {
-    final requestGeneration = ++_fetchGeneration;
-    final catalogChangeGeneration = _catalogChangeGeneration;
-    final fetch = _runFetchSessions(
-      catalogRefresh: catalogRefresh,
-      requestGeneration: requestGeneration,
-      catalogChangeGeneration: catalogChangeGeneration,
-    );
-    _latestFetch = fetch;
-    return fetch;
-  }
-
-  Future<_SessionFetchOutcome> _runFetchSessions({
-    required bool catalogRefresh,
-    required int requestGeneration,
-    required int catalogChangeGeneration,
-  }) async {
-    var didApplySnapshot = false;
-    try {
-      // Captured BEFORE the fetch so the seed can't overwrite a live update
-      // that arrives while the request is in flight.
-      final unseenTick = _sessionUnseenTracker.tick;
-      final sessionsResponse = await _sessionListService.listSessions(projectId: _projectId);
-      if (isClosed) return _SessionFetchOutcome.superseded;
-      if (requestGeneration != _fetchGeneration) {
-        if (sessionsResponse case ErrorResponse(:final error)) {
-          logw(
-            "Discarded superseded session list response "
-            "(request generation $requestGeneration, current $_fetchGeneration)",
-            error,
-          );
-        }
-        return _SessionFetchOutcome.superseded;
-      }
-
-      switch (sessionsResponse) {
-        case SuccessResponse(:final data):
-          _allSessions = data.items;
-          // The REST flags are authoritative at fetch time — seed the tracker so
-          // a stale live `true` can't keep a row bold after a clear was missed
-          // (e.g. the session was read on another phone while reconnecting).
-          _sessionUnseenTracker.seedSessions(
-            projectId: _projectId,
-            stateBySessionId: {
-              for (final session in data.items)
-                session.id: (
-                  unseen: session.unseen,
-                  lastUserActivityAt: session.lastUserActivityAt,
-                ),
-            },
-            sinceTick: unseenTick,
-          );
-          _emitFiltered();
-          _consumeCatalogChangesThrough(generation: catalogChangeGeneration);
-          didApplySnapshot = true;
-          return _SessionFetchOutcome.applied;
-
-        case ErrorResponse(:final error):
-          logw("Failed to refresh sessions: ${error.toString()}");
-          return _SessionFetchOutcome.failed;
-      }
-    } finally {
-      if (!catalogRefresh && didApplySnapshot) _rearmCatalogRefreshAfterOrdinaryFetch();
-    }
-  }
-
-  void _onCatalogChanged() {
-    if (isClosed) return;
-    _catalogChangeGeneration++;
-    _catalogRefreshPausedAfterFailure = false;
-    _ensureCatalogRefresh();
-  }
-
-  void _consumeCatalogChangesThrough({required int generation}) {
-    if (generation > _catalogChangeConsumedGeneration) {
-      _catalogChangeConsumedGeneration = generation;
-    }
-  }
-
-  void _ensureCatalogRefresh() {
-    if (isClosed ||
-        _catalogRefresh != null ||
-        _catalogRefreshPausedAfterFailure ||
-        _catalogChangeConsumedGeneration >= _catalogChangeGeneration) {
-      return;
-    }
-
-    late final Future<void> refresh;
-    refresh = _drainCatalogRefreshes().whenComplete(() {
-      if (!identical(_catalogRefresh, refresh)) return;
-      _catalogRefresh = null;
-      _ensureCatalogRefresh();
-    });
-    _catalogRefresh = refresh;
-    unawaited(refresh);
-  }
-
-  Future<void> _drainCatalogRefreshes() async {
-    while (!isClosed && _catalogChangeConsumedGeneration < _catalogChangeGeneration) {
-      final targetGeneration = _catalogChangeGeneration;
-      late final _SessionFetchOutcome outcome;
-      try {
-        outcome = await _refreshSessions(force: true, catalogRefresh: true);
-      } on Object catch (error, stackTrace) {
-        loge("Catalog-change session refresh failed unexpectedly", error, stackTrace);
-        _catalogRefreshPausedAfterFailure = true;
-        return;
-      }
-
-      if (_catalogChangeConsumedGeneration >= _catalogChangeGeneration) return;
-      switch (outcome) {
-        case _SessionFetchOutcome.applied:
-        case _SessionFetchOutcome.superseded:
-          continue;
-        case _SessionFetchOutcome.failed:
-          if (targetGeneration < _catalogChangeGeneration) continue;
-          _catalogRefreshPausedAfterFailure = true;
-          return;
-      }
-    }
-  }
-
-  void _rearmCatalogRefreshAfterOrdinaryFetch() {
-    if (isClosed || !_catalogRefreshPausedAfterFailure) return;
-    _catalogRefreshPausedAfterFailure = false;
-    _ensureCatalogRefresh();
   }
 
   @override
