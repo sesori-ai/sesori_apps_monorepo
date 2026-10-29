@@ -4,6 +4,8 @@ import "dart:io";
 import "package:claude_plugin/claude_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
+import "package:sesori_plugin_interface/plugin_interface_testing.dart";
+import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
 import "package:test/test.dart";
 
 void main() {
@@ -26,10 +28,10 @@ void main() {
       }
     });
 
-    test("builds a session from a transcript header", () {
+    test("builds a session from a transcript header", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "Refactor the parser", branch: "main");
 
-      final record = catalog.listSessionRecords().single;
+      final record = (await catalog.listSessionRecordsInIsolate()).single;
 
       expect(record.id, _sessionA);
       expect(record.cwd, "/work/alpha");
@@ -40,7 +42,7 @@ void main() {
       expect(record.updatedAt, isNotNull);
     });
 
-    test("skips subagent transcripts, which outnumber sessions on disk", () {
+    test("skips subagent transcripts, which outnumber sessions on disk", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
       _writeTranscript(
         claudeHome,
@@ -49,10 +51,10 @@ void main() {
         records: [_userRecord(_sessionA, cwd: "/work/alpha", isSidechain: true)],
       );
 
-      expect(catalog.listSessionRecords().map((record) => record.id), [_sessionA]);
+      expect((await catalog.listSessionRecordsInIsolate()).map((record) => record.id), [_sessionA]);
     });
 
-    test("skips a UUID-named transcript that holds only subagent records", () {
+    test("skips a UUID-named transcript that holds only subagent records", () async {
       _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -63,10 +65,10 @@ void main() {
         ],
       );
 
-      expect(catalog.listSessionRecords(), isEmpty);
+      expect(await catalog.listSessionRecordsInIsolate(), isEmpty);
     });
 
-    test("skips a transcript whose records claim a different session", () {
+    test("skips a transcript whose records claim a different session", () async {
       _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -74,10 +76,10 @@ void main() {
         records: [_userRecord(_sessionB, cwd: "/work/alpha")],
       );
 
-      expect(catalog.listSessionRecords(), isEmpty);
+      expect(await catalog.listSessionRecordsInIsolate(), isEmpty);
     });
 
-    test("accepts records without a session id because the filename is authoritative", () {
+    test("accepts records without a session id because the filename is authoritative", () async {
       final record = _userRecord(_sessionA, cwd: "/work/alpha")..remove("sessionId");
       _writeTranscript(
         claudeHome,
@@ -86,10 +88,10 @@ void main() {
         records: [record],
       );
 
-      expect(catalog.listSessionRecords().single.cwd, "/work/alpha");
+      expect((await catalog.listSessionRecordsInIsolate()).single.cwd, "/work/alpha");
     });
 
-    test("does not borrow metadata from records for another session", () {
+    test("does not borrow metadata from records for another session", () async {
       _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -102,13 +104,13 @@ void main() {
         ],
       );
 
-      final record = catalog.listSessionRecords().single;
+      final record = (await catalog.listSessionRecordsInIsolate()).single;
 
       expect(record.cwd, "/work/alpha");
       expect(record.title, "Right title");
     });
 
-    test("skips a transcript with no working directory to attribute it to", () {
+    test("skips a transcript with no working directory to attribute it to", () async {
       _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -118,22 +120,22 @@ void main() {
         ],
       );
 
-      expect(catalog.listSessionRecords(), isEmpty);
+      expect(await catalog.listSessionRecordsInIsolate(), isEmpty);
     });
 
-    test("leaves a session untitled when it has neither a title nor a prompt", () {
+    test("leaves a session untitled when it has neither a title nor a prompt", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
 
-      expect(catalog.listSessionRecords().single.title, isNull);
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, isNull);
     });
 
-    test("treats a blank title as untitled", () {
+    test("treats a blank title as untitled", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "   ");
 
-      expect(catalog.listSessionRecords().single.title, isNull);
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, isNull);
     });
 
-    test("prefers a /rename over the CLI's own title", () {
+    test("prefers a /rename over the CLI's own title", () async {
       _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -145,10 +147,10 @@ void main() {
         ],
       );
 
-      expect(catalog.listSessionRecords().single.title, "Parser work");
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, "Parser work");
     });
 
-    test("takes the newest titles from the transcript tail", () {
+    test("takes the newest titles from the transcript tail", () async {
       final path = _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -162,17 +164,17 @@ void main() {
         ],
       );
 
-      expect(catalog.listSessionRecords().single.title, "Newest title");
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, "Newest title");
 
       File(path).writeAsStringSync(
         "${jsonEncode({"type": "custom-title", "customTitle": "Renamed late", "sessionId": _sessionA})}\n",
         mode: FileMode.append,
       );
 
-      expect(catalog.listSessionRecords().single.title, "Renamed late");
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, "Renamed late");
     });
 
-    test("titles an unnamed session with its first typed prompt", () {
+    test("titles an unnamed session with its first typed prompt", () async {
       _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -192,10 +194,10 @@ void main() {
         ],
       );
 
-      expect(catalog.listSessionRecords().single.title, "Rename the CSV parser");
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, "Rename the CSV parser");
     });
 
-    test("bounds a first prompt used as a title", () {
+    test("bounds a first prompt used as a title", () async {
       _writeTranscript(
         claudeHome,
         project: "-work-alpha",
@@ -203,10 +205,10 @@ void main() {
         records: [_userRecord(_sessionA, cwd: "/work/alpha", uuid: "u1", content: "a" * 300)],
       );
 
-      expect(catalog.listSessionRecords().single.title, "${"a" * 100}…");
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, "${"a" * 100}…");
     });
 
-    test("titles a dedicated-worktree session with its prompt, not the bridge note", () {
+    test("titles a dedicated-worktree session with its prompt, not the bridge note", () async {
       final note = buildWorktreeSystemContext(worktreePath: "/tmp/worktrees/blue-otter", baseBranch: "main");
       _writeTranscript(
         claudeHome,
@@ -225,7 +227,7 @@ void main() {
         ],
       );
 
-      expect(catalog.listSessionRecords().single.title, "visible prompt");
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, "visible prompt");
     });
 
     test("orders sessions newest first with undated ones last", () async {
@@ -234,7 +236,7 @@ void main() {
       _setModified(claudeHome, id: _sessionA, to: DateTime.utc(2026, 8, 1, 10));
       _setModified(claudeHome, id: _sessionB, to: DateTime.utc(2026, 8, 3, 10));
 
-      expect(catalog.listSessionRecords().map((record) => record.id), [_sessionB, _sessionA]);
+      expect((await catalog.listSessionRecordsInIsolate()).map((record) => record.id), [_sessionB, _sessionA]);
     });
 
     test("maps a session onto its normalized project directory", () async {
@@ -278,52 +280,34 @@ void main() {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", project: "-work-alpha");
       _writeSession(claudeHome, id: _sessionB, cwd: "/work/beta", project: "-work-beta");
 
-      final alpha = await catalog.getSessions(projectId: "/work/alpha/", start: null, limit: null);
+      final alpha = await catalog.getSessions(projectId: "/work/alpha/");
 
       expect(alpha.map((session) => session.id), [_sessionA]);
     });
 
-    test("paginates within a project", () async {
-      for (var i = 0; i < 5; i++) {
-        _writeSession(
-          claudeHome,
-          id: _indexedSessionId(i),
-          cwd: "/work/alpha",
-          timestamp: "2026-08-0${i + 1}T10:00:00.000Z",
-        );
-        _setModified(claudeHome, id: _indexedSessionId(i), to: DateTime.utc(2026, 8, i + 1, 10));
-      }
-
-      final page = await catalog.getSessions(projectId: "/work/alpha", start: 1, limit: 2);
-
-      expect(page.map((session) => session.id), [_indexedSessionId(3), _indexedSessionId(2)]);
-      expect(await catalog.getSessions(projectId: "/work/alpha", start: 99, limit: 2), isEmpty);
-      expect(await catalog.getSessions(projectId: "/work/alpha", start: null, limit: 99), hasLength(5));
-    });
-
-    test("resolves a transcript path by session id without reading it", () {
+    test("resolves a transcript path by session id without reading it", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
 
-      expect(p.basename(catalog.findTranscriptPath(sessionId: _sessionA)!), "$_sessionA.jsonl");
-      expect(catalog.findTranscriptPath(sessionId: _sessionB), isNull);
-      expect(catalog.findSessionById(sessionId: _sessionA)?.cwd, "/work/alpha");
-      expect(catalog.findSessionById(sessionId: _sessionB), isNull);
+      expect(p.basename(await catalog.findTranscriptPath(sessionId: _sessionA) ?? "missing"), "$_sessionA.jsonl");
+      expect(await catalog.findTranscriptPath(sessionId: _sessionB), isNull);
+      expect((await catalog.findSessionById(sessionId: _sessionA))?.cwd, "/work/alpha");
+      expect(await catalog.findSessionById(sessionId: _sessionB), isNull);
     });
 
-    test("deletes a session's transcript and reports a missing one as not deleted", () {
+    test("deletes a session's transcript and reports a missing one as not deleted", () async {
       _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
 
-      expect(catalog.deleteSession(sessionId: _sessionA), isTrue);
-      expect(catalog.listSessionRecords(), isEmpty);
-      expect(catalog.deleteSession(sessionId: _sessionA), isFalse);
+      expect(await catalog.deleteSession(sessionId: _sessionA), isTrue);
+      expect(await catalog.listSessionRecordsInIsolate(), isEmpty);
+      expect(await catalog.deleteSession(sessionId: _sessionA), isFalse);
     });
 
-    test("reports no sessions when no home resolves", () {
+    test("reports no sessions when no home resolves", () async {
       final catalog = ClaudeTranscriptCatalogRepository(
         transcriptApi: ClaudeTranscriptApi(environment: const {}),
       );
 
-      expect(catalog.listSessionRecords(), isEmpty);
+      expect(await catalog.listSessionRecordsInIsolate(), isEmpty);
     });
 
     test("surfaces transcript enumeration failures", () {
@@ -331,16 +315,108 @@ void main() {
         transcriptApi: _ThrowingTranscriptApi(),
       );
 
-      expect(catalog.listSessionRecords, throwsA(isA<FileSystemException>()));
+      expect(catalog.listSessionRecordsInIsolate(), throwsA(isA<FileSystemException>()));
     });
 
-    test("enumerates off the main isolate", () async {
-      _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
+    group("cache", () {
+      test("an unchanged second scan parses no file", () async {
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "First");
+        _writeSession(claudeHome, id: _sessionB, cwd: "/work/alpha", title: "Other");
 
-      expect((await catalog.listSessionRecordsInIsolate()).map((record) => record.id), [_sessionA]);
+        final logs = await _captureDebugLogs(() async {
+          await catalog.listSessionRecordsInIsolate();
+          await catalog.listSessionRecordsInIsolate();
+        });
+
+        expect(_scanLines(logs), ["files=2, parsed=2", "files=2, parsed=0"]);
+      });
+
+      test("re-parses a modified transcript", () async {
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "Before");
+        _setModified(claudeHome, id: _sessionA, to: DateTime.utc(2026, 8, 5, 12));
+        expect((await catalog.listSessionRecordsInIsolate()).single.title, "Before");
+
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "After the rename");
+        _setModified(claudeHome, id: _sessionA, to: DateTime.utc(2026, 8, 5, 13));
+
+        expect((await catalog.listSessionRecordsInIsolate()).single.title, "After the rename");
+      });
+
+      test("evicts a deleted transcript", () async {
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
+        _writeSession(claudeHome, id: _sessionB, cwd: "/work/alpha");
+        await catalog.listSessionRecordsInIsolate();
+
+        File(p.join(claudeHome.path, "projects", "-work-alpha", "$_sessionB.jsonl")).deleteSync();
+
+        expect((await catalog.listSessionRecordsInIsolate()).map((record) => record.id), [_sessionA]);
+        expect(catalog.cachedSessionById(sessionId: _sessionB), isNull);
+      });
+
+      test("re-parses a child when only its meta file changes", () async {
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
+        final child = _writeTranscript(
+          claudeHome,
+          project: "-work-alpha",
+          name: p.join(_sessionA, "subagents", "agent-a1.jsonl"),
+          records: [_userRecord(_sessionA, cwd: "/work/alpha", isSidechain: true)],
+        );
+        final meta = File(ClaudeTranscriptApi.subagentMetaPath(transcriptPath: child))
+          ..writeAsStringSync(jsonEncode({"agentType": "general-purpose", "description": "Old"}));
+        expect(await _childTitle(catalog), "Old");
+
+        meta.writeAsStringSync(jsonEncode({"agentType": "general-purpose", "description": "Renamed task"}));
+
+        expect(await _childTitle(catalog), "Renamed task");
+      });
+
+      test("answers a lookup hit without scanning", () async {
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
+        await catalog.listSessionRecordsInIsolate();
+
+        final logs = await _captureDebugLogs(() async {
+          expect((await catalog.findSessionById(sessionId: _sessionA))?.cwd, "/work/alpha");
+          expect(await catalog.findTranscriptPath(sessionId: _sessionA), isNotNull);
+          expect(await catalog.getChildSessions(sessionId: _sessionA), isEmpty);
+        });
+
+        expect(_scanLines(logs), isEmpty);
+      });
+
+      test("rescans once on a miss", () async {
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
+        await catalog.listSessionRecordsInIsolate();
+        _writeSession(claudeHome, id: _sessionB, cwd: "/work/beta");
+
+        final logs = await _captureDebugLogs(() async {
+          expect((await catalog.findSessionById(sessionId: _sessionB))?.cwd, "/work/beta");
+          expect(await catalog.findSessionById(sessionId: _indexedSessionId(9)), isNull);
+        });
+
+        expect(_scanLines(logs), ["files=2, parsed=1", "files=2, parsed=0"]);
+      });
     });
   });
 }
+
+Future<String?> _childTitle(ClaudeTranscriptCatalogRepository catalog) async =>
+    (await catalog.listSessionRecordsInIsolate()).singleWhere((record) => record.parentId != null).title;
+
+Future<String> _captureDebugLogs(Future<void> Function() action) async {
+  final previousLevel = Log.level;
+  final stderr = BufferingStdout();
+  try {
+    Log.level = LogLevel.debug;
+    await IOOverrides.runZoned(action, stderr: () => stderr);
+  } finally {
+    Log.level = previousLevel;
+  }
+  return stderr.text;
+}
+
+List<String> _scanLines(String logs) => RegExp(
+  r"transcript catalog scan: (files=\d+, parsed=\d+)",
+).allMatches(logs).map((match) => match.group(1) ?? "").toList();
 
 const String _sessionA = "11111111-2222-4333-8444-555555555555";
 const String _sessionB = "66666666-7777-4888-8999-aaaaaaaaaaaa";

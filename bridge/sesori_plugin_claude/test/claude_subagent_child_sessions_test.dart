@@ -34,13 +34,13 @@ void main() {
 
     tearDown(() => temp.deleteSync(recursive: true));
 
-    test("lists sub-agent transcripts under their root and excludes orphans and the legacy layout", () {
+    test("lists sub-agent transcripts under their root and excludes orphans and the legacy layout", () async {
       _writeRoot(temp);
       _writeChild(temp, root: _root, agentId: _agentId, description: "Say hi");
       _writeChild(temp, root: "99999999-8888-4777-8666-555555555555", agentId: "orphan", description: "no root");
       File(p.join(_project(temp), "agent-legacy-abc.jsonl")).writeAsStringSync("{}\n");
 
-      final records = catalog.listSessionRecords();
+      final records = await catalog.listSessionRecordsInIsolate();
       final child = records.singleWhere((record) => record.id == _child);
 
       expect(records.map((record) => record.id), unorderedEquals([_root, _child]));
@@ -48,15 +48,19 @@ void main() {
       expect(child.cwd, "/workspace");
       expect(child.title, "Say hi");
       expect(child.updatedAt, isNotNull);
-      expect(catalog.findSessionById(sessionId: _child)?.parentId, _root);
-      expect(catalog.findSessionById(sessionId: "agent-orphan"), isNull, reason: "no root record to attribute to");
+      expect((await catalog.findSessionById(sessionId: _child))?.parentId, _root);
+      expect(
+        await catalog.findSessionById(sessionId: "agent-orphan"),
+        isNull,
+        reason: "no root record to attribute to",
+      );
     });
 
     test("getSessions lists roots only while getChildSessions and listAllSessions include children", () async {
       _writeRoot(temp);
       _writeChild(temp, root: _root, agentId: _agentId, description: "Say hi");
 
-      final roots = await catalog.getSessions(projectId: "/workspace", start: null, limit: null);
+      final roots = await catalog.getSessions(projectId: "/workspace");
       final children = await catalog.getChildSessions(sessionId: _root);
       final all = await catalog.listAllSessions(knownDirectories: const {});
 
@@ -67,25 +71,25 @@ void main() {
       expect(all.map((session) => session.id), unorderedEquals([_root, _child]));
     });
 
-    test("deleting a root removes its subagents directory; deleting a child removes its meta", () {
+    test("deleting a root removes its subagents directory; deleting a child removes its meta", () async {
       _writeRoot(temp);
       _writeChild(temp, root: _root, agentId: _agentId, description: "Say hi");
       _writeChild(temp, root: _root, agentId: "second", description: "Other");
       final metaPath = ClaudeTranscriptApi.subagentMetaPath(transcriptPath: _childPath(temp, _root, "second"));
 
-      expect(catalog.deleteSession(sessionId: "agent-second"), isTrue);
+      expect(await catalog.deleteSession(sessionId: "agent-second"), isTrue);
       expect(File(metaPath).existsSync(), isFalse);
-      expect(catalog.findTranscriptPath(sessionId: _child), isNotNull);
+      expect(await catalog.findTranscriptPath(sessionId: _child), isNotNull);
 
-      expect(catalog.deleteSession(sessionId: _root), isTrue);
+      expect(await catalog.deleteSession(sessionId: _root), isTrue);
       expect(Directory(p.join(_project(temp), _root)).existsSync(), isFalse);
-      expect(catalog.listSessionRecords(), isEmpty);
+      expect(await catalog.listSessionRecordsInIsolate(), isEmpty);
     });
 
-    test("child mode replays only the sub-agent's own records", () {
+    test("child mode replays only the sub-agent's own records", () async {
       _writeRoot(temp);
       _writeChild(temp, root: _root, agentId: _agentId, description: "Say hi");
-      final records = catalog.readTranscriptRecords(sessionId: _child);
+      final records = await catalog.readTranscriptRecordsInIsolate(sessionId: _child);
 
       final messages = const ClaudeHistoryMapper(content: ClaudeContentMapper()).map(
         sessionId: _child,

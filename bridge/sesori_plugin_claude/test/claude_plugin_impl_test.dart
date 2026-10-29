@@ -1793,6 +1793,9 @@ final class _ThrowingDeleteTranscriptApi() extends ClaudeTranscriptApi {
   List<String> listTranscriptPaths() => deleteAttempted ? const [] : ["/tmp/$testSessionId.jsonl"];
 
   @override
+  ClaudeFileStat? statFile({required String path}) => (size: 0, modified: DateTime.utc(2026));
+
+  @override
   void deleteTranscript({required String transcriptPath}) {
     deleteAttempted = true;
     throw StateError("delete failed");

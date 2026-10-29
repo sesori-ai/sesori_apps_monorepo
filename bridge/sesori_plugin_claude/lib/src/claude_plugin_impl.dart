@@ -90,7 +90,7 @@ final class ClaudePlugin({
 
   @override
   Future<List<PluginSession>> getSessions({required String projectId, required int? start, required int? limit}) async {
-    final persisted = await _transcripts.getSessions(projectId: projectId, start: null, limit: null);
+    final persisted = await _transcripts.getSessions(projectId: projectId);
     final target = normalizeProjectDirectory(directory: projectId);
     final combined = _mergeSessions(persisted, [
       for (final session in _createdSessions.values)
@@ -185,7 +185,7 @@ final class ClaudePlugin({
 
   @override
   Future<PluginSession> renameSession({required String sessionId, required String title}) async {
-    final existing = _findSession(sessionId);
+    final existing = await _findSession(sessionId);
     if (existing == null) throw const PluginOperationException.notFound("renameSession", message: "session not found");
     final renamed = existing.copyWith(title: title);
     if (_createdSessions.containsKey(sessionId)) _createdSessions[sessionId] = renamed;
@@ -195,7 +195,7 @@ final class ClaudePlugin({
 
   @override
   Future<void> deleteSession(String sessionId) async {
-    final existing = _findSession(sessionId);
+    final existing = await _findSession(sessionId);
     final known =
         existing != null ||
         _processes.isResident(sessionId: sessionId) ||
@@ -204,7 +204,7 @@ final class ClaudePlugin({
     await _sessions.deleteSession(sessionId: sessionId);
     try {
       try {
-        _transcripts.deleteSession(sessionId: sessionId);
+        await _transcripts.deleteSession(sessionId: sessionId);
       } on Object catch (error) {
         throw PluginOperationException("deleteSession", message: "Claude transcript deletion failed", cause: error);
       }
@@ -237,7 +237,7 @@ final class ClaudePlugin({
 
   @override
   Future<List<PluginMessageWithParts>> getSessionMessages(String sessionId) async {
-    if (_transcripts.findTranscriptPath(sessionId: sessionId) == null) {
+    if (await _transcripts.findTranscriptPath(sessionId: sessionId) == null) {
       if (_createdSessions.containsKey(sessionId)) return const [];
       throw const PluginOperationException.notFound("getSessionMessages", message: "session not found");
     }
@@ -281,7 +281,7 @@ final class ClaudePlugin({
     required ({String providerID, String modelID})? model,
   }) async {
     _requireTurn(parts: parts, operation: "sendPrompt");
-    final directory = _directoryForSession(sessionId);
+    final directory = await _directoryForSession(sessionId);
     if (directory == null) throw const PluginOperationException.notFound("sendPrompt", message: "session not found");
     final text = parts
         .whereType<PluginPromptPartText>()
@@ -317,7 +317,7 @@ final class ClaudePlugin({
     required String? agent,
     required ({String providerID, String modelID})? model,
   }) async {
-    final directory = _directoryForSession(sessionId);
+    final directory = await _directoryForSession(sessionId);
     if (directory == null) throw const PluginOperationException.notFound("sendCommand", message: "session not found");
     // A catalog cached before /fast was filtered can still offer it.
     if (command == ClaudeBackendCatalogRepository.fastModeCommand) {
@@ -350,7 +350,7 @@ final class ClaudePlugin({
         sessionId: sessionId,
         sessionExists:
             _createdSessions.containsKey(sessionId) ||
-            await _transcripts.findTranscriptPathInIsolate(sessionId: sessionId) != null,
+            await _transcripts.findTranscriptPath(sessionId: sessionId) != null,
       );
 
   @override
@@ -566,7 +566,11 @@ final class ClaudePlugin({
       final running = entry.value is PluginSessionStatusBusy || entry.value is PluginSessionStatusRetry;
       final awaitingInput = _approvals.hasPendingInput(sessionId: entry.key);
       if (!running && !awaitingInput) continue;
-      final directory = _directoryForSession(entry.key);
+      // A running session was resolved by its send, so the cache holds it.
+      final cached = _transcripts.cachedSessionById(sessionId: entry.key);
+      final directory =
+          _createdSessions[entry.key]?.directory ??
+          (cached == null ? null : normalizeProjectDirectory(directory: cached.cwd));
       if (directory == null) continue;
       (byProject[directory] ??= []).add(
         PluginActiveSession(
@@ -587,7 +591,7 @@ final class ClaudePlugin({
 
   @override
   Future<void> deletePersistedSession({required String backendSessionId}) async {
-    _transcripts.deleteSession(sessionId: backendSessionId);
+    await _transcripts.deleteSession(sessionId: backendSessionId);
   }
 
   Future<void> dispose() => _disposeFuture ??= _dispose();
@@ -746,10 +750,10 @@ final class ClaudePlugin({
     return selection.permissionMode;
   }
 
-  PluginSession? _findSession(String sessionId) {
+  Future<PluginSession?> _findSession(String sessionId) async {
     final created = _createdSessions[sessionId];
     if (created != null) return created;
-    final record = _transcripts.findSessionById(sessionId: sessionId);
+    final record = await _transcripts.findSessionById(sessionId: sessionId);
     if (record == null) return null;
     final directory = normalizeProjectDirectory(directory: record.cwd);
     final createdAt = (record.createdAt ?? record.updatedAt)?.millisecondsSinceEpoch;
@@ -766,7 +770,7 @@ final class ClaudePlugin({
     );
   }
 
-  String? _directoryForSession(String sessionId) => _findSession(sessionId)?.directory;
+  Future<String?> _directoryForSession(String sessionId) async => (await _findSession(sessionId))?.directory;
 
   void _handleProcessEvent(ClaudeSessionProcessEvent event) {
     if (event is ClaudeSessionProcessExited) {

@@ -9,6 +9,10 @@ import "package:sesori_shared/sesori_shared.dart" show jsonDecodeMap;
 import "models/claude_subagent_meta_dto.dart";
 import "models/claude_transcript_record_dto.dart";
 
+/// A file's size and last-modified time; a change in either means the file
+/// changed.
+typedef ClaudeFileStat = ({int size, DateTime modified});
+
 /// Layer-1 filesystem boundary for Claude Code's on-disk transcripts.
 ///
 /// The environment map is injected so tests can pin the root without touching
@@ -124,12 +128,12 @@ class ClaudeTranscriptApi({required Map<String, String> environment}) {
     return _decodeRecords(const LineSplitter().convert(decoded), ignoreMalformedLastLine: true);
   }
 
-  /// Last-modified time, which for an append-only transcript is the session's
-  /// last activity. Null when the file is gone or unreadable.
-  DateTime? lastModified({required String transcriptPath}) {
-    final file = File(transcriptPath);
-    if (!file.existsSync()) return null;
-    return file.lastModifiedSync().toUtc();
+  /// Size and last-modified time, which for an append-only transcript is the
+  /// session's last activity. Null when the file is gone.
+  ClaudeFileStat? statFile({required String path}) {
+    final stat = FileStat.statSync(path);
+    if (stat.type == FileSystemEntityType.notFound) return null;
+    return (size: stat.size, modified: stat.modified.toUtc());
   }
 
   void deleteTranscript({required String transcriptPath}) {

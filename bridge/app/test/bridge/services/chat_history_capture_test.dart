@@ -661,7 +661,7 @@ void main() {
         for (final message in const ClaudeHistoryMapper(content: content).map(
           sessionId: claudeSessionId,
           agentId: null,
-          records: transcripts.readTranscriptRecords(sessionId: claudeSessionId),
+          records: await transcripts.readTranscriptRecordsInIsolate(sessionId: claudeSessionId),
           residentTaskToolUseIds: const {},
           catalogModelId: null,
         ))
