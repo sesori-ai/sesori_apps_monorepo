@@ -39,6 +39,10 @@ class CodexRolloutTailer({
   /// Starts in-flight, so concurrent callers share one path resolution.
   final Map<String, Future<void>> _starting = {};
 
+  /// Bumped by [stopAll], so a start still awaiting its lookup when the
+  /// app-server disconnects does not install a cursor that nothing stops.
+  int _generation = 0;
+
   /// Resolves the rollout and captures its EOF, so a turn dispatched after this
   /// completes is tailed from its first appended byte. A rollout Codex has not
   /// created yet is tailed from offset 0 once a drain discovers it.
@@ -50,6 +54,7 @@ class CodexRolloutTailer({
   }
 
   Future<void> _start({required String sessionId}) async {
+    final generation = _generation;
     final String? path;
     final CodexRolloutTailPosition position;
     try {
@@ -70,6 +75,7 @@ class CodexRolloutTailer({
       );
       return;
     }
+    if (generation != _generation) return;
     _cursors[sessionId] = _CodexRolloutCursor(
       path: path,
       offset: position.offset,
@@ -175,6 +181,7 @@ class CodexRolloutTailer({
   }
 
   void stopAll() {
+    _generation++;
     _cursors.clear();
     _timer?.cancel();
     _timer = null;

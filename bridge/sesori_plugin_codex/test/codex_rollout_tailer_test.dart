@@ -58,6 +58,35 @@ void main() {
       expect(appends.map((append) => _responseItemCallId(line: append.line)), ["live-call"]);
     });
 
+    test("a start still resolving its rollout when stopAll runs installs no cursor", () async {
+      final directory = Directory.systemTemp.createTempSync("codex-tail-");
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final path = p.join(directory.path, "rollout.jsonl");
+      File(path).writeAsStringSync("");
+      final api = CodexRolloutApi(environment: const {});
+      final lookup = Completer<String?>();
+      final tailer = CodexRolloutTailer(
+        rolloutApi: api,
+        catalogRepository: _DeferredCatalogRepository(rolloutApi: api, lookup: lookup.future),
+        pollInterval: const Duration(milliseconds: 5),
+      );
+      final appends = <CodexRolloutAppend>[];
+      final subscription = tailer.appends.listen(appends.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await tailer.dispose();
+      });
+
+      final started = tailer.start(sessionId: "session-1");
+      tailer.stopAll();
+      lookup.complete(path);
+      await started;
+      File(path).writeAsStringSync("${_record(callId: "late-call")}\n", mode: FileMode.append);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      expect(appends, isEmpty);
+    });
+
     group("on a cold catalog", () {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       late Directory codexHome;
