@@ -34,7 +34,6 @@ void main() {
     projectId: null,
     query: query,
     quickFilter: quickFilter,
-    everyProjectRows: rows,
     rows: rows,
     counts: counts,
     failures: failures,

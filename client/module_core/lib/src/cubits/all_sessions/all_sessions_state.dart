@@ -57,11 +57,6 @@ sealed class AllSessionsState with _$AllSessionsState {
     required String query,
     required SessionListQuickFilter quickFilter,
 
-    /// Every loaded project's rows in [rows]' order, whatever the filter, the
-    /// query and the chip, less the hidden sessions: what a jump-to search
-    /// offers.
-    required List<AllSessionsRow> everyProjectRows,
-
     /// Newest first, by last update (archived: by archive time) and never by
     /// status, narrowed by the filter, the query, the chip and the hidden
     /// sessions. Date headings are the presentation's, over this order.

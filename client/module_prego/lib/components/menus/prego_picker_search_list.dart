@@ -145,11 +145,30 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
     return first != null && first < _rows.length ? first : null;
   }
 
+  /// Whether the user moved the highlight since the query last changed.
+  bool _moved = false;
+
   @override
   void didUpdateWidget(PregoPickerSearchList oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (identical(oldWidget.rows, widget.rows)) return;
+    // Rows that change for the same query, such as late matches added below,
+    // keep an option the user moved to, so Enter still picks what they chose.
+    final highlighted = _highlighted;
+    final oldRows = oldWidget.rows ?? const [];
+    if (_moved && highlighted != null) {
+      if (highlighted >= oldRows.length) {
+        final pill = highlighted - oldRows.length + _rows.length;
+        if (pill < _rows.length + _footerActions.length) {
+          _highlighted = pill;
+          return;
+        }
+      } else if (_rows.elementAtOrNull(highlighted) is PregoPickerSearchOption) {
+        return;
+      }
+    }
     // New matches start from the top.
-    if (!identical(oldWidget.rows, widget.rows)) _highlighted = _firstHighlight();
+    _highlighted = _firstHighlight();
   }
 
   @override
@@ -171,6 +190,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
     // With nothing highlighted, Down still reaches the footer.
     final next = _nextOption(after: _highlighted ?? -1, step: step);
     if (next == null) return;
+    _moved = true;
     setState(() => _highlighted = next);
     // The next option neighbours the last one, so the list has built it. The
     // footer's pills carry no key: they are outside the scroll.
@@ -199,6 +219,7 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
 
   void _setQuery(String value) {
     if (_scrollController.hasClients) _scrollController.jumpTo(0);
+    _moved = false;
     widget.onQueryChanged(value.trim().toLowerCase());
   }
 
@@ -214,7 +235,9 @@ class _PickerSearchListState() extends State<PregoPickerSearchList> {
       pointer: pointer,
       isHighlighted: pointer && entry == highlighted,
       onHover: () {
-        if (_highlighted != entry) setState(() => _highlighted = entry);
+        if (_highlighted == entry) return;
+        _moved = true;
+        setState(() => _highlighted = entry);
       },
     );
     final list = switch ((widget.rows, widget.emptyText)) {

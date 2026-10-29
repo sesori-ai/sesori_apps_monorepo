@@ -46,7 +46,6 @@ void main() {
       projectId: null,
       query: "",
       quickFilter: SessionListQuickFilter.all,
-      everyProjectRows: rows,
       rows: rows,
       counts: SessionListChipCounts(all: sessions.length, running: 0, unread: 0),
       failures: const [],

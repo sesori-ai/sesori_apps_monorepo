@@ -192,7 +192,6 @@ class AllSessionsCubit({
       projectId: projectId,
       query: query,
       quickFilter: quickFilter,
-      everyProjectRows: List.unmodifiable(everyProject.where(shown)),
       rows: List.unmodifiable(
         counted.where(
           (row) => switch (quickFilter) {

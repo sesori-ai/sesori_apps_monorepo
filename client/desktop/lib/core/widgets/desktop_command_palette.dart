@@ -33,13 +33,12 @@ String desktopShortcutLabel({required SingleActivator shortcut}) {
   return defaultTargetPlatform == TargetPlatform.macOS ? "⌘$key" : "Ctrl+$key";
 }
 
-typedef _PaletteSession = ({ProjectSummary project, String projectName, Session session});
-
-/// Opens the palette over [commands], the cockpit's projects and every
-/// project's sessions, newest first, whatever the sidebar list's filter,
-/// search and chip, as they stand now: rows that moved under the highlight
-/// would make Enter pick something else. A pick closes the palette, then acts;
-/// a project pick filters the sidebar's list to it.
+/// Opens the palette over [commands], the cockpit's projects and the sessions
+/// of every project, whatever the sidebar list's filter, search and chip. The
+/// commands and projects are those that stand now; the sessions come from a
+/// [SessionSearchCubit] and sit last, so its later answers only change rows
+/// below the ones already read. A pick closes the palette, then acts; a
+/// project pick filters the sidebar's list to it.
 Future<void> showDesktopCommandPalette({
   required BuildContext context,
   required List<DesktopCommand> commands,
@@ -48,10 +47,9 @@ Future<void> showDesktopCommandPalette({
 }) {
   final projectState = context.read<ProjectListCubit>().state;
   final projects = projectState is ProjectListLoaded ? projectState.projects : const <ProjectSummary>[];
-  final sessions = <_PaletteSession>[
-    for (final AllSessionsRow(:project, :session) in context.read<AllSessionsCubit>().state.everyProjectRows)
-      (project: project, projectName: desktopProjectDisplayName(context: context, project: project), session: session),
-  ];
+  // The dialog's route sits above the session scope, so its owners are read here.
+  final window = context.read<SessionWindowService>();
+  final projectInventory = context.read<ProjectInventoryService>();
   final authGate = context.read<AuthGateCubit>();
   // ignore: no_slop_linter/avoid_raw_modal_presenters, a desktop-only Spotlight-style command palette overlay, not a sheet or dialog
   return showDialog<void>(
@@ -70,24 +68,26 @@ Future<void> showDesktopCommandPalette({
         bloc: authGate,
         listenWhen: (_, state) => state is AuthGateSignedOut,
         listener: (_, _) => close(),
-        child: _CommandPalette(
-          commands: commands,
-          sessions: sessions,
-          projects: [
-            for (final project in projects)
-              (project: project, name: desktopProjectDisplayName(context: context, project: project)),
-          ],
-          onClose: close,
-          onPickCommand: (command) => pick(command.run),
-          onPickSession: (item) => pick(
-            () => onOpenSession(
-              context: context,
-              project: item.project,
-              displayName: item.projectName,
-              session: item.session,
+        child: BlocProvider(
+          create: (_) => SessionSearchCubit(window: window, projectInventory: projectInventory),
+          child: _CommandPalette(
+            commands: commands,
+            projects: [
+              for (final project in projects)
+                (project: project, name: desktopProjectDisplayName(context: context, project: project)),
+            ],
+            onClose: close,
+            onPickCommand: (command) => pick(command.run),
+            onPickSession: (match) => pick(
+              () => onOpenSession(
+                context: context,
+                project: match.project,
+                displayName: desktopProjectDisplayName(context: context, project: match.project),
+                session: match.session,
+              ),
             ),
+            onPickProject: (project) => pick(() => onSelectProject(projectId: project.project.id)),
           ),
-          onPickProject: (project) => pick(() => onSelectProject(projectId: project.project.id)),
         ),
       );
     },
@@ -96,11 +96,10 @@ Future<void> showDesktopCommandPalette({
 
 class const _CommandPalette({
   required final List<DesktopCommand> commands,
-  required final List<_PaletteSession> sessions,
   required final List<({ProjectSummary project, String name})> projects,
   required final VoidCallback onClose,
   required final ValueChanged<DesktopCommand> onPickCommand,
-  required final ValueChanged<_PaletteSession> onPickSession,
+  required final ValueChanged<SessionSearchMatch> onPickSession,
   required final ValueChanged<({ProjectSummary project, String name})> onPickProject,
 }) extends StatefulWidget {
   @override
@@ -115,56 +114,7 @@ class _CommandPaletteState() extends State<_CommandPalette> {
     final loc = context.loc;
     final prego = context.prego;
     final commands = matchTitles(items: widget.commands, titleOf: (command) => command.label, query: _query);
-    final sessions = matchTitles(
-      items: widget.sessions,
-      titleOf: (item) => item.session.title ?? loc.sessionListUntitled,
-      query: _query,
-    );
     final projects = matchTitles(items: widget.projects, titleOf: (project) => project.name, query: _query);
-    final rows = <PregoPickerSearchRow>[
-      if (commands.isNotEmpty) PregoPickerSearchHeading(text: loc.desktopCommandPaletteCommands),
-      for (final command in commands)
-        PregoPickerSearchOption(
-          isSelected: false,
-          onPick: () => widget.onPickCommand(command),
-          child: _PaletteRow(
-            icon: command.icon,
-            title: command.label,
-            detail: null,
-            trailing: switch (command.shortcut) {
-              final shortcut? => desktopShortcutLabel(shortcut: shortcut),
-              null => null,
-            },
-            query: _query,
-          ),
-        ),
-      if (sessions.isNotEmpty) PregoPickerSearchHeading(text: loc.sessionListTitle),
-      for (final item in sessions)
-        PregoPickerSearchOption(
-          isSelected: false,
-          onPick: () => widget.onPickSession(item),
-          child: _PaletteRow(
-            icon: TablerRegular.message,
-            title: item.session.title ?? loc.sessionListUntitled,
-            detail: item.projectName,
-            trailing: null,
-            query: _query,
-          ),
-        ),
-      if (projects.isNotEmpty) PregoPickerSearchHeading(text: loc.projectListTitle),
-      for (final project in projects)
-        PregoPickerSearchOption(
-          isSelected: false,
-          onPick: () => widget.onPickProject(project),
-          child: _PaletteRow(
-            icon: TablerRegular.folder,
-            title: project.name,
-            detail: null,
-            trailing: null,
-            query: _query,
-          ),
-        ),
-    ];
     return Align(
       alignment: AlignmentDirectional.topCenter,
       child: Padding(
@@ -185,13 +135,67 @@ class _CommandPaletteState() extends State<_CommandPalette> {
                 borderRadius: BorderRadius.circular(PregoRadius.lg),
                 side: BorderSide(color: prego.colors.borderSecondary, width: 0.5),
               ),
-              child: PregoPickerSearchList(
-                searchHint: loc.desktopCommandPaletteHint,
-                onQueryChanged: (query) => setState(() => _query = query),
-                footer: null,
-                rows: rows,
-                emptyText: loc.listSearchNoMatches,
-                onClose: widget.onClose,
+              // An answer that changes nothing keeps the rows, and with them
+              // the highlight.
+              child: BlocBuilder<SessionSearchCubit, SessionSearchState>(
+                buildWhen: (previous, current) =>
+                    !identical(previous.matches, current.matches) ||
+                    (current.matches.isEmpty && previous.isSearching != current.isSearching),
+                builder: (context, search) => PregoPickerSearchList(
+                  searchHint: loc.desktopCommandPaletteHint,
+                  onQueryChanged: (query) {
+                    setState(() => _query = query);
+                    context.read<SessionSearchCubit>().setQuery(query: query);
+                  },
+                  footer: null,
+                  rows: [
+                    if (commands.isNotEmpty) PregoPickerSearchHeading(text: loc.desktopCommandPaletteCommands),
+                    for (final command in commands)
+                      PregoPickerSearchOption(
+                        isSelected: false,
+                        onPick: () => widget.onPickCommand(command),
+                        child: _PaletteRow(
+                          icon: command.icon,
+                          title: command.label,
+                          detail: null,
+                          trailing: switch (command.shortcut) {
+                            final shortcut? => desktopShortcutLabel(shortcut: shortcut),
+                            null => null,
+                          },
+                          query: _query,
+                        ),
+                      ),
+                    if (projects.isNotEmpty) PregoPickerSearchHeading(text: loc.projectListTitle),
+                    for (final project in projects)
+                      PregoPickerSearchOption(
+                        isSelected: false,
+                        onPick: () => widget.onPickProject(project),
+                        child: _PaletteRow(
+                          icon: TablerRegular.folder,
+                          title: project.name,
+                          detail: null,
+                          trailing: null,
+                          query: _query,
+                        ),
+                      ),
+                    if (search.matches.isNotEmpty) PregoPickerSearchHeading(text: loc.sessionListTitle),
+                    for (final match in search.matches)
+                      PregoPickerSearchOption(
+                        isSelected: false,
+                        onPick: () => widget.onPickSession(match),
+                        child: _PaletteRow(
+                          icon: TablerRegular.message,
+                          title: match.session.title ?? loc.sessionListUntitled,
+                          detail: desktopProjectDisplayName(context: context, project: match.project),
+                          trailing: null,
+                          query: _query,
+                        ),
+                      ),
+                  ],
+                  // Until the bridge answers, nothing matching yet is not "no matches".
+                  emptyText: search.isSearching ? null : loc.listSearchNoMatches,
+                  onClose: widget.onClose,
+                ),
               ),
             ),
           ),
