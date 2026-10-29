@@ -3,6 +3,7 @@ import "dart:io";
 
 import "package:dbus/dbus.dart";
 import "package:flutter/foundation.dart" show protected, visibleForTesting;
+import "package:flutter/services.dart" show EventChannel;
 import "package:injectable/injectable.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop_core/sesori_desktop_core.dart";
@@ -11,9 +12,16 @@ import "package:tray_manager/tray_manager.dart";
 @visibleForTesting
 typedef LinuxStatusNotifierHostProbe = Future<bool> Function();
 
-/// Flutter/tray_manager adapter. It renders the supplied menu verbatim and
-/// reports clicked entries as typed commands; lifecycle policy stays in
-/// `BridgeControlCubit`.
+/// Colour of the mark itself. macOS shows the one that contrasts with the menu
+/// bar; Linux and Windows keep the white mark.
+enum _MarkShade() {
+  black,
+  white,
+}
+
+/// Flutter/tray_manager adapter. It renders the supplied menu verbatim, shows
+/// the icon variant for its status and reports clicked entries as typed
+/// commands; lifecycle policy stays in `BridgeControlCubit`.
 @LazySingleton(as: SystemTray)
 class FlutterSystemTray.forTesting({
   required final bool _isLinux,
@@ -33,11 +41,14 @@ class FlutterSystemTray.forTesting({
   this;
 
   static const String _linuxStatusNotifierWatcher = "org.kde.StatusNotifierWatcher";
-  static const String _pngIconPath = "assets/tray_icon.png";
-  static const String _windowsIconPath = "assets/tray_icon.ico";
+  static const EventChannel _menuBarAppearanceChannel = EventChannel("sesori/menu_bar_appearance");
 
   final StreamController<SystemTrayCommand> _commands = StreamController<SystemTrayCommand>.broadcast(sync: true);
   _NativeTray? _tray;
+  StreamSubscription<bool>? _menuBarAppearance;
+  SystemTrayStatus _status = SystemTrayStatus.off;
+  // Corrected by the first appearance report, a moment after the icon shows.
+  _MarkShade _shade = _MarkShade.black;
   bool _disposed = false;
 
   // The native constructors need the platform library, so tests override
@@ -58,6 +69,13 @@ class FlutterSystemTray.forTesting({
   @visibleForTesting
   MenuItem? createMenuItem({required String label}) => MenuItem.createWithLabelAndType(label, MenuItemType.normal);
 
+  /// Whether the macOS menu bar behind [icon] is dark, reported on every
+  /// change by the runner's `MenuBarAppearance.swift`.
+  @protected
+  @visibleForTesting
+  Stream<bool> watchMenuBarDarkness({required TrayIcon icon}) =>
+      _menuBarAppearanceChannel.receiveBroadcastStream(icon.nativeObject.address).cast<bool>();
+
   @override
   Stream<SystemTrayCommand> get commands => _commands.stream;
 
@@ -72,7 +90,8 @@ class FlutterSystemTray.forTesting({
       return SystemTrayAvailability.unavailable;
     }
 
-    final String iconPath = _isWindows ? _windowsIconPath : _pngIconPath;
+    _status = menu.status;
+    final String iconPath = _iconPath();
     final Image? image = loadAsset(path: iconPath);
     final Menu? nativeMenu = createMenu();
     final TrayIcon? icon = createTrayIcon();
@@ -85,16 +104,14 @@ class FlutterSystemTray.forTesting({
     final _NativeTray tray = _NativeTray(
       icon: icon,
       image: image,
+      iconPath: iconPath,
       menu: nativeMenu,
       listenerId: icon.addListener(_onTrayIconEvent),
     );
     try {
-      // macOS template images are recolored by the system for light/dark menu
-      // bars. The asset is therefore a transparent monochrome mark, not a
-      // precomposited square icon.
-      icon
-        ..isIconTemplate = _isMacOS
-        ..icon = image;
+      // The status dot has colour, so the macOS image cannot be a template the
+      // system recolours; the mark's shade follows the menu bar instead.
+      icon.icon = image;
       if (_isLinux) {
         // Linux's host renders the exported menu; openContextMenu is unsupported there.
         icon.setContextMenuTrigger(ContextMenuTrigger.clicked);
@@ -108,6 +125,14 @@ class FlutterSystemTray.forTesting({
       rethrow;
     }
     _tray = tray;
+    if (_isMacOS) {
+      _menuBarAppearance = watchMenuBarDarkness(icon: icon).listen(
+        _onMenuBarAppearance,
+        onError: (Object error, StackTrace stackTrace) {
+          logw("Failed to follow the menu bar appearance", error, stackTrace);
+        },
+      );
+    }
     return SystemTrayAvailability.available;
   }
 
@@ -125,6 +150,8 @@ class FlutterSystemTray.forTesting({
   /// could leave macOS showing the previous one, because nativeapi detaches an
   /// opened menu from the status item only when that same menu closes.
   void _render({required _NativeTray tray, required SystemTrayMenu menu}) {
+    _status = menu.status;
+    _showIcon(tray: tray);
     final List<MenuItem> previous = tray.items;
     tray.items = <MenuItem>[];
     tray.menu.clear();
@@ -151,6 +178,45 @@ class FlutterSystemTray.forTesting({
     }
     // Setting the same menu again is what publishes the new layout on Linux.
     tray.icon.setContextMenu(tray.menu);
+  }
+
+  void _onMenuBarAppearance(bool isDark) {
+    _shade = isDark ? _MarkShade.white : _MarkShade.black;
+    final _NativeTray? tray = _tray;
+    if (tray == null) {
+      return;
+    }
+    try {
+      _showIcon(tray: tray);
+    } on Object catch (error, stackTrace) {
+      logw("Failed to recolour the system tray icon", error, stackTrace);
+    }
+  }
+
+  /// Swaps in the variant for the current status and shade, if it changed.
+  void _showIcon({required _NativeTray tray}) {
+    final String path = _iconPath();
+    if (path == tray.iconPath) {
+      return;
+    }
+    final Image? image = loadAsset(path: path);
+    if (image == null) {
+      throw StateError("Unable to load the system tray icon $path");
+    }
+    tray.icon.icon = image;
+    tray.image.dispose();
+    tray
+      ..image = image
+      ..iconPath = path;
+  }
+
+  String _iconPath() {
+    final String status = _status.name;
+    if (_isWindows) {
+      return "assets/tray/tray_icon_$status.ico";
+    }
+    final _MarkShade shade = _isMacOS ? _shade : _MarkShade.white;
+    return "assets/tray/tray_icon_${status}_${shade.name}.png";
   }
 
   MenuItem _addItem({required _NativeTray tray, required String label, required bool enabled}) {
@@ -184,6 +250,7 @@ class FlutterSystemTray.forTesting({
     }
     _disposed = true;
     try {
+      await _menuBarAppearance?.cancel();
       _tray?.dispose();
       _tray = null;
     } finally {
@@ -211,10 +278,13 @@ class FlutterSystemTray.forTesting({
 /// explicitly; a collected `TrayIcon` would silently remove the icon.
 class _NativeTray({
   required final TrayIcon icon,
-  required final Image _image,
+  required Image image,
+  required String iconPath,
   required final Menu menu,
   required final ListenerId _listenerId,
 }) {
+  Image image = image;
+  String iconPath = iconPath;
   List<MenuItem> items = <MenuItem>[];
 
   void dispose() {
@@ -225,6 +295,6 @@ class _NativeTray({
       item.dispose();
     }
     menu.dispose();
-    _image.dispose();
+    image.dispose();
   }
 }

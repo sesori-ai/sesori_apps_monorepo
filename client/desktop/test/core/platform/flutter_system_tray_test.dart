@@ -1,3 +1,5 @@
+import "dart:async";
+
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_desktop/core/platform/flutter_system_tray.dart";
@@ -12,7 +14,6 @@ void main() {
   });
 
   late _MockTrayIcon icon;
-  late _MockImage image;
   late _MockMenu menu;
   late Map<String, _MockMenuItem> items;
   late Map<String, void Function(MenuEvent)> itemListeners;
@@ -20,7 +21,6 @@ void main() {
 
   setUp(() {
     icon = _MockTrayIcon();
-    image = _MockImage();
     menu = _MockMenu();
     items = <String, _MockMenuItem>{};
     itemListeners = <String, void Function(MenuEvent)>{};
@@ -52,7 +52,6 @@ void main() {
   }) {
     return _TestSystemTray(
       icon: icon,
-      image: image,
       menu: menu,
       createItem: createItem,
       isLinux: isLinux,
@@ -88,9 +87,8 @@ void main() {
 
     expect(availability, SystemTrayAvailability.available);
     expect(items.keys, <String>["Bridge: Off", "Turn Bridge On"]);
-    expect(tray.loadedAssets, <String>["assets/tray_icon.png"]);
-    verify(() => icon.isIconTemplate = false).called(1);
-    verify(() => icon.icon = image).called(1);
+    expect(tray.loadedAssets, <String>["assets/tray/tray_icon_off_white.png"]);
+    verify(() => icon.icon = tray.loadedImages.single).called(1);
     verifyInOrder(<void Function()>[
       () => icon.setContextMenuTrigger(ContextMenuTrigger.clicked),
       () => icon.setContextMenu(menu),
@@ -140,22 +138,53 @@ void main() {
     await tray.initialize(menu: _menu);
     await tray.dispose();
 
-    expect(tray.loadedAssets, <String>["assets/tray_icon.ico"]);
+    expect(tray.loadedAssets, <String>["assets/tray/tray_icon_off.ico"]);
     verifyNever(() => icon.setContextMenuTrigger(ContextMenuTrigger.clicked));
     verify(() => icon.removeListener(7)).called(1);
     verify(icon.dispose).called(1);
     verify(menu.dispose).called(1);
-    verify(image.dispose).called(1);
+    verify(tray.loadedImages.single.dispose).called(1);
   });
 
-  test("uses a macOS template icon for automatic light/dark recoloring", () async {
-    final _TestSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true, linuxHostProbe: null);
+  test("Windows swaps the ICO variant when the status changes", () async {
+    final _TestSystemTray tray = createTray(isLinux: false, isWindows: true, isMacOS: false, linuxHostProbe: null);
     addTearDown(tray.dispose);
 
     await tray.initialize(menu: _menu);
+    await tray.setMenu(menu: _menuWith(status: SystemTrayStatus.failed));
 
-    verify(() => icon.isIconTemplate = true).called(1);
+    expect(tray.loadedAssets, <String>["assets/tray/tray_icon_off.ico", "assets/tray/tray_icon_failed.ico"]);
+  });
+
+  test("macOS swaps the coloured icon for status and menu bar changes, skipping repeats", () async {
+    final _TestSystemTray tray = createTray(isLinux: false, isWindows: false, isMacOS: true, linuxHostProbe: null);
+    addTearDown(tray.dispose);
+
+    await tray.initialize(menu: _menuWith(status: SystemTrayStatus.connecting));
+    await tray.setMenu(menu: _menuWith(status: SystemTrayStatus.connected));
+    await tray.setMenu(menu: _menuWith(status: SystemTrayStatus.connected));
+    tray.menuBarDarkness.add(true);
+    tray.menuBarDarkness.add(true);
+    await tray.setMenu(menu: _menuWith(status: SystemTrayStatus.failed));
+    tray.menuBarDarkness.add(false);
+
+    expect(tray.loadedAssets, <String>[
+      "assets/tray/tray_icon_connecting_black.png",
+      "assets/tray/tray_icon_connected_black.png",
+      "assets/tray/tray_icon_connected_white.png",
+      "assets/tray/tray_icon_failed_white.png",
+      "assets/tray/tray_icon_failed_black.png",
+    ]);
+    verifyNever(() => icon.isIconTemplate = any());
     verifyNever(() => icon.setContextMenuTrigger(ContextMenuTrigger.clicked));
+    // Each replaced image is released once the next one is shown.
+    for (final _MockImage replaced in tray.loadedImages.take(4)) {
+      verify(replaced.dispose).called(1);
+    }
+    verifyNever(tray.loadedImages.last.dispose);
+    expect(tray.menuBarDarkness.hasListener, isTrue);
+    await tray.dispose();
+    expect(tray.menuBarDarkness.hasListener, isFalse);
   });
 
   test("releases native handles when the icon cannot be shown", () async {
@@ -167,11 +196,14 @@ void main() {
 
     verify(icon.dispose).called(1);
     verify(menu.dispose).called(1);
-    verify(image.dispose).called(1);
+    verify(tray.loadedImages.single.dispose).called(1);
   });
 }
 
-final SystemTrayMenu _menu = SystemTrayMenu(
+final SystemTrayMenu _menu = _menuWith(status: SystemTrayStatus.off);
+
+SystemTrayMenu _menuWith({required SystemTrayStatus status}) => SystemTrayMenu(
+  status: status,
   entries: const <SystemTrayMenuEntry>[
     SystemTrayTextItem(label: "Bridge: Off"),
     SystemTrayCommandItem(
@@ -185,7 +217,6 @@ final SystemTrayMenu _menu = SystemTrayMenu(
 
 class _TestSystemTray({
   required final TrayIcon icon,
-  required final Image image,
   required final Menu menu,
   required final MenuItem Function(String label) createItem,
   required super.isLinux,
@@ -196,6 +227,8 @@ class _TestSystemTray({
   this : super.forTesting();
 
   final List<String> loadedAssets = <String>[];
+  final List<_MockImage> loadedImages = <_MockImage>[];
+  final StreamController<bool> menuBarDarkness = StreamController<bool>(sync: true);
 
   @override
   TrayIcon? createTrayIcon() => icon;
@@ -203,8 +236,13 @@ class _TestSystemTray({
   @override
   Image? loadAsset({required String path}) {
     loadedAssets.add(path);
+    final _MockImage image = _MockImage();
+    loadedImages.add(image);
     return image;
   }
+
+  @override
+  Stream<bool> watchMenuBarDarkness({required TrayIcon icon}) => menuBarDarkness.stream;
 
   @override
   Menu? createMenu() => menu;

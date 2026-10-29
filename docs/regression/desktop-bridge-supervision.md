@@ -21,9 +21,17 @@ and keep native close/quit behavior safe.
 
 - The desktop boots a visible Prego-themed window and eagerly initializes tray
   supervision even while signed out. Exactly one process owns the desktop
-  instance lock and activation listener. The macOS tray uses the transparent
-  monochrome Sesori mark as a template image so the system renders it legibly
-  in both light and dark menu bars.
+  instance lock and activation listener.
+- The tray icon is the monochrome Sesori mark with a small bridge status dot,
+  separated by a transparent gap, in its bottom-right corner, on macOS, Windows
+  and Linux. Green: running and connected to the relay. Amber: should run and is
+  starting, reconnecting, waiting for the server or authentication, or retrying
+  after a crash. Grey: the user turned the bridge off. Red: should run but needs
+  the user (start failure or repair, sign-in required, another bridge owns the
+  machine or relay, crash retries exhausted). The icon swaps in place when the
+  status changes. macOS shows a black mark on a light menu bar and a white one
+  on a dark menu bar, following the status button's own appearance (which can
+  be dark in system light mode); Windows and Linux keep the white mark.
 - A second launch signals the owner, exits without another tray/helper, and
   restores/focuses the owner's window. A killed owner releases the OS lock;
   stale activation metadata cannot block the next launch.
@@ -213,7 +221,7 @@ and keep native close/quit behavior safe.
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Automated desktop startup proves eager tray initialization, Prego theme assembly, signed-out login rendering, signed-in cockpit/sidebar supervision rendering, shared desktop Settings with mobile push omitted and native attention exposed, and the typed session-detail route. No plugin. |
-| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, helper-stop refusal to exit, bounded best-effort log flushing, On/Off recovery, explicit idempotent Start, diagnostics folder launch, log levels/context/rotation/restart/UTF-8/permissions/failure recovery and parsing-body omission, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
+| L2 Routine | Automated outage-state, offline-readiness, token-wait/recovery and control-channel status replay coverage; cubit/adapter coverage for tray status-dot derivation and icon variant swaps, Open/focus, close-to-hide, no-tray close-to-Quit, ordered Quit, quit-preserved desired state, helper-stop refusal to exit, bounded best-effort log flushing, On/Off recovery, explicit idempotent Start, diagnostics folder launch, log levels/context/rotation/restart/UTF-8/permissions/failure recovery and parsing-body omission, bounds restore/clamp/debounce/terminal flush before first show, durable-Off-before-local-logout, notification cancel-all before credential clear, helper unregister command, no-competing-shutdown expected stop, account-bound persisted bridge-id restart, owner-mismatch protection, 404-idempotent deletion, offline deletion failure, explicit Take Over, cockpit-wide exceptional supervision, retained bundle-refusal guidance/no-spawn cleanup/explicit retry and non-modal hidden startup, both project recovery variants omitting CLI copy, adaptive session split ownership, desktop Enter/Shift+Enter and safe Escape behavior, selectable transcript/diff content, SSE-derived attention gating/routing/cancellation/toggle, root-popup dismissal before same-session reveal or different-session replacement, desktop transcript rendering and pending-question presentation without dead composer/diff controls, app-wide preference persistence, desktop settings/harness composition, profile logout delegation, analytics-before-auth logout ordering, and failed-logout analytics recovery; cross-process lock/activation, killed-owner recovery, persisted desired state, and auth-gated startup restoration. No plugin. |
 | L3 Release | Client end to end on macOS with a dev-built helper and representative live plugin: browser login/relaunch restore, healthy handshake, phone session round-trip, helper crash/backoff, exit-86 restart, login-required behavior, Off/close/Quit orphan checks, and standalone CLI coexistence. |
 | L4 Extended | Client end to end on Windows and Linux, including a Linux StatusNotifier host and a no-host windowed fallback; vary helper startup/stop failures, relay takeover, crash diagnostics, and default folder-handler availability. |
 | L5 Full | Packaged desktop artifacts on every release target, including native tray/window appearance, signing/install behavior, and long-running supervision through repeated sleep, reconnect, restart, hide/show, and relaunch cycles. |
@@ -273,6 +281,10 @@ verify the actual relocated helper, not merely the presence of its binary.
   lifecycle work, Open shows without focusing, native close bypasses teardown,
   or the macOS tray icon has an opaque background/wrong light-dark treatment,
   the Dock still shows a hidden window, or secondary tray clicks do nothing.
+- The tray dot shows the wrong colour for the bridge state, turns red while the
+  bridge is turned off or merely reconnecting, stays stale after a state
+  change, or the macOS mark is black on a dark menu bar (or white on a light
+  one), including after switching dark mode or the wallpaper.
 - Restored bounds are applied after a visible flash, land wholly off-screen,
   ignore current display work areas, retain a native minimum larger than the
   selected work area, fail to persist after move/resize, or one failed write
