@@ -585,6 +585,7 @@ class CatalogImportRepository({
             await Future<void>.delayed(Duration.zero);
           } else if ((index + 1) % _responsivenessBatchSize == 0) {
             // Skipped rows write nothing, so yield on rows processed as well.
+            requireCurrentGeneration();
             await Future<void>.delayed(Duration.zero);
           }
         }
