@@ -326,6 +326,34 @@ void main() {
       });
     });
 
+    test("a reload that failed while disconnected runs again on reconnect", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 1);
+        final window = create();
+        async.flushMicrotasks();
+
+        status.add(const ConnectionStatus.disconnected());
+        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        connection.emitDataMayBeStale();
+        async.flushMicrotasks();
+        expect(ids(window), ["s0000"]);
+
+        bridge.answer = null;
+        bridge.sessions = _sessions(count: 2);
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect(ids(window), ["s0000", "s0001"]);
+
+        // A plain reconnect after a successful load relies on the replayed events.
+        bridge.requests.clear();
+        status.add(const ConnectionStatus.disconnected());
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect(bridge.requests, isEmpty);
+        unawaited(window.dispose());
+      });
+    });
+
     test("a first load that fails shows the failure, and a reconnect retries", () {
       inFakeTime((async) {
         bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
@@ -466,6 +494,20 @@ void main() {
         expect(ids(window), isNot(contains("s0001")));
         emit(SesoriSseEvent.sessionDeleted(info: bridge.sessions.first));
         expect(ids(window), isNot(contains("s0000")));
+        unawaited(window.dispose());
+      });
+    });
+
+    test("an update keeps the last loaded row while more pages exist", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        final last = bridge.sessions[199];
+
+        emit(SesoriSseEvent.sessionUpdated(info: last.copyWith(title: "Renamed")));
+        expect(ids(window), hasLength(200));
+        expect(loaded(window).sessions.last.title, "Renamed");
         unawaited(window.dispose());
       });
     });
@@ -713,7 +755,10 @@ void main() {
       bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
       unawaited(window.search(query: "deploy", limit: 20).then((value) => result = value));
       async.flushMicrotasks();
-      expect(result, isA<SessionWindowSearchFailure>());
+      expect(
+        result,
+        isA<SessionWindowSearchFailure>().having((failure) => failure.reason, "reason", RemoteFailureReason.unknown),
+      );
       unawaited(window.dispose());
     });
   });

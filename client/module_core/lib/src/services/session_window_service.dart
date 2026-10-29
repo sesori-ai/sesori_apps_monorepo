@@ -81,6 +81,10 @@ class SessionWindowService({
   Set<String> _completeProjectIds = const {};
 
   bool _connected = false;
+
+  /// A load failed and left older rows on screen, so the next reconnect
+  /// loads them again instead of relying on the replayed events.
+  bool _rowsOutdated = false;
   Timer? _queryTimer;
   Timer? _reloadTimer;
   Timer? _countsTimer;
@@ -184,7 +188,7 @@ class SessionWindowService({
             loadMore: SessionWindowLoadMore.idle,
           ),
         );
-        replay.forEach(_applyChange);
+        _reapply(replay);
       case SessionPageUnsupported():
         unawaited(_loadComplete());
       case SessionPageFailure(:final error):
@@ -195,8 +199,8 @@ class SessionWindowService({
 
   /// Refetches the loaded range, at least one page, and swaps it in once
   /// every page has arrived, so a reader far down keeps their place. Answers
-  /// false when it failed; a load superseded by a newer one reports through
-  /// [state] instead.
+  /// false when it failed, and true when it succeeded or a newer load
+  /// superseded it; that load reports through [state].
   Future<bool> reload() {
     if (_state.isClosed) return Future.value(false);
     if (_completeSessions != null) return _loadComplete();
@@ -236,7 +240,7 @@ class SessionWindowService({
           SessionWindowLoading() || SessionWindowFailed() => const [],
         },
       ),
-      SessionPageFailure(:final error) => SessionWindowSearchFailure(error: error),
+      SessionPageFailure(:final error) => SessionWindowSearchFailure(reason: error.remoteFailureReason),
     };
   }
 
@@ -269,6 +273,7 @@ class SessionWindowService({
     } while (cursor != null && sessions.length < limit);
     _seedUnseen(sessions: sessions, sinceTick: unseenTick);
     final replay = _takeReplay();
+    _rowsOutdated = false;
     _emit(
       SessionWindowLoaded(
         sessions: List.unmodifiable(sessions),
@@ -277,8 +282,16 @@ class SessionWindowService({
         loadMore: SessionWindowLoadMore.idle,
       ),
     );
-    replay.forEach(_applyChange);
+    _reapply(replay);
     return true;
+  }
+
+  /// Re-applies the changes seen during a load; the answer's counts predate
+  /// them, so they are asked again.
+  void _reapply(List<_SessionChange> replay) {
+    if (replay.isEmpty) return;
+    replay.forEach(_applyChange);
+    _scheduleCounts();
   }
 
   // COMPATIBILITY 2026-10-28 (v1.10.2): a bridge without /sessions/page lists
@@ -318,6 +331,8 @@ class SessionWindowService({
     }
     _completeSessions = complete;
     _emitComplete(sessions: complete);
+    // The inventory may have changed while the projects were read.
+    unawaited(_admitProjects(inventory: _projectInventory.state));
     return succeeded;
   }
 
@@ -328,10 +343,7 @@ class SessionWindowService({
     final current = _projectInventory.state;
     if (current is! ProjectListLoading) return Future.value(current);
     final settled = Completer<ProjectListState>();
-    _projectInventory.stateStream
-        .where((state) => state is! ProjectListLoading)
-        .take(1)
-        .listen(settled.complete);
+    _projectInventory.stateStream.where((state) => state is! ProjectListLoading).take(1).listen(settled.complete);
     return settled.future;
   }
 
@@ -385,10 +397,13 @@ class SessionWindowService({
     if (_state.isClosed || generation != _generation) return;
     if (_completeSessions case final current?) {
       // Rows that live events already brought are newer than this read.
+      // A project the inventory dropped meanwhile stays out.
       final listed = {for (final session in current) session.id};
+      final admitted = sessions.where(
+        (session) => !listed.contains(session.id) && _completeProjectIds.contains(session.projectID),
+      );
       _setComplete(
-        sessions: [...current, ...sessions.where((session) => !listed.contains(session.id))]
-          ..sort((a, b) => _compare(a: a, b: b)),
+        sessions: [...current, ...admitted]..sort((a, b) => _compare(a: a, b: b)),
       );
     }
   }
@@ -425,6 +440,7 @@ class SessionWindowService({
       _generation++;
       _replay = null;
       _completeSessions = null;
+      _rowsOutdated = false;
       _cancelTimers();
       _emit(const SessionWindowLoading());
     }
@@ -432,9 +448,13 @@ class SessionWindowService({
     final reconnected = connected && !_connected;
     _connected = connected;
     if (!connected || !(changed || reconnected)) return;
-    // A plain reconnect relies on the replayed events, unless nothing loaded
-    // yet or the bridge listed everything: it may serve pages since.
-    if (_completeSessions == null && _state.value is SessionWindowLoaded) return;
+    // A plain reconnect relies on the replayed events, unless a load failed
+    // meanwhile, nothing loaded yet, or the bridge listed everything: it may
+    // serve pages since.
+    if (_completeSessions == null && _state.value is SessionWindowLoaded) {
+      if (_rowsOutdated) unawaited(reload());
+      return;
+    }
     _completeSessions = null;
     unawaited(_loadPaged(limit: pageSize));
   }
@@ -493,8 +513,8 @@ class SessionWindowService({
   }
 
   /// [sessions] without [session], then with it in order when [keep] and it
-  /// sorts before the last other row, or anywhere when [inRange]. The same
-  /// list when nothing changes.
+  /// sorts no later than the last loaded row, or anywhere when [inRange]. The
+  /// same list when nothing changes.
   List<Session> _upsert({
     required List<Session> sessions,
     required Session session,
@@ -503,8 +523,10 @@ class SessionWindowService({
   }) {
     final existing = sessions.firstWhereOrNull((row) => row.id == session.id);
     final others = existing == null ? sessions : sessions.where((row) => row.id != session.id).toList();
-    final last = others.lastOrNull;
-    if (!keep || !(inRange || (last != null && _compare(a: session, b: last) < 0))) {
+    // The last loaded row itself bounds the range, so it stays when its key
+    // does not move.
+    final last = sessions.lastOrNull;
+    if (!keep || !(inRange || (last != null && _compare(a: session, b: last) <= 0))) {
       return existing == null ? sessions : List.unmodifiable(others);
     }
     final merged = existing == null
@@ -675,9 +697,10 @@ class SessionWindowService({
     switch (_state.value) {
       // A page request the failed load superseded never answers.
       case final SessionWindowLoaded loaded when loaded.loadMore == SessionWindowLoadMore.loading:
+        _rowsOutdated = true;
         _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.idle));
       case SessionWindowLoaded():
-        break;
+        _rowsOutdated = true;
       case SessionWindowLoading() || SessionWindowFailed():
         _emit(SessionWindowFailed(reason: reason));
     }

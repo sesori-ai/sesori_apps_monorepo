@@ -1,4 +1,3 @@
-import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
@@ -43,4 +42,5 @@ sealed class const SessionWindowSearchResult();
 /// The newest sessions matching the query, at most the requested number.
 final class const SessionWindowSearchMatches({required final List<Session> sessions}) extends SessionWindowSearchResult;
 
-final class const SessionWindowSearchFailure({required final ApiError error}) extends SessionWindowSearchResult;
+final class const SessionWindowSearchFailure({required final RemoteFailureReason reason})
+    extends SessionWindowSearchResult;
