@@ -139,6 +139,45 @@ void main() {
     expect(compacted.turnId, isNull);
   });
 
+  test("a mode turn without a model uses the rollout's model on a cold catalog", () async {
+    const threadId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
+    final codexHome = Directory.systemTemp.createTempSync("codex-turn-model-");
+    addTearDown(() => codexHome.deleteSync(recursive: true));
+    File("${codexHome.path}/sessions/2026/08/01/rollout-2026-08-01T00-00-00-$threadId.jsonl")
+      ..createSync(recursive: true)
+      ..writeAsStringSync(
+        '{"type":"session_meta","payload":{"id":"$threadId","cwd":"/repo"}}\n'
+        '{"type":"turn_context","payload":{"model":"rollout-model"}}\n',
+      );
+    final service = _newService(
+      catalogRepository: CodexCatalogRepository(
+        rolloutApi: CodexRolloutApi(environment: {"CODEX_HOME": codexHome.path}),
+      ),
+      metadataRepository: _StubMetadataRepository(
+        defaults: const CodexConfigDefaults(model: "configured-model", modelProvider: "openai"),
+      ),
+    );
+    final threadRepository = _StubThreadRepository();
+    service.attachAppServerRepositories(
+      threadRepository: threadRepository,
+      modelRepository: _StubModelRepository(),
+      skillRepository: _StubSkillRepository(),
+    );
+
+    await service.sendCommand(
+      threadId: threadId,
+      command: "review",
+      arguments: "",
+      clientUserMessageId: null,
+      model: null,
+      effort: null,
+      collaborationMode: CodexCollaborationMode.plan,
+      fastMode: false,
+    );
+
+    expect(threadRepository.lastModel, "rollout-model");
+  });
+
   test("getSessionOptions uses one model catalog read for coherent agents and providers", () async {
     final service = _newService(
       metadataRepository: _StubMetadataRepository(

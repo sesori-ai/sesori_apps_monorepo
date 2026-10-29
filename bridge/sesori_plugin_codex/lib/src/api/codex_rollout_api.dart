@@ -124,6 +124,30 @@ class CodexRolloutApi({Map<String, String>? environment}) {
     ];
   }
 
+  /// [sessionId]'s rollout in the date directories around [now], or null.
+  /// Codex files a new rollout under `sessions/YYYY/MM/DD` for its creation
+  /// date; the neighbouring days cover midnight and a UTC date.
+  String? findRecentRolloutPath({required String sessionId, required DateTime now}) {
+    final root = sessionsDirectory;
+    if (root == null) return null;
+    for (final day in [now, now.subtract(const Duration(days: 1)), now.add(const Duration(days: 1))]) {
+      final directory = Directory(
+        p.join(
+          root,
+          day.year.toString(),
+          day.month.toString().padLeft(2, "0"),
+          day.day.toString().padLeft(2, "0"),
+        ),
+      );
+      if (!directory.existsSync()) continue;
+      for (final entity in directory.listSync(followLinks: false)) {
+        final name = p.basename(entity.path);
+        if (entity is File && name.startsWith("rollout-") && name.endsWith("-$sessionId.jsonl")) return entity.path;
+      }
+    }
+    return null;
+  }
+
   CodexRolloutHeader readHeader({required String rolloutPath}) {
     final file = File(rolloutPath);
     if (!file.existsSync()) return const CodexRolloutHeader(lines: [], reachedLineLimit: false, fileLength: 0);

@@ -684,7 +684,7 @@ class CodexSessionService({
     required CodexCollaborationMode? collaborationMode,
   }) async {
     final resumedThread = await resumeThreadIfNeeded(threadId: threadId, force: forceResume);
-    final turnModel = _resolveTurnModel(
+    final turnModel = await _resolveTurnModel(
       threadId: threadId,
       requestedModel: model,
       collaborationMode: collaborationMode,
@@ -724,17 +724,17 @@ class CodexSessionService({
     );
   }
 
-  String? _resolveTurnModel({
+  Future<String?> _resolveTurnModel({
     required String threadId,
     required String? requestedModel,
     required CodexCollaborationMode? collaborationMode,
-  }) {
+  }) async {
     if (requestedModel != null && requestedModel.isNotEmpty) {
       return requestedModel;
     }
     if (collaborationMode == null) return null;
     return _threadModels[threadId] ??
-        _catalogRepository.cachedSessionById(sessionId: threadId)?.model ??
+        (await _catalogRepository.findSessionById(sessionId: threadId))?.model ??
         _metadataRepository.readConfigDefaults().model;
   }
 

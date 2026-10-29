@@ -479,8 +479,10 @@ class CodexPlugin._({
     final correlatableItem = command ?? _fileChangeParser.parse(notification: notification);
     if (notification.method == "turn/started" && threadId != null) {
       // Calls initiated through this plugin start tailing before turn/start.
-      // This fallback covers a turn started by another app-server client.
-      _rolloutTailer.start(sessionId: threadId);
+      // This fallback covers a turn started by another app-server client. That
+      // turn is already running, so its path lookup must not hold up the
+      // notifications behind this one.
+      unawaited(_rolloutTailer.start(sessionId: threadId));
     }
     final drainThreadId = correlatableItem?.threadId ?? threadId;
     final isCorrelatableItemStarted = correlatableItem?.lifecycle == CodexCorrelatableItemLifecycle.started;
@@ -1074,7 +1076,7 @@ class CodexPlugin._({
     if (model != null) {
       _eventMapper.setThreadModel(sessionId, model.modelID);
     }
-    _rolloutTailer.start(sessionId: sessionId);
+    await _rolloutTailer.start(sessionId: sessionId);
     final evidenceRevision = _recordPendingTurnRequest(sessionId);
     try {
       final dispatch = await _sessionService.sendCommand(
@@ -1360,7 +1362,7 @@ class CodexPlugin._({
     final effort = variant?.id;
     // Capture the current EOF before Codex can append this turn's response
     // items. `start` is idempotent when turn/started arrives afterwards.
-    _rolloutTailer.start(sessionId: threadId);
+    await _rolloutTailer.start(sessionId: threadId);
     final evidenceRevision = _recordPendingTurnRequest(threadId);
     try {
       final dispatch = await _sessionService.startTurn(

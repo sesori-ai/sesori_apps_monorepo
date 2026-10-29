@@ -113,19 +113,6 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return true;
   }
 
-  /// Starts one rescan for a synchronous lookup that missed, unless a scan is
-  /// already running; the next lookup sees its result.
-  void _rescanAfterMiss() {
-    if (_scanInFlight != null) return;
-    unawaited(
-      _rescan().then(
-        (_) {},
-        onError: (Object error, StackTrace stackTrace) =>
-            Log.w("[codex] rollout catalog rescan failed", error, stackTrace),
-      ),
-    );
-  }
-
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) async {
     final projectlessThreadIds = await _readProjectlessThreadIds();
     final normalizedKnownDirectories = {
@@ -208,23 +195,35 @@ class CodexCatalogRepository({required final CodexRolloutApi _rolloutApi}) {
     return _pathsById[sessionId];
   }
 
-  /// A session from the last scan, for callers that cannot wait. A miss
-  /// starts one background rescan and answers null; a later lookup sees its
-  /// result. A connected plugin has scanned once, so only a session newer than
-  /// that scan can miss.
-  CodexSessionRecord? cachedSessionById({required String sessionId}) {
-    final rolloutPath = cachedRolloutPath(sessionId: sessionId);
+  /// A session from the last scan, or from one rescan on a miss.
+  Future<CodexSessionRecord?> findSessionById({required String sessionId}) async {
+    final rolloutPath = await findRolloutPath(sessionId: sessionId);
     if (rolloutPath == null) return null;
     return _cachedRecord(id: sessionId, rolloutPath: rolloutPath);
   }
 
-  /// [findRolloutPath] for callers that cannot wait, with the miss behavior
-  /// of [cachedSessionById].
-  String? cachedRolloutPath({required String sessionId}) {
+  /// [findSessionById] for callers that cannot wait. A miss queues a rescan
+  /// and answers null; a later lookup sees its result. A connected plugin has
+  /// scanned once, so only a session newer than that scan can miss.
+  CodexSessionRecord? cachedSessionById({required String sessionId}) {
     final rolloutPath = _pathsById[sessionId];
-    if (rolloutPath == null) _rescanAfterMiss();
-    return rolloutPath;
+    if (rolloutPath == null) {
+      unawaited(
+        _rescan().then(
+          (_) {},
+          onError: (Object error, StackTrace stackTrace) =>
+              Log.w("[codex] rollout catalog rescan failed", error, stackTrace),
+        ),
+      );
+      return null;
+    }
+    return _cachedRecord(id: sessionId, rolloutPath: rolloutPath);
   }
+
+  /// A rollout from its creation-date directories only, for a live tail
+  /// polling for a rollout Codex had not written when the tail started.
+  String? findRecentRolloutPath({required String sessionId}) =>
+      _rolloutApi.findRecentRolloutPath(sessionId: sessionId, now: DateTime.now());
 
   /// Deletes [sessionId]'s rollout and its session index lines, rescanning
   /// once when the last scan does not know the session. Returns false when

@@ -36,12 +36,24 @@ class CodexRolloutTailer({
 
   Stream<CodexRolloutAppend> get appends => _appends.stream;
 
-  void start({required String sessionId}) {
-    if (_cursors.containsKey(sessionId)) return;
+  /// Starts in-flight, so concurrent callers share one path resolution.
+  final Map<String, Future<void>> _starting = {};
+
+  /// Resolves the rollout and captures its EOF, so a turn dispatched after this
+  /// completes is tailed from its first appended byte. A rollout Codex has not
+  /// created yet is tailed from offset 0 once a drain discovers it.
+  Future<void> start({required String sessionId}) {
+    if (_cursors.containsKey(sessionId)) return Future.value();
+    return _starting[sessionId] ??= _start(sessionId: sessionId).whenComplete(() {
+      _starting.remove(sessionId);
+    });
+  }
+
+  Future<void> _start({required String sessionId}) async {
     final String? path;
     final CodexRolloutTailPosition position;
     try {
-      path = _catalogRepository.cachedRolloutPath(sessionId: sessionId);
+      path = await _catalogRepository.findRolloutPath(sessionId: sessionId);
       position = path == null
           ? const CodexRolloutTailPosition(
               offset: 0,
@@ -80,7 +92,9 @@ class CodexRolloutTailer({
     try {
       var path = cursor.path;
       if (path == null) {
-        path = _catalogRepository.cachedRolloutPath(sessionId: sessionId);
+        // A rollout created after the turn started; polls look only where a
+        // new rollout is filed instead of rescanning the catalog.
+        path = _catalogRepository.findRecentRolloutPath(sessionId: sessionId);
         if (path == null) return;
         cursor.path = path;
       }

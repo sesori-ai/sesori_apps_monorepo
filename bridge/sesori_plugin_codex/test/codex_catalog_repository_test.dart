@@ -300,8 +300,8 @@ void main() {
         await repository.listSessionRecords();
 
         final logs = await _captureDebugLogs(() async {
-          expect(repository.cachedRolloutPath(sessionId: _sessionId(7)), rolloutApi.pathOf(_sessionId(7)));
           expect(repository.cachedSessionById(sessionId: _sessionId(7))?.cwd, "/repo/app");
+          expect((await repository.findSessionById(sessionId: _sessionId(7)))?.cwd, "/repo/app");
           expect(await repository.findRolloutPath(sessionId: _sessionId(7)), rolloutApi.pathOf(_sessionId(7)));
         });
 
@@ -309,20 +309,21 @@ void main() {
         expect(rolloutApi.mainIsolateCalls, 0);
       });
 
-      test("a synchronous miss rescans once in the background", () async {
+      test("a synchronous miss queues a rescan, and one during a scan queues the follow-up", () async {
         await repository.listSessionRecords();
         rolloutApi.sessionIds.add(_sessionId(200));
 
         final logs = await _captureDebugLogs(() async {
-          expect(repository.cachedRolloutPath(sessionId: _sessionId(200)), isNull);
-          // A miss while that rescan runs starts no other.
           expect(repository.cachedSessionById(sessionId: _sessionId(200)), isNull);
-          while (repository.cachedRolloutPath(sessionId: _sessionId(200)) == null) {
-            await Future<void>.delayed(const Duration(milliseconds: 5));
-          }
+          // This miss arrives during that rescan, so it shares the follow-up.
+          expect(repository.cachedSessionById(sessionId: _sessionId(200)), isNull);
+          expect(await repository.findRolloutPath(sessionId: _sessionId(200)), rolloutApi.pathOf(_sessionId(200)));
         });
 
-        expect(_scanLines(logs), ["files=201, recognizedRollouts=201, parsedHeaders=1, indexEntries=0"]);
+        expect(_scanLines(logs), [
+          "files=201, recognizedRollouts=201, parsedHeaders=1, indexEntries=0",
+          "files=201, recognizedRollouts=201, parsedHeaders=0, indexEntries=0",
+        ]);
         expect(rolloutApi.mainIsolateCalls, 0);
       });
 
