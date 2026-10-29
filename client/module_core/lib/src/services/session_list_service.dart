@@ -113,19 +113,20 @@ class SessionListService({
     );
   }
 
-  /// Newest update first, then by id: every list's order apart from the active
-  /// list's running head. A list that merges projects sorts with it too.
+  /// Newest update first, then by id descending, as the bridge pages them:
+  /// every list's order apart from the active list's running head.
   int compareByUpdate({required Session a, required Session b}) {
     final updatedCompare = (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0);
-    return updatedCompare != 0 ? updatedCompare : a.id.compareTo(b.id);
+    return updatedCompare != 0 ? updatedCompare : b.id.compareTo(a.id);
   }
 
-  /// Newest archive first, then by id: the archived list's order.
+  /// Newest archive first, then by id descending: the archived list's order,
+  /// as the bridge pages it.
   int compareByArchive({required Session a, required Session b}) {
     final order = (b.time?.archived ?? (throw StateError("Archived projection requires archive time"))).compareTo(
       a.time?.archived ?? (throw StateError("Archived projection requires archive time")),
     );
-    return order != 0 ? order : a.id.compareTo(b.id);
+    return order != 0 ? order : b.id.compareTo(a.id);
   }
 
   List<Session> _sortSessions(Iterable<Session> sessions) {

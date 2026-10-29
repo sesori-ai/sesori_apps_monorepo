@@ -137,7 +137,7 @@ void main() {
     expect(result.map((session) => session.id), ["new-activity", "new-update"]);
   });
 
-  test("running marker fallback and timestamp ties use session ID", () {
+  test("running ties use session ID, and update ties session ID descending as the bridge pages them", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
     );
@@ -169,7 +169,7 @@ void main() {
 
     expect(
       result.map((session) => session.id),
-      ["running-a", "running-b", "inactive-a", "inactive-b"],
+      ["running-a", "running-b", "inactive-b", "inactive-a"],
     );
   });
 

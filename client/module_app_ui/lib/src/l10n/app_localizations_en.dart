@@ -1228,6 +1228,9 @@ class AppLocalizationsEn extends AppLocalizations {
   String get sessionListLoadingSemantics => 'Loading sessions';
 
   @override
+  String get sessionListLoadingMoreSemantics => 'Loading more sessions';
+
+  @override
   String get sessionListEmptyTitle => 'Start your first session';
 
   @override
@@ -2954,9 +2957,7 @@ class AppLocalizationsEn extends AppLocalizations {
   String get archivedSessionsClose => 'Close archived sessions';
 
   @override
-  String allSessionsProjectFailed(String projectName) {
-    return 'Couldn’t load $projectName';
-  }
+  String get allSessionsFailed => 'Couldn’t load sessions';
 
   @override
   String get projectPickerAllProjects => 'All projects';

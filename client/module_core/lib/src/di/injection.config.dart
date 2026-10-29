@@ -822,6 +822,17 @@ extension GetItInjectableX on _i174.GetIt {
         catalogRescanService: gh<_i572.CatalogRescanService>(),
       ),
     );
+    gh.factoryParam<
+      _i478.SessionListRefreshService,
+      _i870.ProjectInventoryService,
+      _i206.SessionWindowService
+    >(
+      (projectInventory, window) => _i478.SessionListRefreshService(
+        projectInventory: projectInventory,
+        window: window,
+        catalogRescanService: gh<_i572.CatalogRescanService>(),
+      ),
+    );
     gh.lazySingleton<_i1033.BridgeSettingsService>(
       () => _i1033.BridgeSettingsService(
         repository: gh<_i102.BridgeSettingsRepository>(),
@@ -866,17 +877,6 @@ extension GetItInjectableX on _i174.GetIt {
         connectionService: gh<_i369.ConnectionService>(),
         sseEventTracker: gh<_i508.SseEventTracker>(),
         sessionUnseenTracker: gh<_i28.SessionUnseenTracker>(),
-        catalogRescanService: gh<_i572.CatalogRescanService>(),
-      ),
-    );
-    gh.factoryParam<
-      _i478.SessionListRefreshService,
-      _i870.ProjectInventoryService,
-      _i623.RecentSessionInventoryService
-    >(
-      (projectInventory, recentInventory) => _i478.SessionListRefreshService(
-        projectInventory: projectInventory,
-        recentInventory: recentInventory,
         catalogRescanService: gh<_i572.CatalogRescanService>(),
       ),
     );

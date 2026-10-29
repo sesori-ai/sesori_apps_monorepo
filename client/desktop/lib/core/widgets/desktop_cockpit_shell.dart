@@ -26,13 +26,14 @@ class const DesktopCockpitCubitProvider({super.key, required final Widget child}
     createProjectInventory: getIt.call<ProjectInventoryService>,
     createSessionWindow: ({required mode, required projectInventory}) =>
         getIt<SessionWindowService>(param1: mode, param2: projectInventory),
-    createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
-        getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
+    createRefreshService: ({required projectInventory, required window}) =>
+        getIt<SessionListRefreshService>(param1: projectInventory, param2: window),
     sessionCleanupService: getIt<SessionCleanupService>(),
     sessionLaunchService: getIt<SessionLaunchService>(),
     connectionService: getIt<ConnectionService>(),
     filterTracker: getIt<SessionListFilterTracker>(),
-    sessionListService: getIt<SessionListService>(),
+    sseEventTracker: getIt<SseEventTracker>(),
+    sessionUnseenTracker: getIt<SessionUnseenTracker>(),
     alertNavigatorKey: null,
     child: MultiBlocProvider(
       providers: [

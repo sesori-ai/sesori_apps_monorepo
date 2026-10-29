@@ -24,7 +24,9 @@ void main() {
 
   AllSessionsState state({
     required String query,
-    required List<AllSessionsFailure> failures,
+    required RemoteFailureReason? failure,
+    SessionWindowLoadMore? loadMore,
+    bool awaitingAnswer = false,
     required List<AllSessionsRow> rows,
     required String? scratchProjectId,
     SessionListChipCounts counts = const SessionListChipCounts(all: 0, running: 0, unread: 0),
@@ -36,7 +38,9 @@ void main() {
     quickFilter: quickFilter,
     rows: rows,
     counts: counts,
-    failures: failures,
+    loadMore: loadMore,
+    awaitingAnswer: awaitingAnswer,
+    failure: failure,
     isLoading: isLoading,
     scratchProjectId: scratchProjectId,
     defaultProjectId: null,
@@ -86,7 +90,8 @@ void main() {
     final cubit = _MockAllSessionsCubit();
     whenListen(cubit, updates, initialState: initial);
     when(() => cubit.mode).thenReturn(mode);
-    when(() => cubit.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
+    when(cubit.retry).thenAnswer((_) async {});
+    when(cubit.loadMore).thenAnswer((_) async {});
     when(() => cubit.setHiddenSessionIds(sessionIds: any(named: "sessionIds"))).thenReturn(null);
     projects = _MockProjectListCubit();
     whenListen(projects, projectUpdates, initialState: projectList);
@@ -264,21 +269,21 @@ void main() {
       tester,
       initial: state(
         query: "",
-        failures: const [AllSessionsFailure(project: project, reason: RemoteFailureReason.networkDown)],
+        failure: RemoteFailureReason.networkDown,
         rows: const [],
         scratchProjectId: null,
       ),
     );
-    expect(find.text("Couldn’t load Project One"), findsOneWidget);
+    expect(find.text("Couldn’t load sessions"), findsOneWidget);
     expect(find.text("Nothing here"), findsNothing);
     await tester.tap(find.text("Retry"));
-    verify(() => cubit.retry(projectId: "p1")).called(1);
+    verify(cubit.retry).called(1);
   });
 
   testWidgets("a query that matches nothing says so instead of the empty state", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "zzz", failures: const [], rows: const [], scratchProjectId: null),
+      initial: state(query: "zzz", failure: null, rows: const [], scratchProjectId: null),
     );
     expect(find.text("Nothing here"), findsNothing);
     expect(find.text("No matches"), findsOneWidget);
@@ -292,7 +297,7 @@ void main() {
       tester,
       initial: state(
         query: "",
-        failures: const [],
+        failure: null,
         rows: [
           row(title: "Archived today", archivedAt: today, updatedAt: yesterday, isRunning: false),
           // Still running, but an archive lists it by its archive date.
@@ -322,7 +327,7 @@ void main() {
         textDirection: textDirection,
         initial: state(
           query: "",
-          failures: const [],
+          failure: null,
           rows: [row(title: "Archived today", archivedAt: today, updatedAt: today, isRunning: false)],
           scratchProjectId: null,
         ),
@@ -340,7 +345,7 @@ void main() {
   testWidgets("with nothing to show the empty state fills the list", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
+      initial: state(query: "", failure: null, rows: const [], scratchProjectId: null),
     );
     expect(find.text("Nothing here"), findsOneWidget);
   });
@@ -348,7 +353,7 @@ void main() {
   testWidgets("Archived shows a failed project list with Retry, not the empty state", (tester) async {
     await pumpList(
       tester,
-      initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
+      initial: state(query: "", failure: null, rows: const [], scratchProjectId: null),
       projectList: const ProjectListState.failed(reason: RemoteFailureReason.networkDown),
     );
     expect(find.text("Failed to load projects"), findsOneWidget);
@@ -363,7 +368,7 @@ void main() {
       await pumpList(
         tester,
         mode: mode,
-        initial: state(query: "", failures: const [], rows: const [], scratchProjectId: null),
+        initial: state(query: "", failure: null, rows: const [], scratchProjectId: null),
         projectList: const ProjectListState.bridgeDisconnected(hasRegisteredBridges: true),
       );
       await tester.pump(const Duration(milliseconds: 600));
@@ -380,7 +385,7 @@ void main() {
       mode: AllSessionsMode.active,
       initial: state(
         query: "",
-        failures: const [],
+        failure: null,
         rows: [row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false)],
         scratchProjectId: null,
         counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
@@ -401,7 +406,7 @@ void main() {
       mode: AllSessionsMode.active,
       initial: state(
         query: "",
-        failures: const [],
+        failure: null,
         rows: [
           row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false),
           AllSessionsRow(
@@ -429,19 +434,16 @@ void main() {
 
   group("a change at rest", () {
     final now = DateTime.now();
-    const failure = AllSessionsFailure(
-      project: ProjectSummary(id: "p2", name: "Project Two", path: "/p2", time: null),
-      reason: RemoteFailureReason.networkDown,
-    );
-    final failureRow = find.text("Couldn’t load Project Two");
+    const failure = RemoteFailureReason.networkDown;
+    final failureRow = find.text("Couldn’t load sessions");
     final sessionRow = find.text("Fix the parser");
     AllSessionsState listing({
       required bool withSession,
-      required List<AllSessionsFailure> failures,
+      required RemoteFailureReason? failure,
       bool isLoading = false,
     }) => state(
       query: "",
-      failures: failures,
+      failure: failure,
       rows: [if (withSession) row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false)],
       scratchProjectId: null,
       counts: SessionListChipCounts(all: withSession ? 1 : 0, running: 0, unread: 0),
@@ -454,7 +456,7 @@ void main() {
       addTearDown(updates.close);
       await pumpList(
         tester,
-        initial: listing(withSession: true, failures: const []),
+        initial: listing(withSession: true, failure: null),
         updates: updates.stream,
         mode: AllSessionsMode.active,
         header: header,
@@ -465,7 +467,7 @@ void main() {
       final emptyState = find.text("Nothing here");
 
       // Archived, as its Undo window opens.
-      updates.add(listing(withSession: false, failures: const []));
+      updates.add(listing(withSession: false, failure: null));
       final headerTops = <double>[headerTop];
       final emptyOpacities = <double>[];
       final shownEmptyTops = <double>[];
@@ -489,7 +491,7 @@ void main() {
       final [returningTops] = await topsAcross(
         tester,
         updates: updates,
-        update: listing(withSession: true, failures: const []),
+        update: listing(withSession: true, failure: null),
         finders: [headerBox],
       );
       expect(steps(returningTops), everyElement(inInclusiveRange(0, maxStep)));
@@ -501,7 +503,7 @@ void main() {
       addTearDown(updates.close);
       await pumpList(
         tester,
-        initial: listing(withSession: true, failures: const []),
+        initial: listing(withSession: true, failure: null),
         updates: updates.stream,
         mode: AllSessionsMode.active,
       );
@@ -510,7 +512,7 @@ void main() {
       final [rowTops] = await topsAcross(
         tester,
         updates: updates,
-        update: listing(withSession: true, failures: const [failure]),
+        update: listing(withSession: true, failure: failure),
         finders: [sessionRow],
       );
       expect(steps(rowTops), everyElement(inInclusiveRange(0, maxStep)));
@@ -523,7 +525,7 @@ void main() {
       addTearDown(updates.close);
       await pumpList(
         tester,
-        initial: listing(withSession: true, failures: const [failure]),
+        initial: listing(withSession: true, failure: failure),
         updates: updates.stream,
         mode: AllSessionsMode.active,
       );
@@ -534,7 +536,7 @@ void main() {
       final [rowTops] = await topsAcross(
         tester,
         updates: updates,
-        update: listing(withSession: true, failures: const [], isLoading: true),
+        update: listing(withSession: true, failure: null, isLoading: true),
         finders: [sessionRow],
       );
       expect(steps(rowTops), everyElement(inInclusiveRange(-maxStep, 0)));
@@ -546,13 +548,13 @@ void main() {
     for (final (name, update, opening) in [
       (
         "a session that returns",
-        listing(withSession: true, failures: const []),
+        listing(withSession: true, failure: null),
         find.byType(TextField, skipOffstage: false),
       ),
       (
         "a project that fails",
-        listing(withSession: false, failures: const [failure]),
-        find.text("Couldn’t load Project Two", skipOffstage: false),
+        listing(withSession: false, failure: failure),
+        find.text("Couldn’t load sessions", skipOffstage: false),
       ),
     ]) {
       testWidgets("$name fades the empty state out where it stands, then opens what takes its place", (
@@ -563,7 +565,7 @@ void main() {
         // As on a first launch, or before an archive's Undo.
         await pumpList(
           tester,
-          initial: listing(withSession: false, failures: const []),
+          initial: listing(withSession: false, failure: null),
           updates: updates.stream,
           mode: AllSessionsMode.active,
           header: header,
@@ -596,12 +598,12 @@ void main() {
     }
 
     for (final (name, update, note) in [
-      ("A search", state(query: "zzz", failures: const [], rows: const [], scratchProjectId: null), "No matches"),
+      ("A search", state(query: "zzz", failure: null, rows: const [], scratchProjectId: null), "No matches"),
       (
         "A filter",
         state(
           query: "",
-          failures: const [],
+          failure: null,
           rows: const [],
           scratchProjectId: null,
           counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
@@ -616,7 +618,7 @@ void main() {
         addTearDown(updates.close);
         await pumpList(
           tester,
-          initial: listing(withSession: true, failures: const []),
+          initial: listing(withSession: true, failure: null),
           updates: updates.stream,
           mode: AllSessionsMode.active,
         );
@@ -640,7 +642,7 @@ void main() {
         final leaving = await everyFrameAcross(
           tester,
           updates: updates,
-          update: listing(withSession: true, failures: const []),
+          update: listing(withSession: true, failure: null),
           read: read,
         );
         expect(leaving.first.note, 1);
@@ -659,7 +661,7 @@ void main() {
     // moves to a project with none, or back.
     AllSessionsState running({required int sessions}) => state(
       query: "",
-      failures: const [],
+      failure: null,
       rows: const [],
       scratchProjectId: null,
       counts: SessionListChipCounts(all: sessions, running: 0, unread: 0),
@@ -717,7 +719,7 @@ void main() {
       // A query that matches nothing on a Running list with no rows, cleared.
       AllSessionsState running({required String query, required int sessions}) => state(
         query: query,
-        failures: const [],
+        failure: null,
         rows: const [],
         scratchProjectId: null,
         counts: SessionListChipCounts(all: sessions, running: 0, unread: 0),
@@ -787,7 +789,7 @@ void main() {
       addTearDown(updates.close);
       await pumpList(
         tester,
-        initial: listing(withSession: false, failures: const []),
+        initial: listing(withSession: false, failure: null),
         updates: updates.stream,
         mode: AllSessionsMode.active,
       );
@@ -795,16 +797,16 @@ void main() {
       final noMatches = find.text("No matches");
       expect(paintedOpacity(tester, emptyState), 1);
 
-      updates.add(listing(withSession: true, failures: const []));
+      updates.add(listing(withSession: true, failure: null));
       await tester.pump(Duration.zero);
       expect(emptyState, findsNothing);
       expect(paintedOpacity(tester, find.byType(TextField)), 1);
 
-      updates.add(state(query: "zzz", failures: const [], rows: const [], scratchProjectId: null));
+      updates.add(state(query: "zzz", failure: null, rows: const [], scratchProjectId: null));
       await tester.pump(Duration.zero);
       expect(paintedOpacity(tester, noMatches), 1);
 
-      updates.add(listing(withSession: true, failures: const [], isLoading: true));
+      updates.add(listing(withSession: true, failure: null, isLoading: true));
       await tester.pump(Duration.zero);
       expect(noMatches, findsNothing);
 
@@ -812,7 +814,7 @@ void main() {
       updates.add(
         state(
           query: "",
-          failures: const [],
+          failure: null,
           rows: const [],
           scratchProjectId: null,
           counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
@@ -834,25 +836,25 @@ void main() {
       addTearDown(updates.close);
       await pumpList(
         tester,
-        initial: listing(withSession: true, failures: const []),
+        initial: listing(withSession: true, failure: null),
         updates: updates.stream,
         mode: AllSessionsMode.active,
       );
       final rowTop = tester.getTopLeft(sessionRow).dy;
 
-      updates.add(listing(withSession: true, failures: const [failure]));
+      updates.add(listing(withSession: true, failure: failure));
       await tester.pump(Duration.zero);
       expect(paintedOpacity(tester, failureRow), 1);
       final failedRowTop = tester.getTopLeft(sessionRow).dy;
       expect(failedRowTop, greaterThan(rowTop + 20));
 
-      updates.add(listing(withSession: false, failures: const []));
+      updates.add(listing(withSession: false, failure: null));
       await tester.pump(Duration.zero);
       expect(failureRow, findsNothing);
       expect(find.byType(TextField), findsNothing);
       expect(paintedOpacity(tester, find.text("Nothing here")), 1);
 
-      updates.add(listing(withSession: true, failures: const [failure]));
+      updates.add(listing(withSession: true, failure: failure));
       await tester.pump(Duration.zero);
       expect(paintedOpacity(tester, find.byType(TextField)), 1);
       expect(tester.getTopLeft(sessionRow).dy, failedRowTop);
@@ -861,23 +863,20 @@ void main() {
 
   group("the hand-off from the loading skeleton", () {
     final now = DateTime.now();
-    final loading = state(query: "", failures: const [], rows: const [], scratchProjectId: null, isLoading: true);
-    final empty = state(query: "", failures: const [], rows: const [], scratchProjectId: null);
-    const failure = AllSessionsFailure(
-      project: ProjectSummary(id: "p2", name: "Project Two", path: "/p2", time: null),
-      reason: RemoteFailureReason.networkDown,
-    );
+    final loading = state(query: "", failure: null, rows: const [], scratchProjectId: null, isLoading: true);
+    final empty = state(query: "", failure: null, rows: const [], scratchProjectId: null);
+    const failure = RemoteFailureReason.networkDown;
     // Found while it opens from nothing, which takes no room on screen.
-    final failureRow = find.text("Couldn’t load Project Two", skipOffstage: false);
+    final failureRow = find.text("Couldn’t load sessions", skipOffstage: false);
     AllSessionsState loaded({
       required AllSessionsMode mode,
       required List<String> titles,
       String query = "",
-      List<AllSessionsFailure> failures = const [],
+      RemoteFailureReason? failure,
       SessionListChipCounts? counts,
     }) => state(
       query: query,
-      failures: failures,
+      failure: failure,
       rows: [
         for (final title in titles)
           row(
@@ -993,7 +992,7 @@ void main() {
 
           // Another project is still loading.
           updates.add(
-            state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+            state(query: "", failure: failure, rows: const [], scratchProjectId: null, isLoading: true),
           );
           await tester.pump();
           expect(paintedOpacity(tester, failureRow), 0);
@@ -1006,7 +1005,7 @@ void main() {
           expect(skeletonTop, tester.getRect(failurePadding).bottom);
 
           updates.add(
-            loaded(mode: AllSessionsMode.archived, titles: [if (withRows) "Fix the parser"], failures: const [failure]),
+            loaded(mode: AllSessionsMode.archived, titles: [if (withRows) "Fix the parser"], failure: failure),
           );
           await tester.pump();
           await tester.pump();
@@ -1035,7 +1034,7 @@ void main() {
           final skeletonTop = await pumpLoading(tester, updates: updates.stream);
 
           updates.add(
-            loaded(mode: AllSessionsMode.archived, titles: [if (withRows) "Fix the parser"], failures: const [failure]),
+            loaded(mode: AllSessionsMode.archived, titles: [if (withRows) "Fix the parser"], failure: failure),
           );
           await tester.pump();
           await tester.pump();
@@ -1055,33 +1054,6 @@ void main() {
         },
       );
     }
-
-    testWidgets("a project that fails as the load ends arrives under the skeleton, which stays under its project", (
-      tester,
-    ) async {
-      const lastFailure = AllSessionsFailure(
-        project: ProjectSummary(id: "p3", name: "Project Three", path: "/p3", time: null),
-        reason: RemoteFailureReason.networkDown,
-      );
-      final updates = StreamController<AllSessionsState>();
-      addTearDown(updates.close);
-      await pumpLoading(tester, updates: updates.stream);
-      updates.add(state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true));
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 250));
-      final skeletonTop = tester.getTopLeft(skeleton).dy;
-
-      updates.add(loaded(mode: AllSessionsMode.archived, titles: const [], failures: const [failure, lastFailure]));
-      await tester.pump();
-      expect(tester.getTopLeft(skeleton).dy, skeletonTop);
-      await tester.pump();
-      await tester.pump(const Duration(milliseconds: 100));
-      // The search field folds away above them both.
-      expect(tester.getTopLeft(skeleton).dy, tester.getRect(failurePadding).bottom);
-      expect(tester.getTopLeft(skeleton).dy, lessThan(skeletonTop));
-      expect(skeletonOpacity(tester), inExclusiveRange(0, 1));
-      expect(paintedOpacity(tester, find.text("Couldn’t load Project Three")), inExclusiveRange(0, 1));
-    });
 
     for (final endsAfter in [250, 320, 600]) {
       testWidgets("a load that ends ${endsAfter}ms in fades the skeleton out from there, never brightening", (
@@ -1164,7 +1136,7 @@ void main() {
       addTearDown(updates.close);
       await pumpLoading(tester, updates: updates.stream, mode: AllSessionsMode.active);
       updates.add(
-        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser", "Write the docs"], failures: const [failure]),
+        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser", "Write the docs"], failure: failure),
       );
       await tester.pump();
       await tester.pump();
@@ -1175,10 +1147,10 @@ void main() {
         loaded(
           mode: AllSessionsMode.active,
           titles: ["Fix the parser", "Write the docs", "Ship it"],
-          failures: const [failure],
+          failure: failure,
         ),
         // A search that narrows the list.
-        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"], query: "parser", failures: const [failure]),
+        loaded(mode: AllSessionsMode.active, titles: ["Fix the parser"], query: "parser", failure: failure),
       ]) {
         updates.add(update);
         await tester.pump();
@@ -1193,7 +1165,7 @@ void main() {
       // Running leaves no rows while another project still loads.
       AllSessionsState running({required bool isLoading}) => state(
         query: "",
-        failures: const [],
+        failure: null,
         rows: const [],
         scratchProjectId: null,
         counts: const SessionListChipCounts(all: 2, running: 0, unread: 0),
@@ -1225,7 +1197,7 @@ void main() {
       // Another project still loads, and Running leaves no rows.
       AllSessionsState filtered(SessionListQuickFilter filter) => state(
         query: "",
-        failures: const [],
+        failure: null,
         rows: [
           if (filter == SessionListQuickFilter.all)
             row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false),
@@ -1283,7 +1255,7 @@ void main() {
       // Another project still loads, and Running leaves no rows.
       AllSessionsState filtered(SessionListQuickFilter filter) => state(
         query: "",
-        failures: const [],
+        failure: null,
         rows: [
           if (filter == SessionListQuickFilter.all)
             row(title: "Fix the parser", updatedAt: now, archivedAt: null, isRunning: false),
@@ -1347,7 +1319,7 @@ void main() {
       // Another project still loads, and has none counted yet.
       AllSessionsState filtered(SessionListQuickFilter filter) => state(
         query: "",
-        failures: const [],
+        failure: null,
         rows: const [],
         scratchProjectId: null,
         quickFilter: filter,
@@ -1450,7 +1422,7 @@ void main() {
         AllSessionsState running({required List<String> titles, required int sessions, required bool isLoading}) =>
             state(
               query: "",
-              failures: const [],
+              failure: null,
               rows: [
                 for (final title in titles) row(title: title, updatedAt: now, archivedAt: null, isRunning: true),
               ],
@@ -1554,7 +1526,7 @@ void main() {
           addTearDown(updates.close);
           await pumpList(
             tester,
-            initial: loaded(mode: mode, titles: ["Fix the parser"], failures: const [failure]),
+            initial: loaded(mode: mode, titles: ["Fix the parser"], failure: failure),
             updates: updates.stream,
             mode: mode,
           );
@@ -1668,7 +1640,7 @@ void main() {
       ("the empty state", empty, find.text("Nothing here")),
       (
         "Retry rows",
-        state(query: "", failures: const [failure], rows: const [], scratchProjectId: null),
+        state(query: "", failure: failure, rows: const [], scratchProjectId: null),
         failureRow,
       ),
     ]) {
@@ -1697,11 +1669,6 @@ void main() {
     }
 
     group("layout across every frame", () {
-      const lastFailure = AllSessionsFailure(
-        project: ProjectSummary(id: "p3", name: "Project Three", path: "/p3", time: null),
-        reason: RemoteFailureReason.networkDown,
-      );
-
       for (final interaction in PregoInteractionMode.values) {
         for (final withHeader in [true, false]) {
           testWidgets(
@@ -1946,7 +1913,7 @@ void main() {
 
         // Nor once a Retry row has opened above it.
         updates.add(
-          state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+          state(query: "", failure: failure, rows: const [], scratchProjectId: null, isLoading: true),
         );
         await tester.pump();
         await tester.pump(const Duration(milliseconds: 500));
@@ -1996,22 +1963,21 @@ void main() {
               header: withHeader ? header : null,
             );
             updates.add(
-              state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+              state(query: "", failure: failure, rows: const [], scratchProjectId: null, isLoading: true),
             );
             await tester.pump();
             await tester.pump(const Duration(milliseconds: 250));
             final failureTop = tester.getTopLeft(failureRow).dy;
             final skeletonTop = tester.getTopLeft(skeleton).dy;
 
-            // Another project fails with the hand-off: it fades in under the
-            // first, and grows no room under the arriving rows.
+            // The rows arrive under the Retry row without moving it.
             final [failureTops, skeletonTops, rowTops] = await topsAcross(
               tester,
               updates: updates,
               update: loaded(
                 mode: AllSessionsMode.active,
                 titles: ["Fix the parser"],
-                failures: const [failure, lastFailure],
+                failure: failure,
               ),
               finders: [failureRow, skeleton, find.text("Fix the parser")],
             );
@@ -2036,7 +2002,7 @@ void main() {
         final [skeletonTops] = await topsAcross(
           tester,
           updates: updates,
-          update: state(query: "", failures: const [failure], rows: const [], scratchProjectId: null, isLoading: true),
+          update: state(query: "", failure: failure, rows: const [], scratchProjectId: null, isLoading: true),
           finders: [skeleton],
         );
         expect(steps(skeletonTops), everyElement(inInclusiveRange(0, maxStep)));
@@ -2104,6 +2070,105 @@ void main() {
           },
         );
       }
+    }
+  });
+
+  group("the page after the rows", () {
+    final now = DateTime.now();
+    List<AllSessionsRow> rows({required int count}) => [
+      for (var index = 0; index < count; index++)
+        row(
+          title: "Session $index",
+          updatedAt: now.subtract(Duration(seconds: index)),
+          archivedAt: null,
+          isRunning: false,
+        ),
+    ];
+    AllSessionsState page({required int count, required SessionWindowLoadMore? loadMore}) => state(
+      query: "",
+      failure: null,
+      rows: rows(count: count),
+      scratchProjectId: null,
+      loadMore: loadMore,
+      counts: SessionListChipCounts(all: count + 50, running: 0, unread: 0),
+    );
+    final loader = find.byType(PregoAiLoader);
+    List<double> topsOf({required WidgetTester tester, required int count}) => [
+      for (var index = 0; index < count; index++) tester.getTopLeft(find.text("Session $index")).dy,
+    ];
+
+    testWidgets("rows near the end ask for it under a loader row", (tester) async {
+      final cubit = await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        initial: page(count: 5, loadMore: SessionWindowLoadMore.idle),
+      );
+      expect(loader, findsOneWidget);
+      verify(cubit.loadMore).called(greaterThan(0));
+    });
+
+    testWidgets("rows far from the end ask for nothing yet", (tester) async {
+      final cubit = await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        initial: page(count: 120, loadMore: SessionWindowLoadMore.idle),
+      );
+      verifyNever(cubit.loadMore);
+    });
+
+    testWidgets("a page on its way is not asked for again", (tester) async {
+      final cubit = await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        initial: page(count: 5, loadMore: SessionWindowLoadMore.loading),
+      );
+      expect(loader, findsOneWidget);
+      verifyNever(cubit.loadMore);
+    });
+
+    testWidgets("without a page after the rows there is no loader row", (tester) async {
+      final cubit = await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        initial: page(count: 5, loadMore: null),
+      );
+      expect(loader, findsNothing);
+      verifyNever(cubit.loadMore);
+    });
+
+    testWidgets("a page that failed offers Retry in the loader row", (tester) async {
+      final cubit = await pumpList(
+        tester,
+        mode: AllSessionsMode.active,
+        initial: page(count: 5, loadMore: SessionWindowLoadMore.failed),
+      );
+      verifyNever(cubit.loadMore);
+      await tester.tap(find.text("Retry"));
+      verify(cubit.loadMore).called(1);
+    });
+
+    for (final more in [true, false]) {
+      testWidgets("the page arriving moves no row above it (${more ? "another follows" : "the last page"})", (
+        tester,
+      ) async {
+        final updates = StreamController<AllSessionsState>();
+        addTearDown(updates.close);
+        await pumpList(
+          tester,
+          mode: AllSessionsMode.active,
+          initial: page(count: 3, loadMore: SessionWindowLoadMore.loading),
+          updates: updates.stream,
+        );
+        final before = topsOf(tester: tester, count: 3);
+        final frames = await everyFrameAcross(
+          tester,
+          updates: updates,
+          update: page(count: 6, loadMore: more ? SessionWindowLoadMore.idle : null),
+          read: () => topsOf(tester: tester, count: 3),
+        );
+        expect(frames, everyElement(before));
+        if (!more) expect(loader, findsNothing);
+      });
     }
   });
 }

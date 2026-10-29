@@ -202,162 +202,6 @@ $ProjectSummaryCopyWith<$Res> get project {
 }
 
 /// @nodoc
-mixin _$AllSessionsFailure {
-
- ProjectSummary get project; RemoteFailureReason get reason;
-/// Create a copy of AllSessionsFailure
-/// with the given fields replaced by the non-null parameter values.
-@JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-$AllSessionsFailureCopyWith<AllSessionsFailure> get copyWith => _$AllSessionsFailureCopyWithImpl<AllSessionsFailure>(this as AllSessionsFailure, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-  final _this = this as AllSessionsFailure;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AllSessionsFailure&&(identical(other.project, _this.project) || other.project == _this.project)&&(identical(other.reason, _this.reason) || other.reason == _this.reason));
-}
-
-
-@override
-int get hashCode {
-  final _this = this as AllSessionsFailure;
-  return Object.hash(runtimeType,_this.project,_this.reason);
-}
-
-@override
-String toString() {
-  final _this = this as AllSessionsFailure;
-  return 'AllSessionsFailure(project: ${_this.project}, reason: ${_this.reason})';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class $AllSessionsFailureCopyWith<$Res>  {
-  factory $AllSessionsFailureCopyWith(AllSessionsFailure value, $Res Function(AllSessionsFailure) _then) = _$AllSessionsFailureCopyWithImpl;
-@useResult
-$Res call({
- ProjectSummary project, RemoteFailureReason reason
-});
-
-
-$ProjectSummaryCopyWith<$Res> get project;
-
-}
-/// @nodoc
-class _$AllSessionsFailureCopyWithImpl<$Res>
-    implements $AllSessionsFailureCopyWith<$Res> {
-  _$AllSessionsFailureCopyWithImpl(this._self, this._then);
-
-  final AllSessionsFailure _self;
-  final $Res Function(AllSessionsFailure) _then;
-
-/// Create a copy of AllSessionsFailure
-/// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? project = null,Object? reason = null,}) {
-  return _then(AllSessionsFailure(
-project: null == project ? _self.project : project // ignore: cast_nullable_to_non_nullable
-as ProjectSummary,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,
-  ));
-}
-/// Create a copy of AllSessionsFailure
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ProjectSummaryCopyWith<$Res> get project {
-  
-  return $ProjectSummaryCopyWith<$Res>(_self.project, (value) {
-    return _then(_self.copyWith(project: value));
-  });
-}
-}
-
-
-
-/// @nodoc
-
-
-class _AllSessionsFailure implements AllSessionsFailure {
-  const _AllSessionsFailure({required this.project, required this.reason});
-  
-
-@override final  ProjectSummary project;
-@override final  RemoteFailureReason reason;
-
-/// Create a copy of AllSessionsFailure
-/// with the given fields replaced by the non-null parameter values.
-@override @JsonKey(includeFromJson: false, includeToJson: false)
-@pragma('vm:prefer-inline')
-_$AllSessionsFailureCopyWith<_AllSessionsFailure> get copyWith => __$AllSessionsFailureCopyWithImpl<_AllSessionsFailure>(this, _$identity);
-
-
-
-@override
-bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AllSessionsFailure&&(identical(other.project, project) || other.project == project)&&(identical(other.reason, reason) || other.reason == reason));
-}
-
-
-@override
-int get hashCode {
-    return Object.hash(runtimeType,project,reason);
-}
-
-@override
-String toString() {
-    return 'AllSessionsFailure(project: $project, reason: $reason)';
-}
-
-
-}
-
-/// @nodoc
-abstract mixin class _$AllSessionsFailureCopyWith<$Res> implements $AllSessionsFailureCopyWith<$Res> {
-  factory _$AllSessionsFailureCopyWith(_AllSessionsFailure value, $Res Function(_AllSessionsFailure) _then) = __$AllSessionsFailureCopyWithImpl;
-@override @useResult
-$Res call({
- ProjectSummary project, RemoteFailureReason reason
-});
-
-
-@override $ProjectSummaryCopyWith<$Res> get project;
-
-}
-/// @nodoc
-class __$AllSessionsFailureCopyWithImpl<$Res>
-    implements _$AllSessionsFailureCopyWith<$Res> {
-  __$AllSessionsFailureCopyWithImpl(this._self, this._then);
-
-  final _AllSessionsFailure _self;
-  final $Res Function(_AllSessionsFailure) _then;
-
-/// Create a copy of AllSessionsFailure
-/// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? project = null,Object? reason = null,}) {
-  return _then(_AllSessionsFailure(
-project: null == project ? _self.project : project // ignore: cast_nullable_to_non_nullable
-as ProjectSummary,reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
-as RemoteFailureReason,
-  ));
-}
-
-/// Create a copy of AllSessionsFailure
-/// with the given fields replaced by the non-null parameter values.
-@override
-@pragma('vm:prefer-inline')
-$ProjectSummaryCopyWith<$Res> get project {
-  
-  return $ProjectSummaryCopyWith<$Res>(_self.project, (value) {
-    return _then(_self.copyWith(project: value));
-  });
-}
-}
-
-/// @nodoc
 mixin _$SessionListChipCounts {
 
  int get all; int get running; int get unread;
@@ -502,18 +346,24 @@ as int,
 mixin _$AllSessionsState {
 
 /// The project the list is filtered to, or null for every project.
- String? get projectId; String get query; SessionListQuickFilter get quickFilter;/// Newest first, by last update (archived: by archive time) and never by
-/// status, narrowed by the filter, the query, the chip and the hidden
-/// sessions. Date headings are the presentation's, over this order.
- List<AllSessionsRow> get rows; SessionListChipCounts get counts;/// The listed projects, under the filter, whose sessions failed to load.
- List<AllSessionsFailure> get failures;/// Whether the project list, or a listed project under the filter, is still
-/// loading for the first time, or the archived list's reload on open has not
-/// answered yet.
+ String? get projectId; String get query; SessionListQuickFilter get quickFilter;/// The loaded sessions, newest first, by last update (archived: by archive
+/// time) and never by status, narrowed by the filter, the query, the chip
+/// and the hidden sessions. Date headings are the presentation's, over
+/// this order.
+ List<AllSessionsRow> get rows;/// The bridge's counts under the filter and the query. A hidden session
+/// stays counted until the change that hides it reaches the bridge.
+ SessionListChipCounts get counts;/// The page after [rows], or null when every matching session is listed.
+ SessionWindowLoadMore? get loadMore;/// Whether [rows] are the previous search, filter or chip narrowed to
+/// this one until the bridge answers: rows it lacks may still come.
+ bool get awaitingAnswer;/// Why the sessions could not be loaded, with none to show.
+ RemoteFailureReason? get failure;/// Whether the project list or the sessions are still loading for the
+/// first time, or a retry after a failure has not answered yet.
  bool get isLoading;/// The bridge's "No project" project, or null on a bridge without one.
  String? get scratchProjectId;/// The new-session default: the filter, otherwise [scratchProjectId],
-/// otherwise the project of the newest session, otherwise null. Without
-/// either it stays null while [isLoading], so a consumer that holds the
-/// first default it sees never holds a project that merely answered first.
+/// otherwise the project of the newest session, otherwise null. The newest
+/// session is read only while nothing narrows the list, and kept through a
+/// search or a chip; until it is known the default stays null, so a
+/// consumer that holds the first default it sees never holds a guess.
  String? get defaultProjectId;
 /// Create a copy of AllSessionsState
 /// with the given fields replaced by the non-null parameter values.
@@ -526,20 +376,20 @@ $AllSessionsStateCopyWith<AllSessionsState> get copyWith => _$AllSessionsStateCo
 @override
 bool operator ==(Object other) {
   final _this = this as AllSessionsState;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is AllSessionsState&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.query, _this.query) || other.query == _this.query)&&(identical(other.quickFilter, _this.quickFilter) || other.quickFilter == _this.quickFilter)&&const DeepCollectionEquality().equals(other.rows, _this.rows)&&(identical(other.counts, _this.counts) || other.counts == _this.counts)&&const DeepCollectionEquality().equals(other.failures, _this.failures)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.scratchProjectId, _this.scratchProjectId) || other.scratchProjectId == _this.scratchProjectId)&&(identical(other.defaultProjectId, _this.defaultProjectId) || other.defaultProjectId == _this.defaultProjectId));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is AllSessionsState&&(identical(other.projectId, _this.projectId) || other.projectId == _this.projectId)&&(identical(other.query, _this.query) || other.query == _this.query)&&(identical(other.quickFilter, _this.quickFilter) || other.quickFilter == _this.quickFilter)&&const DeepCollectionEquality().equals(other.rows, _this.rows)&&(identical(other.counts, _this.counts) || other.counts == _this.counts)&&(identical(other.loadMore, _this.loadMore) || other.loadMore == _this.loadMore)&&(identical(other.awaitingAnswer, _this.awaitingAnswer) || other.awaitingAnswer == _this.awaitingAnswer)&&(identical(other.failure, _this.failure) || other.failure == _this.failure)&&(identical(other.isLoading, _this.isLoading) || other.isLoading == _this.isLoading)&&(identical(other.scratchProjectId, _this.scratchProjectId) || other.scratchProjectId == _this.scratchProjectId)&&(identical(other.defaultProjectId, _this.defaultProjectId) || other.defaultProjectId == _this.defaultProjectId));
 }
 
 
 @override
 int get hashCode {
   final _this = this as AllSessionsState;
-  return Object.hash(runtimeType,_this.projectId,_this.query,_this.quickFilter,const DeepCollectionEquality().hash(_this.rows),_this.counts,const DeepCollectionEquality().hash(_this.failures),_this.isLoading,_this.scratchProjectId,_this.defaultProjectId);
+  return Object.hash(runtimeType,_this.projectId,_this.query,_this.quickFilter,const DeepCollectionEquality().hash(_this.rows),_this.counts,_this.loadMore,_this.awaitingAnswer,_this.failure,_this.isLoading,_this.scratchProjectId,_this.defaultProjectId);
 }
 
 @override
 String toString() {
   final _this = this as AllSessionsState;
-  return 'AllSessionsState(projectId: ${_this.projectId}, query: ${_this.query}, quickFilter: ${_this.quickFilter}, rows: ${_this.rows}, counts: ${_this.counts}, failures: ${_this.failures}, isLoading: ${_this.isLoading}, scratchProjectId: ${_this.scratchProjectId}, defaultProjectId: ${_this.defaultProjectId})';
+  return 'AllSessionsState(projectId: ${_this.projectId}, query: ${_this.query}, quickFilter: ${_this.quickFilter}, rows: ${_this.rows}, counts: ${_this.counts}, loadMore: ${_this.loadMore}, awaitingAnswer: ${_this.awaitingAnswer}, failure: ${_this.failure}, isLoading: ${_this.isLoading}, scratchProjectId: ${_this.scratchProjectId}, defaultProjectId: ${_this.defaultProjectId})';
 }
 
 
@@ -550,7 +400,7 @@ abstract mixin class $AllSessionsStateCopyWith<$Res>  {
   factory $AllSessionsStateCopyWith(AllSessionsState value, $Res Function(AllSessionsState) _then) = _$AllSessionsStateCopyWithImpl;
 @useResult
 $Res call({
- String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, List<AllSessionsFailure> failures, bool isLoading, String? scratchProjectId, String? defaultProjectId
+ String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, SessionWindowLoadMore? loadMore, bool awaitingAnswer, RemoteFailureReason? failure, bool isLoading, String? scratchProjectId, String? defaultProjectId
 });
 
 
@@ -567,15 +417,17 @@ class _$AllSessionsStateCopyWithImpl<$Res>
 
 /// Create a copy of AllSessionsState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? failures = null,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? loadMore = freezed,Object? awaitingAnswer = null,Object? failure = freezed,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
   return _then(AllSessionsState(
 projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
 as String,quickFilter: null == quickFilter ? _self.quickFilter : quickFilter // ignore: cast_nullable_to_non_nullable
 as SessionListQuickFilter,rows: null == rows ? _self.rows : rows // ignore: cast_nullable_to_non_nullable
 as List<AllSessionsRow>,counts: null == counts ? _self.counts : counts // ignore: cast_nullable_to_non_nullable
-as SessionListChipCounts,failures: null == failures ? _self.failures : failures // ignore: cast_nullable_to_non_nullable
-as List<AllSessionsFailure>,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as SessionListChipCounts,loadMore: freezed == loadMore ? _self.loadMore : loadMore // ignore: cast_nullable_to_non_nullable
+as SessionWindowLoadMore?,awaitingAnswer: null == awaitingAnswer ? _self.awaitingAnswer : awaitingAnswer // ignore: cast_nullable_to_non_nullable
+as bool,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason?,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
 as bool,scratchProjectId: freezed == scratchProjectId ? _self.scratchProjectId : scratchProjectId // ignore: cast_nullable_to_non_nullable
 as String?,defaultProjectId: freezed == defaultProjectId ? _self.defaultProjectId : defaultProjectId // ignore: cast_nullable_to_non_nullable
 as String?,
@@ -599,30 +451,38 @@ $SessionListChipCountsCopyWith<$Res> get counts {
 
 
 class _AllSessionsState implements AllSessionsState {
-  const _AllSessionsState({required this.projectId, required this.query, required this.quickFilter, required this.rows, required this.counts, required this.failures, required this.isLoading, required this.scratchProjectId, required this.defaultProjectId});
+  const _AllSessionsState({required this.projectId, required this.query, required this.quickFilter, required this.rows, required this.counts, required this.loadMore, required this.awaitingAnswer, required this.failure, required this.isLoading, required this.scratchProjectId, required this.defaultProjectId});
   
 
 /// The project the list is filtered to, or null for every project.
 @override final  String? projectId;
 @override final  String query;
 @override final  SessionListQuickFilter quickFilter;
-/// Newest first, by last update (archived: by archive time) and never by
-/// status, narrowed by the filter, the query, the chip and the hidden
-/// sessions. Date headings are the presentation's, over this order.
+/// The loaded sessions, newest first, by last update (archived: by archive
+/// time) and never by status, narrowed by the filter, the query, the chip
+/// and the hidden sessions. Date headings are the presentation's, over
+/// this order.
 @override final  List<AllSessionsRow> rows;
+/// The bridge's counts under the filter and the query. A hidden session
+/// stays counted until the change that hides it reaches the bridge.
 @override final  SessionListChipCounts counts;
-/// The listed projects, under the filter, whose sessions failed to load.
-@override final  List<AllSessionsFailure> failures;
-/// Whether the project list, or a listed project under the filter, is still
-/// loading for the first time, or the archived list's reload on open has not
-/// answered yet.
+/// The page after [rows], or null when every matching session is listed.
+@override final  SessionWindowLoadMore? loadMore;
+/// Whether [rows] are the previous search, filter or chip narrowed to
+/// this one until the bridge answers: rows it lacks may still come.
+@override final  bool awaitingAnswer;
+/// Why the sessions could not be loaded, with none to show.
+@override final  RemoteFailureReason? failure;
+/// Whether the project list or the sessions are still loading for the
+/// first time, or a retry after a failure has not answered yet.
 @override final  bool isLoading;
 /// The bridge's "No project" project, or null on a bridge without one.
 @override final  String? scratchProjectId;
 /// The new-session default: the filter, otherwise [scratchProjectId],
-/// otherwise the project of the newest session, otherwise null. Without
-/// either it stays null while [isLoading], so a consumer that holds the
-/// first default it sees never holds a project that merely answered first.
+/// otherwise the project of the newest session, otherwise null. The newest
+/// session is read only while nothing narrows the list, and kept through a
+/// search or a chip; until it is known the default stays null, so a
+/// consumer that holds the first default it sees never holds a guess.
 @override final  String? defaultProjectId;
 
 /// Create a copy of AllSessionsState
@@ -635,18 +495,18 @@ _$AllSessionsStateCopyWith<_AllSessionsState> get copyWith => __$AllSessionsStat
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AllSessionsState&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.query, query) || other.query == query)&&(identical(other.quickFilter, quickFilter) || other.quickFilter == quickFilter)&&const DeepCollectionEquality().equals(other.rows, rows)&&(identical(other.counts, counts) || other.counts == counts)&&const DeepCollectionEquality().equals(other.failures, failures)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.scratchProjectId, scratchProjectId) || other.scratchProjectId == scratchProjectId)&&(identical(other.defaultProjectId, defaultProjectId) || other.defaultProjectId == defaultProjectId));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _AllSessionsState&&(identical(other.projectId, projectId) || other.projectId == projectId)&&(identical(other.query, query) || other.query == query)&&(identical(other.quickFilter, quickFilter) || other.quickFilter == quickFilter)&&const DeepCollectionEquality().equals(other.rows, rows)&&(identical(other.counts, counts) || other.counts == counts)&&(identical(other.loadMore, loadMore) || other.loadMore == loadMore)&&(identical(other.awaitingAnswer, awaitingAnswer) || other.awaitingAnswer == awaitingAnswer)&&(identical(other.failure, failure) || other.failure == failure)&&(identical(other.isLoading, isLoading) || other.isLoading == isLoading)&&(identical(other.scratchProjectId, scratchProjectId) || other.scratchProjectId == scratchProjectId)&&(identical(other.defaultProjectId, defaultProjectId) || other.defaultProjectId == defaultProjectId));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,projectId,query,quickFilter,const DeepCollectionEquality().hash(rows),counts,const DeepCollectionEquality().hash(failures),isLoading,scratchProjectId,defaultProjectId);
+    return Object.hash(runtimeType,projectId,query,quickFilter,const DeepCollectionEquality().hash(rows),counts,loadMore,awaitingAnswer,failure,isLoading,scratchProjectId,defaultProjectId);
 }
 
 @override
 String toString() {
-    return 'AllSessionsState(projectId: $projectId, query: $query, quickFilter: $quickFilter, rows: $rows, counts: $counts, failures: $failures, isLoading: $isLoading, scratchProjectId: $scratchProjectId, defaultProjectId: $defaultProjectId)';
+    return 'AllSessionsState(projectId: $projectId, query: $query, quickFilter: $quickFilter, rows: $rows, counts: $counts, loadMore: $loadMore, awaitingAnswer: $awaitingAnswer, failure: $failure, isLoading: $isLoading, scratchProjectId: $scratchProjectId, defaultProjectId: $defaultProjectId)';
 }
 
 
@@ -657,7 +517,7 @@ abstract mixin class _$AllSessionsStateCopyWith<$Res> implements $AllSessionsSta
   factory _$AllSessionsStateCopyWith(_AllSessionsState value, $Res Function(_AllSessionsState) _then) = __$AllSessionsStateCopyWithImpl;
 @override @useResult
 $Res call({
- String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, List<AllSessionsFailure> failures, bool isLoading, String? scratchProjectId, String? defaultProjectId
+ String? projectId, String query, SessionListQuickFilter quickFilter, List<AllSessionsRow> rows, SessionListChipCounts counts, SessionWindowLoadMore? loadMore, bool awaitingAnswer, RemoteFailureReason? failure, bool isLoading, String? scratchProjectId, String? defaultProjectId
 });
 
 
@@ -674,15 +534,17 @@ class __$AllSessionsStateCopyWithImpl<$Res>
 
 /// Create a copy of AllSessionsState
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? failures = null,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? projectId = freezed,Object? query = null,Object? quickFilter = null,Object? rows = null,Object? counts = null,Object? loadMore = freezed,Object? awaitingAnswer = null,Object? failure = freezed,Object? isLoading = null,Object? scratchProjectId = freezed,Object? defaultProjectId = freezed,}) {
   return _then(_AllSessionsState(
 projectId: freezed == projectId ? _self.projectId : projectId // ignore: cast_nullable_to_non_nullable
 as String?,query: null == query ? _self.query : query // ignore: cast_nullable_to_non_nullable
 as String,quickFilter: null == quickFilter ? _self.quickFilter : quickFilter // ignore: cast_nullable_to_non_nullable
 as SessionListQuickFilter,rows: null == rows ? _self.rows : rows // ignore: cast_nullable_to_non_nullable
 as List<AllSessionsRow>,counts: null == counts ? _self.counts : counts // ignore: cast_nullable_to_non_nullable
-as SessionListChipCounts,failures: null == failures ? _self.failures : failures // ignore: cast_nullable_to_non_nullable
-as List<AllSessionsFailure>,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
+as SessionListChipCounts,loadMore: freezed == loadMore ? _self.loadMore : loadMore // ignore: cast_nullable_to_non_nullable
+as SessionWindowLoadMore?,awaitingAnswer: null == awaitingAnswer ? _self.awaitingAnswer : awaitingAnswer // ignore: cast_nullable_to_non_nullable
+as bool,failure: freezed == failure ? _self.failure : failure // ignore: cast_nullable_to_non_nullable
+as RemoteFailureReason?,isLoading: null == isLoading ? _self.isLoading : isLoading // ignore: cast_nullable_to_non_nullable
 as bool,scratchProjectId: freezed == scratchProjectId ? _self.scratchProjectId : scratchProjectId // ignore: cast_nullable_to_non_nullable
 as String?,defaultProjectId: freezed == defaultProjectId ? _self.defaultProjectId : defaultProjectId // ignore: cast_nullable_to_non_nullable
 as String?,

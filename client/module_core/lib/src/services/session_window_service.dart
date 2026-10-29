@@ -83,7 +83,8 @@ class SessionWindowService({
   bool _connected = false;
 
   /// A load failed and left older rows on screen, so the next reconnect
-  /// loads them again instead of relying on the replayed events.
+  /// loads them again instead of relying on the replayed events. In complete
+  /// mode: some project's sessions failed to list.
   bool _rowsOutdated = false;
   Timer? _queryTimer;
   Timer? _reloadTimer;
@@ -99,9 +100,11 @@ class SessionWindowService({
           .listen((_) => _onLiveStateChanged()),
     );
     // Seeding from a page moves this tracker too, so paged mode follows the
-    // bridge's unseen events instead; complete mode only re-reads it.
+    // bridge's unseen events instead; complete mode only re-reads it. Both
+    // follow fresh user activity.
     _subscriptions.add(
-      _sessionUnseenTracker.sessionUnseen.skip(1).listen((_) {
+      _sessionUnseenTracker.sessionUnseen.skip(1).listen((unseen) {
+        _applyUserActivity(unseen: unseen);
         if (_completeSessions case final sessions?) _emitComplete(sessions: sessions);
       }),
     );
@@ -124,6 +127,8 @@ class SessionWindowService({
   }
 
   ValueStream<SessionWindowState> get state => _state.stream;
+
+  AllSessionsMode get mode => _mode;
 
   SessionWindowKey get key => _key;
 
@@ -153,6 +158,7 @@ class SessionWindowService({
           counts: loaded.counts,
           nextCursor: loaded.nextCursor,
           loadMore: SessionWindowLoadMore.idle,
+          awaitingAnswer: true,
         ),
       );
     }
@@ -204,6 +210,8 @@ class SessionWindowService({
             counts: page.counts,
             nextCursor: page.nextCursor,
             loadMore: SessionWindowLoadMore.idle,
+            // A key change stops pages until its own answer.
+            awaitingAnswer: false,
           ),
         );
         _reapply(replay);
@@ -324,6 +332,7 @@ class SessionWindowService({
         counts: counts,
         nextCursor: cursor,
         loadMore: SessionWindowLoadMore.idle,
+        awaitingAnswer: false,
       ),
     );
     _reapply(replay);
@@ -374,6 +383,7 @@ class SessionWindowService({
       );
     }
     _completeSessions = complete;
+    _rowsOutdated = !succeeded;
     _emitComplete(sessions: complete);
     // The inventory may have changed while the projects were read.
     unawaited(_admitProjects(inventory: _projectInventory.state));
@@ -470,7 +480,10 @@ class SessionWindowService({
           unread: counted.where(_isUnseen).length,
         ),
         nextCursor: null,
-        loadMore: SessionWindowLoadMore.idle,
+        // No page follows, so a failed one marks a project read that failed;
+        // reload retries it.
+        loadMore: _rowsOutdated ? SessionWindowLoadMore.failed : SessionWindowLoadMore.idle,
+        awaitingAnswer: false,
       ),
     );
   }
@@ -552,8 +565,32 @@ class SessionWindowService({
         counts: loaded.counts,
         nextCursor: loaded.nextCursor,
         loadMore: loaded.loadMore,
+        awaitingAnswer: loaded.awaitingAnswer,
       ),
     );
+  }
+
+  /// A prompt the bridge reports only as user activity still makes its session
+  /// the newest, as the bridge folds that activity into a session's update
+  /// time. Only loaded rows move; a page brings the others already folded.
+  void _applyUserActivity({required Map<String, Map<String, SessionListItemState>> unseen}) {
+    final loaded =
+        _completeSessions ??
+        switch (_state.value) {
+          SessionWindowLoaded(:final sessions) => sessions,
+          SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
+        };
+    for (final session in loaded) {
+      final activityAt = unseen[session.projectID]?[session.id]?.lastUserActivityAt;
+      final time = session.time;
+      if (activityAt == null || time == null || activityAt <= time.updated) continue;
+      final _SessionChange change = (
+        session: session.copyWith(time: time.copyWith(updated: activityAt), lastUserActivityAt: activityAt),
+        removed: false,
+      );
+      _replay?.add(change);
+      _applyChange(change);
+    }
   }
 
   /// [sessions] without [session], then with it in order when [keep] and it
@@ -619,6 +656,7 @@ class SessionWindowService({
               counts: page.counts,
               nextCursor: loaded.nextCursor,
               loadMore: loaded.loadMore,
+              awaitingAnswer: loaded.awaitingAnswer,
             ),
           );
         }
@@ -739,10 +777,26 @@ class SessionWindowService({
   void _fail({required RemoteFailureReason reason}) {
     _replay = null;
     switch (_state.value) {
-      // A page request the failed load superseded never answers.
-      case final SessionWindowLoaded loaded when loaded.loadMore == SessionWindowLoadMore.loading:
+      // A key narrowed to no rows has nothing to show but the failure.
+      case SessionWindowLoaded(awaitingAnswer: true, sessions: []):
+        _emit(SessionWindowFailed(reason: reason));
+      // Nothing more is coming for rows narrowed from the previous key, and a
+      // page request the failed load superseded never answers: its row offers
+      // Retry rather than asking again by itself.
+      case final SessionWindowLoaded loaded
+          when loaded.awaitingAnswer || loaded.loadMore == SessionWindowLoadMore.loading:
         _rowsOutdated = true;
-        _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.idle));
+        _emit(
+          SessionWindowLoaded(
+            sessions: loaded.sessions,
+            counts: loaded.counts,
+            nextCursor: loaded.nextCursor,
+            loadMore: loaded.loadMore == SessionWindowLoadMore.loading
+                ? SessionWindowLoadMore.failed
+                : loaded.loadMore,
+            awaitingAnswer: false,
+          ),
+        );
       case SessionWindowLoaded():
         _rowsOutdated = true;
       case SessionWindowLoading() || SessionWindowFailed():
@@ -756,6 +810,7 @@ class SessionWindowService({
         counts: loaded.counts,
         nextCursor: loaded.nextCursor,
         loadMore: loadMore,
+        awaitingAnswer: loaded.awaitingAnswer,
       );
 
   void _cancelTimers() {

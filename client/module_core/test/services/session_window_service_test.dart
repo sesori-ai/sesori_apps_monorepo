@@ -264,6 +264,42 @@ void main() {
         unawaited(window.dispose());
       });
     });
+
+    test("a failed reload in place of a page offers Retry rather than asking again", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        // A failed reload leaves the rows outdated, so the next page reloads them.
+        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        unawaited(window.reload());
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+
+        bridge.requests.clear();
+        unawaited(window.loadMore());
+        async.flushMicrotasks();
+        expect(bridge.requests, hasLength(1));
+        expect(loaded(window).loadMore, SessionWindowLoadMore.failed);
+        bridge.answer = null;
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a key narrowed to no rows whose answer fails shows the failure", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 3);
+        final window = create();
+        async.flushMicrotasks();
+        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        window.select(key: (projectId: null, query: "nothing", filter: SessionListQuickFilter.all));
+        expect(ids(window), isEmpty);
+        async.elapse(SessionWindowService.queryDelay);
+        expect(window.state.value, isA<SessionWindowFailed>());
+        bridge.answer = null;
+        unawaited(window.dispose());
+      });
+    });
   });
 
   group("reload", () {
@@ -435,11 +471,21 @@ void main() {
         // The project's own name matches too.
         window.select(key: (projectId: null, query: "fix beta", filter: SessionListQuickFilter.all));
         expect(ids(window), ["beta-fix"]);
+        expect(loaded(window).awaitingAnswer, isTrue);
         async.elapse(const Duration(milliseconds: 249));
         expect(bridge.requests, isEmpty);
         async.elapse(const Duration(milliseconds: 1));
         expect(bridge.requests.single.query, "fix beta");
         expect(ids(window), ["beta-fix"]);
+        expect(loaded(window).awaitingAnswer, isFalse);
+
+        // A failed answer leaves the narrowed rows as all there is.
+        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        window.select(key: (projectId: null, query: "beta", filter: SessionListQuickFilter.all));
+        async.elapse(SessionWindowService.queryDelay);
+        expect(ids(window), ["beta-fix"]);
+        expect(loaded(window).awaitingAnswer, isFalse);
+        bridge.answer = null;
 
         bridge.requests.clear();
         window.select(key: (projectId: null, query: null, filter: SessionListQuickFilter.all));
@@ -508,6 +554,22 @@ void main() {
   });
 
   group("live updates", () {
+    test("fresh user activity makes a loaded session the newest", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 3);
+        final window = create();
+        async.flushMicrotasks();
+        expect(ids(window), ["s0000", "s0001", "s0002"]);
+
+        unseen.emitSessionUnseen({
+          "alpha": {"s0002": (unseen: false, lastUserActivityAt: 2000000)},
+        });
+        async.flushMicrotasks();
+        expect(ids(window), ["s0002", "s0000", "s0001"]);
+        expect(loaded(window).sessions.first.time?.updated, 2000000);
+        unawaited(window.dispose());
+      });
+    });
     test("insert in range, skip rows beyond it, and remove what stops matching", () {
       inFakeTime((async) {
         bridge.sessions = _sessions(count: 250);

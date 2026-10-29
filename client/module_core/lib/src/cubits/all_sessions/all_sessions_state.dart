@@ -3,6 +3,7 @@ import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
 import "../../services/models/session_list_quick_filter.dart";
+import "../../services/models/session_window_state.dart";
 
 part "all_sessions_state.freezed.dart";
 
@@ -19,15 +20,6 @@ sealed class AllSessionsRow with _$AllSessionsRow {
     required bool isRetrying,
     required int backgroundTaskCount,
   }) = _AllSessionsRow;
-}
-
-/// A project whose sessions could not be loaded, for its retry row.
-@Freezed()
-sealed class AllSessionsFailure with _$AllSessionsFailure {
-  const factory({
-    required ProjectSummary project,
-    required RemoteFailureReason reason,
-  }) = _AllSessionsFailure;
 }
 
 /// How many sessions each chip would show under the current query.
@@ -57,27 +49,38 @@ sealed class AllSessionsState with _$AllSessionsState {
     required String query,
     required SessionListQuickFilter quickFilter,
 
-    /// Newest first, by last update (archived: by archive time) and never by
-    /// status, narrowed by the filter, the query, the chip and the hidden
-    /// sessions. Date headings are the presentation's, over this order.
+    /// The loaded sessions, newest first, by last update (archived: by archive
+    /// time) and never by status, narrowed by the filter, the query, the chip
+    /// and the hidden sessions. Date headings are the presentation's, over
+    /// this order.
     required List<AllSessionsRow> rows,
+
+    /// The bridge's counts under the filter and the query. A hidden session
+    /// stays counted until the change that hides it reaches the bridge.
     required SessionListChipCounts counts,
 
-    /// The listed projects, under the filter, whose sessions failed to load.
-    required List<AllSessionsFailure> failures,
+    /// The page after [rows], or null when every matching session is listed.
+    required SessionWindowLoadMore? loadMore,
 
-    /// Whether the project list, or a listed project under the filter, is still
-    /// loading for the first time, or the archived list's reload on open has not
-    /// answered yet.
+    /// Whether [rows] are the previous search, filter or chip narrowed to
+    /// this one until the bridge answers: rows it lacks may still come.
+    required bool awaitingAnswer,
+
+    /// Why the sessions could not be loaded, with none to show.
+    required RemoteFailureReason? failure,
+
+    /// Whether the project list or the sessions are still loading for the
+    /// first time, or a retry after a failure has not answered yet.
     required bool isLoading,
 
     /// The bridge's "No project" project, or null on a bridge without one.
     required String? scratchProjectId,
 
     /// The new-session default: the filter, otherwise [scratchProjectId],
-    /// otherwise the project of the newest session, otherwise null. Without
-    /// either it stays null while [isLoading], so a consumer that holds the
-    /// first default it sees never holds a project that merely answered first.
+    /// otherwise the project of the newest session, otherwise null. The newest
+    /// session is read only while nothing narrows the list, and kept through a
+    /// search or a chip; until it is known the default stays null, so a
+    /// consumer that holds the first default it sees never holds a guess.
     required String? defaultProjectId,
   }) = _AllSessionsState;
 }

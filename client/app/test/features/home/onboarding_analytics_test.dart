@@ -60,6 +60,7 @@ void main() {
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+    when(() => mockConnectionService.events).thenAnswer((_) => const Stream.empty());
     when(() => mockConnectionService.connectWithFreshAuthToken()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);

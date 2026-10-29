@@ -27,7 +27,6 @@ void main() {
   late _MockConnectionOverlayCubit overlay;
   late int contentTaps;
   late _MockProjectListCubit projects;
-  late Map<String, RecentSessionsEntry> recent;
   late _MockRecentSessionInventoryService recentInventory;
   late _MockProjectInventoryService projectInventory;
   late _MockSessionWindowService window;
@@ -35,6 +34,9 @@ void main() {
   /// The window's loaded rows, and every session its bridge searches.
   late List<Session> loadedSessions;
   late List<Session> bridgeSessions;
+
+  /// Why the window failed to load, or null while it loads [loadedSessions].
+  late RemoteFailureReason? windowFailure;
   late BehaviorSubject<String?> filter;
   late _MockFilterTracker filterTracker;
   late _MockRepository repository;
@@ -48,6 +50,7 @@ void main() {
 
   setUpAll(() {
     registerFallbackValue(const DesktopSidebarLayout());
+    registerFallbackValue((projectId: null, query: null, filter: SessionListQuickFilter.all));
   });
   tearDown(GetIt.instance.reset);
   setUp(() {
@@ -70,24 +73,22 @@ void main() {
       initialState: const ConnectionOverlayState.hidden(connected: true),
     );
     projects = _MockProjectListCubit();
-    // Loaded and empty: a loading list shimmers for as long as it waits.
-    recent = {"project-1": _loaded(sessions: const [])};
     whenListen(
       projects,
       const Stream<ProjectListState>.empty(),
       initialState: const ProjectListState.loaded(projects: [_sesori], folderProjects: [_sesori], scratchProject: null),
     );
     // The inventories behind the mocked cubits, as the shared list reads them.
+    // Launching rows still read the recent inventory.
     recentInventory = _MockRecentSessionInventoryService();
-    when(
-      () => recentInventory.state,
-    ).thenAnswer((_) => const Stream<Map<String, RecentSessionsEntry>>.empty().shareValueSeeded(recent));
-    when(() => recentInventory.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
+    when(() => recentInventory.state).thenAnswer((_) => BehaviorSubject.seeded(const {}));
     projectInventory = _MockProjectInventoryService();
     when(() => projectInventory.state).thenAnswer((_) => projects.state);
     when(() => projectInventory.stateStream).thenAnswer((_) => projects.stream.shareValueSeeded(projects.state));
+    // Loaded and empty: a loading list shimmers for as long as it waits.
     loadedSessions = const [];
     bridgeSessions = const [];
+    windowFailure = null;
     List<Session> newestMatches({required Iterable<Session> sessions, required String query, required int limit}) =>
         (matchTitles(
           items: sessions,
@@ -95,15 +96,27 @@ void main() {
           query: query,
         )..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0))).take(limit).toList();
     window = _MockSessionWindowService();
+    when(() => window.mode).thenReturn(AllSessionsMode.active);
+    // The window narrows its rows to the project the list selects.
+    String? windowProjectId;
+    when(() => window.select(key: any(named: "key"))).thenAnswer(
+      (invocation) => windowProjectId = (invocation.namedArguments[#key] as SessionWindowKey).projectId,
+    );
+    when(window.reload).thenAnswer((_) async => true);
     when(() => window.state).thenAnswer(
-      (_) => const Stream<SessionWindowState>.empty().shareValueSeeded(
-        SessionWindowLoaded(
-          sessions: loadedSessions,
-          counts: const SessionPageCounts(all: 0, running: 0, unread: 0),
+      (_) => const Stream<SessionWindowState>.empty().shareValueSeeded(switch (windowFailure) {
+        final reason? => SessionWindowFailed(reason: reason),
+        null => SessionWindowLoaded(
+          sessions: [
+            for (final session in loadedSessions)
+              if (windowProjectId == null || session.projectID == windowProjectId) session,
+          ],
+          counts: SessionPageCounts(all: loadedSessions.length, running: 0, unread: 0),
           nextCursor: null,
           loadMore: SessionWindowLoadMore.idle,
+          awaitingAnswer: false,
         ),
-      ),
+      }),
     );
     when(
       () => window.searchLoaded(
@@ -181,13 +194,11 @@ void main() {
             ),
             BlocProvider(
               create: (_) => sessions = AllSessionsCubit(
-                mode: AllSessionsMode.active,
-                recentInventory: recentInventory,
+                window: window,
                 projectInventory: projectInventory,
                 filterTracker: filterTracker,
-                sessionListService: SessionListService(
-                  repository: MockProjectRepository(),
-                ),
+                sseEventTracker: MockSseEventTracker(),
+                sessionUnseenTracker: FakeSessionUnseenTracker(),
               ),
             ),
           ],
@@ -226,14 +237,10 @@ void main() {
         scratchProject: null,
       ),
     );
-    recent = {
-      "project-1": _loaded(
-        sessions: [testSession(id: "s1", title: "Fix the build", updatedAt: 2)],
-      ),
-      "project-2": _loaded(
-        sessions: [testSession(id: "s2", title: "Write docs", updatedAt: 1)],
-      ),
-    };
+    loadedSessions = [
+      testSession(id: "s1", title: "Fix the build", updatedAt: 2),
+      testSession(id: "s2", title: "Write docs", updatedAt: 1).copyWith(projectID: "project-2"),
+    ];
   }
 
   final running = _state(processState: const BridgeProcessRunning(pid: 42));
@@ -613,12 +620,12 @@ void main() {
     verify(projects.retryLoadProjects).called(1);
   });
 
-  testWidgets("a project whose sessions fail to load says so in the list and retries it", (tester) async {
-    recent = const {"project-1": RecentSessionsFailed(reason: RemoteFailureReason.networkDown)};
+  testWidgets("sessions that fail to load say so in the list and retry", (tester) async {
+    windowFailure = RemoteFailureReason.networkDown;
     await tester.pumpWidget(app(state: running));
     await tester.pumpAndSettle();
     await tester.tap(find.descendant(of: list, matching: find.text("Retry")));
-    verify(() => recentInventory.retry(projectId: "project-1")).called(1);
+    verify(window.reload).called(1);
   });
 
   for (final succeeded in [true, false]) {
@@ -627,11 +634,7 @@ void main() {
     ) async {
       final semantics = tester.ensureSemantics();
       try {
-        recent = {
-          "project-1": _loaded(
-            sessions: [testSession(id: "s1", title: "Fix the build")],
-          ),
-        };
+        loadedSessions = [testSession(id: "s1", title: "Fix the build")];
         final reply = Completer<bool>();
         when(refreshService.refresh).thenAnswer((_) => reply.future);
         await tester.pumpWidget(app(state: running));
@@ -857,7 +860,6 @@ void main() {
         const Stream<ProjectListState>.empty(),
         initialState: ProjectListState.loaded(projects: available, folderProjects: available, scratchProject: null),
       );
-      recent = {for (final project in available) project.id: _loaded(sessions: const [])};
       return app(
         state: running,
         child: DesktopCockpitShell(
@@ -1052,11 +1054,7 @@ void main() {
       "from launch to its rows the sidebar list shows one skeleton, which hands off to them"
       "${throughProjectLoad ? ", through the project load" : ""}",
       (tester) async {
-        recent = {
-          "project-1": _loaded(
-            sessions: [testSession(id: "s1", title: "Fix the build")],
-          ),
-        };
+        loadedSessions = [testSession(id: "s1", title: "Fix the build")];
         final projectUpdates = StreamController<ProjectListState>();
         addTearDown(projectUpdates.close);
         whenListen(projects, projectUpdates.stream, initialState: const ProjectListState.loading());
@@ -1123,11 +1121,7 @@ void main() {
   testWidgets("a load that starts mid-scan shows the scan row from its first frame and keeps the list still", (
     tester,
   ) async {
-    recent = {
-      "project-1": _loaded(
-        sessions: [testSession(id: "s1", title: "Fix the build")],
-      ),
-    };
+    loadedSessions = [testSession(id: "s1", title: "Fix the build")];
     when(() => refreshService.scan).thenAnswer(
       (_) => BehaviorSubject.seeded(
         const CatalogRescanState.reading(
@@ -1482,14 +1476,6 @@ BridgeControlState _state({
     activeSessionCount: 0,
   ),
   updateState: const DesktopUpdateManagedBySystem(),
-);
-
-RecentSessionsLoaded _loaded({required List<Session> sessions}) => RecentSessionsLoaded(
-  sourceSessions: sessions,
-  visibleSessions: sessions,
-  archivedSessions: const [],
-  activityBySessionId: const {},
-  listStateBySessionId: const {},
 );
 
 const _sesori = ProjectSummary(id: "project-1", name: "Sesori Desktop", path: "/work/sesori", time: null);

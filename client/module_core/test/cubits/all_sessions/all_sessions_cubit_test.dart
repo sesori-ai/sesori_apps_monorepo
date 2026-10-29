@@ -9,561 +9,388 @@ import "package:test/test.dart";
 
 import "../../helpers/test_helpers.dart";
 
+class _MockProjectInventory() extends Mock implements ProjectInventoryService;
+
+const _one = ProjectSummary(id: "one", name: "One", path: "/one", time: null);
+const _two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
+const _scratch = ProjectSummary(id: "scratch", name: "No project", path: "/scratch", time: null);
+
+const _running = SessionActivityInfo(
+  mainAgentRunning: true,
+  isRunning: true,
+  lastUserActivityAt: null,
+  updatedAt: null,
+);
+
+Session _session({required String id, required int updatedAt, String projectId = "one", String? title}) =>
+    testSession(id: id, updatedAt: updatedAt, title: title ?? "Session $id").copyWith(projectID: projectId);
+
+/// [count] sessions in one, from s0000, the newest, down.
+List<Session> _sessions({required int count}) => [
+  for (var index = 0; index < count; index++)
+    _session(id: "s${index.toString().padLeft(4, "0")}", updatedAt: 1000000 - index),
+];
+
+/// A bridge serving `/sessions/page` for one mode over [sessions], the cursor
+/// being the next row's index.
+class _FakeBridge() {
+  List<Session> sessions = const [];
+  final List<SessionPageRequest> requests = [];
+
+  /// Answers in place of the bridge, when set.
+  Future<SessionPageResult> Function(SessionPageRequest request)? answer;
+
+  Future<SessionPageResult> serve(SessionPageRequest request) async {
+    requests.add(request);
+    if (answer case final answer?) return await answer(request);
+    final query = request.query;
+    final listed = [
+      for (final session in sessions)
+        if ((request.projectId == null || session.projectID == request.projectId) &&
+            (query == null ||
+                searchWords(query: query).every((word) => (session.title ?? "").toLowerCase().contains(word))))
+          session,
+    ];
+    final start = int.parse(request.cursor ?? "0");
+    final end = (start + request.limit).clamp(0, listed.length);
+    return SessionPageLoaded(
+      page: SessionPageResponse(
+        items: listed.sublist(start, end),
+        nextCursor: end >= listed.length ? null : "$end",
+        counts: SessionPageCounts(all: listed.length, running: 0, unread: 0),
+      ),
+    );
+  }
+}
+
 void main() {
-  const one = ProjectSummary(id: "one", name: "One", path: "/one", time: null);
-  const two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
-  const running = SessionActivityInfo(
-    mainAgentRunning: true,
-    isRunning: true,
-    lastUserActivityAt: null,
-    updatedAt: null,
-  );
-  final sessionListService = SessionListService(
-    repository: MockProjectRepository(),
-  );
-  late BehaviorSubject<Map<String, RecentSessionsEntry>> entries;
-  late BehaviorSubject<ProjectListState> projects;
+  late MockSessionRepository sessionRepository;
+  late MockProjectRepository projectRepository;
+  late MockConnectionService connection;
+  late MockSseEventTracker activity;
+  late FakeSessionUnseenTracker unseen;
+  late FakeCatalogRescanService catalog;
+  late _MockProjectInventory projectInventory;
+  late BehaviorSubject<ProjectListState> inventory;
+  late StreamController<SseEvent> events;
   late BehaviorSubject<ConnectionStatus> status;
   late ProjectListService projectListService;
-  late SessionListFilterTracker tracker;
-  late _MockRecentInventory recentInventory;
-  late _MockProjectInventory projectInventory;
+  late SessionListFilterTracker filterTracker;
+  late _FakeBridge bridge;
 
-  ConnectionStatus connected({required String bridgeId}) => ConnectionStatus.connected(
-    config: ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: bridgeId),
-    health: testHealthResponse(),
-  );
-
-  setUpAll(registerAllFallbackValues);
-  setUp(() {
-    entries = BehaviorSubject.seeded(const {});
-    projects = BehaviorSubject.seeded(
-      const ProjectListState.loaded(projects: [one, two], folderProjects: [one, two], scratchProject: null),
-      sync: true,
+  setUpAll(() {
+    registerAllFallbackValues();
+    registerFallbackValue(
+      const SessionPageRequest(
+        mode: SessionPageMode.active,
+        projectId: null,
+        query: null,
+        filter: SessionPageFilter.all,
+        cursor: null,
+        limit: 0,
+      ),
     );
-    status = BehaviorSubject.seeded(connected(bridgeId: "a"));
-    final connection = MockConnectionService();
+  });
+
+  setUp(() {
+    sessionRepository = MockSessionRepository();
+    projectRepository = MockProjectRepository();
+    connection = MockConnectionService();
+    activity = MockSseEventTracker();
+    unseen = FakeSessionUnseenTracker();
+    catalog = FakeCatalogRescanService();
+    projectInventory = _MockProjectInventory();
+    events = StreamController.broadcast(sync: true);
+    status = BehaviorSubject.seeded(
+      ConnectionStatus.connected(
+        config: const ServerConnectionConfig(relayHost: "relay", authToken: "t", bridgeId: "a"),
+        health: testHealthResponse(),
+      ),
+    );
+    bridge = _FakeBridge();
+    when(() => connection.events).thenAnswer((_) => events.stream);
     when(() => connection.status).thenAnswer((_) => status.stream);
     when(() => connection.currentStatus).thenAnswer((_) => status.value);
-    projectListService = ProjectListService(
-      repository: MockProjectRepository(),
-    );
-    tracker = SessionListFilterTracker(connectionService: connection, projectListService: projectListService);
-    recentInventory = _MockRecentInventory();
-    when(() => recentInventory.state).thenAnswer((_) => entries.stream);
-    when(() => recentInventory.retry(projectId: any(named: "projectId"))).thenAnswer((_) async {});
-    when(recentInventory.refresh).thenAnswer((_) async => true);
-    projectInventory = _MockProjectInventory();
-    when(() => projectInventory.state).thenAnswer((_) => projects.value);
-    when(() => projectInventory.stateStream).thenAnswer((_) => projects.stream);
-  });
-  tearDown(() async {
-    await tracker.dispose();
-    await projectListService.dispose();
-    await Future.wait([entries.close(), projects.close(), status.close()]);
-  });
-
-  AllSessionsCubit create({required AllSessionsMode mode}) {
-    final cubit = AllSessionsCubit(
-      mode: mode,
-      recentInventory: recentInventory,
-      projectInventory: projectInventory,
-      filterTracker: tracker,
-      sessionListService: sessionListService,
-    );
-    addTearDown(() async {
-      if (!cubit.isClosed) await cubit.close();
-    });
-    return cubit;
-  }
-
-  Session session({required String id, required ProjectSummary project, required int updatedAt}) =>
-      testSession(id: id, updatedAt: updatedAt).copyWith(projectID: project.id);
-
-  Session archived({required String id, required ProjectSummary project, required int archivedAt}) => testSession(
-    id: id,
-    updatedAt: 1,
-    archivedAt: DateTime.fromMillisecondsSinceEpoch(archivedAt),
-  ).copyWith(projectID: project.id);
-
-  // The inventory's own projections, so active rows arrive running-first.
-  RecentSessionsLoaded loaded({
-    required List<Session> sessions,
-    required Map<String, SessionActivityInfo> activity,
-  }) {
-    List<Session> projected({required SessionListFilter filter}) => sessionListService.visibleSessions(
-      sessions: sessions,
-      filter: filter,
-      activityBySessionId: activity,
-      listStateBySessionId: const {},
-    );
-    return RecentSessionsLoaded(
-      sourceSessions: sessions,
-      visibleSessions: projected(filter: SessionListFilter.active),
-      archivedSessions: projected(filter: SessionListFilter.archived),
-      activityBySessionId: activity,
-      listStateBySessionId: const {},
-    );
-  }
-
-  List<String> ids({required AllSessionsCubit cubit}) => [for (final row in cubit.state.rows) row.session.id];
-  List<int> counts({required AllSessionsCubit cubit}) => [
-    for (final filter in SessionListQuickFilter.values) cubit.state.counts.of(filter: filter),
-  ];
-  // Service changes reach the list together, a turn of the event loop later.
-  Future<void> settle() => pumpEventQueue();
-  // A query applies once typing pauses.
-  void search({required AllSessionsCubit cubit, required String query}) => fakeAsync((async) {
-    cubit.setQuery(query: query);
-    async.elapse(AllSessionsCubit.queryDelay);
-  });
-
-  test("every listed project's active sessions merge newest first, without archived or unlisted ones", () {
-    entries.add({
-      one.id: loaded(
-        sessions: [
-          session(id: "a", project: one, updatedAt: 30),
-          session(id: "b", project: one, updatedAt: 10),
-          archived(id: "archived", project: one, archivedAt: 40),
-        ],
-        activity: const {},
-      ),
-      two.id: loaded(
-        sessions: [
-          session(id: "c", project: two, updatedAt: 20),
-          session(id: "d", project: two, updatedAt: 5),
-        ],
-        activity: const {"d": running},
-      ),
-      "unlisted": loaded(
-        sessions: [
-          session(
-            id: "e",
-            project: const ProjectSummary(id: "unlisted", name: null, path: "/u", time: null),
-            updatedAt: 50,
-          ),
-        ],
-        activity: const {},
-      ),
-    });
-    final cubit = create(mode: AllSessionsMode.active);
-
-    expect(ids(cubit: cubit), ["a", "c", "b", "d"]);
-    expect([for (final row in cubit.state.rows) row.project.id], [one.id, two.id, one.id, two.id]);
-    expect(cubit.state.rows.last.isRunning, isTrue, reason: "running, and still placed by its update");
-  });
-
-  test("a status change never moves a row", () async {
-    final sessions = [
-      session(id: "a", project: one, updatedAt: 30),
-      session(id: "b", project: one, updatedAt: 20),
-      session(id: "c", project: one, updatedAt: 10),
-    ];
-    entries.add({one.id: loaded(sessions: sessions, activity: const {})});
-    final cubit = create(mode: AllSessionsMode.active);
-    expect(ids(cubit: cubit), ["a", "b", "c"]);
-
-    entries.add({
-      one.id: loaded(sessions: sessions, activity: const {"c": running}),
-    });
-    await settle();
-    expect(ids(cubit: cubit), ["a", "b", "c"]);
-    expect([for (final row in cubit.state.rows) row.isRunning], [false, false, true]);
-  });
-
-  test("the query narrows rows and counts, a chip only the rows, and hidden sessions leave both", () {
-    entries.add({
-      one.id: loaded(
-        sessions: [
-          testSession(id: "login", title: "Fix login", updatedAt: 40, unseen: true),
-          testSession(id: "docs", title: "Docs", updatedAt: 20),
-          testSession(id: "tests", title: "Fix tests", updatedAt: 10),
-        ],
-        activity: const {},
-      ),
-      two.id: loaded(
-        sessions: [testSession(id: "build", title: "Fix build", updatedAt: 30).copyWith(projectID: two.id)],
-        activity: const {"build": running},
-      ),
-    });
-    final cubit = create(mode: AllSessionsMode.active)..setHiddenSessionIds(sessionIds: {"tests"});
-    expect(ids(cubit: cubit), ["login", "build", "docs"]);
-    expect(counts(cubit: cubit), [3, 1, 1]);
-
-    search(cubit: cubit, query: "fix");
-    expect(ids(cubit: cubit), ["login", "build"]);
-    expect(counts(cubit: cubit), [2, 1, 1]);
-
-    cubit.setQuickFilter(filter: SessionListQuickFilter.running);
-    expect(cubit.state.quickFilter, SessionListQuickFilter.running);
-    expect(ids(cubit: cubit), ["build"]);
-    expect(counts(cubit: cubit), [2, 1, 1]);
-
-    cubit
-      ..setHiddenSessionIds(sessionIds: const {})
-      ..setQuickFilter(filter: SessionListQuickFilter.all);
-    expect(ids(cubit: cubit), ["login", "build", "tests"]);
-    expect(counts(cubit: cubit), [3, 1, 1]);
-  });
-
-  test("each query word matches the title or the project's name, a No project session only its title", () {
-    const unnamed = ProjectSummary(id: "unnamed", name: null, path: "/work/landing", time: null);
-    const scratch = ProjectSummary(id: "scratch", name: "Scratch", path: "/s", time: null, kind: ProjectKind.scratch);
-    projects.add(
+    inventory = BehaviorSubject.seeded(
       const ProjectListState.loaded(
-        projects: [one, unnamed, scratch],
-        folderProjects: [one, unnamed],
-        scratchProject: scratch,
+        projects: [_one, _two, _scratch],
+        folderProjects: [_one, _two],
+        scratchProject: _scratch,
       ),
     );
-    entries.add({
-      one.id: loaded(
-        sessions: [
-          testSession(id: "header", title: "Fix the header", updatedAt: 40),
-          testSession(id: "docs", title: "Docs", updatedAt: 30, unseen: true),
-        ],
-        activity: const {},
-      ),
-      unnamed.id: loaded(
-        sessions: [testSession(id: "parser", title: "Fix the parser", updatedAt: 20)],
-        activity: const {},
-      ),
-      scratch.id: loaded(
-        sessions: [testSession(id: "idea", title: "An idea", updatedAt: 10)],
-        activity: const {},
-      ),
-    });
-    final cubit = create(mode: AllSessionsMode.active);
-
-    search(cubit: cubit, query: "ONE fix");
-    expect(ids(cubit: cubit), ["header"]);
-
-    search(cubit: cubit, query: "one");
-    expect(ids(cubit: cubit), ["header", "docs"]);
-    expect(counts(cubit: cubit), [2, 0, 1]);
-
-    search(cubit: cubit, query: "landing");
-    expect(ids(cubit: cubit), ["parser"], reason: "a project without a stored name goes by its folder's");
-
-    search(cubit: cubit, query: "scratch");
-    expect(ids(cubit: cubit), isEmpty);
-    expect(counts(cubit: cubit), [0, 0, 0]);
+    when(() => projectInventory.state).thenAnswer((_) => inventory.value);
+    when(() => projectInventory.stateStream).thenAnswer((_) => inventory.stream);
+    when(
+      () => sessionRepository.getSessionPage(request: any(named: "request")),
+    ).thenAnswer((invocation) => bridge.serve(invocation.namedArguments[#request] as SessionPageRequest));
+    projectListService = ProjectListService(repository: MockProjectRepository());
+    filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projectListService);
   });
 
-  test("a selected project narrows the list until it leaves the list or the computer changes", () async {
-    entries.add({
-      one.id: loaded(
-        sessions: [session(id: "a", project: one, updatedAt: 20)],
-        activity: const {},
-      ),
-      two.id: loaded(
-        sessions: [session(id: "b", project: two, updatedAt: 10)],
-        activity: const {},
-      ),
-    });
-    final cubit = create(mode: AllSessionsMode.active)..selectProject(projectId: two.id);
-    // At once, so a list opened filtered never draws the previous filter.
-    expect(cubit.state.projectId, two.id);
-    expect(ids(cubit: cubit), ["b"]);
-
-    projectListService.removeProjectAndPublish(projects: const [one, two], projectId: two.id);
-    projects.add(const ProjectListState.loaded(projects: [one], folderProjects: [one], scratchProject: null));
-    await settle();
-    expect(cubit.state.projectId, isNull);
-    expect(ids(cubit: cubit), ["a"]);
-
-    cubit.selectProject(projectId: one.id);
-    await settle();
-    expect(cubit.state.projectId, one.id);
-    status.add(connected(bridgeId: "b"));
-    await settle();
-    expect(cubit.state.projectId, isNull);
+  tearDown(() async {
+    await filterTracker.dispose();
+    await projectListService.dispose();
+    await events.close();
+    await status.close();
+    await inventory.close();
+    await activity.onDispose();
+    await unseen.onDispose();
+    await catalog.onDispose();
   });
 
-  test("a selection emits once, and another list's selection still reaches this one", () async {
-    final cubit = create(mode: AllSessionsMode.active);
-    final other = create(mode: AllSessionsMode.archived);
-    final emitted = <String?>[];
-    final subscription = cubit.stream.listen((state) => emitted.add(state.projectId));
-    addTearDown(subscription.cancel);
-
-    cubit.selectProject(projectId: one.id);
-    await settle();
-    expect(emitted, [one.id]);
-
-    other.selectProject(projectId: two.id);
-    await settle();
-    expect(emitted, [one.id, two.id]);
+  /// Runs [body] in fake time over a cubit on a new [mode] window, then
+  /// disposes both there.
+  void withCubit(
+    void Function(AllSessionsCubit cubit, FakeAsync async) body, {
+    AllSessionsMode mode = AllSessionsMode.active,
+  }) => fakeAsync((async) {
+    final window = SessionWindowService(
+      mode: mode,
+      projectInventory: projectInventory,
+      sessionRepository: sessionRepository,
+      projectRepository: projectRepository,
+      connectionService: connection,
+      sseEventTracker: activity,
+      sessionUnseenTracker: unseen,
+      catalogRescanService: catalog,
+    );
+    final cubit = AllSessionsCubit(
+      window: window,
+      projectInventory: projectInventory,
+      filterTracker: filterTracker,
+      sseEventTracker: activity,
+      sessionUnseenTracker: unseen,
+    );
+    async.flushMicrotasks();
+    // Live changes reach the list a timer later.
+    async.elapse(Duration.zero);
+    body(cubit, async);
+    unawaited(cubit.close());
+    unawaited(window.dispose());
+    async.flushMicrotasks();
   });
 
-  test("archived mode lists every project's archived sessions, most recently archived first", () {
-    entries.add({
-      one.id: loaded(
-        sessions: [
-          archived(id: "oldest", project: one, archivedAt: 10),
-          archived(id: "newest", project: one, archivedAt: 30),
-          session(id: "active", project: one, updatedAt: 60),
-        ],
-        activity: const {},
-      ),
-      two.id: loaded(
-        sessions: [archived(id: "middle", project: two, archivedAt: 20)],
-        activity: const {},
-      ),
+  List<String> ids(AllSessionsCubit cubit) => [for (final row in cubit.state.rows) row.session.id];
+
+  test("the rows are the window's first page, each with its project and live state", () {
+    bridge.sessions = [
+      _session(id: "b", updatedAt: 3, projectId: "two"),
+      _session(id: "a", updatedAt: 2),
+      // A project the inventory does not list has nothing to name.
+      _session(id: "stray", updatedAt: 1, projectId: "gone"),
+    ];
+    activity.emitSessionActivity({
+      "one": {"a": _running},
     });
-    final cubit = create(mode: AllSessionsMode.archived);
-    expect(ids(cubit: cubit), ["newest", "middle", "oldest"]);
-    // The bridge publishes no event on archive, so opening reloads.
-    verify(recentInventory.refresh).called(1);
-
-    cubit.selectProject(projectId: one.id);
-    expect(ids(cubit: cubit), ["newest", "oldest"]);
-  });
-
-  group("archived mode stays loading until its reload on open answers", () {
-    late Completer<bool> reload;
-    final noSessions = loaded(sessions: const [], activity: const {});
-
-    setUp(() {
-      // Archived during this run: the loaded inventory still holds it active.
-      entries.add({
-        one.id: loaded(
-          sessions: [session(id: "a", project: one, updatedAt: 10)],
-          activity: const {},
-        ),
-        two.id: noSessions,
-      });
-      reload = Completer<bool>();
-      when(recentInventory.refresh).thenAnswer((_) => reload.future);
-    });
-
-    test("so a stale inventory never reads as empty", () async {
-      final cubit = create(mode: AllSessionsMode.archived);
-      expect(cubit.state.rows, isEmpty);
-      expect(cubit.state.isLoading, isTrue);
-
-      entries.add({
-        one.id: loaded(
-          sessions: [archived(id: "a", project: one, archivedAt: 20)],
-          activity: const {},
-        ),
-        two.id: noSessions,
-      });
-      await settle();
-      expect(ids(cubit: cubit), ["a"]);
-
-      reload.complete(true);
-      await settle();
-      expect(ids(cubit: cubit), ["a"]);
+    withCubit((cubit, async) {
+      expect(ids(cubit), ["b", "a"]);
+      expect(cubit.state.rows.first.project, _two);
+      expect(cubit.state.rows.last.isRunning, isTrue);
       expect(cubit.state.isLoading, isFalse);
-    });
+      expect(cubit.state.loadMore, isNull);
+      expect(cubit.state.counts, const SessionListChipCounts(all: 3, running: 0, unread: 0));
 
-    test("and reads as empty once it answers, even when it failed", () async {
-      final cubit = create(mode: AllSessionsMode.archived);
+      activity.emitSessionActivity(const {});
+      async.elapse(Duration.zero);
+      expect(cubit.state.rows.last.isRunning, isFalse);
+    });
+  });
+
+  test("near the end a page is appended, and the loader row leaves with the last one", () {
+    bridge.sessions = _sessions(count: 250);
+    withCubit((cubit, async) {
+      expect(ids(cubit), hasLength(200));
+      expect(cubit.state.loadMore, SessionWindowLoadMore.idle);
+
+      unawaited(cubit.loadMore());
+      async.elapse(Duration.zero);
+      expect(ids(cubit), hasLength(250));
+      expect(ids(cubit).take(200), [for (final session in bridge.sessions.take(200)) session.id]);
+      expect(cubit.state.loadMore, isNull);
+    });
+  });
+
+  test("hidden sessions leave the rows, and stay counted until the bridge says otherwise", () {
+    bridge.sessions = [_session(id: "a", updatedAt: 2), _session(id: "b", updatedAt: 1)];
+    withCubit((cubit, async) {
+      cubit.setHiddenSessionIds(sessionIds: {"a"});
+      expect(ids(cubit), ["b"]);
+      expect(cubit.state.counts.all, 2);
+    });
+  });
+
+  test("a query narrows the loaded rows at once, then the bridge's answer replaces them", () {
+    bridge.sessions = [
+      ..._sessions(count: 200),
+      _session(id: "old", updatedAt: 1, title: "Deploy old"),
+    ];
+    withCubit((cubit, async) {
+      cubit.setQuery(query: "deploy");
+      expect(cubit.state.query, "deploy");
+      expect(ids(cubit), isEmpty);
+      expect(cubit.state.awaitingAnswer, isTrue);
+
+      async.elapse(SessionWindowService.queryDelay);
+      expect(bridge.requests.last.query, "deploy");
+      expect(ids(cubit), ["old"]);
+      expect(cubit.state.awaitingAnswer, isFalse);
+
+      // A cleared query asks at once.
+      cubit.setQuery(query: " ");
+      async.elapse(Duration.zero);
+      expect(bridge.requests.last.query, isNull);
+      expect(ids(cubit), hasLength(200));
+    });
+  });
+
+  test("a chip and a project filter are the window's key", () {
+    bridge.sessions = [_session(id: "b", updatedAt: 2, projectId: "two"), _session(id: "a", updatedAt: 1)];
+    withCubit((cubit, async) {
+      cubit.selectProject(projectId: "two");
+      expect(ids(cubit), ["b"]);
+      cubit.setQuickFilter(filter: SessionListQuickFilter.running);
+      async.elapse(Duration.zero);
+      expect(bridge.requests.last.projectId, "two");
+      expect(bridge.requests.last.filter, SessionPageFilter.running);
+    });
+  });
+
+  test("the default project is the filter, otherwise No project, otherwise the newest session's", () {
+    const noScratch = ProjectListState.loaded(
+      projects: [_one, _two],
+      folderProjects: [_one, _two],
+      scratchProject: null,
+    );
+    inventory.add(noScratch);
+    bridge.sessions = [
+      _session(id: "b", updatedAt: 2, projectId: "two", title: "Beta"),
+      _session(id: "a", updatedAt: 1, title: "Alpha"),
+    ];
+    withCubit((cubit, async) {
+      expect(cubit.state.defaultProjectId, "two");
+
+      // A search keeps the newest session read before it.
+      cubit.setQuery(query: "alpha");
+      async.elapse(SessionWindowService.queryDelay);
+      expect(ids(cubit), ["a"]);
+      expect(cubit.state.defaultProjectId, "two");
+
+      cubit.selectProject(projectId: "one");
+      expect(cubit.state.defaultProjectId, "one");
+
+      inventory.add(
+        const ProjectListState.loaded(
+          projects: [_one, _two, _scratch],
+          folderProjects: [_one, _two],
+          scratchProject: _scratch,
+        ),
+      );
+      cubit.selectProject(projectId: null);
+      async.elapse(Duration.zero);
+      expect(cubit.state.defaultProjectId, "scratch");
+    });
+  });
+
+  test("the newest session of a project the inventory lacks is never the default", () {
+    inventory.add(const ProjectListState.loaded(projects: [_one], folderProjects: [_one], scratchProject: null));
+    bridge.sessions = [
+      _session(id: "b", updatedAt: 2, projectId: "gone"),
+      _session(id: "a", updatedAt: 1),
+    ];
+    withCubit((cubit, async) {
+      expect(ids(cubit), ["a"]);
+      expect(cubit.state.defaultProjectId, "one");
+    });
+  });
+
+  test("a failed load is the list's failure, and Retry loads while it asks again", () {
+    var fail = true;
+    bridge.sessions = [_session(id: "a", updatedAt: 1)];
+    bridge.answer = (request) async => fail
+        ? SessionPageFailure(error: ApiError.generic())
+        : await (_FakeBridge()..sessions = bridge.sessions).serve(request);
+    withCubit((cubit, async) {
+      expect(cubit.state.failure, isNotNull);
+      expect(cubit.state.isLoading, isFalse);
+
+      fail = false;
+      unawaited(cubit.retry());
+      expect(cubit.state.failure, isNull);
       expect(cubit.state.isLoading, isTrue);
-
-      reload.complete(false);
-      await settle();
-      expect(cubit.state.rows, isEmpty);
-      expect(cubit.state.isLoading, isFalse, reason: "a failed reload keeps the rows already loaded");
+      async.elapse(Duration.zero);
+      expect(cubit.state.isLoading, isFalse);
+      expect(ids(cubit), ["a"]);
     });
   });
 
-  test("the default project is the filter, otherwise the newest session's, otherwise none", () async {
-    final cubit = create(mode: AllSessionsMode.active);
-    verifyNever(recentInventory.refresh);
-    expect(cubit.state.defaultProjectId, isNull);
-
-    entries.add({
-      one.id: loaded(
-        sessions: [session(id: "a", project: one, updatedAt: 10)],
-        activity: const {},
-      ),
-      two.id: loaded(
-        sessions: [session(id: "b", project: two, updatedAt: 20)],
-        activity: const {},
-      ),
+  test("an archived list pages its own archived window", () {
+    bridge.sessions = [
+      testSession(id: "x", updatedAt: 1, archivedAt: DateTime(2026, 2)).copyWith(projectID: "one"),
+    ];
+    withCubit(mode: AllSessionsMode.archived, (cubit, async) {
+      expect(cubit.mode, AllSessionsMode.archived);
+      expect(bridge.requests.single.mode, SessionPageMode.archived);
+      expect(ids(cubit), ["x"]);
     });
-    await settle();
-    expect(cubit.state.defaultProjectId, two.id);
-    search(cubit: cubit, query: "matches nothing");
-    expect(cubit.state.defaultProjectId, two.id, reason: "the query narrows the rows, not the default");
-
-    cubit.selectProject(projectId: one.id);
-    await settle();
-    expect(cubit.state.defaultProjectId, one.id);
   });
 
-  test("without a filter the default waits until every project's sessions have loaded", () async {
-    final older = loaded(
-      sessions: [session(id: "a", project: one, updatedAt: 10)],
-      activity: const {},
+  test("on a bridge without pages every project's sessions are listed", () {
+    bridge.answer = (_) async => const SessionPageUnsupported();
+    for (final (projectId, sessions) in [
+      ("one", [_session(id: "a", updatedAt: 1)]),
+      ("two", [_session(id: "b", updatedAt: 2, projectId: "two")]),
+      ("scratch", <Session>[]),
+    ]) {
+      when(
+        () => projectRepository.listSessions(projectId: projectId),
+      ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: sessions)));
+    }
+    withCubit((cubit, async) {
+      expect(ids(cubit), ["b", "a"]);
+      expect(cubit.state.loadMore, isNull);
+      expect(cubit.state.counts.all, 2);
+    });
+  });
+
+  test("on a bridge without pages a project that fails to list is the list's failure, and Retry lists it", () {
+    bridge.answer = (_) async => const SessionPageUnsupported();
+    var fail = true;
+    when(
+      () => projectRepository.listSessions(projectId: "one"),
+    ).thenAnswer((_) async => ApiResponse.success(SessionListResponse(items: [_session(id: "a", updatedAt: 1)])));
+    when(() => projectRepository.listSessions(projectId: "two")).thenAnswer(
+      (_) async => fail
+          ? ApiResponse.error(ApiError.generic())
+          : ApiResponse.success(
+              SessionListResponse(
+                items: [_session(id: "b", updatedAt: 2, projectId: "two")],
+              ),
+            ),
     );
-    entries.add({one.id: older, two.id: RecentSessionsLoading()});
-    final cubit = create(mode: AllSessionsMode.active);
-    expect(cubit.state.isLoading, isTrue);
-    expect(cubit.state.defaultProjectId, isNull, reason: "the first project to answer is not yet the newest");
+    when(
+      () => projectRepository.listSessions(projectId: "scratch"),
+    ).thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
+    withCubit((cubit, async) {
+      expect(ids(cubit), ["a"]);
+      expect(cubit.state.failure, isNotNull);
 
-    cubit.selectProject(projectId: one.id);
-    expect(cubit.state.defaultProjectId, one.id, reason: "a filter needs no sessions");
-    cubit.selectProject(projectId: null);
-    expect(cubit.state.defaultProjectId, isNull);
-
-    entries.add({
-      one.id: older,
-      two.id: loaded(
-        sessions: [session(id: "b", project: two, updatedAt: 20)],
-        activity: const {},
-      ),
+      fail = false;
+      unawaited(cubit.retry());
+      async.elapse(Duration.zero);
+      expect(ids(cubit), ["b", "a"]);
+      expect(cubit.state.failure, isNull);
     });
-    await settle();
-    expect(cubit.state.isLoading, isFalse);
-    expect(cubit.state.defaultProjectId, two.id);
-
-    // A project that failed to load does not hold the default back.
-    entries.add({one.id: older, two.id: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown)});
-    await settle();
-    expect(cubit.state.defaultProjectId, one.id);
   });
 
-  test("with No project the default is the filter, otherwise No project, even while sessions load", () async {
-    const scratch = ProjectSummary(id: "scratch", name: null, path: "/scratch", time: null, kind: ProjectKind.scratch);
-    projects.add(
-      const ProjectListState.loaded(projects: [one, scratch], folderProjects: [one], scratchProject: scratch),
-    );
-    entries.add({
-      one.id: loaded(
-        sessions: [session(id: "a", project: one, updatedAt: 10)],
-        activity: const {},
-      ),
-      scratch.id: RecentSessionsLoading(),
-    });
-    final cubit = create(mode: AllSessionsMode.active);
-    expect(cubit.state.isLoading, isTrue);
-    expect(cubit.state.scratchProjectId, scratch.id);
-    expect(cubit.state.defaultProjectId, scratch.id, reason: "the newest session's project is not the default");
-
-    cubit.selectProject(projectId: one.id);
-    expect(cubit.state.defaultProjectId, one.id);
-  });
-
-  test("a project that failed to load is a retry row beside the projects that loaded", () async {
-    entries.add({
-      one.id: loaded(
-        sessions: [session(id: "a", project: one, updatedAt: 10)],
-        activity: const {},
-      ),
-      two.id: const RecentSessionsFailed(reason: RemoteFailureReason.networkDown),
-    });
-    final cubit = create(mode: AllSessionsMode.active);
-    expect(ids(cubit: cubit), ["a"]);
-    expect(
-      [for (final failure in cubit.state.failures) (failure.project.id, failure.reason)],
-      [(two.id, RemoteFailureReason.networkDown)],
-    );
-    expect(cubit.state.isLoading, isFalse);
-    await cubit.retry(projectId: two.id);
-    verify(() => recentInventory.retry(projectId: two.id)).called(1);
-
-    entries.add({...entries.value, two.id: RecentSessionsLoading()});
-    await settle();
-    expect(cubit.state.failures, isEmpty);
-    expect(cubit.state.isLoading, isTrue);
-
-    cubit.selectProject(projectId: one.id);
-    await settle();
-    expect(cubit.state.isLoading, isFalse, reason: "the filter leaves the loading project out");
-
-    projects.add(const ProjectListState.loading());
-    await settle();
-    expect(cubit.state.isLoading, isTrue);
-    expect(cubit.state.rows, isEmpty);
-  });
-
-  test("a burst of service changes resolves the list once", () async {
-    final cubit = create(mode: AllSessionsMode.active);
-    final emitted = <AllSessionsState>[];
-    final subscription = cubit.stream.listen(emitted.add);
-    addTearDown(subscription.cancel);
-
-    entries.add({
-      one.id: loaded(
-        sessions: [session(id: "a", project: one, updatedAt: 10)],
-        activity: const {},
-      ),
-    });
-    projects.add(const ProjectListState.loaded(projects: [one], folderProjects: [one], scratchProject: null));
-    entries.add({
-      one.id: loaded(
-        sessions: [session(id: "a", project: one, updatedAt: 10)],
-        activity: const {"a": running},
-      ),
-    });
-    await settle();
-    expect(emitted, hasLength(1));
-    expect(ids(cubit: cubit), ["a"]);
-    expect(cubit.state.rows.single.isRunning, isTrue);
-  });
-
-  test("an unchanged resolve emits nothing", () async {
-    List<Session> sessions() => [session(id: "a", project: one, updatedAt: 10)];
-    entries.add({one.id: loaded(sessions: sessions(), activity: const {})});
-    final cubit = create(mode: AllSessionsMode.active);
-    final emitted = <AllSessionsState>[];
-    final subscription = cubit.stream.listen(emitted.add);
-    addTearDown(subscription.cancel);
-
-    // Equal, though none of it is the same instance.
-    entries.add({one.id: loaded(sessions: sessions(), activity: const {})});
-    final listed = [one, two];
-    projects.add(ProjectListState.loaded(projects: listed, folderProjects: listed, scratchProject: null));
-    await settle();
-    cubit
-      ..setQuickFilter(filter: SessionListQuickFilter.all)
-      ..setHiddenSessionIds(sessionIds: const {})
-      ..setQuery(query: "");
-    expect(emitted, isEmpty);
-  });
-
-  test("a query applies once typing pauses, and a cleared one at once", () {
-    entries.add({
-      one.id: loaded(
-        sessions: [
-          testSession(id: "login", title: "Fix login", updatedAt: 20),
-          testSession(id: "docs", title: "Docs", updatedAt: 10),
-        ],
-        activity: const {},
-      ),
-    });
-    fakeAsync((async) {
-      final cubit = create(mode: AllSessionsMode.active);
-      final emitted = <String>[];
-      final subscription = cubit.stream.listen((state) => emitted.add(state.query));
-      addTearDown(subscription.cancel);
-
-      for (final query in ["f", "fi", "fix"]) {
-        cubit.setQuery(query: query);
-        async.elapse(const Duration(milliseconds: 100));
-      }
-      expect(cubit.state.query, isEmpty, reason: "still typing");
-      expect(ids(cubit: cubit), ["login", "docs"]);
-
-      async.elapse(AllSessionsCubit.queryDelay - const Duration(milliseconds: 100));
-      expect(emitted, ["fix"]);
-      expect(ids(cubit: cubit), ["login"]);
-
-      cubit
-        ..setQuery(query: "fixes")
-        ..setQuery(query: "");
-      async.flushMicrotasks();
-      expect(emitted, ["fix", ""]);
-      expect(ids(cubit: cubit), ["login", "docs"]);
-      async.elapse(AllSessionsCubit.queryDelay);
-      expect(emitted, ["fix", ""], reason: "clearing drops the pending query");
+  test("an unchanged resolve emits nothing", () {
+    bridge.sessions = [_session(id: "a", updatedAt: 1)];
+    withCubit((cubit, async) {
+      final emitted = <AllSessionsState>[];
+      final subscription = cubit.stream.listen(emitted.add);
+      activity.emitSessionActivity(const {"two": {}});
+      async.elapse(Duration.zero);
+      expect(emitted, isEmpty);
+      unawaited(subscription.cancel());
     });
   });
 }
-
-class _MockRecentInventory() extends Mock implements RecentSessionInventoryService;
-
-class _MockProjectInventory() extends Mock implements ProjectInventoryService;

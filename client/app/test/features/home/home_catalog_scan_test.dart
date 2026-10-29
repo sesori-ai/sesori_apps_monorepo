@@ -43,6 +43,7 @@ void main() {
 
     when(() => mockConnectionService.status).thenAnswer((_) => statusController.stream);
     when(() => mockConnectionService.currentStatus).thenAnswer((_) => statusController.value);
+    when(() => mockConnectionService.events).thenAnswer((_) => const Stream.empty());
     when(() => mockRegisteredBridgesService.hasRegisteredBridges()).thenAnswer((_) async => true);
     when(() => mockRegisteredBridgesService.getRegisteredBridges()).thenAnswer((_) async => const []);
     when(() => mockProjectRepository.listProjects()).thenAnswer(
@@ -51,12 +52,8 @@ void main() {
 
     getIt.registerLazySingleton<ProjectRepository>(() => mockProjectRepository);
     // A row under the project, which names it.
-    getIt.registerFactory<RecentSessionInventoryService>(
-      () => stubRecentSessionInventory(
-        entries: {
-          "project-1": loadedRecentSessions(sessions: [testSession(title: "Fix the parser")]),
-        },
-      ),
+    when(() => mockProjectRepository.listSessions(projectId: "project-1")).thenAnswer(
+      (_) async => ApiResponse.success(SessionListResponse(items: [testSession(title: "Fix the parser")])),
     );
     registerListServices(projectRepository: mockProjectRepository);
     getIt.registerLazySingleton<ConnectionService>(() => mockConnectionService);

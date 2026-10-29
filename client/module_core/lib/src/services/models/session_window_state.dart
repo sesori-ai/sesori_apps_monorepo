@@ -24,7 +24,14 @@ final class const SessionWindowLoaded({
   /// Where the next page starts, or null when every matching session is
   /// loaded.
   required final String? nextCursor,
+
+  /// With no [nextCursor], failed means some of the sessions failed to load
+  /// on a bridge without pages; a reload retries them.
   required final SessionWindowLoadMore loadMore,
+
+  /// Whether [sessions] are the previous key's rows narrowed to this one,
+  /// shown until the bridge answers for it: what they lack may still come.
+  required final bool awaitingAnswer,
 }) extends SessionWindowState;
 
 /// The first answer failed, with no rows to keep showing.

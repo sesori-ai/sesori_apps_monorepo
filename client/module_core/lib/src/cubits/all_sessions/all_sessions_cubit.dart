@@ -5,68 +5,70 @@ import "package:collection/collection.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
+import "../../errors/remote_failure_reason.dart";
 import "../../services/models/all_sessions_mode.dart";
 import "../../services/models/project_list_state.dart";
-import "../../services/models/recent_sessions_entry.dart";
 import "../../services/models/session_list_quick_filter.dart";
+import "../../services/models/session_window_state.dart";
 import "../../services/project_inventory_service.dart";
-import "../../services/recent_session_inventory_service.dart";
 import "../../services/session_list_filter_tracker.dart";
-import "../../services/session_list_service.dart";
-import "../recent_sessions/recent_sessions_resolvers.dart";
+import "../../services/session_unseen_tracker.dart";
+import "../../services/session_window_service.dart";
+import "../../services/sse_event_tracker.dart";
 import "all_sessions_state.dart";
 
-/// The session list across every listed project: one flat list from the
-/// scoped inventories, narrowed by the shared project filter, a query and a
-/// chip.
+/// The session list across every listed project: the rows of a
+/// [SessionWindowService], under the shared project filter, a query and a
+/// chip, each with its project and live state.
 ///
-/// [AllSessionsMode.archived] reloads the inventory when it opens: the bridge
-/// publishes no event on archive. Until that reload answers, the list is still
-/// loading, so a session archived since the inventory loaded never leaves it
-/// reading as empty.
+/// The window owns which sessions match; this only hands it the key and
+/// leaves out the sessions the list hides.
 class AllSessionsCubit({
-  required final AllSessionsMode _mode,
-  required final RecentSessionInventoryService _recentInventory,
+  required final SessionWindowService _window,
   required final ProjectInventoryService _projectInventory,
   required final SessionListFilterTracker _filterTracker,
-  required final SessionListService _sessionListService,
+  required final SseEventTracker _sseEventTracker,
+  required final SessionUnseenTracker _sessionUnseenTracker,
 }) extends Cubit<AllSessionsState> {
   final CompositeSubscription _subscriptions = CompositeSubscription();
   Set<String> _hiddenSessionIds = const {};
-  bool _awaitingReload = _mode == AllSessionsMode.archived;
-  Timer? _queryTimer;
+  bool _retrying = false;
 
-  /// How long [setQuery] waits for typing to pause.
-  static const queryDelay = Duration(milliseconds: 150);
+  /// The project of the newest session, read while nothing narrows the list.
+  String? _newestProjectId;
 
-  this
-    : super(
-        _resolve(
-          mode: _mode,
-          projects: _projectInventory.state,
-          entries: _recentInventory.state.value,
-          projectId: _filterTracker.projectId.value,
-          query: "",
-          quickFilter: SessionListQuickFilter.all,
-          hiddenSessionIds: const {},
-          awaitingReload: _mode == AllSessionsMode.archived,
-          sessionListService: _sessionListService,
-        ),
-      ) {
+  this : super(_initial) {
     // One live change often moves several of these at once, such as a
-    // projects summary updating both inventories: one resolve follows them all.
+    // session update moving the window and its activity: one resolve follows
+    // them all.
     _subscriptions.add(
       Rx.merge<void>([
-        _recentInventory.state.skip(1),
+        _window.state.skip(1),
         _projectInventory.stateStream.distinct().skip(1),
+        _sseEventTracker.sessionActivity.skip(1),
+        _sessionUnseenTracker.sessionUnseen.skip(1),
         // [selectProject] already shows its own selection.
         _filterTracker.projectId.skip(1).where((projectId) => projectId != state.projectId),
       ]).debounceTime(Duration.zero).listen((_) => _update()),
     );
-    if (_awaitingReload) unawaited(_reload());
+    _update();
   }
 
-  AllSessionsMode get mode => _mode;
+  static const AllSessionsState _initial = AllSessionsState(
+    projectId: null,
+    query: "",
+    quickFilter: SessionListQuickFilter.all,
+    rows: [],
+    counts: SessionListChipCounts(all: 0, running: 0, unread: 0),
+    loadMore: null,
+    awaitingAnswer: false,
+    failure: null,
+    isLoading: true,
+    scratchProjectId: null,
+    defaultProjectId: null,
+  );
+
+  AllSessionsMode get mode => _window.mode;
 
   /// Filters the list to [projectId], or lists every project for null. The
   /// filter is shared by every all-projects list and lasts for the app's run.
@@ -78,17 +80,9 @@ class AllSessionsCubit({
     _update();
   }
 
-  /// Narrows the list [queryDelay] after the last change, so typing does not
-  /// resolve the whole list on every keystroke. A cleared query applies at
-  /// once.
-  void setQuery({required String query}) {
-    _queryTimer?.cancel();
-    if (query.trim().isEmpty) {
-      _emit(query: query, quickFilter: state.quickFilter);
-    } else {
-      _queryTimer = Timer(queryDelay, () => _emit(query: query, quickFilter: state.quickFilter));
-    }
-  }
+  /// The loaded rows narrow at once; the window asks the bridge once typing
+  /// pauses.
+  void setQuery({required String query}) => _emit(query: query, quickFilter: state.quickFilter);
 
   void setQuickFilter({required SessionListQuickFilter filter}) => _emit(query: state.query, quickFilter: filter);
 
@@ -96,132 +90,107 @@ class AllSessionsCubit({
   /// inside an archive's Undo window, and those a launching row holds back.
   void setHiddenSessionIds({required Set<String> sessionIds}) {
     _hiddenSessionIds = Set.unmodifiable(sessionIds);
-    _emit(query: state.query, quickFilter: state.quickFilter);
+    _update();
   }
 
-  Future<void> retry({required String projectId}) => _recentInventory.retry(projectId: projectId);
+  /// Asks for the page after the rows, when one follows and none is on its
+  /// way.
+  Future<void> loadMore() => _window.loadMore();
 
-  Future<void> _reload() async {
-    await _recentInventory.refresh();
-    _awaitingReload = false;
+  /// Loads the sessions again after they failed, loading meanwhile.
+  Future<void> retry() async {
+    _retrying = true;
+    _update();
+    await _window.reload();
+    _retrying = false;
     if (!isClosed) _update();
   }
 
   void _update() => _emit(query: state.query, quickFilter: state.quickFilter);
 
   void _emit({required String query, required SessionListQuickFilter quickFilter}) {
-    final next = _resolve(
-      mode: _mode,
-      projects: _projectInventory.state,
-      entries: _recentInventory.state.value,
-      projectId: _filterTracker.projectId.value,
+    final projectId = _filterTracker.projectId.value;
+    final searched = searchWords(query: query).isNotEmpty;
+    // The window narrows its rows to a new key at once, so they are read
+    // after it.
+    _window.select(key: (projectId: projectId, query: searched ? query : null, filter: quickFilter));
+    final window = _window.state.value;
+    final (projects, scratchProjectId) = switch (_projectInventory.state) {
+      ProjectListLoaded(:final projects, :final scratchProject) => (
+        {for (final project in projects) project.id: project},
+        scratchProject?.id,
+      ),
+      ProjectListLoading() || ProjectListFailed() || ProjectListBridgeDisconnected() => (
+        const <String, ProjectSummary>{},
+        null,
+      ),
+    };
+    switch (window) {
+      // The newest listed session: one whose project the inventory knows.
+      case SessionWindowLoaded(:final sessions, awaitingAnswer: false)
+          when projectId == null && !searched && quickFilter == SessionListQuickFilter.all:
+        _newestProjectId = sessions.firstWhereOrNull((session) => projects.containsKey(session.projectID))?.projectID;
+      case SessionWindowLoaded():
+        break;
+      // Nothing listed, as on another computer, names no newest session.
+      case SessionWindowLoading() || SessionWindowFailed():
+        _newestProjectId = null;
+    }
+    final activity = _sseEventTracker.currentSessionActivity;
+    final unseen = _sessionUnseenTracker.currentSessionUnseen;
+    final sessions = switch (window) {
+      SessionWindowLoaded(:final sessions) => sessions,
+      SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
+    };
+    final next = AllSessionsState(
+      projectId: projectId,
       query: query,
       quickFilter: quickFilter,
-      hiddenSessionIds: _hiddenSessionIds,
-      awaitingReload: _awaitingReload,
-      sessionListService: _sessionListService,
+      rows: List.unmodifiable([
+        for (final session in sessions)
+          if (projects[session.projectID] case final project?)
+            // Only a still-unarchived session hides, as on every list.
+            if (session.time?.archived != null || !_hiddenSessionIds.contains(session.id))
+              AllSessionsRow(
+                session: session,
+                project: project,
+                isRunning: activity[project.id]?[session.id]?.isRunning ?? false,
+                isUnseen: unseen[project.id]?[session.id]?.unseen ?? session.unseen,
+                isAwaitingInput: activity[project.id]?[session.id]?.awaitingInput ?? false,
+                isRetrying: activity[project.id]?[session.id]?.isRetrying ?? false,
+                backgroundTaskCount: activity[project.id]?[session.id]?.backgroundTaskCount ?? 0,
+              ),
+      ]),
+      counts: switch (window) {
+        SessionWindowLoaded(:final counts) => SessionListChipCounts(
+          all: counts.all,
+          running: counts.running,
+          unread: counts.unread,
+        ),
+        SessionWindowLoading() || SessionWindowFailed() => const SessionListChipCounts(all: 0, running: 0, unread: 0),
+      },
+      loadMore: switch (window) {
+        SessionWindowLoaded(nextCursor: _?, :final loadMore) => loadMore,
+        SessionWindowLoaded() || SessionWindowLoading() || SessionWindowFailed() => null,
+      },
+      awaitingAnswer: window is SessionWindowLoaded && window.awaitingAnswer,
+      failure: switch (window) {
+        SessionWindowFailed(:final reason) when !_retrying => reason,
+        // Its row offers Retry beside the rows that did load, and shows no reason.
+        SessionWindowLoaded(nextCursor: null, loadMore: SessionWindowLoadMore.failed) when !_retrying =>
+          RemoteFailureReason.unknown,
+        SessionWindowFailed() || SessionWindowLoading() || SessionWindowLoaded() => null,
+      },
+      isLoading: _retrying || window is SessionWindowLoading || _projectInventory.state is ProjectListLoading,
+      scratchProjectId: scratchProjectId,
+      defaultProjectId: projectId ?? scratchProjectId ?? _newestProjectId,
     );
     // A cubit's first emit goes out even when equal to its initial state.
     if (next != state) emit(next);
   }
 
-  static AllSessionsState _resolve({
-    required AllSessionsMode mode,
-    required ProjectListState projects,
-    required Map<String, RecentSessionsEntry> entries,
-    required String? projectId,
-    required String query,
-    required SessionListQuickFilter quickFilter,
-    required Set<String> hiddenSessionIds,
-    required bool awaitingReload,
-    required SessionListService sessionListService,
-  }) {
-    final (known, scratchProjectId) = switch (projects) {
-      ProjectListLoaded(:final projects, :final scratchProject) => (projects, scratchProject?.id),
-      ProjectListLoading() ||
-      ProjectListFailed() ||
-      ProjectListBridgeDisconnected() => (const <ProjectSummary>[], null),
-    };
-    final listed = [
-      for (final project in known)
-        if (projectId == null || project.id == projectId) project,
-    ];
-    final everyProject =
-        <AllSessionsRow>[
-          for (final project in known)
-            if (entries[project.id] case final RecentSessionsLoaded entry)
-              for (final session in switch (mode) {
-                AllSessionsMode.active => entry.visibleSessions,
-                AllSessionsMode.archived => entry.archivedSessions,
-              })
-                AllSessionsRow(
-                  session: session,
-                  project: project,
-                  isRunning: entry.isRunning(session: session),
-                  isUnseen: entry.isUnseen(session: session),
-                  isAwaitingInput: entry.isAwaitingInput(session: session),
-                  isRetrying: entry.activityBySessionId[session.id]?.isRetrying ?? false,
-                  backgroundTaskCount: entry.activityBySessionId[session.id]?.backgroundTaskCount ?? 0,
-                ),
-        ]..sort(
-          (a, b) => switch (mode) {
-            AllSessionsMode.active => sessionListService.compareByUpdate(a: a.session, b: b.session),
-            AllSessionsMode.archived => sessionListService.compareByArchive(a: a.session, b: b.session),
-          },
-        );
-    final merged = projectId == null ? everyProject : everyProject.where((row) => row.project.id == projectId).toList();
-    // Only a still-unarchived session hides, as on every list.
-    bool shown(AllSessionsRow row) => row.session.time?.archived != null || !hiddenSessionIds.contains(row.session.id);
-    final counted = matchTexts(
-      items: merged,
-      // Each word may match the title or the project's name, as its row and
-      // the project filter show it. A "No project" session has only its title.
-      textsOf: (row) => [row.session.title, projectOwnName(project: row.project)],
-      query: query,
-    ).where(shown).toList();
-    final isLoading =
-        awaitingReload ||
-        projects is ProjectListLoading ||
-        listed.any(
-          (project) => switch (entries[project.id]) {
-            RecentSessionsLoading() || null => true,
-            RecentSessionsLoaded() || RecentSessionsFailed() => false,
-          },
-        );
-    return AllSessionsState(
-      projectId: projectId,
-      query: query,
-      quickFilter: quickFilter,
-      rows: List.unmodifiable(
-        counted.where(
-          (row) => switch (quickFilter) {
-            SessionListQuickFilter.all => true,
-            SessionListQuickFilter.running => row.isRunning,
-            SessionListQuickFilter.unread => row.isUnseen,
-          },
-        ),
-      ),
-      counts: SessionListChipCounts(
-        all: counted.length,
-        running: counted.where((row) => row.isRunning).length,
-        unread: counted.where((row) => row.isUnseen).length,
-      ),
-      failures: List.unmodifiable([
-        for (final project in listed)
-          if (entries[project.id] case RecentSessionsFailed(:final reason))
-            AllSessionsFailure(project: project, reason: reason),
-      ]),
-      isLoading: isLoading,
-      scratchProjectId: scratchProjectId,
-      // The newest session is only known once every project's sessions have
-      // loaded: the first project to answer is not the default.
-      defaultProjectId: projectId ?? scratchProjectId ?? (isLoading ? null : merged.firstOrNull?.project.id),
-    );
-  }
-
   @override
   Future<void> close() async {
-    _queryTimer?.cancel();
     await _subscriptions.dispose();
     await super.close();
   }

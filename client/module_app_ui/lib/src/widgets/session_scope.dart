@@ -9,8 +9,8 @@ import "pending_archive_alerts.dart";
 import "session_launch_failure_alerts.dart";
 
 /// The signed-in session scope: one pair of inventories, the active sessions
-/// window, created once read, the cubits every
-/// signed-in surface shares, and the alerts they raise. Its [AllSessionsCubit]
+/// window, created once read, the cubits every signed-in surface shares, and
+/// the alerts they raise. Its [AllSessionsCubit]
 /// is the active list every all-projects surface shares, created once read.
 ///
 /// Product shells mount it under auth, above every route that lists or
@@ -28,14 +28,15 @@ class const SessionScope({
   createSessionWindow,
   required final SessionListRefreshService Function({
     required ProjectInventoryService projectInventory,
-    required RecentSessionInventoryService recentSessionInventory,
+    required SessionWindowService window,
   })
   createRefreshService,
   required final SessionCleanupService sessionCleanupService,
   required final SessionLaunchService sessionLaunchService,
   required final ConnectionService connectionService,
   required final SessionListFilterTracker filterTracker,
-  required final SessionListService sessionListService,
+  required final SseEventTracker sseEventTracker,
+  required final SessionUnseenTracker sessionUnseenTracker,
 
   /// The navigator whose overlay shows the scope's alerts, so they share one
   /// alert slot with the pages' own alerts when the scope sits above that
@@ -67,7 +68,7 @@ class const SessionScope({
               create: (context) => SessionListRefreshCubit(
                 service: createRefreshService(
                   projectInventory: context.read<ProjectInventoryService>(),
-                  recentSessionInventory: context.read<RecentSessionInventoryService>(),
+                  window: context.read<SessionWindowService>(),
                 ),
               ),
             ),
@@ -76,9 +77,9 @@ class const SessionScope({
             BlocProvider(
               create: (context) => createAllSessionsCubit(
                 context: context,
-                mode: AllSessionsMode.active,
                 filterTracker: filterTracker,
-                sessionListService: sessionListService,
+                sseEventTracker: sseEventTracker,
+                sessionUnseenTracker: sessionUnseenTracker,
               ),
             ),
             // For each list's own launching rows.
@@ -99,17 +100,62 @@ class const SessionScope({
   );
 }
 
-/// An all-projects list over the enclosing [SessionScope]'s inventories: the
-/// scope's own active list, or a route's archived one.
+/// An all-projects list over the nearest [SessionWindowService]: the scope's
+/// active window, or a route's archived one.
 AllSessionsCubit createAllSessionsCubit({
   required BuildContext context,
-  required AllSessionsMode mode,
   required SessionListFilterTracker filterTracker,
-  required SessionListService sessionListService,
+  required SseEventTracker sseEventTracker,
+  required SessionUnseenTracker sessionUnseenTracker,
 }) => AllSessionsCubit(
-  mode: mode,
-  recentInventory: context.read<RecentSessionInventoryService>(),
+  window: context.read<SessionWindowService>(),
   projectInventory: context.read<ProjectInventoryService>(),
   filterTracker: filterTracker,
-  sessionListService: sessionListService,
+  sseEventTracker: sseEventTracker,
+  sessionUnseenTracker: sessionUnseenTracker,
 );
+
+/// A route's archived list under the enclosing [SessionScope]: its own
+/// archived window, the refresh that reloads it, and its [AllSessionsCubit],
+/// all disposed with the route. Below it they stand in for the scope's active
+/// ones.
+class const ArchivedSessionsScope({
+  super.key,
+  required final SessionWindowService Function({required ProjectInventoryService projectInventory}) createWindow,
+  required final SessionListRefreshService Function({
+    required ProjectInventoryService projectInventory,
+    required SessionWindowService window,
+  })
+  createRefreshService,
+  required final SessionListFilterTracker filterTracker,
+  required final SseEventTracker sseEventTracker,
+  required final SessionUnseenTracker sessionUnseenTracker,
+  required final Widget child,
+}) extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) => RepositoryProvider<SessionWindowService>(
+    create: (context) => createWindow(projectInventory: context.read<ProjectInventoryService>()),
+    dispose: (window) => unawaited(window.dispose()),
+    child: MultiBlocProvider(
+      providers: [
+        BlocProvider(
+          create: (context) => SessionListRefreshCubit(
+            service: createRefreshService(
+              projectInventory: context.read<ProjectInventoryService>(),
+              window: context.read<SessionWindowService>(),
+            ),
+          ),
+        ),
+        BlocProvider(
+          create: (context) => createAllSessionsCubit(
+            context: context,
+            filterTracker: filterTracker,
+            sseEventTracker: sseEventTracker,
+            sessionUnseenTracker: sessionUnseenTracker,
+          ),
+        ),
+      ],
+      child: child,
+    ),
+  );
+}
