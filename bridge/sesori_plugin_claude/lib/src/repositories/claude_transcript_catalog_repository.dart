@@ -60,9 +60,35 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     return records;
   }
 
+  /// Scans run one at a time so an older scan never merges over a newer one.
+  Future<void>? _scanInFlight;
+
+  /// The one scan queued behind [_scanInFlight], shared by every caller that
+  /// arrives meanwhile, so each of them sees the disk as of after its call.
+  Future<void>? _queuedScan;
+
+  /// Paths deleted while the current scan runs; its merge must not re-add
+  /// them. A deleted root's `<id>/` directory covers its sub-agents.
+  final Set<String> _deletedDuringScan = {};
+
+  Future<void> _rescan() {
+    final queued = _queuedScan;
+    if (queued != null) return queued;
+    final inFlight = _scanInFlight;
+    if (inFlight == null) return _startScan();
+    // The in-flight caller receives its error; the queued scan runs anyway.
+    return _queuedScan = inFlight.then((_) {}, onError: (_) {}).then((_) {
+      _queuedScan = null;
+      return _startScan();
+    });
+  }
+
+  Future<void> _startScan() => _scanInFlight = _scan().whenComplete(() => _scanInFlight = null);
+
   /// Lists and stats every transcript in an isolate that parses only the new
   /// or changed ones, then merges the parses and evicts vanished paths.
-  Future<void> _rescan() async {
+  Future<void> _scan() async {
+    _deletedDuringScan.clear();
     // Locals only: the isolate must not copy this repository's cache.
     final transcriptApi = _transcriptApi;
     final logLevel = Log.level;
@@ -72,7 +98,10 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
       return _scanTranscripts(transcriptApi: transcriptApi, known: known);
     });
     _transcripts.removeWhere((path, _) => !scan.present.contains(path));
-    _transcripts.addAll(scan.parsed);
+    for (final MapEntry(key: path, value: parsed) in scan.parsed.entries) {
+      final deleted = _deletedDuringScan.any((gone) => path == gone || p.isWithin(gone, path));
+      if (!deleted) _transcripts[path] = parsed;
+    }
     _pathsById
       ..clear()
       ..addAll({
@@ -169,9 +198,11 @@ class ClaudeTranscriptCatalogRepository({required final ClaudeTranscriptApi _tra
     if (path == null) return false;
     _transcriptApi.deleteTranscript(transcriptPath: path);
     _evict(path: path);
+    _deletedDuringScan.add(path);
     if (_rootIdFromPath(path) != null) {
       final directory = p.join(p.dirname(path), sessionId);
       _transcriptApi.deleteDirectory(directoryPath: directory);
+      _deletedDuringScan.add(directory);
       for (final child in _transcripts.keys.where((child) => p.isWithin(directory, child)).toList()) {
         _evict(path: child);
       }

@@ -370,6 +370,25 @@ void main() {
         expect(await _childTitle(catalog), "Renamed task");
       });
 
+      test("a scan in flight during a delete does not resurrect the session", () async {
+        final catalog = ClaudeTranscriptCatalogRepository(
+          transcriptApi: _SlowTailTranscriptApi(environment: {"CLAUDE_CONFIG_DIR": claudeHome.path}),
+        );
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "Before");
+        _setModified(claudeHome, id: _sessionA, to: DateTime.utc(2026, 8, 5, 12));
+        await catalog.listSessionRecordsInIsolate();
+        // Changed, so the next scan parses it again.
+        _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha", title: "After the rename");
+
+        final listing = catalog.listSessionRecordsInIsolate();
+        // The scan has parsed the transcript and is still running.
+        await Future<void>.delayed(const Duration(milliseconds: 200));
+        expect(await catalog.deleteSession(sessionId: _sessionA), isTrue);
+
+        expect(await listing, isEmpty);
+        expect(catalog.cachedSessionById(sessionId: _sessionA), isNull);
+      });
+
       test("answers a lookup hit without scanning", () async {
         _writeSession(claudeHome, id: _sessionA, cwd: "/work/alpha");
         await catalog.listSessionRecordsInIsolate();
@@ -397,6 +416,16 @@ void main() {
       });
     });
   });
+}
+
+/// Holds the scan isolate after each parse, so a test can act mid-scan.
+final class _SlowTailTranscriptApi({required super.environment}) extends ClaudeTranscriptApi {
+  @override
+  List<ClaudeTranscriptLineDto> readTailTitleRecords({required String transcriptPath}) {
+    final tail = super.readTailTitleRecords(transcriptPath: transcriptPath);
+    sleep(const Duration(milliseconds: 800));
+    return tail;
+  }
 }
 
 Future<String?> _childTitle(ClaudeTranscriptCatalogRepository catalog) async =>
