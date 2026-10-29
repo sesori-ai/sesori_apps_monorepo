@@ -14,8 +14,9 @@ import "session_launch_failure_alerts.dart";
 /// surface shares, created once read.
 ///
 /// Product shells mount it under auth, above every route that lists or
-/// launches sessions, so no route creates its own inventory or window. It outlives each
-/// page, so an archive's Undo window and a launch's failure alert survive
+/// launches sessions, so no route creates its own inventory or active window
+/// (the archived route creates its own archived one). It outlives each page,
+/// so an archive's Undo window and a launch's failure alert survive
 /// navigation.
 class const SessionScope({
   super.key,

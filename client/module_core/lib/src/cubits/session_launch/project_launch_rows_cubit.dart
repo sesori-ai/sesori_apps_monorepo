@@ -38,8 +38,12 @@ class ProjectLaunchRowsCubit({
   /// empty after one that did not.
   List<String> _listedSessionIds = const [];
 
+  /// Launches started for a computer the window has since left: their
+  /// sessions never reach its rows, so they draw nothing.
+  final Set<String> _otherComputerLaunchIds = {};
+
   this : super(initialRows) {
-    _resolve();
+    _resolve(previous: state);
     // Each update as it came rather than the latest values, so a session a
     // launch names only in passing (before the launch goes) is still seen.
     _updates =
@@ -48,13 +52,21 @@ class ProjectLaunchRowsCubit({
           _launchService.launches,
           (window, launches) => (window: window, launches: launches),
         ).skip(1).listen((update) {
+          // The window loads again only for another computer.
+          final switched = update.window is SessionWindowLoading && _latest.window is! SessionWindowLoading;
+          if (switched) _otherComputerLaunchIds.addAll([for (final launch in update.launches) launch.launchId]);
           _latest = update;
-          _resolve();
+          _resolve(previous: switched ? const {} : state);
         });
   }
 
-  void _resolve() {
-    final launches = resolveSessionLaunchState(launches: _latest.launches);
+  void _resolve({required Map<String, LaunchRows> previous}) {
+    final launches = resolveSessionLaunchState(
+      launches: [
+        for (final launch in _latest.launches)
+          if (!_otherComputerLaunchIds.contains(launch.launchId)) launch,
+      ],
+    );
     final key = _window.key;
     final sessions = switch (_latest.window) {
       SessionWindowLoaded(:final sessions, awaitingAnswer: false)
@@ -67,7 +79,7 @@ class ProjectLaunchRowsCubit({
       _listedSessionIds = const [];
       emit(
         resolveProjectLaunchRows(
-          previous: state,
+          previous: previous,
           launches: launches,
           sessionsByProject: const {},
           appendedSessionIds: const {},
@@ -79,7 +91,7 @@ class ProjectLaunchRowsCubit({
     // their rows.
     bool listed(String projectId) => key.projectId == null || key.projectId == projectId;
     final sessionsByProject = <String, List<Session>>{
-      for (final projectId in {...state.keys, for (final launch in launches.launching) launch.projectId})
+      for (final projectId in {...previous.keys, for (final launch in launches.launching) launch.projectId})
         if (listed(projectId)) projectId: [],
     };
     for (final session in sessions) {
@@ -89,7 +101,7 @@ class ProjectLaunchRowsCubit({
     _listedSessionIds = [for (final session in sessions) session.id];
     emit(
       resolveProjectLaunchRows(
-        previous: state,
+        previous: previous,
         launches: launches,
         sessionsByProject: sessionsByProject,
         appendedSessionIds: appended,

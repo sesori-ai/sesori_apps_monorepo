@@ -108,6 +108,26 @@ void main() {
     expect(cubit.state["project-1"]?.rowKeys, {"created": "launch-1"});
   });
 
+  test("another computer drops the launching rows of the previous one", () async {
+    launch();
+    await pumpEventQueue();
+    key = (projectId: null, query: "bug", filter: SessionListQuickFilter.all);
+    windowState.add(loaded(const [], awaitingAnswer: true));
+    launches.promote(launchId: "launch-1", session: created);
+    await pumpEventQueue();
+    expect(placeholders(), ["launch-1"], reason: "latched while searching");
+
+    key = unfiltered;
+    windowState.add(const SessionWindowLoading());
+    await pumpEventQueue();
+    expect(placeholders(), isEmpty);
+
+    windowState.add(loaded([existing]));
+    await pumpEventQueue();
+    expect(placeholders(), isEmpty, reason: "its session is on the other computer");
+    expect(cubit.state["project-1"]?.heldSessionIds, isEmpty);
+  });
+
   test("a project filter keeps the other projects' launching rows", () async {
     launch();
     await pumpEventQueue();
