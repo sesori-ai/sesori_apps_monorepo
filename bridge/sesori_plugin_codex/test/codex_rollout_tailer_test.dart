@@ -87,6 +87,37 @@ void main() {
       expect(appends, isEmpty);
     });
 
+    test("a start after stopAll does not share the overtaken start and tails the rollout", () async {
+      final directory = Directory.systemTemp.createTempSync("codex-tail-");
+      addTearDown(() => directory.deleteSync(recursive: true));
+      final path = p.join(directory.path, "rollout.jsonl");
+      File(path).writeAsStringSync("");
+      final api = CodexRolloutApi(environment: const {});
+      final lookup = Completer<String?>();
+      final tailer = CodexRolloutTailer(
+        rolloutApi: api,
+        catalogRepository: _DeferredCatalogRepository(rolloutApi: api, lookup: lookup.future),
+        pollInterval: const Duration(milliseconds: 5),
+      );
+      final appends = <CodexRolloutAppend>[];
+      final subscription = tailer.appends.listen(appends.add);
+      addTearDown(() async {
+        await subscription.cancel();
+        await tailer.dispose();
+      });
+
+      final overtaken = tailer.start(sessionId: "session-1");
+      tailer.stopAll();
+      final fresh = tailer.start(sessionId: "session-1");
+      expect(identical(fresh, overtaken), isFalse);
+      lookup.complete(path);
+      await Future.wait([overtaken, fresh]);
+      File(path).writeAsStringSync("${_record(callId: "after-reconnect")}\n", mode: FileMode.append);
+      await Future<void>.delayed(const Duration(milliseconds: 30));
+
+      expect(appends, isNotEmpty);
+    });
+
     group("on a cold catalog", () {
       const sessionId = "019a0000-1111-2222-3333-aaaaaaaaaaaa";
       late Directory codexHome;

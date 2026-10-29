@@ -48,9 +48,13 @@ class CodexRolloutTailer({
   /// created yet is tailed from offset 0 once a drain discovers it.
   Future<void> start({required String sessionId}) {
     if (_cursors.containsKey(sessionId)) return Future.value();
-    return _starting[sessionId] ??= _start(sessionId: sessionId).whenComplete(() {
-      _starting.remove(sessionId);
+    final pending = _starting[sessionId];
+    if (pending != null) return pending;
+    late final Future<void> started;
+    started = _start(sessionId: sessionId).whenComplete(() {
+      if (identical(_starting[sessionId], started)) _starting.remove(sessionId);
     });
+    return _starting[sessionId] = started;
   }
 
   Future<void> _start({required String sessionId}) async {
@@ -182,6 +186,9 @@ class CodexRolloutTailer({
 
   void stopAll() {
     _generation++;
+    // A turn after reconnect must look its rollout up afresh, not share a
+    // start that this stop already overtook.
+    _starting.clear();
     _cursors.clear();
     _timer?.cancel();
     _timer = null;
