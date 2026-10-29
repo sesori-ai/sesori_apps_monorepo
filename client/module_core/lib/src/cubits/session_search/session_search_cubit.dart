@@ -4,7 +4,6 @@ import "package:bloc/bloc.dart";
 import "package:collection/collection.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../../logging/logging.dart";
 import "../../services/models/project_list_state.dart";
 import "../../services/models/session_window_state.dart";
 import "../../services/project_inventory_service.dart";
@@ -69,9 +68,8 @@ class SessionSearchCubit({
     switch (result) {
       case SessionWindowSearchMatches(:final sessions):
         _show(sessions: sessions, isSearching: false);
-      case SessionWindowSearchFailure(:final reason):
-        // The loaded rows' matches stay.
-        logw("Session search failed: ${reason.name}");
+      case SessionWindowSearchFailure():
+        // The loaded rows' matches stay; the window logged the failure.
         _show(sessions: [for (final match in state.matches) match.session], isSearching: false);
     }
   }

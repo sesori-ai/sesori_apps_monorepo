@@ -248,6 +248,8 @@ class SessionWindowService({
         limit: limit,
       ),
     );
+    // The result keeps only the reason, so the original error is logged here.
+    if (result case SessionPageFailure(:final error)) logw("Session search failed", error);
     return switch (result) {
       SessionPageLoaded(:final page) => SessionWindowSearchMatches(sessions: page.items),
       // The window's own loads switch to listing everything; until then, the
