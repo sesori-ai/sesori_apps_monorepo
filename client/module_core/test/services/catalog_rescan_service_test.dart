@@ -831,7 +831,7 @@ void main() {
       expect(catalogChanges, hasLength(1), reason: "the lists still have to refresh");
     });
 
-    test("announces an unsolicited terminal commit without reopening a row", () async {
+    test("a startup hydration commit outside a live operation announces at once", () async {
       final catalogChanges = <void>[];
       service.catalogChanged.listen(catalogChanges.add);
 
@@ -851,15 +851,53 @@ void main() {
       expect(service.state.value, isA<CatalogRescanIdle>());
     });
 
-    test("announces each durable catalog commit", () async {
-      final catalogChanges = <void>[];
-      service.catalogChanged.listen(catalogChanges.add);
+    group("a three-harness rescan", () {
+      late List<void> catalogChanges;
 
-      await service.startAll();
-      connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
-      connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 1));
+      setUp(() async {
+        build(snapshot: _snapshot(routable: const {"codex": "Codex", "claude": "Claude", "pi": "Pi"}));
+        catalogChanges = [];
+        service.catalogChanged.listen(catalogChanges.add);
+        await service.startAll();
+      });
 
-      expect(catalogChanges, hasLength(2));
+      test("announces once when it closes, after any member wrote rows", () async {
+        connection.emitProgress(_completed("codex", newProjects: 0, newSessions: 0, totals: 0));
+        connection.emitProgress(_completed("claude", newProjects: 1, newSessions: 4, totals: 5));
+        expect(catalogChanges, isEmpty, reason: "the operation is still live");
+
+        connection.emitProgress(_completed("pi", newProjects: 0, newSessions: 2, totals: 2));
+
+        expect(service.state.value, isA<CatalogRescanSucceeded>());
+        expect(catalogChanges, hasLength(1));
+      });
+
+      test("announces nothing when no member wrote rows", () async {
+        for (final pluginId in ["codex", "claude", "pi"]) {
+          connection.emitProgress(_completed(pluginId, newProjects: 0, newSessions: 0, totals: 0));
+        }
+
+        expect(service.state.value, isA<CatalogRescanSucceeded>());
+        expect(catalogChanges, isEmpty);
+      });
+
+      test("announces once on an older bridge that reports totals for every member", () async {
+        for (final pluginId in ["codex", "claude", "pi"]) {
+          connection.emitProgress(_completed(pluginId, totals: 40));
+        }
+
+        expect(catalogChanges, hasLength(1));
+      });
+
+      test("still announces rows a member wrote when a disconnect drops the operation", () async {
+        connection.emitProgress(_completed("codex", newProjects: 1, newSessions: 1));
+
+        connection.emitStatus(const ConnectionStatus.disconnected());
+        await pumpEventQueue();
+
+        expect(service.state.value, isA<CatalogRescanIdle>());
+        expect(catalogChanges, hasLength(1));
+      });
     });
 
     test("an operation stops claiming a summary once an outside harness joins", () async {

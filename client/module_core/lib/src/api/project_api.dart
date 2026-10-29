@@ -7,7 +7,8 @@ import "client/relay_http_client.dart";
 @lazySingleton
 class ProjectApi({required final RelayHttpApiClient _client}) {
   Future<ApiResponse<Projects>> listProjects() {
-    return _client.get("/projects", fromJson: Projects.fromJson);
+    // Heavy users have hundreds of projects; decode off the UI isolate.
+    return _client.getDecodedInBackground(path: "/projects", fromJson: Projects.fromJson);
   }
 
   Future<ApiResponse<Project>> discoverProject({
@@ -38,14 +39,16 @@ class ProjectApi({required final RelayHttpApiClient _client}) {
   }
 
   Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) {
-    return _client.post(
-      "/sessions",
+    // A project can hold thousands of sessions; decode off the UI isolate.
+    return _client.postDecodedInBackground(
+      path: "/sessions",
       fromJson: SessionListResponse.fromJson,
       body: SessionListRequest(
         projectId: projectId,
         start: null,
         limit: null,
       ),
+      sensitiveResponse: false,
     );
   }
 
