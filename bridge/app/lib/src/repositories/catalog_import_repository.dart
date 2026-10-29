@@ -578,10 +578,13 @@ class CatalogImportRepository({
             projectId: row.projectId,
           );
           if (existing == null) sessionsAdded++;
-          if ((index + 1) % _responsivenessBatchSize == 0) {
+          if (sessionRows.length == _responsivenessBatchSize) {
             requireCurrentGeneration();
             await _sessionDao.upsertSessionRows(rows: sessionRows);
             sessionRows = <SessionDto>[];
+            await Future<void>.delayed(Duration.zero);
+          } else if ((index + 1) % _responsivenessBatchSize == 0) {
+            // Skipped rows write nothing, so yield on rows processed as well.
             await Future<void>.delayed(Duration.zero);
           }
         }

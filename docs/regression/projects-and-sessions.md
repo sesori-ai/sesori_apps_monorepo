@@ -80,8 +80,9 @@ state.
   had removed reappears and can be removed again. Upgrading to schema v21 keeps
   every project, session, parent link, dedicated worktree and stored branch
   name. Catalog scans are per plugin,
-  atomic, non-destructive, cancellable, and attribute progress. A walk that asks the backend once per parent
-  session sends at most one enumerating event per 250 ms, and only when its counts changed. Backend activity an
+  atomic, non-destructive, cancellable, and attribute progress. While a walk asks the backend once per parent
+  session, it sends at most one enumerating event per 250 ms, and only when its counts changed; the snapshots
+  at the start, after the project list and after the walk are not throttled. Backend activity an
   import observes is checked against stored history with one read, so sessions without history cost nothing.
 - A bridge normally has one "No project" project of kind `scratch`; its id and path are the scratch root
   `~/.sesori/scratch`, and every other project is kind `folder`. The kind follows the project id, not its path.
