@@ -7,12 +7,10 @@ import "package:sesori_shared/sesori_shared.dart";
 import "../repositories/project_repository.dart";
 import "models/session_activity_info.dart";
 import "models/session_list_item_state.dart";
-import "session_activity_calculator.dart";
 
 @lazySingleton
 class ProjectListService({
   required final ProjectRepository _repository,
-  required final SessionActivityCalculator _activityCalculator,
 }) {
   final StreamController<List<ProjectSummary>> _listedProjects = StreamController.broadcast(sync: true);
   int _listGeneration = 0;
@@ -81,9 +79,7 @@ class ProjectListService({
     final runningByProjectId = <String, int>{};
     for (final project in projects) {
       final activity = activityByProjectId[project.id];
-      final runningSessions = activity?.entries
-          .where((entry) => _activityCalculator.isRunning(activity: entry.value))
-          .toList(growable: false);
+      final runningSessions = activity?.entries.where((entry) => entry.value.isRunning).toList(growable: false);
       if (runningSessions != null && runningSessions.isNotEmpty) {
         running.add(project);
         runningByProjectId[project.id] = runningSessions.length;

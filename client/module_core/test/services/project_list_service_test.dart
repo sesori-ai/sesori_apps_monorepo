@@ -5,7 +5,6 @@ import "package:sesori_auth/sesori_auth.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -16,7 +15,6 @@ void main() {
     final repository = _MockProjectRepository();
     final service = ProjectListService(
       repository: repository,
-      activityCalculator: const SessionActivityCalculator(),
     );
     final staleReply = Completer<ApiResponse<Projects>>();
     when(repository.listProjects).thenAnswer((_) => staleReply.future);
@@ -57,7 +55,6 @@ void main() {
   test("running projects use activity while awaiting-only and inactive projects keep timestamp order", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.orderProjects(
@@ -68,9 +65,20 @@ void main() {
         _project(id: "running-a", name: "Alpha", updatedAt: 100),
       ],
       activityByProjectId: const {
-        "running-z": {"z": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 10, updatedAt: null)},
-        "waiting-a": {"waiting": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: 30, updatedAt: null)},
-        "running-a": {"a": SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: 20, updatedAt: null)},
+        "running-z": {
+          "z": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 10, updatedAt: null),
+        },
+        "waiting-a": {
+          "waiting": SessionActivityInfo(
+            awaitingInput: true,
+            isRunning: false,
+            lastUserActivityAt: 30,
+            updatedAt: null,
+          ),
+        },
+        "running-a": {
+          "a": SessionActivityInfo(backgroundTaskCount: 1, isRunning: true, lastUserActivityAt: 20, updatedAt: null),
+        },
       },
       listStateByProjectId: const {},
     );
@@ -85,7 +93,6 @@ void main() {
   test("live markers override summary activity and use the latest running root", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.orderProjects(
@@ -95,10 +102,12 @@ void main() {
       ],
       activityByProjectId: const {
         "project-a": {
-          "a1": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 70, updatedAt: null),
-          "a2": SessionActivityInfo(isRetrying: true, lastUserActivityAt: 20, updatedAt: null),
+          "a1": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 70, updatedAt: null),
+          "a2": SessionActivityInfo(isRetrying: true, isRunning: true, lastUserActivityAt: 20, updatedAt: null),
         },
-        "project-b": {"b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 80, updatedAt: null)},
+        "project-b": {
+          "b": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 80, updatedAt: null),
+        },
       },
       listStateByProjectId: const {
         "project-a": {"a2": (unseen: false, lastUserActivityAt: 90)},
@@ -112,7 +121,6 @@ void main() {
   test("a fresh summary marker overrides a stale cached marker after reconnect", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.orderProjects(
@@ -121,8 +129,12 @@ void main() {
         _project(id: "project-b", name: "B", updatedAt: 1),
       ],
       activityByProjectId: const {
-        "project-a": {"a": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 100, updatedAt: 1)},
-        "project-b": {"b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 90, updatedAt: 200)},
+        "project-a": {
+          "a": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 100, updatedAt: 1),
+        },
+        "project-b": {
+          "b": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 90, updatedAt: 200),
+        },
       },
       listStateByProjectId: const {
         "project-a": {"a": (unseen: false, lastUserActivityAt: 10)},
@@ -135,7 +147,6 @@ void main() {
   test("a live marker beats a markerless root's newer updated time", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.orderProjects(
@@ -144,8 +155,12 @@ void main() {
         _project(id: "project-b", name: "B", updatedAt: 1),
       ],
       activityByProjectId: const {
-        "project-a": {"a": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: 100)},
-        "project-b": {"b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 75, updatedAt: 1)},
+        "project-a": {
+          "a": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: null, updatedAt: 100),
+        },
+        "project-b": {
+          "b": SessionActivityInfo(mainAgentRunning: true, isRunning: true, lastUserActivityAt: 75, updatedAt: 1),
+        },
       },
       listStateByProjectId: const {
         "project-a": {"a": (unseen: false, lastUserActivityAt: 50)},
@@ -158,7 +173,6 @@ void main() {
   test("old-bridge running projects fall back to project updated time and stable IDs", () {
     final service = ProjectListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.orderProjects(
@@ -168,12 +182,29 @@ void main() {
         _project(id: "newer-a", name: "Beta", updatedAt: 2),
       ],
       activityByProjectId: const {
-        "older": {"older-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null)},
+        "older": {
+          "older-root": SessionActivityInfo(
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: null,
+            updatedAt: null,
+          ),
+        },
         "newer-b": {
-          "newer-b-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          "newer-b-root": SessionActivityInfo(
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: null,
+            updatedAt: null,
+          ),
         },
         "newer-a": {
-          "newer-a-root": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          "newer-a-root": SessionActivityInfo(
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: null,
+            updatedAt: null,
+          ),
         },
       },
       listStateByProjectId: const {},

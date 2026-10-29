@@ -8,7 +8,6 @@ import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_mobile/features/session_detail/session_detail_screen.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
@@ -188,7 +187,7 @@ void _registerDependencies({
   final projectRepository = MockProjectRepository();
   getIt.registerSingleton<ProjectRepository>(projectRepository);
   getIt.registerSingleton<SessionListService>(
-    SessionListService(repository: projectRepository, activityCalculator: const SessionActivityCalculator()),
+    SessionListService(repository: projectRepository),
   );
   getIt.registerSingleton<SessionCleanupService>(SessionCleanupService(repository: promptDispatcher));
   getIt.registerSingleton<SessionUnseenTracker>(FakeSessionUnseenTracker());

@@ -228,8 +228,6 @@ import 'package:sesori_dart_core/src/services/selected_computer_service.dart'
     as _i370;
 import 'package:sesori_dart_core/src/services/session_abort_service.dart'
     as _i386;
-import 'package:sesori_dart_core/src/services/session_activity_calculator.dart'
-    as _i84;
 import 'package:sesori_dart_core/src/services/session_approval_service.dart'
     as _i432;
 import 'package:sesori_dart_core/src/services/session_auto_continuation_service.dart'
@@ -278,9 +276,6 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i913.NewSessionSelectionTracker>(
       () => _i913.NewSessionSelectionTracker(),
-    );
-    gh.lazySingleton<_i84.SessionActivityCalculator>(
-      () => const _i84.SessionActivityCalculator(),
     );
     gh.lazySingleton<_i414.SessionInteractionCalculator>(
       () => const _i414.SessionInteractionCalculator(),
@@ -752,17 +747,11 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i704.ProjectListService>(
-      () => _i704.ProjectListService(
-        repository: gh<_i80.ProjectRepository>(),
-        activityCalculator: gh<_i84.SessionActivityCalculator>(),
-      ),
+      () => _i704.ProjectListService(repository: gh<_i80.ProjectRepository>()),
       dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i763.SessionListService>(
-      () => _i763.SessionListService(
-        repository: gh<_i80.ProjectRepository>(),
-        activityCalculator: gh<_i84.SessionActivityCalculator>(),
-      ),
+      () => _i763.SessionListService(repository: gh<_i80.ProjectRepository>()),
     );
     gh.lazySingleton<_i585.McpAuthenticationService>(
       () => _i585.McpAuthenticationService(

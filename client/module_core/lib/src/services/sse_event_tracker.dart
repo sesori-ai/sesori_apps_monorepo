@@ -18,6 +18,8 @@ class SseEventTracker(
   final ConnectionService _connectionService, {
   required final FailureReporter _failureReporter,
 }) with Disposable {
+  static const _runningCalculator = ActiveSessionRunningCalculator();
+
   late final StreamSubscription<SseEvent> _eventSubscription;
   late final StreamSubscription<ConnectionStatus> _connectionStatusSubscription;
 
@@ -176,6 +178,7 @@ class SseEventTracker(
             awaitingInput: session.awaitingInput,
             backgroundTaskCount: session.childSessionIds.length,
             isRetrying: session.isRetrying,
+            isRunning: _runningCalculator.isRunning(session: session),
             lastUserActivityAt: session.lastUserActivityAt,
             updatedAt: session.updatedAt,
           );

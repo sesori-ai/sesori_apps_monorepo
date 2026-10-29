@@ -1,7 +1,6 @@
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -28,7 +27,6 @@ void main() {
     when(() => connection.currentStatus).thenAnswer((_) => status.value);
     projectListService = ProjectListService(
       repository: repository,
-      activityCalculator: const SessionActivityCalculator(),
     );
     tracker = SessionListFilterTracker(connectionService: connection, projectListService: projectListService);
   });

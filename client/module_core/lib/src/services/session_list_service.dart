@@ -6,12 +6,10 @@ import "../repositories/project_repository.dart";
 import "models/session_activity_info.dart";
 import "models/session_list_filter.dart";
 import "models/session_list_item_state.dart";
-import "session_activity_calculator.dart";
 
 @lazySingleton
 class SessionListService({
   required final ProjectRepository _repository,
-  required final SessionActivityCalculator _activityCalculator,
 }) {
   Future<ApiResponse<SessionListResponse>> listSessions({required String projectId}) async {
     final response = await _repository.listSessions(projectId: projectId);
@@ -47,8 +45,7 @@ class SessionListService({
     final running = <Session>[];
     final remaining = <Session>[];
     for (final session in visible) {
-      final activity = activityBySessionId[session.id];
-      if (activity != null && _activityCalculator.isRunning(activity: activity)) {
+      if (activityBySessionId[session.id]?.isRunning ?? false) {
         running.add(session);
       } else {
         remaining.add(session);

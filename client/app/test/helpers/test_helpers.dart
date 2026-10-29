@@ -14,7 +14,6 @@ import "package:sesori_app_ui/sesori_app_ui.dart"
     show AllSessionsList, AppLocalizations, SessionListActionDispatcher, SessionScope;
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/repositories/models/analytics_delivery_result.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/testing.dart";
 
 import "package:sesori_mobile/core/di/injection.dart";
@@ -116,13 +115,11 @@ void _registerListServices({
   getIt.registerSingleton<ProjectListService>(
     ProjectListService(
       repository: projectRepository,
-      activityCalculator: const SessionActivityCalculator(),
     ),
   );
   getIt.registerSingleton<SessionListService>(
     SessionListService(
       repository: projectRepository,
-      activityCalculator: const SessionActivityCalculator(),
     ),
   );
   getIt.registerSingleton<ProductAnalyticsService>(analyticsService);

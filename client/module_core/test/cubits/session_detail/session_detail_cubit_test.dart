@@ -220,7 +220,12 @@ void main() {
       final tracker = MockSseEventTracker();
       tracker.emitSessionActivity(const {
         "project-1": {
-          sessionId: SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+          sessionId: SessionActivityInfo(
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: null,
+            updatedAt: null,
+          ),
         },
       });
       final cubit = buildCubit(sseEventTracker: tracker);
@@ -234,7 +239,12 @@ void main() {
 
       tracker.emitSessionActivity(const {
         "project-1": {
-          sessionId: SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null),
+          sessionId: SessionActivityInfo(
+            backgroundTaskCount: 1,
+            isRunning: true,
+            lastUserActivityAt: null,
+            updatedAt: null,
+          ),
         },
       });
       await awaitState(

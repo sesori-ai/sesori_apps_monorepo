@@ -3,7 +3,6 @@ import "dart:async";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -37,12 +36,10 @@ void main() {
         .thenAnswer((_) async => ApiResponse.success(const SessionListResponse(items: [])));
     projectListService = ProjectListService(
       repository: repository,
-      activityCalculator: const SessionActivityCalculator(),
     );
     inventory = RecentSessionInventoryService(
       sessionListService: SessionListService(
         repository: repository,
-        activityCalculator: const SessionActivityCalculator(),
       ),
       projectListService: projectListService,
       connectionService: connection,
@@ -220,7 +217,14 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     expect(loaded().isUnseen(session: old), isFalse);
     activity.emitSessionActivity({
-      projectId: {"old": const SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null)},
+      projectId: {
+        "old": const SessionActivityInfo(
+          backgroundTaskCount: 1,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
+      },
     });
     await Future<void>.delayed(Duration.zero);
     expect(loaded().visibleSessions.first.id, "old");
@@ -334,7 +338,12 @@ void main() {
       unseen.applyLocalSessionUnseen(projectId: projectId, sessionId: session.id, unseen: false);
       activity.emitSessionActivity({
         projectId: {
-          session.id: const SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null),
+          session.id: const SessionActivityInfo(
+            backgroundTaskCount: 1,
+            isRunning: true,
+            lastUserActivityAt: null,
+            updatedAt: null,
+          ),
         },
       });
       await Future<void>.delayed(Duration.zero);

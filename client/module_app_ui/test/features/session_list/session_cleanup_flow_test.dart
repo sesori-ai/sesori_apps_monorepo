@@ -37,7 +37,12 @@ void main() {
         sessions: [session],
         activeSessionIds: {
           if (running)
-            "s1": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+            "s1": const SessionActivityInfo(
+              mainAgentRunning: true,
+              isRunning: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
         },
         unseenBySessionId: const {},
       ),

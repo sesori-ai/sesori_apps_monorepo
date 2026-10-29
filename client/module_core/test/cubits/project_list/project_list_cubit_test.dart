@@ -19,7 +19,6 @@ import "package:sesori_dart_core/src/services/models/session_activity_info.dart"
 import "package:sesori_dart_core/src/services/product_analytics_service.dart";
 import "package:sesori_dart_core/src/services/project_inventory_service.dart";
 import "package:sesori_dart_core/src/services/project_list_service.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -80,7 +79,6 @@ void main() {
       mockProjectRepository = MockProjectRepository();
       projectListService = ProjectListService(
         repository: mockProjectRepository,
-        activityCalculator: const SessionActivityCalculator(),
       );
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
@@ -1759,8 +1757,22 @@ void main() {
       act: (_) async {
         await Future<void>.delayed(Duration.zero);
         mockSseEventTracker.emitSessionActivity({
-          "A": {"a": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 20, updatedAt: null)},
-          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: 10, updatedAt: null)},
+          "A": {
+            "a": const SessionActivityInfo(
+              mainAgentRunning: true,
+              isRunning: true,
+              lastUserActivityAt: 20,
+              updatedAt: null,
+            ),
+          },
+          "C": {
+            "c": const SessionActivityInfo(
+              backgroundTaskCount: 1,
+              isRunning: true,
+              lastUserActivityAt: 10,
+              updatedAt: null,
+            ),
+          },
         });
         await Future<void>.delayed(Duration.zero);
       },
@@ -1778,8 +1790,22 @@ void main() {
       "running activity received before REST is applied when projects arrive",
       build: () {
         mockSseEventTracker.emitSessionActivity({
-          "A": {"a": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 20, updatedAt: null)},
-          "C": {"c": const SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: 10, updatedAt: null)},
+          "A": {
+            "a": const SessionActivityInfo(
+              mainAgentRunning: true,
+              isRunning: true,
+              lastUserActivityAt: 20,
+              updatedAt: null,
+            ),
+          },
+          "C": {
+            "c": const SessionActivityInfo(
+              backgroundTaskCount: 1,
+              isRunning: true,
+              lastUserActivityAt: 10,
+              updatedAt: null,
+            ),
+          },
         });
         when(() => mockProjectRepository.listProjects()).thenAnswer(
           (_) async => ApiResponse.success(Projects(data: [projectA, projectB, projectC])),
@@ -1800,8 +1826,22 @@ void main() {
         (_) async => ApiResponse.success(Projects(data: [projectA, projectB])),
       );
       mockSseEventTracker.emitSessionActivity({
-        "A": {"a": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 20, updatedAt: null)},
-        "B": {"b": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: 10, updatedAt: null)},
+        "A": {
+          "a": const SessionActivityInfo(
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 20,
+            updatedAt: null,
+          ),
+        },
+        "B": {
+          "b": const SessionActivityInfo(
+            mainAgentRunning: true,
+            isRunning: true,
+            lastUserActivityAt: 10,
+            updatedAt: null,
+          ),
+        },
       });
 
       final cubit = buildCubit();

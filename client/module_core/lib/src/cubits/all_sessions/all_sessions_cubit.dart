@@ -11,8 +11,6 @@ import "../../services/project_inventory_service.dart";
 import "../../services/recent_session_inventory_service.dart";
 import "../../services/session_list_filter_tracker.dart";
 import "../../services/session_list_service.dart";
-import "../../utils/project_name.dart";
-import "../../utils/title_matcher.dart";
 import "../recent_sessions/recent_sessions_resolvers.dart";
 import "../session_list/session_list_quick_filter.dart";
 import "all_sessions_state.dart";
