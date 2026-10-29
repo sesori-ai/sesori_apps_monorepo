@@ -83,13 +83,14 @@ class const BridgeControlState({
     ],
   );
 
-  /// Grey whenever the user wants the bridge off. While it should run, red
+  /// Grey once the user wants the bridge off, unless a failed stop left it
+  /// running, which keeps its live status. While it should run, red
   /// marks states only the user can resolve (a failed start, a needed sign-in,
   /// another bridge owning this machine or the relay, a crash budget spent);
   /// states the bridge recovers from on its own (starting, a scheduled crash
   /// retry, waiting for the server or authentication, reconnecting) are amber.
   SystemTrayStatus get _trayStatus {
-    if (desiredState == BridgeProcessDesiredState.off) {
+    if (desiredState == BridgeProcessDesiredState.off && processState is! BridgeProcessRunning) {
       return SystemTrayStatus.off;
     }
     return switch (processState) {

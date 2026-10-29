@@ -25,7 +25,9 @@ final class MenuBarAppearance: NSObject, FlutterStreamHandler {
     guard let address = arguments as? Int, let pointer = UnsafeRawPointer(bitPattern: address) else {
       return FlutterError(code: "invalid_status_item", message: "Expected an NSStatusItem address", details: nil)
     }
-    let statusItem = Unmanaged<NSStatusItem>.fromOpaque(pointer).takeUnretainedValue()
+    guard let statusItem = Unmanaged<AnyObject>.fromOpaque(pointer).takeUnretainedValue() as? NSStatusItem else {
+      return FlutterError(code: "invalid_status_item", message: "Expected an NSStatusItem address", details: nil)
+    }
     guard let button = statusItem.button else {
       return FlutterError(code: "invalid_status_item", message: "The status item has no button", details: nil)
     }

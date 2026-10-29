@@ -25,8 +25,9 @@ and keep native close/quit behavior safe.
 - The tray icon is the monochrome Sesori mark with a small bridge status dot,
   separated by a transparent gap, in its bottom-right corner, on macOS, Windows
   and Linux. Green: running and connected to the relay. Amber: should run and is
-  starting, reconnecting, waiting for the server or authentication, or retrying
-  after a crash. Grey: the user turned the bridge off. Red: should run but needs
+  starting, stopping, reconnecting, waiting for the server or authentication,
+  or retrying after a crash. Grey: the user turned the bridge off and it is not
+  running; a failed stop keeps the live colour. Red: should run but needs
   the user (start failure or repair, sign-in required, another bridge owns the
   machine or relay, crash retries exhausted). The icon swaps in place when the
   status changes. macOS shows a black mark on a light menu bar and a white one
