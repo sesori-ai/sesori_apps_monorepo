@@ -121,10 +121,12 @@ state.
   harness is refused by the bridge and is left out. Automatic reloads
   (reconnect, staleness, committed catalog changes) never import.
 - A refresh reloads the lists at once, and at most once more when its scan
-  closes, only if some harness wrote rows. An older bridge, which reports
-  totals, always takes that second reload, but still only once per scan. A
-  completion outside a live scan, such as startup hydration, reloads at once
-  when it wrote rows. The project and session lists decode off the UI thread.
+  closes, only if one of the scan's harnesses wrote rows. An older bridge
+  reports totals, so it takes that second reload whenever a total is above
+  zero, but still only once per scan. A completion that wrote rows from
+  outside the scan, such as startup hydration or a harness that is not a
+  member, reloads at once, even while the scan is live. The project and
+  session lists decode off the UI thread.
 - A dormant OpenCode import first attempts a direct metadata-only SQLite snapshot. A
   successful snapshot must not resolve or start an OpenCode runtime, server, health
   probe, CLI session listing, or REST API. It reads projects, project-directory
