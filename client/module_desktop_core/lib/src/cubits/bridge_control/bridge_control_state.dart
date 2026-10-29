@@ -37,6 +37,7 @@ class const BridgeControlState({
   /// Tray presentation derived from this same state snapshot so tray and
   /// window controls cannot disagree about takeover availability.
   SystemTrayMenu get menu => SystemTrayMenu(
+    status: _trayStatus,
     entries: <SystemTrayMenuEntry>[
       const SystemTrayCommandItem(
         command: SystemTrayCommand.openWindow,
@@ -81,4 +82,41 @@ class const BridgeControlState({
       ),
     ],
   );
+
+  /// Grey once the user wants the bridge off, unless a failed stop left it
+  /// running, which keeps its live status. While it should run, red
+  /// marks states only the user can resolve (a failed start, a needed sign-in,
+  /// another bridge owning this machine or the relay, a crash budget spent);
+  /// states the bridge recovers from on its own (starting, a scheduled crash
+  /// retry, waiting for the server or authentication, reconnecting) are amber.
+  SystemTrayStatus get _trayStatus {
+    if (desiredState == BridgeProcessDesiredState.off && processState is! BridgeProcessRunning) {
+      return SystemTrayStatus.off;
+    }
+    return switch (processState) {
+      BridgeProcessRunning() => _runningTrayStatus,
+      BridgeProcessStarting() ||
+      BridgeProcessStopping() ||
+      BridgeProcessCrashRetryScheduled() => SystemTrayStatus.connecting,
+      // Stopped while desired On means the last start failed.
+      BridgeProcessStopped() ||
+      BridgeProcessStartFailed() ||
+      BridgeProcessLoginRequired() ||
+      BridgeProcessContention() ||
+      BridgeProcessCrashGiveUp() => SystemTrayStatus.failed,
+    };
+  }
+
+  SystemTrayStatus get _runningTrayStatus {
+    if (!controlStatus.helperOnline || controlStatus.startup != ControlStartupState.ready) {
+      return SystemTrayStatus.connecting;
+    }
+    return switch (controlStatus.relay) {
+      ControlRelayConnectionState.connected => SystemTrayStatus.connected,
+      ControlRelayConnectionState.takenOver => SystemTrayStatus.failed,
+      ControlRelayConnectionState.connecting ||
+      ControlRelayConnectionState.disconnected ||
+      ControlRelayConnectionState.unknown => SystemTrayStatus.connecting,
+    };
+  }
 }

@@ -171,6 +171,83 @@ void main() {
       expect(_command(menu: systemTray.menus.last, command: SystemTrayCommand.toggleBridge).label, "Turn Bridge Off");
     });
 
+    test("tray status follows the bridge from off through starting to connected and back off", () async {
+      await cubit.initialize();
+      expect(systemTray.menus.last.status, SystemTrayStatus.off);
+
+      processService.emit(state: const BridgeProcessStarting(), desiredState: BridgeProcessDesiredState.on);
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.connecting);
+
+      processService.emit(state: const BridgeProcessRunning(pid: 42), desiredState: BridgeProcessDesiredState.on);
+      statusTracker.markHelperConnected();
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.connecting);
+
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.connected,
+          plugin: ControlPluginHealthState.healthy,
+        ),
+      );
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.connected);
+
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.disconnected,
+          plugin: ControlPluginHealthState.healthy,
+        ),
+      );
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.connecting);
+
+      // A failed stop leaves the bridge running, so it keeps its live colour.
+      processService.emit(state: const BridgeProcessRunning(pid: 42), desiredState: BridgeProcessDesiredState.off);
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.connecting);
+
+      processService.emit(state: const BridgeProcessStopping(pid: 42), desiredState: BridgeProcessDesiredState.off);
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.off);
+    });
+
+    test("tray status is red only for states that need the user", () async {
+      await cubit.initialize();
+      final Map<BridgeProcessState, SystemTrayStatus> expected = <BridgeProcessState, SystemTrayStatus>{
+        const BridgeProcessCrashRetryScheduled(exitCode: 1, crashCount: 1, delay: Duration(seconds: 2)):
+            SystemTrayStatus.connecting,
+        const BridgeProcessStartFailed(message: "Repair Sesori"): SystemTrayStatus.failed,
+        const BridgeProcessLoginRequired(): SystemTrayStatus.failed,
+        const BridgeProcessContention(): SystemTrayStatus.failed,
+        const BridgeProcessCrashGiveUp(exitCode: 1, crashCount: 5): SystemTrayStatus.failed,
+        const BridgeProcessStopped(): SystemTrayStatus.failed,
+      };
+      for (final MapEntry<BridgeProcessState, SystemTrayStatus>(:key, :value) in expected.entries) {
+        processService.emit(state: key, desiredState: BridgeProcessDesiredState.on);
+        await pumpEventQueue();
+        expect(systemTray.menus.last.status, value, reason: "$key while desired On");
+
+        processService.emit(state: key, desiredState: BridgeProcessDesiredState.off);
+        await pumpEventQueue();
+        expect(systemTray.menus.last.status, SystemTrayStatus.off, reason: "$key while desired Off");
+      }
+
+      processService.emit(state: const BridgeProcessRunning(pid: 42), desiredState: BridgeProcessDesiredState.on);
+      statusTracker.markHelperConnected();
+      statusTracker.applyStatus(
+        status: const ControlStatus(
+          startup: ControlStartupState.ready,
+          relay: ControlRelayConnectionState.takenOver,
+          plugin: ControlPluginHealthState.healthy,
+        ),
+      );
+      await pumpEventQueue();
+      expect(systemTray.menus.last.status, SystemTrayStatus.failed);
+    });
+
     test("exposes and handles Take Over for local bridge contention", () async {
       processService.emit(
         state: const BridgeProcessContention(),

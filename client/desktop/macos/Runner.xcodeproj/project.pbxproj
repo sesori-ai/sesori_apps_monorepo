@@ -31,6 +31,7 @@
 		5E5A2C012F00A00100D1A001 /* Sparkle in Frameworks */ = {isa = PBXBuildFile; productRef = 5E5A2C022F00A00100D1A001 /* Sparkle */; };
 		5E5A2C052F00A00100D1A001 /* ApplicationTermination.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5A2C042F00A00100D1A001 /* ApplicationTermination.swift */; };
 		5E5A2C072F00A00100D1A001 /* SparkleUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5A2C062F00A00100D1A001 /* SparkleUpdater.swift */; };
+		5E5A2C092F00A00100D1A001 /* MenuBarAppearance.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5E5A2C082F00A00100D1A001 /* MenuBarAppearance.swift */; };
 		A539CC302F76D2F200475A64 /* Sesori.icon in Resources */ = {isa = PBXBuildFile; fileRef = A539CC2F2F76D2F200475A64 /* Sesori.icon */; };
 /* End PBXBuildFile section */
 
@@ -77,6 +78,7 @@
 		33CC11122044BFA00003C045 /* MainFlutterWindow.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MainFlutterWindow.swift; sourceTree = "<group>"; };
 		5E5A2C042F00A00100D1A001 /* ApplicationTermination.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ApplicationTermination.swift; sourceTree = "<group>"; };
 		5E5A2C062F00A00100D1A001 /* SparkleUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = SparkleUpdater.swift; sourceTree = "<group>"; };
+		5E5A2C082F00A00100D1A001 /* MenuBarAppearance.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = MenuBarAppearance.swift; sourceTree = "<group>"; };
 		33CEB47222A05771004F2AC0 /* Flutter-Debug.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Debug.xcconfig"; sourceTree = "<group>"; };
 		33CEB47422A05771004F2AC0 /* Flutter-Release.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; path = "Flutter-Release.xcconfig"; sourceTree = "<group>"; };
 		33CEB47722A0578A004F2AC0 /* Flutter-Generated.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = "Flutter-Generated.xcconfig"; path = "ephemeral/Flutter-Generated.xcconfig"; sourceTree = "<group>"; };
@@ -179,6 +181,7 @@
 				33CC11122044BFA00003C045 /* MainFlutterWindow.swift */,
 				5E5A2C042F00A00100D1A001 /* ApplicationTermination.swift */,
 				5E5A2C062F00A00100D1A001 /* SparkleUpdater.swift */,
+				5E5A2C082F00A00100D1A001 /* MenuBarAppearance.swift */,
 				33E51913231747F40026EE4D /* DebugProfile.entitlements */,
 				33E51914231749380026EE4D /* Release.entitlements */,
 				33CC11242044D66E0003C045 /* Resources */,
@@ -372,6 +375,7 @@
 				33CC10F12044A3C60003C045 /* AppDelegate.swift in Sources */,
 				5E5A2C052F00A00100D1A001 /* ApplicationTermination.swift in Sources */,
 				5E5A2C072F00A00100D1A001 /* SparkleUpdater.swift in Sources */,
+				5E5A2C092F00A00100D1A001 /* MenuBarAppearance.swift in Sources */,
 				335BBD1B22A9A15E00E9071D /* GeneratedPluginRegistrant.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
