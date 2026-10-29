@@ -108,6 +108,8 @@ void main() {
       expect(activity.keys, equals({"/foo"}));
       expect(activity["/foo"]!.keys, unorderedEquals({"s1", "s2"}));
       expect(activity["/foo"]!["s1"]!.mainAgentRunning, isTrue);
+      expect(activity["/foo"]!["s1"]!.isRunning, isTrue);
+      expect(activity["/foo"]!["s2"]!.isRunning, isFalse);
       expect(activity["/foo"]!["s1"]!.lastUserActivityAt, 20);
       expect(activity["/foo"]!["s1"]!.updatedAt, 10);
       expect(activity["/foo"]!["s2"]!.mainAgentRunning, isFalse);

@@ -6,7 +6,6 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/testing.dart";
 import "package:sesori_desktop/core/di/injection.dart";
 import "package:sesori_desktop/core/widgets/desktop_cockpit_shell.dart";
@@ -24,7 +23,7 @@ void main() {
     final unseen = FakeSessionUnseenTracker();
     final catalog = FakeCatalogRescanService();
     final events = StreamController<SseEvent>.broadcast(sync: true);
-    final projects = ProjectListService(repository: repository, activityCalculator: const SessionActivityCalculator());
+    final projects = ProjectListService(repository: repository);
     final instances = <RecentSessionInventoryService>[];
     final closed = <RecentSessionInventoryService>[];
     final projectInstances = <ProjectInventoryService>[];
@@ -53,7 +52,7 @@ void main() {
     final filterTracker = SessionListFilterTracker(connectionService: connection, projectListService: projects);
     getIt.registerSingleton<SessionListFilterTracker>(filterTracker);
     getIt.registerSingleton<SessionListService>(
-      SessionListService(repository: repository, activityCalculator: const SessionActivityCalculator()),
+      SessionListService(repository: repository),
     );
     getIt.registerFactory<SessionLaunchService>(
       () => inMemorySessionLaunchService(launchRepository: inMemorySessionLaunchRepository()),
@@ -62,7 +61,6 @@ void main() {
       final inventory = RecentSessionInventoryService(
         sessionListService: SessionListService(
           repository: repository,
-          activityCalculator: const SessionActivityCalculator(),
         ),
         projectListService: projects,
         connectionService: connection,

@@ -4,7 +4,6 @@ import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
@@ -13,10 +12,14 @@ import "../../helpers/test_helpers.dart";
 void main() {
   const one = ProjectSummary(id: "one", name: "One", path: "/one", time: null);
   const two = ProjectSummary(id: "two", name: "Two", path: "/two", time: null);
-  const running = SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null);
+  const running = SessionActivityInfo(
+    mainAgentRunning: true,
+    isRunning: true,
+    lastUserActivityAt: null,
+    updatedAt: null,
+  );
   final sessionListService = SessionListService(
     repository: MockProjectRepository(),
-    activityCalculator: const SessionActivityCalculator(),
   );
   late BehaviorSubject<Map<String, RecentSessionsEntry>> entries;
   late BehaviorSubject<ProjectListState> projects;
@@ -44,7 +47,6 @@ void main() {
     when(() => connection.currentStatus).thenAnswer((_) => status.value);
     projectListService = ProjectListService(
       repository: MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
     tracker = SessionListFilterTracker(connectionService: connection, projectListService: projectListService);
     recentInventory = _MockRecentInventory();

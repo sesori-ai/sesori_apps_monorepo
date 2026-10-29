@@ -1,5 +1,7 @@
 import "package:path/path.dart" as p;
-import "package:sesori_shared/sesori_shared.dart";
+
+import "project.dart";
+import "project_kind.dart";
 
 /// The name [project] goes by of its own: its stored name, else its
 /// directory's. Null for the bridge's project of folderless sessions, whatever

@@ -13,6 +13,10 @@ sealed class SessionActivityInfo with _$SessionActivityInfo {
     @Default(false) bool awaitingInput,
     @Default(0) int backgroundTaskCount,
     @Default(false) bool isRetrying,
+
+    /// The shared [ActiveSessionRunningCalculator] rule, applied once where
+    /// this info is built.
+    required bool isRunning,
     required int? lastUserActivityAt,
     required int? updatedAt,
   }) = _SessionActivityInfo;

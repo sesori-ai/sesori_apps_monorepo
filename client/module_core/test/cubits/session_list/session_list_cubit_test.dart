@@ -11,7 +11,6 @@ import "package:sesori_dart_core/src/cubits/session_list/session_list_cubit.dart
 import "package:sesori_dart_core/src/repositories/models/session_cleanup_rejection.dart" as domain;
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/models/session_cleanup_outcome.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_cleanup_service.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -40,7 +39,6 @@ void main() {
       mockProjectRepository = MockProjectRepository();
       sessionListService = SessionListService(
         repository: mockProjectRepository,
-        activityCalculator: const SessionActivityCalculator(),
       );
       mockConnectionService = MockConnectionService();
       mockSseEventTracker = MockSseEventTracker();
@@ -204,7 +202,12 @@ void main() {
 
     group("activity", () {
       test("activeSessionIds follows this project's activity only", () async {
-        const running = SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null);
+        const running = SessionActivityInfo(
+          mainAgentRunning: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        );
         mockSseEventTracker.emitSessionActivity({
           projectId: {"s1": running},
           "project-2": {"s2": running},
@@ -228,8 +231,18 @@ void main() {
       test("running sessions lead the list", () {
         mockSseEventTracker.emitSessionActivity({
           projectId: {
-            "C": const SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
-            "A": const SessionActivityInfo(isRetrying: true, lastUserActivityAt: null, updatedAt: null),
+            "C": const SessionActivityInfo(
+              mainAgentRunning: true,
+              isRunning: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
+            "A": const SessionActivityInfo(
+              isRetrying: true,
+              isRunning: true,
+              lastUserActivityAt: null,
+              updatedAt: null,
+            ),
           },
         });
         final cubit = buildCubit(

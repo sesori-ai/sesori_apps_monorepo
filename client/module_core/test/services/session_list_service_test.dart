@@ -2,7 +2,6 @@ import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/src/repositories/project_repository.dart";
 import "package:sesori_dart_core/src/services/models/session_activity_info.dart";
 import "package:sesori_dart_core/src/services/models/session_list_filter.dart";
-import "package:sesori_dart_core/src/services/session_activity_calculator.dart";
 import "package:sesori_dart_core/src/services/session_list_service.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -13,7 +12,6 @@ void main() {
   test("archive projection excludes live rows and orders by retirement, not activity", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
     final live = _session(id: "live", title: "Live", updatedAt: 500);
     final earlier = _session(
@@ -41,7 +39,6 @@ void main() {
   test("running sessions use activity markers while inactive sessions stay timestamp ordered", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.visibleSessions(
@@ -53,9 +50,24 @@ void main() {
       ],
       filter: SessionListFilter.active,
       activityBySessionId: const {
-        "running-new-update": SessionActivityInfo(isRetrying: true, lastUserActivityAt: null, updatedAt: null),
-        "waiting": SessionActivityInfo(awaitingInput: true, lastUserActivityAt: null, updatedAt: null),
-        "running-new-activity": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        "running-new-update": SessionActivityInfo(
+          isRetrying: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
+        "waiting": SessionActivityInfo(
+          awaitingInput: true,
+          isRunning: false,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
+        "running-new-activity": SessionActivityInfo(
+          mainAgentRunning: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
       },
       listStateBySessionId: const {
         "running-new-update": (unseen: false, lastUserActivityAt: 10),
@@ -72,7 +84,6 @@ void main() {
   test("live activity advances displayed recency without regressing a newer backend time", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.visibleSessions(
@@ -98,7 +109,6 @@ void main() {
   test("running sessions use REST markers before updated-time fallback", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.visibleSessions(
@@ -108,8 +118,18 @@ void main() {
       ],
       filter: SessionListFilter.active,
       activityBySessionId: const {
-        "new-update": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
-        "new-activity": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        "new-update": SessionActivityInfo(
+          mainAgentRunning: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
+        "new-activity": SessionActivityInfo(
+          mainAgentRunning: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
       },
       listStateBySessionId: const {},
     );
@@ -120,7 +140,6 @@ void main() {
   test("running marker fallback and timestamp ties use session ID", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
 
     final result = service.visibleSessions(
@@ -132,8 +151,18 @@ void main() {
       ],
       filter: SessionListFilter.active,
       activityBySessionId: const {
-        "running-a": SessionActivityInfo(backgroundTaskCount: 1, lastUserActivityAt: null, updatedAt: null),
-        "running-b": SessionActivityInfo(mainAgentRunning: true, lastUserActivityAt: null, updatedAt: null),
+        "running-a": SessionActivityInfo(
+          backgroundTaskCount: 1,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
+        "running-b": SessionActivityInfo(
+          mainAgentRunning: true,
+          isRunning: true,
+          lastUserActivityAt: null,
+          updatedAt: null,
+        ),
       },
       listStateBySessionId: const {},
     );
@@ -147,7 +176,6 @@ void main() {
   test("session updates keep the later user-activity marker", () {
     final service = SessionListService(
       repository: _MockProjectRepository(),
-      activityCalculator: const SessionActivityCalculator(),
     );
     final existing = _session(id: "session", title: "Original", updatedAt: 1).copyWith(lastUserActivityAt: 20);
     final incoming = _session(id: "session", title: "Updated", updatedAt: 2).copyWith(lastUserActivityAt: 10);
