@@ -19,6 +19,7 @@ import "package:args/args.dart";
 import "package:claude_plugin/claude_plugin.dart";
 import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
+import "package:sesori_bridge/src/api/database/daos/session_continuation_dao.dart";
 import "package:sesori_bridge/src/api/database/daos/session_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
@@ -26,8 +27,10 @@ import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/repositories/catalog_import_repository.dart";
 import "package:sesori_bridge/src/repositories/models/catalog_import_control.dart";
 import "package:sesori_bridge/src/repositories/project_catalog_identity_calculator.dart";
+import "package:sesori_bridge/src/repositories/session_continuation_repository.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
+import "package:sesori_bridge/src/services/session_view_service.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
@@ -59,9 +62,10 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
   );
 
   final scans = <Map<String, Object?>>[];
+  var records = const <ClaudeSessionRecord>[];
   for (var scan = 0; scan < 2; scan++) {
     final stopwatch = Stopwatch()..start();
-    final records = await catalog.listSessionRecordsInIsolate();
+    records = await catalog.listSessionRecordsInIsolate();
     stopwatch.stop();
     scans.add({
       "milliseconds": stopwatch.elapsedMilliseconds,
@@ -70,11 +74,16 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
       "titled": records.where((record) => record.title != null).length,
     });
   }
+  // A directory the fixture really holds, so the launch-directory seed adds no
+  // extra empty project whatever `--workspace` generated the fixture.
+  final launchDirectory = records.firstOrNull?.cwd;
+  if (launchDirectory == null) throw StateError("fixture $fixture holds no Claude sessions");
 
   final temporaryDirectory = await Directory.systemTemp.createTemp("sesori-claude-catalog-");
   final database = AppDatabase.openFile(file: File(p.join(temporaryDirectory.path, "benchmark.sqlite")));
   try {
-    final runtime = createBenchmarkPluginRuntime(plugins: [_ClaudeCatalogPlugin(catalog: catalog)]);
+    final plugin = _ClaudeCatalogPlugin(catalog: catalog, launchDirectory: launchDirectory);
+    final runtime = _ClaudeBenchmarkRuntime(plugins: {plugin.id: plugin});
     final sessionDao = _CountingSessionDao(database);
     final projectsDao = _CountingProjectsDao(database);
     final importer = CatalogImportRepository(
@@ -127,23 +136,23 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
       ),
       aggregateSourceDeadline: const Duration(seconds: 5),
     );
+    final sessionViews = SessionViewService(
+      sessions: sessions,
+      continuations: SessionContinuationRepository(
+        dao: SessionContinuationDao(database: database),
+        runtime: runtime,
+      ),
+      resetBuffer: const Duration(minutes: 2),
+    );
     var totalBytes = 0;
     var largest = (bytes: 0, sessions: 0, milliseconds: 0);
     for (final project in await database.projectsDao.getAllProjects()) {
       final stopwatch = Stopwatch()..start();
-      final items = await sessions.getSessionsForProject(projectId: project.projectId, start: null, limit: null);
-      // The enrichment the route adds; no fixture session has a continuation.
-      final enriched = [
-        for (final session in items)
-          session.copyWith(
-            autoContinuation: const SessionAutoContinuationView(
-              enabled: false,
-              availability: AutoContinuationAvailability.conditional,
-              status: SessionAutoContinuationStatus.idle(),
-            ),
-          ),
-      ];
-      final bytes = utf8.encode(jsonEncode(SessionListResponse(items: enriched).toJson())).length;
+      // The same read and enrichment as `GetSessionsHandler`.
+      final items = await sessionViews.enrichMany(
+        sessions: await sessions.getSessionsForProject(projectId: project.projectId, start: null, limit: null),
+      );
+      final bytes = utf8.encode(jsonEncode(SessionListResponse(items: items).toJson())).length;
       stopwatch.stop();
       totalBytes += bytes;
       if (bytes > largest.bytes) {
@@ -178,13 +187,12 @@ Future<Map<String, Object?>> _run({required String fixture}) async {
 
 /// Exposes the real Claude catalog as the bridge-derived plugin the import
 /// reads; nothing else of the plugin is reached.
-class _ClaudeCatalogPlugin({required final ClaudeTranscriptCatalogRepository _catalog})
-    implements BridgeDerivedProjectsPluginApi {
+class _ClaudeCatalogPlugin({
+  required final ClaudeTranscriptCatalogRepository _catalog,
+  @override required final String launchDirectory,
+}) implements BridgeDerivedProjectsPluginApi {
   @override
   String get id => _pluginId;
-
-  @override
-  String get launchDirectory => "/Users/fixture/workspace/project-00";
 
   @override
   Future<List<PluginSession>> listAllSessions({required Set<String> knownDirectories}) =>
@@ -192,6 +200,14 @@ class _ClaudeCatalogPlugin({required final ClaudeTranscriptCatalogRepository _ca
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+/// Reports Claude's quota support as its descriptor does, so the enriched
+/// `/sessions` body matches the real route's.
+class _ClaudeBenchmarkRuntime({required super.plugins}) extends BenchmarkPluginRuntime {
+  @override
+  PluginQuotaReportingSupport quotaReportingSupport({required String pluginId}) =>
+      PluginQuotaReportingSupport.conditional;
 }
 
 class _CountingSessionDao(super.attachedDatabase) extends SessionDao {

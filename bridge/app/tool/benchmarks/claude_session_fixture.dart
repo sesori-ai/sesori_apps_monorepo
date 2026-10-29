@@ -7,7 +7,7 @@
 //
 // The output is a `CLAUDE_CONFIG_DIR`: transcripts land under
 // `<out>/projects/<encoded-cwd>/<uuid>.jsonl`. The tree is deterministic for a
-// given `--seed`, and generation refuses a non-empty `--out`.
+// given `--seed` and `--now`, and generation refuses a non-empty `--out`.
 //
 // Headless scanner and import numbers need no login:
 //
@@ -52,12 +52,21 @@ const _fillerMaxBytes = 400 * 1024;
 const _cliVersion = "2.1.310";
 const _year = Duration(days: 365);
 
+/// Every record lands within this span after a session's first prompt, and
+/// the file's mtime after it, so mtime is always the newest activity.
+const _recordSpan = Duration(days: 1);
+
+/// Timestamps and mtimes are relative to this, not the clock, so a seed
+/// reproduces the same tree on every run.
+final _defaultReferenceTime = DateTime.utc(2026, 10, 1);
+
 Future<void> main(List<String> arguments) async {
   final parser = ArgParser()
     ..addOption("out", help: "Output CLAUDE_CONFIG_DIR; must be empty or absent.")
     ..addOption("sessions", defaultsTo: "$_defaultSessionCount", help: "Root transcripts to write.")
     ..addOption("projects", defaultsTo: "$_defaultProjectCount")
     ..addOption("seed", defaultsTo: "$_defaultSeed")
+    ..addOption("now", defaultsTo: _defaultReferenceTime.toIso8601String(), help: "Newest possible activity time.")
     ..addOption("workspace", defaultsTo: _defaultWorkspace, help: "Parent of every project's cwd.");
   final parsed = parser.parse(arguments);
   final out = parsed.option("out");
@@ -65,7 +74,13 @@ Future<void> main(List<String> arguments) async {
   final projectCount = int.tryParse(parsed.option("projects") ?? "");
   final seed = int.tryParse(parsed.option("seed") ?? "");
   final workspace = parsed.option("workspace");
-  if (out == null || sessionCount == null || sessionCount < 1 || projectCount == null || projectCount < 1) {
+  final now = DateTime.tryParse(parsed.option("now") ?? "")?.toUtc();
+  if (out == null ||
+      now == null ||
+      sessionCount == null ||
+      sessionCount < 1 ||
+      projectCount == null ||
+      projectCount < 1) {
     stderr.writeln("usage: claude_session_fixture.dart --out <dir> [options]\n${parser.usage}");
     exitCode = 64;
     return;
@@ -84,7 +99,7 @@ Future<void> main(List<String> arguments) async {
     sessionCount: sessionCount,
     projectCount: projectCount,
     random: Random(seed ?? _defaultSeed),
-    now: DateTime.now().toUtc(),
+    now: now,
   ).write();
   stopwatch.stop();
   stdout.writeln(
@@ -130,8 +145,8 @@ class _ClaudeSessionFixture({
   void _writeRoot({required int index, required String cwd}) {
     final id = _uuid();
     final projectDirectory = p.join(root, "projects", cwd.replaceAll(RegExp("[^A-Za-z0-9]"), "-"));
-    final createdAt = now.subtract(_year * random.nextDouble());
-    final updatedAt = _between(createdAt, now);
+    final createdAt = now.subtract(_year * random.nextDouble() + _recordSpan);
+    final updatedAt = _between(createdAt.add(_recordSpan), now);
     final titleSource = _TitleSource.values[random.nextInt(_TitleSource.values.length)];
     _titles.update(titleSource, (count) => count + 1);
 

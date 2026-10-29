@@ -33,9 +33,11 @@
 
 ## Baseline (step 2)
 
-Measured 2026-10-29 on an Apple M4 Pro (14 cores, 48 GB), macOS 27.0.1, Dart 3.13.7, at `origin/main`
-`dacd7c02e4`. Other agent sessions shared the machine, so timings varied by up to 2x between runs; each cell shows
-the range of two runs. Later steps add their after-numbers next to these.
+Measured 2026-10-29 on an Apple M4 Pro (14 cores, 48 GB), macOS 27.0.1, Dart 3.13.7. The tree was `origin/main`
+`dacd7c02e4` plus this step's benchmark tools (PR #2179). The tools add no production code, so the numbers
+describe the bridge and Claude plugin at `dacd7c02e4`. Other agent sessions shared the machine, so timings varied
+by up to 2x between runs; each cell shows the range of three runs. Later steps add their after-numbers next to
+these.
 
 Commands, from `bridge/app/` (fixtures live in `/tmp`, never in the repository):
 
@@ -46,7 +48,7 @@ dart run tool/benchmarks/claude_catalog_benchmark.dart --fixture /tmp/heavy-user
 dart run tool/benchmarks/claude_catalog_benchmark.dart --fixture /tmp/heavy-users-claude-50k
 ```
 
-Fixtures (default seed 2026): 40 projects, the largest holding 40% of roots; about 20% of roots have 1–3
+Fixtures (default seed 2026, reference time 2026-10-01): 40 projects, the largest holding 40% of roots; about 20% of roots have 1–3
 sub-agent children; titles split evenly between `/rename`, `ai-title` and first prompt; 5% of roots padded to
 200–400 KB.
 
@@ -60,15 +62,15 @@ real `CatalogImportRepository` and `SessionRepository` over a temporary bridge d
 
 | Measure | 10k | 50k |
 |---|---|---|
-| Claude catalog scan, first (isolate) | 2.4–4.6 s | 11.1–21.4 s |
-| Claude catalog scan, second, nothing changed | 2.3 s | 11.6–19.1 s |
-| First import, scan included | 2.7 s | 13.0 s |
+| Claude catalog scan, first (isolate) | 2.2–4.6 s | 10.6–21.4 s |
+| Claude catalog scan, second, nothing changed | 2.1–2.3 s | 11.2–19.1 s |
+| First import, scan included | 2.7 s | 13.0–13.3 s |
 | Rescan import, nothing changed | 2.7 s | 14.3–25.5 s |
 | Session rows written per rescan | 14,090 (every row) | 69,966 (every row) |
 | Project rows written per rescan | 40 (every row) | 40 (every row) |
 | Progress events per import (repository) | 5 (3 enumerating, committing, completed) | 5 |
 | Chat-history checks queued per import | 14,090 | 69,966 |
-| `/sessions` body, largest project | 1.56 MB (4,000 roots), 35 ms read and encode | 7.82 MB (20,000 roots), 162 ms |
+| `/sessions` body, largest project | 1.56 MB (4,000 roots), 35–38 ms read, enrich and encode | 7.82 MB (20,000 roots), 162–175 ms |
 | `/sessions` bodies, all projects | 3.90 MB | 19.56 MB |
 
 Notes:
@@ -76,8 +78,8 @@ Notes:
   it is the OpenCode native-projects walk (step 10).
 - A rescan that changes nothing costs the same as the first import: the scan re-reads every transcript (step 7) and
   every row is rewritten (step 5).
-- `/sessions` bytes are the route's repository read plus the default auto-continuation view, JSON-encoded as the
-  relay sends it. The client gets one such body per project on each reload.
+- `/sessions` bytes come from the route's own repository read and `SessionViewService.enrichMany`, JSON-encoded as
+  the relay sends it. The client gets one such body per project on each reload.
 
 Not measured here, deferred to the L3 run in step 19 (they need a logged-in local bridge, which an agent cannot set
 up without an interactive `claude auth login`):
