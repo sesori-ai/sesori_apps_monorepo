@@ -33,8 +33,68 @@
 
 ## Baseline (step 2)
 
-Not measured yet. Step 2 records here the bridge and app numbers named in `PLAN.md`, and later steps add their
-after-numbers next to them.
+Measured 2026-10-29 on an Apple M4 Pro (14 cores, 48 GB), macOS 27.0.1, Dart 3.13.7, at `origin/main`
+`dacd7c02e4`. Other agent sessions shared the machine, so timings varied by up to 2x between runs; each cell shows
+the range of two runs. Later steps add their after-numbers next to these.
+
+Commands, from `bridge/app/` (fixtures live in `/tmp`, never in the repository):
+
+```sh
+dart run tool/benchmarks/claude_session_fixture.dart --out /tmp/heavy-users-claude-10k
+dart run tool/benchmarks/claude_session_fixture.dart --out /tmp/heavy-users-claude-50k --sessions 50000
+dart run tool/benchmarks/claude_catalog_benchmark.dart --fixture /tmp/heavy-users-claude-10k
+dart run tool/benchmarks/claude_catalog_benchmark.dart --fixture /tmp/heavy-users-claude-50k
+```
+
+Fixtures (default seed 2026): 40 projects, the largest holding 40% of roots; about 20% of roots have 1–3
+sub-agent children; titles split evenly between `/rename`, `ai-title` and first prompt; 5% of roots padded to
+200–400 KB.
+
+| Fixture | Roots / children | On disk |
+|---|---|---|
+| 10k | 10,000 / 4,090 | 194 MB |
+| 50k | 50,000 / 19,966 | 895 MB |
+
+Bridge, headless (`claude_catalog_benchmark.dart`: the plugin's real catalog repository over the fixture, then the
+real `CatalogImportRepository` and `SessionRepository` over a temporary bridge database):
+
+| Measure | 10k | 50k |
+|---|---|---|
+| Claude catalog scan, first (isolate) | 2.4–4.6 s | 11.1–21.4 s |
+| Claude catalog scan, second, nothing changed | 2.3 s | 11.6–19.1 s |
+| First import, scan included | 2.7 s | 13.0 s |
+| Rescan import, nothing changed | 2.7 s | 14.3–25.5 s |
+| Session rows written per rescan | 14,090 (every row) | 69,966 (every row) |
+| Project rows written per rescan | 40 (every row) | 40 (every row) |
+| Progress events per import (repository) | 5 (3 enumerating, committing, completed) | 5 |
+| Chat-history checks queued per import | 14,090 | 69,966 |
+| `/sessions` body, largest project | 1.56 MB (4,000 roots), 35 ms read and encode | 7.82 MB (20,000 roots), 162 ms |
+| `/sessions` bodies, all projects | 3.90 MB | 19.56 MB |
+
+Notes:
+- Claude imports are bridge-derived, so the progress flood measured in "Current behavior" does not apply to them;
+  it is the OpenCode native-projects walk (step 10).
+- A rescan that changes nothing costs the same as the first import: the scan re-reads every transcript (step 7) and
+  every row is rewritten (step 5).
+- `/sessions` bytes are the route's repository read plus the default auto-continuation view, JSON-encoded as the
+  relay sends it. The client gets one such body per project on each reload.
+
+Not measured here, deferred to the L3 run in step 19 (they need a logged-in local bridge, which an agent cannot set
+up without an interactive `claude auth login`):
+- Desktop: macOS profile build timed with DevTools: worst frame and total UI-thread time for cold list open, pull
+  to refresh until idle, Running on/off, typing a five-letter search, and clearing it.
+- Phone: headless iOS simulator (debug), freeze durations for the same actions.
+- End-to-end import and rescan time through the live plugin, including relay transfer of the `/sessions` bodies.
+
+Run recipe for step 19:
+1. Generate `/tmp/heavy-users-claude-10k` as above.
+2. `CLAUDE_CONFIG_DIR=/tmp/heavy-users-claude-10k claude auth login` with a dev account (the default `~/.claude`
+   stays untouched).
+3. Start a local bridge on its own `--data-dir` slot per the `sesori-local-testing` skill, with
+   `CLAUDE_CONFIG_DIR=/tmp/heavy-users-claude-10k` in its environment; wait for the first Claude import.
+4. macOS: `flutter run --profile` the desktop app against that bridge, open DevTools → Performance, and record the
+   five actions above. iOS: the headless simulator in debug, timing each freeze from a screen recording.
+5. Record the numbers here beside the bridge rows.
 
 ## Evidence and decisions
 
