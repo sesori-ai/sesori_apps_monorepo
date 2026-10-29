@@ -57,23 +57,20 @@ The main pane hosts one full-width routed page.
   opens the shared project picker, whose footer always holds "All projects" (beside "No project" when the bridge
   has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see
   `projects-and-sessions.md`): its search field, All, Running and Unread chips, date headings with running sessions
-  under Today, launching rows, the catalog scan row and project-local retry. Each row names its project while the
+  under Today, launching rows, the catalog scan row, pages with their loader row and the Retry row. Each row names its project while the
   filter shows all of them ("No project" rows name none), and opens its session in
   that project; the open session is highlighted. Adding a project otherwise lives on home and in Settings ›
   Projects. Icon/status hints and truncated-label hints remain useful, while fully visible labels need no
   duplicate tooltip.
 - Explicit sidebar refresh runs through `SessionListRefreshCubit` and the shared `SessionListRefreshService` over the
-  same scoped project and recent inventory services, and starts the all-harness import beside the reload. The
+  scoped project inventory and the list's sessions window, and starts the all-harness import beside the reload. The
   sidebar's scan row above the list reports the import; a failed import raises the shared alert naming its
-  harnesses. It awaits the project phase before refreshing admitted recent entries, joining initial reads
-  already in flight. An ordinary project failure still allows retained recent entries to update; either phase failing
-  produces failure feedback. Useful rows stay visible. Busy controls cannot dispatch duplicate intent, and busy/idle
-  refresh plus Settings expose accessible names and keyboard actions.
+  harnesses. It awaits the project reload before reloading the window's loaded range. An ordinary project failure
+  still lets the sessions reload; either failing produces failure feedback. Useful rows stay visible. A refresh
+  while one runs joins it, busy controls cannot dispatch duplicate intent, and busy/idle refresh plus Settings expose
+  accessible names and keyboard actions.
   A superseded caller follows the current owning read after every completion, including an already-completed successor
-  followed by a newer owner. Completed failures stay observable despite retained rows. During the recent-session phase,
-  removal or disposal retires pending receipts without waiting for obsolete I/O; late successes/errors cannot restore
-  entries, reseed unseen state or complete a receipt twice. A batch does not wait for future catalog activity or a
-  globally quiet inventory.
+  followed by a newer owner. Completed failures stay observable despite retained rows.
 - Each signed-in cockpit owns one project-list cubit, including the home pane;
   leaving the signed-in shell releases it.
 - Cmd+N (Ctrl+N on Windows/Linux) and the sidebar's New session row open New Session for the open project, else the
@@ -87,15 +84,22 @@ The main pane hosts one full-width routed page.
 - Cmd/Ctrl+K and the sidebar's Search row (under New session, labelled with the shortcut) open the command palette: a
   search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
   while the window is wide enough to expand it; Settings; Go back; each with its shortcut; and Archived sessions,
-  without one, which reaches Archived while a narrow window hides the sidebar), every project's Sessions
-  newest first with their project and without archived ones, whatever the sidebar list's filter, search and chip, and
-  every Project. Typing narrows all three by title words (an untitled session by "Untitled session"), bolding the
-  matched letters; signing out closes the palette with the cockpit; nothing matching reads "No matches". Up/Down move
+  without one, which reaches Archived while a narrow window hides the sidebar), every Project, then Sessions last,
+  each with its project: before typing, the 20 newest rows the sidebar's list has loaded (on a bridge that serves
+  pages these follow the list's filter, search and chip). Typing narrows commands and projects by title words,
+  bolding the matched letters. Typed session search covers every project's active sessions, whatever the sidebar
+  list's filter, search and chip: matches among the loaded rows, and among those already shown, appear at once, and
+  200 ms after the last keystroke the bridge's newest 20 matches replace them, usually only adding rows below; every
+  word must occur in the title or the project's own name, as in the list's search. A highlight the user moved
+  stays on its row when the answer lands, so Enter still picks it. Nothing matching reads "No matches" only once the bridge has answered; a failed search keeps
+  the matches shown and is logged. On a bridge without session pages the palette searches every loaded session
+  instead. Signing out closes the palette with the cockpit. Up/Down move
   the highlight past headings, Enter or a click closes the palette and runs the pick, and Esc closes it. A session pick
   opens it; a project pick filters the sidebar's list to that project and brings a collapsed sidebar back to show it.
   The highlighted row is plainly visible in both themes: a clear grey in light, the sidebar's selected tint in dark.
-  Hovering a row moves the same highlight. The palette shows the lists as they stood when it opened. One command list
-  in the shell drives both the palette and the shortcuts; page-only commands such as Mark as unread stay on their page.
+  Hovering a row moves the same highlight. Commands and projects are those that stood when the palette opened. One
+  command list in the shell drives both the palette and the shortcuts; page-only commands such as Mark as unread stay
+  on their page.
 - Right-click session menus on the sidebar's rows reuse the shared session action flows, and session title
   tooltips, selection, running/awaiting/unread signals and screen-reader actions remain usable at the
   sidebar's minimum width.
@@ -115,24 +119,18 @@ The main pane hosts one full-width routed page.
   cockpit closes the owner and fences late project-state application/unseen seeding, not merely its adapter.
   Throttled activity refresh runs only while the home is current; returning from another page triggers
   one immediate read without recreating a Cubit. Both shells use the shared router's topmost-page observation.
-- Each winning successful project snapshot admits every current project to the scoped pure-Dart recent inventory,
-  independent of expansion or viewport position. `RecentSessionInventoryService` owns admission, reads and live state;
-  its Cubit only mirrors immutable snapshots and delegates explicit retry. The signed-in cockpit resolves one factory
-  instance before initial project publication and disposes it on exit. A replacement Cubit sees retained data, while a
-  new signed-in scope gets an empty inventory. Flutter rebuilds and project expansion dispatch no reads.
-  A superseded project response cannot admit stale IDs. A successful local project hide publishes the accepted
-  post-hide inventory through that same seam and fences older list responses. If a connection/reload has replaced loaded
-  state before hide acceptance, one forced successor fetch replaces the superseded load and publishes its winning
-  inventory. Absent IDs and their read metadata are removed; reconnect/catalog invalidation refreshes retained entries,
-  including failures. Initial loading/failure stays
-  project-local. Live session/activity/unread events update loaded projections.
-  Loaded rows remain visible during refresh and logged refresh failures; live
-  activity/unread and root lifecycle patches continue against that useful data.
-  Lifecycle changes overlapping a returned snapshot trigger a coalesced fresh read before seeding.
-  A response or thrown failure retains that lifecycle generation; the next loaded-inventory check
-  or root lifecycle event rearms the authoritative read. Initial failures still require explicit retry.
-  Closed or superseded reads cannot seed shared unseen state, and an older
-  completion cannot release a newer pending read.
+- The scope's pure-Dart sessions window (`SessionWindowService`) owns the list's pages, live state and retry; the
+  list's Cubit only combines it with the project inventory and the activity and unseen trackers, and the palette's
+  `SessionSearchCubit` and the launch rows read the same window. The signed-in cockpit creates one window and
+  disposes it on exit; a new signed-in scope starts empty. Flutter rebuilds dispatch no reads.
+  A successful local project hide publishes the accepted post-hide inventory and fences older list responses. If a
+  connection/reload has replaced loaded state before hide acceptance, one forced successor fetch replaces the
+  superseded load and publishes its winning inventory; the window reloads for the changed project set.
+  Live session/activity/unread events update loaded rows. Loaded rows remain visible during refresh and logged
+  refresh failures, and the next reload or reconnect loads them again; live activity/unread and root lifecycle
+  patches continue against that useful data. Session events that arrive during a load are re-applied over its
+  answer. An answer for a key or computer the user has moved past is dropped. A first load that fails shows the
+  Retry row, and Retry or a reconnect loads again.
 - The sidebar is the only navigation pane. The home, archived sessions, new session, detail, and diffs
   are sibling main-pane routes. The sidebar's shared list is the only full list owner.
 - The sidebar's Archived sessions row, and the palette's command, open the Archived sessions page over the
@@ -346,7 +344,7 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   button-opened menu still hung off its trigger, the touch presentation where no scope exists, and the desktop
   app installing the pointer scope.
 - The sidebar's shared list across projects, a row opening its session in its own project, the filter
-  narrowing the list and returning to All projects, and project-local retry (`desktop_cockpit_shell_test`).
+  narrowing the list and returning to All projects, and the Retry row (`desktop_cockpit_shell_test`).
 - Connection grace, pill visibility, fixed content geometry, reduced motion, departing hit testing/semantics,
   sidebar recovery/actions/locks; no bridge-offline pill and a sidebar skeleton while this computer's bridge
   launches, the same skeleton element through the project load and its hand-off to the rows.
@@ -363,8 +361,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - The command palette opened by Cmd/Ctrl+K and the Search row: recency order with project names, every
   project's sessions whatever the sidebar's filter, search and chip, filtering with No matches, Enter
   opening a session or filtering the sidebar to a project and bringing it back, Down skipping a heading,
-  Esc, a command run from the palette and by its shortcut, and Archived sessions run from the palette
-  (`desktop_cockpit_shell_test`).
+  Esc, a command run from the palette and by its shortcut, Archived sessions run from the palette, and loaded
+  matches shown at once with the bridge's added below them (`desktop_cockpit_shell_test`); loaded matches first,
+  the bridge's answer 200 ms after the last keystroke, stale answers dropped, a failed search keeping the shown
+  matches, and local search on a bridge without pages (`session_search_cubit_test`); a moved highlight kept when
+  rows change for the same query (`prego_picker_search_list_test`).
 - Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; New session reached directly, Mark unread,
   and deleting or archiving the open session all returning to the home (`desktop_router_test`).
 - The new session page: toolbar above a centred, width-capped column with room left below it, no project crumb,
@@ -387,15 +388,12 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   landing on Bridge with Harnesses open, its overview refreshing on a pull (`desktop_settings_screens_test`),
   including from New session through the real router with its draft kept (`desktop_new_session_screen_test`).
   The home and session notices call the same router opener.
-- Live inventory mutations, action-scope viewing isolation, invalidation/disposal. All-project admission happens
-  once per entering ID, including offscreen projects. Empty/loading/failed entries keep project-local retry. Keep
-  loaded rows
-  through catalog/reconnect refreshes and failures, including live unread false, lifecycle patches, failed-reread
-  rearming and superseded-read completion. Execute those inventory cases without a mounted Cubit. Verify adapter
-  replay/retry, independent consumer close, one eager factory instance per signed-in scope, and disposal before a
-  fresh scope admits data.
-- Headless explicit refresh ordering, shared-instance factory parameters, admission joining, completed failed winners,
-  later owning reads, partial failure, removal/disposal and useful diagnostic causes. Presentation covers keyboard
+- Live inventory mutations, action-scope viewing isolation, invalidation/disposal. The sessions window keeps loaded
+  rows through catalog/reconnect reloads and failures, re-applies session events that arrive during a load, drops
+  superseded answers, and runs without a mounted Cubit (`session_window_service_test`). Verify adapter replay/retry,
+  independent consumer close, one window per signed-in scope, and disposal on exit.
+- Headless explicit refresh ordering, shared-instance factory parameters, completed failed winners,
+  later owning reads, partial failure and useful diagnostic causes. Presentation covers keyboard
   activation, accessible busy/idle names, disabled states, useful-row retention and success/failure notices.
 - Width clamp, anchored overshoot/reversal at both bounds, admitted drag-end/cancel and reset-only persistence,
   intermediate collapse/restore frames with the panel sliding whole, both reduced-motion signals, temporary
@@ -425,7 +423,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   top, and the chrome's brightness under light, dark and System, including a system appearance switch after a forced
   value. Windows and Linux keep native chrome.
 - Keyboard focus, compact tooltips, relaunch persistence, light/dark appearance,
-  recent-session navigation/actions on a live bridge, and native indicator scrolling/clipping
+  session-list navigation/actions on a live bridge, paging to the loader row and its Retry, palette typing
+  against a bridge with many sessions, and native indicator scrolling/clipping
   through the list and menus.
 
 ## Failure Signals And Exploration
@@ -437,12 +436,13 @@ Synthetic rendering does not qualify native accessibility, compositing, keyboard
 
 Look for overflow at minimum width, drag updates that stall or write per frame,
 width jumping on reversal beyond a bound, automatic collapse overwriting user preferences, missing/stale
-activity marks, duplicate project inventories, repeated admission on rebuild, a page that jumps while the
+activity marks, duplicate project inventories or sessions windows, reads repeated on rebuild, a page that jumps while the
 sidebar slides, a panel that squeezes its rows, a restore button under the traffic lights or over a toolbar's
 content, a divider or square corners on the sidebar panel, lost project context, a second session-list pane,
 sidebar browsing clearing unread
 state,
-stale/missing recent rows, a refresh reporting success from old retained data, an indicator settling before its
+stale/missing session rows, a palette whose session rows jump or lose the highlight as the bridge answers, a
+refresh reporting success from old retained data, an indicator settling before its
 owning reads, duplicate refresh dispatch, unnamed icon controls, covered transcripts marked viewed,
 notification opens stranded behind a popup,
 wrong session-action targets, or lost navigation after switching projects. Vary project-name lengths and
@@ -492,7 +492,9 @@ this computer after the user picked another one.
 - `client/module_prego/test/components/prego_anchor_menu_test.dart`
 - `client/module_prego/lib/components/navigation/prego_nav_title.dart`
 - `client/module_prego/test/components/prego_nav_title_test.dart`
-- `client/module_core/lib/src/cubits/recent_sessions/`
+- `client/module_core/lib/src/services/session_window_service.dart`
+- `client/module_core/lib/src/cubits/session_search/session_search_cubit.dart`
+- `client/module_prego/lib/components/menus/prego_picker_search_list.dart`
 - `client/module_desktop_core/lib/src/cubits/desktop_sidebar/desktop_sidebar_cubit.dart`
 - `client/module_desktop_core/test/cubits/desktop_sidebar_cubit_test.dart`
 - `client/desktop/test/core/widgets/desktop_cockpit_shell_test.dart`

@@ -129,15 +129,18 @@ entirely along with its transcript and its dedicated worktree.
   list remains active-only. The page has a search field, no new-session button
   and no bottom floating navigation. With nothing
   archived it shows the archive artwork and “No archived sessions”, but only once
-  the project list has loaded and the page's reload on open has answered, so a
-  session archived since the list loaded never flashes the empty state: until
+  the project list has loaded and the page's first archived page has answered,
+  so a session archived since the home loaded never flashes the empty state: until
   then the page shows a skeleton, which hands off to the rows or the empty state
   as the home's does ([projects and sessions](projects-and-sessions.md)), a failed
   project list shows its error with Retry, and a disconnected computer shows the
-  same setup or offline page as the home. A project whose sessions failed to load
-  gets its own Retry row instead of the empty state. The page reloads
-  the session inventory when it opens, because the bridge publishes no event on
-  archive, and pull-to-refresh runs the scope's shared refresh with a success or
+  same setup or offline page as the home. Archived sessions that fail to load show
+  the one "Couldn’t load sessions" row with Retry instead of the empty state. The
+  page owns its own archived list, read fresh from the bridge each time it opens
+  because the bridge publishes no event on archive: most recently archived first,
+  200 at a time, with the home's loader row and Retry while older archives follow
+  (on a bridge without session pages, every project's archives at once).
+  Pull-to-refresh reloads the projects and the loaded archives with a success or
   failure alert. Swipe and menu
   actions run on a per-row action cubit; a deleted row leaves when the bridge's
   `session.deleted` event arrives.
@@ -214,6 +217,9 @@ restart before explicit re-import.
   session is missing until a manual refresh.
 - Archived says “No archived sessions” while the project list is loading, has
   failed, or the computer is disconnected.
+- Archived orders by anything but archive time, loads every archive up front
+  from a bridge that serves pages, or shows no loader row while older archives
+  follow.
 - A covered detail marks late output seen, reports activity, or presents a
   question, permission or notice over another page; child Back or cover dismissal
   loses the retained detail/draft or fails to restore its loaded viewed state.

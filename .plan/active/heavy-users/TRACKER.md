@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 1/19, publishing the plan.
+- Current step: 18/19, reconciling the regression documents. Step 17 (#2197) is still open; step 19 follows both.
 - User decisions: D1–D7 in `PLAN.md`, agreed 2026-10-28 on the review page `heavy-users-r1` and the follow-up in
   chat (D7).
 
@@ -11,24 +11,24 @@
 
 | Step | Repository | Outcome | State | PR/evidence |
 |---|---|---|---|---|
-| 1/19 | monorepo | Publish the plan | In progress | This change |
-| 2/19 | monorepo | 10,000-session Claude fixture and baseline | Not started | |
-| 3/19 | monorepo | Session list rebuilds only when it changes | Not started | |
-| 4/19 | monorepo | Prego lists animate only on-screen rows | Not started | |
-| 5/19 | monorepo | Import writes only changed rows | Not started | |
-| 6/19 | monorepo | One reload per import; off-UI decode | Not started | |
-| 7/19 | monorepo | Claude metadata cache | Not started | |
-| 8/19 | monorepo | Pi metadata cache | Not started | |
-| 9/19 | monorepo | Codex enumeration off the main isolate | Not started | |
-| 10/19 | monorepo | OpenCode import without a call per session | Not started | |
-| 11/19 | monorepo | Row action cubits keep to their session | Not started | |
-| 12/19 | monorepo | Shared running and search rules | Not started | |
-| 13/19 | monorepo | Bridge session pages | Not started | |
-| 14/19 | monorepo | Client window service | Not started | |
-| 15/19 | monorepo | Palette search through the bridge | Not started | |
-| 16/19 | monorepo | Session list on pages | Not started | |
-| 17/19 | monorepo | Launch rows on the window; inventory removed | Not started | |
-| 18/19 | monorepo | Reconcile regression documents | Not started | |
+| 1/19 | monorepo | Publish the plan | Merged | #2178 |
+| 2/19 | monorepo | 10,000-session Claude fixture and baseline | Merged | #2179 |
+| 3/19 | monorepo | Session list rebuilds only when it changes | Merged | #2181 |
+| 4/19 | monorepo | Prego lists animate only on-screen rows | Merged | #2184; device feel check owed (follow-ups) |
+| 5/19 | monorepo | Import writes only changed rows | Merged | #2180 |
+| 6/19 | monorepo | One reload per import; off-UI decode | Merged | #2183 |
+| 7/19 | monorepo | Claude metadata cache | Merged | #2182 |
+| 8/19 | monorepo | Pi metadata cache | Merged | #2188 |
+| 9/19 | monorepo | Codex enumeration off the main isolate | Merged | #2186 |
+| 10/19 | monorepo | OpenCode import without a call per session | Merged | #2189 |
+| 11/19 | monorepo | Row action cubits keep to their session | Merged | #2187 |
+| 12/19 | monorepo | Shared running and search rules | Merged | #2190 |
+| 13/19 | monorepo | Bridge session pages | Merged | #2191; timing below |
+| 14/19 | monorepo | Client window service | Merged | #2193 |
+| 15/19 | monorepo | Palette search through the bridge | Merged | #2195; recording owed (follow-ups) |
+| 16/19 | monorepo | Session list on pages | Merged | #2196; recording owed (follow-ups) |
+| 17/19 | monorepo | Launch rows on the window; inventory removed | Open | #2197 |
+| 18/19 | monorepo | Reconcile regression documents | In progress | This change |
 | 19/19 | monorepo | Run the L3 matrix; retire | Not started | |
 
 ## Baseline (step 2)
@@ -128,6 +128,21 @@ section).
 - 2026-10-28: the review page `heavy-users-r1` settled D1–D6. The user then asked for one plan covering both phases
   in detail (D7).
 - No reduction of the retirement matrix has been requested or accepted.
+- 2026-10-29 (step 18): `HARNESS_CAPABILITIES.md` needs no change. Paging, search and counts are bridge-owned and
+  harness-neutral; the scanner work fixed each harness that scans files (Claude, Pi, Codex) and OpenCode's import.
+
+## Follow-ups
+
+Open items outside the 19 steps, to settle before or during step 19:
+- The `idx_sessions_archive` index is unused after step 13; dropping it needs migration v22.
+- The Prego list (step 4, #2184) still needs a feel check on a real device: filter, chip and page changes with
+  rows entering and leaving off screen.
+- Recordings are owed for #2195 (palette typing: loaded matches, then the bridge's below them) and #2196 (the
+  loader row and its Retry).
+- The palette's sessions before typing are the sidebar list's loaded rows, so on a paged bridge they follow the
+  list's project filter, search and chip; typed search does not. Step 15 described the palette as ignoring the
+  list's key throughout. Decide whether the blank palette should ask the bridge for the newest sessions of every
+  project.
 
 ## Review record
 

@@ -103,7 +103,7 @@ presents.
   detaches the previous computer's socket before announcing the new target, and
   reconnects; the single room key either resumes or is cleared by
   `rekey_required` and replaced through a fresh key exchange. Bridge-scoped
-  caches (project list, recent sessions, live activity) reset from their
+  caches (project list, session windows, live activity) reset from their
   connection-status subscription when the target moves from one known computer
   to another (learning the first target is not a change), and a late answer from the
   previous computer never repopulates them. The bar names the target by id from
