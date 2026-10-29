@@ -252,6 +252,7 @@ final class PiPlugin._({
         stackTrace,
       );
     }
+    _catalogRepository.recordRename(sessionId: sessionId, title: title);
     final renamed = session.copyWith(title: title);
     _eventBuffer.add(BridgeSseSessionUpdated(info: renamed.toJson(), titleChanged: true));
     return renamed;

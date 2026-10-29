@@ -169,6 +169,35 @@ void main() {
       expect(repository.sessionSnapshot.keys, ["kept"]);
     });
 
+    test("an unreadable file is read again on the next scan", () async {
+      final path = p.join(disk.sessions, "later.jsonl");
+      File(path).writeAsStringSync("not json\n");
+      await repository.listAllSessions(knownDirectories: const {});
+
+      await repository.listAllSessions(knownDirectories: const {});
+      expect(disk.api.scans.last.parsed.keys, [File(path).resolveSymbolicLinksSync()]);
+    });
+
+    test("a recorded rename shows in lookups without a scan", () async {
+      disk.writeSession(id: "session");
+      await repository.listAllSessions(knownDirectories: const {});
+      final scans = disk.api.scans.length;
+
+      repository.recordRename(sessionId: "session", title: "New name");
+
+      expect((await repository.findSessionById(sessionId: "session"))?.title, "New name");
+      expect(disk.api.scans, hasLength(scans));
+    });
+
+    test("child listing includes a pending child recorded after the scan", () async {
+      disk.writeSession(id: "parent");
+      await repository.listAllSessions(knownDirectories: const {});
+
+      repository.recordPendingSession(sessionId: "child", directory: disk.project, parentSessionId: "parent");
+
+      expect((await repository.getChildSessions(sessionId: "parent")).map((session) => session.id), ["child"]);
+    });
+
     test("a lookup hit does not scan and a miss rescans once", () async {
       final path = disk.writeSession(id: "known");
       await repository.listAllSessions(knownDirectories: const {});

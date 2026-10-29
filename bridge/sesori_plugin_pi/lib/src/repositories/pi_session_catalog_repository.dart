@@ -62,13 +62,39 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
     return _page(sessions: sessions, start: start, limit: limit);
   }
 
-  /// Direct children from the last scan, unless the parent is not in it.
+  /// Direct children from the last scan, unless the parent is not in it, plus
+  /// children recorded as pending since.
   Future<List<PluginSession>> getChildSessions({required String sessionId}) async {
     if (!_resolvedById.containsKey(sessionId)) await _rescan();
     return [
       for (final session in _sessions)
         if (session.parentID == sessionId) session,
+      for (final MapEntry(key: id, value: primed) in _primedSessions.entries)
+        if (primed.parentId == sessionId && !_snapshotById.containsKey(id))
+          _primedSession(sessionId: id, primed: primed),
     ];
+  }
+
+  /// Puts a successful rename into the cached file, which the next scan
+  /// re-reads anyway because the rename changed its stamp.
+  void recordRename({required String sessionId, required String title}) {
+    final path = _resolvedById[sessionId]?.path;
+    final file = _files[path];
+    final session = file?.session;
+    if (path == null || file == null || session == null) return;
+    _files[path] = PiScannedSessionFile(
+      stamp: file.stamp,
+      session: PiSessionFile(
+        path: session.path,
+        id: session.id,
+        cwd: session.cwd,
+        parentPath: session.parentPath,
+        title: title,
+        createdAt: session.createdAt,
+        updatedAt: session.updatedAt,
+      ),
+    );
+    _link();
   }
 
   /// A persisted or primed session from the last scan, or from one rescan on
@@ -176,7 +202,13 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
     );
     _files.removeWhere((path, _) => !scan.present.contains(path));
     for (final MapEntry(key: path, value: file) in scan.parsed.entries) {
-      if (!_deletedDuringScan.contains(path)) _files[path] = file;
+      if (_deletedDuringScan.contains(path)) continue;
+      // An unreadable file stays uncached so the next scan reads it again.
+      if (file.session == null) {
+        _files.remove(path);
+      } else {
+        _files[path] = file;
+      }
     }
     _externalParents = [
       for (final parent in scan.externalParents)
@@ -201,18 +233,20 @@ final class PiSessionCatalogRepository({required final PiSessionStorageApi _stor
     _sessions = List.unmodifiable([
       for (final session in resolved) _toPluginSession(session.metadata),
       for (final sessionId in primedIds)
-        if (_primedSessions[sessionId] case final primed?)
-          PluginSession(
-            id: sessionId,
-            projectID: primed.directory,
-            directory: primed.directory,
-            parentID: primed.parentId,
-            title: null,
-            time: null,
-          ),
+        if (_primedSessions[sessionId] case final primed?) _primedSession(sessionId: sessionId, primed: primed),
     ]);
     _snapshotById = Map.unmodifiable({for (final session in _sessions) session.id: session});
   }
+
+  PluginSession _primedSession({required String sessionId, required ({String directory, String? parentId}) primed}) =>
+      PluginSession(
+        id: sessionId,
+        projectID: primed.directory,
+        directory: primed.directory,
+        parentID: primed.parentId,
+        title: null,
+        time: null,
+      );
 
   PluginSession _toPluginSession(PiSessionMetadata metadata) {
     final directory = normalizeProjectDirectory(directory: metadata.cwd);
