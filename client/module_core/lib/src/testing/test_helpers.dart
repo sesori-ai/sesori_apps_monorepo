@@ -171,6 +171,7 @@ class FakeSessionUnseenTracker() extends Mock implements SessionUnseenTracker {
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
     final current = sessions[projectId] ?? const <String, SessionListItemState>{};
     sessions[projectId] = {
+      ...current,
       for (final entry in stateBySessionId.entries)
         entry.key: (
           unseen: entry.value.unseen,

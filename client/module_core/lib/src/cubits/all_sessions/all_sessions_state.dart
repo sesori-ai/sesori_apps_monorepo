@@ -2,15 +2,9 @@ import "package:freezed_annotation/freezed_annotation.dart";
 import "package:sesori_shared/sesori_shared.dart";
 
 import "../../errors/remote_failure_reason.dart";
-import "../session_list/session_list_quick_filter.dart";
+import "../../services/models/session_list_quick_filter.dart";
 
 part "all_sessions_state.freezed.dart";
-
-/// Which sessions an all-projects list shows.
-enum AllSessionsMode() {
-  active,
-  archived,
-}
 
 /// One session of the all-projects list, with its project and what its row
 /// shows of its live state.

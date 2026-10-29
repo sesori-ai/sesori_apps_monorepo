@@ -74,9 +74,9 @@ class SessionUnseenTracker(
     _projectUnseen.add(projects);
   }
 
-  /// Seeds the per-session values for [projectId] from a `/sessions` response,
-  /// REPLACING the project's tracked map (sessions absent from the
-  /// authoritative list — deleted rows — drop out naturally). Skipped entirely
+  /// Seeds the per-session values for [projectId] from a session list or
+  /// page, merged into the project's tracked map: a page holds only some of a
+  /// project's sessions, so the others keep their values. Skipped entirely
   /// when the project was updated live since [sinceTick].
   void seedSessions({
     required String projectId,
@@ -88,6 +88,7 @@ class SessionUnseenTracker(
     final sessions = Map<String, Map<String, SessionListItemState>>.from(_sessionUnseen.value);
     final current = sessions[projectId] ?? const <String, SessionListItemState>{};
     sessions[projectId] = Map<String, SessionListItemState>.unmodifiable({
+      ...current,
       for (final entry in stateBySessionId.entries)
         entry.key: (
           unseen: entry.value.unseen,

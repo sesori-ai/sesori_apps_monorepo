@@ -293,6 +293,8 @@ List<RouteBase> _buildAppRoutes({
         child: SessionScope(
           createRecentSessionInventory: getIt.call<RecentSessionInventoryService>,
           createProjectInventory: getIt.call<ProjectInventoryService>,
+          createSessionWindow: ({required mode, required projectInventory}) =>
+              getIt<SessionWindowService>(param1: mode, param2: projectInventory),
           createRefreshService: ({required projectInventory, required recentSessionInventory}) =>
               getIt<SessionListRefreshService>(param1: projectInventory, param2: recentSessionInventory),
           sessionCleanupService: getIt<SessionCleanupService>(),

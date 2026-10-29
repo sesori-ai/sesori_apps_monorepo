@@ -115,10 +115,10 @@ void main() {
       );
     });
 
-    test("seedSessions replaces the project's map, dropping deleted sessions", () async {
+    test("seedSessions merges into the project's map, keeping sessions another page holds", () async {
       connectionService.emitUnseenChanged(
         projectId: "p1",
-        sessionId: "stale",
+        sessionId: "other",
         unseen: true,
         projectHasUnseenChanges: true,
         lastUserActivityAt: null,
@@ -137,6 +137,7 @@ void main() {
       expect(
         tracker.currentSessionUnseen["p1"],
         equals({
+          "other": (unseen: true, lastUserActivityAt: null),
           "s1": (unseen: true, lastUserActivityAt: 10),
           "s2": (unseen: false, lastUserActivityAt: null),
         }),
