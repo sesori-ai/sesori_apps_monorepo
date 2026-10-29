@@ -6,27 +6,38 @@ import "models/new_session_selection_intent.dart";
 
 typedef _RevisionedSelection = ({NewSessionSelectionIntent selection, int revision});
 
-/// Tracks only deliberate new-session agent, model, variant, and fast-mode choices.
+/// Tracks only deliberate new-session harness, agent, model, variant, and
+/// fast-mode choices.
 ///
 /// Each dimension is independent so a user choosing one value never persists a
 /// service-computed default for another. Selections live only for the current
-/// app run and are cleared after successful session creation.
+/// app run and are cleared when the backend changes. The harness choice is
+/// shared by every project, so changing the project keeps it.
 @lazySingleton
 class NewSessionSelectionTracker() {
   final Map<({String projectId, String pluginId}), _RevisionedSelection> _selections = {};
   int _nextRevision = 0;
+  String? _selectedPluginId;
   NewSessionBackendScope _backendScope = const NewSessionBackendScope.unverified(
     lastIdentifiedBridgeId: null,
   );
 
   NewSessionBackendScope get backendScope => _backendScope;
 
+  /// The harness the user last picked on the new-session screen, if any.
+  String? get selectedPluginId => _selectedPluginId;
+
   /// Applies the same backend-scope transition used to decide whether cached
   /// options can survive discovery.
   void applyBackendScopeTransition({required NewSessionBackendScopeTransition transition}) {
-    if (!transition.retainsBackendState) _selections.clear();
+    if (!transition.retainsBackendState) {
+      _selections.clear();
+      _selectedPluginId = null;
+    }
     _backendScope = transition.scope;
   }
+
+  void recordPlugin({required String pluginId}) => _selectedPluginId = pluginId;
 
   NewSessionSelectionIntent? read({required String projectId, required String pluginId}) =>
       _selections[(projectId: projectId, pluginId: pluginId)]?.selection;

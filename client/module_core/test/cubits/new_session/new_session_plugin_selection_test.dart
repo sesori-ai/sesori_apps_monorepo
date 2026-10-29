@@ -135,7 +135,7 @@ void main() {
 
     tearDown(() => connectionStatus.close());
 
-    NewSessionCubit buildCubit({NewSessionOptionsService? optionsService}) => NewSessionCubit(
+    NewSessionCubit buildCubit({NewSessionOptionsService? optionsService, String? projectId}) => NewSessionCubit(
       connectionService: connectionService,
       newSessionPluginService: NewSessionPluginService(
         pluginRepository: pluginRepository,
@@ -155,7 +155,7 @@ void main() {
         authSession: FakeAuthSession(initialState: const AuthState.initial()),
       ),
       dedicatedWorktreePreferenceStore: FakeDedicatedWorktreePreferenceStore(),
-      projectId: "project-1",
+      projectId: projectId ?? "project-1",
       projectName: null,
       projectKind: ProjectKind.folder,
     );
@@ -1709,6 +1709,28 @@ void main() {
       cubit.selectPlugin(pluginId: "plugin-b");
       await _waitForComposer(cubit);
       expect(cubit.state.agentModelData?.agent, "agent-b");
+    });
+
+    test("a harness chosen for one project carries over when the project changes", () async {
+      when(pluginRepository.listPlugins).thenAnswer(
+        (_) async => ApiResponse.success(_pluginSnapshot(bridgeId: "bridge-a", plugins: [pluginA, pluginB])),
+      );
+      when(
+        () => pluginPreferenceRepository.readPluginId(bridgeId: "bridge-a"),
+      ).thenAnswer((_) async => "plugin-a");
+
+      final first = buildCubit(projectId: "project-1");
+      addTearDown(first.close);
+      await _waitForComposer(first);
+      expect(first.state.agentModelData?.plugin?.id, "plugin-a");
+      first.selectPlugin(pluginId: "plugin-b");
+      await _waitForComposer(first);
+      await first.close();
+
+      final second = buildCubit(projectId: "project-2");
+      addTearDown(second.close);
+      await _waitForComposer(second);
+      expect(second.state.agentModelData?.plugin?.id, "plugin-b");
     });
 
     test("successful creation clears only its matching plugin snapshot", () async {
