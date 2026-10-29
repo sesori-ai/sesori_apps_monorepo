@@ -263,7 +263,6 @@ Widget sessionRowApp({
       projectId: null,
       query: "",
       quickFilter: SessionListQuickFilter.all,
-      everyProjectRows: rows,
       rows: rows,
       counts: const SessionListChipCounts(all: 1, running: 0, unread: 0),
       failures: const [],

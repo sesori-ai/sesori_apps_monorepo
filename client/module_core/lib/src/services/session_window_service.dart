@@ -262,6 +262,30 @@ class SessionWindowService({
     };
   }
 
+  /// What can be shown for [query] before [search] answers: the loaded rows
+  /// (in complete mode every session of the mode) and [earlier], an earlier
+  /// answer, that match it, newest first, at most [limit]. A blank query
+  /// matches every row.
+  List<Session> searchLoaded({required String query, required List<Session> earlier, required int limit}) {
+    final loaded =
+        _completeSessions ??
+        switch (_state.value) {
+          SessionWindowLoaded(:final sessions) => sessions,
+          SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
+        };
+    // A loaded row is the fresher copy of a session both hold.
+    final loadedIds = {for (final session in loaded) session.id};
+    final candidates = [
+      ...loaded,
+      ...earlier.where((session) => _inMode(session) && !loadedIds.contains(session.id)),
+    ];
+    final projects = _projectsById();
+    final matches =
+        candidates.where((session) => _matchesQuery(session: session, query: query, projects: projects)).toList()
+          ..sort((a, b) => _compare(a: a, b: b));
+    return matches.take(limit).toList();
+  }
+
   Future<bool> _loadPaged({required int limit}) async {
     if (_state.isClosed) return false;
     final generation = ++_generation;

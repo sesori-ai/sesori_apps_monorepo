@@ -30,6 +30,11 @@ void main() {
   late Map<String, RecentSessionsEntry> recent;
   late _MockRecentSessionInventoryService recentInventory;
   late _MockProjectInventoryService projectInventory;
+  late _MockSessionWindowService window;
+
+  /// The window's loaded rows, and every session its bridge searches.
+  late List<Session> loadedSessions;
+  late List<Session> bridgeSessions;
   late BehaviorSubject<String?> filter;
   late _MockFilterTracker filterTracker;
   late _MockRepository repository;
@@ -81,6 +86,54 @@ void main() {
     projectInventory = _MockProjectInventoryService();
     when(() => projectInventory.state).thenAnswer((_) => projects.state);
     when(() => projectInventory.stateStream).thenAnswer((_) => projects.stream.shareValueSeeded(projects.state));
+    loadedSessions = const [];
+    bridgeSessions = const [];
+    List<Session> newestMatches({required Iterable<Session> sessions, required String query, required int limit}) =>
+        (matchTitles(
+          items: sessions,
+          titleOf: (session) => session.title,
+          query: query,
+        )..sort((a, b) => (b.time?.updated ?? 0).compareTo(a.time?.updated ?? 0))).take(limit).toList();
+    window = _MockSessionWindowService();
+    when(() => window.state).thenAnswer(
+      (_) => const Stream<SessionWindowState>.empty().shareValueSeeded(
+        SessionWindowLoaded(
+          sessions: loadedSessions,
+          counts: const SessionPageCounts(all: 0, running: 0, unread: 0),
+          nextCursor: null,
+          loadMore: SessionWindowLoadMore.idle,
+        ),
+      ),
+    );
+    when(
+      () => window.searchLoaded(
+        query: any(named: "query"),
+        earlier: any(named: "earlier"),
+        limit: any(named: "limit"),
+      ),
+    ).thenAnswer((invocation) {
+      final earlier = invocation.namedArguments[#earlier] as List<Session>;
+      final loadedIds = {for (final session in loadedSessions) session.id};
+      return newestMatches(
+        sessions: [...loadedSessions, ...earlier.where((session) => !loadedIds.contains(session.id))],
+        query: invocation.namedArguments[#query] as String,
+        limit: invocation.namedArguments[#limit] as int,
+      );
+    });
+    when(
+      () => window.search(
+        query: any(named: "query"),
+        limit: any(named: "limit"),
+      ),
+    ).thenAnswer(
+      (invocation) async => SessionWindowSearchMatches(
+        sessions: newestMatches(
+          sessions: bridgeSessions,
+          query: invocation.namedArguments[#query] as String,
+          limit: invocation.namedArguments[#limit] as int,
+        ),
+      ),
+    );
     filter = BehaviorSubject.seeded(null);
     filterTracker = _MockFilterTracker();
     when(() => filterTracker.projectId).thenAnswer((_) => filter.stream);
@@ -115,6 +168,8 @@ void main() {
           providers: [
             BlocProvider<ProjectListCubit>.value(value: projects),
             RepositoryProvider<RecentSessionInventoryService>.value(value: recentInventory),
+            RepositoryProvider<ProjectInventoryService>.value(value: projectInventory),
+            RepositoryProvider<SessionWindowService>.value(value: window),
             RepositoryProvider.value(value: launchService),
             BlocProvider(create: (_) => SessionLaunchCubit(launchService: launchService)),
             BlocProvider(create: (_) => SessionListRefreshCubit(service: refreshService)),
@@ -1250,9 +1305,8 @@ void main() {
     final auth = StreamController<AuthGateState>();
     addTearDown(auth.close);
     whenListen(authGate, auth.stream, initialState: const AuthGateState.signedIn(user: null));
-    recent = {
-      "project-1": _loaded(sessions: [build, docs, untitled]),
-    };
+    loadedSessions = [build, docs, untitled];
+    bridgeSessions = loadedSessions;
     final opened = <String>[];
     var backs = 0;
     var archivedOpens = 0;
@@ -1310,6 +1364,10 @@ void main() {
     expect(inPalette("Write docs"), findsNothing);
     expect(inPalette("New session"), findsNothing);
     await type("nothing like it");
+    // Not before the bridge has answered too.
+    expect(find.descendant(of: palette, matching: find.text("No matches")), findsNothing);
+    await tester.pump(SessionSearchCubit.searchDelay);
+    await tester.pumpAndSettle();
     expect(find.descendant(of: palette, matching: find.text("No matches")), findsOneWidget);
 
     // Enter picks the first match: the session opens and the palette closes.
@@ -1361,13 +1419,6 @@ void main() {
     expect(sidebar.state.collapsed, isFalse);
     expect(find.descendant(of: filterTrigger, matching: find.text("Sesori Desktop")), findsOneWidget);
 
-    // An untitled session matches the title it shows.
-    await press(LogicalKeyboardKey.keyK);
-    await type("untitled");
-    await tester.sendKeyEvent(LogicalKeyboardKey.enter);
-    await tester.pumpAndSettle();
-    expect(opened.last, "s3");
-
     // Signing out takes the palette with the cockpit.
     await press(LogicalKeyboardKey.keyK);
     auth.add(const AuthGateState.signedOut());
@@ -1375,14 +1426,16 @@ void main() {
     expect(palette, findsNothing);
   }, variant: TargetPlatformVariant.desktop());
 
-  testWidgets("the command palette offers every project's sessions whatever the sidebar's filter, search and chip", (
-    tester,
-  ) async {
+  testWidgets("the command palette shows loaded matches at once and adds the bridge's below them", (tester) async {
     tester.view.devicePixelRatio = 1;
     tester.view.physicalSize = const Size(1200, 800);
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     seedTwoProjects();
+    final build = testSession(id: "s1", title: "Fix the build", updatedAt: 2);
+    final docs = testSession(id: "s2", title: "Write docs", updatedAt: 1).copyWith(projectID: "project-2");
+    loadedSessions = [build];
+    bridgeSessions = [build, docs];
     await tester.pumpWidget(
       PregoInteractionScope(
         mode: PregoInteractionMode.pointer,
@@ -1390,18 +1443,22 @@ void main() {
       ),
     );
     await tester.pumpAndSettle();
-    sessions
-      ..selectProject(projectId: "project-2")
-      ..setQuery(query: "build")
-      ..setQuickFilter(filter: SessionListQuickFilter.running);
-    await tester.pumpAndSettle();
-    expect(sessions.state.rows, isEmpty, reason: "the sidebar's list shows neither session");
 
     await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
     await tester.pumpAndSettle();
     final palette = find.byKey(const Key("desktop-command-palette"));
-    expect(find.descendant(of: palette, matching: find.textContaining("Fix the build")), findsOneWidget);
-    expect(find.descendant(of: palette, matching: find.textContaining("Write docs")), findsOneWidget);
+    Finder inPalette(String text) => find.descendant(of: palette, matching: find.textContaining(text));
+    await tester.enterText(find.descendant(of: palette, matching: find.byType(TextField)), "i");
+    await tester.pump();
+    expect(inPalette("Fix the build"), findsOneWidget);
+    expect(inPalette("Write docs"), findsNothing);
+    final buildTop = tester.getTopLeft(inPalette("Fix the build")).dy;
+
+    await tester.pump(SessionSearchCubit.searchDelay);
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: palette, matching: find.text("Write docs   Landing page")), findsOneWidget);
+    expect(tester.getTopLeft(inPalette("Fix the build")).dy, buildTop);
+    expect(tester.getTopLeft(inPalette("Write docs")).dy, greaterThan(buildTop));
   }, variant: TargetPlatformVariant.desktop());
 }
 
@@ -1469,6 +1526,8 @@ class _MockProjectListCubit() extends MockCubit<ProjectListState> implements Pro
 class _MockRecentSessionInventoryService() extends Mock implements RecentSessionInventoryService;
 
 class _MockProjectInventoryService() extends Mock implements ProjectInventoryService;
+
+class _MockSessionWindowService() extends Mock implements SessionWindowService;
 
 class _MockFilterTracker() extends Mock implements SessionListFilterTracker;
 

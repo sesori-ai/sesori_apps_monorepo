@@ -1282,7 +1282,6 @@ AllSessionsState _list({String? projectId, required String? defaultProjectId, bo
       projectId: projectId,
       query: "",
       quickFilter: SessionListQuickFilter.all,
-      everyProjectRows: const [],
       rows: const [],
       counts: const SessionListChipCounts(all: 0, running: 0, unread: 0),
       failures: const [],
