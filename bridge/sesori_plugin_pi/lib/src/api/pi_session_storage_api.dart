@@ -26,6 +26,40 @@ final class const PiResolvedSession({
   required final String path,
 });
 
+/// A file's size and modification time. A changed stamp means the file is
+/// read again.
+typedef PiFileStamp = ({int size, DateTime modified});
+
+/// What a scan needs about a file it already read: its stamp, and its parent
+/// path, so a parent outside the scanned roots is still found.
+typedef PiKnownSessionFile = ({PiFileStamp stamp, String? parentPath});
+
+/// One session file's metadata. [parentPath] is the parent's resolved file.
+final class const PiSessionFile({
+  required final String path,
+  required final String id,
+  required final String cwd,
+  required final String? parentPath,
+  required final String? title,
+  required final DateTime? createdAt,
+  required final DateTime updatedAt,
+});
+
+/// One candidate file as of [stamp]; [session] is null when the file is not a
+/// readable Pi session.
+final class const PiScannedSessionFile({required final PiFileStamp stamp, required final PiSessionFile? session});
+
+final class const PiSessionFileScan({
+  /// Every candidate file under the scanned roots that still exists.
+  required final Set<String> present,
+
+  /// The new or changed candidates.
+  required final Map<String, PiScannedSessionFile> parsed,
+
+  /// Parents outside the scanned roots, read header-only on every scan.
+  required final List<PiSessionFile> externalParents,
+});
+
 final class const PiPendingNewSession({
   required final String id,
   required final String cwd,
@@ -67,26 +101,65 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
 
   final Map<String, String> _environment = Map.unmodifiable(environment);
 
-  Future<List<PiSessionMetadata>> listSessionMetadata({required Set<String> knownDirectories}) async {
-    final result = await _scan(knownDirectories: knownDirectories);
-    return result.sessions;
-  }
-
-  Future<String?> resolveSessionPath({required String sessionId, required Set<String> knownDirectories}) async {
-    return (await resolveSession(sessionId: sessionId, knownDirectories: knownDirectories))?.path;
-  }
-
-  Future<PiResolvedSession?> resolveSession({
-    required String sessionId,
+  /// Lists and stats every session file in an isolate that reads only the
+  /// files whose stamp differs from [known].
+  Future<PiSessionFileScan> scanSessionFiles({
     required Set<String> knownDirectories,
+    required Map<String, PiKnownSessionFile> known,
   }) async {
-    final result = await _scan(knownDirectories: knownDirectories);
-    final path = result.pathsById[sessionId];
-    if (path == null) return null;
-    for (final metadata in result.sessions) {
-      if (metadata.id == sessionId) return PiResolvedSession(metadata: metadata, path: path);
+    final environment = _environment;
+    final directories = Set<String>.of(knownDirectories);
+    final result = await Isolate.run(
+      () => _scanPiSessionFiles(environment: environment, knownDirectories: directories, known: known),
+    );
+    _logDiagnostics(result.diagnostics);
+    return result.scan;
+  }
+
+  /// Links session files into sessions, newest first: a parent path becomes
+  /// the parent's id when that file is a session.
+  ///
+  /// Throws [PiSessionStorageConflictException] when two files declare one
+  /// session id.
+  List<PiResolvedSession> linkSessionFiles({required Iterable<PiSessionFile> files}) {
+    final byPath = {for (final file in files) file.path: file};
+    final pathsById = <String, String>{};
+    for (final file in byPath.values) {
+      final previous = pathsById[file.id];
+      if (previous != null && previous != file.path) {
+        throw PiSessionStorageConflictException(sessionId: file.id, firstPath: previous, secondPath: file.path);
+      }
+      pathsById[file.id] = file.path;
     }
-    return null;
+    final sessions = [
+      for (final file in byPath.values)
+        PiResolvedSession(
+          metadata: PiSessionMetadata(
+            id: file.id,
+            cwd: file.cwd,
+            parentId: file.parentPath == null ? null : byPath[file.parentPath]?.id,
+            title: file.title,
+            createdAt: file.createdAt,
+            updatedAt: file.updatedAt,
+          ),
+          path: file.path,
+        ),
+    ];
+    sessions.sort((left, right) {
+      final timeOrder = right.metadata.updatedAt.compareTo(left.metadata.updatedAt);
+      return timeOrder == 0 ? left.metadata.id.compareTo(right.metadata.id) : timeOrder;
+    });
+    return sessions;
+  }
+
+  /// Deletes one session file; a file that is already gone is not an error.
+  void deleteSessionFile({required String path}) {
+    final file = File(path);
+    try {
+      file.deleteSync();
+    } on FileSystemException {
+      if (file.existsSync()) rethrow;
+    }
   }
 
   Future<String?> resolveEffectiveSessionDirectory({required String directory}) async {
@@ -156,24 +229,6 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
     diagnostics.forEach(_logDiagnostics);
   }
 
-  Future<void> deleteSession({required String sessionId, required String? directory}) async {
-    if (!isValidPiSessionId(sessionId: sessionId)) return;
-    final knownDirectories = directory == null || directory.trim().isEmpty ? const <String>{} : {directory};
-    final resolved = await resolveSession(sessionId: sessionId, knownDirectories: knownDirectories);
-    if (resolved != null) {
-      final file = File(resolved.path);
-      try {
-        file.deleteSync();
-      } on FileSystemException {
-        if (file.existsSync()) rethrow;
-      }
-    }
-    await clearPendingNewSession(
-      sessionId: sessionId,
-      knownDirectories: {...knownDirectories, ?resolved?.metadata.cwd},
-    );
-  }
-
   Future<PiSessionFileHistoryDto> _readSessionHistory({required String path}) async {
     final result = await Isolate.run(() => _readPiSessionHistory(path: path));
     if (result.malformedLineCount > 0) {
@@ -189,16 +244,6 @@ class PiSessionStorageApi({required Map<String, String> environment}) {
       case _PiHistoryReadFailure(:final error, :final stackTrace):
         Error.throwWithStackTrace(error, stackTrace);
     }
-  }
-
-  Future<_PiScanResult> _scan({required Set<String> knownDirectories}) async {
-    final environment = _environment;
-    final directories = Set<String>.of(knownDirectories);
-    final result = await Isolate.run(
-      () => _scanPiSessions(environment: environment, knownDirectories: directories),
-    );
-    _logDiagnostics(result.diagnostics);
-    return result;
   }
 
   void _logDiagnostics(_PiScanDiagnostics diagnostics) {
@@ -466,9 +511,10 @@ _PiHistoryReadResult _readPiSessionHistory({required String path}) {
   );
 }
 
-_PiScanResult _scanPiSessions({
+({PiSessionFileScan scan, _PiScanDiagnostics diagnostics}) _scanPiSessionFiles({
   required Map<String, String> environment,
   required Set<String> knownDirectories,
+  required Map<String, PiKnownSessionFile> known,
 }) {
   final diagnostics = _PiScanDiagnostics();
   final layout = _buildStorageLayout(
@@ -488,19 +534,28 @@ _PiScanResult _scanPiSessions({
     }
   }
 
-  final byPath = <String, _PiScannedSession>{};
+  final present = <String>{};
+  final parsed = <String, PiScannedSessionFile>{};
+  final pendingParents = <String>[];
   for (final path in candidatePaths) {
+    final stamp = _statFile(path: path, diagnostics: diagnostics);
+    if (stamp == null) continue;
+    present.add(path);
+    final cached = known[path];
+    if (cached != null && cached.stamp == stamp) {
+      if (cached.parentPath case final parentPath?) pendingParents.add(parentPath);
+      continue;
+    }
     final session = _readSessionMetadata(path: path, scanSessionInfo: true, diagnostics: diagnostics);
-    if (session != null) byPath[session.path] = session;
+    parsed[path] = PiScannedSessionFile(stamp: stamp, session: session);
+    if (session?.parentPath case final parentPath?) pendingParents.add(parentPath);
   }
 
-  final pendingParents = <String>[
-    for (final session in byPath.values) ?session.parentPath,
-  ];
+  final externalParents = <String, PiSessionFile>{};
   var externalParentsRead = 0;
   while (pendingParents.isNotEmpty) {
     final parentPath = pendingParents.removeLast();
-    if (byPath.containsKey(parentPath)) continue;
+    if (present.contains(parentPath) || externalParents.containsKey(parentPath)) continue;
     if (externalParentsRead == PiSessionStorageApi.externalParentLimit) {
       diagnostics.externalParentLimitReached = true;
       break;
@@ -508,43 +563,35 @@ _PiScanResult _scanPiSessions({
     externalParentsRead += 1;
     final parent = _readSessionMetadata(path: parentPath, scanSessionInfo: false, diagnostics: diagnostics);
     if (parent == null) continue;
-    byPath[parent.path] = parent;
+    externalParents[parent.path] = parent;
     if (parent.parentPath case final ancestorPath?) pendingParents.add(ancestorPath);
   }
 
-  final pathsById = <String, String>{};
-  for (final session in byPath.values) {
-    final previous = pathsById[session.id];
-    if (previous != null && previous != session.path) {
-      throw PiSessionStorageConflictException(
-        sessionId: session.id,
-        firstPath: previous,
-        secondPath: session.path,
-      );
-    }
-    pathsById[session.id] = session.path;
-  }
-
-  final sessions = [
-    for (final session in byPath.values)
-      PiSessionMetadata(
-        id: session.id,
-        cwd: session.cwd,
-        parentId: session.parentPath == null ? null : byPath[session.parentPath]?.id,
-        title: session.title,
-        createdAt: session.createdAt,
-        updatedAt: session.updatedAt,
-      ),
-  ];
-  sessions.sort((left, right) {
-    final timeOrder = right.updatedAt.compareTo(left.updatedAt);
-    return timeOrder == 0 ? left.id.compareTo(right.id) : timeOrder;
-  });
-  return _PiScanResult(
-    sessions: List.unmodifiable(sessions),
-    pathsById: Map.unmodifiable(pathsById),
+  return (
+    scan: PiSessionFileScan(
+      present: present,
+      parsed: parsed,
+      externalParents: List.unmodifiable(externalParents.values),
+    ),
     diagnostics: diagnostics,
   );
+}
+
+PiFileStamp? _statFile({required String path, required _PiScanDiagnostics diagnostics}) {
+  try {
+    final stat = File(path).statSync();
+    // A file deleted since the listing is simply gone.
+    if (stat.type == FileSystemEntityType.notFound) return null;
+    return (size: stat.size, modified: stat.modified);
+  } on Object catch (error, stackTrace) {
+    diagnostics.recordStorageFailure(
+      operation: "stat Pi session file",
+      path: path,
+      error: error,
+      stackTrace: stackTrace,
+    );
+    return null;
+  }
 }
 
 _PiEffectiveDirectoryResult _resolveEffectiveSessionDirectory({
@@ -697,7 +744,7 @@ _PiStorageLayout _buildStorageLayout({
   return _PiStorageLayout(roots: List.unmodifiable(roots));
 }
 
-_PiScannedSession? _readSessionMetadata({
+PiSessionFile? _readSessionMetadata({
   required String path,
   required bool scanSessionInfo,
   required _PiScanDiagnostics diagnostics,
@@ -814,7 +861,7 @@ _PiScannedSession? _readSessionMetadata({
     final cwd = _pathValue(parsedHeader?.cwd);
     if (parsedHeader == null || id == null || cwd == null || !p.isAbsolute(cwd) || invalidBeforeHeader) return null;
     final parentValue = _pathValue(parsedHeader.parentSession);
-    return _PiScannedSession(
+    return PiSessionFile(
       path: resolvedPath,
       id: id,
       cwd: _absolute(cwd),
@@ -1069,22 +1116,6 @@ final class const _PiScannedLineNonMetadata() extends _PiScannedLine;
 final class const _PiScannedLineMetadata({required final List<int> bytes}) extends _PiScannedLine;
 
 final class const _PiScannedLineOversizedMetadata() extends _PiScannedLine;
-
-final class const _PiScannedSession({
-  required final String path,
-  required final String id,
-  required final String cwd,
-  required final String? parentPath,
-  required final String? title,
-  required final DateTime? createdAt,
-  required final DateTime updatedAt,
-});
-
-final class const _PiScanResult({
-  required final List<PiSessionMetadata> sessions,
-  required final Map<String, String> pathsById,
-  required final _PiScanDiagnostics diagnostics,
-});
 
 sealed class const _PiHistoryReadResult({
   required final String path,

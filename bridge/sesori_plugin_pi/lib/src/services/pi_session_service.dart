@@ -228,13 +228,17 @@ final class PiSessionService({
   Future<String> prepareNewSession({required String directory, required String? parentSessionId}) async {
     if (_disposed) throw const PiRpcDisposedException();
     final sessionId = _processes.generateSessionId();
-    final parent = parentSessionId == null ? null : await _catalog.findSessionById(sessionId: parentSessionId);
-    await _processes.markPendingNew(
-      sessionId: sessionId,
-      directory: directory,
-      parentSessionId: parentSessionId,
-      parentDirectory: parent?.directory,
-    );
+    final parent = parentSessionId == null
+        ? null
+        : await _catalog.resolveSession(sessionId: parentSessionId, knownDirectories: {directory});
+    if (parentSessionId != null && parent == null) {
+      throw PluginOperationException.notFound(
+        "create Pi session",
+        message: "Parent Pi session was not found.",
+        cause: PiSessionHistoryNotFoundException(sessionId: parentSessionId),
+      );
+    }
+    await _processes.markPendingNew(sessionId: sessionId, directory: directory, parent: parent);
     _pendingNewDirectories[sessionId] = directory;
     return sessionId;
   }
@@ -265,7 +269,7 @@ final class PiSessionService({
       await forgetSession(sessionId: affected);
       _catalog.forgetSession(sessionId: affected);
     }
-    await _processes.deletePersistedSession(sessionId: root.id, directory: root.directory);
+    await _catalog.deleteSession(sessionId: root.id, directory: root.directory);
   }
 
   List<PluginProjectActivitySummary> getActiveSessionsSummary() {
@@ -510,6 +514,7 @@ final class PiSessionService({
       }
       final connection = await _processes.ensureResident(
         sessionId: sessionId,
+        resolved: await _catalog.resolveSession(sessionId: sessionId, knownDirectories: {state.directory}),
         knownDirectories: {state.directory},
         model: turn.model,
         variant: turn.variant,
@@ -1102,10 +1107,13 @@ final class PiSessionService({
 
   Future<void> _clearPendingWhenPersisted({required String sessionId, required String directory}) async {
     try {
-      if (await _processes.clearPendingWhenPersisted(
-        sessionId: sessionId,
-        knownDirectories: {directory},
-      )) {
+      final resolved = await _catalog.resolveSession(sessionId: sessionId, knownDirectories: {directory});
+      if (resolved != null &&
+          await _processes.clearPendingWhenPersisted(
+            sessionId: sessionId,
+            resolved: resolved,
+            knownDirectories: {directory},
+          )) {
         _pendingNewDirectories.remove(sessionId);
       }
     } on Object catch (error, stack) {

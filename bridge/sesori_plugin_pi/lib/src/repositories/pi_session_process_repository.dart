@@ -155,9 +155,6 @@ final class PiSessionProcessRepository({
   Stream<PiSessionProcessExit> get exits => _exits.stream;
   Set<String> get residentSessionIds => Set.unmodifiable(_residents.keys);
 
-  Future<void> deletePersistedSession({required String sessionId, required String? directory}) =>
-      _storageApi.deleteSession(sessionId: sessionId, directory: directory);
-
   String generateSessionId() {
     final random = Random.secure();
     final bytes = List<int>.generate(16, (_) => random.nextInt(256));
@@ -171,40 +168,16 @@ final class PiSessionProcessRepository({
   Future<void> markPendingNew({
     required String sessionId,
     required String directory,
-    required String? parentSessionId,
-    required String? parentDirectory,
-  }) async {
-    final parentPath = parentSessionId == null
-        ? null
-        : await _storageApi.resolveSessionPath(
-            sessionId: parentSessionId,
-            knownDirectories: {directory, ?parentDirectory},
-          );
-    if (parentSessionId != null && parentPath == null) {
-      throw PluginOperationException.notFound(
-        "create Pi session",
-        message: "Parent Pi session was not found.",
-        cause: PiSessionHistoryNotFoundException(sessionId: parentSessionId),
-      );
-    }
-    await _storageApi.writePendingNewSession(
-      sessionId: sessionId,
-      cwd: directory,
-      parentSessionPath: parentPath,
-    );
-  }
+    required PiResolvedSession? parent,
+  }) => _storageApi.writePendingNewSession(sessionId: sessionId, cwd: directory, parentSessionPath: parent?.path);
 
   Future<bool> clearPendingWhenPersisted({
     required String sessionId,
+    required PiResolvedSession resolved,
     required Set<String> knownDirectories,
   }) async {
     final resident = _residents[sessionId];
     if (resident == null || !resident.pendingPersistence) return false;
-    final resolved = await _storageApi.resolveSession(
-      sessionId: sessionId,
-      knownDirectories: knownDirectories,
-    );
-    if (resolved == null) return false;
     await _storageApi.clearPendingNewSession(
       sessionId: sessionId,
       knownDirectories: {...knownDirectories, resolved.metadata.cwd},
@@ -213,8 +186,12 @@ final class PiSessionProcessRepository({
     return true;
   }
 
+  /// Starts the session's process unless it is resident. [resolved] is the
+  /// persisted session, or null for a new session not yet persisted, whose
+  /// pending marker [knownDirectories] locate.
   Future<PiSessionConnection> ensureResident({
     required String sessionId,
+    required PiResolvedSession? resolved,
     required Set<String> knownDirectories,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -222,6 +199,7 @@ final class PiSessionProcessRepository({
     sessionId: sessionId,
     operation: () => _ensureResident(
       sessionId: sessionId,
+      resolved: resolved,
       knownDirectories: knownDirectories,
       model: model,
       variant: variant,
@@ -230,6 +208,7 @@ final class PiSessionProcessRepository({
 
   Future<PiSessionConnection> _ensureResident({
     required String sessionId,
+    required PiResolvedSession? resolved,
     required Set<String> knownDirectories,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
@@ -243,6 +222,7 @@ final class PiSessionProcessRepository({
     if (connecting != null) return await connecting;
     final future = _connect(
       sessionId: sessionId,
+      resolved: resolved,
       knownDirectories: knownDirectories,
       model: model,
       variant: variant,
@@ -257,16 +237,13 @@ final class PiSessionProcessRepository({
 
   Future<PiSessionConnection> _connect({
     required String sessionId,
+    required PiResolvedSession? resolved,
     required Set<String> knownDirectories,
     required ({String providerID, String modelID})? model,
     required PluginSessionVariant? variant,
   }) async {
     final generation = ++_nextConnectionGeneration;
     _generations[sessionId] = generation;
-    final resolved = await _storageApi.resolveSession(
-      sessionId: sessionId,
-      knownDirectories: knownDirectories,
-    );
     final pending = resolved == null
         ? await _storageApi.readPendingNewSession(
             sessionId: sessionId,
@@ -667,16 +644,16 @@ final class PiSessionProcessRepository({
   Future<void> renameSession({
     required String sessionId,
     required String title,
-    required Set<String> knownDirectories,
+    required PiResolvedSession? resolved,
   }) => _withSessionOperation(
     sessionId: sessionId,
-    operation: () => _renameSession(sessionId: sessionId, title: title, knownDirectories: knownDirectories),
+    operation: () => _renameSession(sessionId: sessionId, title: title, resolved: resolved),
   );
 
   Future<void> _renameSession({
     required String sessionId,
     required String title,
-    required Set<String> knownDirectories,
+    required PiResolvedSession? resolved,
   }) async {
     if (_disposed) throw const PiRpcDisposedException();
     final resident = _residents[sessionId];
@@ -688,7 +665,7 @@ final class PiSessionProcessRepository({
       );
       return;
     }
-    final lease = await _openTransient(sessionId: sessionId, knownDirectories: knownDirectories);
+    final lease = await _openTransient(sessionId: sessionId, resolved: resolved);
     try {
       await lease.client.send(
         command: PiRpcCommand.setSessionName,
@@ -702,9 +679,8 @@ final class PiSessionProcessRepository({
 
   Future<_TransientClient> _openTransient({
     required String sessionId,
-    required Set<String> knownDirectories,
+    required PiResolvedSession? resolved,
   }) async {
-    final resolved = await _storageApi.resolveSession(sessionId: sessionId, knownDirectories: knownDirectories);
     if (resolved == null) {
       throw PluginOperationException.notFound(
         "open Pi session",
@@ -864,28 +840,26 @@ final class PiSessionProcessRepository({
 
   Future<List<PluginMessageWithParts>> loadHistory({
     required String sessionId,
-    required Set<String> knownDirectories,
+    required PiResolvedSession? resolved,
   }) => _withSessionOperation(
     sessionId: sessionId,
-    operation: () => _loadHistory(sessionId: sessionId, knownDirectories: knownDirectories),
+    operation: () => _loadHistory(sessionId: sessionId, resolved: resolved),
   );
 
   Future<List<PluginMessageWithParts>> _loadHistory({
     required String sessionId,
-    required Set<String> knownDirectories,
+    required PiResolvedSession? resolved,
   }) async {
     if (_disposed) throw const PiRpcDisposedException();
-    final PiResolvedSession? resolved;
-    try {
-      final resident = _residents[sessionId];
-      if (resident != null) {
+    final resident = _residents[sessionId];
+    if (resident != null) {
+      try {
         final hydration = _identityTracker.beginHydration(sessionId: sessionId);
         final history = await _getEntries(client: resident.client);
         return _hydrateHistory(sessionId: sessionId, history: history, hydration: hydration);
+      } on Object catch (error, stack) {
+        _throwLoadFailure(path: "session storage", error: error, stack: stack);
       }
-      resolved = await _storageApi.resolveSession(sessionId: sessionId, knownDirectories: knownDirectories);
-    } on Object catch (error, stack) {
-      _throwLoadFailure(path: "session storage", error: error, stack: stack);
     }
     if (resolved == null) {
       final cause = PiSessionHistoryNotFoundException(sessionId: sessionId);
