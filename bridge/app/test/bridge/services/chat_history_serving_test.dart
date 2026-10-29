@@ -111,8 +111,7 @@ void main() {
       expect(repository.promptDefaultsUpdates, isEmpty);
 
       await history.service.observeBackendActivity(
-        sessionId: "ses_a",
-        activityAt: synced.watermark + 5000,
+        activity: [(sessionId: "ses_a", activityAt: synced.watermark + 5000)],
       );
       repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
       repository.replayedPromptDefaults = const SessionPromptDefaults(
@@ -214,27 +213,23 @@ void main() {
       );
     });
 
-    test("activity queued before a read still forces the re-read", () async {
+    test("backend activity is checked only for sessions with history", () async {
       final repository = _FakeSessionRepository(transcript: [_messageWithParts(id: "m1")]);
       final history = createTestChatHistory(sessionRepository: repository);
       await history.service.getSessionMessages(sessionId: "ses_a");
       final synced = (await history.repository.getSyncState(sessionId: "ses_a"))!;
-      repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
+      history.repository.syncStateReads.clear();
 
-      // Not awaited: the staleness write is merely queued when the read is
-      // issued, which is what happens when an import commits concurrently.
-      final observed = history.service.observeBackendActivity(
-        sessionId: "ses_a",
-        activityAt: synced.watermark + 5000,
+      await history.service.observeBackendActivity(
+        activity: [
+          for (var index = 0; index < 100; index++) (sessionId: "ses_without_history_$index", activityAt: 1),
+          (sessionId: "ses_a", activityAt: synced.watermark + 5000),
+        ],
       );
-      final served = (await history.service.getSessionMessages(sessionId: "ses_a")).messages;
-      await observed;
 
-      expect(
-        served.map((message) => message.info.id),
-        const ["m1", "m2"],
-        reason: "the freshness decision must see writes already queued for the session",
-      );
+      expect(history.repository.syncStateReads, ["ses_a"]);
+      final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
+      expect(state.backendActivityAt, synced.watermark + 5000);
     });
 
     test("a staleness update enqueued during a read commits after it", () async {
@@ -248,8 +243,7 @@ void main() {
       // update must still land.
       final reading = history.service.getSessionMessages(sessionId: "ses_a");
       final observing = history.service.observeBackendActivity(
-        sessionId: "ses_a",
-        activityAt: synced.watermark + 5000,
+        activity: [(sessionId: "ses_a", activityAt: synced.watermark + 5000)],
       );
       final served = (await reading).messages;
       await observing;
@@ -355,7 +349,9 @@ void main() {
       expect(synced.awaitingHarnessSync, isFalse, reason: "a current store owes the harness nothing");
 
       final state = (await history.repository.getSyncState(sessionId: "ses_a"))!;
-      await history.service.observeBackendActivity(sessionId: "ses_a", activityAt: state.watermark + 5000);
+      await history.service.observeBackendActivity(
+        activity: [(sessionId: "ses_a", activityAt: state.watermark + 5000)],
+      );
       repository.transcript = [_messageWithParts(id: "m1"), _messageWithParts(id: "m2")];
 
       final stale = await history.service.getSessionMessages(sessionId: "ses_a", storedOnly: true);

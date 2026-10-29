@@ -8,12 +8,9 @@ import "../tables/session_table.dart";
 
 part "session_dao.g.dart";
 
-/// Raw unseen-relevant columns for one session row. The unseen formula is
-/// applied in the repository layer, not here.
+/// Raw unseen-relevant columns for one active root session. The unseen
+/// formula is applied in the repository layer, not here.
 typedef SessionUnseenRow = ({
-  String sessionId,
-  String? parentSessionId,
-  int? archivedAt,
   int? activityAt,
   int? seenAt,
   int? userMessageAt,
@@ -585,36 +582,38 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
     );
   }
 
-  /// Returns the unseen-relevant columns for every session in [projectId].
-  /// The repository applies the unseen formula; the DAO stays query-only.
-  Future<List<SessionUnseenRow>> getUnseenRowsForProject({required String projectId}) async {
-    final rows = await (select(sessionTable)..where((t) => t.projectId.equals(projectId))).get();
-    return [for (final r in rows) _toUnseenRow(r)];
-  }
-
-  /// Batched variant of [getUnseenRowsForProject]: returns the unseen-relevant
-  /// columns for every session across all of [projectIds], grouped by project,
-  /// in a single query (avoids N+1 for the `/projects` aggregate).
-  Future<Map<String, List<SessionUnseenRow>>> getUnseenRowsForProjects({
+  /// Returns the unseen-relevant columns of the non-archived root sessions
+  /// across all of [projectIds], grouped by project, in a single query (avoids
+  /// N+1 for the `/projects` aggregate). The repository applies the unseen
+  /// formula; the DAO stays query-only.
+  Future<Map<String, List<SessionUnseenRow>>> getActiveRootUnseenRowsForProjects({
     required List<String> projectIds,
   }) async {
     if (projectIds.isEmpty) return const {};
-    final rows = await (select(sessionTable)..where((t) => t.projectId.isIn(projectIds))).get();
+    final query = selectOnly(sessionTable)
+      ..addColumns([
+        sessionTable.projectId,
+        sessionTable.lastActivityAt,
+        sessionTable.lastSeenAt,
+        sessionTable.lastUserMessageAt,
+      ])
+      ..where(
+        sessionTable.projectId.isIn(projectIds) &
+            sessionTable.parentSessionId.isNull() &
+            sessionTable.archivedAt.isNull(),
+      );
     final grouped = <String, List<SessionUnseenRow>>{};
-    for (final r in rows) {
-      (grouped[r.projectId] ??= <SessionUnseenRow>[]).add(_toUnseenRow(r));
+    for (final row in await query.get()) {
+      final projectId = row.read(sessionTable.projectId);
+      if (projectId == null) continue;
+      (grouped[projectId] ??= <SessionUnseenRow>[]).add((
+        activityAt: row.read(sessionTable.lastActivityAt),
+        seenAt: row.read(sessionTable.lastSeenAt),
+        userMessageAt: row.read(sessionTable.lastUserMessageAt),
+      ));
     }
     return grouped;
   }
-
-  static SessionUnseenRow _toUnseenRow(SessionDto r) => (
-    sessionId: r.sessionId,
-    parentSessionId: r.parentSessionId,
-    archivedAt: r.archivedAt,
-    activityAt: r.lastActivityAt,
-    seenAt: r.lastSeenAt,
-    userMessageAt: r.lastUserMessageAt,
-  );
 
   Future<Map<String, SessionDto>> getSessionsByIds({required List<String> sessionIds}) async {
     if (sessionIds.isEmpty) {

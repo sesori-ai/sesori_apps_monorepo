@@ -4,6 +4,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge/src/api/database/daos/projects_dao.dart";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/api/database/tables/projects_table.dart";
+import "package:sesori_bridge/src/api/database/tables/session_table.dart";
 import "package:sesori_bridge/src/api/filesystem_api.dart";
 import "package:sesori_bridge/src/repositories/models/project_activity.dart";
 import "package:sesori_bridge/src/repositories/models/project_not_found_exception.dart";
@@ -921,6 +922,68 @@ void main() {
       expect(renamed.name, "Renamed");
       expect(renamed.supportsDedicatedWorktrees, isFalse);
       expect((await db.projectsDao.getProject(projectId: "/broken"))?.displayName, "Renamed");
+    });
+
+    test("project unseen counts only non-archived roots", () async {
+      for (final projectId in ["child-only", "archived-only", "unseen-root", "empty"]) {
+        await db.projectsDao.recordOpenedProject(
+          projectId: projectId,
+          path: "/$projectId",
+          displayName: null,
+          createdAt: 1,
+          updatedAt: 2,
+        );
+      }
+      SessionDto row({
+        required String sessionId,
+        required String projectId,
+        String? parentSessionId,
+        int? archivedAt,
+        required int? activityAt,
+      }) => SessionDto(
+        sessionId: sessionId,
+        backendSessionId: sessionId,
+        projectId: projectId,
+        parentSessionId: parentSessionId,
+        directory: "/$projectId",
+        worktreePath: null,
+        branchName: null,
+        isDedicated: false,
+        archivedAt: archivedAt,
+        baseBranch: null,
+        baseCommit: null,
+        lastAgent: null,
+        lastAgentModel: null,
+        fastMode: false,
+        createdAt: 1,
+        updatedAt: 1,
+        projectionUpdatedAt: 1,
+        lastActivityAt: activityAt,
+        lastSeenAt: 5,
+        lastUserMessageAt: 3,
+        pluginId: plugin.id,
+        title: null,
+        catalogTitle: null,
+        approvalOverride: null,
+      );
+      await db.sessionDao.upsertSessionRows(
+        rows: [
+          row(sessionId: "seen-root", projectId: "child-only", activityAt: 4),
+          row(sessionId: "unseen-child", projectId: "child-only", parentSessionId: "seen-root", activityAt: 9),
+          row(sessionId: "archived-unseen", projectId: "archived-only", archivedAt: 7, activityAt: 9),
+          row(sessionId: "never-active", projectId: "archived-only", activityAt: null),
+          row(sessionId: "seen-sibling", projectId: "unseen-root", activityAt: 5),
+          row(sessionId: "unseen", projectId: "unseen-root", activityAt: 6),
+        ],
+      );
+
+      final unseen = await repo.unseenByProjectId(
+        projectIds: ["child-only", "archived-only", "unseen-root", "empty"],
+      );
+
+      expect(unseen, {"child-only": false, "archived-only": false, "unseen-root": true, "empty": false});
+      expect(await repo.projectHasUnseenChanges(projectId: "unseen-root"), isTrue);
+      expect(await repo.projectHasUnseenChanges(projectId: "child-only"), isFalse);
     });
   });
 

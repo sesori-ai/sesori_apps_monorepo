@@ -37,9 +37,11 @@ sealed class CatalogImportProgress with _$CatalogImportProgress {
     required int sessionsSeen,
   }) = CatalogImportCommitting;
 
-  /// [projectsImported] and [sessionsImported] are the totals published, not
-  /// the number that changed. [newItems] carries the delta when the bridge
-  /// reports one and is absent on a bridge that predates it.
+  /// [projectsImported] and [sessionsImported] count the rows the import
+  /// wrote, new or changed, so a re-import of an unchanged catalog reports 0.
+  /// Bridges up to v1.10.1 reported the totals published instead. [newItems]
+  /// counts only rows the catalog did not hold before, and is absent on a
+  /// bridge that predates it.
   @FreezedUnionValue("completed")
   const factory completed({
     required String pluginId,

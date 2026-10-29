@@ -77,6 +77,15 @@ class TestChatHistoryRepository({
   required super.attachmentSpillStorage,
   required super.archivedSessionStorage,
 }) extends ChatHistoryRepository {
+  /// Session ids whose sync state was read, in call order.
+  final List<String> syncStateReads = [];
+
+  @override
+  Future<ChatHistorySyncState?> getSyncState({required String sessionId}) {
+    syncStateReads.add(sessionId);
+    return super.getSyncState(sessionId: sessionId);
+  }
+
   @override
   Future<ChatHistoryPage> getSessionMessages({
     required String sessionId,

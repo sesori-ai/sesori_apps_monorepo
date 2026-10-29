@@ -54,14 +54,14 @@ void main() {
     test("reports the delta alongside the totals", () async {
       expect(
         await lineFor(const CatalogImportNewItems(projects: 2, sessions: 5)),
-        "Imported codex catalog: 43 project(s), 193 session(s). 2 new project(s), 5 new session(s).",
+        "Imported codex catalog: 43 project(s), 193 session(s) written. 2 new project(s), 5 new session(s).",
       );
     });
 
     test("says nothing new when the delta is zero", () async {
       expect(
         await lineFor(const CatalogImportNewItems(projects: 0, sessions: 0)),
-        "Imported codex catalog: 43 project(s), 193 session(s). Nothing new.",
+        "Imported codex catalog: 43 project(s), 193 session(s) written. Nothing new.",
       );
     });
 
@@ -70,7 +70,7 @@ void main() {
       // "Nothing new" here would claim a fact the bridge never sent.
       expect(
         await lineFor(null),
-        "Imported codex catalog: 43 project(s), 193 session(s).",
+        "Imported codex catalog: 43 project(s), 193 session(s) written.",
       );
     });
   });

@@ -80,7 +80,10 @@ state.
   had removed reappears and can be removed again. Upgrading to schema v21 keeps
   every project, session, parent link, dedicated worktree and stored branch
   name. Catalog scans are per plugin,
-  atomic, non-destructive, cancellable, and attribute progress.
+  atomic, non-destructive, cancellable, and attribute progress. While a walk asks the backend once per parent
+  session, it sends at most one enumerating event per 250 ms, and only when its counts changed; the snapshots
+  at the start, after the project list and after the walk are not throttled. Backend activity an
+  import observes is checked against stored history with one read, so sessions without history cost nothing.
 - A bridge normally has one "No project" project of kind `scratch`; its id and path are the scratch root
   `~/.sesori/scratch`, and every other project is kind `folder`. The kind follows the project id, not its path.
   Startup creates the root and a visible "No project" row before the first catalog hydration, and keeps an existing
@@ -94,10 +97,14 @@ state.
   so a plugin that lists sessions only by directory still finds them. Bridge-derived connect-time activity credits
   them to "No project"; native connect-time activity skips a scratch folder's project and never inserts or reports
   it.
-- A completed import reports both the totals it published and, separately, how
-  much of that was new. The two are not interchangeable: a re-import of an
-  unchanged catalog still publishes every row, so the totals stay at the full
-  catalog size while the delta is zero. The delta is one optional group, so a
+- An import writes only the project and session rows that are new or changed;
+  a row whose merge differs from the stored row only by its import stamp is
+  skipped, keeps its older stamp, and still binds its children and reports its
+  backend activity. A re-import of an unchanged catalog writes nothing.
+- A completed import reports both the rows it wrote and, separately, how many
+  of those were new. The two are not interchangeable: a changed title counts as
+  written but not new. Bridges up to v1.10.1 report the totals published
+  instead of the rows written. The delta is one optional group, so a
   producer that does not report it is distinguishable from one reporting that
   nothing changed; a consumer that cannot tell them apart would announce
   "nothing new" after an import that added everything. A headless completion

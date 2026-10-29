@@ -59,14 +59,14 @@ class ProjectRepository({
   /// changes. Child activity remains owned by its root and does not contribute
   /// independently to the project aggregate.
   Future<bool> projectHasUnseenChanges({required String projectId}) async {
-    final rows = await _sessionDao.getUnseenRowsForProject(projectId: projectId);
-    return _anyUnseen(rows);
+    final unseenById = await unseenByProjectId(projectIds: [projectId]);
+    return unseenById[projectId] ?? false;
   }
 
   /// Batch variant of [projectHasUnseenChanges] for the `/projects` list. Reads
-  /// every project's sessions in a single query to avoid N+1.
+  /// every project's active roots in a single query to avoid N+1.
   Future<Map<String, bool>> unseenByProjectId({required List<String> projectIds}) async {
-    final rowsByProject = await _sessionDao.getUnseenRowsForProjects(projectIds: projectIds);
+    final rowsByProject = await _sessionDao.getActiveRootUnseenRowsForProjects(projectIds: projectIds);
     return {
       for (final id in projectIds) id: _anyUnseen(rowsByProject[id] ?? const []),
     };
@@ -74,8 +74,6 @@ class ProjectRepository({
 
   bool _anyUnseen(List<SessionUnseenRow> rows) {
     for (final row in rows) {
-      if (row.parentSessionId != null) continue;
-      if (row.archivedAt != null) continue;
       if (_unseenCalculator.isUnseen(
         activity: row.activityAt,
         userMessage: row.userMessageAt,
