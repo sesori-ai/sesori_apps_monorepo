@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 18/19, reconciling the regression documents. Step 19 follows.
+- Current step: 19/19. The agent-runnable L3 cells pass; the remaining cells need the user (L3 matrix below).
 - User decisions: D1–D7 in `PLAN.md`, agreed 2026-10-28 on the review page `heavy-users-r1` and the follow-up in
   chat (D7).
 
@@ -28,8 +28,8 @@
 | 15/19 | monorepo | Palette search through the bridge | Merged | #2195; recording owed (follow-ups) |
 | 16/19 | monorepo | Session list on pages | Merged | #2196; recording owed (follow-ups) |
 | 17/19 | monorepo | Launch rows on the window; inventory removed | Merged | #2197 |
-| 18/19 | monorepo | Reconcile regression documents | In progress | This change |
-| 19/19 | monorepo | Run the L3 matrix; retire | Not started | |
+| 18/19 | monorepo | Reconcile regression documents | Merged | #2198 |
+| 19/19 | monorepo | Run the L3 matrix; retire | In progress | L3 matrix below; user cells open |
 
 ## Baseline (step 2)
 
@@ -60,18 +60,23 @@ sub-agent children; titles split evenly between `/rename`, `ai-title` and first 
 Bridge, headless (`claude_catalog_benchmark.dart`: the plugin's real catalog repository over the fixture, then the
 real `CatalogImportRepository` and `SessionRepository` over a temporary bridge database):
 
-| Measure | 10k | 50k |
-|---|---|---|
-| Claude catalog scan, first (isolate) | 2.2–4.6 s | 10.6–21.4 s |
-| Claude catalog scan, second, nothing changed | 2.1–2.3 s | 11.2–19.1 s |
-| First import, scan included | 2.7 s | 13.0–13.3 s |
-| Rescan import, nothing changed | 2.7 s | 14.3–25.5 s |
-| Session rows written per rescan | 14,090 (every row) | 69,966 (every row) |
-| Project rows written per rescan | 40 (every row) | 40 (every row) |
-| Progress events per import (repository) | 5 (3 enumerating, committing, completed) | 5 |
-| Chat-history checks queued per import | 14,090 | 69,966 |
-| `/sessions` body, largest project | 1.56 MB (4,000 roots), 35–38 ms read, enrich and encode | 7.82 MB (20,000 roots), 162–175 ms |
-| `/sessions` bodies, all projects | 3.90 MB | 19.56 MB |
+The step 19 columns are the same benchmark on `origin/main` `6c44829229` (all of steps 3–18), three runs each, on
+freshly regenerated fixtures (same seed, same sizes).
+
+| Measure | 10k | 10k, step 19 | 50k | 50k, step 19 |
+|---|---|---|---|---|
+| Claude catalog scan, first (isolate) | 2.2–4.6 s | 2.8–5.1 s (cold, expected) | 10.6–21.4 s | 12.4–17.0 s |
+| Claude catalog scan, second, nothing changed | 2.1–2.3 s | 0.27–0.28 s | 11.2–19.1 s | 1.27–1.38 s |
+| First import, scan included | 2.7 s | 0.84–0.87 s (scan served by the cache) | 13.0–13.3 s | 3.5–3.9 s |
+| Rescan import, nothing changed | 2.7 s | 0.53–0.56 s | 14.3–25.5 s | 2.68–2.72 s |
+| Session rows written per rescan | 14,090 (every row) | 0 | 69,966 (every row) | 0 |
+| Project rows written per rescan | 40 (every row) | 0 | 40 (every row) | 0 |
+| Progress events per import (repository) | 5 (3 enumerating, committing, completed) | 5 | 5 | 5 |
+| Chat-history checks queued per import | 14,090 | 0 (14,090 activity entries published; the service drops sessions without stored history) | 69,966 | 0 (69,966 entries) |
+| `/sessions` body, largest project | 1.56 MB (4,000 roots), 35–38 ms read, enrich and encode | 1.56 MB, 43–48 ms (legacy route, unchanged) | 7.82 MB (20,000 roots), 162–175 ms | 7.82 MB, 231–246 ms |
+| `/sessions` bodies, all projects | 3.90 MB | 3.90 MB | 19.56 MB | 19.56 MB |
+| `/sessions/page`, first page (best of five) | — | 6.7–8.0 ms, 78 KB | — | 22.0–26.1 ms, 79 KB |
+| `/sessions/page`, counts only | — | 2.2–2.8 ms | — | 9.7–11.8 ms |
 
 Notes:
 - Claude imports are bridge-derived, so the progress flood measured in "Current behavior" does not apply to them;
@@ -121,6 +126,47 @@ section).
   every root through `idx_sessions_roots` and then looked each row up by primary key. The page query now keeps its
   scope terms off the indexes (`+column`) and reads the table once, the plan SQLite picks itself after `ANALYZE`.
 
+## L3 matrix (step 19)
+
+Run 2026-10-29 by an agent on the baseline machine, `origin/main` `6c44829229`. The /tmp harnesses named here are
+not in the repository. The agent must not use the user's own harness accounts or data, so cells that need a live
+harness session are left to the user with a recipe below.
+
+Client runs used a slot-1 bridge per `sesori-local-testing` (isolated `HOME`, dev account, only Claude reachable,
+`CLAUDE_CONFIG_DIR` = the 10k fixture). A logged-out Claude blocks the import (setup `authenticationRequired`, so
+`startAllowed` is false), so the bridge ran with `/tmp/hu19/bin/claude-shim`: it answers `--version` and
+`auth status` and fails every other call. Imports and list routes are real; launching or sending is not possible.
+After the first import the DB was edited: the bridge's own cwd project hidden, 300 roots archived, 40 roots unread.
+
+| Cell | Result | Evidence |
+|---|---|---|
+| Claude fixture, headless: rescan twice | Pass | Second import writes 0 session and 0 project rows, sends 5 progress events and reports `sessionsImported: 0`; 0.53–0.56 s at 10k (baseline 2.7 s) and 2.68–2.72 s at 50k (baseline 14.3–25.5 s). Table above. |
+| Claude fixture, headless: send to an old session lists no directory | Pass | Harness `/tmp/hu19/send_listing.dart` counts `ClaudeTranscriptApi.listTranscriptPaths` calls. After one scan of the 10k fixture, resolving the oldest root (2025-10-11) through `findSessionById` and `findTranscriptPath`, the lookups `sendPrompt` makes via `_findSession`, listed 0 directories in 0.3 ms; an unknown id (control) listed once. `claude_transcript_catalog_repository_test.dart` passes (29). |
+| Claude fixture, headless: `/sessions/page` | Pass | Harness `/tmp/hu19/page_check.dart` imports the fixture, archives 300 roots, marks 120 unseen, reports 3 running through the plugin's activity summary, then compares the route's repository read, enrichment and JSON round trip with an independent Dart reading of the rows. Passed at 10k (9,700 active rows over 49 pages) and 50k (49,700 over 249): order with id tie-break, cursor walk without duplicates or children, counts (all, running, unread), `limit: 0`, Running and Unread chips, project filter (largest and smallest project), search (two words, case, project name, no match, `%`/`_` literal), archived view paged newest-archive first and absent from the active walk, and project + search + Unread combined. The step 13 tests pass (26). |
+| Live plugins: Pi, Codex, OpenCode (running and dormant) | Needs user | Pi 1.4.0, Codex 0.165.0 and OpenCode 2.2.0 are installed, but a session and a send need a harness account. An isolated home has none, and copying the user's would use their account. Catalog tests pass: Pi (15), Codex (17), OpenCode (12). |
+| Client end to end: iOS simulator (debug), 10k fixture | Pass, one feel finding | List opened with counts (All 9,700, Unread 40); flung through pages to row ~2,600 and opened a session there; search and clear (counts match an SQL count: 551 matches, 3 unread); Running and Unread chips; rename and archive from a row (persisted: title, 301 archived); Archived view paged to its last rows; pull to refresh (rescan ran, "No new sessions"). Rough feel, from a 170 s 120 fps recording and ffmpeg scene scores, not a profiler: no stall during a fling; every pause of 100 ms or more (longest 533 ms) starts as a fling decelerates, where the next page lands. Opening a session took about 10 s because the shim fails the harness spawn (not a product issue). Feel finding (pre-existing, same DAO write in v1.10.1): renaming a deep row sets `updatedAt`, so the row moves to the top and, with a new "Today" heading above the viewport, the rows on screen shift down by about two rows. |
+| Client end to end: launch a session | Needs user | Needs a logged-in Claude. |
+| Client end to end: macOS desktop profile timings, palette | Needs user | The desktop build shares bundle id `com.sesori.desktop` with the installed Sesori.app (same Application Support and keychain items) and supervises a helper bridge, so a dev run would touch the user's real desktop state. The agent also has no macOS GUI driver here. |
+| #2196 recording: loader row and Retry | Pass | `/tmp/hu19/2196-loader-retry.mp4` (1.2 MB, 60 s, fixture data): bridge paused with SIGSTOP while paging, loader row, "Bridge disconnected", Retry after the 30 s relay request timeout, bridge resumed, Retry loads the next page. The loader spins the full 30 s before Retry shows, and Retry does not fire by itself after the bridge reconnects. |
+| #2195 recording: palette typing | Needs user | Desktop only; see the macOS row. |
+| New app ↔ bridge v1.10.1 | Pass | Wire: the v1.10.1 router answers 404 `no handler found for POST /sessions/page`, which `SessionRepository._isMissingRoute` maps to Unsupported; complete-mode tests pass (64). UI, iOS debug against a v1.10.1 bridge (git archive at `/tmp/hu19/v1101`, own `HOME` and data dir, same fixture and edits): full list with counts (All 9,700, Unread 40) after the refresh, Unread chip, search narrowing to one row, Archived view. Typing in search lags behind key input in the debug build (the field showed "S" while 12 characters were sent, then caught up). That is a rough debug-mode check over 9,700 local rows, not a profile. Palette: desktop only, needs user. |
+| App v1.10.1 ↔ new bridge | Pass (wire); UI needs user | The new bridge still serves `GET /projects` and `GET /sessions`. An unchanged rescan completes with `projectsImported: 0, sessionsImported: 0` and `newItems` 0/0, so the v1.10.1 `CatalogRescanService` (reload only when either count is above 0) adds no import reload to the refresh's own. |
+| External: the reporting user's machine | Pending (D6) | After release. |
+
+Left for the user:
+1. Launch a session against the fixture: `CLAUDE_CONFIG_DIR=/tmp/heavy-users-claude-10k claude auth login` with a
+   dev account, then a slot bridge per `sesori-local-testing` with that variable set (the fixture is regenerated by
+   the baseline commands).
+2. macOS desktop, with the fixture bridge: `flutter run --profile` of `client/desktop` with DevTools. Record the worst
+   frame and UI-thread time for cold open, pull to refresh, Running on/off, a five-letter search and clearing it. Then
+   record palette typing for #2195 (fixture data only).
+3. Decide on the rename feel finding: a renamed deep row jumps to the top and shifts the visible rows.
+4. Prego list feel check on a real device (#2184).
+5. Live plugins, with your accounts: for Pi, Codex and OpenCode, with one session running and one dormant, rescan
+   from the app, check the list, rescan again (the bridge log shows 0 rows written), and send to an old session.
+6. Compatibility: palette search against a v1.10.1 bridge on macOS, and the v1.10.1 app (store build) against the new
+   bridge: the list loads and a refresh that changes nothing reloads once.
+
 ## Evidence and decisions
 
 - 2026-10-28: two read-only investigations, one of the bridge and plugins and one of the client, ranked every path
@@ -137,8 +183,8 @@ Open items outside the 19 steps, to settle before or during step 19:
 - The `idx_sessions_archive` index is unused after step 13; dropping it needs migration v22.
 - The Prego list (step 4, #2184) still needs a feel check on a real device: filter, chip and page changes with
   rows entering and leaving off screen.
-- Recordings are owed for #2195 (palette typing: loaded matches, then the bridge's below them) and #2196 (the
-  loader row and its Retry).
+- A recording is owed for #2195 (palette typing: loaded matches, then the bridge's below them). #2196's recording
+  is at `/tmp/hu19/2196-loader-retry.mp4` (step 19).
 - The palette's sessions before typing are the sidebar list's loaded rows, so on a paged bridge they follow the
   list's project filter, search and chip; typed search does not. Step 15 described the palette as ignoring the
   list's key throughout. Decide whether the blank palette should ask the bridge for the newest sessions of every
