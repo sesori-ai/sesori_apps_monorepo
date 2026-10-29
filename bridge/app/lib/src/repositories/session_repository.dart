@@ -197,6 +197,12 @@ class SessionRepository({
     required SessionPageCursor? cursor,
     required int limit,
   }) async {
+    // Activity first: it can hydrate an active root into a project it adds.
+    final runningIds = {
+      for (final summary in await getProjectActivitySummaries())
+        for (final active in summary.activeSessions)
+          if (_runningCalculator.isRunning(session: active)) active.id,
+    };
     final projects = [
       for (final row in await _projectsDao.getCatalogProjects())
         if (projectId == null || row.projectId == projectId)
@@ -210,11 +216,6 @@ class SessionRepository({
                 : ProjectKind.folder,
           ),
     ];
-    final runningIds = {
-      for (final summary in await getProjectActivitySummaries())
-        for (final active in summary.activeSessions)
-          if (_runningCalculator.isRunning(session: active)) active.id,
-    };
     final page = await _sessionDao.getSessionPage(
       mode: mode,
       projectIds: [for (final project in projects) project.id],

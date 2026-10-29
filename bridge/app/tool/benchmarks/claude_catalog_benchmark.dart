@@ -248,9 +248,10 @@ Future<Map<String, Object?>> _timeSessionPages({
       limit: 200,
     )).nextCursor;
   }
+  final deepCursor = cursor ?? (throw StateError("the fixture holds fewer than 4,200 root sessions"));
   return {
     "firstPage": report(first),
-    "page21": report(await timePage(filter: SessionPageFilter.all, query: null, cursor: cursor, limit: 200)),
+    "page21": report(await timePage(filter: SessionPageFilter.all, query: null, cursor: deepCursor, limit: 200)),
     "countsOnly": report(await timePage(filter: SessionPageFilter.all, query: null, cursor: null, limit: 0)),
     "searchTwoWords": report(
       await timePage(filter: SessionPageFilter.all, query: "fix test", cursor: null, limit: 200),
@@ -260,7 +261,8 @@ Future<Map<String, Object?>> _timeSessionPages({
 }
 
 /// Exposes the real Claude catalog as the bridge-derived plugin the import
-/// reads; nothing else of the plugin is reached.
+/// reads. Its activity summary is empty on purpose: the fixture has no live
+/// sessions. Nothing else of the plugin is reached.
 class _ClaudeCatalogPlugin({
   required final ClaudeTranscriptCatalogRepository _catalog,
   @override required final String launchDirectory,

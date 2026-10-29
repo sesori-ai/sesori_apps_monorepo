@@ -101,6 +101,7 @@ void main() {
   for (final (name, body) in [
     ("a negative limit", {"limit": -1}),
     ("a limit above 1000", {"limit": 1001}),
+    ("a fractional limit", {"limit": 0.5}),
     ("an invalid cursor", {"cursor": "not a cursor"}),
     ("a cursor without an id", {"cursor": base64Url.encode(utf8.encode("12:"))}),
     ("a blank query", {"query": "  "}),

@@ -149,6 +149,32 @@ void main() {
     expect(ids(page: running), ["working", "tasks"]);
     expect(running.counts, const SessionPageCounts(all: 4, running: 2, unread: 0));
   });
+
+  test("an active root of a project the activity read discovers is on the same page", () async {
+    const directory = "/work/new";
+    plugin
+      ..summaries = const [
+        PluginProjectActivitySummary(
+          id: directory,
+          activeSessions: [PluginActiveSession(id: "backend-new", mainAgentRunning: true)],
+        ),
+      ]
+      ..currentProjectResult = const PluginProject(id: directory, directory: directory)
+      ..sessionsResult = [
+        const PluginSession(
+          id: "backend-new",
+          projectID: directory,
+          directory: directory,
+          parentID: null,
+          title: "New",
+          time: PluginSessionTime(created: 1, updated: 2, archived: null),
+        ),
+      ];
+
+    final all = await page();
+    expect([for (final session in all.items) session.projectID], [directory]);
+    expect(all.counts, const SessionPageCounts(all: 1, running: 1, unread: 0));
+  });
 }
 
 class _ActivityPlugin() extends FakeBridgePlugin {

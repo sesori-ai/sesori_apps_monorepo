@@ -21,7 +21,7 @@ mixin _$SessionPageRequest {
  String? get query; SessionPageFilter get filter;/// The previous page's [SessionPageResponse.nextCursor]; null for the
 /// first page.
  String? get cursor;/// From 0 to 1000. Zero asks for the counts only.
- int get limit;
+@strictIntJsonConverter int get limit;
 
   /// Serializes this SessionPageRequest to a JSON map.
   Map<String, dynamic> toJson();
@@ -57,7 +57,7 @@ String toString() {
 @JsonSerializable()
 
 class _SessionPageRequest implements SessionPageRequest {
-  const _SessionPageRequest({required this.mode, required this.projectId, required this.query, required this.filter, required this.cursor, required this.limit});
+  const _SessionPageRequest({required this.mode, required this.projectId, required this.query, required this.filter, required this.cursor, @strictIntJsonConverter required this.limit});
   factory _SessionPageRequest.fromJson(Map<String, dynamic> json) => _$SessionPageRequestFromJson(json);
 
 @override final  SessionPageMode mode;
@@ -70,7 +70,7 @@ class _SessionPageRequest implements SessionPageRequest {
 /// first page.
 @override final  String? cursor;
 /// From 0 to 1000. Zero asks for the counts only.
-@override final  int limit;
+@override@strictIntJsonConverter final  int limit;
 
 
 @override

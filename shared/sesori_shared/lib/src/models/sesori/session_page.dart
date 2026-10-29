@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../converters/strict_int_json_converter.dart";
 import "session.dart";
 
 part "session_page.freezed.dart";
@@ -39,7 +40,7 @@ sealed class SessionPageRequest with _$SessionPageRequest {
     required String? cursor,
 
     /// From 0 to 1000. Zero asks for the counts only.
-    required int limit,
+    @strictIntJsonConverter required int limit,
   }) = _SessionPageRequest;
 
   factory fromJson(Map<String, dynamic> json) => _$SessionPageRequestFromJson(json);

@@ -13,7 +13,7 @@ _SessionPageRequest _$SessionPageRequestFromJson(Map json) =>
       query: json['query'] as String?,
       filter: $enumDecode(_$SessionPageFilterEnumMap, json['filter']),
       cursor: json['cursor'] as String?,
-      limit: (json['limit'] as num).toInt(),
+      limit: strictIntJsonConverter.fromJson(json['limit']),
     );
 
 Map<String, dynamic> _$SessionPageRequestToJson(_SessionPageRequest instance) =>
@@ -23,7 +23,7 @@ Map<String, dynamic> _$SessionPageRequestToJson(_SessionPageRequest instance) =>
       'query': ?instance.query,
       'filter': _$SessionPageFilterEnumMap[instance.filter]!,
       'cursor': ?instance.cursor,
-      'limit': instance.limit,
+      'limit': ?strictIntJsonConverter.toJson(instance.limit),
     };
 
 const _$SessionPageModeEnumMap = {
