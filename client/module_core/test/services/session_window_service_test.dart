@@ -354,6 +354,50 @@ void main() {
       });
     });
 
+    test("after a failed key change, loadMore reloads from the head instead of the old cursor", () {
+      inFakeTime((async) {
+        bridge.sessions = [
+          ..._sessions(count: 250),
+          _session(id: "b1", updatedAt: 1, projectId: "beta"),
+        ];
+        final window = create();
+        async.flushMicrotasks();
+        window.select(key: (projectId: "alpha", query: null, filter: SessionListQuickFilter.all));
+        async.flushMicrotasks();
+        expect(loaded(window).nextCursor, isNotNull);
+
+        bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
+        window.select(key: (projectId: null, query: null, filter: SessionListQuickFilter.all));
+        async.flushMicrotasks();
+        bridge.answer = null;
+        bridge.requests.clear();
+
+        unawaited(window.loadMore());
+        async.flushMicrotasks();
+        expect(bridge.requests.first.cursor, isNull);
+        expect(bridge.requests.first.projectId, isNull);
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a changed project set reloads the pages", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 1);
+        final window = create();
+        async.flushMicrotasks();
+        bridge.requests.clear();
+
+        inventory.add(_inventory(projects: [_alpha, _beta]));
+        async.flushMicrotasks();
+        expect(bridge.requests, isEmpty);
+        inventory.add(_inventory(projects: [_alpha]));
+        async.flushMicrotasks();
+        expect(bridge.requests.single.cursor, isNull);
+        unawaited(window.dispose());
+      });
+    });
+
     test("a first load that fails shows the failure, and a reconnect retries", () {
       inFakeTime((async) {
         bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());

@@ -108,6 +108,17 @@ class SessionWindowService({
     _subscriptions.add(
       _projectInventory.stateStream.listen((inventory) => unawaited(_admitProjects(inventory: inventory))),
     );
+    // Pages leave out hidden projects, so a changed project set reloads them.
+    _subscriptions.add(
+      _projectInventory.stateStream
+          .whereType<ProjectListLoaded>()
+          .map((inventory) => {for (final project in inventory.projects) project.id})
+          .distinct(const SetEquality<String>().equals)
+          .skip(1)
+          .listen((_) {
+            if (_completeSessions == null && _state.value is SessionWindowLoaded) unawaited(reload());
+          }),
+    );
     _subscriptions.add(_connectionService.dataMayBeStale.listen((_) => unawaited(reload())));
     _subscriptions.add(catalogRescanService.catalogChanged.listen((_) => unawaited(reload())));
   }
@@ -154,13 +165,20 @@ class SessionWindowService({
   }
 
   /// Appends the next page. Does nothing while the rows are being replaced,
-  /// while a page is already on its way, or when none follows.
+  /// while a page is already on its way, or when none follows. Rows a failed
+  /// load left behind are reloaded instead: their cursor may belong to an
+  /// earlier key.
   Future<void> loadMore() async {
     if (_state.isClosed || _replay != null) return;
     final loaded = _state.value;
     if (loaded is! SessionWindowLoaded || loaded.loadMore == SessionWindowLoadMore.loading) return;
     final cursor = loaded.nextCursor;
     if (cursor == null) return;
+    if (_rowsOutdated) {
+      _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
+      await reload();
+      return;
+    }
     final generation = _generation;
     _replay = [];
     _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
