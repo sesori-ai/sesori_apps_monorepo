@@ -3,7 +3,7 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 18/19, reconciling the regression documents. Step 17 (#2197) is still open; step 19 follows both.
+- Current step: 18/19, reconciling the regression documents. Step 19 follows.
 - User decisions: D1–D7 in `PLAN.md`, agreed 2026-10-28 on the review page `heavy-users-r1` and the follow-up in
   chat (D7).
 
@@ -27,7 +27,7 @@
 | 14/19 | monorepo | Client window service | Merged | #2193 |
 | 15/19 | monorepo | Palette search through the bridge | Merged | #2195; recording owed (follow-ups) |
 | 16/19 | monorepo | Session list on pages | Merged | #2196; recording owed (follow-ups) |
-| 17/19 | monorepo | Launch rows on the window; inventory removed | Open | #2197 |
+| 17/19 | monorepo | Launch rows on the window; inventory removed | Merged | #2197 |
 | 18/19 | monorepo | Reconcile regression documents | In progress | This change |
 | 19/19 | monorepo | Run the L3 matrix; retire | Not started | |
 
