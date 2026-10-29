@@ -28,6 +28,19 @@ typedef ObservedRootSession = ({
   int projectionUpdatedAt,
 });
 
+/// Where a session page continues: the last row's sort time and id.
+typedef SessionPageKey = ({int sortAt, String sessionId});
+
+/// A search word and the projects whose own name holds it, so their sessions
+/// match the word whatever their title.
+typedef SessionPageWord = ({String word, List<String> projectIds});
+
+typedef SessionPageRows = ({
+  List<SessionDto> rows,
+  SessionPageKey? nextKey,
+  ({int all, int running, int unread}) counts,
+});
+
 typedef SessionProjectPathRow = ({
   String sessionId,
   String backendSessionId,
@@ -470,19 +483,111 @@ class SessionDao(super.attachedDatabase) extends DatabaseAccessor<AppDatabase> w
         .get();
   }
 
-  Future<List<SessionDto>> getArchivedCatalogSessions({
-    required int offset,
+  /// One page of root sessions in [projectIds] after [after], in display
+  /// order, and the chip counts of every session the page's scope holds, read
+  /// in one transaction. A [limit] of 0 reads the counts only.
+  ///
+  /// Active pages order by the displayed time and archived pages by
+  /// `archived_at`, both newest first with ties broken by `session_id`
+  /// descending. The scope is the mode's roots in [projectIds] matching every
+  /// one of [words]; the [filter] narrows only the page, not the counts.
+  Future<SessionPageRows> getSessionPage({
+    required SessionPageMode mode,
+    required List<String> projectIds,
+    required List<SessionPageWord> words,
+    required SessionPageFilter filter,
+    required Set<String> runningIds,
+    required SessionPageKey? after,
     required int limit,
   }) {
-    return (select(sessionTable)
-          ..where((table) => table.archivedAt.isNotNull())
-          ..orderBy([
-            (table) => OrderingTerm.desc(table.updatedAt),
-            (table) => OrderingTerm.desc(table.sessionId),
-          ])
-          ..limit(limit, offset: offset))
-        .get();
+    final table = sessionTable;
+    final sortKey = switch (mode) {
+      SessionPageMode.active => _displayedAt,
+      SessionPageMode.archived => table.archivedAt,
+    };
+    // The scope holds nearly every root, so one pass over the table beats an
+    // index lookup per row (7x at 50,000 roots). SQLite only finds that plan
+    // with ANALYZE statistics, which the bridge never gathers, so `+column`
+    // keeps these terms off the indexes.
+    var scope =
+        _unindexed<String>(column: "project_id").isIn(projectIds) &
+        _unindexed<String>(column: "parent_session_id").isNull() &
+        switch (mode) {
+          SessionPageMode.active => _unindexed<int>(column: "archived_at").isNull(),
+          SessionPageMode.archived => _unindexed<int>(column: "archived_at").isNotNull(),
+        };
+    for (final (:word, :projectIds) in words) {
+      // The title SessionCatalogMapper sends. SQLite's LIKE folds ASCII case
+      // only; each word matches literally.
+      final inTitle = coalesce([table.title, table.catalogTitle]).like("%${_escapeLike(word)}%", escapeChar: r"\");
+      scope = scope & (projectIds.isEmpty ? inTitle : inTitle | table.projectId.isIn(projectIds));
+    }
+    final running = table.sessionId.isIn(runningIds);
+    final unseen = _unseen;
+
+    return transaction(() async {
+      final all = countAll();
+      final runningCount = countAll(filter: running);
+      final unreadCount = countAll(filter: unseen);
+      final counts =
+          await (selectOnly(table)
+                ..addColumns([all, runningCount, unreadCount])
+                ..where(scope))
+              .getSingle();
+      final pageCounts = (
+        all: counts.read(all) ?? 0,
+        running: counts.read(runningCount) ?? 0,
+        unread: counts.read(unreadCount) ?? 0,
+      );
+      if (limit == 0) return (rows: const <SessionDto>[], nextKey: null, counts: pageCounts);
+
+      var where = switch (filter) {
+        SessionPageFilter.all => scope,
+        SessionPageFilter.running => scope & running,
+        SessionPageFilter.unread => scope & unseen,
+      };
+      if (after case (:final sortAt, :final sessionId)) {
+        where =
+            where &
+            (sortKey.isSmallerThanValue(sortAt) |
+                (sortKey.equals(sortAt) & table.sessionId.isSmallerThanValue(sessionId)));
+      }
+      final rows =
+          await (select(table).addColumns([sortKey])
+                ..where(where)
+                ..orderBy([OrderingTerm.desc(sortKey), OrderingTerm.desc(table.sessionId)])
+                ..limit(limit + 1))
+              .get();
+      final page = [for (final row in rows.take(limit)) row.readTable(table)];
+      final SessionPageKey? nextKey = rows.length > limit
+          ? (sortAt: rows[limit - 1].read(sortKey) ?? 0, sessionId: page.last.sessionId)
+          : null;
+      return (rows: page, nextKey: nextKey, counts: pageCounts);
+    });
   }
+
+  /// SQL form of the time SessionCatalogMapper sends as `time.updated`: the
+  /// later of `updated_at` and `last_user_message_at`.
+  Expression<int> get _displayedAt {
+    final userMessageAt = coalesce([sessionTable.lastUserMessageAt, const Constant(0)]);
+    return CaseWhenExpression(
+      cases: [CaseWhen(userMessageAt.isBiggerThan(sessionTable.updatedAt), then: userMessageAt)],
+      orElse: sessionTable.updatedAt,
+    );
+  }
+
+  /// SQL form of SessionUnseenCalculator.isUnseen: activity strictly newer
+  /// than both the user's last message and the last time they saw it.
+  Expression<bool> get _unseen {
+    final activityAt = coalesce([sessionTable.lastActivityAt, const Constant(0)]);
+    return activityAt.isBiggerThan(coalesce([sessionTable.lastUserMessageAt, const Constant(0)])) &
+        activityAt.isBiggerThan(coalesce([sessionTable.lastSeenAt, const Constant(0)]));
+  }
+
+  static Expression<T> _unindexed<T extends Object>({required String column}) =>
+      CustomExpression<T>('+"sessions_table"."$column"', precedence: Precedence.unary);
+
+  static String _escapeLike(String word) => word.replaceAll(r"\", r"\\").replaceAll("%", r"\%").replaceAll("_", r"\_");
 
   Future<void> setArchived({
     required String sessionId,

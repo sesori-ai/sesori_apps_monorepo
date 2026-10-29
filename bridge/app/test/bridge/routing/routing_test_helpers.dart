@@ -14,6 +14,7 @@ import "package:sesori_bridge/src/repositories/mappers/stored_session_mapper.dar
 import "package:sesori_bridge/src/repositories/models/session_abort_result.dart";
 import "package:sesori_bridge/src/repositories/models/session_continuation_record.dart";
 import "package:sesori_bridge/src/repositories/models/session_operation.dart";
+import "package:sesori_bridge/src/repositories/models/session_page_cursor.dart";
 import "package:sesori_bridge/src/repositories/models/stored_session.dart";
 import "package:sesori_bridge/src/repositories/pending_interaction_support.dart";
 import "package:sesori_bridge/src/repositories/session_repository.dart";
@@ -450,6 +451,41 @@ class FakeSessionRepository({
     promptDefaults: null,
     lastUserActivityAt: null,
   );
+
+  SessionPage sessionPage = (
+    items: const <Session>[],
+    nextCursor: null,
+    counts: const SessionPageCounts(all: 0, running: 0, unread: 0),
+  );
+  ({
+    SessionPageMode mode,
+    String? projectId,
+    String? query,
+    SessionPageFilter filter,
+    SessionPageCursor? cursor,
+    int limit,
+  })?
+  lastSessionPageArgs;
+
+  @override
+  Future<SessionPage> getSessionPage({
+    required SessionPageMode mode,
+    required String? projectId,
+    required String? query,
+    required SessionPageFilter filter,
+    required SessionPageCursor? cursor,
+    required int limit,
+  }) async {
+    lastSessionPageArgs = (
+      mode: mode,
+      projectId: projectId,
+      query: query,
+      filter: filter,
+      cursor: cursor,
+      limit: limit,
+    );
+    return sessionPage;
+  }
 
   @override
   Future<List<Session>> getSessionsForProject({

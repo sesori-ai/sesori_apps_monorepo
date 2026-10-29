@@ -127,6 +127,7 @@ import "routing/get_session_forms_handler.dart";
 import "routing/get_session_handler.dart";
 import "routing/get_session_messages_handler.dart";
 import "routing/get_session_messages_through_handler.dart";
+import "routing/get_session_page_handler.dart";
 import "routing/get_session_permissions_handler.dart";
 import "routing/get_session_prompt_index_handler.dart";
 import "routing/get_session_questions_handler.dart";
@@ -723,6 +724,7 @@ class Orchestrator({
         SearchSessionPromptsHandler(chatHistoryService: chatHistoryService),
         GetSessionToolOutputHandler(chatHistoryService: chatHistoryService),
         GetSessionsHandler(sessionViews: sessionViews, sessionRepository: sessionRepository),
+        GetSessionPageHandler(sessionViews: sessionViews, sessionRepository: sessionRepository),
         CreateSessionHandler(sessionCreationService: sessionCreationService, sessionViews: sessionViews),
         RenameSessionHandler(sessionMutationDispatcher: sessionMutationDispatcher, sessionViews: sessionViews),
         SetSessionAutoContinuationHandler(service: sessionContinuationService),

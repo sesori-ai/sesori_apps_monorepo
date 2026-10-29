@@ -98,6 +98,29 @@ Run recipe for step 19:
    five actions above. iOS: the headless simulator in debug, timing each freeze from a screen recording.
 5. Record the numbers here beside the bridge rows.
 
+## Session pages timing (step 13)
+
+Measured 2026-10-29 on the same machine with `claude_catalog_benchmark.dart` (now also times `/sessions/page`): the
+route's repository read, enrichment and JSON encoding across all 40 projects, best of five runs, no running sessions.
+Same commands as the baseline, run from `bridge/app/` on PR #2191's tree (the benchmark's `sessionsPageRoute`
+section).
+
+| Request | 10k | 50k |
+|---|---|---|
+| First page, 200 rows | 9.7 ms, 78 KB | 32.5 ms, 79 KB |
+| Page 21 (after 4,000 rows) | 9.8 ms | 29.0 ms |
+| Counts only (`limit: 0`) | 3.1 ms | 13.1 ms |
+| Two-word search, first page | 7.7 ms | 32.1 ms |
+| Unread chip | 7.9 ms | 24.7 ms |
+
+- Under the ~50 ms bar, so no index or migration was added.
+- The Running chip was not timed: the fixture has no live sessions. Its page filter is a primary-key `IN` over the
+  running ids, and every request above already computes the Running count. The plugins' activity call per request
+  is the cost the plan accepts.
+- The first build took 183 ms at 50k. Without `ANALYZE` statistics, which the bridge never gathers, SQLite read
+  every root through `idx_sessions_roots` and then looked each row up by primary key. The page query now keeps its
+  scope terms off the indexes (`+column`) and reads the table once, the plan SQLite picks itself after `ANALYZE`.
+
 ## Evidence and decisions
 
 - 2026-10-28: two read-only investigations, one of the bridge and plugins and one of the client, ranked every path

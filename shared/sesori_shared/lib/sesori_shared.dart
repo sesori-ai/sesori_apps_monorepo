@@ -95,6 +95,7 @@ export "src/models/sesori/session_diff_summary_response.dart";
 export "src/models/sesori/session_diffs_response.dart";
 export "src/models/sesori/session_options_error_response.dart";
 export "src/models/sesori/session_options_response.dart";
+export "src/models/sesori/session_page.dart";
 export "src/models/sesori/session_prompt_index.dart";
 export "src/models/sesori/session_prompt_search.dart";
 export "src/models/sesori/session_status.dart";
