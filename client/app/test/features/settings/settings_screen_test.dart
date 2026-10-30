@@ -259,6 +259,10 @@ void main() {
       ),
     ).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ComputerSwitchDispatcher>(computerSwitchDispatcher);
+
+    final founderCallService = MockFounderCallService();
+    when(founderCallService.readAvailability).thenAnswer((_) async => const FounderCallHidden());
+    GetIt.instance.registerSingleton<FounderCallService>(founderCallService);
   });
 
   tearDown(() async {
