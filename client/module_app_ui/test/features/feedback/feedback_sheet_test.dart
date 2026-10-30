@@ -650,7 +650,7 @@ void main() {
     ) async {
       when(
         () => voiceService.stopAndTranscribe(session: any(named: "session")),
-      ).thenAnswer((_) async => throw VoiceTranscriptionError.networkError());
+      ).thenAnswer((_) async => throw VoiceTranscriptionError.networkError(innerError: null));
       await openPrivateStep(tester: tester, typed: "Keep me");
 
       final gesture = await hold(tester);

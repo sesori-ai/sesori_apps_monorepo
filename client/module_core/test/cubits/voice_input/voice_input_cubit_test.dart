@@ -86,7 +86,8 @@ void main() {
   blocTest<VoiceInputCubit, VoiceInputState>(
     "maps a local transport failure into persistent retry-pending state",
     setUp: () {
-      when(() => service.stopAndTranscribe(session: session)).thenThrow(VoiceTranscriptionError.networkError());
+      when(() => service.stopAndTranscribe(session: session))
+          .thenThrow(VoiceTranscriptionError.networkError(innerError: null));
     },
     build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) async {
@@ -109,7 +110,7 @@ void main() {
     "retries a retained recording and completes normally",
     setUp: () {
       when(() => service.stopAndTranscribe(session: session)).thenThrow(
-        VoiceTranscriptionError.retryableServerError(statusCode: 503),
+        VoiceTranscriptionError.retryableServerError(statusCode: 503, innerError: null),
       );
     },
     build: () => VoiceInputCubit(service: service, session: session),
@@ -133,7 +134,7 @@ void main() {
     "keeps terminal transcription failures out of retry-pending",
     setUp: () {
       when(() => service.stopAndTranscribe(session: session)).thenThrow(
-        VoiceTranscriptionError.serverError(statusCode: 400),
+        VoiceTranscriptionError.serverError(statusCode: 400, innerError: null),
       );
     },
     build: () => VoiceInputCubit(service: service, session: session),
@@ -152,7 +153,7 @@ void main() {
   test("cancelling a manual retry returns to retry-pending", () async {
     final retryCompleter = Completer<String>();
     when(() => service.stopAndTranscribe(session: session)).thenThrow(
-      VoiceTranscriptionError.networkError(),
+      VoiceTranscriptionError.networkError(innerError: null),
     );
     when(() => service.retry(session: session)).thenAnswer((_) => retryCompleter.future);
     final cubit = VoiceInputCubit(service: service, session: session);
@@ -174,7 +175,7 @@ void main() {
   test("discard cancels an active retry before deleting its artifact", () async {
     final retryCompleter = Completer<String>();
     when(() => service.stopAndTranscribe(session: session)).thenThrow(
-      VoiceTranscriptionError.networkError(),
+      VoiceTranscriptionError.networkError(innerError: null),
     );
     when(() => service.retry(session: session)).thenAnswer((_) => retryCompleter.future);
     final cubit = VoiceInputCubit(service: service, session: session);
@@ -199,7 +200,7 @@ void main() {
 
   blocTest<VoiceInputCubit, VoiceInputState>(
     "discards a retained recording and returns to idle",
-    seed: () => VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()),
+    seed: () => VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError(innerError: null)),
     build: () => VoiceInputCubit(service: service, session: session),
     act: (cubit) => cubit.discard(),
     expect: () => const [VoiceInputState.discarding(), VoiceInputState.idle()],
