@@ -152,13 +152,14 @@ RealtimeVoiceServerEvent parseRealtimeVoiceEvent({required String frame}) {
     "transcript" => _parseTranscript(json: decoded),
     "complete" => _parseComplete(json: decoded),
     "error" => _parseError(json: decoded),
-    final type => throw RealtimeVoiceProtocolException(message: "Unknown event type: ${type.toString()}"),
+    final type => throw RealtimeVoiceProtocolException(message: "Unknown event type: ${_describe(value: type)}"),
   };
 }
 
 RealtimeVoiceReadyEvent _parseReady({required Map<String, Object?> json}) {
   _expectKeys(json: json, keys: const {"type", "protocolVersion", "maxSessionSeconds", "dailySecondsRemaining"});
-  if (json["protocolVersion"] != realtimeVoiceProtocolVersion) {
+  final protocolVersion = json["protocolVersion"];
+  if (protocolVersion is! int || protocolVersion != realtimeVoiceProtocolVersion) {
     throw const RealtimeVoiceProtocolException(message: "Unsupported protocol version in ready");
   }
   final maxSessionSeconds = json["maxSessionSeconds"];
@@ -186,7 +187,7 @@ RealtimeVoiceCompleteEvent _parseComplete({required Map<String, Object?> json}) 
   final reasonName = json["reason"];
   final reason = RealtimeVoiceCompleteReason.values.firstWhereOrNull((value) => value.wireName == reasonName);
   if (reason == null) {
-    throw RealtimeVoiceProtocolException(message: "Unknown complete reason: ${reasonName.toString()}");
+    throw RealtimeVoiceProtocolException(message: "Unknown complete reason: ${_describe(value: reasonName)}");
   }
   return RealtimeVoiceCompleteEvent(
     reason: reason,
@@ -199,13 +200,17 @@ RealtimeVoiceErrorEvent _parseError({required Map<String, Object?> json}) {
   final codeName = json["code"];
   final code = RealtimeVoiceErrorCode.values.firstWhereOrNull((value) => value.wireName == codeName);
   if (code == null) {
-    throw RealtimeVoiceProtocolException(message: "Unknown error code: ${codeName.toString()}");
+    throw RealtimeVoiceProtocolException(message: "Unknown error code: ${_describe(value: codeName)}");
   }
   if (json["retryable"] != code.retryable) {
-    throw RealtimeVoiceProtocolException(message: "Wrong retryable for error code: ${codeName.toString()}");
+    throw RealtimeVoiceProtocolException(message: "Wrong retryable for error code: ${code.wireName}");
   }
   return RealtimeVoiceErrorEvent(code: code);
 }
+
+/// Names a string so an unknown value can be diagnosed. Anything else could nest
+/// any text, so only its type is named.
+String _describe({required Object? value}) => value is String ? value : value.runtimeType.toString();
 
 void _expectKeys({required Map<String, Object?> json, required Set<String> keys}) {
   if (json.length != keys.length || !json.keys.every(keys.contains)) {

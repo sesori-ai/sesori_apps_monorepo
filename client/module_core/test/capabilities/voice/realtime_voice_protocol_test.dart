@@ -142,6 +142,15 @@ void main() {
       );
     });
 
+    test("a protocol version that is not an integer is rejected", () {
+      expect(
+        () => parseRealtimeVoiceEvent(
+          frame: '{"type":"ready","protocolVersion":1.0,"maxSessionSeconds":60,"dailySecondsRemaining":60}',
+        ),
+        throwsA(isA<RealtimeVoiceProtocolException>()),
+      );
+    });
+
     test("a rejected frame never carries its transcript text", () {
       const secret = "words the user said";
       final frames = [
@@ -149,6 +158,9 @@ void main() {
         '{"type":"transcript","confirmedDelta":"$secret","provisional":7}',
         '{"type":"transcript","confirmedDelta":"$secret","provisional":"","extra":1}',
         '["$secret"]',
+        '{"type":{"text":"$secret"}}',
+        '{"type":"complete","reason":["$secret"],"dailySecondsRemaining":1}',
+        '{"type":"error","code":{"text":"$secret"},"retryable":false}',
       ];
 
       for (final frame in frames) {
