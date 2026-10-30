@@ -256,24 +256,40 @@ class SessionWindowService({
   }
 
   /// The newest sessions of every project matching [query], at most [limit],
-  /// whatever the key. A blank query matches every session.
+  /// whatever the key. A blank query matches every session. While the bridge
+  /// is away, and once it leaves, this fails at once.
   Future<SessionWindowSearchResult> search({required String query, required int limit}) async {
     if (_completeSessions case final sessions?) {
       return SessionWindowSearchMatches(
         sessions: _searchLocally(sessions: sessions, query: query, limit: limit),
       );
     }
-    final result = await _sessionRepository.getSessionPage(
-      request: SessionPageRequest(
-        mode: _pageMode,
-        projectId: null,
-        // The bridge rejects a blank query; leaving it out lists every session.
-        query: searchWords(query: query).isEmpty ? null : query,
-        filter: SessionPageFilter.all,
-        cursor: null,
-        limit: limit,
-      ),
-    );
+    const away = SessionWindowSearchFailure(reason: RemoteFailureReason.networkDown);
+    if (!_connected) return away;
+    final lost = Completer<SessionPageResult?>();
+    final watch = _connectionService.status.where((status) => status is! ConnectionConnected).listen((_) {
+      if (!lost.isCompleted) lost.complete(null);
+    });
+    final SessionPageResult? result;
+    try {
+      result = await Future.any([
+        _sessionRepository.getSessionPage(
+          request: SessionPageRequest(
+            mode: _pageMode,
+            projectId: null,
+            // The bridge rejects a blank query; leaving it out lists every session.
+            query: searchWords(query: query).isEmpty ? null : query,
+            filter: SessionPageFilter.all,
+            cursor: null,
+            limit: limit,
+          ),
+        ),
+        lost.future,
+      ]);
+    } finally {
+      unawaited(watch.cancel());
+    }
+    if (result == null) return away;
     // The result keeps only the reason, so the original error is logged here.
     if (result case SessionPageFailure(:final error)) logw("Session search failed", error);
     return switch (result) {

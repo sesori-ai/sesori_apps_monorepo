@@ -982,6 +982,33 @@ void main() {
     });
   });
 
+  test("a search on its way when the bridge leaves, or asked while it is away, fails at once", () {
+    inFakeTime((async) {
+      final window = create();
+      async.flushMicrotasks();
+      final lost = Completer<SessionPageResult>();
+      bridge.answer = (_) => lost.future;
+      SessionWindowSearchResult? result;
+      unawaited(window.search(query: "  ", limit: 20).then((value) => result = value));
+      async.flushMicrotasks();
+      expect(result, isNull);
+
+      status.add(const ConnectionStatus.disconnected());
+      async.flushMicrotasks();
+      const away = TypeMatcher<SessionWindowSearchFailure>();
+      expect(result, away.having((failure) => failure.reason, "reason", RemoteFailureReason.networkDown));
+
+      bridge.requests.clear();
+      result = null;
+      unawaited(window.search(query: "deploy", limit: 20).then((value) => result = value));
+      async.flushMicrotasks();
+      expect(bridge.requests, isEmpty);
+      expect(result, away.having((failure) => failure.reason, "reason", RemoteFailureReason.networkDown));
+      lost.complete(const SessionPageUnsupported());
+      unawaited(window.dispose());
+    });
+  });
+
   test("the archived window asks for archived pages", () {
     inFakeTime((async) {
       final window = create(mode: AllSessionsMode.archived);
