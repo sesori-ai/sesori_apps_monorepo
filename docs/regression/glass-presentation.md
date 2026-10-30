@@ -33,13 +33,17 @@ mobile and desktop shells without turning solid content or product menus into gl
   cut-out and outline around the selected row.
 - Solid surfaces, flat menus, custom scaffold gradients, and sheet controls retain
   their existing composition. Premium and glass navigation-shell morphing are not enabled.
+- On iOS a status-bar tap animates the foreground Prego glass page (the phone
+  session list, Settings and every other page on its own scroll) to the top. A
+  touch on the status bar never reaches the row scrolled under it. A page whose
+  body owns its scroll, such as the transcript, is not scrolled.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included. |
-| L2 Routine | Automated shell policy and app/OS brightness mismatch; staged-chip show/clear, draft/focus, voice/retry exclusion and reduced motion; nested-overlay glass menu geometry, scrolling and custom dismissal; anchored-menu spotlight blur and scrim platform policy; existing scaffold and sheet suites. |
+| L2 Routine | Automated shell policy and app/OS brightness mismatch; staged-chip show/clear, draft/focus, voice/retry exclusion and reduced motion; nested-overlay glass menu geometry, scrolling and custom dismissal; anchored-menu spotlight blur and scrim platform policy; existing scaffold and sheet suites, including the status-bar tap scrolling the page to the top and a status-bar touch not reaching the row under it. |
 | L3 Release | Client end to end on iOS and macOS with a real renderer: light/dark including app/OS mismatch, staged-chip show/clear, sheet controls, and solid content behind glass. Android fallback smoke. |
 | L4 Extended | Repeat the presentation flow with reduced motion and high contrast; inspect quality recovery under representative load without inferring a refresh rate or premium performance. |
 | L5 Full | No additional coverage. |
@@ -56,6 +60,8 @@ mobile and desktop shells without turning solid content or product menus into gl
 - A macOS anchored menu blurs around an AppKit view, leaving its native activity
   indicator sharp against blurred Flutter rows, or loses the deeper scrim,
   selected-row cut-out, or outline.
+- An iOS status-bar tap leaves a glass page where it is, or opens the row
+  scrolled under the status bar.
 
 ## Sources
 
@@ -66,3 +72,5 @@ mobile and desktop shells without turning solid content or product menus into gl
 - `client/module_prego/lib/components/menus/prego_anchor_menu.dart`
 - `client/module_prego/lib/components/menus/anchored_spotlight_backdrop.dart`
 - `client/module_prego/test/components/prego_anchor_menu_test.dart`
+- `client/module_prego/lib/components/navigation/prego_glass_scaffold.dart`
+- `client/module_prego/test/components/prego_glass_scaffold_status_bar_test.dart`
