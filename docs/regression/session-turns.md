@@ -740,7 +740,8 @@ defaults and queued client sends coherent.
   bar, composer, notices) carries a page-coloured halo painted in one shared
   layer beneath them all, so neighbouring halos merge, no halo covers another
   control, and the composer's halo runs on to the window bottom. The pill row
-  shares one halo as wide as the composer, so no words show between pills. Titles and
+  shares one halo, so no words show between pills: as wide as the pills on
+  desktop, where they hug their labels, and the full strip on touch. Titles and
   controls stay visually separate and screenshot-readable without text collisions.
 - When the software keyboard opens, interactive content resizes above it while
   the page surface remains painted underneath it. Rounded or translucent iOS

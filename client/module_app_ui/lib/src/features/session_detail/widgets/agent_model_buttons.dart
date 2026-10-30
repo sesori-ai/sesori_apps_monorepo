@@ -152,10 +152,7 @@ class _AgentModelButtonsState() extends State<AgentModelButtons> {
     ];
     return Padding(
       padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-      child: _pillRowHalo(
-        reachesLayerBottom: false,
-        child: Row(spacing: 8, children: selectors),
-      ),
+      child: _pillRow(compact: compact, reachesLayerBottom: false, pills: selectors),
     );
   }
 }
@@ -204,22 +201,22 @@ class const ReadOnlyAgentModelPills({
       padding: EdgeInsetsDirectional.fromSTEB(16, 6, 16, MediaQuery.paddingOf(context).bottom + 8),
       // The bottom-most row: its halo runs on to the bottom edge, so nothing
       // shows below the pills.
-      child: _pillRowHalo(
-        reachesLayerBottom: true,
-        child: Row(spacing: 8, children: pills),
-      ),
+      child: _pillRow(compact: compact, reachesLayerBottom: true, pills: pills),
     );
   }
 }
 
-/// One [PregoPageHalo] across the whole pill strip, as wide as the composer,
-/// so the pills and composer read as one quiet surface and no transcript words
-/// show through the gaps between pills.
-Widget _pillRowHalo({required bool reachesLayerBottom, required Widget child}) => PregoPageHalo(
-  radius: PregoRadius.full,
-  reachesLayerBottom: reachesLayerBottom,
-  child: child,
-);
+/// The pills under one [PregoPageHalo], so no transcript words show through the
+/// gaps between them. Hugging pointer pills keep the halo to their own width,
+/// leading-aligned; touch pills fill the strip, and the halo with them.
+Widget _pillRow({required bool compact, required bool reachesLayerBottom, required List<Widget> pills}) {
+  final halo = PregoPageHalo(
+    radius: PregoRadius.full,
+    reachesLayerBottom: reachesLayerBottom,
+    child: Row(mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max, spacing: 8, children: pills),
+  );
+  return compact ? Align(alignment: AlignmentDirectional.centerStart, heightFactor: 1, child: halo) : halo;
+}
 
 /// A pill's share of the strip: a pointer (compact) pill hugs its label up to a
 /// cap, while touch pills split the width equally.
