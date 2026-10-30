@@ -19,9 +19,12 @@ Desktop does not offer the call yet.
 - On an armed device, the first connected computer opens the sheet over
   whichever screen is showing, about 1.2 s later so that screen settles first.
   A raised keyboard closes before it opens.
-- The sheet shows the title, the message, **Book a call** (primary), and
-  **Not now** (tertiary). **Book a call** closes the sheet and opens the booking
-  page in the in-app browser. **Not now** and a swipe down only close it.
+- The sheet shares the feedback sheet's grabber chrome, drawer motion, and
+  buttons. A picture card shows the CEO's photo with a ✕, then the centred
+  title, the CEO's first name, the message, a black **Book a call** pill, and an
+  outlined **Not now** pill. **Book a call** closes the sheet and, once it has
+  fully closed, opens the booking page in the in-app browser. **Not now**, the
+  ✕, and a swipe down only close it.
 - The sheet shows at most once per device. The device is retired before the
   sheet opens, so a relaunch, a reconnect, or a crash never shows it again.
   Opening the booking link from any surface also retires the device.
@@ -56,7 +59,7 @@ Desktop does not offer the call yet.
 | L1 Smoke | Automated. The service suite proves that a fresh sign-in arms the device and the first connected computer shows the sheet once, that an unarmed device never shows it, that a relaunch does not show it again, that opening the link retires it, the per-moment and master switches, the trimmed remote wording, the https-only link with its default, that an unstarted service stores nothing (desktop), and that an unreadable stored value reads as unarmed. The storage suite pins the persisted JSON and reads another version or kind as unarmed. The analytics service suite proves a sheet shown before the preference resolved is delivered afterwards. The login cubit suite proves only a successful sign-in arms the device. The Firebase source suite proves unset values, an empty text and an empty switch read as null and one fetch per launch. The listener suite proves the settle delay, the built-in and remote wording, booking in the in-app browser, and **Not now** recorded as declined. The Settings suites prove the row leads Support only when offered, and that it opens the booking page in the in-app browser and records the `settings` booking. The event suite pins the wire names and values. |
 | L2 Routine | On a phone against the dev account: sign in fresh with no computer, then pair one; the sheet slides up over the settled screen; **Book a call** opens the booking page; relaunch and reconnect, and it does not return. Settings › Support shows **Book a call with the CEO** first. |
 | L3 Release | With Remote Config setting `founder_call_enabled` off, the Settings row is gone and a fresh sign-in shows no sheet. With custom wording, the sheet shows it. An app updated while signed in shows no sheet on connect. |
-| L4 Extended | At accessibility text sizes, the sheet does not clip. |
+| L4 Extended | At accessibility text sizes, the sheet scrolls instead of clipping. With Reduce Motion on, it opens and closes without the slide. |
 | L5 Full | No additional coverage. |
 
 ## Failure Signals
@@ -65,6 +68,8 @@ Desktop does not offer the call yet.
   or opens again after a relaunch, reconnect, or booking from Settings.
 - The sheet opens during a route transition and vanishes, or appears before the
   connected screen settles.
+- The photo pops in after the sheet has slid up, or the booking page opens
+  while the sheet is still closing.
 - The Settings row appears with the master switch off, or the sheet or row
   appears on desktop.
 - A console typo opens a non-https page.
