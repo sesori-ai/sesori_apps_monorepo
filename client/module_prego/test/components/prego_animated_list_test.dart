@@ -30,6 +30,8 @@ void main() {
     await tester.pumpWidget(_harness(["B"]));
     expect(find.text("A"), findsOneWidget);
 
+    // The close runs from the frame after the update.
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
     expect(tester.getSize(find.byType(PregoAnimatedList<String>)).height, inExclusiveRange(_rowHeight, _rowHeight * 2));
 
