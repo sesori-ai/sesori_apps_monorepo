@@ -280,7 +280,9 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       mainAxisSize: MainAxisSize.min,
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
-        SizedBox(height: topPad),
+        // Content scrolls behind the status bar, so a tap there must not reach
+        // the row underneath it.
+        SizedBox(height: topPad, child: const AbsorbPointer()),
         // Horizontal safe-area insets (landscape display cutouts) apply to the
         // banner card itself; the bar row below gets them from GlassAppBar's
         // own internal SafeArea.
@@ -476,17 +478,24 @@ class _PregoGlassScaffoldState() extends State<PregoGlassScaffold> {
       top_bar.publishPregoRootTopBarInset(overlay: rootOverlay, owner: _rootInsetOwner, geometry: geometry);
     }
 
-    // Remove this wrapper once liquid_glass_widgets migrates from the Flutter SDK Material and Cupertino libraries to material_ui and cupertino_ui.
-    return Scaffold(
-      // Keep the page surface painted through the keyboard inset. The inner
-      // GlassScaffold is resized above the keyboard, but iOS 26's rounded,
-      // translucent keyboard exposes the area behind it around the corners.
-      backgroundColor: backgroundColor,
-      floatingActionButton: widget.floatingActionButton,
-      body: top_bar.PregoTopBarInsetScope(
-        baseInset: geometry.baseInset,
-        bannerHeight: _bannerHeight,
-        child: scaffold,
+    // A status-bar tap scrolls the scaffold's primary scroll controller to the
+    // top, so the page's own controller is published as that controller.
+    // Descendants keep their own controllers: nothing inherits it implicitly.
+    return PrimaryScrollController(
+      controller: _scrollController,
+      automaticallyInheritForPlatforms: const {},
+      // Remove this wrapper once liquid_glass_widgets migrates from the Flutter SDK Material and Cupertino libraries to material_ui and cupertino_ui.
+      child: Scaffold(
+        // Keep the page surface painted through the keyboard inset. The inner
+        // GlassScaffold is resized above the keyboard, but iOS 26's rounded,
+        // translucent keyboard exposes the area behind it around the corners.
+        backgroundColor: backgroundColor,
+        floatingActionButton: widget.floatingActionButton,
+        body: top_bar.PregoTopBarInsetScope(
+          baseInset: geometry.baseInset,
+          bannerHeight: _bannerHeight,
+          child: scaffold,
+        ),
       ),
     );
   }
