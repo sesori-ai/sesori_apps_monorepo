@@ -12,6 +12,14 @@ import "../capabilities/voice/fake_realtime_voice_channel.dart";
 
 class _MockVoiceApi() extends Mock implements VoiceApi;
 
+class _ThrowingTokenProvider({required final Exception failure}) implements AuthTokenProvider {
+  @override
+  Future<String?> getFreshAccessToken({
+    Duration minTtl = const Duration(seconds: 30),
+    bool forceRefresh = false,
+  }) async => throw failure;
+}
+
 void main() {
   late FakeRealtimeVoiceChannel channel;
 
@@ -68,6 +76,25 @@ void main() {
             (error) => error.innerError,
             "innerError",
             isA<RealtimeVoiceNotAuthenticatedException>(),
+          ),
+        ),
+      );
+    });
+
+    test("a failed token read is a network error that keeps its cause", () async {
+      final failure = Exception("storage locked");
+      final repository = VoiceRepository(
+        api: _MockVoiceApi(),
+        realtimeClient: RealtimeVoiceClient(tokenProvider: _ThrowingTokenProvider(failure: failure)),
+      );
+
+      await expectLater(
+        repository.openRealtime(sampleRate: VoiceRealtimeSampleRate.hz16000, projectKey: null),
+        throwsA(
+          isA<NetworkVoiceError>().having(
+            (error) => error.innerError,
+            "innerError",
+            isA<RealtimeVoiceConnectionException>().having((exception) => exception.cause, "cause", failure),
           ),
         ),
       );

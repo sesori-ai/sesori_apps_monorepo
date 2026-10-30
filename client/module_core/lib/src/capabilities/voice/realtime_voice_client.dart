@@ -51,12 +51,20 @@ class RealtimeVoiceClient._({
   /// Returns once the upgrade succeeded and `start` is on its way, without
   /// waiting for `ready`, which arrives through [RealtimeVoiceSession.events].
   ///
-  /// Throws a [RealtimeVoiceException] if the upgrade fails.
+  /// Throws a [RealtimeVoiceException] if the token read or the upgrade fails.
   Future<RealtimeVoiceSession> open({
     required VoiceRealtimeSampleRate sampleRate,
     required ProjectGlossaryKey? projectKey,
   }) async {
-    final token = await _tokenProvider.getFreshAccessToken();
+    final String? token;
+    try {
+      token = await _tokenProvider.getFreshAccessToken();
+    } on Object catch (error, stackTrace) {
+      Error.throwWithStackTrace(
+        RealtimeVoiceConnectionException(closeCode: null, closeReason: null, cause: error),
+        stackTrace,
+      );
+    }
     if (token == null) {
       throw const RealtimeVoiceNotAuthenticatedException();
     }

@@ -37,7 +37,8 @@ No consumer and no user-visible change.
 
 Mapping: 401 or no token gives `notAuthenticated`. 429 and 5xx give
 `retryableServerError`. Other upgrade statuses, including the disabled server's 404,
-give `serverError`. Timeouts and closes without a terminal event give `networkError`.
+give `serverError`. Timeouts, closes without a terminal event and a token read that
+throws give `networkError`.
 Server error events follow their fixed `retryable`.
 
 ## For steps 7 and 8
