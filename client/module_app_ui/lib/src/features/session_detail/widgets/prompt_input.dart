@@ -883,9 +883,10 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// A pointer shell's mic click. Starting keeps keyboard focus inside the
-  /// composer so Escape reaches its cancel binding.
+  /// composer so Escape reaches its cancel binding, and lifts it off the mic,
+  /// which the wide Send is about to hide.
   void _handleMicClick() {
-    if (_voiceInteraction is _VoiceIdle && !_composerFocusNode.hasFocus) _composerFocusNode.requestFocus();
+    if (_voiceInteraction is _VoiceIdle && !_focusNode.hasFocus) _composerFocusNode.requestFocus();
     unawaited(_toggleRecording());
   }
 
@@ -1912,14 +1913,17 @@ class _PromptInputState() extends State<PromptInput> {
         // The buttons' focus rings paint past this box.
         clipBehavior: Clip.none,
         children: [
-          IgnorePointer(
-            ignoring: merged,
-            child: AnimatedOpacity(
-              opacity: merged ? 0 : 1,
-              duration: _morphDuration,
-              child: Row(
-                spacing: PregoSpacing.sm,
-                children: [_buildMicButton(context), _buildPrimaryActionButton(context)],
+          ExcludeFocus(
+            excluding: merged,
+            child: IgnorePointer(
+              ignoring: merged,
+              child: AnimatedOpacity(
+                opacity: merged ? 0 : 1,
+                duration: _morphDuration,
+                child: Row(
+                  spacing: PregoSpacing.sm,
+                  children: [_buildMicButton(context), _buildPrimaryActionButton(context)],
+                ),
               ),
             ),
           ),

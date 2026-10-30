@@ -133,6 +133,35 @@ void main() {
       expect(harness.finishes, [AnalyticsVoiceFinish.sent]);
     });
 
+    testWidgets("the keyboard starts from the mic, loses the hidden buttons, and still finishes", (tester) async {
+      final harness = _Harness();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness, initialText: "typed first");
+      final micFocus = Focus.of(tester.element(find.byIcon(TablerRegular.microphone)));
+      // The row's send comes before the wide Send, which shares its arrow.
+      final sendFocus = Focus.of(tester.element(find.byIcon(TablerRegular.arrow_up).first));
+      micFocus.requestFocus();
+      await tester.pump();
+
+      await tester.sendKeyEvent(LogicalKeyboardKey.space);
+      await tester.pump();
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      verify(voiceCubit.startRecording).called(1);
+
+      expect(micFocus.hasFocus, isFalse);
+      expect(micFocus.canRequestFocus, isFalse);
+      expect(sendFocus.canRequestFocus, isFalse);
+
+      expect(await tester.sendKeyDownEvent(LogicalKeyboardKey.enter), isTrue);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      verify(() => voiceCubit.stopAndTranscribe(limitReached: false)).called(1);
+
+      await completeTranscription(tester);
+      expect(harness.sent, ["typed first spoken words"]);
+      expect(Focus.of(tester.element(find.byIcon(TablerRegular.microphone))).canRequestFocus, isTrue);
+    });
+
     testWidgets("Enter while the words are on their way is handled with focus held by the composer", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
