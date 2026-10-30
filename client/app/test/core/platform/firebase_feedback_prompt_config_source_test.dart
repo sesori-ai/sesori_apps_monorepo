@@ -2,6 +2,7 @@ import "package:firebase_remote_config/firebase_remote_config.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_mobile/core/platform/firebase_feedback_prompt_config_source.dart";
+import "package:sesori_mobile/core/platform/firebase_remote_config_client.dart";
 
 class _MockFirebaseRemoteConfig() extends Mock implements FirebaseRemoteConfig;
 
@@ -20,7 +21,9 @@ void main() {
 
   setUp(() {
     remoteConfig = _MockFirebaseRemoteConfig();
-    source = FirebaseFeedbackPromptConfigSource(remoteConfig: remoteConfig);
+    source = FirebaseFeedbackPromptConfigSource(
+      remoteConfigClient: FirebaseRemoteConfigClient(remoteConfig: remoteConfig),
+    );
     when(() => remoteConfig.setConfigSettings(any())).thenAnswer((_) async {});
     when(() => remoteConfig.fetchAndActivate()).thenAnswer((_) async => true);
     when(() => remoteConfig.getInt(FirebaseFeedbackPromptConfigSource.interactionThresholdKey)).thenReturn(2);

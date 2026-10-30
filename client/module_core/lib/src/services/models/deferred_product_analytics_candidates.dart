@@ -71,7 +71,10 @@ final class DeferredProductAnalyticsCandidates {
     RunCommandSharedEvent() ||
     ProductScreenViewedEvent() ||
     ComputerSwitchedEvent() ||
-    ComputerManagedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
+    ComputerManagedEvent() ||
+    FounderCallShownEvent() ||
+    FounderCallLinkOpenedEvent() ||
+    FounderCallDeclinedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
 
   DeferredProductAnalyticsDrain drainNext() {

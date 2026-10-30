@@ -50,6 +50,9 @@ class const SettingsView({
   /// Opens the Computers page from the computer entry's menu.
   required final VoidCallback onManageComputers,
   required final Widget? additionalSettings,
+
+  /// Opens the CEO's booking page; null hides the Support row.
+  required final VoidCallback? onBookCall,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -176,6 +179,7 @@ class const SettingsView({
                 ),
                 const SizedBox(height: PregoSpacing.xl),
                 SettingsAppInfo(
+                  onBookCall: onBookCall,
                   openSupportLink: openSupportLink,
                   openLegalDocument: openLegalDocument,
                   loadAppVersionInfo: loadAppVersionInfo,
@@ -196,6 +200,9 @@ class const SettingsView({
 /// Account-neutral app information reused by full-page and tabbed settings.
 class const SettingsAppInfo({
   super.key,
+
+  /// Opens the CEO's booking page; null hides the Support row.
+  required final VoidCallback? onBookCall,
   required final Future<void> Function({required Uri url}) openSupportLink,
   required final Future<void> Function({required LegalDocument document}) openLegalDocument,
   required final Future<AppVersionInfo?> Function() loadAppVersionInfo,
@@ -211,6 +218,14 @@ class const SettingsAppInfo({
           title: loc.settingsSectionSupport,
           child: PregoGroupedRows(
             children: [
+              if (onBookCall case final onBookCall?)
+                PregoGroupedRow(
+                  key: const Key("settings_support_book_call"),
+                  icon: TablerRegular.calendar_event,
+                  title: Text(loc.settingsSupportBookCall),
+                  trailing: const Icon(TablerRegular.external_link),
+                  onTap: onBookCall,
+                ),
               _SupportRow(
                 icon: TablerRegular.mail,
                 title: loc.settingsSupportEmail,

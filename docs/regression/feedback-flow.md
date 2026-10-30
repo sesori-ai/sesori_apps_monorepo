@@ -198,6 +198,7 @@ Desktop neither shows the row nor opens the sheet by itself.
 - `client/module_core/lib/src/cubits/new_session/new_session_cubit.dart`
 - `client/app/lib/main.dart`
 - `client/app/lib/core/platform/firebase_feedback_prompt_config_source.dart`
+- `client/app/lib/core/platform/firebase_remote_config_client.dart`
 - `client/app/lib/core/platform/flutter_app_review_client.dart`
 - `client/app/ios/Runner/AppDelegate.swift`
 - `client/app/lib/features/settings/settings_screen.dart`

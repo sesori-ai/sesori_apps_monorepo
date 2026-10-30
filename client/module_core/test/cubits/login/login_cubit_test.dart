@@ -57,6 +57,7 @@ void main() {
     late MockAuthSession mockAuthSession;
     late MockLifecycleSource mockLifecycleSource;
     late MockInstallationAnalyticsService mockInstallationAnalyticsService;
+    late MockFounderCallService mockFounderCallService;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
@@ -64,6 +65,8 @@ void main() {
       mockAuthSession = MockAuthSession();
       mockLifecycleSource = MockLifecycleSource();
       mockInstallationAnalyticsService = MockInstallationAnalyticsService();
+      mockFounderCallService = MockFounderCallService();
+      when(() => mockFounderCallService.recordFreshLogin()).thenAnswer((_) async {});
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
       when(
         () => mockOAuthFlowProvider.startOAuthFlow(provider: any(named: "provider")),
@@ -97,6 +100,7 @@ void main() {
       authSession: mockAuthSession,
       lifecycleSource: mockLifecycleSource,
       installationAnalyticsService: mockInstallationAnalyticsService,
+      founderCallService: mockFounderCallService,
     );
 
     test("initial state is LoginState.idle", () {
@@ -125,6 +129,7 @@ void main() {
             cause: any(named: "cause"),
           ),
         );
+        verify(() => mockFounderCallService.recordFreshLogin()).called(1);
         await cubit.close();
       });
 
@@ -133,6 +138,7 @@ void main() {
         final cubit = buildCubit();
 
         await cubit.loginWithProvider(AuthProvider.google);
+        verifyNever(() => mockFounderCallService.recordFreshLogin());
 
         verify(
           () => mockInstallationAnalyticsService.loginAttemptStarted(provider: AuthProvider.google),

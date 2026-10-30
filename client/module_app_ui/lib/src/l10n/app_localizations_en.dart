@@ -1076,6 +1076,21 @@ class AppLocalizationsEn extends AppLocalizations {
   String get settingsSupportX => 'DM on X';
 
   @override
+  String get settingsSupportBookCall => 'Book a call with the CEO';
+
+  @override
+  String get founderCallTitle => 'Talk to the CEO';
+
+  @override
+  String get founderCallMessage => 'Got 15 minutes? Tell me what you need from Sesori.';
+
+  @override
+  String get founderCallBook => 'Book a call';
+
+  @override
+  String get founderCallNotNow => 'Not now';
+
+  @override
   String get settingsRateSesori => 'Rate Sesori';
 
   @override

@@ -41,6 +41,8 @@ with release-injected credentials. Desktop uses a no-op sink, the bridge is excl
   the switch is made, before the new connection's outcome is known.
 - Renaming or removing a computer reports `computer_managed` with a pinned `action` (`renamed`, `removed`) only after
   the auth server confirms the change, never a name, nickname or identifier. A failed change reports nothing.
+- The CEO call invitation reports `founder_call_shown`, `founder_call_link_opened` and `founder_call_declined` with
+  only a pinned `surface` (`computer_connected_sheet`, `settings`); see [founder call](founder-call.md).
 - `session_created_with_message` and `session_creation_failed` report a pinned `workspace_kind`: `no_project` for a
   session started in "No project", otherwise `dedicated_worktree` or `project`. It never carries the project or its
   folder.

@@ -156,6 +156,12 @@ enum ComputerManageAction({required final String wireValue}) {
   removed(wireValue: "removed");
 }
 
+/// Where the CEO call invitation was shown or acted on.
+enum FounderCallSurface({required final String wireValue}) {
+  computerConnectedSheet(wireValue: "computer_connected_sheet"),
+  settings(wireValue: "settings");
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -225,6 +231,9 @@ sealed class const ProductAnalyticsEvent() {
     required bool targetOnline,
   }) = ComputerSwitchedEvent;
   const factory computerManaged({required ComputerManageAction action}) = ComputerManagedEvent;
+  const factory founderCallShown({required FounderCallSurface surface}) = FounderCallShownEvent;
+  const factory founderCallLinkOpened({required FounderCallSurface surface}) = FounderCallLinkOpenedEvent;
+  const factory founderCallDeclined({required FounderCallSurface surface}) = FounderCallDeclinedEvent;
 
   String get wireName;
   Map<String, String> get parameters;
@@ -528,6 +537,34 @@ final class const ComputerManagedEvent({required final ComputerManageAction acti
 
   @override
   Map<String, String> get parameters => {"action": action.wireValue};
+}
+
+/// The CEO call invitation appeared by itself; the A/B test's activation event.
+final class const FounderCallShownEvent({required final FounderCallSurface surface}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "founder_call_shown";
+
+  @override
+  Map<String, String> get parameters => {"surface": surface.wireValue};
+}
+
+/// The booking page opened; the A/B test's goal event.
+final class const FounderCallLinkOpenedEvent({required final FounderCallSurface surface})
+    extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "founder_call_link_opened";
+
+  @override
+  Map<String, String> get parameters => {"surface": surface.wireValue};
+}
+
+/// The invitation closed without opening the booking page.
+final class const FounderCallDeclinedEvent({required final FounderCallSurface surface}) extends ProductAnalyticsEvent {
+  @override
+  String get wireName => "founder_call_declined";
+
+  @override
+  Map<String, String> get parameters => {"surface": surface.wireValue};
 }
 
 final class ProductAnalyticsEnvelope({required final ProductAnalyticsEvent event, required DateTime occurredAtUtc}) {

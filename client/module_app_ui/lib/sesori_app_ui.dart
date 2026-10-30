@@ -7,6 +7,8 @@ export "src/extensions/login_failed_reason_x.dart";
 export "src/extensions/remote_failure_x.dart";
 export "src/features/feedback/feedback_prompt_listener.dart";
 export "src/features/feedback/feedback_sheet.dart";
+export "src/features/founder_call/founder_call_prompt_listener.dart";
+export "src/features/founder_call/founder_call_sheet.dart";
 export "src/features/home/sessions_home_view.dart";
 export "src/features/login/email_login_form.dart";
 export "src/features/mcp/mcp_inventory_view.dart";

@@ -41,6 +41,7 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
             connectionService: getIt<ConnectionService>(),
           ),
         ),
+        BlocProvider(create: (_) => FounderCallCubit(founderCallService: getIt<FounderCallService>())),
       ],
       child: const _MobileSettingsView(),
     );
@@ -50,6 +51,7 @@ class const SettingsScreen({super.key}) extends StatelessWidget {
 class const _MobileSettingsView() extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
+    final founderCall = context.watch<FounderCallCubit>().state;
     return SettingsView(
       account: context.watch<SettingsCubit>().state.account,
       connectionBanner: ConnectionBanner.maybeFor(context),
@@ -70,6 +72,10 @@ class const _MobileSettingsView() extends StatelessWidget {
           unawaited(getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source)),
       onManageComputers: () => context.pushRoute(const AppRoute.settingsComputers()),
       additionalSettings: null,
+      onBookCall: switch (founderCall) {
+        FounderCallHidden() => null,
+        FounderCallAvailable(:final bookingUrl) => () => unawaited(_bookCall(context: context, bookingUrl: bookingUrl)),
+      },
       openSupportLink: ({required url}) async {
         await openExternalLink(url: url, mode: UrlLaunchMode.externalApp);
       },
@@ -79,6 +85,13 @@ class const _MobileSettingsView() extends StatelessWidget {
       // down to the product name, matching the existing mobile settings view.
       footerLogo: const SesoriLogo(squareSize: 52),
     );
+  }
+}
+
+Future<void> _bookCall({required BuildContext context, required Uri bookingUrl}) async {
+  final cubit = context.read<FounderCallCubit>();
+  if (await openExternalLink(url: bookingUrl, mode: UrlLaunchMode.inAppBrowser)) {
+    cubit.recordLinkOpened(surface: FounderCallSurface.settings);
   }
 }
 

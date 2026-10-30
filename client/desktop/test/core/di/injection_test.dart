@@ -62,6 +62,7 @@ void main() {
       authSession: getIt(),
       lifecycleSource: getIt(),
       installationAnalyticsService: getIt(),
+      founderCallService: getIt(),
     );
     addTearDown(cubit.close);
 

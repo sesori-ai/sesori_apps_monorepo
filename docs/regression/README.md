@@ -167,6 +167,7 @@ failed, or unexecuted required coverage keeps the plan active.
 - [Desktop distribution and manual updates](desktop-distribution.md)
 - [Diffs and source control](diffs-and-source-control.md)
 - [Feedback flow](feedback-flow.md)
+- [Founder call](founder-call.md)
 - [File previews](file-previews.md)
 - [Glass presentation](glass-presentation.md)
 - [MCP management](mcp-management.md)

@@ -75,6 +75,8 @@ import 'package:sesori_desktop/core/platform/no_op_attribution_client.dart'
     as _i91;
 import 'package:sesori_desktop/core/platform/no_op_feedback_prompt_config_source.dart'
     as _i191;
+import 'package:sesori_desktop/core/platform/no_op_founder_call_config_source.dart'
+    as _i1005;
 import 'package:sesori_desktop/core/platform/path_provider_temporary_directory_provider.dart'
     as _i393;
 import 'package:sesori_desktop_core/sesori_desktop_core.dart' as _i316;
@@ -130,6 +132,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i316.SystemTray>(
       () => _i81.FlutterSystemTray(),
       dispose: (i) => i.dispose(),
+    );
+    gh.lazySingleton<_i948.FounderCallConfigSource>(
+      () => _i1005.NoOpFounderCallConfigSource(),
     );
     gh.lazySingleton<_i316.DesktopApplicationTerminator>(
       () => _i665.IoDesktopApplicationTerminator(),

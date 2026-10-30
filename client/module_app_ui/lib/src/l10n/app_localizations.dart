@@ -2041,6 +2041,36 @@ abstract class AppLocalizations {
   /// **'DM on X'**
   String get settingsSupportX;
 
+  /// Settings Support row that opens the CEO's booking page
+  ///
+  /// In en, this message translates to:
+  /// **'Book a call with the CEO'**
+  String get settingsSupportBookCall;
+
+  /// Title of the sheet inviting a new user to book a call with the CEO; Remote Config can replace it
+  ///
+  /// In en, this message translates to:
+  /// **'Talk to the CEO'**
+  String get founderCallTitle;
+
+  /// Body of the CEO call invitation, written in the CEO's voice; Remote Config can replace it
+  ///
+  /// In en, this message translates to:
+  /// **'Got 15 minutes? Tell me what you need from Sesori.'**
+  String get founderCallMessage;
+
+  /// Button that opens the CEO's booking page; Remote Config can replace it
+  ///
+  /// In en, this message translates to:
+  /// **'Book a call'**
+  String get founderCallBook;
+
+  /// Button that closes the CEO call invitation
+  ///
+  /// In en, this message translates to:
+  /// **'Not now'**
+  String get founderCallNotNow;
+
   /// Settings account row that opens the rating sheet
   ///
   /// In en, this message translates to:

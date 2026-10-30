@@ -47,6 +47,7 @@ import "../services/bridge_settings_service.dart";
 import "../services/catalog_rescan_service.dart";
 import "../services/feedback_prompt_service.dart";
 import "../services/file_reference_open_service.dart";
+import "../services/founder_call_service.dart";
 import "../services/models/catalog_rescan_state.dart";
 import "../services/models/session_activity_info.dart";
 import "../services/models/session_list_item_state.dart";
@@ -338,6 +339,8 @@ class MockRegisteredBridgesService() extends Mock implements RegisteredBridgesSe
 }
 
 class MockFailureReporter() extends Mock implements FailureReporter;
+
+class MockFounderCallService() extends Mock implements FounderCallService;
 
 /// Counts what the automatic rating sheet was told, without storing anything.
 class FakeFeedbackPromptService() extends Fake implements FeedbackPromptService {

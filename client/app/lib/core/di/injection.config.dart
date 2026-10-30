@@ -46,6 +46,8 @@ import 'package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart
     as _i52;
 import 'package:sesori_mobile/core/platform/firebase/no_op_feedback_prompt_config_source.dart'
     as _i595;
+import 'package:sesori_mobile/core/platform/firebase/no_op_founder_call_config_source.dart'
+    as _i367;
 import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart'
     as _i483;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
@@ -56,8 +58,12 @@ import 'package:sesori_mobile/core/platform/firebase_analytics_startup.dart'
     as _i950;
 import 'package:sesori_mobile/core/platform/firebase_feedback_prompt_config_source.dart'
     as _i260;
+import 'package:sesori_mobile/core/platform/firebase_founder_call_config_source.dart'
+    as _i680;
 import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
+import 'package:sesori_mobile/core/platform/firebase_remote_config_client.dart'
+    as _i618;
 import 'package:sesori_mobile/core/platform/flutter_app_review_client.dart'
     as _i291;
 import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
@@ -273,6 +279,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i483.NoOpPushMessagingSource(),
       registerFor: {_firebaseDisabled},
     );
+    gh.lazySingleton<_i948.FounderCallConfigSource>(
+      () => _i367.NoOpFounderCallConfigSource(),
+      registerFor: {_firebaseDisabled},
+    );
     gh.lazySingleton<_i948.ImageSaver>(
       () => registerModule.imageSaver(
         galClient: gh<_i227.GalClient>(),
@@ -309,12 +319,6 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i52.NoOpFailureReporter(),
       registerFor: {_firebaseDisabled},
     );
-    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
-      () => _i260.FirebaseFeedbackPromptConfigSource(
-        remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
-      ),
-      registerFor: {_firebaseEnabled},
-    );
     gh.lazySingleton<_i902.DeepLinkService>(
       () => _i902.DeepLinkService(gh<_i948.DeepLinkSource>()),
       dispose: (i) => i.dispose(),
@@ -328,11 +332,29 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseEnabled},
     );
+    gh.lazySingleton<_i618.FirebaseRemoteConfigClient>(
+      () => _i618.FirebaseRemoteConfigClient(
+        remoteConfig: gh<_i627.FirebaseRemoteConfig>(),
+      ),
+      registerFor: {_firebaseEnabled},
+    );
+    gh.lazySingleton<_i948.FounderCallConfigSource>(
+      () => _i680.FirebaseFounderCallConfigSource(
+        remoteConfigClient: gh<_i618.FirebaseRemoteConfigClient>(),
+      ),
+      registerFor: {_firebaseEnabled},
+    );
     gh.lazySingleton<_i948.AttributionClient>(
       () => _i681.SingularAttributionClient(
         startup: gh<_i853.SingularAttributionStartup>(),
         singular: gh<_i776.SingularStaticAdapter>(),
       ),
+    );
+    gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
+      () => _i260.FirebaseFeedbackPromptConfigSource(
+        remoteConfigClient: gh<_i618.FirebaseRemoteConfigClient>(),
+      ),
+      registerFor: {_firebaseEnabled},
     );
     return this;
   }

@@ -31,6 +31,7 @@ class const LoginScreen({super.key}) extends StatelessWidget {
         authSession: getIt<AuthSession>(),
         lifecycleSource: getIt<LifecycleSource>(),
         installationAnalyticsService: getIt<InstallationAnalyticsService>(),
+        founderCallService: getIt<FounderCallService>(),
       ),
       child: const _LoginScreenBody(),
     );
