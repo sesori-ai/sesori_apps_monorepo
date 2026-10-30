@@ -1158,14 +1158,25 @@ class SessionDetailCubit(
           // Assistant metadata describes the transcript actually installed,
           // not the raw fetched page a live assistant may have outrun.
           final assistantAgentModel = _assistantAgentModel(messages: messages, agents: availableAgents);
-          _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
+          // A queue event that landed while the fetch was in flight is newer than
+          // the fetched queue, and may be the only thing still showing a prompt.
+          // The getter wraps its list anew on each read; `==` compares the list
+          // behind the wrappers, so it holds until the queue is replaced.
+          final bridgeQueuedPrompts = latest.bridgeQueuedPrompts == current.bridgeQueuedPrompts
+              ? snapshot.bridgeQueuedPrompts
+              : latest.bridgeQueuedPrompts;
+          _reconcileStagedWithSnapshot(
+            snapshot: snapshot,
+            bridgeQueuedPrompts: bridgeQueuedPrompts,
+            parkEpochAtFetch: parkEpochAtFetch,
+          );
 
           // A live session update (such as an approval change) that landed
           // while the fetch was in flight is newer than the fetched metadata.
           final refreshedSession = identical(latest.session, current.session) ? session : latest.session;
           _sessionMetadata = refreshedSession;
           final refreshedSessionStatus = snapshot.statuses[_sessionId] ?? const SessionStatus.idle();
-          final queue = _queueView(bridgePrompts: snapshot.bridgeQueuedPrompts);
+          final queue = _queueView(bridgePrompts: bridgeQueuedPrompts);
 
           _deferredPartEvents.discardForMessagesThrough(
             messageIds: snapshot.messages.map((message) => message.info.id),
@@ -1188,7 +1199,7 @@ class SessionDetailCubit(
               sessionStatus: refreshedSessionStatus,
               pendingQuestions: _mapPendingQuestions(snapshot.pendingQuestions),
               pendingPermissions: _mapPendingPermissions(snapshot.pendingPermissions),
-              bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
+              bridgeQueuedPrompts: bridgeQueuedPrompts,
               bridgePromptAttachments: queue.bridgePromptAttachments,
               assistantAgentModel: assistantAgentModel,
               children: refreshedChildSessions,
@@ -2420,8 +2431,12 @@ class SessionDetailCubit(
 
   /// Drops staged copies a fresh snapshot proves the bridge already owns —
   /// listed in its queue or landed as a user message with the same prompt id.
-  void _reconcileStagedWithSnapshot({required SessionDetailSnapshot snapshot, required int parkEpochAtFetch}) {
-    final owned = {for (final prompt in snapshot.bridgeQueuedPrompts) prompt.id};
+  void _reconcileStagedWithSnapshot({
+    required SessionDetailSnapshot snapshot,
+    required List<QueuedSessionPrompt> bridgeQueuedPrompts,
+    required int parkEpochAtFetch,
+  }) {
+    final owned = {for (final prompt in bridgeQueuedPrompts) prompt.id};
     _promptQueue.reconcileBridgeQueue(promptIds: owned);
     for (final message in snapshot.messages) {
       if (message.info case MessageUser(promptId: final promptId?)) {
@@ -3336,7 +3351,11 @@ class SessionDetailCubit(
     // The load replaces the loading state, keeping what was sent or staged
     // meanwhile: the launch bubble with its follow-up ids, and the command.
     final loading = state;
-    _reconcileStagedWithSnapshot(snapshot: snapshot, parkEpochAtFetch: parkEpochAtFetch);
+    _reconcileStagedWithSnapshot(
+      snapshot: snapshot,
+      bridgeQueuedPrompts: snapshot.bridgeQueuedPrompts,
+      parkEpochAtFetch: parkEpochAtFetch,
+    );
     final derived = _deriveSnapshot(snapshot);
     final childSessions = derived.children;
     final agents = derived.agents;

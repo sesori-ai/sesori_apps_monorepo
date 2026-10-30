@@ -140,10 +140,14 @@ void main() {
     late StreamController<SseEvent> globalEvents;
     late BehaviorSubject<ConnectionStatus> connectionStatus;
     late List<MessageWithParts> reloadSnapshotMessages;
+    late List<QueuedSessionPrompt> reloadSnapshotQueue;
+    Completer<void>? reloadGate;
     late FakeFeedbackPromptService feedbackPromptService;
 
     setUp(() {
       reloadSnapshotMessages = const <MessageWithParts>[];
+      reloadSnapshotQueue = const <QueuedSessionPrompt>[];
+      reloadGate = null;
       feedbackPromptService = FakeFeedbackPromptService();
       mockSessionRepository = MockSessionRepository();
       mockConnectionService = MockConnectionService();
@@ -257,19 +261,24 @@ void main() {
           session: any(named: "session"),
           projectId: any(named: "projectId"),
         ),
-      ).thenAnswer(
-        (_) async => SessionDetailLoadResult.loaded(
+      ).thenAnswer((_) async {
+        // The snapshot is read before the gate holds it back, as a slow fetch's
+        // queue read predates whatever lands while the rest of it finishes.
+        final messages = reloadSnapshotMessages;
+        final queue = reloadSnapshotQueue;
+        await reloadGate?.future;
+        return SessionDetailLoadResult.loaded(
           snapshot: SessionDetailSnapshot(
             areOptionsStale: false,
             pluginId: "claude",
             supportsPromptAttachments: supportsPromptAttachments,
-            messages: reloadSnapshotMessages,
+            messages: messages,
             olderMessagesCursor: null,
             userMessagesBefore: null,
             awaitingHarnessSync: false,
             pendingQuestions: const <PendingQuestion>[],
             pendingPermissions: const <PendingPermission>[],
-            bridgeQueuedPrompts: const <QueuedSessionPrompt>[],
+            bridgeQueuedPrompts: queue,
             childSessions: const <Session>[],
             statuses: const <String, SessionStatus>{},
             agents: const <AgentInfo>[],
@@ -281,8 +290,8 @@ void main() {
             isArchived: false,
             cannotContinueMessage: null,
           ),
-        ),
-      );
+        );
+      });
       when(() => mockConnectionService.sessionEvents(_sessionId)).thenAnswer((_) => sessionEvents.stream);
       when(() => mockConnectionService.events).thenAnswer((_) => globalEvents.stream);
       when(() => mockConnectionService.status).thenAnswer((_) => connectionStatus);
@@ -1831,6 +1840,79 @@ void main() {
       await cubit.reload();
 
       expect((cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions, isEmpty);
+    });
+
+    test("a refresh fetched before a send cannot blank the prompt the bridge queued meanwhile", () async {
+      when(
+        () => mockSessionRepository.sendMessage(
+          sessionId: _sessionId,
+          promptId: any(named: "promptId"),
+          text: any(named: "text"),
+          attachments: any(named: "attachments"),
+          agent: any(named: "agent"),
+          model: any(named: "model"),
+          variant: any(named: "variant"),
+          fastMode: any(named: "fastMode"),
+          command: any(named: "command"),
+        ),
+      ).thenAnswer((_) async => ApiResponse.success(null));
+      final cubit = await createLoadedCubit();
+
+      // The refresh that follows a return to the app is already reading when
+      // the prompt is sent, so its snapshot predates the queue entry.
+      final gate = reloadGate = Completer<void>();
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(Duration.zero);
+
+      await cubit.sendMessage(text: "hello", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
+      await Future<void>.delayed(Duration.zero);
+      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.promptId;
+      final queued = QueuedSessionPrompt(id: promptId, text: "hello", command: null, attachmentCount: 0, createdAt: 1);
+      sessionEvents.add(
+        SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: [queued]) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+
+      // The row has no other source: the queue event released the local copy.
+      final state = cubit.state as SessionDetailLoaded;
+      expect(state.awaitingBridgeSubmissions, isEmpty);
+      expect(state.bridgeQueuedPrompts, [queued]);
+    });
+
+    test("a refresh fetched before a prompt left the queue cannot bring it back", () async {
+      final cubit = await createLoadedCubit(snapshotQueue: const [_queuedPrompt]);
+
+      reloadSnapshotQueue = const [_queuedPrompt];
+      final gate = reloadGate = Completer<void>();
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(Duration.zero);
+
+      sessionEvents.add(
+        const SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: []) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      gate.complete();
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+
+      expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, isEmpty);
+    });
+
+    test("a refresh with no queue event during its fetch applies the fetched queue", () async {
+      final cubit = await createLoadedCubit();
+      sessionEvents.add(
+        const SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: []) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      reloadSnapshotQueue = const [_queuedPrompt];
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+
+      expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, [_queuedPrompt]);
     });
 
     test("a snapshot holding only the bare envelope keeps the parked bubble", () async {

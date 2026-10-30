@@ -1279,6 +1279,71 @@ void main() {
     await tester.pumpWidget(const SizedBox.shrink());
   });
 
+  testWidgets("a prompt delivered mid-scroll keeps its row until the scroll ends", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        key: harnessKey,
+        initialMessages: [
+          _message(messageId: "u1", role: "user", text: "search", createdAtMs: 1),
+          _message(messageId: "a1", role: "assistant", text: List.filled(60, "reply").join("\n\n"), createdAtMs: 2),
+        ],
+        initialStreamingText: const {},
+        initialBridgeQueuedPrompts: const [
+          QueuedSessionPrompt(id: "prm_1", text: "thanks", command: null, attachmentCount: 0, createdAt: 3),
+        ],
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.byKey(_listViewKey)));
+    await gesture.moveBy(const Offset(0, 40));
+    await tester.pump();
+    expect(find.byKey(_jumpToLatestKey), findsOneWidget);
+
+    harnessKey.currentState!.deliverBridgePrompt(
+      promptId: "prm_1",
+      message: _message(messageId: "u2", role: "user", text: "thanks", promptId: "prm_1", createdAtMs: 3),
+      insertionIndex: 2,
+    );
+    await tester.pump();
+    expect(find.text("thanks"), findsWidgets);
+
+    await gesture.up();
+    await tester.pumpAndSettle();
+    expect(find.text("thanks"), findsWidgets);
+  });
+
+  testWidgets("pointer input that moves nothing at the newest edge stays following", (tester) async {
+    await tester.binding.setSurfaceSize(const Size(390, 700));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      _SessionDetailMessageListHarness(
+        initialMessages: [
+          _message(messageId: "u1", role: "user", text: "search", createdAtMs: 1),
+          _message(messageId: "a1", role: "assistant", text: List.filled(60, "reply").join("\n\n"), createdAtMs: 2),
+        ],
+        initialStreamingText: const {},
+      ),
+    );
+    await tester.pumpAndSettle();
+    final center = tester.getCenter(find.byKey(_listViewKey));
+
+    await tester.sendEventToBinding(PointerScrollEvent(position: center, scrollDelta: const Offset(0, 60)));
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+
+    final trackpad = await tester.createGesture(kind: PointerDeviceKind.trackpad);
+    await trackpad.panZoomStart(center);
+    await trackpad.panZoomUpdate(center, pan: const Offset(0, -3));
+    await tester.pump();
+    await trackpad.panZoomEnd();
+    await tester.pumpAndSettle();
+    expect(find.byKey(_jumpToLatestKey), findsNothing);
+  });
+
   testWidgets("a bridge-queued prompt transforms into its message without a blank frame", (tester) async {
     final harnessKey = GlobalKey<_SessionDetailMessageListHarnessState>();
     await tester.pumpWidget(
@@ -2504,7 +2569,7 @@ void main() {
     await _sendPointerScroll(
       tester: tester,
       target: find.byKey(_listViewKey),
-      delta: const Offset(0, 500),
+      delta: const Offset(0, -500),
     );
     await tester.pumpAndSettle();
 
@@ -2562,7 +2627,7 @@ void main() {
     await _sendPointerScroll(
       tester: tester,
       target: find.byKey(_listViewKey),
-      delta: const Offset(0, 30),
+      delta: const Offset(0, -30),
     );
     await tester.pumpAndSettle();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
@@ -2634,7 +2699,7 @@ void main() {
     await _sendPointerScroll(
       tester: tester,
       target: find.byKey(_listViewKey),
-      delta: const Offset(0, 30),
+      delta: const Offset(0, -30),
     );
     await tester.pumpAndSettle();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);
@@ -2683,7 +2748,7 @@ void main() {
     await _sendPointerScroll(
       tester: tester,
       target: find.byKey(_listViewKey),
-      delta: const Offset(0, 30),
+      delta: const Offset(0, -30),
     );
     await tester.pumpAndSettle();
     expect(find.byKey(_jumpToLatestKey), findsOneWidget);

@@ -9,6 +9,8 @@ import "scroll_follow_tracker.dart";
 ///   wheel. Forwards to [ScrollFollowTracker.handlePointerSignal].
 /// - `Listener.onPointerPanZoomStart` — trackpad pan-zoom gesture.
 ///   Forwards to [ScrollFollowTracker.handlePointerPanZoomStart].
+/// - `Listener.onPointerPanZoomEnd` — the end of that gesture. Forwards to
+///   [ScrollFollowTracker.handlePointerPanZoomEnd].
 /// - `NotificationListener<ScrollNotification>` — drag, momentum,
 ///   programmatic events. Forwards to
 ///   [ScrollFollowTracker.handleScrollNotification].
@@ -66,6 +68,7 @@ class _FollowDetachScrollableState() extends State<FollowDetachScrollable> {
         Listener(
           onPointerSignal: (event) => widget.tracker.handlePointerSignal(event: event),
           onPointerPanZoomStart: (_) => widget.tracker.handlePointerPanZoomStart(),
+          onPointerPanZoomEnd: (_) => widget.tracker.handlePointerPanZoomEnd(),
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) => widget.tracker.handleScrollNotification(notification: notification),
             child: widget.child,
