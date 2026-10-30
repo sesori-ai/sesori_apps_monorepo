@@ -385,7 +385,7 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
     expect(find.byType(GlassMaterializeTransition), findsNothing);
 
-    voiceStates.add(VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()));
+    voiceStates.add(VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError(innerError: null)));
     await tester.pumpAndSettle();
     expect(find.byKey(const ValueKey("saved-recording-actions")), findsOneWidget);
     expect(find.text("Sub-agents"), findsOneWidget);

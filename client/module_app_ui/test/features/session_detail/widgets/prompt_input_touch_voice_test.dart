@@ -318,7 +318,7 @@ void main() {
         await tester.pump();
         await emitVoice(
           tester: tester,
-          state: VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError()),
+          state: VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError(innerError: null)),
         );
         await tester.pump(const Duration(milliseconds: 500));
 
@@ -327,7 +327,7 @@ void main() {
         verify(voiceCubit.retry).called(1);
         await emitVoice(
           tester: tester,
-          state: VoiceInputState.retrying(previousError: VoiceTranscriptionError.networkError()),
+          state: VoiceInputState.retrying(previousError: VoiceTranscriptionError.networkError(innerError: null)),
         );
         await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
 

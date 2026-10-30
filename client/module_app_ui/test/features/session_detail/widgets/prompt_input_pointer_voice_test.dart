@@ -519,7 +519,7 @@ void main() {
     when(voiceCubit.retry).thenAnswer((_) async {});
     when(voiceCubit.discard).thenAnswer((_) async {});
 
-    final error = VoiceTranscriptionError.networkError();
+    final error = VoiceTranscriptionError.networkError(innerError: null);
     voiceStates.add(VoiceInputState.retryPending(error: error));
     await tester.pump();
     await tester.pump();

@@ -3,6 +3,7 @@ import "dart:async";
 import "package:bloc/bloc.dart";
 
 import "../../foundation/models/voice/voice_dictation_outcome.dart";
+import "../../foundation/models/voice/voice_transcription_error.dart";
 import "../../logging/logging.dart";
 import "../../services/voice_transcription_service.dart";
 import "voice_input_state.dart";

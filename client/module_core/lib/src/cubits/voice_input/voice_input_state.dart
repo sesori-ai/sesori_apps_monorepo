@@ -1,7 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../../foundation/models/voice/voice_dictation_outcome.dart";
-import "../../services/voice_transcription_service.dart";
+import "../../foundation/models/voice/voice_transcription_error.dart";
 
 part "voice_input_state.freezed.dart";
 

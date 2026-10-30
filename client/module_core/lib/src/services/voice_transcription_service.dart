@@ -4,6 +4,7 @@ import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart" show ErrorResponse, SuccessResponse;
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
+import "../foundation/models/voice/voice_transcription_error.dart";
 import "../logging/logging.dart";
 import "../platform/voice_capture.dart";
 import "../repositories/project_repository.dart";
@@ -236,14 +237,14 @@ class VoiceTranscriptionService({
         case VoiceTranscriptionSuccess(:final transcript):
           return transcript;
         case VoiceTranscriptionNotAuthenticated():
-          throw VoiceTranscriptionError.notAuthenticated();
+          throw VoiceTranscriptionError.notAuthenticated(innerError: null);
         case VoiceTranscriptionRetryableServerFailure(:final statusCode):
-          retainedFailure = VoiceTranscriptionError.retryableServerError(statusCode: statusCode);
+          retainedFailure = VoiceTranscriptionError.retryableServerError(statusCode: statusCode, innerError: null);
           throw retainedFailure;
         case VoiceTranscriptionTerminalServerFailure(:final statusCode):
-          throw VoiceTranscriptionError.serverError(statusCode: statusCode);
+          throw VoiceTranscriptionError.serverError(statusCode: statusCode, innerError: null);
         case VoiceTranscriptionNetworkFailure():
-          retainedFailure = VoiceTranscriptionError.networkError();
+          retainedFailure = VoiceTranscriptionError.networkError(innerError: null);
           throw retainedFailure;
         case VoiceTranscriptionUnexpectedFailure():
           throw VoiceTranscriptionError.recordingFailed(innerError: outcome);
@@ -496,69 +497,3 @@ final class const _VoiceSessionClosingWithArtifact({required final VoiceRecordin
     extends _VoiceSessionClosing;
 
 final class const _VoiceSessionDisposed() extends _VoiceSessionState;
-
-sealed class const VoiceTranscriptionError._(final String message) implements Exception {
-  factory microphonePermissionDenied({required Object innerError}) = MicrophonePermissionDeniedError._;
-
-  factory recordingFailed({required Object innerError}) = RecordingFailedError._;
-
-  factory notRecording() = NotRecordingError._;
-
-  factory notAuthenticated() = NotAuthenticatedVoiceError._;
-
-  factory retryableServerError({required int statusCode}) = RetryableServerVoiceError._;
-
-  factory serverError({required int statusCode}) = ServerVoiceError._;
-
-  factory emptyTranscript() = EmptyTranscriptError._;
-
-  factory networkError() = NetworkVoiceError._;
-
-  factory missingRecording() = MissingRecordingArtifactError._;
-
-  factory cancelled() = TranscriptionCancelledError._;
-
-  @override
-  String toString() => "VoiceTranscriptionError: $message";
-}
-
-final class const MicrophonePermissionDeniedError._({required final Object innerError})
-    extends VoiceTranscriptionError {
-  this : super._("Microphone permission denied");
-}
-
-final class const RecordingFailedError._({required final Object innerError}) extends VoiceTranscriptionError {
-  this : super._("Recording failed");
-}
-
-final class const NotRecordingError._() extends VoiceTranscriptionError {
-  this : super._("Not currently recording");
-}
-
-final class const NotAuthenticatedVoiceError._() extends VoiceTranscriptionError {
-  this : super._("Not authenticated");
-}
-
-final class const RetryableServerVoiceError._({required final int statusCode}) extends VoiceTranscriptionError {
-  this : super._("Retryable server error ($statusCode)");
-}
-
-final class const ServerVoiceError._({required final int statusCode}) extends VoiceTranscriptionError {
-  this : super._("Server error ($statusCode)");
-}
-
-final class const EmptyTranscriptError._() extends VoiceTranscriptionError {
-  this : super._("Server returned empty transcript");
-}
-
-final class const NetworkVoiceError._() extends VoiceTranscriptionError {
-  this : super._("Network error");
-}
-
-final class const MissingRecordingArtifactError._() extends VoiceTranscriptionError {
-  this : super._("Saved recording is no longer available");
-}
-
-final class const TranscriptionCancelledError._() extends VoiceTranscriptionError {
-  this : super._("Transcription cancelled");
-}

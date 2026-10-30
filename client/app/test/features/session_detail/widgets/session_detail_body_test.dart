@@ -4123,7 +4123,7 @@ void main() {
   testWidgets("retryable failure keeps persistent Retry and Discard until eventual success", (tester) async {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
-      VoiceTranscriptionError.networkError(),
+      VoiceTranscriptionError.networkError(innerError: null),
     );
     when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) async => "retried words");
 
@@ -4153,7 +4153,7 @@ void main() {
     final calls = <String>[];
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
-      VoiceTranscriptionError.networkError(),
+      VoiceTranscriptionError.networkError(innerError: null),
     );
     when(() => voiceTranscriptionService.discard(session: voiceSession)).thenAnswer((_) {
       calls.add("discard");
@@ -4206,7 +4206,7 @@ void main() {
     final retryCompleter = Completer<String>();
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
-      VoiceTranscriptionError.networkError(),
+      VoiceTranscriptionError.networkError(innerError: null),
     );
     when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) => retryCompleter.future);
     when(
@@ -4252,7 +4252,7 @@ void main() {
     final retryCompleter = Completer<String>();
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
-      VoiceTranscriptionError.networkError(),
+      VoiceTranscriptionError.networkError(innerError: null),
     );
     when(() => voiceTranscriptionService.retry(session: voiceSession)).thenAnswer((_) => retryCompleter.future);
 
@@ -4279,7 +4279,7 @@ void main() {
   testWidgets("Discard removes the persistent saved-recording actions", (tester) async {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
-      VoiceTranscriptionError.retryableServerError(statusCode: 503),
+      VoiceTranscriptionError.retryableServerError(statusCode: 503, innerError: null),
     );
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -4301,7 +4301,7 @@ void main() {
   testWidgets("terminal transcription failure never offers saved-recording Retry", (tester) async {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
-      VoiceTranscriptionError.serverError(statusCode: 400),
+      VoiceTranscriptionError.serverError(statusCode: 400, innerError: null),
     );
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -4319,7 +4319,7 @@ void main() {
   testWidgets("missing saved recording clears Retry and explains the terminal outcome", (tester) async {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenThrow(
-      VoiceTranscriptionError.networkError(),
+      VoiceTranscriptionError.networkError(innerError: null),
     );
     when(() => voiceTranscriptionService.retry(session: voiceSession)).thenThrow(
       VoiceTranscriptionError.missingRecording(),
