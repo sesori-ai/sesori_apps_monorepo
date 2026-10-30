@@ -40,22 +40,23 @@ Desktop does not offer the call yet.
     and "Book a call". Values are trimmed.
 - Remote Config is fetched once per launch, shared with the feedback prompt
   config, and falls back to the values activated on an earlier launch.
-- Analytics events carry only a closed `surface` value
-  (`computer_connected_sheet`, `settings`):
-  - `founder_call_shown` when the automatic sheet is claimed (the A/B test's
-    activation event), retained once while the analytics preference is still
-    resolving after a fresh sign-in;
-  - `founder_call_link_opened` when the booking page opened (the goal event);
-  - `founder_call_declined` when the sheet closed without booking.
+- Analytics events carry only a closed `surface` value:
+  - `founder_call_shown` with `computer_connected_sheet` when the automatic
+    sheet is claimed (the A/B test's activation event), retained once while the
+    analytics preference is still resolving after a fresh sign-in;
+  - `founder_call_link_opened` when the booking page opened (the goal event),
+    with `computer_connected_sheet` or `settings`;
+  - `founder_call_declined` with `computer_connected_sheet` when the sheet
+    closed without booking.
 
 ## Regression Levels
 
 | Level | Additional coverage |
 |---|---|
-| L1 Smoke | Automated. The service suite proves that a fresh sign-in arms the device and the first connected computer shows the sheet once, that an unarmed device never shows it, that a relaunch does not show it again, that opening the link retires it, the per-moment and master switches, the trimmed remote wording, the https-only link with its default, that an unstarted service stores nothing (desktop), and that an unreadable stored value reads as unarmed. The login cubit suite proves only a successful sign-in arms the device. The Firebase source suite proves unset and empty values read as null and one fetch per launch. The listener suite proves the settle delay, the built-in and remote wording, booking in the in-app browser, and **Not now** recorded as declined. The Settings suite proves the row leads Support only when offered. The event suite pins the wire names and values. |
+| L1 Smoke | Automated. The service suite proves that a fresh sign-in arms the device and the first connected computer shows the sheet once, that an unarmed device never shows it, that a relaunch does not show it again, that opening the link retires it, the per-moment and master switches, the trimmed remote wording, the https-only link with its default, that an unstarted service stores nothing (desktop), and that an unreadable stored value reads as unarmed. The storage suite pins the persisted JSON and reads another version or kind as unarmed. The analytics service suite proves a sheet shown before the preference resolved is delivered afterwards. The login cubit suite proves only a successful sign-in arms the device. The Firebase source suite proves unset values, an empty text and an empty switch read as null and one fetch per launch. The listener suite proves the settle delay, the built-in and remote wording, booking in the in-app browser, and **Not now** recorded as declined. The Settings suites prove the row leads Support only when offered, and that it opens the booking page in the in-app browser and records the `settings` booking. The event suite pins the wire names and values. |
 | L2 Routine | On a phone against the dev account: sign in fresh with no computer, then pair one; the sheet slides up over the settled screen; **Book a call** opens the booking page; relaunch and reconnect, and it does not return. Settings › Support shows **Book a call with the CEO** first. |
 | L3 Release | With Remote Config setting `founder_call_enabled` off, the Settings row is gone and a fresh sign-in shows no sheet. With custom wording, the sheet shows it. An app updated while signed in shows no sheet on connect. |
-| L4 Extended | At accessibility text sizes, the sheet does not clip. A booking link set to `http://` opens the default page. |
+| L4 Extended | At accessibility text sizes, the sheet does not clip. |
 | L5 Full | No additional coverage. |
 
 ## Failure Signals
@@ -86,3 +87,12 @@ Desktop does not offer the call yet.
 - `client/app/lib/core/platform/firebase_remote_config_client.dart`
 - `client/app/lib/features/settings/settings_screen.dart`
 - `client/app/lib/main.dart`
+- `client/module_core/test/services/founder_call_service_test.dart`
+- `client/module_core/test/services/product_analytics_service_test.dart`
+- `client/module_core/test/api/founder_call_storage_test.dart`
+- `client/module_core/test/cubits/login/login_cubit_test.dart`
+- `client/module_core/test/foundation/product_analytics_event_test.dart`
+- `client/module_app_ui/test/features/founder_call/founder_call_prompt_listener_test.dart`
+- `client/module_app_ui/test/features/settings/settings_app_info_test.dart`
+- `client/app/test/core/platform/firebase_founder_call_config_source_test.dart`
+- `client/app/test/features/settings/settings_screen_test.dart`

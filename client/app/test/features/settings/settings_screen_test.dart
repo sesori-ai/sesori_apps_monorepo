@@ -141,6 +141,7 @@ void main() {
   late _StubAuthSession authSession;
   late _MockNotificationRegistrationService notificationRegistrationService;
   late _MockUrlLauncher urlLauncher;
+  late MockFounderCallService founderCallService;
   late _MockLegalRepository legalRepository;
   late MockProductAnalyticsService productAnalyticsService;
   late BehaviorSubject<ProductAnalyticsState> productAnalyticsStates;
@@ -160,6 +161,7 @@ void main() {
     registerFallbackValue(ProductAnalyticsPreference.disabled);
     registerFallbackValue(const ProductAnalyticsEvent.analyticsSchemaReady());
     registerFallbackValue(DateTime.utc(2026));
+    registerFallbackValue(FounderCallSurface.settings);
   });
 
   setUp(() async {
@@ -260,7 +262,7 @@ void main() {
     ).thenAnswer((_) async {});
     GetIt.instance.registerSingleton<ComputerSwitchDispatcher>(computerSwitchDispatcher);
 
-    final founderCallService = MockFounderCallService();
+    founderCallService = MockFounderCallService();
     when(founderCallService.readAvailability).thenAnswer((_) async => const FounderCallHidden());
     GetIt.instance.registerSingleton<FounderCallService>(founderCallService);
   });
@@ -857,6 +859,26 @@ void main() {
         mode: UrlLaunchMode.externalApp,
       ),
     ).called(1);
+  });
+
+  testWidgets("Book a call opens the booking page in the app and records it from Settings", (tester) async {
+    final bookingUrl = Uri.parse("https://cal.com/example");
+    when(founderCallService.readAvailability).thenAnswer(
+      (_) async => FounderCallAvailable(
+        bookingUrl: bookingUrl,
+        copy: const FounderCallCopy(title: null, message: null, buttonLabel: null),
+      ),
+    );
+    when(() => founderCallService.recordLinkOpened(surface: any(named: "surface"))).thenAnswer((_) async {});
+    _useTallSurface(tester);
+    await tester.pumpWidget(_app(appearance: appearance));
+    await tester.pumpAndSettle();
+
+    await tester.tap(find.byKey(const Key("settings_support_book_call")));
+    await tester.pumpAndSettle();
+
+    verify(() => urlLauncher.launch(bookingUrl, mode: UrlLaunchMode.inAppBrowser)).called(1);
+    verify(() => founderCallService.recordLinkOpened(surface: FounderCallSurface.settings)).called(1);
   });
 
   testWidgets("Rate Sesori is the Account section's second row", (tester) async {
