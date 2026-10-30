@@ -238,9 +238,8 @@ class SessionWindowService({
   }
 
   /// The newest sessions of every project matching [query], at most [limit],
-  /// whatever the key.
+  /// whatever the key. A blank query matches every session.
   Future<SessionWindowSearchResult> search({required String query, required int limit}) async {
-    if (searchWords(query: query).isEmpty) return const SessionWindowSearchMatches(sessions: []);
     if (_completeSessions case final sessions?) {
       return SessionWindowSearchMatches(
         sessions: _searchLocally(sessions: sessions, query: query, limit: limit),
@@ -250,7 +249,8 @@ class SessionWindowService({
       request: SessionPageRequest(
         mode: _pageMode,
         projectId: null,
-        query: query,
+        // The bridge rejects a blank query; leaving it out lists every session.
+        query: searchWords(query: query).isEmpty ? null : query,
         filter: SessionPageFilter.all,
         cursor: null,
         limit: limit,
