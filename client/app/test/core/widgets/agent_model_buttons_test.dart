@@ -149,6 +149,30 @@ Widget _buildFastModeApp({
 }
 
 void main() {
+  group("pill row halo", () {
+    Future<double> haloWidth(WidgetTester tester, {required bool compact}) async {
+      await tester.pumpWidget(
+        _buildApp(agents: _agents, onAgentSelected: (_) {}, readOnly: false, compact: compact),
+      );
+      return tester.getSize(find.byType(PregoPageHalo)).width;
+    }
+
+    testWidgets("hugs pointer pills from the leading edge", (tester) async {
+      final width = await haloWidth(tester, compact: true);
+
+      final pills = find.descendant(of: find.byType(PregoPageHalo), matching: find.byType(Row)).first;
+      expect(width, tester.getSize(pills).width);
+      expect(width, lessThan(tester.getSize(find.byType(AgentModelButtons)).width));
+      expect(tester.getTopLeft(find.byType(PregoPageHalo)).dx, 0);
+    });
+
+    testWidgets("fills the strip for touch pills", (tester) async {
+      final width = await haloWidth(tester, compact: false);
+
+      expect(width, tester.getSize(find.byType(AgentModelButtons)).width);
+    });
+  });
+
   group("Fast mode pill", () {
     Finder pill() => find.bySemanticsLabel("Fast mode");
 
