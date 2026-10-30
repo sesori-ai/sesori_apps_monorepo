@@ -3,8 +3,9 @@ const String _dictatedOpening = '🎙️ "';
 const String _dictatedClosing = '"';
 
 /// Marks [text] as dictated. Quotes inside [text] stay as they are, because
-/// [unwrapDictatedText] removes only the outer pair.
-String wrapDictatedText({required String text}) => "$_dictatedOpening$text$_dictatedClosing";
+/// [unwrapDictatedText] removes only the outer pair. No words means no marker,
+/// as for an attachment-only prompt.
+String wrapDictatedText({required String text}) => text.isEmpty ? text : "$_dictatedOpening$text$_dictatedClosing";
 
 /// The words [wrapDictatedText] marked, or [text] unchanged when it is not in
 /// exactly that form.

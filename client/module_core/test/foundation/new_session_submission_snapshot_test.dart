@@ -145,5 +145,44 @@ void main() {
 
       expect(restored.draft.text, "fix the parser\n\nand the tests\n\n/review src");
     });
+
+    test("a dictated follow-up keeps a typed first message marked when it is sent again", () {
+      final restored =
+          NewSessionSubmissionSnapshot.text(
+            draft: ComposerDraft.typed(text: "fix the parser"),
+            attachments: const [],
+          ).withFollowUps(
+            followUps: [
+              const QueuedSessionSubmission.text(
+                promptId: "prm_a",
+                text: "and the tests",
+                inputMode: ComposerInputMode.voiceAssisted,
+                attachments: [],
+                agent: null,
+                agentModel: null,
+                fastMode: false,
+              ),
+            ],
+            unsent: null,
+          );
+
+      expect(restored.draft.voiceSpans, [VoiceOriginSpan(start: 16, end: 29)]);
+      expect(restored.outgoingText, wrapDictatedText(text: "fix the parser\n\nand the tests"));
+    });
+
+    test("an empty dictated prompt carries no marker", () {
+      const submission = QueuedSessionSubmission.text(
+        promptId: "prm_a",
+        text: "",
+        inputMode: ComposerInputMode.voiceAssisted,
+        attachments: [],
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      );
+
+      expect(submission.outgoingText, "");
+      expect(submission.displayText, isNull);
+    });
   });
 }

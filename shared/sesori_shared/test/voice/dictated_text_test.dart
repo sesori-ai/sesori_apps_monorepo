@@ -6,6 +6,10 @@ void main() {
     expect(wrapDictatedText(text: "fix the parser"), '\u{1F399}\u{FE0F} "fix the parser"');
   });
 
+  test("no words means no marker", () {
+    expect(wrapDictatedText(text: ""), "");
+  });
+
   test("round trips words, quotes and whitespace exactly", () {
     for (final words in [
       "fix the parser",
@@ -13,7 +17,6 @@ void main() {
       '"quoted"',
       'ends with a quote"',
       "  spaced\n\nlines  ",
-      "",
       wrapDictatedText(text: "already marked"),
     ]) {
       expect(unwrapDictatedText(text: wrapDictatedText(text: words)), words);
