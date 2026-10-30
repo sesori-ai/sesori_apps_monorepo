@@ -286,6 +286,60 @@ void main() {
       });
     });
 
+    test("a page asked for while the bridge is away fails at once, and the reconnect loads it once", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        bridge.requests.clear();
+
+        status.add(const ConnectionStatus.disconnected());
+        async.flushMicrotasks();
+        unawaited(window.loadMore());
+        expect(loaded(window).loadMore, SessionWindowLoadMore.failed);
+        unawaited(window.loadMore());
+        async.flushMicrotasks();
+        expect(bridge.requests, isEmpty);
+
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect([for (final request in bridge.requests) request.cursor], ["200"]);
+        expect(ids(window), hasLength(250));
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a page on its way when the bridge leaves offers Retry at once, and the reconnect asks again", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        final lost = Completer<SessionPageResult>();
+        bridge.answer = (_) => lost.future;
+        unawaited(window.loadMore());
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.loading);
+
+        status.add(const ConnectionStatus.disconnected());
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.failed);
+
+        bridge.answer = null;
+        bridge.requests.clear();
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect([for (final request in bridge.requests) request.cursor], ["200"]);
+        expect(ids(window), hasLength(250));
+
+        // The abandoned request's late answer changes nothing.
+        lost.complete(SessionPageFailure(error: ApiError.generic()));
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+        unawaited(window.dispose());
+      });
+    });
+
     test("a key narrowed to no rows whose answer fails shows the failure", () {
       inFakeTime((async) {
         bridge.sessions = _sessions(count: 3);

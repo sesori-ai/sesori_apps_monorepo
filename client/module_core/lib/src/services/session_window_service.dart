@@ -173,13 +173,18 @@ class SessionWindowService({
   /// Appends the next page. Does nothing while the rows are being replaced,
   /// while a page is already on its way, or when none follows. Rows a failed
   /// load left behind are reloaded instead: their cursor may belong to an
-  /// earlier key.
+  /// earlier key. While the bridge is away the page fails at once, and the
+  /// reconnect asks for it.
   Future<void> loadMore() async {
     if (_state.isClosed || _replay != null) return;
     final loaded = _state.value;
     if (loaded is! SessionWindowLoaded || loaded.loadMore == SessionWindowLoadMore.loading) return;
     final cursor = loaded.nextCursor;
     if (cursor == null) return;
+    if (!_connected) {
+      _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.failed));
+      return;
+    }
     if (_rowsOutdated) {
       _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
       await reload();
@@ -503,14 +508,29 @@ class SessionWindowService({
     }
     final connected = status is ConnectionConnected;
     final reconnected = connected && !_connected;
+    final lost = !connected && _connected;
     _connected = connected;
+    // A page asked for before the bridge left may never answer: its row
+    // offers Retry at once, and the reconnect asks again.
+    if (_state.value case final SessionWindowLoaded loaded
+        when lost && loaded.loadMore == SessionWindowLoadMore.loading) {
+      _generation++;
+      _replay = null;
+      _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.failed));
+    }
     if (!connected || !(changed || reconnected)) return;
     // A plain reconnect relies on the replayed events, unless a load failed
     // meanwhile, nothing loaded yet, or the bridge listed everything: it may
-    // serve pages since.
-    if (_completeSessions == null && _state.value is SessionWindowLoaded) {
-      if (_rowsOutdated) unawaited(reload());
-      return;
+    // serve pages since. A page that failed is asked again.
+    if (_completeSessions == null) {
+      if (_state.value case final SessionWindowLoaded loaded) {
+        if (_rowsOutdated) {
+          unawaited(reload());
+        } else if (loaded.loadMore == SessionWindowLoadMore.failed) {
+          unawaited(loadMore());
+        }
+        return;
+      }
     }
     _completeSessions = null;
     unawaited(_loadPaged(limit: pageSize));
