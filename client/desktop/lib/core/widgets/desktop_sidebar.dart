@@ -97,46 +97,54 @@ class const DesktopSidebar({
               child: Material(
                 type: MaterialType.transparency,
                 clipBehavior: Clip.hardEdge,
-                child: CustomScrollView(
-                  key: const Key("desktop-sidebar-session-list"),
-                  slivers: [
-                    // Mounted with the loading skeleton, so a scan already
-                    // running is there from the first frame and the projects
-                    // arriving move nothing. A lost connection clears the scan,
-                    // so the row is empty while this computer is unreachable.
-                    SliverToBoxAdapter(
+                child: Stack(
+                  children: [
+                    CustomScrollView(
+                      key: const Key("desktop-sidebar-session-list"),
+                      slivers: [
+                        AllSessionsList(
+                          onSessionTap: ({required row}) => onOpenSession(
+                            context: context,
+                            project: row.project,
+                            displayName: desktopProjectDisplayName(context: context, project: row.project),
+                            session: row.session,
+                          ),
+                          actionDispatcher: sessionActions,
+                          createActionCubit: ({required projectId, required session}) => createSessionListCubit(
+                            locator: getIt,
+                            projectId: projectId,
+                            sessions: [session],
+                          ),
+                          selectedSessionId: selectedSessionId,
+                          // The footer's recovery card says so, unless this
+                          // computer's bridge is still starting: that is the
+                          // list's own load, whose one skeleton hands off to the
+                          // rows.
+                          disconnectedBuilder: ({required context, required state}) =>
+                              context.select(
+                                (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
+                              )
+                              ? null
+                              : const SliverToBoxAdapter(),
+                          emptyState: SessionEmptyState(projectName: filterName),
+                          // The filter heads the list already, beside Refresh.
+                          header: null,
+                          endClearance: 0,
+                        ),
+                      ],
+                    ),
+                    // Floats over the bottom of the list rather than taking a
+                    // place in it, so neither its arrival nor its exit moves a
+                    // row or a chip under the pointer. A lost connection clears
+                    // the scan, so it is empty while this computer is
+                    // unreachable.
+                    PositionedDirectional(
+                      start: 0,
+                      end: 0,
+                      bottom: 0,
                       child: CatalogScanRow(
                         scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan),
                       ),
-                    ),
-                    AllSessionsList(
-                      onSessionTap: ({required row}) => onOpenSession(
-                        context: context,
-                        project: row.project,
-                        displayName: desktopProjectDisplayName(context: context, project: row.project),
-                        session: row.session,
-                      ),
-                      actionDispatcher: sessionActions,
-                      createActionCubit: ({required projectId, required session}) => createSessionListCubit(
-                        locator: getIt,
-                        projectId: projectId,
-                        sessions: [session],
-                      ),
-                      selectedSessionId: selectedSessionId,
-                      // The footer's recovery card says so, unless this
-                      // computer's bridge is still starting: that is the
-                      // list's own load, whose one skeleton hands off to the
-                      // rows.
-                      disconnectedBuilder: ({required context, required state}) =>
-                          context.select(
-                            (LocalBridgeStartupCubit cubit) => cubit.state == LocalBridgeStartupState.starting,
-                          )
-                          ? null
-                          : const SliverToBoxAdapter(),
-                      emptyState: SessionEmptyState(projectName: filterName),
-                      // The filter heads the list already, beside Refresh.
-                      header: null,
-                      endClearance: 0,
                     ),
                   ],
                 ),

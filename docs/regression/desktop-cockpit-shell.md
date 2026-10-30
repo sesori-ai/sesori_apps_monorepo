@@ -64,7 +64,7 @@ The main pane hosts one full-width routed page.
   duplicate tooltip.
 - Explicit sidebar refresh runs through `SessionListRefreshCubit` and the shared `SessionListRefreshService` over the
   scoped project inventory and the list's sessions window, and starts the all-harness import beside the reload. The
-  sidebar's scan row above the list reports the import; a failed import raises the shared alert naming its
+  sidebar's scan card, floating over the list's bottom edge so nothing in the list moves, reports the import; a failed import raises the shared alert naming its
   harnesses. It awaits the project reload before reloading the window's loaded range. An ordinary project failure
   still lets the sessions reload; either failing produces failure feedback. Useful rows stay visible. A refresh
   while one runs joins it, busy controls cannot dispatch duplicate intent, and busy/idle refresh plus Settings expose

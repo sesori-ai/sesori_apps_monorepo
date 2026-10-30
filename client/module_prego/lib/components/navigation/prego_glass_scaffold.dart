@@ -147,7 +147,9 @@ class const PregoGlassScaffold({
 
   /// A full-screen overlay painted above the body but below the bar, so the
   /// bar (and its back button) stays interactive while it is shown. Use for a
-  /// modal scrim such as a blocking loading indicator. Null shows nothing.
+  /// modal scrim such as a blocking loading indicator, or for a card floating
+  /// over the content, which then lets taps outside it through. Null shows
+  /// nothing.
   final Widget? overlay,
 
   /// When set, an in-scroll refresh control opens below the top bar and pushes

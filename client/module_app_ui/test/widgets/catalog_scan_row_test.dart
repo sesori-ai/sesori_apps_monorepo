@@ -58,6 +58,13 @@ void main() {
     return transform[0];
   }
 
+  double revealOpacity(WidgetTester tester) => tester
+      .widget<FadeTransition>(
+        find.descendant(of: find.byType(CatalogScanRow), matching: find.byType(FadeTransition)).first,
+      )
+      .opacity
+      .value;
+
   RotationTransition loader(WidgetTester tester) => tester.widget<RotationTransition>(
     find.byKey(const ValueKey("prego-deep-scan-loader")),
   );
@@ -864,65 +871,46 @@ void main() {
       );
     });
 
-    // The service clears a settled scan by itself, so the row's exit is the
-    // only signal the result has gone: it fades while folding, and whatever sits
-    // below it slides up continuously instead of jumping.
-    testWidgets("fades out and folds smoothly once the scan clears itself", (tester) async {
-      Widget list(CatalogRescanState scan) => MaterialApp(
-        theme: ThemeData(extensions: [PregoDesignSystem.light]),
-        localizationsDelegates: AppLocalizations.localizationsDelegates,
-        supportedLocales: AppLocalizations.supportedLocales,
-        home: Scaffold(
-          body: Column(
-            children: [
-              CatalogScanRow(scan: scan),
-              const SizedBox(key: ValueKey("below"), height: 40),
-            ],
-          ),
-        ),
-      );
-      double belowTop() => tester.getTopLeft(find.byKey(const ValueKey("below"))).dy;
-      final fade = find.descendant(of: find.byType(CatalogScanRow), matching: find.byType(FadeTransition));
+    // The service clears a settled scan by itself, so the card's exit is the
+    // only signal the result has gone: it fades and sinks where it floats,
+    // keeping its size, and while leaving takes no taps meant for the list.
+    testWidgets("fades out in place without resizing once the scan clears itself", (tester) async {
+      final row = find.byType(CatalogScanRow, skipOffstage: false);
+      final fade = find.descendant(of: row, matching: find.byType(FadeTransition));
       double opacity() => tester.widget<FadeTransition>(fade).opacity.value;
       final loc = await AppLocalizations.delegate.load(const Locale("en"));
 
-      await tester.pumpWidget(
-        list(
-          const CatalogRescanState.succeeded(
-            harnessCount: 1,
-            counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
-          ),
+      await pumpRow(
+        tester,
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
         ),
       );
-      await tester.pumpAndSettle();
-      final start = belowTop();
-      expect(start, greaterThan(0));
+      final size = tester.getSize(row);
+      expect(size.height, greaterThan(0));
       expect(opacity(), 1);
 
-      await tester.pumpWidget(list(const CatalogRescanState.idle()));
-      final positions = <double>[];
+      await tester.pumpWidget(harness(const CatalogRescanState.idle()));
       final opacities = <double>[];
       for (var frame = 0; frame < 20; frame++) {
         await tester.pump(const Duration(milliseconds: 16));
         if (fade.evaluate().isEmpty) break;
-        positions.add(belowTop());
+        expect(tester.getSize(row), size, reason: "the card never folds while it fades");
+        expect(
+          tester.widget<IgnorePointer>(find.descendant(of: row, matching: find.byType(IgnorePointer)).first).ignoring,
+          isTrue,
+          reason: "a departing card takes no taps",
+        );
         opacities.add(opacity());
       }
       await tester.pumpAndSettle();
 
-      var previous = start;
-      for (final position in positions) {
-        expect(position, lessThanOrEqualTo(previous), reason: "the content below only ever moves up");
-        expect(previous - position, lessThan(start * 0.4), reason: "no single frame jumps the content");
-        previous = position;
-      }
-      expect(positions.where((position) => position > 0 && position < start).length, greaterThanOrEqualTo(5));
-      expect(opacities.any((value) => value > 0 && value < 1), isTrue, reason: "the card fades as it folds");
-      expect(belowTop(), 0);
+      expect(opacities.any((value) => value > 0 && value < 1), isTrue, reason: "the card fades out");
       expect(
         find.text(loc.catalogScanCompleteTitle, skipOffstage: false),
         findsNothing,
-        reason: "a folded card leaves no invisible text in the tree",
+        reason: "a faded card leaves no invisible text in the tree",
       );
     });
 
@@ -966,14 +954,10 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 16));
-      final afterOneFrame = tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height;
-      await tester.pump(const Duration(milliseconds: 400));
-      final settled = tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height;
 
-      expect(settled, greaterThan(0));
       expect(
-        afterOneFrame,
-        settled,
+        revealOpacity(tester),
+        1,
         reason: "reduced motion means the row is simply there, not part-way through arriving",
       );
       expect(entranceScale(tester), 1);
@@ -1001,11 +985,7 @@ void main() {
       );
       await tester.pump(const Duration(milliseconds: 16));
 
-      final afterOneFrame = tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height;
-      await tester.pump(const Duration(milliseconds: 400));
-      final settled = tester.getSize(find.byType(CatalogScanRow, skipOffstage: false)).height;
-
-      expect(afterOneFrame, settled);
+      expect(revealOpacity(tester), 1);
       expect(entranceScale(tester), 1);
       expect(loader(tester).turns.value, 0);
       expect(beamX(tester), -18);
