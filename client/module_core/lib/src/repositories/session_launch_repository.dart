@@ -85,7 +85,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         startedAt: startedAt,
         followUpIds: const {},
         followUps: const [],
-        title: switch (submission.displayText?.trim()) {
+        title: switch (submission.plainText?.trim()) {
           final String text when text.isNotEmpty => text.split("\n").first.trim(),
           _ => null,
         },

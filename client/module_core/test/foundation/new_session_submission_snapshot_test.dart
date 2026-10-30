@@ -75,4 +75,75 @@ void main() {
   test("no follow-ups restores the submission itself", () {
     expect(command.withFollowUps(followUps: const [], unsent: null), same(command));
   });
+
+  group("dictation marker", () {
+    final dictated = ComposerDraft(
+      text: "fix the parser",
+      voiceSpans: [VoiceOriginSpan(start: 0, end: 3)],
+    );
+
+    test("dictated text is marked for the agent and the bubble, and stays plain for the box", () {
+      final submission = NewSessionSubmissionSnapshot.text(draft: dictated, attachments: const []);
+
+      expect(submission.outgoingText, wrapDictatedText(text: "fix the parser"));
+      expect(submission.displayText, wrapDictatedText(text: "fix the parser"));
+      expect(submission.plainText, "fix the parser");
+    });
+
+    test("typed text is never marked", () {
+      final submission = NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "fix the parser"),
+        attachments: const [],
+      );
+
+      expect(submission.outgoingText, "fix the parser");
+      expect(submission.displayText, "fix the parser");
+      expect(submission.plainText, "fix the parser");
+    });
+
+    test("a dictated argument to a command is never marked", () {
+      final submission = NewSessionSubmissionSnapshot.command(draft: dictated, command: "review");
+
+      expect(submission.outgoingText, "fix the parser");
+      expect(submission.displayText, "/review fix the parser");
+      expect(submission.plainText, "/review fix the parser");
+    });
+
+    test("an attachment-only prompt has no text to show", () {
+      final submission = NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: ""),
+        attachments: [image],
+      );
+
+      expect(submission.displayText, isNull);
+      expect(submission.plainText, isNull);
+    });
+
+    test("a restored draft holds plain words for dictated submissions and follow-ups", () {
+      final restored = NewSessionSubmissionSnapshot.text(draft: dictated, attachments: const []).withFollowUps(
+        followUps: [
+          const QueuedSessionSubmission.text(
+            promptId: "prm_a",
+            text: "and the tests",
+            inputMode: ComposerInputMode.voiceAssisted,
+            attachments: [],
+            agent: null,
+            agentModel: null,
+            fastMode: false,
+          ),
+          const QueuedSessionSubmission.command(
+            promptId: "prm_b",
+            text: "src",
+            command: "review",
+            agent: null,
+            agentModel: null,
+            fastMode: false,
+          ),
+        ],
+        unsent: null,
+      );
+
+      expect(restored.draft.text, "fix the parser\n\nand the tests\n\n/review src");
+    });
+  });
 }

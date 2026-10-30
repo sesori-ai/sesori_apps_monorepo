@@ -107,6 +107,46 @@ void main() {
     expect(storage.readAll(), isEmpty);
   });
 
+  test("a dictated first message reaches the bridge marked", () async {
+    final pending = service.launch(
+      launchId: "launch-1",
+      projectId: "project-1",
+      pluginId: "plugin-1",
+      startedAt: DateTime.utc(2026, 9, 27),
+      projectName: null,
+      projectKind: ProjectKind.folder,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft(
+          text: "Hello",
+          voiceSpans: [VoiceOriginSpan(start: 0, end: 5)],
+        ),
+        attachments: const [],
+      ),
+      agent: null,
+      model: null,
+      variant: null,
+      fastMode: false,
+      dedicatedWorktree: false,
+    );
+    response.complete(ApiResponse.success(testSession(id: "session-1")));
+    await pending;
+
+    verify(
+      () => sessionRepository.createSessionWithMessage(
+        projectId: "project-1",
+        pluginId: "plugin-1",
+        text: wrapDictatedText(text: "Hello"),
+        attachments: const [],
+        agent: null,
+        model: null,
+        variant: null,
+        fastMode: false,
+        command: null,
+        dedicatedWorktree: false,
+      ),
+    ).called(1);
+  });
+
   test("success keeps a selection the user changed while the session was being created", () async {
     selectionTracker.recordAgent(projectId: "project-1", pluginId: "plugin-1", agentName: "build");
     final pending = launch();
@@ -265,6 +305,39 @@ void main() {
           occurredAtUtc: any(named: "occurredAtUtc"),
         ),
       ).called(2);
+    });
+
+    test("a dictated follow-up reaches the bridge marked", () async {
+      final pending = launch();
+      service.addFollowUp(
+        launchId: "launch-1",
+        submission: const QueuedSessionSubmission.text(
+          promptId: "prm_a",
+          text: "and then this",
+          inputMode: ComposerInputMode.voiceAssisted,
+          attachments: [],
+          agent: null,
+          agentModel: null,
+          fastMode: false,
+        ),
+      );
+      response.complete(ApiResponse.success(testSession(id: "session-1")));
+      await pending;
+      await Future<void>.delayed(Duration.zero);
+
+      verify(
+        () => sessionRepository.sendMessage(
+          sessionId: "session-1",
+          promptId: "prm_a",
+          text: wrapDictatedText(text: "and then this"),
+          attachments: const [],
+          agent: null,
+          model: null,
+          variant: null,
+          fastMode: false,
+          command: null,
+        ),
+      ).called(1);
     });
 
     test("a failure is kept and logged with the original error, holds the rest, and retries unchanged", () async {

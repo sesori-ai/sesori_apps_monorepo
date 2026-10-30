@@ -1,4 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "composer_attachment.dart";
 import "composer_draft.dart";
@@ -19,13 +20,30 @@ sealed class const NewSessionSubmissionSnapshot._() with _$NewSessionSubmissionS
     required String command,
   }) = NewSessionCommandSubmissionSnapshot;
 
-  /// What the sending bubble shows, matching `QueuedSessionSubmission.displayText`: the
+  /// The text this submission sends. Only dictated prompt text is marked: a
+  /// command sends its arguments as written.
+  String get outgoingText => switch (this) {
+    NewSessionCommandSubmissionSnapshot(:final draft) => draft.text,
+    NewSessionTextSubmissionSnapshot(:final draft) => switch (draft.inputMode) {
+      ComposerInputMode.typed => draft.text,
+      ComposerInputMode.voiceAssisted => wrapDictatedText(text: draft.text),
+    },
+  };
+
+  /// The words as written, matching `QueuedSessionSubmission.plainText`: the
   /// command with its arguments, the prompt text, or `null` for a prompt that
   /// carries only attachments.
-  String? get displayText => switch (this) {
+  String? get plainText => switch (this) {
     NewSessionCommandSubmissionSnapshot(:final draft, :final command) =>
       draft.text.trim().isEmpty ? "/$command" : "/$command ${draft.text.trim()}",
     NewSessionTextSubmissionSnapshot(:final draft) => draft.text.isEmpty ? null : draft.text,
+  };
+
+  /// What the sending bubble shows, matching `QueuedSessionSubmission.displayText`:
+  /// what the agent gets, or `null` for a prompt that carries only attachments.
+  String? get displayText => switch (this) {
+    NewSessionCommandSubmissionSnapshot() => plainText,
+    NewSessionTextSubmissionSnapshot(:final draft) => draft.text.isEmpty ? null : outgoingText,
   };
 
   /// This submission with [followUps] appended in order, then [unsent], so
@@ -39,7 +57,7 @@ sealed class const NewSessionSubmissionSnapshot._() with _$NewSessionSubmissionS
     required UnsentComposer? unsent,
   }) {
     final appended = [
-      for (final followUp in followUps) (text: followUp.displayText, attachments: followUp.attachments),
+      for (final followUp in followUps) (text: followUp.plainText, attachments: followUp.attachments),
       if (unsent case UnsentComposer(:final draft, :final command, :final attachments))
         (
           text: switch ((command: command?.name, text: draft.text.trim())) {

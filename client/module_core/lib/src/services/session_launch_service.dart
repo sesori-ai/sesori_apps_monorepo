@@ -130,7 +130,7 @@ class SessionLaunchService({
     final response = await _sessionRepository.createSessionWithMessage(
       projectId: projectId,
       pluginId: pluginId,
-      text: submission.draft.text,
+      text: submission.outgoingText,
       attachments: switch (submission) {
         NewSessionTextSubmissionSnapshot(:final attachments) => attachments,
         NewSessionCommandSubmissionSnapshot() => const [],
@@ -189,7 +189,7 @@ class SessionLaunchService({
         final result = await _sessionRepository.sendMessage(
           sessionId: sessionId,
           promptId: submission.promptId,
-          text: submission.text,
+          text: submission.outgoingText,
           attachments: submission.attachments,
           agent: submission.agent,
           model: switch (submission.agentModel) {

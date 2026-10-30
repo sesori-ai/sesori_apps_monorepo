@@ -297,7 +297,7 @@ class SessionCreationService({
     final GeneratedSessionMetadata metadata;
     try {
       metadata = await _sessionMetadataRepository.generateMetadata(
-        firstMessage: firstText,
+        firstMessage: unwrapDictatedText(text: firstText),
       );
     } on SessionMetadataRequestAbortedException catch (error) {
       if (!_acceptingLateMetadata) return;

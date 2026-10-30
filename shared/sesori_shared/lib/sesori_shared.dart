@@ -117,5 +117,6 @@ export "src/reporting/failure_reporter.dart";
 export "src/search/title_matcher.dart";
 export "src/transcript/prompt_search.dart";
 export "src/transcript/prompt_turns.dart";
+export "src/voice/dictated_text.dart";
 export "src/voice/project_glossary_key.dart";
 export "src/voice/project_glossary_scope.dart";

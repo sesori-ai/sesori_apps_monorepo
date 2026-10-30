@@ -67,6 +67,28 @@ void main() {
     ]);
   });
 
+  test("a dictated launch titles its pending row with the plain words", () {
+    repository.start(
+      launchId: "launch-1",
+      projectId: "project-1",
+      pluginId: "claude",
+      startedAt: startedAt,
+      projectName: "Sesori",
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft(
+          text: "fix the parser",
+          voiceSpans: [VoiceOriginSpan(start: 0, end: 3)],
+        ),
+        attachments: const [],
+      ),
+    );
+
+    expect(
+      storage.read(launchId: "launch-1"),
+      isA<PendingSessionLaunch>().having((launch) => launch.title, "title", "fix the parser"),
+    );
+  });
+
   test("a launch released while pending promotes to nothing left to hand over", () async {
     start();
     repository.releaseHandoff(launchId: "launch-1");
