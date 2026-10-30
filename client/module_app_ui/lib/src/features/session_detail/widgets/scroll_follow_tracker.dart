@@ -80,7 +80,10 @@ class ScrollFollowTracker({
   /// Hook for `Listener.onPointerSignal` (trackpad two-finger scroll,
   /// mouse wheel). Detaches on any pointer scroll event.
   void handlePointerSignal({required PointerSignalEvent event}) {
-    if (event is PointerScrollEvent && _hasScrollableRange) detach();
+    if (event is PointerScrollEvent && _hasScrollableRange) {
+      detach();
+      WidgetsBinding.instance.addPostFrameCallback((_) => _reattachIfSettled());
+    }
   }
 
   /// Hook for `Listener.onPointerPanZoomStart` (trackpad pan-zoom).
@@ -88,6 +91,10 @@ class ScrollFollowTracker({
   void handlePointerPanZoomStart() {
     if (_hasScrollableRange) detach();
   }
+
+  /// Hook for `Listener.onPointerPanZoomEnd`. A pan that claimed the scrollable
+  /// reattaches on its scroll end instead.
+  void handlePointerPanZoomEnd() => _reattachIfSettled();
 
   /// Whether the attached scrollable actually has room to scroll. A list
   /// shorter than its viewport (min == max) is still draggable/wheelable via
@@ -196,6 +203,14 @@ class ScrollFollowTracker({
     if (shouldFollow == _following) return;
     _following = shouldFollow;
     notifyListeners();
+  }
+
+  /// Pointer input that moves nothing, such as a wheel tick into the edge the
+  /// list already rests at, detaches without ever producing a scroll end.
+  void _reattachIfSettled() {
+    if (!scrollController.hasClients) return;
+    final position = scrollController.position;
+    if (!position.isScrollingNotifier.value) _maybeReattach(metrics: position);
   }
 
   double _edgeOffset({required ScrollMetrics metrics}) {

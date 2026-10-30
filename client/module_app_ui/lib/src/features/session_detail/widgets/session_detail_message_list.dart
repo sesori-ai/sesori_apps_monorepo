@@ -400,16 +400,17 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         });
       }
     }
-    if (!oldestChanged || frozen == null) return;
-    final prepended = _prependedOlderMessages(frozen: frozen);
-    if (prepended.isEmpty) return;
+    if (frozen == null) return;
+    final prepended = oldestChanged ? _prependedOlderMessages(frozen: frozen) : const <MessageWithParts>[];
+    final delivered = _deliveredPromptMessages(frozen: frozen);
+    if (prepended.isEmpty && delivered.isEmpty) return;
 
-    // Take *only* the newly prepended prefix. Taking the whole live list would
-    // also pull in messages appended at the newest edge while detached, which
-    // is exactly the reflow the freeze exists to prevent. Everything else the
-    // snapshot holds — streaming text, children, statuses, retry state — stays
-    // frozen.
-    final merged = [...prepended, ...frozen.messages];
+    // Take *only* the newly prepended prefix and the prompts delivered into
+    // rows already showing. Taking the whole live list would also pull in
+    // messages appended at the newest edge while detached, which is exactly
+    // the reflow the freeze exists to prevent. Everything else the snapshot
+    // holds — streaming text, children, statuses, retry state — stays frozen.
+    final merged = [...prepended, ...frozen.messages, ...delivered];
     setState(() {
       _snapshot = (
         messages: List<MessageWithParts>.unmodifiable(merged),
@@ -441,6 +442,21 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final prepended = widget.messages.sublist(0, boundary);
     if (prepended.any((message) => frozenIds.contains(message.info.id))) return const [];
     return prepended;
+  }
+
+  /// Live messages for prompts the frozen transcript shows as pending rows. The
+  /// bridge drops a prompt from its queue once delivered, so only the message
+  /// can keep that row on screen.
+  List<MessageWithParts> _deliveredPromptMessages({required _DetachedSnapshot frozen}) {
+    final frozenIds = frozen.messages.map((message) => message.info.id).toSet();
+    return [
+      for (final message in widget.messages)
+        if (message.info case MessageUser(:final id, promptId: final promptId?))
+          if (message.hasRenderableUserContent &&
+              !frozenIds.contains(id) &&
+              _rowIndexById.containsKey("$_kPromptRowPrefix$promptId"))
+            message,
+    ];
   }
 
   void _onFollowChanged() {

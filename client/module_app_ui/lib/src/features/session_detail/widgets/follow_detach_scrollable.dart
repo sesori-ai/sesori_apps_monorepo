@@ -66,6 +66,7 @@ class _FollowDetachScrollableState() extends State<FollowDetachScrollable> {
         Listener(
           onPointerSignal: (event) => widget.tracker.handlePointerSignal(event: event),
           onPointerPanZoomStart: (_) => widget.tracker.handlePointerPanZoomStart(),
+          onPointerPanZoomEnd: (_) => widget.tracker.handlePointerPanZoomEnd(),
           child: NotificationListener<ScrollNotification>(
             onNotification: (notification) => widget.tracker.handleScrollNotification(notification: notification),
             child: widget.child,
