@@ -80,8 +80,9 @@ class ScrollFollowTracker({
   /// Hook for `Listener.onPointerSignal` (trackpad two-finger scroll,
   /// mouse wheel). Detaches on any pointer scroll event.
   void handlePointerSignal({required PointerSignalEvent event}) {
-    if (event is PointerScrollEvent && _hasScrollableRange) {
+    if (event is PointerScrollEvent && _following && _hasScrollableRange) {
       detach();
+      // Detaching rebuilds the list, so this runs on the frame that follows.
       WidgetsBinding.instance.addPostFrameCallback((_) => _reattachIfSettled());
     }
   }

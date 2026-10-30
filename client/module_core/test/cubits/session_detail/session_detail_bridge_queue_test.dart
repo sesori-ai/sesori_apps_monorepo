@@ -1901,6 +1901,20 @@ void main() {
       expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, isEmpty);
     });
 
+    test("a refresh with no queue event during its fetch applies the fetched queue", () async {
+      final cubit = await createLoadedCubit();
+      sessionEvents.add(
+        const SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: []) as SesoriSessionEvent,
+      );
+      await Future<void>.delayed(Duration.zero);
+
+      reloadSnapshotQueue = const [_queuedPrompt];
+      mockConnectionService.emitDataMayBeStale();
+      await Future<void>.delayed(const Duration(milliseconds: 1));
+
+      expect((cubit.state as SessionDetailLoaded).bridgeQueuedPrompts, [_queuedPrompt]);
+    });
+
     test("a snapshot holding only the bare envelope keeps the parked bubble", () async {
       when(
         () => mockSessionRepository.sendMessage(

@@ -9,6 +9,8 @@ import "scroll_follow_tracker.dart";
 ///   wheel. Forwards to [ScrollFollowTracker.handlePointerSignal].
 /// - `Listener.onPointerPanZoomStart` — trackpad pan-zoom gesture.
 ///   Forwards to [ScrollFollowTracker.handlePointerPanZoomStart].
+/// - `Listener.onPointerPanZoomEnd` — the end of that gesture. Forwards to
+///   [ScrollFollowTracker.handlePointerPanZoomEnd].
 /// - `NotificationListener<ScrollNotification>` — drag, momentum,
 ///   programmatic events. Forwards to
 ///   [ScrollFollowTracker.handleScrollNotification].

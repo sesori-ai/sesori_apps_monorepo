@@ -1160,7 +1160,9 @@ class SessionDetailCubit(
           final assistantAgentModel = _assistantAgentModel(messages: messages, agents: availableAgents);
           // A queue event that landed while the fetch was in flight is newer than
           // the fetched queue, and may be the only thing still showing a prompt.
-          final bridgeQueuedPrompts = identical(latest.bridgeQueuedPrompts, current.bridgeQueuedPrompts)
+          // The getter wraps its list anew on each read; `==` compares the list
+          // behind the wrappers, so it holds until the queue is replaced.
+          final bridgeQueuedPrompts = latest.bridgeQueuedPrompts == current.bridgeQueuedPrompts
               ? snapshot.bridgeQueuedPrompts
               : latest.bridgeQueuedPrompts;
           _reconcileStagedWithSnapshot(
