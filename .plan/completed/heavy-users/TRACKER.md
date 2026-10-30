@@ -3,7 +3,8 @@
 ## Current state
 
 - Plan: [PLAN.md](PLAN.md).
-- Current step: 19/19. The agent-runnable L3 cells pass; the remaining cells need the user (L3 matrix below).
+- Retired 2026-10-29: all 19 steps delivered. The agent-runnable L3 cells pass; the user accepted the remaining
+  cells as unexecuted (see Evidence and decisions).
 - User decisions: D1–D7 in `PLAN.md`, agreed 2026-10-28 on the review page `heavy-users-r1` and the follow-up in
   chat (D7).
 
@@ -29,7 +30,7 @@
 | 16/19 | monorepo | Session list on pages | Merged | #2196; recording owed (follow-ups) |
 | 17/19 | monorepo | Launch rows on the window; inventory removed | Merged | #2197 |
 | 18/19 | monorepo | Reconcile regression documents | Merged | #2198 |
-| 19/19 | monorepo | Run the L3 matrix; retire | In progress | L3 matrix below; user cells open |
+| 19/19 | monorepo | Run the L3 matrix; retire | Merged | L3 matrix below; user cells accepted unexecuted |
 
 ## Baseline (step 2)
 
@@ -173,18 +174,27 @@ Left for the user:
   that grows with the session count. `PLAN.md` → "Current behavior" records the findings with file references.
 - 2026-10-28: the review page `heavy-users-r1` settled D1–D6. The user then asked for one plan covering both phases
   in detail (D7).
-- No reduction of the retirement matrix has been requested or accepted.
+- 2026-10-29 (step 19): the user accepted retiring with the "Needs user" L3 cells unexecuted: "I won't run
+  anything myself for macos. I'll just tell you later if there's issues." Issues they report later become
+  standalone fixes. The reporting user's retest (D6) stays external and non-blocking.
 - 2026-10-29 (step 18): `HARNESS_CAPABILITIES.md` needs no change. Paging, search and counts are bridge-owned and
   harness-neutral; the scanner work fixed each harness that scans files (Claude, Pi, Codex) and OpenCode's import.
 
 ## Follow-ups
 
-Open items outside the 19 steps, to settle before or during step 19:
+Open items outside the 19 steps, carried as standalone work after retirement. Q1–Q5 of the review page
+`heavy-users-r2` (2026-10-29) ask the user about the decisions below; the page was still unanswered at retirement.
 - The `idx_sessions_archive` index is unused after step 13; dropping it needs migration v22.
 - The Prego list (step 4, #2184) still needs a feel check on a real device: filter, chip and page changes with
   rows entering and leaving off screen.
-- A recording is owed for #2195 (palette typing: loaded matches, then the bridge's below them). #2196's recording
-  is at `/tmp/hu19/2196-loader-retry.mp4` (step 19).
+- #2196's recording is posted on the PR (`pr-media/heavy-users-step-16/loader-retry.mp4`). #2195's palette
+  recording is not captured: it needs the macOS desktop, which the user accepted as unexecuted.
+- Renaming a row far down the list moves it to the top and shifts the visible rows about two rows down
+  (pre-existing; v1.10.1 does it too).
+- With the bridge disconnected, the loader row waits for the 30 s request timeout before Retry and does not
+  reload on reconnect.
+- In a debug build, search on a v1.10.1 bridge (complete mode, 9,700 rows) fell behind typing once; unmeasured
+  in a profile build.
 - The palette's sessions before typing are the sidebar list's loaded rows, so on a paged bridge they follow the
   list's project filter, search and chip; typed search does not. Step 15 described the palette as ignoring the
   list's key throughout. Decide whether the blank palette should ask the bridge for the newest sessions of every
