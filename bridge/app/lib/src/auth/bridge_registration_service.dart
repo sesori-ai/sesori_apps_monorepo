@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:io";
 
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log;
+import "package:sesori_shared/sesori_shared.dart" show BridgeKind;
 
 import "auth_api.dart";
 import "bridge_id_provider.dart";
@@ -23,6 +24,7 @@ class BridgeRegistrationService({
   required final BridgeIdStorage _bridgeIdStorage,
   required String hostName,
   required final String _platform,
+  required final BridgeKind _kind,
 }) implements BridgeIdProvider {
   static const fallbackName = "sesori-bridge";
 
@@ -75,6 +77,7 @@ class BridgeRegistrationService({
         name: _hostName,
         platform: _platform,
         bridgeId: existingId,
+        kind: _kind,
         accessToken: accessToken,
       ),
     );

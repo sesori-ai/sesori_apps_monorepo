@@ -7,6 +7,7 @@ import "package:sesori_bridge/src/auth/auth_api.dart";
 import "package:sesori_bridge/src/auth/bridge_registration_repository.dart";
 import "package:sesori_bridge/src/auth/machine_id_api.dart";
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart" show PlatformOs;
+import "package:sesori_shared/sesori_shared.dart" show BridgeKind;
 import "package:test/test.dart";
 
 import "../helpers/fake_command_executor.dart";
@@ -31,8 +32,20 @@ void main() {
       final bodies = <String?>[];
       final repository = _repository(runner: runner, bodies: bodies);
 
-      await repository.register(name: "dev", platform: "linux", bridgeId: null, accessToken: "token");
-      await repository.register(name: "dev", platform: "linux", bridgeId: "br_existing01", accessToken: "token");
+      await repository.register(
+        name: "dev",
+        platform: "linux",
+        bridgeId: null,
+        kind: BridgeKind.cli,
+        accessToken: "token",
+      );
+      await repository.register(
+        name: "dev",
+        platform: "linux",
+        bridgeId: "br_existing01",
+        kind: BridgeKind.cli,
+        accessToken: "token",
+      );
 
       final first = jsonDecode(bodies.first ?? "") as Map<String, dynamic>;
       expect(first["hostKey"], BridgeRegistrationRepository.hostKeyFor(machineId: "abc123"));
@@ -47,9 +60,15 @@ void main() {
         bodies: bodies,
       );
 
-      await repository.register(name: "dev", platform: "linux", bridgeId: null, accessToken: "token");
+      await repository.register(
+        name: "dev",
+        platform: "linux",
+        bridgeId: null,
+        kind: BridgeKind.cli,
+        accessToken: "token",
+      );
 
-      expect(jsonDecode(bodies.single ?? ""), {"name": "dev", "platform": "linux"});
+      expect(jsonDecode(bodies.single ?? ""), {"name": "dev", "platform": "linux", "kind": "cli"});
     });
   });
 }

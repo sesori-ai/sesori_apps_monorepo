@@ -19,6 +19,7 @@ void main() {
         platform: "macos",
         bridgeId: "br_existing01",
         hostKey: _hostKey,
+        kind: BridgeKind.desktop,
         accessToken: "access-token",
       );
 
@@ -32,7 +33,13 @@ void main() {
       expect(request.authorization, equals("Bearer access-token"));
       expect(
         jsonDecode(request.body),
-        equals({"name": "dev-laptop", "platform": "macos", "bridgeId": "br_existing01", "hostKey": _hostKey}),
+        equals({
+          "name": "dev-laptop",
+          "platform": "macos",
+          "bridgeId": "br_existing01",
+          "hostKey": _hostKey,
+          "kind": "desktop",
+        }),
       );
     });
 
@@ -46,11 +53,15 @@ void main() {
         platform: "linux",
         bridgeId: null,
         hostKey: null,
+        kind: BridgeKind.cli,
         accessToken: "access-token",
       );
 
       expect(summary.id, equals("br_server001"));
-      expect(jsonDecode(server.requests.single.body), equals({"name": "dev-laptop", "platform": "linux"}));
+      expect(
+        jsonDecode(server.requests.single.body),
+        equals({"name": "dev-laptop", "platform": "linux", "kind": "cli"}),
+      );
     });
 
     test("throws BridgeRegistrationException carrying the status code on failure", () async {
@@ -65,6 +76,7 @@ void main() {
           platform: "macos",
           bridgeId: null,
           hostKey: null,
+          kind: BridgeKind.cli,
           accessToken: "access-token",
         ),
         throwsA(isA<BridgeRegistrationException>().having((e) => e.statusCode, "statusCode", 500)),

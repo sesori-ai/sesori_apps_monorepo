@@ -107,6 +107,7 @@ class AuthApi({
     required String platform,
     required String? bridgeId,
     required String? hostKey,
+    required BridgeKind kind,
     required String accessToken,
   }) async {
     final response = await _sendRequest(
@@ -118,7 +119,13 @@ class AuthApi({
         "Authorization": "Bearer $accessToken",
       },
       body: jsonEncode(
-        RegisterBridgeRequest(name: name, platform: platform, bridgeId: bridgeId, hostKey: hostKey).toJson(),
+        RegisterBridgeRequest(
+          name: name,
+          platform: platform,
+          bridgeId: bridgeId,
+          hostKey: hostKey,
+          kind: kind,
+        ).toJson(),
       ),
       deadline: _bridgeRegistrationDeadline,
     );
