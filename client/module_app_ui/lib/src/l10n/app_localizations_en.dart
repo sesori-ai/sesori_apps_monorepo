@@ -1091,6 +1091,12 @@ class AppLocalizationsEn extends AppLocalizations {
   String get founderCallNotNow => 'Not now';
 
   @override
+  String get founderCallName => 'Alex';
+
+  @override
+  String get founderCallClose => 'Close invitation';
+
+  @override
   String get settingsRateSesori => 'Rate Sesori';
 
   @override

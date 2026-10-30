@@ -2071,6 +2071,18 @@ abstract class AppLocalizations {
   /// **'Not now'**
   String get founderCallNotNow;
 
+  /// The CEO's first name under the invitation's title; a name, so keep it as written
+  ///
+  /// In en, this message translates to:
+  /// **'Alex'**
+  String get founderCallName;
+
+  /// Accessibility label of the close button on the CEO call invitation
+  ///
+  /// In en, this message translates to:
+  /// **'Close invitation'**
+  String get founderCallClose;
+
   /// Settings account row that opens the rating sheet
   ///
   /// In en, this message translates to:
