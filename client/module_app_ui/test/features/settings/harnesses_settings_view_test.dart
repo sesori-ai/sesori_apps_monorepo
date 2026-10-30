@@ -388,7 +388,9 @@ void main() {
       await tester.runAsync(() => Future<void>.delayed(Duration.zero));
       await tester.pump();
       // The overview harness just changed group, so let it finish moving before
-      // asserting that a single pending switch slot survived the move.
+      // asserting that a single pending switch slot survived the move. The
+      // move runs from the frame after the update.
+      await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
       expect(find.bySemanticsLabel("Loading harnesses"), findsNothing);
       expect(find.byKey(const Key("harness_management_enabled_progress_ready")), findsOneWidget);

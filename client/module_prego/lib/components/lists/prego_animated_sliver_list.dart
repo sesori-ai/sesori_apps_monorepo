@@ -42,6 +42,9 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
   /// Where each row sits in [_entries], so a moved row keeps its element.
   var _indexByKey = <_PregoAnimatedSliverItemKey, int>{};
 
+  /// Row motions an update started, run once its frame has painted.
+  final _motionsAfterFrame = <({_RowMotion motion, bool opening})>[];
+
   @override
   void initState() {
     super.initState();
@@ -101,7 +104,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
             item: entry.item,
             sourceIndex: entry.sourceIndex,
             itemBuilder: oldWidget.itemBuilder,
-            leaving: (entering ?? _startMotion(key: entry.key, from: 1))..controller.reverse(),
+            leaving: _runAfterFrame(motion: entering ?? _startMotion(key: entry.key, from: 1), opening: false),
           );
         case _LeavingEntry<T>():
           closing = entry;
@@ -153,7 +156,7 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
           null => shown.contains(sourceIndex),
         };
         if (!onScreen) continue;
-        final entering = _startMotion(key: key, from: 0)..controller.forward();
+        final entering = _runAfterFrame(motion: _startMotion(key: key, from: 0), opening: true);
         entries[index] = _ShownEntry(key: key, item: item, sourceIndex: sourceIndex, entering: entering);
       }
     }
@@ -194,6 +197,29 @@ class _PregoAnimatedSliverListState<T>() extends State<PregoAnimatedSliverList<T
       // Only a list scrolled past its top has rows above the screen.
       anchor: constraints.scrollOffset > 0 && first < _entries.length ? _entries[first].key : null,
     );
+  }
+
+  /// Opens or closes [motion] once the frame the update lands in has painted.
+  /// Started during that frame, its clock would begin at the frame's start,
+  /// so a long one, as a slow device's, would use the motion up before its
+  /// first step shows and the row would snap open or shut.
+  _RowMotion _runAfterFrame({required _RowMotion motion, required bool opening}) {
+    if (_motionsAfterFrame.isEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        final motions = [..._motionsAfterFrame];
+        _motionsAfterFrame.clear();
+        if (!mounted) return;
+        for (final (:motion, :opening) in motions) {
+          if (opening) {
+            motion.controller.forward();
+          } else {
+            motion.controller.reverse();
+          }
+        }
+      });
+    }
+    _motionsAfterFrame.add((motion: motion, opening: opening));
+    return motion;
   }
 
   _RowMotion _startMotion({required _PregoAnimatedSliverItemKey key, required double from}) {

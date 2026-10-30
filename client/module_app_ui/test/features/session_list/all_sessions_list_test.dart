@@ -2216,22 +2216,30 @@ void main() {
       isRetrying: false,
       backgroundTaskCount: 0,
     );
-    final tops = await topsAcross(
-      tester,
-      updates: updates,
-      update: listing([renamedRow, ...rows.where((row) => row.session.id != "Session $renamed")]),
-      finders: [for (final index in onScreen) find.text("Session $index")],
-    );
+    final finders = [for (final index in onScreen) find.text("Session $index")];
+    List<double?> readTops() => [for (final finder in finders) topOf(tester, finder)];
+    final frames = [readTops()];
+    updates.add(listing([renamedRow, ...rows.where((row) => row.session.id != "Session $renamed")]));
+    await tester.pump(Duration.zero);
+    frames.add(readTops());
+    // The frame after the update runs long, as a slow device's can; the rows
+    // below still close up from there rather than in one step.
+    await tester.pump(const Duration(milliseconds: 400));
+    frames.add(readTops());
+    for (var elapsed = 0; elapsed < 500; elapsed += 5) {
+      await tester.pump(const Duration(milliseconds: 5));
+      frames.add(readTops());
+    }
 
     for (final (position, index) in onScreen.indexed) {
-      final readings = tops[position];
+      final readings = [for (final frame in frames) frame[position]];
       if (index < renamed) {
         // Rows above the renamed one hold still on every frame.
         expect(readings, everyElement(readings.first), reason: "Session $index");
       } else if (index > renamed) {
         // Rows below it close up smoothly as it closes where it stood.
         expect(steps(readings), everyElement(inInclusiveRange(-maxStep, 0)), reason: "Session $index");
-        expect(readings.last, tops[position - 1].first, reason: "Session $index");
+        expect(readings.last, frames.first[position - 1], reason: "Session $index");
       }
     }
     expect(find.text("Today"), findsNothing);
