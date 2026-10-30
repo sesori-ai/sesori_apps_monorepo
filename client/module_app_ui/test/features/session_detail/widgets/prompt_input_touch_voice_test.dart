@@ -425,6 +425,27 @@ void main() {
     expect(focus.hasFocus, isTrue);
   });
 
+  testWidgets("tapping send during transcribing still sends one message", (tester) async {
+    final composer = await _pumpComposer(
+      tester: tester,
+      voiceCubit: voiceCubit,
+      mode: ChatInputMode.textFirst,
+      initialText: "Typed first",
+    );
+
+    final gesture = await hold(tester: tester, mode: ChatInputMode.textFirst);
+    await gesture.up();
+    await tester.pump();
+    await tester.pump(const Duration(milliseconds: 300));
+
+    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.pump();
+    expect(composer.sent, isEmpty, reason: "The box waits for the words on their way.");
+
+    await complete(tester: tester, transcript: "and spoken", outcome: VoiceDictationOutcome.finished);
+    expect(composer.sent, [(text: "Typed first and spoken", command: null)]);
+  });
+
   testWidgets("the keyboard button during transcribing lands the words in the box", (tester) async {
     final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
 

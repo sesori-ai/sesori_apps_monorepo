@@ -2187,10 +2187,10 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voicePutWordsInBox => 'Put the words in the box';
 
   @override
-  String get voiceClickToTranscribe => 'Click the mic to transcribe · Esc to cancel';
+  String get voiceEnterToSend => 'Enter to send';
 
   @override
-  String get voiceStopAndTranscribe => 'Stop and transcribe';
+  String get voiceEditBeforeSending => 'Edit before sending';
 
   @override
   String get voiceReleaseToCancel => 'Release to cancel';

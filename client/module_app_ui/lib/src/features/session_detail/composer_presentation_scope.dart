@@ -25,7 +25,8 @@ enum ComposerPresentation() {
 
   /// Pointer-sized: selectors hug their labels at the leading edge, `+` and
   /// `/` are always visible, the box itself grows for long prompts, and the
-  /// mic records on click until clicked again or Escape cancels it.
+  /// mic records on click until a wide Send, Enter, the pencil, Shift+Enter, the
+  /// X or Escape ends it.
   pointer,
 }
 
