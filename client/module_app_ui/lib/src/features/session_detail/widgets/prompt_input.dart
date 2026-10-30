@@ -16,7 +16,6 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../composer_presentation_scope.dart";
 import "command_picker.dart";
-import "composer_listening_pulse.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
@@ -527,7 +526,21 @@ class _PromptInputState() extends State<PromptInput> {
     });
   }
 
-  void _handleSend() => unawaited(_submitComposer(fromDictation: false));
+  /// Words are on their way into the box, so it must not go out ahead of them.
+  /// A retried recording is no dictation: sending abandons it.
+  bool get _isAwaitingDictatedWords =>
+      _voiceInteraction is _VoiceTranscribing && _voiceCubit.state is! VoiceInputRetrying;
+
+  /// Enter and the send button. While a pointer shell listens, Enter finishes
+  /// the dictation.
+  void _handleSend() {
+    if (_isAwaitingDictatedWords) return;
+    if (_isListening && ComposerPresentationScope.read(context).presentation == ComposerPresentation.pointer) {
+      unawaited(_endRecording(finish: _VoiceFinish.send));
+      return;
+    }
+    unawaited(_submitComposer(fromDictation: false));
+  }
 
   /// Sends the composer's content and reports whether it went out; a refusal
   /// leaves everything where it is.
@@ -783,17 +796,11 @@ class _PromptInputState() extends State<PromptInput> {
     return _VoiceDragArm.none;
   }
 
-  /// A release sends, unless the finger is on the pencil. A pointer shell keeps
-  /// landing in the box.
-  _VoiceFinish get _finishOnRelease {
-    if (ComposerPresentationScope.read(context).presentation == ComposerPresentation.pointer) {
-      return _VoiceFinish.edit;
-    }
-    return switch (_dragArm) {
-      _VoiceDragArm.edit => _VoiceFinish.edit,
-      _VoiceDragArm.none || _VoiceDragArm.cancel => _VoiceFinish.send,
-    };
-  }
+  /// A release sends, unless the finger is on the pencil.
+  _VoiceFinish get _finishOnRelease => switch (_dragArm) {
+    _VoiceDragArm.edit => _VoiceFinish.edit,
+    _VoiceDragArm.none || _VoiceDragArm.cancel => _VoiceFinish.send,
+  };
 
   /// Tracks the hold as it moves, scrubbing the slide-out cancel and the pencil.
   /// A cancel in progress wins over the pencil.
@@ -856,8 +863,8 @@ class _PromptInputState() extends State<PromptInput> {
     await _stopAndTranscribe(finish: finish);
   }
 
-  /// A tap on the pencil: a second finger, or assistive technology, which has
-  /// no drag to express it with.
+  /// A tap on the pencil: a pointer shell's click, a second finger, or assistive
+  /// technology, which has no drag to express it with.
   void _handleEditTargetTap() {
     unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
     unawaited(_endRecording(finish: _VoiceFinish.edit));
@@ -1183,12 +1190,28 @@ class _PromptInputState() extends State<PromptInput> {
         : const VoiceInputState.idle();
 
     // Escape cancels a running recording from anywhere in the composer. The
-    // binding exists only while listening, so an idle Escape still reaches the
-    // shell's own handling (leaving the text field, closing popups).
+    // binding exists only while listening (for a pointer shell, until its words
+    // arrive, as its X does), so an idle Escape still reaches the shell's own
+    // handling (leaving the text field, closing popups). A pointer shell's Enter
+    // and Shift+Enter finish the dictation the same way; they are handled here,
+    // so neither reaches the field as a newline. Focus outside the composer
+    // never gets here.
+    final pointer = capabilities.presentation == ComposerPresentation.pointer;
     return CallbackShortcuts(
       bindings: <ShortcutActivator, VoidCallback>{
-        if (_isListening)
+        if (_isListening || (pointer && _voiceInteraction is _VoiceTranscribing))
           const SingleActivator(LogicalKeyboardKey.escape): () => unawaited(_cancelVoiceInteractionWithFeedback()),
+        if (pointer && _isListening) ...{
+          _ComposerSendShortcutActivator(
+            controller: _controller,
+            activator: const SingleActivator(LogicalKeyboardKey.enter),
+          ): _handleSend,
+          _ComposerSendShortcutActivator(
+            controller: _controller,
+            activator: const SingleActivator(LogicalKeyboardKey.enter, shift: true),
+          ): () =>
+              unawaited(_endRecording(finish: _VoiceFinish.edit)),
+        },
       },
       child: Focus(focusNode: _composerFocusNode, child: _buildComposerColumn(context, capabilities: capabilities)),
     );
@@ -1410,7 +1433,7 @@ class _PromptInputState() extends State<PromptInput> {
     final loc = context.loc;
     // A pointer shell records on click, so there is no hold to release.
     final restingHint = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer
-        ? loc.voiceClickToTranscribe
+        ? loc.voiceEnterToSend
         : loc.voiceReleaseToSend;
 
     return Padding(
@@ -1855,6 +1878,10 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   Widget _buildMicAndPrimaryActions(BuildContext context) {
+    if (_voiceSupport.isSupported &&
+        ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
+      return _buildPointerVoiceActions(context);
+    }
     return Row(
       spacing: PregoSpacing.sm,
       children: [
@@ -1868,12 +1895,120 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  /// A pointer shell's mic and primary action, which merge into one wide Send
+  /// while a dictation runs, so the cursor that clicked the mic is already on it.
+  /// The Send grows over them rather than replacing them: nothing around it
+  /// moves, and they wait mounted beneath it to fade back. It stays through
+  /// transcribing, dimmed and inert, so a second click lands on nothing. A
+  /// retried recording leaves the send button free, as sending abandons it.
+  Widget _buildPointerVoiceActions(BuildContext context) {
+    final merged = _voicePresentation == _VoicePresentation.recording || _renderedVoiceState is VoiceInputTranscribing;
+    final loc = context.loc;
+
+    return SizedBox(
+      width: _pointerVoiceGroupWidth,
+      height: _actionButtonSize,
+      child: Stack(
+        // The buttons' focus rings paint past this box.
+        clipBehavior: Clip.none,
+        children: [
+          IgnorePointer(
+            ignoring: merged,
+            child: AnimatedOpacity(
+              opacity: merged ? 0 : 1,
+              duration: _morphDuration,
+              child: Row(
+                spacing: PregoSpacing.sm,
+                children: [_buildMicButton(context), _buildPrimaryActionButton(context)],
+              ),
+            ),
+          ),
+          AnimatedPositionedDirectional(
+            start: merged ? 0 : _actionButtonSize + PregoSpacing.sm,
+            end: 0,
+            top: 0,
+            bottom: 0,
+            duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+            curve: _morphCurve,
+            child: IgnorePointer(
+              ignoring: !merged,
+              child: AnimatedOpacity(
+                opacity: merged ? 1 : 0,
+                duration: _morphDuration,
+                child: Tooltip(
+                  message: loc.sessionDetailSend,
+                  excludeFromSemantics: true,
+                  child: PregoVoiceSendButton(
+                    label: loc.sessionDetailSend,
+                    enabled: _voicePresentation == _VoicePresentation.recording,
+                    onPressed: () => unawaited(_handleRecordEnd()),
+                  ),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  /// A pointer shell's pencil and X. They keep their places into transcribing:
+  /// the pencil fades out, leaving nothing under a cursor that just clicked it,
+  /// and the X stays where it was, still stopping the work.
+  Widget _buildPointerVoiceTargets(BuildContext context) {
+    final loc = context.loc;
+    final listening = _voicePresentation == _VoicePresentation.recording;
+    final cancelLabel = listening ? loc.voiceCancelRecording : loc.voiceCancelTranscription;
+
+    return SizedBox(
+      width: _pointerVoiceGroupWidth,
+      child: Row(
+        spacing: PregoSpacing.sm,
+        children: [
+          IgnorePointer(
+            ignoring: !listening,
+            child: AnimatedOpacity(
+              opacity: listening ? 1 : 0,
+              duration: _morphDuration,
+              child: Tooltip(
+                message: loc.voiceEditBeforeSending,
+                excludeFromSemantics: true,
+                child: PregoVoiceTarget(
+                  icon: TablerRegular.pencil,
+                  tone: PregoVoiceTargetTone.primary,
+                  semanticLabel: loc.voiceEditBeforeSending,
+                  progress: _editDragProgress,
+                  onTap: _handleEditTargetTap,
+                ),
+              ),
+            ),
+          ),
+          Tooltip(
+            message: cancelLabel,
+            excludeFromSemantics: true,
+            child: PregoVoiceTarget(
+              icon: TablerRegular.x,
+              tone: PregoVoiceTargetTone.destructive,
+              semanticLabel: cancelLabel,
+              progress: _cancelDragProgress,
+              onTap: _cancelVoiceInteractionWithFeedback,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   // ---------------------------------------------------------------------------
   // Shared pieces
   // ---------------------------------------------------------------------------
 
   /// The mic / send buttons and the accordion's closed pill are all 44pt.
   static const double _actionButtonSize = 44;
+
+  /// A pointer shell's two 44pt controls and the gap between them, as the mic
+  /// and send sit at rest.
+  static const double _pointerVoiceGroupWidth = _actionButtonSize * 2 + PregoSpacing.sm;
 
   Widget _buildOptionsAccordion() {
     return PregoPickerPopover(
@@ -2056,37 +2191,30 @@ class _PromptInputState() extends State<PromptInput> {
     return total;
   }
 
-  /// The 44pt leading slot: the options accordion at rest, the pencil to slide
-  /// onto while recording (a pointer shell's X instead), and a plain cancel
-  /// button while transcribing.
+  /// The leading slot: the options accordion at rest, the pencil to slide onto
+  /// while recording, and a plain cancel button while transcribing. A pointer
+  /// shell keeps its pencil and X through both.
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
+    final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
 
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),
-      _VoicePresentation.recording => switch (ComposerPresentationScope.of(context).presentation) {
-        ComposerPresentation.touch => KeyedSubtree(
-          key: const ValueKey("edit-target"),
-          child: PregoVoiceTarget(
-            key: _editTargetKey,
-            icon: TablerRegular.pencil,
-            tone: PregoVoiceTargetTone.primary,
-            semanticLabel: loc.voicePutWordsInBox,
-            progress: _editDragProgress,
-            onTap: _handleEditTargetTap,
-          ),
+      _VoicePresentation.recording || _VoicePresentation.transcribing when pointer => KeyedSubtree(
+        key: const ValueKey("pointer-voice-targets"),
+        child: _buildPointerVoiceTargets(context),
+      ),
+      _VoicePresentation.recording => KeyedSubtree(
+        key: const ValueKey("edit-target"),
+        child: PregoVoiceTarget(
+          key: _editTargetKey,
+          icon: TablerRegular.pencil,
+          tone: PregoVoiceTargetTone.primary,
+          semanticLabel: loc.voicePutWordsInBox,
+          progress: _editDragProgress,
+          onTap: _handleEditTargetTap,
         ),
-        ComposerPresentation.pointer => KeyedSubtree(
-          key: const ValueKey("cancel-target"),
-          child: PregoVoiceTarget(
-            icon: TablerRegular.x,
-            tone: PregoVoiceTargetTone.destructive,
-            semanticLabel: loc.voiceCancelRecording,
-            progress: _cancelDragProgress,
-            onTap: _cancelVoiceInteractionWithFeedback,
-          ),
-        ),
-      },
+      ),
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("cancel-transcription"),
         child: Tooltip(
@@ -2101,10 +2229,19 @@ class _PromptInputState() extends State<PromptInput> {
       ),
     };
 
-    final switcher = AnimatedSwitcher(duration: _morphDuration, child: child);
+    final switcher = AnimatedSwitcher(
+      duration: _morphDuration,
+      // Pinned to the leading edge: centred, the narrower child would jump
+      // sideways when the wider one leaves at the fade's end.
+      layoutBuilder: (currentChild, previousChildren) => Stack(
+        alignment: AlignmentDirectional.centerStart,
+        children: [...previousChildren, ?currentChild],
+      ),
+      child: child,
+    );
     if (prefersReducedMotion(context)) return switcher;
-    // The pointer accordion is wider than the 44pt cancel target; glide the
-    // width change so the waveform beside it does not snap at the fade's end.
+    // The pointer accordion and the targets differ in width; glide the change
+    // so the waveform beside them does not snap at the fade's end.
     return AnimatedSize(
       duration: _morphDuration,
       curve: _morphCurve,
@@ -2214,22 +2351,17 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildMicButton(BuildContext context) {
     final loc = context.loc;
 
-    // A pointer shell clicks to start and clicks again to stop; the halo
-    // breathes while the mic listens.
+    // A pointer shell clicks to start; the wide Send takes it from there.
     if (ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
-      final listening = _voicePresentation == _VoicePresentation.recording;
       return Semantics(
         button: true,
         child: Tooltip(
-          message: listening ? loc.voiceStopAndTranscribe : loc.voiceRecord,
-          child: ComposerListeningPulse(
-            active: listening,
-            child: PregoButtonsSolid.iconOnly(
-              leadingIcon: TablerRegular.microphone,
-              hierarchy: PregoButtonsSolidHierarchy.secondary,
-              size: PregoButtonsSolidSize.lg,
-              onPressed: _handleMicClick,
-            ),
+          message: loc.voiceRecord,
+          child: PregoButtonsSolid.iconOnly(
+            leadingIcon: TablerRegular.microphone,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: _handleMicClick,
           ),
         ),
       );
@@ -2291,7 +2423,7 @@ class _PromptInputState() extends State<PromptInput> {
         size: PregoButtonsSolidSize.lg,
         // An empty composer has nothing to send: show the action as genuinely
         // unavailable instead of accepting a tap that does nothing.
-        onPressed: _hasSendableContent ? _handleSend : null,
+        onPressed: _hasSendableContent && !_isAwaitingDictatedWords ? _handleSend : null,
       ),
     );
   }

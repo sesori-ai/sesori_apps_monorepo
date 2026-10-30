@@ -1576,7 +1576,7 @@
   "voiceCancelTranscription": "Cancel transcription",
   "voiceCancelRecording": "Cancel recording",
   "@voiceCancelRecording": {
-    "description": "Accessibility label of the X button shown in the accordion's place while a desktop recording runs; clicking it discards the recording."
+    "description": "Tooltip and accessibility label of the X shown while a desktop composer recording runs, and accessibility label of the X shown while a feedback sheet recording runs; activating it discards the recording."
   },
   "voiceReleaseToSend": "Release to send · slide up to cancel",
   "@voiceReleaseToSend": {
@@ -1590,13 +1590,13 @@
   "@voicePutWordsInBox": {
     "description": "Accessibility label of the pencil shown in the accordion's place while recording; releasing or tapping on it puts the words in the box instead of sending them."
   },
-  "voiceClickToTranscribe": "Click the mic to transcribe · Esc to cancel",
-  "@voiceClickToTranscribe": {
+  "voiceEnterToSend": "Enter to send",
+  "@voiceEnterToSend": {
     "description": "Floating helper above the desktop composer while a click-started recording is running."
   },
-  "voiceStopAndTranscribe": "Stop and transcribe",
-  "@voiceStopAndTranscribe": {
-    "description": "Tooltip of the desktop mic button while it is recording; clicking it stops and transcribes."
+  "voiceEditBeforeSending": "Edit before sending",
+  "@voiceEditBeforeSending": {
+    "description": "Tooltip and accessibility label of the pencil shown while a desktop recording runs; clicking it puts the words in the box instead of sending them."
   },
   "voiceReleaseToCancel": "Release to cancel",
   "@voiceReleaseToCancel": {

@@ -3907,7 +3907,7 @@ abstract class AppLocalizations {
   /// **'Cancel transcription'**
   String get voiceCancelTranscription;
 
-  /// Accessibility label of the X button shown in the accordion's place while a desktop recording runs; clicking it discards the recording.
+  /// Tooltip and accessibility label of the X shown while a desktop composer recording runs, and accessibility label of the X shown while a feedback sheet recording runs; activating it discards the recording.
   ///
   /// In en, this message translates to:
   /// **'Cancel recording'**
@@ -3934,14 +3934,14 @@ abstract class AppLocalizations {
   /// Floating helper above the desktop composer while a click-started recording is running.
   ///
   /// In en, this message translates to:
-  /// **'Click the mic to transcribe · Esc to cancel'**
-  String get voiceClickToTranscribe;
+  /// **'Enter to send'**
+  String get voiceEnterToSend;
 
-  /// Tooltip of the desktop mic button while it is recording; clicking it stops and transcribes.
+  /// Tooltip and accessibility label of the pencil shown while a desktop recording runs; clicking it puts the words in the box instead of sending them.
   ///
   /// In en, this message translates to:
-  /// **'Stop and transcribe'**
-  String get voiceStopAndTranscribe;
+  /// **'Edit before sending'**
+  String get voiceEditBeforeSending;
 
   /// Floating helper above the composer once the recording hold has slid far enough out of the pill; releasing there discards the recording.
   ///

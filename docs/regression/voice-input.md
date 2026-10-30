@@ -4,9 +4,11 @@
 
 The mobile composer records speech while the user holds the mic control, uploads the audio to the Sesori auth server
 for transcription, and sends the words when the release finishes them; sliding onto the pencil target keeps them in the
-prompt field instead. A voice-first or text-first preference decides which control leads. The desktop composer stays text-first and adds the mic as an extra
-control on the same pipeline: one click starts listening, a second click transcribes, and Escape cancels. The device microphone and transcription endpoint are external. The bridge
-independently prepares optional project-scoped vocabulary from bounded local evidence; no backend plugin participates.
+prompt field instead. A voice-first or text-first preference decides which control leads. The desktop composer stays
+text-first and adds the mic as an extra control on the same pipeline: one click starts listening, and a second click in
+the same place or Enter sends; the pencil or Shift+Enter puts the words in the prompt field, and the X or Escape
+cancels. The device microphone and transcription endpoint are external. The bridge independently prepares optional
+project-scoped vocabulary from bounded local evidence; no backend plugin participates.
 
 ## Required Behavior
 
@@ -47,8 +49,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   recording, a hold the system cancelled, a keyboard tap during transcribing, and a composer that refuses the send all
   land in the box. An automatic send does not raise the keyboard unless the field already had it.
 - The composer stays open and the X still stops a transcription under way.
-- Desktop click-to-talk inserts the text for review and never sends by itself. The feedback sheet keeps words in its
-  own field.
+- The feedback sheet keeps words in its own field and never sends by itself.
 - The draft tracks voice-origin spans, so a message retaining one counts as voice-assisted input.
 - A voice-assisted message reaches the agent, and shows in the sender's own bubble, marked whole as `🎙️ "words"`, so the
   agent allows for misheard words. The composer and a restored draft hold plain words, generated and pending titles use
@@ -75,12 +76,16 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 - Mobile Settings lists Default input under Preferences, directly after Notifications. The keyboard row shows the live
   Voice/Text value and opens a dedicated page rather than selecting a mode inline.
   Desktop's composer always leads with text, so General does not expose this ineffective preference.
-- Desktop click-to-talk: the mic click starts listening without moving keyboard focus out of the composer; while
-  listening the mic pulses softly (static under reduced motion), its tooltip reads "Stop and transcribe", the hint
-  names click-to-transcribe and Esc-to-cancel, the options give way to the shared X cancel target, and the composer
-  does not resize. Clicking elsewhere never stops or discards the recording; only the mic click, the X, Escape, the
-  maximum duration, or leaving the composer ends it. No
-  sound plays. macOS asks for microphone access once through the system prompt.
+- Desktop click-to-talk: the mic click starts listening without moving keyboard focus out of the composer. While
+  listening the mic and send merge into a wide `Send ↑` that covers the mic's place, so a second click needs no mouse
+  movement; the options give way to a pencil and an X with tooltips, the hint reads "Enter to send", and the composer
+  does not resize. Clicking the wide Send or pressing Enter sends everything the box holds as one message once the
+  words arrive, on the session screen and the new-session screen alike, and inserts no newline. The pencil or
+  Shift+Enter puts the words in the box. The X or Escape cancels and keeps what the box held. Keys work only while focus
+  is inside the composer. While transcribing, the wide Send stays dimmed and inert, the pencil is gone, and the X or
+  Escape stops the work. The rules above for empty, short, cut-off, retried and refused dictations apply. Clicking
+  elsewhere never stops or discards the recording; only those controls, the maximum duration, or leaving the composer
+  ends it. No sound plays. macOS asks for microphone access once through the system prompt.
 - The Default input page has an inline title, explanatory subtitle, and two mutually exclusive Voice/Text previews.
   Selection updates the existing app-root preference and persists immediately; external preference changes update
   both the row and the open page. Back is the sole navigation action and returns to Settings.
@@ -102,9 +107,10 @@ On the release-target mobile platform, hold to record and release to send, slide
 transcript, slide up to cancel, slide up and back, and check layout stability and which control leads under each input preference.
 Open Settings → Default input, select each mode, check Back returns to Settings from a non-home opener,
 reopen the page and verify the saved row value.
-On the macOS desktop build, grant the first microphone prompt, click the mic, speak, click again and edit the
-inserted transcript; start again and press Escape to cancel; click into the transcript mid-recording and confirm
-the recording continues.
+On the macOS desktop build, grant the first microphone prompt, click the mic, speak, and click again without moving the
+mouse to send; start again and press Enter to send, with text already in the box; start again and use Shift+Enter, then
+the pencil, and edit the inserted transcript; start again and cancel with Escape, then the X, and confirm the box keeps
+its text; click into the transcript mid-recording and confirm the recording continues.
 On either, send a dictated message and confirm the bubble and the harness transcript show `🎙️ "words"`, while the
 generated session title shows plain words.
 
@@ -124,6 +130,7 @@ interruptions such as a call.
   accepts a late transcript or send, leaks a wake-lock/recording resource, or
   restores content from a recording/transcription that was still in flight when
   the block began.
+- Sending during transcribing delivers the box and the dictated words as two messages.
 - The composer stays in a recording or transcribing state after error, cancel, or disposal, or a cancelled transcript
   appears in a later interaction.
 - A retryable async failure loses the artifact or lacks persistent Retry/Discard controls; a terminal/unknown failure
@@ -132,8 +139,10 @@ interruptions such as a call.
   terminal paths; a deletion failure is unlogged; or the wake lock stays held.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - A project glossary contains connector or everyday English words, or exceeds 100 terms.
-- A cut-off, failed, cancelled or retried dictation sends by itself, a desktop or feedback-sheet dictation sends by
-  itself, or a message with surviving voice text is classified as typed.
+- A cut-off, failed, cancelled or retried dictation sends by itself, a feedback-sheet dictation sends by itself, or a
+  message with surviving voice text is classified as typed.
+- A desktop dictation sends the box and the words as two messages, Enter inserts a newline while listening, or the
+  second click misses because the control moved.
 - A dictated message reaches the agent unmarked, a typed message or slash command is marked, or the marker appears in a
   draft or a generated title.
 - Any audio, transcript, or prompt content reaches logs or analytics; raw project identity, project paths, repository
