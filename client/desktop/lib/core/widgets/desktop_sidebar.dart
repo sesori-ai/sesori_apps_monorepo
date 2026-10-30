@@ -130,7 +130,7 @@ class const DesktopSidebar({
                           // The filter heads the list already, beside Refresh.
                           header: null,
                           // The last row scrolls clear of the floating scan card.
-                          endClearance: catalogScanRowClearance,
+                          endClearance: catalogScanRowClearance(context: context),
                         ),
                       ],
                     ),

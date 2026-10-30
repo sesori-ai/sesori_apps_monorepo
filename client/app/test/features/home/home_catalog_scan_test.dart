@@ -236,46 +236,51 @@ void main() {
 
   // The card covers the bottom of the list while a scan runs, so the list
   // always reserves room for it: scrolled to the end, the last row rests
-  // fully above the card and stays reachable.
-  testWidgets("the last row scrolls fully clear of the card", (tester) async {
-    when(() => mockProjectRepository.listSessions(projectId: "project-1")).thenAnswer(
-      (_) async => ApiResponse.success(
-        SessionListResponse(
-          items: [
-            for (var index = 0; index < 30; index++)
-              testSession(id: "session-$index", title: "Session $index", updatedAt: 1700000000000 - index * 60000),
-          ],
+  // fully above the card and stays reachable, also at enlarged text, which
+  // grows the card.
+  for (final textScale in [1.0, 2.0]) {
+    testWidgets("the last row scrolls fully clear of the card at ${textScale}x text", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      when(() => mockProjectRepository.listSessions(projectId: "project-1")).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [
+              for (var index = 0; index < 30; index++)
+                testSession(id: "session-$index", title: "Session $index", updatedAt: 1700000000000 - index * 60000),
+            ],
+          ),
         ),
-      ),
-    );
-    final loc = await pumpLoadedList(tester);
-    await emitScan(
-      tester,
-      const CatalogRescanState.succeeded(
-        harnessCount: 1,
-        counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
-      ),
-    );
-    expect(find.text(loc.catalogScanCompleteTitle), findsOneWidget);
+      );
+      final loc = await pumpLoadedList(tester);
+      await emitScan(
+        tester,
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
+        ),
+      );
+      expect(find.text(loc.catalogScanCompleteTitle), findsOneWidget);
 
-    final list = find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first;
-    final position = tester.state<ScrollableState>(list).position;
-    // Lazily built rows refine the extent as they lay out, so jump until the
-    // end holds still.
-    do {
-      position.jumpTo(position.maxScrollExtent);
-      await tester.pump();
-      await tester.pump(_rowSettled);
-    } while (position.pixels != position.maxScrollExtent);
+      final list = find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first;
+      final position = tester.state<ScrollableState>(list).position;
+      // Lazily built rows refine the extent as they lay out, so jump until the
+      // end holds still.
+      do {
+        position.jumpTo(position.maxScrollExtent);
+        await tester.pump();
+        await tester.pump(_rowSettled);
+      } while (position.pixels != position.maxScrollExtent);
 
-    final lastRow = find.text("Session 29");
-    expect(lastRow, findsOneWidget);
-    expect(
-      tester.getRect(lastRow).bottom,
-      lessThan(tester.getRect(find.byKey(const ValueKey("catalog-scan-terminal-card"))).top),
-      reason: "the last row rests above the card at the end of the list",
-    );
-  });
+      final lastRow = find.text("Session 29");
+      expect(lastRow, findsOneWidget);
+      expect(
+        tester.getRect(find.ancestor(of: lastRow, matching: find.byType(SessionTile)).first).bottom,
+        lessThan(tester.getRect(find.byKey(const ValueKey("catalog-scan-terminal-card"))).top),
+        reason: "the last row rests above the card at the end of the list",
+      );
+    });
+  }
 
   testWidgets("reports a finished scan with no control to press", (tester) async {
     await pumpLoadedList(tester);

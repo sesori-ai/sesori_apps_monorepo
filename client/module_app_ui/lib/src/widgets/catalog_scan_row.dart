@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 import "dart:ui" as ui;
 
 import "package:material_ui/material_ui.dart";
@@ -26,7 +27,20 @@ const double _cardMinHeight = 69;
 /// The room a list hosting a floating [CatalogScanRow] reserves after its last
 /// row, so that row scrolls fully clear of the card. Reserved whether or not a
 /// scan is showing, so the card coming and going never changes the list.
-const double catalogScanRowClearance = _cardMinHeight + 2 * PregoSpacing.xl;
+///
+/// Follows the text scale, since enlarged text grows the card's two lines past
+/// its resting height. A wrapped line at large text can still grow it further.
+double catalogScanRowClearance({required BuildContext context}) {
+  final style = context.prego.textTheme.textSm.medium;
+  final fontSize = style.fontSize;
+  final textHeight = fontSize == null
+      ? 0.0
+      : 2 * MediaQuery.textScalerOf(context).scale(fontSize) * (style.height ?? 1) + PregoSpacing.xxs;
+  // The terminal card pads its text vertically; the loading card centres it
+  // in the same resting height.
+  final cardHeight = math.max(_cardMinHeight, textHeight + 2 * PregoSpacing.lg);
+  return cardHeight + 2 * PregoSpacing.xl;
+}
 
 /// The catalog scan reported as one quiet card floating over a list.
 ///
