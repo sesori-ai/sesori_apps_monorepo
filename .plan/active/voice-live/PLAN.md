@@ -20,8 +20,8 @@ Implementation has not started.
 - `VoiceCapture` records to a file. `VoiceApi.transcribe` uploads it, and
   `VoiceTranscriptionService` and `VoiceInputCubit` own the session.
 - `PromptInput` (`client/module_app_ui/.../widgets/prompt_input.dart`, 2,254 lines)
-  owns the gestures through sealed `_VoiceGesturePresentation` states and appends
-  the finished transcript to the draft with `appendVoiceTranscript`.
+  owns the gestures through a private sealed `_voiceInteraction` and appends the
+  finished transcript to the draft with `appendVoiceTranscript`.
 - Touch: hold to record, release to transcribe, drag onto a left X
   (`PregoVoiceCancelButton`) to cancel.
 - Pointer: click the mic to start, click it again to transcribe, Esc cancels, the
@@ -29,10 +29,18 @@ Implementation has not started.
   660–704 → 704–748 at 760 px wide), so a second click in the same spot misses.
 - `ComposerDraft.voiceSpans` produces `ComposerInputMode.voiceAssisted`, which is
   used for analytics only and never reaches the bridge.
+- The first new-session message reaches the bridge from the submission snapshot
+  (`session_launch_service.dart:133`), and follow-ups from `QueuedTextSubmission`
+  (`:192`, `session_detail_cubit.dart:2518`). `displayText` currently serves as
+  bubble text, restore text (`withFollowUps`) and pending title
+  (`session_launch_repository.dart:88`).
+- `VoiceInputCubit` is created in five places: `home_composer_pane`,
+  `new_session_screen` and `session_detail_composer_controls` in `client/app`,
+  `desktop_composer_presentation_scope` in `client/desktop`, and
+  `feedback_voice_input_scope` for the feedback sheet.
 - `FirebaseRemoteConfigClient` exists in `client/app` behind
-  `@firebaseEnabledEnvironment`. **`client/desktop` has no Firebase dependency**,
-  and uses no-op config sources.
-- `VoiceInputCubit` is also used by the feedback sheet (`feedback_private_step.dart`).
+  `@firebaseEnabledEnvironment`, and fetches once per launch. **`client/desktop` has
+  no Firebase dependency**, and uses no-op config sources.
 - Production `GET https://api.sesori.com/voice/capabilities` reports realtime
   enabled, protocol 1.
 - PR #918 (phone-only live voice, closed unmerged on 2026-08-28) is reference
@@ -72,10 +80,11 @@ decision.
 | D25 | No words, or a hold under today's 200 ms minimum, sends nothing. |
 | D26 | A hold never waits on the switch. With no value yet, it uses after-recording. |
 | D27 | Desktop's focus view covers the chat pane only, with the words in a reading-width column. |
-| D28 | Planning decision: desktop values come from `DesktopReleaseChannel`: `internal` gets live with focus, `stable` gets after-recording. This is D12 applied to D11. |
+| D28 | Planning decision: desktop values come from `DesktopReleaseChannel`: `internal` gets live with focus, `stable` gets after-recording. This is D12 applied to D11. Source builds default to `stable`, so testing live locally needs the define set. |
 | D29 | Planning decision: audio captured before the server's `ready` is held in memory and flushed on `ready`, so the first words aren't lost. See Proportionality. |
 | D30 | Planning decision: the client doesn't call `/voice/capabilities`. Remote config decides, and a disabled server fails the upgrade with 404, which is D21's fallback. |
 | D31 | Planning decision: live and send on finish apply to the composer only. The feedback sheet keeps after-recording and keeps its words in its field. |
+| D32 | Planning decision: a retried after-recording dictation lands in the box rather than sending, following D20. The attempt failed and the user has moved on, so a late send would surprise them. |
 
 ## Interaction Specification
 
@@ -110,15 +119,18 @@ Shift+Enter is the keyboard path to the box.
 `sesori_shared` owns one pure pair, `wrapDictatedText` and `unwrapDictatedText`, so
 the client and the bridge can't disagree on the format.
 
-The client marks text where it builds the outgoing prompt, only when `command` is
-null and `inputMode` is `voiceAssisted`:
+Stored text stays plain. `QueuedTextSubmission` and
+`NewSessionTextSubmissionSnapshot` each gain one derived `outgoingText`, which wraps
+when `inputMode` is `voiceAssisted`:
 
-- `SessionDetailCubit.sendMessage`
-- the `QueuedSessionSubmission.text` path in `NewSessionCubit`
+- `session_detail_cubit.dart:2518` and `session_launch_service.dart:133` and `:192`
+  send `outgoingText`.
+- `displayText` shows the marked form (D18).
+- `withFollowUps` and the pending launch title read plain text through a new
+  `plainText` getter (D22), because a refused submission restores into the box.
 
-Drafts and `NewSessionSubmissionSnapshot` stay plain, because a refused new-session
-submission restores from its snapshot into the box. `SessionCreationService` unwraps
-`firstText` before generating metadata.
+`SessionCreationService._generateAndApplyMetadata` unwraps `firstText` before
+generating metadata.
 
 There is no wire-contract change. An older bridge would generate a title from the
 marked text, which is cosmetic and accepted.
@@ -127,39 +139,63 @@ marked text, which is cosmetic and accepted.
 
 `PromptInput` captures one closed `_VoiceFinish { send, edit }` value when the
 gesture ends, carried inside the `_VoiceTranscribing` variant rather than in a
-separate field.
+separate field. `_retrySavedRecording` builds it with `edit` (D32).
 
-On `VoiceInputCompleted`, the transcript is appended exactly as today. Then `send`
-calls the existing `_submitComposer`, so attachments, command, `canSend` and
-busy-queue rules all stay in one place. If `canSend` refuses, the words stay in the
-box. A limit-reached or interrupted completion is treated as `edit`.
+`VoiceInputCompleted` gains `outcome`, a closed `VoiceDictationOutcome` in
+`foundation/models/voice/`: `finished` and `limitReached` from step 3, and
+`interrupted` from step 8. The cubit already knows `limitReached`. The feedback
+sheet ignores it.
+
+On completion the transcript is appended exactly as today. It sends **only when
+the finish is `send` and the outcome is `finished`**, by calling the existing
+`_submitComposer`, so attachments, command, `canSend` and busy-queue rules stay in
+one place. If `canSend` refuses, the words stay in the box. Any other outcome
+shows its notice, once.
+
+`_handleCompletedTranscription` must also accept a completion while the presentation
+is `_VoiceRecording`, because live can end while the finger is still down. Today it
+returns early and the words would be lost. The presentation goes idle, and the
+later pointer-up is a no-op because it only acts on `_VoiceRecording`.
 
 ### Remote config (step 5)
 
 Follows the existing `FeedbackPromptConfigSource` shape:
 
-- `VoiceModeConfigSource` in `module_core/foundation/platform`
-- `VoiceModeConfig`, sealed: `VoiceModeAfterRecording` and
-  `VoiceModeLive({presentation})`, with `VoiceLivePresentation { focus, panel }`
-- `FirebaseVoiceModeConfigSource` and a no-op source in `client/app`
-- a channel-based source in `client/desktop` (D28)
-- an API and a repository holding the last resolved value, reporting
-  after-recording until one exists (D26)
+- `VoiceModeConfigSource` in `foundation/platform` returns raw values:
+  `({bool liveEnabled, String? presentation})`. Keys live only in the Firebase
+  source, which maps `""` to null.
+- `FirebaseVoiceModeConfigSource` and a no-op source in `client/app`.
+- `ChannelVoiceModeConfigSource` in `client/desktop`, returning `(true, null)` for
+  `internal` and `(false, null)` for `stable`.
+- `VoiceModeConfigApi` and `VoiceModeRepository` in `module_core`. The repository
+  parses to `VoiceMode`, sealed in `foundation/models/voice/`
+  (`VoiceModeAfterRecording`, `VoiceModeLive({presentation})`, with
+  `VoiceLivePresentation { focus, panel }`), and caches the last value. It reports
+  after-recording until one exists (D26).
 
 Parameter keys: `voice_live_enabled` (unset reads as false) and
 `voice_live_presentation` (`panel` gives panel; anything else gives focus).
 
+The value is fetched once per launch, so **switching live off applies at each
+phone's next cold launch**. This is why the release action in the tracker has to
+happen before the release goes out.
+
 ### Transport (step 6)
 
-Re-check and port from `refs/pull/918/head`, against the server's current fixture
-`tests/fixtures/voice-realtime-protocol-v1.json`:
+No platform interface and no shell code: `web_socket_channel` and `dart:io` are
+already used directly in `module_core` (`capabilities/relay/relay_client.dart`).
 
-- `api/models/realtime_voice_protocol.dart`
-- `api/realtime_voice_api.dart`
-- `models/voice_realtime.dart`
-- `foundation/platform/realtime_websocket_connector.dart`
-- a connector implementation for `client/app`, and one reachable from
-  `client/desktop`
+- `capabilities/voice/realtime_voice_client.dart`: one `RealtimeVoiceClient`, with
+  the injected connector test seam `RelayClient` already has. Re-check and port from
+  #918's `realtime_voice_api.dart`, dropping its `RealtimeWebSocketConnector` and
+  both shell connectors.
+- `capabilities/voice/realtime_voice_protocol.dart`: wire models, checked against
+  the server's `tests/fixtures/voice-realtime-protocol-v1.json`, with the fixture
+  copied to tests.
+- `VoiceRepository.openRealtime`: the only way in. It maps protocol errors and
+  closes to the existing `VoiceTranscriptionError` types, keeping the cause.
+- Value models in `foundation/models/voice/`. #918's `models/voice_realtime.dart`
+  path no longer exists.
 
 Do not port #918's interaction code.
 
@@ -173,36 +209,78 @@ D29's buffer depends on it.
 
 ### Live session (step 8)
 
-`VoiceTranscriptionService` adds live states to its private sealed session state.
-`VoiceInputCubit` gains immutable states:
+`VoiceTranscriptionService` injects `VoiceModeRepository`. `createSession` takes
+`allowLive`, which the feedback scope sets to false (D31), and starts the mode load
+beside `_refreshProjectGlossaryKey`. `start` reads the value synchronously and
+snapshots it for that dictation.
 
-- `VoiceInputLiveRecording({words})`
-- `VoiceInputLiveFinishing({words})`
+`services/live_dictation_run.dart` holds one per-dictation `LiveDictationRun`, which
+owns the socket, the PCM subscription and the pre-`ready` buffer. A new
+`_VoiceSessionState` variant holds it as a non-null field. `_cancel`, `invalidate`
+and `close` all tear it down, sending `cancel` first when the socket is open.
 
-Each carries `LiveWords({confirmed, provisional})`. `VoiceInputCompleted` gains a
-closed outcome so `PromptInput` can tell a finished dictation from a cut-off one.
+Contract between service and cubit:
 
-`VoiceInputCubit` takes whether live is allowed at construction: the composer's
-scope allows it, the feedback sheet doesn't (D31).
+- `start` still returns as soon as capture begins.
+- A new `liveEventStream` delivers a sealed `VoiceLiveEvent`:
+  `VoiceLiveWordsChanged({words})`, `VoiceLiveFellBack()`,
+  `VoiceLiveEnded({transcript, outcome})`.
+- `stopAndTranscribe` returns `VoiceDictationResult({transcript, outcome})` in both
+  modes.
+
+`VoiceInputCubit` gains immutable states carrying a non-null `presentation`:
+
+- `VoiceInputLiveRecording({words, presentation})`
+- `VoiceInputLiveFinishing({words, presentation})`
+
+`words` is `LiveWords({confirmed, provisional})`. The cubit's stop guard and
+max-duration listener, which accept only `VoiceInputRecording` today, also accept
+`VoiceInputLiveRecording`. `feedback_private_step.dart`'s exhaustive switches must
+list both states, although D31 makes them unreachable there.
 
 | Event | Result |
 | --- | --- |
-| Failure before any audio is forwarded | Falls back to after-recording (D21) |
-| Failure after audio was forwarded | Confirmed words go in the box with a notice, never sent (D20) |
-| `complete{finished}` | Completed, follows the finish intent |
-| `complete{session_limit, quota_limit}` | Completed as cut-off, goes to the box |
-| No confirmed words at a failure | Error notice, nothing in the box |
+| Failure before any audio is forwarded | `VoiceLiveFellBack`, continues as after-recording (D21) |
+| Failure after audio was forwarded, with confirmed words | `Completed(interrupted)`, words go in the box with a notice, never sent (D20) |
+| Failure after audio was forwarded, no confirmed words | Error notice, nothing in the box |
+| `complete{finished}` | `Completed(finished)`, follows the finish intent |
+| `complete{session_limit, quota_limit}` | `Completed(limitReached)`, goes to the box, even with the finger still down |
 
 The project glossary key is snapshotted exactly as today and sent as `projectKey`.
 
 ### Live words layer (step 9)
 
-`PromptInput` shows a new `ComposerLiveWords` widget through an `OverlayPortal`, so
-it never relayouts the chat or the composer. `IgnorePointer` keeps gestures on the
-pill. It covers the nearest ancestor `Scaffold`'s rect, which is the chat pane on
-wide layouts and the screen on phones; step 9 verifies that on both shells. Words
-rebuild through `BlocSelector`. The glide takes its destination from the box field
-or from the new bubble's rect.
+`PromptInput` shows a new `ComposerLiveWords` widget through
+`OverlayPortal.overlayChildLayoutBuilder`, as `background_tasks_bar.dart:55` does,
+so it never relayouts the chat or the composer.
+
+Its rect runs **from the top of the nearest `Scaffold` to the composer's top**,
+measured from `_composerBodyKey`. An unbounded overlay would paint above the pill
+and hide the waveform and the wide Send. That rect is the chat pane on wide
+layouts. `IgnorePointer` keeps gestures on the pill, and words rebuild through
+`BlocSelector`.
+
+Without the glide, a sent dictation's words fade out as its bubble appears, and an
+edited dictation's words fade out as they appear in the box.
+
+### Glide (step 10)
+
+A clean split from step 9, since this is the only part that crosses from the
+composer into the message lists.
+
+The box's rect comes from `PromptInput` itself. For the bubble, a small screen-owned
+`SentBubbleLanding` sits above both the composer and the message list, in session
+detail and new session:
+
+1. `PromptInput` calls `expect()` just before `_submitComposer`. It can't know the
+   prompt id, which the cubit generates.
+2. The list reports the rect of the first new user row it builds while expecting.
+3. The layer retargets its glide to that rect, then hands over to the real bubble.
+
+If no rect arrives within two frames, the words glide to the estimated slot,
+right-aligned just above the composer, and fade. If the owner unmounts mid-glide,
+which new session's launch view can do, the layer just goes: the launch view
+is already showing the same words.
 
 ## Analytics
 
@@ -212,6 +290,10 @@ Answers whether live and send on finish change voice adoption, per the
 - `voice_transcription_completed` gains closed `mode` (`live`, `after_recording`)
   and `finish` (`sent`, `edited`, `cut_off`) parameters. Added with the behavior:
   `finish` in step 3, `mode` in step 8.
+- `_submitComposer` returns whether it sent, because today it refuses silently.
+  `PromptInput` reports after that decision, through a callback that replaces
+  `onVoiceTranscriptionCompleted` and carries both closed values. `mode` comes from
+  `VoiceInputCompleted`. Both cubits' report methods change with it.
 - No transcript, audio or identifiers.
 
 ## Security And Privacy
@@ -219,7 +301,7 @@ Answers whether live and send on finish change voice adoption, per the
 - The bearer token goes only in the upgrade header, only to the configured Sesori
   API host, and never into a URL or a log.
 - No audio or transcript in logs or analytics. Diagnostic socket errors keep their
-  codes and close reasons.
+  codes and close reasons, and wrapped errors keep their cause.
 - PCM stays in memory: nothing is written to disk in live mode.
 - The marker adds no data beyond what the user dictated.
 
@@ -229,14 +311,15 @@ New mutable parts:
 
 1. `PromptInput`: an edit-drag progress notifier, alongside the existing cancel one.
 2. `VoiceModeRepository`: one cached value.
-3. Live run: one socket, one PCM subscription, and one bounded pre-`ready` buffer
-   that is empty after `ready`.
+3. `LiveDictationRun`: one socket, one PCM subscription, and one bounded pre-`ready`
+   buffer that is empty after `ready`.
 4. Cubit: `LiveWords`, immutable, replaced on each server event.
+5. `SentBubbleLanding`: one expected-landing value per screen.
 
-Deliberately not added: a capabilities call, dual file and stream capture, a local
-recording in live mode, reconnection during a dictation, a countdown or undo, any
-user setting, a transcript cache, a percentage rollout for desktop, any new wire
-field to the bridge.
+Deliberately not added: a capabilities call, a platform connector interface, dual
+file and stream capture, a local recording in live mode, reconnection during a
+dictation, a countdown or undo, any user setting, a transcript cache, a percentage
+rollout for desktop, any new wire field to the bridge.
 
 ## Cleanup Assessment
 
@@ -244,12 +327,12 @@ Included in the feature PRs:
 
 - `voiceReleaseToTranscribe` and `voiceClickToTranscribe` copy, once nothing shows it
 - `PregoVoiceCancelButton`, generalized into a target taking an icon rather than
-  keeping two near-identical widgets
+  keeping two near-identical widgets. `feedback_private_step.dart` uses it too.
 - `docs/regression/voice-input.md`: “Text is inserted for review, never auto-sent”
   and the matching failure signal
 
 Outside this repository, the auth server's `.plan/active/real-time-transcription`
-still points to PR #918; step 11 updates that pointer.
+still points to PR #918; the final step updates that pointer.
 
 No other relevant cleanup was found. `voiceSpans` and `ChatInputMode` stay in use.
 
@@ -262,12 +345,13 @@ No other relevant cleanup was found. `voiceSpans` and `ChatInputMode` stay in us
 | Thumb drifting up cancels | Plausible | Tune the distance on a device (D8). No extra confirmation. |
 | Live start fails after the user started speaking | Rare | Accepted: the words said during the failed attempt are lost, and capture continues as after-recording. |
 | Older bridge titles include the marker | Cosmetic | Accepted, no compatibility code. |
-| Forgetting to turn live off before a public release | Real, with wide reach | A release check in step 11's result and in the user's release notes. |
+| Glide on new session may end early | Launch view replaces the composer | Accepted: the launch view already shows the words. Judge on a device. |
+| Forgetting to turn live off before a public release | Real, with wide reach | A release check in the final step's result and in the user's release notes. |
 
 ## Regression Coverage
 
 Affected documents: `voice-input.md`, `session-turns.md`,
-`session-creation-and-options.md`, `desktop-cockpit-shell.md`. Step 10 confirms
+`session-creation-and-options.md`, `desktop-cockpit-shell.md`. Step 11 confirms
 the list; `feedback-flow.md` needs a check that its voice behavior is unchanged.
 
 Highest level: **L3** for voice input.
@@ -280,7 +364,7 @@ Highest level: **L3** for voice input.
 | Desktop controls | macOS build, plus widget tests for click, click, Enter, Shift+Enter, Esc |
 | Live feel with a real microphone | Real iPhone and Android device, run by the user, recorded |
 | Desktop streaming | macOS with a real microphone. Linux and Windows: confirm streaming, or confirm the after-recording fallback, and record which |
-| Fallback | Server unreachable before audio, connection dropped after audio |
+| Fallback | Server unreachable before audio, connection dropped after audio, server limit with the finger still down |
 
 Any reduction to this matrix needs the user's acceptance recorded here before
 retirement.
@@ -289,7 +373,7 @@ retirement.
 
 - Each PR's body has the sections `AGENTS.md` requires, with before and after visuals
   on `pr-media` for anything visible. Fixture data only.
-- Steps 3, 4 and 9 must be judged by feel, ideally with a device recording.
+- Steps 3, 4, 9 and 10 must be judged by feel, ideally with a device recording.
 - Lifecycle PRs stay well under the 1,500-line soft cap. Split cleanly if one grows.
 
 ## Steps
@@ -297,27 +381,49 @@ retirement.
 Fixed titles are in [TRACKER](TRACKER.md).
 
 1. **Raise this plan.**
-2. **Mic marker.** The shared pair, both cubit seams, the bridge title path, tests.
-   Takes effect for every dictated message immediately.
+2. **Mic marker.** The shared pair, `outgoingText` and `plainText`, the bridge title
+   path, tests. Takes effect for every dictated message immediately.
 3. **Touch gesture and send on finish.** Pencil target, slide-out cancel with the
-   D8 look, new hints, `_VoiceFinish`, the X during “Transcribing…”, the `finish`
-   analytics parameter. Covers both input modes and the new session screen, in
-   after-recording, which is the only mode so far.
+   D8 look, new hints, `_VoiceFinish`, `VoiceDictationOutcome`, the X during
+   “Transcribing…”, the `finish` analytics parameter. Covers both input modes and
+   the new session screen, in after-recording, which is the only mode so far.
 4. **Desktop controls.** Pencil and X, the merged wide Send that fixes the 44 px
    shift, Enter, Shift+Enter, Esc, send on finish.
 5. **Voice mode switch.** Sources, API, repository, tests. Nothing reads it yet.
-6. **Realtime transport.** Protocol, API, connectors, fixture, tests against the
-   real server shape. No UI.
+6. **Realtime transport.** Client, protocol, repository method, fixture, tests
+   against the real server shape. No UI.
 7. **Streaming capture.** PCM start on each platform, the support check,
    connect-time measurement on a device.
-8. **Live session.** Service and cubit states, the buffer, fallback, terminal rules,
-   the `mode` parameter. Live now works when enabled, with only the waveform on
-   screen until step 9, then the words go through the finish intent.
-9. **Live words layer.** Focus and panel, dim and brighten, the glide, both shells.
-10. **Reconcile regression docs.**
-11. **Run coverage and retire.** Run the matrix above, record the release check, update
-    the auth plan's pointer, and move this plan to `.plan/completed/`.
+8. **Live session.** `LiveDictationRun`, the service contract, cubit states, the
+   buffer, fallback, terminal rules, the `mode` parameter. Live works when enabled,
+   with only the waveform on screen until step 9.
+9. **Live words layer.** Focus and panel, dim and brighten, both shells, fading out
+   at the end.
+10. **Glide.** `SentBubbleLanding`, the box and bubble destinations, the fallback.
+11. **Reconcile regression docs.**
+12. **Run coverage and retire.** Run the matrix above, record the release check,
+    update the auth plan's pointer, and move this plan to `.plan/completed/`.
 
 ## Plan Review Record
 
-Pending.
+`architecture-plan-review` ran once, by an Opus sub-agent, and **rejected** the first
+draft with 12 findings, five of them contradicting the code. It did not re-open
+D1–D27. All 12 were accepted and applied:
+
+1. Marker seams missed the first new-session message and leaked into the box.
+2. The realtime path had no repository.
+3. The platform connector had no platform reason to exist.
+4. Nothing named who reads the mode, and the presentation never reached the UI.
+5. Config parsing and model placement were ambiguous.
+6. The live run had no owner and no service contract.
+7. An ending while the finger is down lost the words.
+8. Retry had no finish intent, now D32.
+9. An unbounded overlay would have hidden the pill.
+10. The glide to a bubble had no seam, now its own step.
+11. The `finish` analytics value had no authoritative source.
+12. The feedback sheet's switches and a stale model path were missed.
+
+Per the review rules, the fixes were not re-reviewed. `SentBubbleLanding` is this
+plan's own answer to finding 10 and has not had a plan review, so step 10's
+implementation review should look at it. The review didn't check the server fixture,
+the production capabilities endpoint or the 44 px measurement.
