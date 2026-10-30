@@ -74,7 +74,7 @@ decision.
 | D19 | The marker is the emoji and quotes only. |
 | D20 | A failed or cut-off dictation is never sent. Its words go in the box with a notice. Live keeps no recording, so it has no Retry; after-recording keeps Retry. |
 | D21 | Live falls back to after-recording if it can't start. |
-| D22 | The box always holds plain words. Titles use plain words. Slash commands are never marked. |
+| D22 | The box always holds plain words. Titles use plain words. Slash commands are never marked, including a dictated argument to a selected command, which stays typed as `session_detail_composer_controls.dart:44` already reports it. |
 | D23 | While “Transcribing…” shows, an X stops it. |
 | D24 | Cancelling keeps what was already in the box. |
 | D25 | No words, or a hold under today's 200 ms minimum, sends nothing. |
@@ -85,6 +85,7 @@ decision.
 | D30 | Planning decision: the client doesn't call `/voice/capabilities`. Remote config decides, and a disabled server fails the upgrade with 404, which is D21's fallback. |
 | D31 | Planning decision: live and send on finish apply to the composer only. The feedback sheet keeps after-recording and keeps its words in its field. |
 | D32 | Planning decision: a retried after-recording dictation lands in the box rather than sending, following D20. The attempt failed and the user has moved on, so a late send would surprise them. |
+| D33 | Planning decision: a dictation that fell back from live lands in the box with a notice rather than sending, following D20. Its first words may be missing, and sending a clipped prompt unseen is the damage this rule exists to prevent. |
 
 ## Interaction Specification
 
@@ -143,8 +144,9 @@ separate field. `_retrySavedRecording` builds it with `edit` (D32).
 
 `VoiceInputCompleted` gains `outcome`, a closed `VoiceDictationOutcome` in
 `foundation/models/voice/`: `finished` and `limitReached` from step 3, and
-`interrupted` from step 8. The cubit already knows `limitReached`. The feedback
-sheet ignores it.
+`interrupted` from step 8. The cubit already knows `limitReached`. Step 8 also adds
+`mode`, the closed `live` or `after_recording` the dictation actually ran as, so a
+fallback reports `after_recording`. The feedback sheet ignores both.
 
 On completion the transcript is appended exactly as today. It sends **only when
 the finish is `send` and the outcome is `finished`**, by calling the existing
@@ -225,8 +227,8 @@ Contract between service and cubit:
 - A new `liveEventStream` delivers a sealed `VoiceLiveEvent`:
   `VoiceLiveWordsChanged({words})`, `VoiceLiveFellBack()`,
   `VoiceLiveEnded({transcript, outcome})`.
-- `stopAndTranscribe` returns `VoiceDictationResult({transcript, outcome})` in both
-  modes.
+- `stopAndTranscribe` returns `VoiceDictationResult({transcript, outcome, mode})` in
+  both modes.
 
 `VoiceInputCubit` gains immutable states carrying a non-null `presentation`:
 
@@ -240,9 +242,9 @@ list both states, although D31 makes them unreachable there.
 
 | Event | Result |
 | --- | --- |
-| Failure before any audio is forwarded | `VoiceLiveFellBack`, continues as after-recording (D21) |
-| Failure after audio was forwarded, with confirmed words | `Completed(interrupted)`, words go in the box with a notice, never sent (D20) |
-| Failure after audio was forwarded, no confirmed words | Error notice, nothing in the box |
+| Failure before any audio is forwarded | `VoiceLiveFellBack`, continues as after-recording (D21). Its outcome is `interrupted`, so it lands in the box (D33) |
+| Failure after audio was forwarded, with any words on screen, confirmed or provisional | `Completed(interrupted)`, all of those words go in the box with a notice, never sent (D20) |
+| Failure after audio was forwarded, no words at all | Error notice, nothing in the box |
 | `complete{finished}` | `Completed(finished)`, follows the finish intent |
 | `complete{session_limit, quota_limit}` | `Completed(limitReached)`, goes to the box, even with the finger still down |
 
@@ -343,7 +345,7 @@ No other relevant cleanup was found. `voiceSpans` and `ChatInputMode` stay in us
 | Pre-`ready` buffer (D29) | Ordinary flow: people start speaking as soon as they press | One bounded buffer, sent as ordinary frames after `ready`, which the protocol allows. The auth plan's “no queue” design would clip first words. |
 | Wrong words sent | Ordinary flow | Accepted by the user (D14): Stop remains available. |
 | Thumb drifting up cancels | Plausible | Tune the distance on a device (D8). No extra confirmation. |
-| Live start fails after the user started speaking | Rare | Accepted: the words said during the failed attempt are lost, and capture continues as after-recording. |
+| Live start fails after the user started speaking | Rare | Accepted: the words said during the failed attempt are lost, and capture continues as after-recording. D33 puts the result in the box with a notice, so a clipped prompt is never sent unseen. |
 | Older bridge titles include the marker | Cosmetic | Accepted, no compatibility code. |
 | Glide on new session may end early | Launch view replaces the composer | Accepted: the launch view already shows the words. Judge on a device. |
 | Forgetting to turn live off before a public release | Real, with wide reach | A release check in the final step's result and in the user's release notes. |
