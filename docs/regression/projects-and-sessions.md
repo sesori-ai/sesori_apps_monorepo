@@ -802,7 +802,9 @@ session in the same folder. Delete the disposable scratch sessions afterwards.
   shows no loader row while older sessions follow, moves rows above a page that
   lands, asks for a page again by itself after it failed other than once on a
   reconnect, spins while the bridge is away instead of showing Retry, leaves a
-  failed page waiting for a tap after the bridge returns, loses the reader's
+  failed page waiting for a tap after the bridge returns without asking for it
+  once, leaves rows a reload was replacing when the bridge left unreloaded after
+  it returns, loses the reader's
   place on a refresh, lists a hidden project's sessions, or orders rows
   differently from the bridge so a page repeats or skips a session.
 - On a bridge without `/sessions/page`, the list stays empty or failed instead

@@ -86,6 +86,10 @@ class SessionWindowService({
   /// loads them again instead of relying on the replayed events. In complete
   /// mode: some project's sessions failed to list.
   bool _rowsOutdated = false;
+
+  /// The generation [loadMore]'s page request was sent under, so a lost
+  /// connection tells it from a load that replaces the rows.
+  int? _pageGeneration;
   Timer? _queryTimer;
   Timer? _reloadTimer;
   Timer? _countsTimer;
@@ -191,6 +195,7 @@ class SessionWindowService({
       return;
     }
     final generation = _generation;
+    _pageGeneration = generation;
     _replay = [];
     _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
     final unseenTick = _sessionUnseenTracker.tick;
@@ -510,13 +515,19 @@ class SessionWindowService({
     final reconnected = connected && !_connected;
     final lost = !connected && _connected;
     _connected = connected;
-    // A page asked for before the bridge left may never answer: its row
-    // offers Retry at once, and the reconnect asks again.
-    if (_state.value case final SessionWindowLoaded loaded
-        when lost && loaded.loadMore == SessionWindowLoadMore.loading) {
+    // A load sent before the bridge left may never answer, so it fails at
+    // once: a page's row offers Retry and the reconnect asks for it again,
+    // and rows being replaced are reloaded on reconnect.
+    if (_state.value case final SessionWindowLoaded loaded when lost && _replay != null) {
+      final pageOnItsWay = _pageGeneration == _generation;
       _generation++;
-      _replay = null;
-      _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.failed));
+      _cancelTimers();
+      if (pageOnItsWay) {
+        _replay = null;
+        _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.failed));
+      } else {
+        _fail(reason: RemoteFailureReason.networkDown);
+      }
     }
     if (!connected || !(changed || reconnected)) return;
     // A plain reconnect relies on the replayed events, unless a load failed
