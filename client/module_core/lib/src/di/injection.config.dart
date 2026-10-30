@@ -36,7 +36,7 @@ import 'package:sesori_dart_core/src/api/message_image_api.dart' as _i938;
 import 'package:sesori_dart_core/src/api/notification_api.dart' as _i400;
 import 'package:sesori_dart_core/src/api/notification_preferences_api.dart'
     as _i396;
-import 'package:sesori_dart_core/src/api/permission_api.dart' as _i231;
+import 'package:sesori_dart_core/src/api/permission_api.dart' as _i232;
 import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i958;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
@@ -63,6 +63,8 @@ import 'package:sesori_dart_core/src/capabilities/relay/target_bridge_storage.da
     as _i267;
 import 'package:sesori_dart_core/src/capabilities/server_connection/connection_service.dart'
     as _i369;
+import 'package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart'
+    as _i231;
 import 'package:sesori_dart_core/src/capabilities/voice/voice_api.dart'
     as _i176;
 import 'package:sesori_dart_core/src/foundation/io/file_attachment_thumbnail_storage.dart'
@@ -327,6 +329,11 @@ extension GetItInjectableX on _i174.GetIt {
         client: gh<_i442.AuthenticatedHttpApiClient>(),
       ),
     );
+    gh.lazySingleton<_i231.RealtimeVoiceClient>(
+      () => _i231.RealtimeVoiceClient(
+        tokenProvider: gh<_i442.AuthTokenProvider>(),
+      ),
+    );
     gh.lazySingleton<_i373.FeedbackPromptConfigApi>(
       () => _i373.FeedbackPromptConfigApi(
         source: gh<_i294.FeedbackPromptConfigSource>(),
@@ -355,12 +362,15 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       dispose: (i) => i.dispose(),
     );
-    gh.lazySingleton<_i107.VoiceRepository>(
-      () => _i107.VoiceRepository(api: gh<_i176.VoiceApi>()),
-    );
     gh.lazySingleton<_i198.ComposerDraftRepository>(
       () => _i198.ComposerDraftRepository(
         storage: gh<_i64.ComposerDraftStorage>(),
+      ),
+    );
+    gh.lazySingleton<_i107.VoiceRepository>(
+      () => _i107.VoiceRepository(
+        api: gh<_i176.VoiceApi>(),
+        realtimeClient: gh<_i231.RealtimeVoiceClient>(),
       ),
     );
     gh.lazySingleton<_i695.LegacyNativeStorageMigrationRepository>(
@@ -629,8 +639,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i187.McpApi>(
       () => _i187.McpApi(client: gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i231.PermissionApi>(
-      () => _i231.PermissionApi(client: gh<_i857.RelayHttpApiClient>()),
+    gh.lazySingleton<_i232.PermissionApi>(
+      () => _i232.PermissionApi(client: gh<_i857.RelayHttpApiClient>()),
     );
     gh.lazySingleton<_i546.PluginApi>(
       () => _i546.PluginApi(client: gh<_i857.RelayHttpApiClient>()),
@@ -801,7 +811,7 @@ extension GetItInjectableX on _i174.GetIt {
       ),
     );
     gh.lazySingleton<_i680.PermissionRepository>(
-      () => _i680.PermissionRepository(api: gh<_i231.PermissionApi>()),
+      () => _i680.PermissionRepository(api: gh<_i232.PermissionApi>()),
     );
     gh.lazySingleton<_i349.McpRepository>(
       () => _i349.McpRepository(api: gh<_i187.McpApi>()),
