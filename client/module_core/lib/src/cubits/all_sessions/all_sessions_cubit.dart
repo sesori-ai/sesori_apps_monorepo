@@ -142,25 +142,28 @@ class AllSessionsCubit({
       SessionWindowLoaded(:final sessions) => sessions,
       SessionWindowLoading() || SessionWindowFailed() => const <Session>[],
     };
+    final rows = [
+      for (final session in sessions)
+        if (projects[session.projectID] case final project?)
+          // Only a still-unarchived session hides, as on every list.
+          if (session.time?.archived != null || !_hiddenSessionIds.contains(session.id))
+            AllSessionsRow(
+              session: session,
+              project: project,
+              isRunning: activity[project.id]?[session.id]?.isRunning ?? false,
+              isUnseen: unseen[project.id]?[session.id]?.unseen ?? session.unseen,
+              isAwaitingInput: activity[project.id]?[session.id]?.awaitingInput ?? false,
+              isRetrying: activity[project.id]?[session.id]?.isRetrying ?? false,
+              backgroundTaskCount: activity[project.id]?[session.id]?.backgroundTaskCount ?? 0,
+            ),
+    ];
     final next = AllSessionsState(
       projectId: projectId,
       query: query,
       quickFilter: quickFilter,
-      rows: List.unmodifiable([
-        for (final session in sessions)
-          if (projects[session.projectID] case final project?)
-            // Only a still-unarchived session hides, as on every list.
-            if (session.time?.archived != null || !_hiddenSessionIds.contains(session.id))
-              AllSessionsRow(
-                session: session,
-                project: project,
-                isRunning: activity[project.id]?[session.id]?.isRunning ?? false,
-                isUnseen: unseen[project.id]?[session.id]?.unseen ?? session.unseen,
-                isAwaitingInput: activity[project.id]?[session.id]?.awaitingInput ?? false,
-                isRetrying: activity[project.id]?[session.id]?.isRetrying ?? false,
-                backgroundTaskCount: activity[project.id]?[session.id]?.backgroundTaskCount ?? 0,
-              ),
-      ]),
+      // Unchanged rows stay the same list, so the list reuses what it worked
+      // out for them, as while a typed query waits for the window.
+      rows: const ListEquality<AllSessionsRow>().equals(rows, state.rows) ? state.rows : List.unmodifiable(rows),
       counts: switch (window) {
         SessionWindowLoaded(:final counts) => SessionListChipCounts(
           all: counts.all,

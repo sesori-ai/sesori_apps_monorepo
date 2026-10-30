@@ -138,13 +138,22 @@ class SessionWindowService({
 
   /// Lists [key] instead. The rows already loaded narrow to it at once; the
   /// bridge's answer replaces them [queryDelay] after a typed query, and at
-  /// once for any other change.
+  /// once for any other change. Listing everything, a typed query narrows
+  /// the rows only once typing pauses: each narrowing reads every session.
   void select({required SessionWindowKey key}) {
     final previous = _key;
     if (key == previous || _state.isClosed) return;
     _key = key;
+    final typed = key.query != null && key.projectId == previous.projectId && key.filter == previous.filter;
     if (_completeSessions case final sessions?) {
-      _emitComplete(sessions: sessions);
+      _queryTimer?.cancel();
+      if (typed) {
+        _queryTimer = Timer(queryDelay, () {
+          if (_completeSessions case final current?) _emitComplete(sessions: current);
+        });
+      } else {
+        _emitComplete(sessions: sessions);
+      }
       return;
     }
     // Drops any answer for the previous key, and holds live changes for the
@@ -166,7 +175,6 @@ class SessionWindowService({
         ),
       );
     }
-    final typed = key.query != null && key.projectId == previous.projectId && key.filter == previous.filter;
     if (typed) {
       _queryTimer = Timer(queryDelay, () => unawaited(_loadPaged(limit: pageSize)));
     } else {
@@ -248,9 +256,8 @@ class SessionWindowService({
   }
 
   /// The newest sessions of every project matching [query], at most [limit],
-  /// whatever the key.
+  /// whatever the key. A blank query matches every session.
   Future<SessionWindowSearchResult> search({required String query, required int limit}) async {
-    if (searchWords(query: query).isEmpty) return const SessionWindowSearchMatches(sessions: []);
     if (_completeSessions case final sessions?) {
       return SessionWindowSearchMatches(
         sessions: _searchLocally(sessions: sessions, query: query, limit: limit),
@@ -260,7 +267,8 @@ class SessionWindowService({
       request: SessionPageRequest(
         mode: _pageMode,
         projectId: null,
-        query: query,
+        // The bridge rejects a blank query; leaving it out lists every session.
+        query: searchWords(query: query).isEmpty ? null : query,
         filter: SessionPageFilter.all,
         cursor: null,
         limit: limit,
@@ -479,6 +487,8 @@ class SessionWindowService({
   }
 
   void _emitComplete({required List<Session> sessions}) {
+    // A typed query still waiting narrows the latest sessions once it fires.
+    if (_queryTimer?.isActive ?? false) return;
     final projects = _projectsById();
     final counted = sessions.where((session) => _matchesSearch(session: session, projects: projects)).toList();
     _emit(

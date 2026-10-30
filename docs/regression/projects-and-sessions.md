@@ -559,6 +559,10 @@ state.
   anything to search. Each keystroke narrows the loaded rows at once, and the
   bridge's page for the query, with its counts, replaces them 250 ms after
   the last one; rows stay in place until it answers and nothing blanks.
+  A bridge without session pages (v1.10.1 and older) is the exception: it
+  lists every session and narrows them locally once, 250 ms after the last
+  keystroke, live changes meanwhile included, so typing never falls behind
+  with thousands of sessions.
   Every typed word must occur in the session's title or its project's own
   name (its stored name, else its folder's), even where a filtered list's rows leave the project label out; each
   word may match either, so "sesori fix" finds "Fix the header" in "sesori".
