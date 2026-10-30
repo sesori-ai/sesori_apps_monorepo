@@ -854,9 +854,22 @@ void main() {
       );
       expect(result, isA<SessionWindowSearchMatches>().having((matches) => matches.sessions.length, "length", 2));
 
-      unawaited(window.search(query: "  ", limit: 20));
+      // A blank query lists every session, without the query the bridge
+      // would reject.
+      unawaited(window.search(query: "  ", limit: 20).then((value) => result = value));
       async.flushMicrotasks();
-      expect(bridge.requests, hasLength(1));
+      expect(
+        bridge.requests.last,
+        const SessionPageRequest(
+          mode: SessionPageMode.active,
+          projectId: null,
+          query: null,
+          filter: SessionPageFilter.all,
+          cursor: null,
+          limit: 20,
+        ),
+      );
+      expect(result, isA<SessionWindowSearchMatches>().having((matches) => matches.sessions.length, "length", 2));
 
       bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
       unawaited(window.search(query: "deploy", limit: 20).then((value) => result = value));

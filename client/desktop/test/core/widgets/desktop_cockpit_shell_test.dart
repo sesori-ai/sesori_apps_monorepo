@@ -1424,10 +1424,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
     seedTwoProjects();
-    final build = testSession(id: "s1", title: "Fix the build", updatedAt: 2);
+    final build = testSession(id: "s1", title: "Fix the build", updatedAt: 100);
+    // Fill the empty palette's 20 newest, so the typed answer brings a row
+    // the bridge's blank answer did not.
+    final notes = [
+      for (var index = 0; index < 20; index++)
+        testSession(id: "n$index", title: "Note $index", updatedAt: 50 - index).copyWith(projectID: "project-2"),
+    ];
     final docs = testSession(id: "s2", title: "Write docs", updatedAt: 1).copyWith(projectID: "project-2");
     loadedSessions = [build];
-    bridgeSessions = [build, docs];
+    bridgeSessions = [build, ...notes, docs];
     await tester.pumpWidget(
       PregoInteractionScope(
         mode: PregoInteractionMode.pointer,
@@ -1437,9 +1443,19 @@ void main() {
     await tester.pumpAndSettle();
 
     await tester.tap(find.byKey(const Key("desktop-sidebar-search")));
-    await tester.pumpAndSettle();
+    await tester.pump();
     final palette = find.byKey(const Key("desktop-command-palette"));
     Finder inPalette(String text) => find.descendant(of: palette, matching: find.textContaining(text));
+    // Before typing: the loaded rows at once, then the bridge's newest of
+    // every project below them.
+    expect(inPalette("Fix the build"), findsOneWidget);
+    expect(inPalette("Note 0"), findsNothing);
+    final blankBuildTop = tester.getTopLeft(inPalette("Fix the build")).dy;
+    await tester.pumpAndSettle();
+    expect(find.descendant(of: palette, matching: find.text("Note 0   Landing page")), findsOneWidget);
+    expect(tester.getTopLeft(inPalette("Fix the build")).dy, blankBuildTop);
+    expect(tester.getTopLeft(inPalette("Note 0")).dy, greaterThan(blankBuildTop));
+
     await tester.enterText(find.descendant(of: palette, matching: find.byType(TextField)), "i");
     await tester.pump();
     expect(inPalette("Fix the build"), findsOneWidget);
