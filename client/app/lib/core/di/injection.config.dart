@@ -50,6 +50,8 @@ import 'package:sesori_mobile/core/platform/firebase/no_op_founder_call_config_s
     as _i367;
 import 'package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart'
     as _i483;
+import 'package:sesori_mobile/core/platform/firebase/no_op_voice_mode_config_source.dart'
+    as _i245;
 import 'package:sesori_mobile/core/platform/firebase_analytics_client.dart'
     as _i326;
 import 'package:sesori_mobile/core/platform/firebase_analytics_release_cutoff_source.dart'
@@ -64,6 +66,8 @@ import 'package:sesori_mobile/core/platform/firebase_push_messaging_source.dart'
     as _i1042;
 import 'package:sesori_mobile/core/platform/firebase_remote_config_client.dart'
     as _i618;
+import 'package:sesori_mobile/core/platform/firebase_voice_mode_config_source.dart'
+    as _i880;
 import 'package:sesori_mobile/core/platform/flutter_app_review_client.dart'
     as _i291;
 import 'package:sesori_mobile/core/platform/flutter_composer_image_picker.dart'
@@ -263,6 +267,10 @@ extension GetItInjectableX on _i174.GetIt {
       ),
       registerFor: {_firebaseEnabled},
     );
+    gh.lazySingleton<_i948.VoiceModeConfigSource>(
+      () => _i245.NoOpVoiceModeConfigSource(),
+      registerFor: {_firebaseDisabled},
+    );
     gh.lazySingleton<_i553.FailureReporter>(
       () => _i534.CrashlyticsFailureReporter(gh<_i141.FirebaseCrashlytics>()),
       registerFor: {_firebaseEnabled},
@@ -349,6 +357,12 @@ extension GetItInjectableX on _i174.GetIt {
         startup: gh<_i853.SingularAttributionStartup>(),
         singular: gh<_i776.SingularStaticAdapter>(),
       ),
+    );
+    gh.lazySingleton<_i948.VoiceModeConfigSource>(
+      () => _i880.FirebaseVoiceModeConfigSource(
+        remoteConfigClient: gh<_i618.FirebaseRemoteConfigClient>(),
+      ),
+      registerFor: {_firebaseEnabled},
     );
     gh.lazySingleton<_i948.FeedbackPromptConfigSource>(
       () => _i260.FirebaseFeedbackPromptConfigSource(

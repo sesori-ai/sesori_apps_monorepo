@@ -56,6 +56,7 @@ import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_st
 import 'package:sesori_dart_core/src/api/storage/session_launch_storage.dart'
     as _i384;
 import 'package:sesori_dart_core/src/api/view_declaration_api.dart' as _i37;
+import 'package:sesori_dart_core/src/api/voice_mode_config_api.dart' as _i276;
 import 'package:sesori_dart_core/src/capabilities/relay/room_key_storage.dart'
     as _i895;
 import 'package:sesori_dart_core/src/capabilities/relay/target_bridge_storage.dart'
@@ -96,6 +97,8 @@ import 'package:sesori_dart_core/src/foundation/platform/plugin_authentication_b
     as _i732;
 import 'package:sesori_dart_core/src/foundation/platform/temporary_directory_provider.dart'
     as _i800;
+import 'package:sesori_dart_core/src/foundation/platform/voice_mode_config_source.dart'
+    as _i172;
 import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/api/legacy_native_storage_migration_api.dart'
     as _i691;
 import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/foundation/platform/legacy_native_storage.dart'
@@ -170,6 +173,8 @@ import 'package:sesori_dart_core/src/repositories/session_repository.dart'
     as _i7;
 import 'package:sesori_dart_core/src/repositories/view_declaration_repository.dart'
     as _i143;
+import 'package:sesori_dart_core/src/repositories/voice_mode_repository.dart'
+    as _i509;
 import 'package:sesori_dart_core/src/repositories/voice_repository.dart'
     as _i107;
 import 'package:sesori_dart_core/src/routing/analytics_route_listener.dart'
@@ -330,6 +335,9 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i727.AnalyticsApi>(
       () => _i727.AnalyticsApi(client: gh<_i791.AnalyticsClient>()),
     );
+    gh.lazySingleton<_i276.VoiceModeConfigApi>(
+      () => _i276.VoiceModeConfigApi(source: gh<_i172.VoiceModeConfigSource>()),
+    );
     gh.lazySingleton<_i691.LegacyNativeStorageMigrationApi>(
       () => _i691.LegacyNativeStorageMigrationApi(
         storage: gh<_i99.LegacyNativeStorage>(),
@@ -373,6 +381,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i258.InstalledAppBuildApi(
         source: gh<_i957.InstalledAppBuildSource>(),
       ),
+    );
+    gh.lazySingleton<_i509.VoiceModeRepository>(
+      () =>
+          _i509.VoiceModeRepository(configApi: gh<_i276.VoiceModeConfigApi>()),
     );
     gh.lazySingleton<_i556.AttributionApi>(
       () => _i556.AttributionApi(client: gh<_i14.AttributionClient>()),
