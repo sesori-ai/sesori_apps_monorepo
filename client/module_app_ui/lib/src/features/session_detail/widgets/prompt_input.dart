@@ -1201,7 +1201,7 @@ class _PromptInputState() extends State<PromptInput> {
       bindings: <ShortcutActivator, VoidCallback>{
         if (_isListening || (pointer && _voiceInteraction is _VoiceTranscribing))
           const SingleActivator(LogicalKeyboardKey.escape): () => unawaited(_cancelVoiceInteractionWithFeedback()),
-        if (pointer && _isListening) ...{
+        if (pointer && (_isListening || _isAwaitingDictatedWords)) ...{
           _ComposerSendShortcutActivator(
             controller: _controller,
             activator: const SingleActivator(LogicalKeyboardKey.enter),

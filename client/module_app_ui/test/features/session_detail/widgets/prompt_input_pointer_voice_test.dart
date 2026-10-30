@@ -133,6 +133,23 @@ void main() {
       expect(harness.finishes, [AnalyticsVoiceFinish.sent]);
     });
 
+    testWidgets("Enter while the words are on their way is handled with focus held by the composer", (tester) async {
+      final harness = _Harness();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
+
+      await startListening(tester);
+      await tester.sendKeyEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+
+      final handled = await tester.sendKeyDownEvent(LogicalKeyboardKey.enter);
+      await tester.sendKeyUpEvent(LogicalKeyboardKey.enter);
+      await tester.pump();
+
+      expect(handled, isTrue);
+      expect(harness.sent, isEmpty);
+    });
+
     testWidgets("Enter while the words are on their way sends nothing extra", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness, initialText: "typed first");
