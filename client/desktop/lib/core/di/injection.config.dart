@@ -18,6 +18,8 @@ import 'package:http/http.dart' as _i519;
 import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop/core/di/register_module.dart' as _i893;
+import 'package:sesori_desktop/core/platform/channel_voice_mode_config_source.dart'
+    as _i456;
 import 'package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart'
     as _i202;
 import 'package:sesori_desktop/core/platform/desktop_bridge_executable_path_resolver.dart'
@@ -204,6 +206,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i948.ImageSharer>(
       () =>
           _i501.DesktopImageSharer(shareClient: gh<_i692.DesktopShareClient>()),
+    );
+    gh.lazySingleton<_i948.VoiceModeConfigSource>(
+      () => _i456.ChannelVoiceModeConfigSource(
+        bundleSource: gh<_i316.InstalledDesktopBundleSource>(),
+      ),
     );
     gh.lazySingleton<_i316.BridgeExecutablePathResolver>(
       () => _i964.DesktopBridgeExecutablePathResolver(

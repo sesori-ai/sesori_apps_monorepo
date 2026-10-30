@@ -15,6 +15,7 @@ import "package:sesori_mobile/core/platform/firebase/no_op_failure_reporter.dart
 import "package:sesori_mobile/core/platform/firebase/no_op_feedback_prompt_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_founder_call_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase/no_op_push_messaging_source.dart";
+import "package:sesori_mobile/core/platform/firebase/no_op_voice_mode_config_source.dart";
 import "package:sesori_mobile/core/platform/package_info_installed_app_build_source.dart";
 import "package:sesori_mobile/core/platform/path_provider_temporary_directory_provider.dart";
 import "package:sesori_mobile/core/platform/singular/singular_attribution_client.dart";
@@ -60,6 +61,8 @@ void main() {
     expect(getIt<FeedbackPromptService>(), isA<FeedbackPromptService>());
     expect(getIt<FounderCallConfigSource>(), isA<NoOpFounderCallConfigSource>());
     expect(getIt<FounderCallService>(), isA<FounderCallService>());
+    expect(getIt<VoiceModeConfigSource>(), isA<NoOpVoiceModeConfigSource>());
+    expect(getIt<VoiceModeRepository>(), isA<VoiceModeRepository>());
   });
 
   test("Singular attribution resolves independently of Firebase", () {
