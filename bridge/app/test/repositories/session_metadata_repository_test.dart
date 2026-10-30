@@ -3,6 +3,7 @@ import "package:sesori_bridge/src/api/models/app_client_status_response.dart";
 import "package:sesori_bridge/src/api/models/generate_session_metadata_response.dart";
 import "package:sesori_bridge/src/api/models/project_glossary_response.dart";
 import "package:sesori_bridge/src/api/sesori_server_api.dart";
+import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/foundation/abortable_request.dart";
 import "package:sesori_bridge/src/repositories/session_metadata_repository.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -12,19 +13,22 @@ void main() {
   group("SessionMetadataRepository", () {
     test("passes messages through unchanged up to 500 characters", () async {
       final api = _FakeSesoriServerApi();
-      final repository = SessionMetadataRepository(api: api);
+      final repository = SessionMetadataRepository(api: api, bridgeIdProvider: const _BridgeIdProvider("br_test0001"));
       final message = "x" * 500;
 
       final metadata = await repository.generateMetadata(firstMessage: message);
 
       expect(metadata, (title: "Generated title"));
-      expect(api.requests.single, equals(GenerateSessionMetadataRequest(firstMessage: message)));
+      expect(
+        api.requests.single,
+        equals(GenerateSessionMetadataRequest(firstMessage: message, bridgeId: "br_test0001")),
+      );
       expect(api.abortSignals.single.isAborted, isFalse);
     });
 
     test("truncates messages longer than 500 characters", () async {
       final api = _FakeSesoriServerApi();
-      final repository = SessionMetadataRepository(api: api);
+      final repository = SessionMetadataRepository(api: api, bridgeIdProvider: const _BridgeIdProvider("br_test0001"));
 
       await repository.generateMetadata(firstMessage: "x" * 501);
 
@@ -33,7 +37,7 @@ void main() {
 
     test("does not split a surrogate pair at the 500-code-unit boundary", () async {
       final api = _FakeSesoriServerApi();
-      final repository = SessionMetadataRepository(api: api);
+      final repository = SessionMetadataRepository(api: api, bridgeIdProvider: const _BridgeIdProvider("br_test0001"));
 
       await repository.generateMetadata(firstMessage: "${"x" * 499}😀tail");
 
@@ -42,7 +46,10 @@ void main() {
 
     test("translates HTTP aborts at the repository boundary", () async {
       final abort = http.RequestAbortedException(Uri.parse("https://auth.example.test/metadata"));
-      final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: abort));
+      final repository = SessionMetadataRepository(
+        api: _FakeSesoriServerApi(failure: abort),
+        bridgeIdProvider: const _BridgeIdProvider("br_test0001"),
+      );
 
       await expectLater(
         repository.generateMetadata(firstMessage: "message"),
@@ -65,7 +72,10 @@ void main() {
         innerError: innerError,
         innerStackTrace: innerStackTrace,
       );
-      final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: apiError));
+      final repository = SessionMetadataRepository(
+        api: _FakeSesoriServerApi(failure: apiError),
+        bridgeIdProvider: const _BridgeIdProvider("br_test0001"),
+      );
 
       await expectLater(
         repository.generateMetadata(firstMessage: "message"),
@@ -81,7 +91,10 @@ void main() {
 
     test("surfaces API failure unchanged", () async {
       const error = FormatException("invalid response");
-      final repository = SessionMetadataRepository(api: _FakeSesoriServerApi(failure: error));
+      final repository = SessionMetadataRepository(
+        api: _FakeSesoriServerApi(failure: error),
+        bridgeIdProvider: const _BridgeIdProvider("br_test0001"),
+      );
 
       await expectLater(
         repository.generateMetadata(firstMessage: "message"),
@@ -91,7 +104,7 @@ void main() {
 
     test("aborts pending API requests when shutdown begins", () async {
       final api = _FakeSesoriServerApi();
-      final repository = SessionMetadataRepository(api: api);
+      final repository = SessionMetadataRepository(api: api, bridgeIdProvider: const _BridgeIdProvider("br_test0001"));
 
       await repository.generateMetadata(firstMessage: "message");
       repository.beginShutdown();
@@ -139,3 +152,5 @@ class _FakeSesoriServerApi({final Object? failure}) implements SesoriServerApi {
     required AbortSignal abortSignal,
   }) => throw UnimplementedError();
 }
+
+class const _BridgeIdProvider(@override final String? bridgeId) implements BridgeIdProvider;

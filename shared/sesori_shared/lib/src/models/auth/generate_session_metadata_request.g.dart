@@ -10,8 +10,12 @@ _GenerateSessionMetadataRequest _$GenerateSessionMetadataRequestFromJson(
   Map json,
 ) => _GenerateSessionMetadataRequest(
   firstMessage: json['firstMessage'] as String,
+  bridgeId: json['bridgeId'] as String?,
 );
 
 Map<String, dynamic> _$GenerateSessionMetadataRequestToJson(
   _GenerateSessionMetadataRequest instance,
-) => <String, dynamic>{'firstMessage': instance.firstMessage};
+) => <String, dynamic>{
+  'firstMessage': instance.firstMessage,
+  'bridgeId': ?instance.bridgeId,
+};

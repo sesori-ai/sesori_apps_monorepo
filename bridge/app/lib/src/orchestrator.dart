@@ -500,7 +500,10 @@ class Orchestrator({
       archivedSessionValidator: archivedSessionValidator,
     );
     final sessionCreationService = SessionCreationService(
-      sessionMetadataRepository: SessionMetadataRepository(api: sesoriServerApi),
+      sessionMetadataRepository: SessionMetadataRepository(
+        api: sesoriServerApi,
+        bridgeIdProvider: _bridgeRegistrationService,
+      ),
       worktreeService: worktreeService,
       sessionRepository: sessionRepository,
       newSessionDefaultsRepository: newSessionDefaultsRepository,

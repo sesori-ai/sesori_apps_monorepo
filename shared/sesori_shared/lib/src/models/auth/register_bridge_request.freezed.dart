@@ -16,7 +16,7 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$RegisterBridgeRequest {
 
- String get name; String get platform;@JsonKey(includeIfNull: false) String? get bridgeId; String? get hostKey;
+ String get name; String get platform;@JsonKey(includeIfNull: false) String? get bridgeId; String? get hostKey; BridgeKind get kind;
 /// Create a copy of RegisterBridgeRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +30,20 @@ $RegisterBridgeRequestCopyWith<RegisterBridgeRequest> get copyWith => _$Register
 @override
 bool operator ==(Object other) {
   final _this = this as RegisterBridgeRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterBridgeRequest&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.hostKey, _this.hostKey) || other.hostKey == _this.hostKey));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is RegisterBridgeRequest&&(identical(other.name, _this.name) || other.name == _this.name)&&(identical(other.platform, _this.platform) || other.platform == _this.platform)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId)&&(identical(other.hostKey, _this.hostKey) || other.hostKey == _this.hostKey)&&(identical(other.kind, _this.kind) || other.kind == _this.kind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as RegisterBridgeRequest;
-  return Object.hash(runtimeType,_this.name,_this.platform,_this.bridgeId,_this.hostKey);
+  return Object.hash(runtimeType,_this.name,_this.platform,_this.bridgeId,_this.hostKey,_this.kind);
 }
 
 @override
 String toString() {
   final _this = this as RegisterBridgeRequest;
-  return 'RegisterBridgeRequest(name: ${_this.name}, platform: ${_this.platform}, bridgeId: ${_this.bridgeId}, hostKey: ${_this.hostKey})';
+  return 'RegisterBridgeRequest(name: ${_this.name}, platform: ${_this.platform}, bridgeId: ${_this.bridgeId}, hostKey: ${_this.hostKey}, kind: ${_this.kind})';
 }
 
 
@@ -54,7 +54,7 @@ abstract mixin class $RegisterBridgeRequestCopyWith<$Res>  {
   factory $RegisterBridgeRequestCopyWith(RegisterBridgeRequest value, $Res Function(RegisterBridgeRequest) _then) = _$RegisterBridgeRequestCopyWithImpl;
 @useResult
 $Res call({
- String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId, String? hostKey
+ String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId, String? hostKey, BridgeKind kind
 });
 
 
@@ -71,13 +71,14 @@ class _$RegisterBridgeRequestCopyWithImpl<$Res>
 
 /// Create a copy of RegisterBridgeRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? platform = null,Object? bridgeId = freezed,Object? hostKey = freezed,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? name = null,Object? platform = null,Object? bridgeId = freezed,Object? hostKey = freezed,Object? kind = null,}) {
   return _then(RegisterBridgeRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
 as String,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,hostKey: freezed == hostKey ? _self.hostKey : hostKey // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as BridgeKind,
   ));
 }
 
@@ -89,13 +90,14 @@ as String?,
 @JsonSerializable()
 
 class _RegisterBridgeRequest implements RegisterBridgeRequest {
-  const _RegisterBridgeRequest({required this.name, required this.platform, @JsonKey(includeIfNull: false) required this.bridgeId, required this.hostKey});
+  const _RegisterBridgeRequest({required this.name, required this.platform, @JsonKey(includeIfNull: false) required this.bridgeId, required this.hostKey, required this.kind});
   factory _RegisterBridgeRequest.fromJson(Map<String, dynamic> json) => _$RegisterBridgeRequestFromJson(json);
 
 @override final  String name;
 @override final  String platform;
 @override@JsonKey(includeIfNull: false) final  String? bridgeId;
 @override final  String? hostKey;
+@override final  BridgeKind kind;
 
 /// Create a copy of RegisterBridgeRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -110,18 +112,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterBridgeRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.hostKey, hostKey) || other.hostKey == hostKey));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _RegisterBridgeRequest&&(identical(other.name, name) || other.name == name)&&(identical(other.platform, platform) || other.platform == platform)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId)&&(identical(other.hostKey, hostKey) || other.hostKey == hostKey)&&(identical(other.kind, kind) || other.kind == kind));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,name,platform,bridgeId,hostKey);
+    return Object.hash(runtimeType,name,platform,bridgeId,hostKey,kind);
 }
 
 @override
 String toString() {
-    return 'RegisterBridgeRequest(name: $name, platform: $platform, bridgeId: $bridgeId, hostKey: $hostKey)';
+    return 'RegisterBridgeRequest(name: $name, platform: $platform, bridgeId: $bridgeId, hostKey: $hostKey, kind: $kind)';
 }
 
 
@@ -132,7 +134,7 @@ abstract mixin class _$RegisterBridgeRequestCopyWith<$Res> implements $RegisterB
   factory _$RegisterBridgeRequestCopyWith(_RegisterBridgeRequest value, $Res Function(_RegisterBridgeRequest) _then) = __$RegisterBridgeRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId, String? hostKey
+ String name, String platform,@JsonKey(includeIfNull: false) String? bridgeId, String? hostKey, BridgeKind kind
 });
 
 
@@ -149,13 +151,14 @@ class __$RegisterBridgeRequestCopyWithImpl<$Res>
 
 /// Create a copy of RegisterBridgeRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? platform = null,Object? bridgeId = freezed,Object? hostKey = freezed,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? name = null,Object? platform = null,Object? bridgeId = freezed,Object? hostKey = freezed,Object? kind = null,}) {
   return _then(_RegisterBridgeRequest(
 name: null == name ? _self.name : name // ignore: cast_nullable_to_non_nullable
 as String,platform: null == platform ? _self.platform : platform // ignore: cast_nullable_to_non_nullable
 as String,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
 as String?,hostKey: freezed == hostKey ? _self.hostKey : hostKey // ignore: cast_nullable_to_non_nullable
-as String?,
+as String?,kind: null == kind ? _self.kind : kind // ignore: cast_nullable_to_non_nullable
+as BridgeKind,
   ));
 }
 

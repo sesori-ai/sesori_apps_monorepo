@@ -583,6 +583,7 @@ class _RegistrationHarness._({
       bridgeIdStorage: bridgeIdStorage,
       hostName: "test-host",
       platform: "macos",
+      kind: BridgeKind.cli,
     );
     final lifecycleService = await createSinglePluginLifecycleService(plugin: plugin);
     final httpClient = http.Client();

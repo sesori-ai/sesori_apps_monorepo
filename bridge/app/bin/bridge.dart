@@ -72,6 +72,7 @@ import 'package:sesori_bridge/src/version.dart';
 import 'package:sesori_bridge_foundation/sesori_bridge_foundation.dart';
 import 'package:sesori_plugin_interface/sesori_plugin_interface.dart'
     show Console, Log, LogLevel, PluginConfig, PluginConfigException, ProcessUser, ServerClock;
+import 'package:sesori_shared/sesori_shared.dart' show BridgeKind;
 import 'package:win32/win32.dart' show SetThreadExecutionState;
 
 const String _defaultRelayURL = 'wss://relay.sesori.com';
@@ -402,6 +403,8 @@ Future<void> _unregisterBridgeRegistration({
       bridgeIdStorage: bridgeIdStorage,
       hostName: Platform.localHostname,
       platform: BridgeRegistrationService.currentPlatformName(),
+      // ponytail: this instance only unregisters, so the kind is never sent.
+      kind: BridgeKind.cli,
     );
     try {
       await registrationService.unregister().timeout(const Duration(seconds: 10));

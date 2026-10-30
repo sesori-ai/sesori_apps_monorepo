@@ -25,6 +25,7 @@ void main() {
       bridgeIdStorage: bridgeIdStorage,
       hostName: "dev-laptop",
       platform: "macos",
+      kind: BridgeKind.desktop,
     );
   });
 
@@ -33,6 +34,7 @@ void main() {
       await service.ensureRegistered();
 
       expect(repository.registeredBridgeIds, equals([null]));
+      expect(repository.registeredKinds, equals([BridgeKind.desktop]));
       expect(service.bridgeId, equals("br_test1234"));
       expect(bridgeIdStorage.bridgeId, equals("br_test1234"));
     });
@@ -211,6 +213,7 @@ void main() {
         bridgeIdStorage: bridgeIdStorage,
         hostName: "dev-laptop",
         platform: "macos",
+        kind: BridgeKind.desktop,
       );
 
       await failingService.unregister();
@@ -227,6 +230,7 @@ void main() {
         bridgeIdStorage: bridgeIdStorage,
         hostName: "dev-laptop",
         platform: "macos",
+        kind: BridgeKind.desktop,
       );
 
       await expectLater(
@@ -259,6 +263,7 @@ class _UnregisterFailingRepository({required final int statusCode}) implements B
     required String name,
     required String platform,
     required String? bridgeId,
+    required BridgeKind kind,
     required String accessToken,
   }) {
     throw UnimplementedError("not used by unregister tests");

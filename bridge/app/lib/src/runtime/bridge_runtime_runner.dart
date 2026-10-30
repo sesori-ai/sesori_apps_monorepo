@@ -27,7 +27,7 @@ import "package:sesori_plugin_interface/sesori_plugin_interface.dart"
         ServerClock,
         StartAbortController;
 import "package:sesori_shared/sesori_shared.dart"
-    show AuthClientType, AuthDeviceInfoBuilder, BridgeSupervisedExitCode, DeviceInfo;
+    show AuthClientType, AuthDeviceInfoBuilder, BridgeKind, BridgeSupervisedExitCode, DeviceInfo;
 
 import "../api/app_onboarding_state_storage.dart";
 import "../api/archived_session_storage.dart";
@@ -397,6 +397,7 @@ class const BridgeRuntimeRunner._() {
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
           processRunner: processRunner,
+          kind: options.bridgeKind,
         );
         shutdownCoordinator.add(disposable: supervisedRegistrationService.dispose);
         // Both GUI clean-stop commands share the same graceful teardown path;
@@ -586,6 +587,7 @@ class const BridgeRuntimeRunner._() {
           bridgeIdStorage: bridgeIdStorage,
           machineName: machineName,
           processRunner: processRunner,
+          kind: options.bridgeKind,
         );
         shutdownCoordinator.add(disposable: bridgeRegistrationService.dispose);
       }
@@ -1137,6 +1139,7 @@ class const BridgeRuntimeRunner._() {
     required BridgeIdStorage bridgeIdStorage,
     required String machineName,
     required ProcessRunner processRunner,
+    required BridgeKind kind,
   }) {
     return BridgeRegistrationService(
       repository: BridgeRegistrationRepository(
@@ -1150,6 +1153,7 @@ class const BridgeRuntimeRunner._() {
       bridgeIdStorage: bridgeIdStorage,
       hostName: machineName,
       platform: BridgeRegistrationService.currentPlatformName(),
+      kind: kind,
     );
   }
 

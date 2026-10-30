@@ -22,6 +22,7 @@ class BridgeRegistrationRepository({
     required String name,
     required String platform,
     required String? bridgeId,
+    required BridgeKind kind,
     required String accessToken,
   }) async {
     return await _api.registerBridge(
@@ -29,6 +30,7 @@ class BridgeRegistrationRepository({
       platform: platform,
       bridgeId: bridgeId,
       hostKey: await _hostKey,
+      kind: kind,
       accessToken: accessToken,
     );
   }

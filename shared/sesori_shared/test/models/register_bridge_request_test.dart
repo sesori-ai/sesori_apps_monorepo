@@ -4,11 +4,17 @@ import "package:test/test.dart";
 void main() {
   group("RegisterBridgeRequest", () {
     test("omits bridgeId from JSON when null", () {
-      const request = RegisterBridgeRequest(name: "alex-macbook", platform: "macos", bridgeId: null, hostKey: null);
+      const request = RegisterBridgeRequest(
+        name: "alex-macbook",
+        platform: "macos",
+        bridgeId: null,
+        hostKey: null,
+        kind: BridgeKind.desktop,
+      );
 
       final json = request.toJson();
 
-      expect(json, equals({"name": "alex-macbook", "platform": "macos"}));
+      expect(json, equals({"name": "alex-macbook", "platform": "macos", "kind": "desktop"}));
     });
 
     test("includes bridgeId in JSON when set", () {
@@ -17,6 +23,7 @@ void main() {
         platform: "macos",
         bridgeId: "br_abc12345",
         hostKey: null,
+        kind: BridgeKind.cli,
       );
 
       final json = request.toJson();
@@ -27,6 +34,7 @@ void main() {
           "name": "alex-macbook",
           "platform": "macos",
           "bridgeId": "br_abc12345",
+          "kind": "cli",
         }),
       );
     });
@@ -37,15 +45,20 @@ void main() {
         platform: "macos",
         bridgeId: null,
         hostKey: _hostKey,
+        kind: BridgeKind.cli,
       );
 
-      expect(request.toJson(), equals({"name": "alex-macbook", "platform": "macos", "hostKey": _hostKey}));
+      expect(
+        request.toJson(),
+        equals({"name": "alex-macbook", "platform": "macos", "hostKey": _hostKey, "kind": "cli"}),
+      );
     });
 
     test("parses a body without bridgeId", () {
       final request = RegisterBridgeRequest.fromJson({
         "name": "alex-macbook",
         "platform": "linux",
+        "kind": "cli",
       });
 
       expect(request.name, equals("alex-macbook"));
@@ -59,6 +72,7 @@ void main() {
         "name": "alex-macbook",
         "platform": "linux",
         "bridgeId": "br_abc12345",
+        "kind": "cli",
       });
 
       expect(request.bridgeId, equals("br_abc12345"));
@@ -70,6 +84,7 @@ void main() {
         platform: "windows",
         bridgeId: "br_abc12345",
         hostKey: _hostKey,
+        kind: BridgeKind.cli,
       );
 
       final restored = RegisterBridgeRequest.fromJson(original.toJson());

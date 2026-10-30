@@ -12,6 +12,7 @@ _RegisterBridgeRequest _$RegisterBridgeRequestFromJson(Map json) =>
       platform: json['platform'] as String,
       bridgeId: json['bridgeId'] as String?,
       hostKey: json['hostKey'] as String?,
+      kind: $enumDecode(_$BridgeKindEnumMap, json['kind']),
     );
 
 Map<String, dynamic> _$RegisterBridgeRequestToJson(
@@ -21,4 +22,10 @@ Map<String, dynamic> _$RegisterBridgeRequestToJson(
   'platform': instance.platform,
   'bridgeId': ?instance.bridgeId,
   'hostKey': ?instance.hostKey,
+  'kind': _$BridgeKindEnumMap[instance.kind]!,
+};
+
+const _$BridgeKindEnumMap = {
+  BridgeKind.cli: 'cli',
+  BridgeKind.desktop: 'desktop',
 };

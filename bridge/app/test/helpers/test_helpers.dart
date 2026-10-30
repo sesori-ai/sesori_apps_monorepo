@@ -86,6 +86,9 @@ class FakeBridgeRegistrationRepository() implements BridgeRegistrationRepository
   /// When non-null, [register] waits for this future before settling.
   Future<void>? registerDelay;
 
+  /// The kinds that [register] was called with, in order.
+  final List<BridgeKind> registeredKinds = [];
+
   /// The id returned from successful [register] calls.
   String nextBridgeId = "br_test1234";
 
@@ -94,9 +97,11 @@ class FakeBridgeRegistrationRepository() implements BridgeRegistrationRepository
     required String name,
     required String platform,
     required String? bridgeId,
+    required BridgeKind kind,
     required String accessToken,
   }) async {
     registeredBridgeIds.add(bridgeId);
+    registeredKinds.add(kind);
     await registerDelay;
     if (registerError != null) {
       throw registerError!;
@@ -130,6 +135,7 @@ BridgeRegistrationService createFakeBridgeRegistrationService({
     bridgeIdStorage: bridgeIdStorage ?? FakeBridgeIdStorage(),
     hostName: "test-host",
     platform: "macos",
+    kind: BridgeKind.cli,
   );
 }
 

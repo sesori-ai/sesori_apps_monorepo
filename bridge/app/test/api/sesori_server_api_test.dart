@@ -280,7 +280,7 @@ void main() {
       );
 
       final response = await api.generateSessionMetadata(
-        request: const GenerateSessionMetadataRequest(firstMessage: "Create login flow"),
+        request: const GenerateSessionMetadataRequest(firstMessage: "Create login flow", bridgeId: null),
         abortSignal: AbortSignal(),
       );
 
@@ -309,7 +309,7 @@ void main() {
       );
 
       final response = await api.generateSessionMetadata(
-        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
         abortSignal: AbortSignal(),
       );
 
@@ -335,7 +335,7 @@ void main() {
 
         await expectLater(
           api.generateSessionMetadata(
-            request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+            request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
             abortSignal: AbortSignal(),
           ),
           throwsA(
@@ -359,7 +359,7 @@ void main() {
 
       await expectLater(
         api.generateSessionMetadata(
-          request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+          request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
           abortSignal: AbortSignal(),
         ),
         throwsA(
@@ -382,7 +382,7 @@ void main() {
 
       await expectLater(
         api.generateSessionMetadata(
-          request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+          request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
           abortSignal: AbortSignal(),
         ),
         throwsA(isA<http.RequestAbortedException>()),
@@ -401,7 +401,7 @@ void main() {
       );
 
       final response = api.generateSessionMetadata(
-        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
         abortSignal: abortSignal,
       );
       await client.sendStarted.future;
@@ -426,7 +426,7 @@ void main() {
       );
 
       final response = api.generateSessionMetadata(
-        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
         abortSignal: abortSignal,
       );
       await tokenRefresher.started.future;
@@ -455,7 +455,7 @@ void main() {
       );
 
       final response = api.generateSessionMetadata(
-        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
         abortSignal: abortSignal,
       );
       await tokenRefresher.forceRefreshStarted.future;
@@ -482,7 +482,7 @@ void main() {
       );
 
       await api.generateSessionMetadata(
-        request: const GenerateSessionMetadataRequest(firstMessage: "message"),
+        request: const GenerateSessionMetadataRequest(firstMessage: "message", bridgeId: null),
         abortSignal: abortSignal,
       );
       abortSignal.abort();

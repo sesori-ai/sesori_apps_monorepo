@@ -16,7 +16,9 @@ T _$identity<T>(T value) => value;
 /// @nodoc
 mixin _$GenerateSessionMetadataRequest {
 
- String get firstMessage;
+ String get firstMessage;/// Attributes the session to this computer for per-platform activation
+/// analytics. Null before the bridge has registered.
+ String? get bridgeId;
 /// Create a copy of GenerateSessionMetadataRequest
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
@@ -30,20 +32,20 @@ $GenerateSessionMetadataRequestCopyWith<GenerateSessionMetadataRequest> get copy
 @override
 bool operator ==(Object other) {
   final _this = this as GenerateSessionMetadataRequest;
-  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataRequest&&(identical(other.firstMessage, _this.firstMessage) || other.firstMessage == _this.firstMessage));
+  return identical(this, other) || (other.runtimeType == runtimeType&&other is GenerateSessionMetadataRequest&&(identical(other.firstMessage, _this.firstMessage) || other.firstMessage == _this.firstMessage)&&(identical(other.bridgeId, _this.bridgeId) || other.bridgeId == _this.bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
   final _this = this as GenerateSessionMetadataRequest;
-  return Object.hash(runtimeType,_this.firstMessage);
+  return Object.hash(runtimeType,_this.firstMessage,_this.bridgeId);
 }
 
 @override
 String toString() {
   final _this = this as GenerateSessionMetadataRequest;
-  return 'GenerateSessionMetadataRequest(firstMessage: ${_this.firstMessage})';
+  return 'GenerateSessionMetadataRequest(firstMessage: ${_this.firstMessage}, bridgeId: ${_this.bridgeId})';
 }
 
 
@@ -54,7 +56,7 @@ abstract mixin class $GenerateSessionMetadataRequestCopyWith<$Res>  {
   factory $GenerateSessionMetadataRequestCopyWith(GenerateSessionMetadataRequest value, $Res Function(GenerateSessionMetadataRequest) _then) = _$GenerateSessionMetadataRequestCopyWithImpl;
 @useResult
 $Res call({
- String firstMessage
+ String firstMessage, String? bridgeId
 });
 
 
@@ -71,10 +73,11 @@ class _$GenerateSessionMetadataRequestCopyWithImpl<$Res>
 
 /// Create a copy of GenerateSessionMetadataRequest
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') @override $Res call({Object? firstMessage = null,}) {
+@pragma('vm:prefer-inline') @override $Res call({Object? firstMessage = null,Object? bridgeId = freezed,}) {
   return _then(GenerateSessionMetadataRequest(
 firstMessage: null == firstMessage ? _self.firstMessage : firstMessage // ignore: cast_nullable_to_non_nullable
-as String,
+as String,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
@@ -86,10 +89,13 @@ as String,
 @JsonSerializable()
 
 class _GenerateSessionMetadataRequest implements GenerateSessionMetadataRequest {
-  const _GenerateSessionMetadataRequest({required this.firstMessage});
+  const _GenerateSessionMetadataRequest({required this.firstMessage, required this.bridgeId});
   factory _GenerateSessionMetadataRequest.fromJson(Map<String, dynamic> json) => _$GenerateSessionMetadataRequestFromJson(json);
 
 @override final  String firstMessage;
+/// Attributes the session to this computer for per-platform activation
+/// analytics. Null before the bridge has registered.
+@override final  String? bridgeId;
 
 /// Create a copy of GenerateSessionMetadataRequest
 /// with the given fields replaced by the non-null parameter values.
@@ -104,18 +110,18 @@ Map<String, dynamic> toJson() {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataRequest&&(identical(other.firstMessage, firstMessage) || other.firstMessage == firstMessage));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is _GenerateSessionMetadataRequest&&(identical(other.firstMessage, firstMessage) || other.firstMessage == firstMessage)&&(identical(other.bridgeId, bridgeId) || other.bridgeId == bridgeId));
 }
 
 @JsonKey(includeFromJson: false, includeToJson: false)
 @override
 int get hashCode {
-    return Object.hash(runtimeType,firstMessage);
+    return Object.hash(runtimeType,firstMessage,bridgeId);
 }
 
 @override
 String toString() {
-    return 'GenerateSessionMetadataRequest(firstMessage: $firstMessage)';
+    return 'GenerateSessionMetadataRequest(firstMessage: $firstMessage, bridgeId: $bridgeId)';
 }
 
 
@@ -126,7 +132,7 @@ abstract mixin class _$GenerateSessionMetadataRequestCopyWith<$Res> implements $
   factory _$GenerateSessionMetadataRequestCopyWith(_GenerateSessionMetadataRequest value, $Res Function(_GenerateSessionMetadataRequest) _then) = __$GenerateSessionMetadataRequestCopyWithImpl;
 @override @useResult
 $Res call({
- String firstMessage
+ String firstMessage, String? bridgeId
 });
 
 
@@ -143,10 +149,11 @@ class __$GenerateSessionMetadataRequestCopyWithImpl<$Res>
 
 /// Create a copy of GenerateSessionMetadataRequest
 /// with the given fields replaced by the non-null parameter values.
-@override @pragma('vm:prefer-inline') $Res call({Object? firstMessage = null,}) {
+@override @pragma('vm:prefer-inline') $Res call({Object? firstMessage = null,Object? bridgeId = freezed,}) {
   return _then(_GenerateSessionMetadataRequest(
 firstMessage: null == firstMessage ? _self.firstMessage : firstMessage // ignore: cast_nullable_to_non_nullable
-as String,
+as String,bridgeId: freezed == bridgeId ? _self.bridgeId : bridgeId // ignore: cast_nullable_to_non_nullable
+as String?,
   ));
 }
 
