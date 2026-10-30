@@ -134,13 +134,22 @@ class SessionWindowService({
 
   /// Lists [key] instead. The rows already loaded narrow to it at once; the
   /// bridge's answer replaces them [queryDelay] after a typed query, and at
-  /// once for any other change.
+  /// once for any other change. Listing everything, a typed query narrows
+  /// the rows only once typing pauses: each narrowing reads every session.
   void select({required SessionWindowKey key}) {
     final previous = _key;
     if (key == previous || _state.isClosed) return;
     _key = key;
+    final typed = key.query != null && key.projectId == previous.projectId && key.filter == previous.filter;
     if (_completeSessions case final sessions?) {
-      _emitComplete(sessions: sessions);
+      _queryTimer?.cancel();
+      if (typed) {
+        _queryTimer = Timer(queryDelay, () {
+          if (_completeSessions case final current?) _emitComplete(sessions: current);
+        });
+      } else {
+        _emitComplete(sessions: sessions);
+      }
       return;
     }
     // Drops any answer for the previous key, and holds live changes for the
@@ -162,7 +171,6 @@ class SessionWindowService({
         ),
       );
     }
-    final typed = key.query != null && key.projectId == previous.projectId && key.filter == previous.filter;
     if (typed) {
       _queryTimer = Timer(queryDelay, () => unawaited(_loadPaged(limit: pageSize)));
     } else {
