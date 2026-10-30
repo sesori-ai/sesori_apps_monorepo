@@ -170,7 +170,8 @@ class const SessionsHomeView({
             ),
             ...slivers(
               selectedSessionId: selectedSessionId,
-              endClearance: 0,
+              // The last row scrolls clear of the floating scan card.
+              endClearance: catalogScanRowClearance,
               header: switcher(
                 triggerBuilder: (context, open) => _SidebarSwitcherHeading(title: title, onPressed: open),
               ),
@@ -229,8 +230,9 @@ class const SessionsHomeView({
       slivers: slivers(
         selectedSessionId: null,
         header: null,
-        // The last row scrolls clear of the floating New session button.
-        endClearance: _newSessionButtonSize.diameter + kFloatingActionButtonMargin,
+        // The last row scrolls clear of the floating New session button and
+        // the scan card floating above it.
+        endClearance: _newSessionButtonSize.diameter + kFloatingActionButtonMargin + catalogScanRowClearance,
       ),
     );
   }

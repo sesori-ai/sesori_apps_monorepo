@@ -20,6 +20,13 @@ const double _entranceBlurSigma = 2;
 // Keep the leading footprint identical when loading becomes a result.
 const double _scanMarkSize = 20;
 const Duration _startupWaitThreshold = Duration(seconds: 3);
+// Both Deep Scan cards rest at this height at standard text size.
+const double _cardMinHeight = 69;
+
+/// The room a list hosting a floating [CatalogScanRow] reserves after its last
+/// row, so that row scrolls fully clear of the card. Reserved whether or not a
+/// scan is showing, so the card coming and going never changes the list.
+const double catalogScanRowClearance = _cardMinHeight + 2 * PregoSpacing.xl;
 
 /// The catalog scan reported as one quiet card floating over a list.
 ///
@@ -371,7 +378,7 @@ class const _RowContent({
 
 /// The Figma result card: leading mark and two fixed lines.
 class const _ScanCard({required final _RowContent content}) extends StatelessWidget {
-  static const double _minHeight = 69;
+  static const double _minHeight = _cardMinHeight;
   // Figma's radial is 483.76px wide for a 69px vertical radius.
   static const double _glowScaleX = 7.011014492753623;
 
@@ -540,7 +547,7 @@ class _ScanLoadingCardState()
         type: MaterialType.transparency,
         child: Container(
           key: const ValueKey("prego-deep-scan-card"),
-          constraints: const BoxConstraints(minHeight: 69),
+          constraints: const BoxConstraints(minHeight: _cardMinHeight),
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: colors.bgSurface5,
@@ -571,7 +578,7 @@ class _ScanLoadingCardState()
               Padding(
                 padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 69),
+                  constraints: const BoxConstraints(minHeight: _cardMinHeight),
                   child: Row(
                     children: [
                       RotationTransition(

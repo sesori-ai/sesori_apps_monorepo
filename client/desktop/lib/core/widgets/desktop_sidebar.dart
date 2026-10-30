@@ -129,7 +129,8 @@ class const DesktopSidebar({
                           emptyState: SessionEmptyState(projectName: filterName),
                           // The filter heads the list already, beside Refresh.
                           header: null,
-                          endClearance: 0,
+                          // The last row scrolls clear of the floating scan card.
+                          endClearance: catalogScanRowClearance,
                         ),
                       ],
                     ),
