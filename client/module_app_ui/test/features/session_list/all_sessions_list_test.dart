@@ -2172,6 +2172,83 @@ void main() {
       });
     }
   });
+
+  testWidgets("a row renamed deep in the list moves to the top under a new Today heading, moving no row on screen", (
+    tester,
+  ) async {
+    final now = DateTime.now();
+    final lastMonth = now.subtract(const Duration(days: 40));
+    final rows = [
+      for (var index = 0; index < 100; index++)
+        row(
+          title: "Session $index",
+          updatedAt: lastMonth.subtract(Duration(minutes: index)),
+          archivedAt: null,
+          isRunning: false,
+        ),
+    ];
+    AllSessionsState listing(List<AllSessionsRow> rows) => state(
+      query: "",
+      failure: null,
+      rows: rows,
+      scratchProjectId: null,
+      counts: SessionListChipCounts(all: rows.length, running: 0, unread: 0),
+    );
+    final updates = StreamController<AllSessionsState>();
+    addTearDown(updates.close);
+    await pumpList(tester, mode: AllSessionsMode.active, initial: listing(rows), updates: updates.stream);
+    final position = tester.state<ScrollableState>(find.byType(Scrollable).first).position;
+    position.jumpTo(3000);
+    await tester.pump();
+
+    final onScreen = [
+      for (var index = 0; index < rows.length; index++)
+        if (find.text("Session $index").evaluate().isNotEmpty) index,
+    ];
+    expect(onScreen.length, greaterThan(4));
+    final renamed = onScreen[onScreen.length ~/ 2];
+    final renamedRow = AllSessionsRow(
+      session: testSession(id: "Session $renamed", title: "Renamed", updatedAt: now.millisecondsSinceEpoch),
+      project: project,
+      isRunning: false,
+      isUnseen: false,
+      isAwaitingInput: false,
+      isRetrying: false,
+      backgroundTaskCount: 0,
+    );
+    final finders = [for (final index in onScreen) find.text("Session $index")];
+    List<double?> readTops() => [for (final finder in finders) topOf(tester, finder)];
+    final frames = [readTops()];
+    updates.add(listing([renamedRow, ...rows.where((row) => row.session.id != "Session $renamed")]));
+    await tester.pump(Duration.zero);
+    frames.add(readTops());
+    // The frame after the update runs long, as a slow device's can; the rows
+    // below still close up from there rather than in one step.
+    await tester.pump(const Duration(milliseconds: 400));
+    frames.add(readTops());
+    for (var elapsed = 0; elapsed < 500; elapsed += 5) {
+      await tester.pump(const Duration(milliseconds: 5));
+      frames.add(readTops());
+    }
+
+    for (final (position, index) in onScreen.indexed) {
+      final readings = [for (final frame in frames) frame[position]];
+      if (index < renamed) {
+        // Rows above the renamed one hold still on every frame.
+        expect(readings, everyElement(readings.first), reason: "Session $index");
+      } else if (index > renamed) {
+        // Rows below it close up smoothly as it closes where it stood.
+        expect(steps(readings), everyElement(inInclusiveRange(-maxStep, 0)), reason: "Session $index");
+        expect(readings.last, frames.first[position - 1], reason: "Session $index");
+      }
+    }
+    expect(find.text("Today"), findsNothing);
+
+    position.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(find.text("Today"), findsOneWidget);
+    expect(tester.getTopLeft(find.text("Today")).dy, lessThan(tester.getTopLeft(find.text("Renamed")).dy));
+  });
 }
 
 Widget _offlinePage({required BuildContext context, required ProjectListBridgeDisconnected state}) =>

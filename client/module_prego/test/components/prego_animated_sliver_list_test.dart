@@ -39,6 +39,8 @@ void main() {
     await tester.pumpWidget(_harness(["B"]));
     expect(find.text("A"), findsOneWidget);
 
+    // Row motions run from the frame after the update.
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
     final movingTop = tester.getTopLeft(find.byKey(const ValueKey("row-B"))).dy;
     expect(movingTop, greaterThan(0));
@@ -88,6 +90,7 @@ void main() {
     await tester.pumpWidget(_harness([]));
     expect(find.text("A"), findsOneWidget);
 
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
     expect(tester.getSize(find.byType(SizeTransition)).height, inExclusiveRange(0, _rowHeight));
 
@@ -147,6 +150,7 @@ void main() {
     // Animated rows start at zero height; animating all 100 built all 100.
     expect(find.byType(SizeTransition).evaluate().length, lessThan(30));
 
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
     expect(tester.getSize(rowTransition("1")).height, inExclusiveRange(0, _rowHeight));
     expect(tester.getSize(rowTransition("7")).height, inExclusiveRange(0, _rowHeight));
@@ -160,6 +164,7 @@ void main() {
     // One ticker per animated row: the five new rows and the first 13 old
     // ones, as many as the 600 px test surface fits at 48 px or more each.
     expect(tester.binding.transientCallbackCount, 5 + 13);
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
     expect(find.text("A"), findsOneWidget);
     expect(find.text("row 0"), findsOneWidget);
@@ -197,11 +202,12 @@ void main() {
     tester.state<ScrollableState>(find.byType(Scrollable)).position.jumpTo(10 * _rowHeight);
     await tester.pump();
 
-    // Rows leaving above the viewport go at once and shift every index after
-    // them; the added row lands at index 13, in view.
-    final next = [...items.sublist(5, 18), "new", ...items.sublist(18)];
+    // Rows leaving above the viewport go at once, and the row added among
+    // the rows on screen opens in view.
+    final next = [...items.sublist(5, 13), "new", ...items.sublist(13)];
     await tester.pumpWidget(_harness(next));
     expect(tester.binding.transientCallbackCount, 1);
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 130));
     final opening = find.ancestor(of: find.text("new"), matching: find.byType(SizeTransition));
     expect(tester.getSize(opening).height, inExclusiveRange(0, _rowHeight));
@@ -209,6 +215,59 @@ void main() {
     await tester.pumpAndSettle();
     await tester.pumpWidget(_harness(["above", ...next]));
     expect(tester.binding.transientCallbackCount, 0);
+  });
+
+  testWidgets("rows arriving or leaving above a scrolled list move nothing on screen", (tester) async {
+    final items = [for (var i = 0; i < 100; i++) "$i"];
+    await tester.pumpWidget(_harness(items));
+    // Row 40 straddles the top edge.
+    tester.state<ScrollableState>(find.byType(Scrollable)).position.jumpTo(40.5 * _rowHeight);
+    await tester.pump();
+    final onScreen = ["40", "41", "42", "43", "44", "45", "46", "47"];
+    double top(String item) => tester.getTopLeft(find.byKey(ValueKey("row-$item"))).dy;
+    final before = {for (final item in onScreen) item: top(item)};
+
+    // A heading and row 44 move to the top; rows leave and arrive in the
+    // rows built just above the screen and far above it.
+    await tester.pumpWidget(
+      _harness([
+        "heading",
+        "44",
+        ...items.sublist(0, 3),
+        ...items.sublist(5, 38),
+        "arrived",
+        ...items.sublist(39, 44),
+        ...items.sublist(45),
+      ]),
+    );
+    // Only row 44 animates, closing where it stood.
+    expect(tester.binding.transientCallbackCount, 1);
+    // The frame the update lands in runs long, as a slow device's can; the
+    // close still starts from the frame after it rather than ending at once.
+    await tester.pump(const Duration(milliseconds: 400));
+    final closing = <double>[];
+    for (var frame = 0; frame <= 30; frame++) {
+      for (final item in ["40", "41", "42", "43"]) {
+        expect(top(item), before[item], reason: "row $item on frame $frame");
+      }
+      closing.add(top("45"));
+      await tester.pump(const Duration(milliseconds: 10));
+    }
+    expect(closing.first, before["45"]);
+    expect(closing, everyElement(inInclusiveRange(before["44"] ?? 0, before["45"] ?? 0)));
+    for (var frame = 1; frame < closing.length; frame++) {
+      expect(closing[frame - 1] - closing[frame], lessThan(_rowHeight / 4), reason: "row 45 on frame $frame");
+    }
+    await tester.pumpAndSettle();
+    expect(top("45"), before["44"]);
+    expect(top("46"), before["45"]);
+
+    // The rows above the screen are all there when scrolled back up.
+    tester.state<ScrollableState>(find.byType(Scrollable)).position.jumpTo(0);
+    await tester.pumpAndSettle();
+    expect(top("heading"), 0);
+    expect(top("44"), _rowHeight);
+    expect(top("0"), 2 * _rowHeight);
   });
 
   testWidgets("reduced motion removes a row without a transition delay", (tester) async {

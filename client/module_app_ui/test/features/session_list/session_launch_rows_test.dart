@@ -167,6 +167,8 @@ void main() {
   Future<void> settle(WidgetTester tester) async {
     await tester.pump();
     await tester.pump();
+    // A row's motion runs from the frame after its update.
+    await tester.pump();
     await tester.pump(const Duration(milliseconds: 400));
   }
 
