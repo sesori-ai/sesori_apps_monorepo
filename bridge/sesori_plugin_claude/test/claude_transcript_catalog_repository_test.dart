@@ -6,6 +6,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart";
 import "package:sesori_plugin_interface/plugin_interface_testing.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, LogLevel;
+import "package:sesori_shared/sesori_shared.dart" show wrapDictatedText;
 import "package:test/test.dart";
 
 void main() {
@@ -191,6 +192,24 @@ void main() {
             ],
           ),
           _userRecord(_sessionA, cwd: "/work/alpha", uuid: "u4", content: "A later prompt"),
+        ],
+      );
+
+      expect((await catalog.listSessionRecordsInIsolate()).single.title, "Rename the CSV parser");
+    });
+
+    test("titles an unnamed session with the plain words of a dictated first prompt", () async {
+      _writeTranscript(
+        claudeHome,
+        project: "-work-alpha",
+        name: "$_sessionA.jsonl",
+        records: [
+          _userRecord(
+            _sessionA,
+            cwd: "/work/alpha",
+            uuid: "u1",
+            content: wrapDictatedText(text: "Rename the CSV parser"),
+          ),
         ],
       );
 

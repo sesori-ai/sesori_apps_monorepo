@@ -1,4 +1,5 @@
 import "package:freezed_annotation/freezed_annotation.dart";
+import "package:sesori_shared/sesori_shared.dart";
 
 import "composer_attachment.dart";
 import "composer_draft.dart";
@@ -19,13 +20,30 @@ sealed class const NewSessionSubmissionSnapshot._() with _$NewSessionSubmissionS
     required String command,
   }) = NewSessionCommandSubmissionSnapshot;
 
-  /// What the sending bubble shows, matching `QueuedSessionSubmission.displayText`: the
+  /// The text this submission sends. Only dictated prompt text is marked: a
+  /// command sends its arguments as written.
+  String get outgoingText => switch (this) {
+    NewSessionCommandSubmissionSnapshot(:final draft) => draft.text,
+    NewSessionTextSubmissionSnapshot(:final draft) => switch (draft.inputMode) {
+      ComposerInputMode.typed => draft.text,
+      ComposerInputMode.voiceAssisted => wrapDictatedText(text: draft.text),
+    },
+  };
+
+  /// The words as written, matching `QueuedSessionSubmission.plainText`: the
   /// command with its arguments, the prompt text, or `null` for a prompt that
   /// carries only attachments.
-  String? get displayText => switch (this) {
+  String? get plainText => switch (this) {
     NewSessionCommandSubmissionSnapshot(:final draft, :final command) =>
       draft.text.trim().isEmpty ? "/$command" : "/$command ${draft.text.trim()}",
     NewSessionTextSubmissionSnapshot(:final draft) => draft.text.isEmpty ? null : draft.text,
+  };
+
+  /// What the sending bubble shows, matching `QueuedSessionSubmission.displayText`:
+  /// what the agent gets, or `null` for a prompt that carries only attachments.
+  String? get displayText => switch (this) {
+    NewSessionCommandSubmissionSnapshot() => plainText,
+    NewSessionTextSubmissionSnapshot(:final draft) => draft.text.isEmpty ? null : outgoingText,
   };
 
   /// This submission with [followUps] appended in order, then [unsent], so
@@ -39,7 +57,12 @@ sealed class const NewSessionSubmissionSnapshot._() with _$NewSessionSubmissionS
     required UnsentComposer? unsent,
   }) {
     final appended = [
-      for (final followUp in followUps) (text: followUp.displayText, attachments: followUp.attachments),
+      for (final followUp in followUps)
+        (
+          text: followUp.plainText,
+          attachments: followUp.attachments,
+          dictated: followUp.inputMode == ComposerInputMode.voiceAssisted,
+        ),
       if (unsent case UnsentComposer(:final draft, :final command, :final attachments))
         (
           text: switch ((command: command?.name, text: draft.text.trim())) {
@@ -49,18 +72,25 @@ sealed class const NewSessionSubmissionSnapshot._() with _$NewSessionSubmissionS
             (command: null, :final text) => text,
           },
           attachments: attachments,
+          dictated: command == null && draft.inputMode == ComposerInputMode.voiceAssisted,
         ),
     ];
     if (appended.isEmpty) return this;
     // The first draft's voice spans stay valid wherever its text keeps its
-    // offsets.
-    ComposerDraft merged({required ComposerDraft first}) => ComposerDraft(
-      text: [
-        if (first.text.isNotEmpty) first.text,
-        for (final part in appended) ?part.text,
-      ].join("\n\n"),
-      voiceSpans: first.voiceSpans,
-    );
+    // offsets, and a dictated part keeps the restored draft dictated.
+    ComposerDraft merged({required ComposerDraft first}) {
+      final text = StringBuffer(first.text);
+      final voiceSpans = [...first.voiceSpans];
+      for (final part in appended) {
+        final partText = part.text;
+        if (partText == null) continue;
+        if (text.isNotEmpty) text.write("\n\n");
+        if (part.dictated) voiceSpans.add(VoiceOriginSpan(start: text.length, end: text.length + partText.length));
+        text.write(partText);
+      }
+      return ComposerDraft(text: text.toString(), voiceSpans: voiceSpans);
+    }
+
     final followUpAttachments = [for (final part in appended) ...part.attachments];
     return switch (this) {
       NewSessionTextSubmissionSnapshot(:final draft, :final attachments) => NewSessionSubmissionSnapshot.text(

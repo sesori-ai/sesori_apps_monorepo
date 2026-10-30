@@ -2530,7 +2530,7 @@ class SessionDetailCubit(
       final result = await _sessionRepository.sendMessage(
         sessionId: _sessionId,
         promptId: submission.promptId,
-        text: submission.text,
+        text: submission.outgoingText,
         attachments: submission.attachments,
         agent: submission.agent,
         model: _agentModelToPromptModel(submission.agentModel),

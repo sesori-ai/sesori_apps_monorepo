@@ -545,7 +545,7 @@ void main() {
             attachments: const [],
             projectId: "project-1",
             pluginId: "plugin-1",
-            text: "hello",
+            text: wrapDictatedText(text: "hello"),
             agent: null,
             model: null,
             variant: null,

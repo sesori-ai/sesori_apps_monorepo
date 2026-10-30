@@ -209,6 +209,27 @@ void main() {
       await service.drain();
     });
 
+    test("generates metadata from a dictated message's plain words and sends the agent the marked form", () async {
+      final marked = wrapDictatedText(text: "Build it");
+
+      await service.createSession(
+        request: CreateSessionRequest(
+          projectId: "/repo",
+          pluginId: "fake",
+          dedicatedWorktree: false,
+          parts: [PromptPart.text(text: marked)],
+          variant: null,
+          agent: null,
+          model: null,
+          command: null,
+        ),
+      );
+      await service.drain();
+
+      expect(metadataRepository.lastFirstMessage, "Build it");
+      expect(plugin.lastCreateUserVisibleText, marked);
+    });
+
     test("shutdown aborts and drains the underlying metadata workflow", () async {
       metadataRepository
         ..generateStarted = Completer<void>()
@@ -689,6 +710,7 @@ void main() {
 
 class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
   int generateCalls = 0;
+  String? lastFirstMessage;
   Completer<void>? generateStarted;
   Future<void>? generateGate;
   bool abortOnShutdown = false;
@@ -704,6 +726,7 @@ class _FakeSessionMetadataRepository() implements SessionMetadataRepository {
   @override
   Future<GeneratedSessionMetadata> generateMetadata({required String firstMessage}) async {
     generateCalls++;
+    lastFirstMessage = firstMessage;
     if (generateStarted case final started? when !started.isCompleted) started.complete();
     if (abortOnShutdown) {
       await _shutdown.future;

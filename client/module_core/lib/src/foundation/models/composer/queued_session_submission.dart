@@ -48,16 +48,28 @@ sealed class const QueuedSessionSubmission() {
   /// Whether this prompt runs in fast mode, resolved against [agentModel].
   bool get fastMode;
 
-  /// What the queued bubble should render, or `null` when the submission
-  /// carries no text of its own — an attachment-only prompt. Callers decide
-  /// what to show in its place rather than reading an empty string as absence.
-  String? get displayText => command != null
+  /// The text this submission sends. Only dictated text is marked: commands
+  /// always report [ComposerInputMode.typed].
+  String get outgoingText => switch (inputMode) {
+    ComposerInputMode.typed => text,
+    ComposerInputMode.voiceAssisted => wrapDictatedText(text: text),
+  };
+
+  /// The words as written, for a draft restored into the composer: the prompt
+  /// text or the command with its arguments, or `null` when the submission
+  /// carries no text of its own — an attachment-only prompt.
+  String? get plainText => command != null
       ? text.trim().isEmpty
             ? "/$command"
             : "/$command ${text.trim()}"
       : text.isEmpty
       ? null
       : text;
+
+  /// What the queued bubble should render, which is what the agent gets, or
+  /// `null` when the submission carries no text of its own. Callers decide what
+  /// to show in its place rather than reading an empty string as absence.
+  String? get displayText => command == null && text.isNotEmpty ? outgoingText : plainText;
 
   bool get isCommand => command != null;
 

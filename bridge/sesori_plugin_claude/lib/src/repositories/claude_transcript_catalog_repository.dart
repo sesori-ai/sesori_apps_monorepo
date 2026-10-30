@@ -4,6 +4,7 @@ import "package:path/path.dart" as p;
 import "package:sesori_bridge_foundation/sesori_bridge_foundation.dart"
     show normalizeProjectDirectory, stripWorktreeSystemContext;
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart" show Log, PluginSession, PluginSessionTime;
+import "package:sesori_shared/sesori_shared.dart" show unwrapDictatedText;
 
 import "../api/claude_transcript_api.dart";
 import "../api/models/claude_transcript_record_dto.dart";
@@ -474,7 +475,7 @@ String? _promptTitle(ClaudeTranscriptUserRecord record) {
     // already truncated here, so this one use strips it locally.
     final visible = stripWorktreeSystemContext(text: block.text);
     if (visible == null) continue;
-    final text = visible.replaceAll(_whitespace, " ").trim();
+    final text = unwrapDictatedText(text: visible).replaceAll(_whitespace, " ").trim();
     if (text.isEmpty) continue;
     final runes = text.runes;
     if (runes.length <= _promptTitleLength) return text;

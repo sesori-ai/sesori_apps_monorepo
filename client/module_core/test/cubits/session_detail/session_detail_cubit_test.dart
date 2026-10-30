@@ -1682,6 +1682,41 @@ void main() {
     );
 
     blocTest<SessionDetailCubit, SessionDetailState>(
+      "sendMessage marks dictated text for the agent and the bubble",
+      build: buildCubit,
+      act: (cubit) async {
+        await _awaitLoaded(cubit);
+        await cubit.sendMessage(
+          attachments: const [],
+          text: "hi",
+          command: null,
+          inputMode: ComposerInputMode.voiceAssisted,
+        );
+      },
+      expect: () => [
+        isA<SessionDetailLoaded>(),
+        _queuedSubmission(wrapDictatedText(text: "hi")),
+        _sendingSubmission(wrapDictatedText(text: "hi")),
+        _noPendingSubmission,
+      ],
+      verify: (_) {
+        verify(
+          () => mockSessionService.sendMessage(
+            promptId: "prompt-1",
+            attachments: const [],
+            sessionId: sessionId,
+            text: wrapDictatedText(text: "hi"),
+            agent: "coder",
+            model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
+            variant: const SessionVariant(id: "xhigh"),
+            fastMode: false,
+            command: null,
+          ),
+        ).called(1);
+      },
+    );
+
+    blocTest<SessionDetailCubit, SessionDetailState>(
       "sendMessage forwards attachments when the plugin declares support",
       build: () {
         _stubPromptAttachmentCapability(
@@ -3116,9 +3151,9 @@ void main() {
         isA<SessionDetailLoaded>().having(
           (state) => state.queuedMessages.map((message) => message.displayText).toList(),
           "queuedMessages",
-          ["retry me"],
+          [wrapDictatedText(text: "retry me")],
         ),
-        _sendingSubmission("retry me"),
+        _sendingSubmission(wrapDictatedText(text: "retry me")),
         _noPendingSubmission,
       ],
       verify: (_) {
@@ -3127,7 +3162,7 @@ void main() {
             promptId: "prompt-1",
             attachments: const [],
             sessionId: sessionId,
-            text: "retry me",
+            text: wrapDictatedText(text: "retry me"),
             agent: "coder",
             model: const PromptModel(providerID: "anthropic", modelID: "claude-3-5-sonnet"),
             variant: const SessionVariant(id: "xhigh"),
