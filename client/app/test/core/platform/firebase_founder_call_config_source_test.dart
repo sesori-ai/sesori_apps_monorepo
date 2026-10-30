@@ -44,9 +44,9 @@ void main() {
     ));
   });
 
-  test("reads the console values and treats an empty text as unset", () async {
+  test("reads the console values and treats an empty value as unset", () async {
     setRemote(FirebaseFounderCallConfigSource.enabledKey, "false");
-    setRemote(FirebaseFounderCallConfigSource.afterComputerKey, "false");
+    setRemote(FirebaseFounderCallConfigSource.afterComputerKey, "");
     setRemote(FirebaseFounderCallConfigSource.bookingUrlKey, "https://cal.com/example");
     setRemote(FirebaseFounderCallConfigSource.titleKey, "Talk to the founder");
     setRemote(FirebaseFounderCallConfigSource.messageKey, "");
@@ -54,7 +54,7 @@ void main() {
 
     expect(await source.fetchValues(), (
       enabled: false,
-      afterComputer: false,
+      afterComputer: null,
       bookingUrl: "https://cal.com/example",
       title: "Talk to the founder",
       message: null,

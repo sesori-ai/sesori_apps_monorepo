@@ -24,21 +24,16 @@ class FirebaseFounderCallConfigSource({
     final remoteConfig = await _remoteConfigClient.activated();
     RemoteConfigValue? read(String key) {
       final value = remoteConfig.getValue(key);
-      return value.source == ValueSource.valueStatic ? null : value;
-    }
-
-    String? readText(String key) {
-      final text = read(key)?.asString();
-      return text == null || text.isEmpty ? null : text;
+      return value.source == ValueSource.valueStatic || value.asString().isEmpty ? null : value;
     }
 
     return (
       enabled: read(enabledKey)?.asBool(),
       afterComputer: read(afterComputerKey)?.asBool(),
-      bookingUrl: readText(bookingUrlKey),
-      title: readText(titleKey),
-      message: readText(messageKey),
-      buttonLabel: readText(buttonLabelKey),
+      bookingUrl: read(bookingUrlKey)?.asString(),
+      title: read(titleKey)?.asString(),
+      message: read(messageKey)?.asString(),
+      buttonLabel: read(buttonLabelKey)?.asString(),
     );
   }
 }

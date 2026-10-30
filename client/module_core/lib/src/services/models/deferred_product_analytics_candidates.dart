@@ -20,6 +20,7 @@ final class DeferredProductAnalyticsCandidates {
   final _DeferredProductAnalyticsCandidate _projectAvailable;
   final _DeferredProductAnalyticsCandidate _diffAdoption;
   final _DeferredProductAnalyticsCandidate _sessionActivity;
+  final _DeferredProductAnalyticsCandidate _founderCallShown;
 
   const new _({
     required this.generation,
@@ -27,16 +28,19 @@ final class DeferredProductAnalyticsCandidates {
     required _DeferredProductAnalyticsCandidate projectAvailable,
     required _DeferredProductAnalyticsCandidate diffAdoption,
     required _DeferredProductAnalyticsCandidate sessionActivity,
+    required _DeferredProductAnalyticsCandidate founderCallShown,
   }) : _activation = activation,
        _projectAvailable = projectAvailable,
        _diffAdoption = diffAdoption,
-       _sessionActivity = sessionActivity;
+       _sessionActivity = sessionActivity,
+       _founderCallShown = founderCallShown;
 
   const new empty({required this.generation})
     : _activation = const _DeferredProductAnalyticsCandidateEmpty(),
       _projectAvailable = const _DeferredProductAnalyticsCandidateEmpty(),
       _diffAdoption = const _DeferredProductAnalyticsCandidateEmpty(),
-      _sessionActivity = const _DeferredProductAnalyticsCandidateEmpty();
+      _sessionActivity = const _DeferredProductAnalyticsCandidateEmpty(),
+      _founderCallShown = const _DeferredProductAnalyticsCandidateEmpty();
 
   DeferredProductAnalyticsRetention retain({required ProductAnalyticsEnvelope envelope}) => switch (envelope.event) {
     SessionMessageSentEvent() || SessionCreatedWithMessageEvent() => _retainActivation(envelope: envelope),
@@ -47,6 +51,9 @@ final class DeferredProductAnalyticsCandidates {
     SessionActivityViewedEvent(activityState: AnalyticsActivityState.nonEmpty) => _retainActivity(
       envelope: envelope,
     ),
+    // The computer-connected sheet can open right after a fresh sign-in,
+    // before the preference resolves; it is the A/B test's activation event.
+    FounderCallShownEvent() => _retainFounderCallShown(envelope: envelope),
     AnalyticsSchemaReadyEvent() ||
     AnalyticsActivationReadyEvent() ||
     ProjectInventoryLoadedEvent(inventoryState: AnalyticsInventoryState.empty) ||
@@ -72,7 +79,6 @@ final class DeferredProductAnalyticsCandidates {
     ProductScreenViewedEvent() ||
     ComputerSwitchedEvent() ||
     ComputerManagedEvent() ||
-    FounderCallShownEvent() ||
     FounderCallLinkOpenedEvent() ||
     FounderCallDeclinedEvent() => DeferredProductAnalyticsRetention(candidates: this, retained: false),
   };
@@ -87,6 +93,7 @@ final class DeferredProductAnalyticsCandidates {
           projectAvailable: _projectAvailable,
           diffAdoption: _diffAdoption,
           sessionActivity: _sessionActivity,
+          founderCallShown: _founderCallShown,
         ),
       );
     }
@@ -99,6 +106,7 @@ final class DeferredProductAnalyticsCandidates {
           projectAvailable: const _DeferredProductAnalyticsCandidateEmpty(),
           diffAdoption: _diffAdoption,
           sessionActivity: _sessionActivity,
+          founderCallShown: _founderCallShown,
         ),
       );
     }
@@ -111,6 +119,7 @@ final class DeferredProductAnalyticsCandidates {
           projectAvailable: _projectAvailable,
           diffAdoption: const _DeferredProductAnalyticsCandidateEmpty(),
           sessionActivity: _sessionActivity,
+          founderCallShown: _founderCallShown,
         ),
       );
     }
@@ -123,6 +132,20 @@ final class DeferredProductAnalyticsCandidates {
           projectAvailable: _projectAvailable,
           diffAdoption: _diffAdoption,
           sessionActivity: const _DeferredProductAnalyticsCandidateEmpty(),
+          founderCallShown: _founderCallShown,
+        ),
+      );
+    }
+    if (_founderCallShown case _DeferredProductAnalyticsCandidateRetained(:final envelope)) {
+      return DeferredProductAnalyticsDrainNext(
+        envelope: envelope,
+        remainingCandidates: DeferredProductAnalyticsCandidates._(
+          generation: generation,
+          activation: _activation,
+          projectAvailable: _projectAvailable,
+          diffAdoption: _diffAdoption,
+          sessionActivity: _sessionActivity,
+          founderCallShown: const _DeferredProductAnalyticsCandidateEmpty(),
         ),
       );
     }
@@ -138,6 +161,7 @@ final class DeferredProductAnalyticsCandidates {
         projectAvailable: _projectAvailable,
         diffAdoption: _diffAdoption,
         sessionActivity: _sessionActivity,
+        founderCallShown: _founderCallShown,
       ),
       retained: retention.retained,
     );
@@ -152,6 +176,7 @@ final class DeferredProductAnalyticsCandidates {
         projectAvailable: retention.candidate,
         diffAdoption: _diffAdoption,
         sessionActivity: _sessionActivity,
+        founderCallShown: _founderCallShown,
       ),
       retained: retention.retained,
     );
@@ -166,6 +191,7 @@ final class DeferredProductAnalyticsCandidates {
         projectAvailable: _projectAvailable,
         diffAdoption: retention.candidate,
         sessionActivity: _sessionActivity,
+        founderCallShown: _founderCallShown,
       ),
       retained: retention.retained,
     );
@@ -180,6 +206,22 @@ final class DeferredProductAnalyticsCandidates {
         projectAvailable: _projectAvailable,
         diffAdoption: _diffAdoption,
         sessionActivity: retention.candidate,
+        founderCallShown: _founderCallShown,
+      ),
+      retained: retention.retained,
+    );
+  }
+
+  DeferredProductAnalyticsRetention _retainFounderCallShown({required ProductAnalyticsEnvelope envelope}) {
+    final retention = _founderCallShown.retain(envelope: envelope);
+    return DeferredProductAnalyticsRetention(
+      candidates: DeferredProductAnalyticsCandidates._(
+        generation: generation,
+        activation: _activation,
+        projectAvailable: _projectAvailable,
+        diffAdoption: _diffAdoption,
+        sessionActivity: _sessionActivity,
+        founderCallShown: retention.candidate,
       ),
       retained: retention.retained,
     );

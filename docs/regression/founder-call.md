@@ -43,7 +43,8 @@ Desktop does not offer the call yet.
 - Analytics events carry only a closed `surface` value
   (`computer_connected_sheet`, `settings`):
   - `founder_call_shown` when the automatic sheet is claimed (the A/B test's
-    activation event);
+    activation event), retained once while the analytics preference is still
+    resolving after a fresh sign-in;
   - `founder_call_link_opened` when the booking page opened (the goal event);
   - `founder_call_declined` when the sheet closed without booking.
 
