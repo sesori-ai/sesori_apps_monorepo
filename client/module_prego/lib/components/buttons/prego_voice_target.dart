@@ -3,29 +3,38 @@ import "dart:math" as math;
 import "package:flutter/foundation.dart";
 import "package:material_ui/material_ui.dart";
 
-import "../../icons/tabler_icons.g.dart";
 import "../../theme/prego_theme.dart";
 
-/// The cancel target shown in the accordion's place while a hold-to-talk
-/// recording runs.
+/// The fill a [PregoVoiceTarget] rises into.
+enum PregoVoiceTargetTone() {
+  /// Solid destructive: releasing here throws the recording away.
+  destructive,
+
+  /// Solid primary: releasing here keeps the words.
+  primary,
+}
+
+/// The target shown in the accordion's place while a recording runs.
 ///
-/// At rest it is a dash-bordered ghost of an X button. As the recording hold
-/// drags toward it ([progress] rising toward 1) the dashes give way to a solid
-/// destructive fill, matching the design's `Recording` → `Deleting` states —
-/// releasing at 1 discards the recording. A plain tap (a second finger, or
-/// after the hold) cancels outright.
+/// At rest it is a dash-bordered ghost of an icon button. As the hold drags
+/// toward it ([progress] rising toward 1) the dashes give way to a solid fill
+/// in its [tone], matching the design's `Recording` → `Deleting` states —
+/// releasing at 1 does what the icon says. A plain tap (a second finger, or
+/// after the hold) does it outright.
 ///
 /// Driven by [progress] straight into the painter, so the drag scrubs colour
 /// without rebuilding the composer.
-class const PregoVoiceCancelButton({
+class const PregoVoiceTarget({
   super.key,
+  required final IconData icon,
+  required final PregoVoiceTargetTone tone,
 
   /// Announced by assistive technologies; the consumer localizes it.
   required final String semanticLabel,
 
-  /// 0 → resting dashed ghost, 1 → solid destructive fill under the finger.
+  /// 0 → resting dashed ghost, 1 → solid fill under the finger.
   required final ValueListenable<double> progress,
-  required final VoidCallback onCancel,
+  required final VoidCallback onTap,
 }) extends StatelessWidget {
   /// Matches the 44pt footprint of the accordion pill it replaces.
   static const double _size = 44;
@@ -33,6 +42,21 @@ class const PregoVoiceCancelButton({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
+    final (fillColor, ringColor, engagedIconColor) = switch (tone) {
+      // The filled state's hairline ring, from the design's 2px
+      // rgba(255,255,255,0.12) border.
+      PregoVoiceTargetTone.destructive => (
+        prego.colors.bgErrorSolid,
+        prego.colors.textWhite.withValues(alpha: 0.12),
+        prego.colors.textWhite,
+      ),
+      // The colours of the Send button, whose place it takes in the gesture.
+      PregoVoiceTargetTone.primary => (
+        prego.colors.fgPrimary,
+        prego.colors.fgPrimary,
+        prego.colors.textPrimaryOnWhite,
+      ),
+    };
 
     return Semantics(
       button: true,
@@ -41,7 +65,7 @@ class const PregoVoiceCancelButton({
         cursor: SystemMouseCursors.click,
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
-          onTap: onCancel,
+          onTap: onTap,
           // The drag scrubs repaints at pointer-move rate; keep them off the
           // surrounding composer layer.
           child: RepaintBoundary(
@@ -55,20 +79,18 @@ class const PregoVoiceCancelButton({
                 return SizedBox.square(
                   dimension: _size,
                   child: CustomPaint(
-                    painter: _CancelTargetPainter(
+                    painter: _VoiceTargetPainter(
                       engaged: engaged,
                       dashColor: prego.colors.borderDisabled,
-                      fillColor: prego.colors.bgErrorSolid,
-                      // The filled state's hairline ring, from the design's
-                      // 2px rgba(255,255,255,0.12) border.
-                      ringColor: prego.colors.textWhite.withValues(alpha: 0.12),
+                      fillColor: fillColor,
+                      ringColor: ringColor,
                     ),
                     child: Center(
                       child: Icon(
-                        TablerRegular.x,
+                        icon,
                         size: PregoIconSize.md,
                         color:
-                            Color.lerp(prego.colors.textSecondary, prego.colors.textWhite, engaged) ??
+                            Color.lerp(prego.colors.textSecondary, engagedIconColor, engaged) ??
                             prego.colors.textSecondary,
                       ),
                     ),
@@ -83,9 +105,9 @@ class const PregoVoiceCancelButton({
   }
 }
 
-/// Paints the dashed resting ring, cross-fading into the solid destructive
+/// Paints the dashed resting ring, cross-fading into the solid
 /// disc as [engaged] rises.
-class _CancelTargetPainter({
+class _VoiceTargetPainter({
   required final double engaged,
   required final Color dashColor,
   required final Color fillColor,
@@ -136,7 +158,7 @@ class _CancelTargetPainter({
   }
 
   @override
-  bool shouldRepaint(covariant _CancelTargetPainter oldDelegate) {
+  bool shouldRepaint(covariant _VoiceTargetPainter oldDelegate) {
     return oldDelegate.engaged != engaged ||
         oldDelegate.dashColor != dashColor ||
         oldDelegate.fillColor != fillColor ||

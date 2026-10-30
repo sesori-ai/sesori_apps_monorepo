@@ -557,7 +557,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
                   attachments: attachments,
                   dedicatedWorktree: _dedicatedWorktree,
                 ),
-            onVoiceTranscriptionCompleted: ComposerPresentationScope.of(context).voiceSupport.isSupported
+            onVoiceTranscriptionFinished: ComposerPresentationScope.of(context).voiceSupport.isSupported
                 ? context.read<NewSessionCubit>().reportVoiceTranscriptionCompleted
                 : null,
             onDraftChanged: (draft) => context.read<NewSessionCubit>().saveComposerDraft(draft: draft),

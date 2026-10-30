@@ -1576,11 +1576,19 @@
   "voiceCancelTranscription": "Cancel transcription",
   "voiceCancelRecording": "Cancel recording",
   "@voiceCancelRecording": {
-    "description": "Accessibility label of the X button shown in the accordion's place while recording; releasing or tapping on it discards the recording."
+    "description": "Accessibility label of the X button shown in the accordion's place while a desktop recording runs; clicking it discards the recording."
   },
-  "voiceReleaseToTranscribe": "Release to transcribe",
-  "@voiceReleaseToTranscribe": {
+  "voiceReleaseToSend": "Release to send · slide up to cancel",
+  "@voiceReleaseToSend": {
     "description": "Floating helper above the composer while a hold-to-talk recording is running."
+  },
+  "voiceReleaseToEdit": "Release to edit",
+  "@voiceReleaseToEdit": {
+    "description": "Floating helper above the composer while the recording hold is on the pencil; releasing there puts the words in the box instead of sending them."
+  },
+  "voicePutWordsInBox": "Put the words in the box",
+  "@voicePutWordsInBox": {
+    "description": "Accessibility label of the pencil shown in the accordion's place while recording; releasing or tapping on it puts the words in the box instead of sending them."
   },
   "voiceClickToTranscribe": "Click the mic to transcribe · Esc to cancel",
   "@voiceClickToTranscribe": {
@@ -1592,7 +1600,7 @@
   },
   "voiceReleaseToCancel": "Release to cancel",
   "@voiceReleaseToCancel": {
-    "description": "Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording."
+    "description": "Floating helper above the composer once the recording hold has slid far enough out of the pill; releasing there discards the recording."
   },
   "voiceTranscribing": "Transcribing...",
   "voiceRecordingSaved": "Recording saved",

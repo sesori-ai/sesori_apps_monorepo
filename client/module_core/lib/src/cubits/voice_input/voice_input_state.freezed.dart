@@ -447,10 +447,11 @@ String toString() {
 
 
 class VoiceInputCompleted implements VoiceInputState {
-  const VoiceInputCompleted({required this.transcript});
+  const VoiceInputCompleted({required this.transcript, required this.outcome});
   
 
  final  String transcript;
+ final  VoiceDictationOutcome outcome;
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
@@ -462,18 +463,18 @@ $VoiceInputCompletedCopyWith<VoiceInputCompleted> get copyWith => _$VoiceInputCo
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputCompleted&&(identical(other.transcript, transcript) || other.transcript == transcript));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputCompleted&&(identical(other.transcript, transcript) || other.transcript == transcript)&&(identical(other.outcome, outcome) || other.outcome == outcome));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,transcript);
+    return Object.hash(runtimeType,transcript,outcome);
 }
 
 @override
 String toString() {
-    return 'VoiceInputState.completed(transcript: $transcript)';
+    return 'VoiceInputState.completed(transcript: $transcript, outcome: $outcome)';
 }
 
 
@@ -484,7 +485,7 @@ abstract mixin class $VoiceInputCompletedCopyWith<$Res> implements $VoiceInputSt
   factory $VoiceInputCompletedCopyWith(VoiceInputCompleted value, $Res Function(VoiceInputCompleted) _then) = _$VoiceInputCompletedCopyWithImpl;
 @useResult
 $Res call({
- String transcript
+ String transcript, VoiceDictationOutcome outcome
 });
 
 
@@ -501,10 +502,11 @@ class _$VoiceInputCompletedCopyWithImpl<$Res>
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? transcript = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? transcript = null,Object? outcome = null,}) {
   return _then(VoiceInputCompleted(
 transcript: null == transcript ? _self.transcript : transcript // ignore: cast_nullable_to_non_nullable
-as String,
+as String,outcome: null == outcome ? _self.outcome : outcome // ignore: cast_nullable_to_non_nullable
+as VoiceDictationOutcome,
   ));
 }
 

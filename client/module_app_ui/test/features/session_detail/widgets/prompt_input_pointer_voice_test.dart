@@ -62,25 +62,55 @@ void main() {
 
   testWidgets("a visible X discards a click-started recording without resizing the composer", (tester) async {
     await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit);
-    expect(find.byType(PregoVoiceCancelButton), findsNothing);
+    expect(find.byType(PregoVoiceTarget), findsNothing);
     final composerRect = tester.getRect(find.byType(PromptInput));
 
     await tester.tap(find.byTooltip("Record voice"));
     // The pulse repeats, so settle the morph by time rather than pumpAndSettle.
     await tester.pump();
     await tester.pump(const Duration(seconds: 1));
-    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceTarget), findsOneWidget);
     expect(tester.getRect(find.byType(PromptInput)), composerRect);
 
-    await tester.tap(find.byType(PregoVoiceCancelButton));
+    await tester.tap(find.byType(PregoVoiceTarget));
     await tester.pump();
 
     verify(voiceCubit.cancel).called(1);
     verifyNever(() => voiceCubit.stopAndTranscribe(limitReached: false));
   });
+
+  testWidgets("a click-stopped transcript lands in the box and reports edited, without sending", (tester) async {
+    final sent = <String>[];
+    final finishes = <AnalyticsVoiceFinish>[];
+    await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, sent: sent, finishes: finishes);
+
+    await tester.tap(find.byTooltip("Record voice"));
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.byIcon(TablerRegular.x), findsOneWidget, reason: "The pencil is touch only until step 4.");
+    expect(find.byIcon(TablerRegular.pencil), findsNothing);
+
+    await tester.tap(find.byTooltip("Stop and transcribe"));
+    await tester.pump();
+    voiceStates.add(
+      const VoiceInputState.completed(transcript: "spoken words", outcome: VoiceDictationOutcome.finished),
+    );
+    await tester.pump();
+    await tester.pump();
+    voiceStates.add(const VoiceInputState.idle());
+    await tester.pump(const Duration(milliseconds: 500));
+
+    expect(sent, isEmpty);
+    expect(finishes, [AnalyticsVoiceFinish.edited]);
+    expect(find.text("spoken words"), findsOneWidget);
+  });
 }
 
-Future<void> _pumpPointerComposer({required WidgetTester tester, required VoiceInputCubit voiceCubit}) async {
+Future<void> _pumpPointerComposer({
+  required WidgetTester tester,
+  required VoiceInputCubit voiceCubit,
+  List<String>? sent,
+  List<AnalyticsVoiceFinish>? finishes,
+}) async {
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
   final attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
@@ -109,8 +139,8 @@ Future<void> _pumpPointerComposer({required WidgetTester tester, required VoiceI
               isBusy: false,
               hasMessages: true,
               canSend: true,
-              onSend: ({required draft, required command, required attachments}) {},
-              onVoiceTranscriptionCompleted: null,
+              onSend: ({required draft, required command, required attachments}) => sent?.add(draft.text),
+              onVoiceTranscriptionFinished: ({required finish}) => finishes?.add(finish),
               onDraftChanged: (_) {},
               onDraftCleared: () {},
               onAbort: () {},

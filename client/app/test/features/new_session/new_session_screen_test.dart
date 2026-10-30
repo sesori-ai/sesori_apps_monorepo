@@ -649,7 +649,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.text(loc.voiceReleaseToTranscribe), findsOneWidget);
+    expect(find.text(loc.voiceReleaseToSend), findsOneWidget);
     expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
     await gesture.up();
     await tester.pumpAndSettle();
@@ -2672,7 +2672,53 @@ void main() {
     ).called(1);
   });
 
-  testWidgets("a creation landing mid-recording waits for the transcript, then hands it over", (tester) async {
+  testWidgets("releasing a hold creates the session with the words", (tester) async {
+    when(
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(testSession(id: "session-1", title: null)));
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(
+      () => voiceTranscriptionService.stopAndTranscribe(session: voiceSession),
+    ).thenAnswer((_) async => "spoken words");
+
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    await tester.pumpAndSettle();
+
+    verify(
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: wrapDictatedText(text: "spoken words"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).called(1);
+  });
+
+  testWidgets("a creation landing mid-recording waits for a transcript slid onto the pencil, then hands it over", (
+    tester,
+  ) async {
     final createCompleter = Completer<ApiResponse<Session>>();
     when(
       () => sessionService.createSessionWithMessage(
@@ -2715,6 +2761,8 @@ void main() {
     await tester.pump();
     expect(find.byType(NewSessionScreen), findsOneWidget, reason: "the recording keeps the screen");
 
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceTarget)));
+    await tester.pump();
     await gesture.up();
     await tester.pump();
     expect(find.byType(NewSessionScreen), findsOneWidget, reason: "the transcription keeps it too");
@@ -2723,6 +2771,85 @@ void main() {
     await tester.pumpAndSettle();
     expect(find.text("session-detail:session-1"), findsOneWidget);
     expect(handoff?.composer?.unsent?.draft.text, contains("spoken words"));
+  });
+
+  testWidgets("a hold released while creating follows the first message once the transcript lands", (tester) async {
+    final createCompleter = Completer<ApiResponse<Session>>();
+    when(
+      () => sessionService.createSessionWithMessage(
+        attachments: const [],
+        projectId: any(named: "projectId"),
+        pluginId: any(named: "pluginId"),
+        text: any(named: "text"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+        dedicatedWorktree: any(named: "dedicatedWorktree"),
+      ),
+    ).thenAnswer((_) => createCompleter.future);
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    final transcript = Completer<String>();
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) => transcript.future);
+    when(
+      () => sessionService.sendMessage(
+        sessionId: any(named: "sessionId"),
+        promptId: any(named: "promptId"),
+        text: any(named: "text"),
+        attachments: any(named: "attachments"),
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: any(named: "command"),
+      ),
+    ).thenAnswer((_) async => ApiResponse.success(null));
+    SessionLaunchHandoff? handoff;
+    await tester.pumpWidget(
+      _buildApp(
+        sessionDetailBuilder: (context, state) {
+          final sessionId = state.pathParameters["sessionId"] ?? "";
+          handoff ??= GetIt.instance<SessionLaunchRepository>().takeHandoff(sessionId: sessionId);
+          return Text("session-detail:$sessionId");
+        },
+      ),
+    );
+    await tester.pumpAndSettle();
+
+    await enterTypingMode(tester);
+    await enterTextAndSend(tester: tester, text: "test message");
+    await tester.pumpAndSettle();
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await tester.pump(const Duration(milliseconds: 300));
+
+    createCompleter.complete(ApiResponse.success(testSession(id: "session-1", title: null)));
+    await tester.pump();
+    await tester.pump();
+    expect(find.byType(NewSessionScreen), findsOneWidget, reason: "the recording keeps the screen");
+
+    await gesture.up();
+    await tester.pump();
+    expect(find.byType(NewSessionScreen), findsOneWidget, reason: "the transcription keeps it too");
+
+    transcript.complete("spoken words");
+    await tester.pumpAndSettle();
+    expect(find.text("session-detail:session-1"), findsOneWidget);
+    expect(handoff?.composer?.unsent, isNull, reason: "the words were sent, not left in the composer");
+    verify(
+      () => sessionService.sendMessage(
+        sessionId: "session-1",
+        promptId: any(named: "promptId"),
+        text: wrapDictatedText(text: "spoken words"),
+        attachments: const [],
+        agent: any(named: "agent"),
+        model: any(named: "model"),
+        variant: any(named: "variant"),
+        fastMode: any(named: "fastMode"),
+        command: null,
+      ),
+    ).called(1);
   });
 
   testWidgets("shows snackbar and allows navigation when aborting while sending", (tester) async {

@@ -26,7 +26,19 @@ import "prompt_editor_sheet.dart";
 // ignore: use_primary_constructors
 enum _VoicePresentation { idle, recording, transcribing }
 
-typedef _RecordingPointer = ({int id, Offset position});
+/// What a finished dictation does with its words, decided when the gesture
+/// ends: goes out as a message, or waits in the box.
+// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
+// ignore: use_primary_constructors
+enum _VoiceFinish { send, edit }
+
+/// What releasing the hold would do at the finger's current position.
+// WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
+// ignore: use_primary_constructors
+enum _VoiceDragArm { none, edit, cancel }
+
+/// [origin] is where the hold began, [position] where the finger is now.
+typedef _RecordingPointer = ({int id, Offset origin, Offset position});
 
 /// Pointer/layout presentation only. [VoiceInputCubit] owns the authoritative
 /// recording, transcription, cancellation, and disposal lifecycle.
@@ -39,7 +51,6 @@ final class const _VoiceStarting({
   required final ComposerSurfaceLayout pinnedLayout,
   required final bool releaseRequested,
   required final _RecordingPointer? pointer,
-  required final bool cancelTargetEngaged,
 }) extends _VoiceGesturePresentation;
 
 final class const _VoiceRecording({
@@ -47,12 +58,12 @@ final class const _VoiceRecording({
   required final ComposerSurfaceLayout pinnedLayout,
   required final bool minimumDurationReached,
   required final _RecordingPointer? pointer,
-  required final bool cancelTargetEngaged,
 }) extends _VoiceGesturePresentation;
 
 final class const _VoiceTranscribing({
   required final int id,
   required final ComposerSurfaceLayout? pinnedLayout,
+  required final _VoiceFinish finish,
 }) extends _VoiceGesturePresentation;
 
 final class const _VoiceCancelling() extends _VoiceGesturePresentation;
@@ -121,6 +132,8 @@ typedef PromptSubmitCallback = void Function({
   required List<ComposerAttachment> attachments,
 });
 
+typedef VoiceTranscriptionFinishedCallback = void Function({required AnalyticsVoiceFinish finish});
+
 class const PromptInput({
   super.key,
   required final bool isBusy,
@@ -134,7 +147,9 @@ class const PromptInput({
   /// is false the draft simply waits in the field.
   required final bool canSend,
   required final PromptSubmitCallback onSend,
-  required final VoidCallback? onVoiceTranscriptionCompleted,
+
+  /// Told what became of a dictation's words, once that is decided.
+  required final VoiceTranscriptionFinishedCallback? onVoiceTranscriptionFinished,
   required final ValueChanged<ComposerDraft> onDraftChanged,
   required final VoidCallback onDraftCleared,
   required final VoidCallback onAbort,
@@ -242,15 +257,21 @@ class _PromptInputState() extends State<PromptInput> {
   /// when a newer recording starts.
   int _latestVoiceInteractionId = 0;
 
-  /// How far the recording hold has dragged toward the cancel target:
-  /// 0 at rest, 1 with the finger on the target — releasing there discards
-  /// the recording. A notifier rather than state: the drag scrubs at
-  /// pointer-move rate and feeds the cancel button, the waveform, and the
-  /// destructive gradient directly, without rebuilding the composer.
+  /// How far the recording hold has slid up out of the pill: 0 at or below its
+  /// top edge, 1 once releasing would discard the recording. A notifier rather
+  /// than state: the drag scrubs at pointer-move rate and feeds the waveform,
+  /// the red wash, and the hint directly, without rebuilding the composer.
+  ///
+  /// Both drag notifiers keep their last value until the next hold starts, so
+  /// whatever is fading out after a release holds still instead of snapping.
   final ValueNotifier<double> _cancelDragProgress = ValueNotifier<double>(0);
 
-  /// Locates the cancel target so the drag can measure its distance to it.
-  final GlobalKey _cancelTargetKey = GlobalKey();
+  /// How far the hold has slid toward the pencil, likewise: 0 at the hold
+  /// point, 1 once releasing would put the words in the box.
+  final ValueNotifier<double> _editDragProgress = ValueNotifier<double>(0);
+
+  /// Locates the pencil, which both drag measurements are taken from.
+  final GlobalKey _editTargetKey = GlobalKey();
 
   /// Carries the composer's layouts, and the input's focus, across the
   /// [AnimatedSize] that [_morphSize] adds or drops as reduced motion toggles.
@@ -315,6 +336,7 @@ class _PromptInputState() extends State<PromptInput> {
     _voiceStateSub?.cancel();
     _minimumRecordingDurationTimer?.cancel();
     _cancelDragProgress.dispose();
+    _editDragProgress.dispose();
     _controller.dispose();
     _textScrollController.dispose();
     _focusNode.dispose();
@@ -489,7 +511,8 @@ class _PromptInputState() extends State<PromptInput> {
         // Safe to unpin while transcribing: no gesture is in flight once the
         // hold has been released.
         if (_voiceInteraction case _VoiceTranscribing(:final id)) {
-          _voiceInteraction = _VoiceTranscribing(id: id, pinnedLayout: null);
+          // Asking for the keyboard means the words are wanted in the box.
+          _voiceInteraction = _VoiceTranscribing(id: id, pinnedLayout: null, finish: _VoiceFinish.edit);
         }
       },
     );
@@ -504,25 +527,27 @@ class _PromptInputState() extends State<PromptInput> {
     });
   }
 
-  void _handleSend() => unawaited(_submitComposer());
+  void _handleSend() => unawaited(_submitComposer(fromDictation: false));
 
-  Future<void> _submitComposer() async {
-    if (_isSubmitting || !widget.canSend) return;
+  /// Sends the composer's content and reports whether it went out; a refusal
+  /// leaves everything where it is.
+  Future<bool> _submitComposer({required bool fromDictation}) async {
+    if (_isSubmitting || !widget.canSend) return false;
 
     final wasFocused = _focusNode.hasFocus;
     final stagedCommand = widget.stagedCommand;
     final attachments = List<ComposerAttachment>.unmodifiable(_attachments);
-    if (attachments.isNotEmpty && widget.attachmentsSupported != true) return;
+    if (attachments.isNotEmpty && widget.attachmentsSupported != true) return false;
     if (stagedCommand != null && attachments.isNotEmpty) {
       // The bridge's command paths read only the text part, so images sent
       // with a command would silently vanish. Refuse the combination and
       // keep both staged for the user to untangle.
       _showComposerNotice(context.loc.sessionDetailAttachmentsNotWithCommands);
-      return;
+      return false;
     }
 
     final submission = _draftCalculator.trim(draft: _draft);
-    if (stagedCommand == null && submission.text.isEmpty && attachments.isEmpty) return;
+    if (stagedCommand == null && submission.text.isEmpty && attachments.isEmpty) return false;
 
     _isSubmitting = true;
     try {
@@ -530,7 +555,7 @@ class _PromptInputState() extends State<PromptInput> {
         final voiceState = _voiceCubit.state;
         if (voiceState is VoiceInputRetryPending || voiceState is VoiceInputRetrying) {
           await _voiceCubit.discard();
-          if (!mounted) return;
+          if (!mounted) return false;
         }
       }
 
@@ -549,12 +574,13 @@ class _PromptInputState() extends State<PromptInput> {
       _controller.clear();
       widget.onDraftCleared();
       // Keep the keyboard up across a send only where it was already part of
-      // the flow: always in text-first, and in voice-first when the field was
-      // focused. Sending a reviewed voice transcript stays keyboard-free — the
-      // composer collapses back to its hold-to-talk pill.
-      if (!_isVoiceFirst || wasFocused) {
+      // the flow: when the field was focused, and after a typed send in
+      // text-first. A dictation that sent itself never raises it — the composer
+      // collapses back to its resting pill and the chat keeps its height.
+      if (wasFocused || (!_isVoiceFirst && !fromDictation)) {
         _focusNode.requestFocus();
       }
+      return true;
     } finally {
       _isSubmitting = false;
       _reportBusy();
@@ -604,13 +630,13 @@ class _PromptInputState() extends State<PromptInput> {
     _minimumRecordingDurationTimer?.cancel();
     _minimumRecordingDurationTimer = null;
     _cancelDragProgress.value = 0;
+    _editDragProgress.value = 0;
     _updateComposerState(
       update: () => _voiceInteraction = _VoiceStarting(
         id: interactionId,
         pinnedLayout: _restingLayout,
         releaseRequested: false,
         pointer: pointer,
-        cancelTargetEngaged: false,
       ),
     );
 
@@ -640,16 +666,15 @@ class _PromptInputState() extends State<PromptInput> {
         pinnedLayout: starting.pinnedLayout,
         minimumDurationReached: false,
         pointer: starting.pointer,
-        cancelTargetEngaged: starting.cancelTargetEngaged,
       ),
     );
-    // Startup can finish after the user has already dragged toward cancel.
-    // Reapply the latest position once the newly mounted target has layout.
+    // Startup can finish after the user has already dragged. Reapply the latest
+    // position once the newly mounted target has layout.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (!mounted) return;
       final activeInteraction = _voiceInteraction;
       if (activeInteraction case _VoiceRecording(:final id, pointer: final pointer?) when id == interactionId) {
-        _handleRecordDragUpdate(globalPosition: pointer.position);
+        _handleRecordDragUpdate(pointer: pointer);
       }
     });
     _minimumRecordingDurationTimer = Timer(_minimumRecordingDuration, () {
@@ -659,7 +684,6 @@ class _PromptInputState() extends State<PromptInput> {
             :final id,
             :final pinnedLayout,
             :final pointer,
-            :final cancelTargetEngaged,
           )
           when id == interactionId) {
         _voiceInteraction = _VoiceRecording(
@@ -667,7 +691,6 @@ class _PromptInputState() extends State<PromptInput> {
           pinnedLayout: pinnedLayout,
           minimumDurationReached: true,
           pointer: pointer,
-          cancelTargetEngaged: cancelTargetEngaged,
         );
       }
     });
@@ -676,51 +699,36 @@ class _PromptInputState() extends State<PromptInput> {
   void _handleRecordPointerDown(PointerDownEvent event) {
     if (_voiceInteraction is! _VoiceIdle || (event.buttons & kPrimaryButton) == 0) return;
     unawaited(
-      _handleRecordStart(pointer: (id: event.pointer, position: event.position)),
+      _handleRecordStart(pointer: (id: event.pointer, origin: event.position, position: event.position)),
     );
   }
 
   void _handleRecordPointerMove(PointerMoveEvent event) {
     final interaction = _voiceInteraction;
-    _voiceInteraction = switch (interaction) {
-      _VoiceStarting(
-        :final id,
-        :final pinnedLayout,
-        :final releaseRequested,
-        pointer: final pointer?,
-        :final cancelTargetEngaged,
-      )
-          when pointer.id == event.pointer =>
-        _VoiceStarting(
+    final _RecordingPointer moved;
+    switch (interaction) {
+      case _VoiceStarting(:final id, :final pinnedLayout, :final releaseRequested, pointer: final pointer?)
+          when pointer.id == event.pointer:
+        moved = (id: pointer.id, origin: pointer.origin, position: event.position);
+        _voiceInteraction = _VoiceStarting(
           id: id,
           pinnedLayout: pinnedLayout,
           releaseRequested: releaseRequested,
-          pointer: (id: pointer.id, position: event.position),
-          cancelTargetEngaged: cancelTargetEngaged,
-        ),
-      _VoiceRecording(
-        :final id,
-        :final pinnedLayout,
-        :final minimumDurationReached,
-        pointer: final pointer?,
-        :final cancelTargetEngaged,
-      )
-          when pointer.id == event.pointer =>
-        _VoiceRecording(
+          pointer: moved,
+        );
+      case _VoiceRecording(:final id, :final pinnedLayout, :final minimumDurationReached, pointer: final pointer?)
+          when pointer.id == event.pointer:
+        moved = (id: pointer.id, origin: pointer.origin, position: event.position);
+        _voiceInteraction = _VoiceRecording(
           id: id,
           pinnedLayout: pinnedLayout,
           minimumDurationReached: minimumDurationReached,
-          pointer: (id: pointer.id, position: event.position),
-          cancelTargetEngaged: cancelTargetEngaged,
-        ),
-      _VoiceStarting() ||
-      _VoiceRecording() ||
-      _VoiceIdle() ||
-      _VoiceTranscribing() ||
-      _VoiceCancelling() => interaction,
-    };
-    if (identical(interaction, _voiceInteraction)) return;
-    _handleRecordDragUpdate(globalPosition: event.position);
+          pointer: moved,
+        );
+      case _VoiceStarting() || _VoiceRecording() || _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling():
+        return;
+    }
+    _handleRecordDragUpdate(pointer: moved);
   }
 
   void _handleRecordPointerEnd(PointerEvent event) {
@@ -729,143 +737,130 @@ class _PromptInputState() extends State<PromptInput> {
       _VoiceRecording(pointer: final pointer?) => pointer,
       _VoiceStarting() || _VoiceRecording() || _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => null,
     };
-    if (pointer?.id != event.pointer) return;
-    _handleRecordDragUpdate(globalPosition: event.position);
+    if (pointer == null || pointer.id != event.pointer) return;
+    // The system took a cancelled pointer away (a call, a system gesture): its
+    // position says nothing about the finger, and nobody chose to send.
+    final systemCancelled = event is PointerCancelEvent;
+    if (!systemCancelled) {
+      _handleRecordDragUpdate(pointer: (id: pointer.id, origin: pointer.origin, position: event.position));
+    }
     final interaction = _voiceInteraction;
     _voiceInteraction = switch (interaction) {
-      _VoiceStarting(
-        :final id,
-        :final pinnedLayout,
-        :final releaseRequested,
-        :final cancelTargetEngaged,
-      ) =>
-        _VoiceStarting(
-          id: id,
-          pinnedLayout: pinnedLayout,
-          releaseRequested: releaseRequested,
-          pointer: null,
-          cancelTargetEngaged: cancelTargetEngaged,
-        ),
-      _VoiceRecording(
-        :final id,
-        :final pinnedLayout,
-        :final minimumDurationReached,
-        :final cancelTargetEngaged,
-      ) =>
-        _VoiceRecording(
-          id: id,
-          pinnedLayout: pinnedLayout,
-          minimumDurationReached: minimumDurationReached,
-          pointer: null,
-          cancelTargetEngaged: cancelTargetEngaged,
-        ),
+      _VoiceStarting(:final id, :final pinnedLayout, :final releaseRequested) => _VoiceStarting(
+        id: id,
+        pinnedLayout: pinnedLayout,
+        releaseRequested: releaseRequested,
+        pointer: null,
+      ),
+      _VoiceRecording(:final id, :final pinnedLayout, :final minimumDurationReached) => _VoiceRecording(
+        id: id,
+        pinnedLayout: pinnedLayout,
+        minimumDurationReached: minimumDurationReached,
+        pointer: null,
+      ),
       _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => interaction,
     };
-    unawaited(_handleRecordEnd());
+    unawaited(_endRecording(finish: systemCancelled ? _VoiceFinish.edit : _finishOnRelease));
   }
 
-  /// Tracks the hold as it moves, scrubbing the drag-to-cancel presentation
-  /// toward the cancel target.
-  void _handleRecordDragUpdate({required Offset globalPosition}) {
-    final interaction = _voiceInteraction;
-    final bool? currentCancelTargetEngaged = switch (interaction) {
-      _VoiceStarting(releaseRequested: false, :final cancelTargetEngaged) => cancelTargetEngaged,
-      _VoiceRecording(:final cancelTargetEngaged) => cancelTargetEngaged,
-      _VoiceStarting() || _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => null,
-    };
-    if (currentCancelTargetEngaged == null) return;
-    final progress = _cancelProgressFor(
-      globalPosition: globalPosition,
-      cancelTargetEngaged: currentCancelTargetEngaged,
-    );
-    final nextCancelTargetEngaged = progress >= 1;
-    if (nextCancelTargetEngaged != currentCancelTargetEngaged) {
-      _voiceInteraction = switch (interaction) {
-        _VoiceStarting(
-          :final id,
-          :final pinnedLayout,
-          :final releaseRequested,
-          :final pointer,
-        ) =>
-          _VoiceStarting(
-            id: id,
-            pinnedLayout: pinnedLayout,
-            releaseRequested: releaseRequested,
-            pointer: pointer,
-            cancelTargetEngaged: nextCancelTargetEngaged,
-          ),
-        _VoiceRecording(
-          :final id,
-          :final pinnedLayout,
-          :final minimumDurationReached,
-          :final pointer,
-        ) =>
-          _VoiceRecording(
-            id: id,
-            pinnedLayout: pinnedLayout,
-            minimumDurationReached: minimumDurationReached,
-            pointer: pointer,
-            cancelTargetEngaged: nextCancelTargetEngaged,
-          ),
-        _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => interaction,
-      };
-      unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
+  /// Slide-up cancel arms this far above the pill's top edge.
+  static const double _cancelArmDistance = 64;
+
+  /// The pencil arms at this fraction of the way from the hold point to it.
+  static const double _editArmFraction = 0.9;
+
+  /// A small retreat keeps an armed target armed, so finger tremor cannot
+  /// chatter across the threshold.
+  static const double _disarmTolerance = 12;
+
+  /// The fade of the red wash once the finger has lifted.
+  static const Duration _washFadeOutDuration = Duration(milliseconds: 240);
+
+  /// Reads what the two drag notifiers say. Only meaningful during a hold.
+  _VoiceDragArm get _dragArm {
+    if (_cancelDragProgress.value >= 1) return _VoiceDragArm.cancel;
+    if (_editDragProgress.value >= 1) return _VoiceDragArm.edit;
+    return _VoiceDragArm.none;
+  }
+
+  /// A release sends, unless the finger is on the pencil. A pointer shell keeps
+  /// landing in the box.
+  _VoiceFinish get _finishOnRelease {
+    if (ComposerPresentationScope.read(context).presentation == ComposerPresentation.pointer) {
+      return _VoiceFinish.edit;
     }
-    _cancelDragProgress.value = progress;
+    return switch (_dragArm) {
+      _VoiceDragArm.edit => _VoiceFinish.edit,
+      _VoiceDragArm.none || _VoiceDragArm.cancel => _VoiceFinish.send,
+    };
   }
 
-  /// The finger starts engaging the cancel affordance within this distance of
-  /// the target's centre, and is committed to cancelling within
-  /// [_cancelCommitRadius] — roughly the 44pt button plus touch slop. Once
-  /// committed, the wider disengage radius prevents chatter at the boundary.
-  static const double _cancelReachRadius = 170;
-  static const double _cancelCommitRadius = 44;
-  static const double _cancelDisengageRadius = 56;
+  /// Tracks the hold as it moves, scrubbing the slide-out cancel and the pencil.
+  /// A cancel in progress wins over the pencil.
+  void _handleRecordDragUpdate({required _RecordingPointer pointer}) {
+    final tracksDrag = switch (_voiceInteraction) {
+      _VoiceStarting(:final releaseRequested) => !releaseRequested,
+      _VoiceRecording() => true,
+      _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => false,
+    };
+    if (!tracksDrag) return;
+    final target = _editTargetKey.currentContext?.findRenderObject();
+    if (target is! RenderBox || !target.hasSize || !target.attached) return;
 
-  double _cancelProgressFor({
-    required Offset globalPosition,
-    required bool cancelTargetEngaged,
-  }) {
-    final target = _cancelTargetKey.currentContext?.findRenderObject();
-    if (target is! RenderBox || !target.hasSize || !target.attached) return 0;
-    final center = target.localToGlobal(target.size.center(Offset.zero));
-    final distance = (globalPosition - center).distance;
-    final thresholdRadius = cancelTargetEngaged ? _cancelDisengageRadius : _cancelCommitRadius;
-    final fraction = (distance - thresholdRadius) / (_cancelReachRadius - thresholdRadius);
-    return (1 - fraction).clamp(0.0, 1.0);
+    // The pencil sits the pill's padding below the pill's top edge in every
+    // layout, and its centre is the far end of the slide toward it.
+    final pillTop = target.localToGlobal(Offset.zero).dy - PregoSpacing.sm;
+    final pencilCenterX = target.localToGlobal(target.size.center(Offset.zero)).dx;
+    final cancelProgress = _cancelProgressFor(pillTop: pillTop, pointer: pointer);
+    final editProgress = cancelProgress > 0 ? 0.0 : _editProgressFor(pencilCenterX: pencilCenterX, pointer: pointer);
+
+    final previousArm = _dragArm;
+    _cancelDragProgress.value = cancelProgress;
+    _editDragProgress.value = editProgress;
+    if (_dragArm != previousArm) unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
   }
 
-  Future<void> _handleRecordEnd() async {
+  double _cancelProgressFor({required double pillTop, required _RecordingPointer pointer}) {
+    final tolerance = _cancelDragProgress.value >= 1 ? _disarmTolerance : 0.0;
+    return ((pillTop - pointer.position.dy + tolerance) / _cancelArmDistance).clamp(0.0, 1.0);
+  }
+
+  double _editProgressFor({required double pencilCenterX, required _RecordingPointer pointer}) {
+    final span = pencilCenterX - pointer.origin.dx;
+    if (span.abs() < 1) return 0;
+    final tolerance = _editDragProgress.value >= 1 ? _disarmTolerance / span.abs() : 0.0;
+    final fraction = (pointer.position.dx - pointer.origin.dx) / span;
+    return ((fraction + tolerance) / _editArmFraction).clamp(0.0, 1.0);
+  }
+
+  Future<void> _handleRecordEnd() => _endRecording(finish: _finishOnRelease);
+
+  Future<void> _endRecording({required _VoiceFinish finish}) async {
     final interaction = _voiceInteraction;
-    if (interaction case _VoiceStarting(
-      :final id,
-      :final pinnedLayout,
-      :final pointer,
-      :final cancelTargetEngaged,
-    )) {
+    if (interaction case _VoiceStarting(:final id, :final pinnedLayout, :final pointer)) {
       _updateComposerState(
         update: () => _voiceInteraction = _VoiceStarting(
           id: id,
           pinnedLayout: pinnedLayout,
           releaseRequested: true,
           pointer: pointer,
-          cancelTargetEngaged: cancelTargetEngaged,
         ),
       );
-      _cancelDragProgress.value = 0;
       return;
     }
     if (interaction is! _VoiceRecording) return;
-    if (interaction.cancelTargetEngaged) {
-      // Released on the cancel target — discard instead of transcribing.
+    if (_dragArm == _VoiceDragArm.cancel || !interaction.minimumDurationReached) {
       await _cancelVoiceInteraction();
       return;
     }
-    if (!interaction.minimumDurationReached) {
-      await _cancelVoiceInteraction();
-      return;
-    }
-    await _stopAndTranscribe();
+    await _stopAndTranscribe(finish: finish);
+  }
+
+  /// A tap on the pencil: a second finger, or assistive technology, which has
+  /// no drag to express it with.
+  void _handleEditTargetTap() {
+    unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
+    unawaited(_endRecording(finish: _VoiceFinish.edit));
   }
 
   /// Toggles recording for a pointer shell's mic click and for
@@ -894,9 +889,9 @@ class _PromptInputState() extends State<PromptInput> {
     return _voiceCubit.state is VoiceInputRecording;
   }
 
-  Future<void> _stopAndTranscribe() async {
+  Future<void> _stopAndTranscribe({required _VoiceFinish finish}) async {
     if (_voiceInteraction is! _VoiceRecording) return;
-    _showTranscribingPresentation(limitReached: false);
+    _showTranscribingPresentation(limitReached: false, finish: finish);
     await _voiceCubit.stopAndTranscribe(limitReached: false);
   }
 
@@ -919,11 +914,13 @@ class _PromptInputState() extends State<PromptInput> {
           VoiceInputCancelling():
         return;
       case VoiceInputTranscribing(:final limitReached):
-        _showTranscribingPresentation(limitReached: limitReached);
+        // Reached only when the cubit stopped by itself, with no release to
+        // say otherwise.
+        _showTranscribingPresentation(limitReached: limitReached, finish: _VoiceFinish.edit);
       case VoiceInputRetryPending():
         _resetVoicePresentation();
-      case VoiceInputCompleted(:final transcript):
-        _handleCompletedTranscription(transcript: transcript);
+      case VoiceInputCompleted(:final transcript, :final outcome):
+        _handleCompletedTranscription(transcript: transcript, outcome: outcome);
         _voiceCubit.acknowledgeOutcome();
       case VoiceInputStartFailed(:final error):
         _handleVoiceStartFailure(error: error);
@@ -934,7 +931,7 @@ class _PromptInputState() extends State<PromptInput> {
     }
   }
 
-  void _showTranscribingPresentation({required bool limitReached}) {
+  void _showTranscribingPresentation({required bool limitReached, required _VoiceFinish finish}) {
     final recording = _voiceInteraction;
     if (recording is! _VoiceRecording) return;
 
@@ -945,28 +942,54 @@ class _PromptInputState() extends State<PromptInput> {
       update: () => _voiceInteraction = _VoiceTranscribing(
         id: recording.id,
         pinnedLayout: recording.pinnedLayout,
+        finish: finish,
       ),
     );
-    _cancelDragProgress.value = 0;
   }
 
-  void _handleCompletedTranscription({required String transcript}) {
-    final transcribing = _voiceInteraction;
-    if (transcribing is! _VoiceTranscribing) return;
+  void _handleCompletedTranscription({required String transcript, required VoiceDictationOutcome outcome}) {
+    final int interactionId;
+    final _VoiceFinish finish;
+    switch (_voiceInteraction) {
+      case _VoiceTranscribing(:final id, finish: final chosenFinish):
+        interactionId = id;
+        finish = chosenFinish;
+      // A dictation can end with the finger still down. Nothing was released,
+      // so nothing is sent; the later pointer-up finds the presentation idle.
+      case _VoiceRecording(:final id):
+        interactionId = id;
+        finish = _VoiceFinish.edit;
+      case _VoiceIdle() || _VoiceStarting() || _VoiceCancelling():
+        return;
+    }
 
-    final trimmed = transcript.trim();
-    if (trimmed.isNotEmpty) {
+    if (transcript.trim().isNotEmpty) {
       final nextDraft = _draftCalculator.appendVoiceTranscript(
         draft: _draft,
         transcript: transcript,
       );
       _applyDraft(draft: nextDraft, notify: true);
-      unawaited(_playSuccessFeedback(interactionId: transcribing.id));
-      _scrollToDraftEndAfterLayout();
-      widget.onVoiceTranscriptionCompleted?.call();
-      if (!_isVoiceFirst) _focusComposerField();
+      unawaited(_playSuccessFeedback(interactionId: interactionId));
+      unawaited(_settleDictation(finish: finish, outcome: outcome));
     }
     _resetVoicePresentation();
+  }
+
+  /// Sends the words now in the draft when the gesture and the outcome both
+  /// allow it. A send runs before the next frame, so the box never shows them.
+  Future<void> _settleDictation({required _VoiceFinish finish, required VoiceDictationOutcome outcome}) async {
+    final report = widget.onVoiceTranscriptionFinished;
+    final sendRequested = finish == _VoiceFinish.send && outcome == VoiceDictationOutcome.finished;
+    final sent = sendRequested && await _submitComposer(fromDictation: true);
+    report?.call(
+      finish: switch (outcome) {
+        VoiceDictationOutcome.limitReached => AnalyticsVoiceFinish.cutOff,
+        VoiceDictationOutcome.finished => sent ? AnalyticsVoiceFinish.sent : AnalyticsVoiceFinish.edited,
+      },
+    );
+    if (sent || !mounted) return;
+    _scrollToDraftEndAfterLayout();
+    if (!_isVoiceFirst) _focusComposerField();
   }
 
   void _handleVoiceStartFailure({required VoiceTranscriptionError error}) {
@@ -1004,6 +1027,9 @@ class _PromptInputState() extends State<PromptInput> {
       update: () => _voiceInteraction = _VoiceTranscribing(
         id: interactionId,
         pinnedLayout: _restingLayout,
+        // The attempt failed and the user has moved on: a late send would
+        // surprise them.
+        finish: _VoiceFinish.edit,
       ),
     );
     await _voiceCubit.retry();
@@ -1019,7 +1045,6 @@ class _PromptInputState() extends State<PromptInput> {
   void _resetVoicePresentation() {
     if (!mounted || _voiceInteraction is _VoiceIdle) return;
     _updateComposerState(update: () => _voiceInteraction = const _VoiceIdle());
-    _cancelDragProgress.value = 0;
   }
 
   void _applyDraft({required ComposerDraft draft, required bool notify}) {
@@ -1043,8 +1068,8 @@ class _PromptInputState() extends State<PromptInput> {
     });
   }
 
-  /// Discards the running voice interaction: a drag released on the cancel
-  /// target, a tap on it mid-recording, or a tap on the X while transcribing.
+  /// Discards the running voice interaction: a tap on the pointer shell's X
+  /// mid-recording, Escape, or a tap on the X while transcribing.
   Future<void> _cancelVoiceInteractionWithFeedback() async {
     _playDismissFeedback();
     await _cancelVoiceInteraction();
@@ -1052,12 +1077,7 @@ class _PromptInputState() extends State<PromptInput> {
 
   Future<void> _cancelVoiceInteraction() async {
     final interaction = _voiceInteraction;
-    if (interaction case _VoiceStarting(
-      :final id,
-      :final pinnedLayout,
-      :final pointer,
-      :final cancelTargetEngaged,
-    )) {
+    if (interaction case _VoiceStarting(:final id, :final pinnedLayout, :final pointer)) {
       // Native startup must settle before it can be safely cancelled.
       _updateComposerState(
         update: () => _voiceInteraction = _VoiceStarting(
@@ -1065,10 +1085,8 @@ class _PromptInputState() extends State<PromptInput> {
           pinnedLayout: pinnedLayout,
           releaseRequested: true,
           pointer: pointer,
-          cancelTargetEngaged: cancelTargetEngaged,
         ),
       );
-      _cancelDragProgress.value = 0;
       return;
     }
     if (interaction is _VoiceRecording || interaction is _VoiceTranscribing) {
@@ -1082,7 +1100,6 @@ class _PromptInputState() extends State<PromptInput> {
     _updateComposerState(
       update: () => _voiceInteraction = const _VoiceCancelling(),
     );
-    _cancelDragProgress.value = 0;
     await _voiceCubit.cancel();
     if (mounted && _voiceInteraction is _VoiceCancelling) {
       _updateComposerState(
@@ -1092,12 +1109,8 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   void _playDismissFeedback() {
-    final cancelTargetEngaged = switch (_voiceInteraction) {
-      _VoiceStarting(:final cancelTargetEngaged) => cancelTargetEngaged,
-      _VoiceRecording(:final cancelTargetEngaged) => cancelTargetEngaged,
-      _VoiceIdle() || _VoiceTranscribing() || _VoiceCancelling() => false,
-    };
-    if (cancelTargetEngaged) return;
+    // Arming the cancel already ticked.
+    if (_isListening && _dragArm == _VoiceDragArm.cancel) return;
     unawaited(_playHapticFeedback(play: HapticFeedback.selectionClick));
   }
 
@@ -1390,16 +1403,15 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// The floating helper above the recording pill. Follows the drag: neutral
-  /// "Release to transcribe" normally, destructive "Release to cancel" once
-  /// the finger is on the cancel target.
+  /// The floating helper above the recording pill. Follows the drag: what a
+  /// release does now, in destructive colour once it would cancel.
   Widget _buildReleaseHint(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
     // A pointer shell records on click, so there is no hold to release.
-    final transcribeHint = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer
+    final restingHint = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer
         ? loc.voiceClickToTranscribe
-        : loc.voiceReleaseToTranscribe;
+        : loc.voiceReleaseToSend;
 
     return Padding(
       // The design floats the helper spacing-3xl above the pill, less the
@@ -1410,20 +1422,26 @@ class _PromptInputState() extends State<PromptInput> {
         child: PregoPageHalo(
           radius: PregoRadius.full,
           reachesLayerBottom: false,
-          child: ValueListenableBuilder<double>(
-            valueListenable: _cancelDragProgress,
-            builder: (context, progress, _) {
-              final cancelling = progress >= 1;
+          child: ListenableBuilder(
+            listenable: Listenable.merge([_cancelDragProgress, _editDragProgress]),
+            builder: (context, _) {
+              final arm = _dragArm;
               return Semantics(
                 liveRegion: true,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 150),
                   child: Text(
-                    cancelling ? loc.voiceReleaseToCancel : transcribeHint,
-                    key: ValueKey(cancelling),
+                    switch (arm) {
+                      _VoiceDragArm.none => restingHint,
+                      _VoiceDragArm.edit => loc.voiceReleaseToEdit,
+                      _VoiceDragArm.cancel => loc.voiceReleaseToCancel,
+                    },
+                    key: ValueKey(arm),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                     textAlign: TextAlign.center,
                     style: prego.textTheme.textMd.regular.copyWith(
-                      color: cancelling ? prego.colors.textErrorPrimary : prego.colors.textPrimary,
+                      color: arm == _VoiceDragArm.cancel ? prego.colors.textErrorPrimary : prego.colors.textPrimary,
                     ),
                   ),
                 ),
@@ -1439,9 +1457,8 @@ class _PromptInputState() extends State<PromptInput> {
   // Composer layouts
   // ---------------------------------------------------------------------------
 
-  /// A resting pill surface with the destructive drag-to-cancel gradient
-  /// sandwiched between its background and [child]. The gradient layer is
-  /// always mounted (invisible at zero progress) so entering the recording
+  /// A resting pill surface with the slide-out cancel's red wash sandwiched
+  /// between its background and [child]. The wash layer is always mounted (invisible at zero progress) so entering the recording
   /// state never restructures the tree around an in-flight hold.
   ///
   /// [tightensTrailingWhileRecording] is set by the pills whose trailing
@@ -1465,7 +1482,7 @@ class _PromptInputState() extends State<PromptInput> {
       ),
       child: Stack(
         children: [
-          Positioned.fill(child: _buildCancelGradient(context, borderRadius: radius)),
+          Positioned.fill(child: _buildCancelWash(context)),
           AnimatedPadding(
             duration: _morphDuration,
             curve: _morphCurve,
@@ -1482,28 +1499,23 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// The destructive wash that bleeds in from the cancel target as the hold
-  /// drags toward it, from the design's `Deleting input container`.
-  Widget _buildCancelGradient(BuildContext context, {required BorderRadius borderRadius}) {
-    final prego = context.prego;
+  /// The red wash over the full pill as the hold slides out of it. Follows the
+  /// finger exactly while it is down, and fades away once it lifts.
+  Widget _buildCancelWash(BuildContext context) {
+    final listening = _voicePresentation == _VoicePresentation.recording;
 
     return IgnorePointer(
       child: ValueListenableBuilder<double>(
         valueListenable: _cancelDragProgress,
-        builder: (context, progress, child) {
-          if (progress == 0) return const SizedBox.shrink();
-          return Opacity(opacity: progress, child: child);
-        },
+        builder: (context, progress, child) => AnimatedOpacity(
+          opacity: listening ? progress : 0,
+          duration: listening ? Duration.zero : _washFadeOutDuration,
+          child: child,
+        ),
         child: DecoratedBox(
           decoration: BoxDecoration(
-            borderRadius: borderRadius,
-            gradient: LinearGradient(
-              colors: [
-                prego.colors.bgDestructivePressedAlt.withValues(alpha: 0.5),
-                prego.colors.bgDestructivePressedAlt.withValues(alpha: 0),
-              ],
-              stops: const [0, 0.28],
-            ),
+            borderRadius: const BorderRadius.all(Radius.circular(PregoRadius.full)),
+            color: context.prego.colors.bgDestructivePressedAlt,
           ),
         ),
       ),
@@ -1811,19 +1823,33 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// The text-first typing container's bottom strip: accordion, a voice-aware
-  /// gap, then mic and send/stop.
+  /// gap, then mic and send/stop. It has no surface of its own, so the red wash
+  /// reaches out over the container's padding to read as the same pill the
+  /// other layouts wash.
   Widget _buildTypingActionRow(BuildContext context) {
-    return Row(
-      spacing: PregoSpacing.md,
+    return Stack(
+      clipBehavior: Clip.none,
       children: [
-        _buildLeadingSlot(context),
-        Expanded(
-          child: _buildVoiceAwareSlot(
-            height: _actionButtonSize,
-            idle: const SizedBox(),
-          ),
+        Positioned.fill(
+          left: -PregoSpacing.sm,
+          top: -PregoSpacing.sm,
+          right: -PregoSpacing.sm,
+          bottom: -PregoSpacing.sm,
+          child: _buildCancelWash(context),
         ),
-        _buildMicAndPrimaryActions(context),
+        Row(
+          spacing: PregoSpacing.md,
+          children: [
+            _buildLeadingSlot(context),
+            Expanded(
+              child: _buildVoiceAwareSlot(
+                height: _actionButtonSize,
+                idle: const SizedBox(),
+              ),
+            ),
+            _buildMicAndPrimaryActions(context),
+          ],
+        ),
       ],
     );
   }
@@ -2030,22 +2056,37 @@ class _PromptInputState() extends State<PromptInput> {
     return total;
   }
 
-  /// The 44pt leading slot: the options accordion at rest, the drag-to-cancel
-  /// target while recording, and a plain cancel button while transcribing.
+  /// The 44pt leading slot: the options accordion at rest, the pencil to slide
+  /// onto while recording (a pointer shell's X instead), and a plain cancel
+  /// button while transcribing.
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
 
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),
-      _VoicePresentation.recording => KeyedSubtree(
-        key: const ValueKey("cancel-target"),
-        child: PregoVoiceCancelButton(
-          key: _cancelTargetKey,
-          semanticLabel: loc.voiceCancelRecording,
-          progress: _cancelDragProgress,
-          onCancel: _cancelVoiceInteractionWithFeedback,
+      _VoicePresentation.recording => switch (ComposerPresentationScope.of(context).presentation) {
+        ComposerPresentation.touch => KeyedSubtree(
+          key: const ValueKey("edit-target"),
+          child: PregoVoiceTarget(
+            key: _editTargetKey,
+            icon: TablerRegular.pencil,
+            tone: PregoVoiceTargetTone.primary,
+            semanticLabel: loc.voicePutWordsInBox,
+            progress: _editDragProgress,
+            onTap: _handleEditTargetTap,
+          ),
         ),
-      ),
+        ComposerPresentation.pointer => KeyedSubtree(
+          key: const ValueKey("cancel-target"),
+          child: PregoVoiceTarget(
+            icon: TablerRegular.x,
+            tone: PregoVoiceTargetTone.destructive,
+            semanticLabel: loc.voiceCancelRecording,
+            progress: _cancelDragProgress,
+            onTap: _cancelVoiceInteractionWithFeedback,
+          ),
+        ),
+      },
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("cancel-transcription"),
         child: Tooltip(
@@ -2078,8 +2119,9 @@ class _PromptInputState() extends State<PromptInput> {
   ///
   /// The listener wraps the voice-aware slot (not the other way around) so it
   /// stays mounted when the waveform swaps in and still receives the release
-  /// that ends the hold. Semantic taps toggle recording — assistive
-  /// technologies cannot express the press-and-hold gesture.
+  /// that ends the hold. Semantic taps toggle recording and a semantic dismiss
+  /// cancels it — assistive technologies cannot express the press-and-hold
+  /// gesture or the slide out of it.
   Widget _buildHoldSurface(BuildContext context, {required Widget child}) {
     final loc = context.loc;
 
@@ -2088,6 +2130,7 @@ class _PromptInputState() extends State<PromptInput> {
       label: loc.sessionDetailHoldToTalk,
       excludeSemantics: true,
       onTap: _toggleRecording,
+      onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
       child: Listener(
         behavior: HitTestBehavior.opaque,
         onPointerDown: _handleRecordPointerDown,
@@ -2195,13 +2238,14 @@ class _PromptInputState() extends State<PromptInput> {
     // No Tooltip here: its long-press trigger would race the recording hold.
     // The button keeps its enabled look and swallows plain taps via
     // [_ignoreTap]; the surrounding raw pointer listener drives recording.
-    // Semantic taps toggle recording because assistive technologies cannot
-    // express the hold.
+    // Semantic taps toggle recording and a semantic dismiss cancels it, because
+    // assistive technologies cannot express the hold or the slide out of it.
     return Semantics(
       button: true,
       label: loc.voiceRecord,
       excludeSemantics: true,
       onTap: _toggleRecording,
+      onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
       child: Listener(
         onPointerDown: _handleRecordPointerDown,
         onPointerMove: _handleRecordPointerMove,

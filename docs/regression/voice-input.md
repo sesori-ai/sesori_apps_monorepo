@@ -3,8 +3,8 @@
 ## Capability
 
 The mobile composer records speech while the user holds the mic control, uploads the audio to the Sesori auth server
-for transcription, and inserts the text into the prompt field for review before sending. A voice-first or text-first
-preference decides which control leads. The desktop composer stays text-first and adds the mic as an extra
+for transcription, and sends the words when the release finishes them; sliding onto the pencil target keeps them in the
+prompt field instead. A voice-first or text-first preference decides which control leads. The desktop composer stays text-first and adds the mic as an extra
 control on the same pipeline: one click starts listening, a second click transcribes, and Escape cancels. The device microphone and transcription endpoint are external. The bridge
 independently prepares optional project-scoped vocabulary from bounded local evidence; no backend plugin participates.
 
@@ -38,8 +38,18 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   composer disposal attempts deletion and shows no Retry action. A valid submission cancels any active manual retry
   before deletion and is serialized so it cannot send twice; a refused/invalid submission retains the recording.
   Deletion remains best-effort and logs failures.
-- Text is inserted for review, never auto-sent. The draft tracks voice-origin spans, so a message retaining one counts
-  as voice-assisted input.
+- On touch, the release decides the ending. Releasing sends everything the
+  box holds as soon as the words arrive, on the session screen and the new-session screen alike. Sliding onto the
+  pencil (far left in both input modes; it arms at 90% of the way from the hold point and fills solid) puts the words
+  in the box. Sliding up out of the pill reddens it continuously and arms 64 px above its top edge with a haptic tick
+  and "Release to cancel"; sliding back restores it, and cancelling keeps what the box held.
+- Nothing leaves when the transcript is empty or the hold was under 200 ms. A dictation cut off at the limit, a retried
+  recording, a hold the system cancelled, a keyboard tap during transcribing, and a composer that refuses the send all
+  land in the box. An automatic send does not raise the keyboard unless the field already had it.
+- The composer stays open and the X still stops a transcription under way.
+- Desktop click-to-talk inserts the text for review and never sends by itself. The feedback sheet keeps words in its
+  own field.
+- The draft tracks voice-origin spans, so a message retaining one counts as voice-assisted input.
 - A voice-assisted message reaches the agent, and shows in the sender's own bubble, marked whole as `🎙️ "words"`, so the
   agent allows for misheard words. The composer and a restored draft hold plain words, generated and pending titles use
   plain words, and slash commands are never marked, including a dictated argument.
@@ -47,8 +57,8 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   transcription disposes and invalidates the voice interaction, releases its resources, and prevents a late
   completion from restoring or sending input. Availability recovery creates a fresh eligible composer; the gate
   does not retain the recording or transcript.
-- Successful transcription reports one content-free analytics event. No audio, transcript, or prompt text reaches logs
-  or analytics.
+- Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
+  `edited` or `cut_off`. No audio, transcript, or prompt text reaches logs or analytics.
 - A successful current-project load starts best-effort bridge glossary population. It delegates to one serialized
   coordinator that coalesces concurrent work for the same project and never delays the route response, recording, or
   transcription.
@@ -88,8 +98,8 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 
 ### Client release coverage (L3)
 
-On the release-target mobile platform, hold to record, release to transcribe, edit the inserted transcript,
-drag to cancel, and check layout stability and which control leads under each input preference.
+On the release-target mobile platform, hold to record and release to send, slide onto the pencil and edit the inserted
+transcript, slide up to cancel, slide up and back, and check layout stability and which control leads under each input preference.
 Open Settings → Default input, select each mode, check Back returns to Settings from a non-home opener,
 reopen the page and verify the saved row value.
 On the macOS desktop build, grant the first microphone prompt, click the mic, speak, click again and edit the
@@ -122,7 +132,8 @@ interruptions such as a call.
   terminal paths; a deletion failure is unlogged; or the wake lock stays held.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - A project glossary contains connector or everyday English words, or exceeds 100 terms.
-- Text is sent without review, or a message with surviving voice text is classified as typed.
+- A cut-off, failed, cancelled or retried dictation sends by itself, a desktop or feedback-sheet dictation sends by
+  itself, or a message with surviving voice text is classified as typed.
 - A dictated message reaches the agent unmarked, a typed message or slash command is marked, or the marker appears in a
   draft or a generated title.
 - Any audio, transcript, or prompt content reaches logs or analytics; raw project identity, project paths, repository

@@ -53,7 +53,7 @@ void main() {
       VoiceInputState.starting(),
       VoiceInputState.recording(),
       VoiceInputState.transcribing(limitReached: false),
-      VoiceInputState.completed(transcript: "hello"),
+      VoiceInputState.completed(transcript: "hello", outcome: VoiceDictationOutcome.finished),
       VoiceInputState.idle(),
     ],
     verify: (_) {
@@ -124,7 +124,7 @@ void main() {
       const VoiceInputState.transcribing(limitReached: false),
       isA<VoiceInputRetryPending>(),
       isA<VoiceInputRetrying>(),
-      const VoiceInputState.completed(transcript: "retried"),
+      const VoiceInputState.completed(transcript: "retried", outcome: VoiceDictationOutcome.finished),
     ],
     verify: (_) => verify(() => service.retry(session: session)).called(1),
   );
@@ -215,7 +215,10 @@ void main() {
     await Future<void>.delayed(Duration.zero);
     await Future<void>.delayed(Duration.zero);
 
-    expect(cubit.state, const VoiceInputState.completed(transcript: "hello"));
+    expect(
+      cubit.state,
+      const VoiceInputState.completed(transcript: "hello", outcome: VoiceDictationOutcome.limitReached),
+    );
     verify(() => service.stopAndTranscribe(session: session)).called(1);
   });
 

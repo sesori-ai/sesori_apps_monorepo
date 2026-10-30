@@ -1,5 +1,6 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
+import "../../foundation/models/voice/voice_dictation_outcome.dart";
 import "../../services/voice_transcription_service.dart";
 
 part "voice_input_state.freezed.dart";
@@ -22,7 +23,10 @@ sealed class VoiceInputState with _$VoiceInputState {
 
   const factory discarding() = VoiceInputDiscarding;
 
-  const factory completed({required String transcript}) = VoiceInputCompleted;
+  const factory completed({
+    required String transcript,
+    required VoiceDictationOutcome outcome,
+  }) = VoiceInputCompleted;
 
   const factory startFailed({required VoiceTranscriptionError error}) = VoiceInputStartFailed;
 
