@@ -117,7 +117,7 @@ state.
   wide sidebar, however far it travels, and the desktop
   sidebar's Refresh all start the
   same all-harness import beside their reload, once the pull is let go, reported
-  by the same scan row. Routable is not the same as enabled: a blocked or failed
+  by the same scan card. Routable is not the same as enabled: a blocked or failed
   harness is refused by the bridge and is left out. Automatic reloads
   (reconnect, staleness, committed catalog changes) never import.
 - A refresh reloads the lists at once, and at most once more when its scan
@@ -170,7 +170,7 @@ state.
   membership order, including members with no progress event yet, and keeps
   later harness progress in stored state without letting it steal focus. Focus
   advances only when the selected harness completes, fails, is cancelled, or
-  is removed by an unavailable/not-found start outcome. The row names that
+  is removed by an unavailable/not-found start outcome. The card names that
   harness while preparing, distinguishes confirmed harness startup from
   catalog reading, reports found-session counts during enumeration, and says
   when results are being saved. Every live phase also reports finished
@@ -179,10 +179,10 @@ state.
   membership do not. Startup
   wording is driven only by a fresh management snapshot for the same bridge;
   unknown or older metadata does not infer it. After the same harness remains
-  confirmed as starting for three seconds, the row explains that scanning is
+  confirmed as starting for three seconds, the card explains that scanning is
   waiting for startup and that the user can keep browsing. This one-shot
   presentation timer resets on any phase or harness change and never polls or
-  changes bridge work. The row has no controls. Every live
+  changes bridge work. The card has no controls. Every live
   phase shares the same Deep Scan loading-card treatment. The card floats over
   the bottom of the list instead of taking a place in it — on the phone home
   just above the floating New session button, in the wide sidebar and the
@@ -194,7 +194,7 @@ state.
   the loading skeleton from the first frame. The phone's disconnected pages
   show no card, even while a pull to reconnect is still loading the list. The
   card rises in with a short fade, and the entrance animation plays once when a
-  pull first reveals the row; later updates do not replay it, and the scan
+  pull first reveals the card; later updates do not replay it, and the scan
   indicator keeps animating until a terminal outcome replaces it. Android
   Remove Animations and iOS Reduce Motion both hold the intentional first
   frame without the entrance bounce. Finished outcomes use the shared PREGO
@@ -212,17 +212,17 @@ state.
   floats, keeping its size, and nothing under it moves. A refresh made without a
   live bridge connection, with no routable harness on a connected bridge, or on
   a bridge that cannot import (no import route at all, or no harness list to fan
-  out over) shows no row, so the refresh is an ordinary reload there; a harness
+  out over) shows no card, so the refresh is an ordinary reload there; a harness
   list that could not be read is logged locally. Losing or regaining the
-  connection clears any row, as does the connected bridge turning out to be a
-  different machine — none of those rows describes a run this bridge is still
+  connection clears any card, as does the connected bridge turning out to be a
+  different machine — none of those cards describes a run this bridge is still
   party to.
 - An import that some or all harnesses failed also raises one error alert on
   every surface, naming them: "Couldn't import from Codex", or "Couldn't import
   from 2 harnesses: Codex, Claude Code". The bridge's message for each failed
   harness is logged locally.
 - What a scan reports is what was new, not what was published. When any harness
-  in the run omits its delta the whole row falls back to naming published
+  in the run omits its delta the whole card falls back to naming published
   totals instead, because a delta missing one harness's contribution would
   understate the result while still reading as authoritative. A clause counting
   nothing is dropped rather than joined.

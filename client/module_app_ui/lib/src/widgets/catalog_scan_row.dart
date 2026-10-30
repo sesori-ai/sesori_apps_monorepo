@@ -204,54 +204,58 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     final shown = _shown;
     if (shown == null) return const SizedBox(width: double.infinity);
 
-    return IgnorePointer(
-      // A departing card takes no taps meant for the rows it uncovers.
-      ignoring: !_hasContent,
-      child: SlideTransition(
-        position: _rise,
-        child: FadeTransition(
-          opacity: _curve,
-          // Announced when it appears without moving focus, the same treatment
-          // the connection banner uses: a scan started by a pull finishes with
-          // no other signal that it is done. Every state announces except the
-          // reading one, whose session count changes with each enumerated
-          // session and would otherwise interrupt a screen reader hundreds of
-          // times during one scan.
-          child: AnimatedBuilder(
-            animation: _entrance,
-            builder: (context, child) {
-              final progress = _entranceCurve.value;
-              final scale = _entranceScaleFrom + (1 - _entranceScaleFrom) * progress;
-              final blurSigma = _entranceBlurSigma * (1 - progress);
-              final filteredChild = blurSigma <= 0
-                  ? child
-                  : ImageFiltered(
-                      key: const ValueKey("catalog-scan-row-entrance-blur"),
-                      imageFilter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-                      child: child,
-                    );
-              return Transform.scale(
-                key: const ValueKey("catalog-scan-row-entrance"),
-                alignment: Alignment.bottomCenter,
-                scale: scale,
-                child: filteredChild,
-              );
-            },
-            // AnimatedBuilder retains this subtree while only the composited
-            // entrance transform and its short-lived image filter change.
-            child: Semantics(
-              container: true,
-              liveRegion: widget._scan is! CatalogRescanReading,
-              child: shown.tone == _ScanTone.working
-                  ? _ScanLoadingCard(
-                      title: shown.title,
-                      supportingText: shown.detail,
-                      wrapSupportingText: shown.wrapDetail,
-                    )
-                  : Padding(
-                      padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
-                      child: _ScanCard(content: shown),
-                    ),
+    // A departing card takes no taps meant for the rows it uncovers, and a
+    // screen reader no longer reaches its fading text.
+    return ExcludeSemantics(
+      excluding: !_hasContent,
+      child: IgnorePointer(
+        ignoring: !_hasContent,
+        child: SlideTransition(
+          position: _rise,
+          child: FadeTransition(
+            opacity: _curve,
+            // Announced when it appears without moving focus, the same treatment
+            // the connection banner uses: a scan started by a pull finishes with
+            // no other signal that it is done. Every state announces except the
+            // reading one, whose session count changes with each enumerated
+            // session and would otherwise interrupt a screen reader hundreds of
+            // times during one scan.
+            child: AnimatedBuilder(
+              animation: _entrance,
+              builder: (context, child) {
+                final progress = _entranceCurve.value;
+                final scale = _entranceScaleFrom + (1 - _entranceScaleFrom) * progress;
+                final blurSigma = _entranceBlurSigma * (1 - progress);
+                final filteredChild = blurSigma <= 0
+                    ? child
+                    : ImageFiltered(
+                        key: const ValueKey("catalog-scan-row-entrance-blur"),
+                        imageFilter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                        child: child,
+                      );
+                return Transform.scale(
+                  key: const ValueKey("catalog-scan-row-entrance"),
+                  alignment: Alignment.bottomCenter,
+                  scale: scale,
+                  child: filteredChild,
+                );
+              },
+              // AnimatedBuilder retains this subtree while only the composited
+              // entrance transform and its short-lived image filter change.
+              child: Semantics(
+                container: true,
+                liveRegion: widget._scan is! CatalogRescanReading,
+                child: shown.tone == _ScanTone.working
+                    ? _ScanLoadingCard(
+                        title: shown.title,
+                        supportingText: shown.detail,
+                        wrapSupportingText: shown.wrapDetail,
+                      )
+                    : Padding(
+                        padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
+                        child: _ScanCard(content: shown),
+                      ),
+              ),
             ),
           ),
         ),

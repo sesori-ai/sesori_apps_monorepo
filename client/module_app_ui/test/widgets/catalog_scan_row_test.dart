@@ -873,7 +873,8 @@ void main() {
 
     // The service clears a settled scan by itself, so the card's exit is the
     // only signal the result has gone: it fades and sinks where it floats,
-    // keeping its size, and while leaving takes no taps meant for the list.
+    // keeping its size, and while leaving takes no taps meant for the list and
+    // leaves the semantics tree.
     testWidgets("fades out in place without resizing once the scan clears itself", (tester) async {
       final row = find.byType(CatalogScanRow, skipOffstage: false);
       final fade = find.descendant(of: row, matching: find.byType(FadeTransition));
@@ -901,6 +902,13 @@ void main() {
           tester.widget<IgnorePointer>(find.descendant(of: row, matching: find.byType(IgnorePointer)).first).ignoring,
           isTrue,
           reason: "a departing card takes no taps",
+        );
+        expect(
+          tester
+              .widget<ExcludeSemantics>(find.descendant(of: row, matching: find.byType(ExcludeSemantics)).first)
+              .excluding,
+          isTrue,
+          reason: "a screen reader no longer reaches a departing card",
         );
         opacities.add(opacity());
       }
