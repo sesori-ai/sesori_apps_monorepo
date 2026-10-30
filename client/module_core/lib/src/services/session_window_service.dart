@@ -477,6 +477,8 @@ class SessionWindowService({
   }
 
   void _emitComplete({required List<Session> sessions}) {
+    // A typed query still waiting narrows the latest sessions once it fires.
+    if (_queryTimer?.isActive ?? false) return;
     final projects = _projectsById();
     final counted = sessions.where((session) => _matchesSearch(session: session, projects: projects)).toList();
     _emit(
