@@ -162,6 +162,13 @@ enum FounderCallSurface({required final String wireValue}) {
   settings(wireValue: "settings");
 }
 
+/// What became of a dictation's words.
+enum AnalyticsVoiceFinish({required final String wireValue}) {
+  sent(wireValue: "sent"),
+  edited(wireValue: "edited"),
+  cutOff(wireValue: "cut_off");
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -183,7 +190,9 @@ sealed class const ProductAnalyticsEvent() {
     required AnalyticsSessionCreationFailureReason failureReason,
     required AnalyticsWorkspaceKind workspaceKind,
   }) = SessionCreationFailedEvent;
-  const factory voiceTranscriptionCompleted() = VoiceTranscriptionCompletedEvent;
+  const factory voiceTranscriptionCompleted({
+    required AnalyticsVoiceFinish finish,
+  }) = VoiceTranscriptionCompletedEvent;
   const factory sessionQuestionAnswered() = SessionQuestionAnsweredEvent;
   const factory sessionQuestionRejected() = SessionQuestionRejectedEvent;
   const factory sessionPermissionAnswered({
@@ -334,12 +343,14 @@ final class const SessionCreationFailedEvent({
   };
 }
 
-final class const VoiceTranscriptionCompletedEvent() extends ProductAnalyticsEvent {
+final class const VoiceTranscriptionCompletedEvent({
+  required final AnalyticsVoiceFinish finish,
+}) extends ProductAnalyticsEvent {
   @override
   String get wireName => "voice_transcription_completed";
 
   @override
-  Map<String, String> get parameters => const {};
+  Map<String, String> get parameters => {"finish": finish.wireValue};
 }
 
 final class const SessionQuestionAnsweredEvent() extends ProductAnalyticsEvent {

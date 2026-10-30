@@ -193,6 +193,7 @@ export "src/foundation/models/session_launch/session_launch.dart";
 export "src/foundation/models/session_launch/session_launch_composer.dart";
 export "src/foundation/models/session_launch/session_launch_handoff.dart";
 export "src/foundation/models/session_launch/session_launch_outcome.dart";
+export "src/foundation/models/voice/voice_dictation_outcome.dart";
 export "src/foundation/persistence/persistence_keys.dart";
 export "src/foundation/platform/active_bridge_locality.dart";
 export "src/foundation/platform/analytics_client.dart";

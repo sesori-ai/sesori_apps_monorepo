@@ -2854,8 +2854,8 @@ class SessionDetailCubit(
     _composerDraftRepository.clearForSession(sessionId: _sessionId);
   }
 
-  void reportVoiceTranscriptionCompleted() {
-    _reportProductEvent(event: const ProductAnalyticsEvent.voiceTranscriptionCompleted());
+  void reportVoiceTranscriptionCompleted({required AnalyticsVoiceFinish finish}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: finish));
   }
 
   void _reportAcceptedSubmission({required QueuedSessionSubmission submission}) {

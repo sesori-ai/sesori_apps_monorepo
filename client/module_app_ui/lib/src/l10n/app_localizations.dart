@@ -3907,7 +3907,7 @@ abstract class AppLocalizations {
   /// **'Cancel transcription'**
   String get voiceCancelTranscription;
 
-  /// Accessibility label of the X button shown in the accordion's place while recording; releasing or tapping on it discards the recording.
+  /// Accessibility label of the X button shown in the accordion's place while a desktop recording runs; clicking it discards the recording.
   ///
   /// In en, this message translates to:
   /// **'Cancel recording'**
@@ -3916,8 +3916,20 @@ abstract class AppLocalizations {
   /// Floating helper above the composer while a hold-to-talk recording is running.
   ///
   /// In en, this message translates to:
-  /// **'Release to transcribe'**
-  String get voiceReleaseToTranscribe;
+  /// **'Release to send · slide up to cancel'**
+  String get voiceReleaseToSend;
+
+  /// Floating helper above the composer while the recording hold is on the pencil; releasing there puts the words in the box instead of sending them.
+  ///
+  /// In en, this message translates to:
+  /// **'Release to edit'**
+  String get voiceReleaseToEdit;
+
+  /// Accessibility label of the pencil shown in the accordion's place while recording; releasing or tapping on it puts the words in the box instead of sending them.
+  ///
+  /// In en, this message translates to:
+  /// **'Put the words in the box'**
+  String get voicePutWordsInBox;
 
   /// Floating helper above the desktop composer while a click-started recording is running.
   ///
@@ -3931,7 +3943,7 @@ abstract class AppLocalizations {
   /// **'Stop and transcribe'**
   String get voiceStopAndTranscribe;
 
-  /// Floating helper above the composer while the recording hold hovers over the cancel button; releasing there discards the recording.
+  /// Floating helper above the composer once the recording hold has slid far enough out of the pill; releasing there discards the recording.
   ///
   /// In en, this message translates to:
   /// **'Release to cancel'**

@@ -1312,8 +1312,8 @@ class NewSessionCubit({
     _composerSelection = selection;
   }
 
-  void reportVoiceTranscriptionCompleted() {
-    _reportProductEvent(event: const ProductAnalyticsEvent.voiceTranscriptionCompleted());
+  void reportVoiceTranscriptionCompleted({required AnalyticsVoiceFinish finish}) {
+    _reportProductEvent(event: ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: finish));
   }
 
   static final Random _launchIdRandom = Random.secure();

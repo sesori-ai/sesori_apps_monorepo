@@ -31,6 +31,7 @@ void main() {
   late List<FeedbackSheetOutcome> outcomes;
   late List<bool> sheetsAtOutcome;
   late _MockVoiceTranscriptionService voiceService;
+  late StreamController<void> maxDurationReached;
   late List<VoiceInputCubit> voiceCubits;
 
   setUpAll(() {
@@ -62,7 +63,7 @@ void main() {
     voiceService = _MockVoiceTranscriptionService();
     voiceCubits = [];
     // Created per test, so closing a recorder settles inside the fake clock.
-    final maxDurationReached = StreamController<void>.broadcast();
+    maxDurationReached = StreamController<void>.broadcast();
     addTearDown(maxDurationReached.close);
     when(
       () => voiceService.maxDurationReachedStream(session: any(named: "session")),
@@ -552,7 +553,7 @@ void main() {
 
       final gesture = await hold(tester);
       expect(waveform, findsOneWidget);
-      expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
+      expect(find.byType(PregoVoiceTarget), findsOneWidget);
       expect(sendEnabled(tester), isFalse, reason: "A recording cannot race a send.");
       expect(tester.getRect(text), draftRect, reason: "Recording must not move the draft.");
 
@@ -585,11 +586,29 @@ void main() {
       expect(tester.takeException(), isNull);
     });
 
+    testWidgets("a recording that hits the limit keeps its words in the field and sends nothing", (tester) async {
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) async => "cut off");
+      await openPrivateStep(tester: tester, typed: "Typed first");
+
+      final gesture = await hold(tester);
+      maxDurationReached.add(null);
+      await tester.pump();
+      await tester.pump();
+      await gesture.up();
+      await tester.pumpAndSettle();
+
+      expect(draft(tester), "Typed first cut off");
+      expect(find.byIcon(TablerRegular.pencil), findsNothing);
+      expect(sendEnabled(tester), isTrue);
+      verifyZeroInteractions(feedbackRepository);
+      expect(tester.takeException(), isNull);
+    });
+
     testWidgets("releasing on the cancel target, or a quick tap, discards only the recording", (tester) async {
       await openPrivateStep(tester: tester, typed: "Keep me");
 
       final gesture = await hold(tester);
-      await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
+      await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceTarget)));
       await tester.pump();
       await gesture.up();
       await tester.pumpAndSettle();

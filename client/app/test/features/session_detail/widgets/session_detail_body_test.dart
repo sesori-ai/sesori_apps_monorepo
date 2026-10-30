@@ -270,6 +270,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
+    registerFallbackValue(AnalyticsVoiceFinish.sent);
     registerFallbackValue(SessionAbortSubAgentPolicy.stop);
     registerFallbackValue(
       const DeclineFormRequest(requestId: "fixture", sessionId: "fixture", choice: FormDismissalChoice.cancel),
@@ -306,7 +307,9 @@ void main() {
       () => cubit.saveComposerDraft(draft: any(named: "draft")),
     ).thenReturn(null);
     when(cubit.clearComposerDraft).thenReturn(null);
-    when(cubit.reportVoiceTranscriptionCompleted).thenReturn(null);
+    when(
+      () => cubit.reportVoiceTranscriptionCompleted(finish: any(named: "finish")),
+    ).thenReturn(null);
     when(cubit.recheckHarnessAvailability).thenAnswer((_) async {});
 
     maxDurationReached = StreamController<void>.broadcast();
@@ -515,7 +518,7 @@ void main() {
                   submittedDraft = draft;
                   submitted = attachments;
                 },
-                onVoiceTranscriptionCompleted: () {},
+                onVoiceTranscriptionFinished: ({required finish}) {},
                 onDraftChanged: (_) {},
                 onDraftCleared: () {},
                 onAbort: () {},
@@ -3615,6 +3618,18 @@ void main() {
     await tester.pumpAndSettle();
   }
 
+  // Sliding the hold onto the pencil makes the release put the words in the box.
+  Future<void> slideOntoPencil({required WidgetTester tester, required TestGesture gesture}) async {
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceTarget)));
+    await tester.pump();
+  }
+
+  // Sliding the hold well above the pill arms the cancel.
+  Future<void> slideOutOfPill({required WidgetTester tester, required TestGesture gesture}) async {
+    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceTarget)) - const Offset(0, 120));
+    await tester.pump();
+  }
+
   testWidgets("reconnect management refresh preserves composer focus and typing", (tester) async {
     var loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const []);
     final states = StreamController<SessionDetailState>();
@@ -4080,20 +4095,26 @@ void main() {
     expect(feedback, ["HapticFeedbackType.lightImpact"]);
 
     await tester.pump(const Duration(milliseconds: 250));
+    await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pump();
-    expect(feedback, ["HapticFeedbackType.lightImpact"]);
+    expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
 
     stopCompleter.complete("dictated words");
     await tester.pump();
 
     expect(find.text("dictated words"), findsOneWidget);
-    expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.lightImpact"]);
+    expect(feedback, [
+      "HapticFeedbackType.lightImpact",
+      "HapticFeedbackType.selectionClick",
+      "HapticFeedbackType.lightImpact",
+    ]);
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 100));
     expect(feedback, [
       "HapticFeedbackType.lightImpact",
+      "HapticFeedbackType.selectionClick",
       "HapticFeedbackType.lightImpact",
       "HapticFeedbackType.heavyImpact",
     ]);
@@ -4116,7 +4137,7 @@ void main() {
     expect(find.text("Recording saved"), findsOneWidget);
     expect(find.byKey(const Key("voice_saved_retry")), findsOneWidget);
     expect(find.byKey(const Key("voice_saved_discard")), findsOneWidget);
-    verifyNever(cubit.reportVoiceTranscriptionCompleted);
+    verifyNever(() => cubit.reportVoiceTranscriptionCompleted(finish: any(named: "finish")));
 
     await tester.tap(find.byKey(const Key("voice_saved_retry")));
     await tester.pumpAndSettle();
@@ -4124,7 +4145,7 @@ void main() {
     expect(find.text("retried words"), findsOneWidget);
     expect(find.text("Recording saved"), findsNothing);
     verify(() => voiceTranscriptionService.retry(session: voiceSession)).called(1);
-    verify(cubit.reportVoiceTranscriptionCompleted).called(1);
+    verify(() => cubit.reportVoiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.edited)).called(1);
   });
 
   testWidgets("sending other content serializes discard before submission", (tester) async {
@@ -4321,7 +4342,7 @@ void main() {
     expect(find.byKey(const Key("voice_saved_retry")), findsNothing);
   });
 
-  testWidgets("crossing into and out of the cancel target gives one tick at each boundary", (tester) async {
+  testWidgets("crossing into and out of the slide-up cancel gives one tick at each boundary", (tester) async {
     final feedback = _captureHapticFeedback(throwsPlatformException: false);
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
@@ -4336,13 +4357,14 @@ void main() {
     expect(feedback, ["HapticFeedbackType.lightImpact"]);
     await tester.pump(const Duration(milliseconds: 250));
 
-    final cancelCenter = tester.getCenter(find.byType(PregoVoiceCancelButton));
-    await gesture.moveTo(cancelCenter);
+    // The pencil sits 6 px below the pill's top edge; the cancel arms 64 px above it.
+    final armedPosition = tester.getTopLeft(find.byType(PregoVoiceTarget)) - const Offset(0, 6 + 64);
+    await gesture.moveTo(Offset(holdCenter.dx, armedPosition.dy));
     expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
 
     // A small retreat remains armed so finger tremor cannot chatter across the
     // cancel boundary.
-    await gesture.moveTo(cancelCenter + const Offset(50, 0));
+    await gesture.moveTo(Offset(holdCenter.dx, armedPosition.dy + 10));
     await tester.pump();
     expect(find.text("Release to cancel"), findsOneWidget);
     expect(feedback, ["HapticFeedbackType.lightImpact", "HapticFeedbackType.selectionClick"]);
@@ -4377,6 +4399,7 @@ void main() {
 
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 250));
+    await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pumpAndSettle();
 
@@ -4401,7 +4424,7 @@ void main() {
     final holdCenter = tester.getCenter(find.text("Hold to talk"));
     final gesture = await tester.startGesture(holdCenter);
     await tester.pump(const Duration(milliseconds: 250));
-    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
+    await slideOutOfPill(tester: tester, gesture: gesture);
     await gesture.moveTo(holdCenter);
     await gesture.up();
     await tester.pump();
@@ -4489,28 +4512,28 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump();
 
-    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceTarget), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
-    expect(find.text("Release to transcribe"), findsOneWidget);
+    expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
     expect(find.byIcon(TablerRegular.keyboard), findsNothing);
 
     final recordingSwitcher = tester.widget<AnimatedSwitcher>(
       find.byWidgetPredicate(
-        (widget) => widget is AnimatedSwitcher && widget.child?.key == const ValueKey("cancel-target"),
+        (widget) => widget is AnimatedSwitcher && widget.child?.key == const ValueKey("edit-target"),
       ),
     );
     expect(recordingSwitcher.duration, const Duration(milliseconds: 220));
 
     await tester.pump(const Duration(milliseconds: 110));
     final recordingFades = tester.widgetList<FadeTransition>(
-      find.ancestor(of: find.byType(PregoVoiceCancelButton), matching: find.byType(FadeTransition)),
+      find.ancestor(of: find.byType(PregoVoiceTarget), matching: find.byType(FadeTransition)),
     );
     expect(
       recordingFades.any((transition) => transition.opacity.value > 0 && transition.opacity.value < 1),
       isTrue,
     );
 
-    await tester.tap(find.byType(PregoVoiceCancelButton));
+    await tester.tap(find.byType(PregoVoiceTarget));
     await tester.pump();
     verifyNever(() => voiceTranscriptionService.cancel(session: voiceSession));
 
@@ -4534,6 +4557,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
+    await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pumpAndSettle();
 
@@ -4754,13 +4778,13 @@ void main() {
     // The eager morph runs while native startup is pending.
     final first = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump();
-    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceTarget), findsOneWidget);
 
     // A later platform/filesystem failure reverts the optimistic presentation,
     // surfaces the error, and releases the startup guard.
     firstStartCompleter.completeError(StateError("recorder unavailable"));
     await tester.pumpAndSettle();
-    expect(find.byType(PregoVoiceCancelButton), findsNothing);
+    expect(find.byType(PregoVoiceTarget), findsNothing);
     expect(find.text("Hold to talk"), findsOneWidget);
     expect(find.text("Recording failed. Please try again."), findsOneWidget);
     expect(tester.takeException(), isNull);
@@ -4865,7 +4889,7 @@ void main() {
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
   });
 
-  testWidgets("recording swaps the pill chrome for the cancel target and waveform", (tester) async {
+  testWidgets("recording swaps the pill chrome for the pencil target and waveform", (tester) async {
     final stopCompleter = Completer<String>();
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
@@ -4883,15 +4907,16 @@ void main() {
     await tester.pump(const Duration(milliseconds: 300));
 
     expect(tester.getSize(find.byType(PromptInput)).height, closeTo(restingComposerHeight, 0.01));
-    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
-    // The cancel target must keep the full 44pt footprint (a CustomPaint with
+    expect(find.byType(PregoVoiceTarget), findsOneWidget);
+    // The pencil target must keep the full 44pt footprint (a CustomPaint with
     // a child would otherwise shrink to its icon).
-    expect(tester.getSize(find.byType(PregoVoiceCancelButton)), const Size(44, 44));
+    expect(tester.getSize(find.byType(PregoVoiceTarget)), const Size(44, 44));
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
-    expect(find.text("Release to transcribe"), findsOneWidget);
+    expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
     // The keyboard button leaves the pill while the waveform needs its width.
     expect(find.byIcon(TablerRegular.keyboard), findsNothing);
 
+    await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pump();
     stopCompleter.complete("dictated words");
@@ -4900,7 +4925,7 @@ void main() {
     expect(find.text("dictated words"), findsOneWidget);
   });
 
-  testWidgets("dragging the hold onto the cancel target discards the recording", (tester) async {
+  testWidgets("sliding the hold out of the pill discards the recording", (tester) async {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
@@ -4912,8 +4937,7 @@ void main() {
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
 
-    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
-    await tester.pump();
+    await slideOutOfPill(tester: tester, gesture: gesture);
     expect(find.text("Release to cancel"), findsOneWidget);
 
     await gesture.up();
@@ -4938,14 +4962,13 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    final cancelPosition = tester.getCenter(find.byIcon(TablerRegular.chevron_right));
-    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
-    await gesture.moveTo(cancelPosition);
+    final holdCenter = tester.getCenter(find.text("Hold to talk"));
+    final gesture = await tester.startGesture(holdCenter);
+    await gesture.moveTo(holdCenter - const Offset(0, 120));
     await tester.pump();
 
-    // The recorder starts after the finger has already reached the future
-    // cancel target. No further movement should be needed to preserve that
-    // intent or update the drag feedback.
+    // The recorder starts after the finger has already left the pill. No further movement should be needed to preserve that intent or
+    // update the drag feedback.
     startCompleter.complete();
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 250));
@@ -4968,11 +4991,10 @@ void main() {
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
 
-    // Record, then discard by releasing on the cancel target.
+    // Record, then discard by releasing above the pill.
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
-    await gesture.moveTo(tester.getCenter(find.byType(PregoVoiceCancelButton)));
-    await tester.pump();
+    await slideOutOfPill(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pump();
     verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
@@ -5063,10 +5085,11 @@ void main() {
     stopCompleters.first.complete("stale words");
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
-    expect(find.text("Release to transcribe"), findsOneWidget);
+    expect(find.byType(PregoVoiceTarget), findsOneWidget);
+    expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
 
     // The new interaction still completes normally.
+    await slideOntoPencil(tester: tester, gesture: second);
     await second.up();
     await tester.pump();
     stopCompleters.last.complete("fresh words");
@@ -5152,11 +5175,12 @@ void main() {
     // The field (and its text) stay while the bottom pill hosts the chrome.
     expect(find.byType(EditableText), findsOneWidget);
     expect(find.text("draft"), findsOneWidget);
-    expect(find.byType(PregoVoiceCancelButton), findsOneWidget);
+    expect(find.byType(PregoVoiceTarget), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
-    expect(find.text("Release to transcribe"), findsOneWidget);
+    expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
     expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
 
+    await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pump();
     stopCompleter.complete("more words");
@@ -5165,7 +5189,51 @@ void main() {
     expect(find.text("draft more words"), findsOneWidget);
   });
 
-  testWidgets("voice-first transcript rests unfocused for review before sending", (tester) async {
+  testWidgets("releasing a hold sends the transcript and the resting pill returns unfocused", (tester) async {
+    final stopCompleter = Completer<String>();
+    when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+    when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
+        .thenAnswer((_) => const Stream<double>.empty());
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => stopCompleter.future);
+    when(
+      () => cubit.sendMessage(
+        text: "dictated words",
+        command: null,
+        inputMode: ComposerInputMode.voiceAssisted,
+        attachments: const [],
+      ),
+    ).thenAnswer((_) async {});
+
+    await tester.pumpWidget(_buildApp(cubit: cubit));
+    await tester.pumpAndSettle();
+
+    final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    await tester.pump(const Duration(milliseconds: 600));
+    await gesture.up();
+    await tester.pump();
+
+    stopCompleter.complete("dictated words");
+    await tester.pump();
+    await tester.pumpAndSettle();
+
+    verify(
+      () => cubit.sendMessage(
+        text: "dictated words",
+        command: null,
+        inputMode: ComposerInputMode.voiceAssisted,
+        attachments: const [],
+      ),
+    ).called(1);
+    verify(() => cubit.reportVoiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.sent)).called(1);
+    expect(find.text("dictated words"), findsNothing);
+    expect(find.text("Hold to talk"), findsOneWidget);
+    expect(find.byType(EditableText), findsNothing);
+  });
+
+  testWidgets("a voice-first transcript slid onto the pencil rests unfocused for review before sending", (
+    tester,
+  ) async {
     final stopCompleter = Completer<String>();
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
@@ -5178,6 +5246,7 @@ void main() {
 
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
+    await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pump();
 
@@ -5205,6 +5274,7 @@ void main() {
 
     final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
+    await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
     await tester.pumpAndSettle();
 

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:bloc/bloc.dart";
 
+import "../../foundation/models/voice/voice_dictation_outcome.dart";
 import "../../logging/logging.dart";
 import "../../services/voice_transcription_service.dart";
 import "voice_input_state.dart";
@@ -51,7 +52,12 @@ class VoiceInputCubit({
     try {
       final transcript = await _service.stopAndTranscribe(session: _session);
       if (isClosed || state is! VoiceInputTranscribing) return;
-      emit(VoiceInputState.completed(transcript: transcript));
+      emit(
+        VoiceInputState.completed(
+          transcript: transcript,
+          outcome: limitReached ? VoiceDictationOutcome.limitReached : VoiceDictationOutcome.finished,
+        ),
+      );
     } on TranscriptionCancelledError {
       if (isClosed || state is! VoiceInputTranscribing) return;
       emit(const VoiceInputState.idle());
@@ -78,7 +84,7 @@ class VoiceInputCubit({
     try {
       final transcript = await _service.retry(session: _session);
       if (isClosed || state is! VoiceInputRetrying) return;
-      emit(VoiceInputState.completed(transcript: transcript));
+      emit(VoiceInputState.completed(transcript: transcript, outcome: VoiceDictationOutcome.finished));
     } on TranscriptionCancelledError {
       if (isClosed || state is! VoiceInputRetrying) return;
       emit(VoiceInputState.retryPending(error: pending.error));

@@ -64,9 +64,19 @@ void main() {
         const {"failure_reason": "unknown", "workspace_kind": "no_project"},
       ),
       (
-        const ProductAnalyticsEvent.voiceTranscriptionCompleted(),
+        const ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.sent),
         "voice_transcription_completed",
-        const {},
+        const {"finish": "sent"},
+      ),
+      (
+        const ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.edited),
+        "voice_transcription_completed",
+        const {"finish": "edited"},
+      ),
+      (
+        const ProductAnalyticsEvent.voiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.cutOff),
+        "voice_transcription_completed",
+        const {"finish": "cut_off"},
       ),
       (
         const ProductAnalyticsEvent.sessionQuestionAnswered(),

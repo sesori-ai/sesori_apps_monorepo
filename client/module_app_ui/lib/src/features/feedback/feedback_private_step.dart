@@ -460,11 +460,13 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
                       _VoicePresentation.recording => Row(
                         key: const ValueKey("feedback-voice-recording"),
                         children: [
-                          PregoVoiceCancelButton(
+                          PregoVoiceTarget(
                             key: _cancelTargetKey,
+                            icon: TablerRegular.x,
+                            tone: PregoVoiceTargetTone.destructive,
                             semanticLabel: loc.voiceCancelRecording,
                             progress: _cancelProgress,
-                            onCancel: _cancelVoice,
+                            onTap: _cancelVoice,
                           ),
                           const SizedBox(width: PregoSpacing.md),
                           Expanded(
