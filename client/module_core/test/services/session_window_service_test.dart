@@ -715,7 +715,18 @@ void main() {
         expect(loaded(window).counts, const SessionPageCounts(all: 2, running: 0, unread: 1));
         bridge.requests.clear();
 
+        // Each narrowing reads every session, so a typed query waits for
+        // typing to pause.
+        window.select(key: (projectId: null, query: "f", filter: SessionListQuickFilter.all));
+        async.elapse(SessionWindowService.queryDelay - const Duration(milliseconds: 1));
         window.select(key: (projectId: null, query: "fix", filter: SessionListQuickFilter.all));
+        async.elapse(SessionWindowService.queryDelay - const Duration(milliseconds: 1));
+        // A live change meanwhile waits for the query too.
+        emit(SesoriSseEvent.sessionCreated(info: _session(id: "a0", updatedAt: 1, title: "Fix footer")));
+        expect(ids(window), ["b1", "a1"]);
+        async.elapse(const Duration(milliseconds: 1));
+        expect(ids(window), ["a1", "a0"]);
+        emit(SesoriSseEvent.sessionDeleted(info: _session(id: "a0", updatedAt: 1, title: "Fix footer")));
         expect(ids(window), ["a1"]);
         window.select(key: (projectId: null, query: null, filter: SessionListQuickFilter.unread));
         expect(ids(window), ["b1"]);
