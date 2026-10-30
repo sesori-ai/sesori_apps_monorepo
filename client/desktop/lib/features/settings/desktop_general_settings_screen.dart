@@ -80,6 +80,8 @@ class _DesktopGeneralSettingsScreenState() extends State<DesktopGeneralSettingsS
                 ),
                 const DesktopUpdateSection(),
                 SettingsAppInfo(
+                  // Desktop does not offer the CEO call yet.
+                  onBookCall: null,
                   openSupportLink: ({required url}) =>
                       openDesktopExternalLink(url: url, mode: UrlLaunchMode.externalApp),
                   openLegalDocument: ({required document}) => openDesktopExternalLink(

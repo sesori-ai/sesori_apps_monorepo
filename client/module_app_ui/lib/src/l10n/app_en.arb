@@ -757,6 +757,26 @@
   "settingsSupportEmail": "Email",
   "settingsSupportDiscord": "Discord",
   "settingsSupportX": "DM on X",
+  "settingsSupportBookCall": "Book a call with the CEO",
+  "@settingsSupportBookCall": {
+    "description": "Settings Support row that opens the CEO's booking page"
+  },
+  "founderCallTitle": "Talk to the CEO",
+  "@founderCallTitle": {
+    "description": "Title of the sheet inviting a new user to book a call with the CEO; Remote Config can replace it"
+  },
+  "founderCallMessage": "Got 15 minutes? Tell me what you need from Sesori.",
+  "@founderCallMessage": {
+    "description": "Body of the CEO call invitation, written in the CEO's voice; Remote Config can replace it"
+  },
+  "founderCallBook": "Book a call",
+  "@founderCallBook": {
+    "description": "Button that opens the CEO's booking page; Remote Config can replace it"
+  },
+  "founderCallNotNow": "Not now",
+  "@founderCallNotNow": {
+    "description": "Button that closes the CEO call invitation"
+  },
   "settingsRateSesori": "Rate Sesori",
   "@settingsRateSesori": {
     "description": "Settings account row that opens the rating sheet"

@@ -9,6 +9,7 @@ import "../../logging/logging.dart";
 import "../../platform/lifecycle_source.dart";
 import "../../platform/url_launcher.dart";
 import "../../repositories/models/analytics_delivery_result.dart";
+import "../../services/founder_call_service.dart";
 import "../../services/installation_analytics_service.dart";
 import "login_failed_reason.dart";
 import "login_handoff.dart";
@@ -46,6 +47,7 @@ class LoginCubit({
   required final AuthSession _authSession,
   required final LifecycleSource _lifecycleSource,
   required final InstallationAnalyticsService _installationAnalyticsService,
+  required final FounderCallService _founderCallService,
 }) extends Cubit<LoginState> {
   StreamSubscription<LifecycleState>? _lifecycleSubscription;
   _LoginAttempt? _loginAttempt;
@@ -131,8 +133,7 @@ class LoginCubit({
       try {
         final result = await _oAuthFlowProvider.resumeOAuthFlow();
         if (!_ownsAttempt(attempt: attempt)) return;
-        _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
-        emit(const LoginState.success());
+        _completeLogin(attempt: attempt, accountStatus: result.accountStatus);
       } catch (e, st) {
         _failOAuthAttempt(attempt: attempt, error: e, stackTrace: st, description: "Resumed OAuth login");
       } finally {
@@ -228,8 +229,7 @@ class LoginCubit({
       }
 
       if (!_ownsAttempt(attempt: attempt)) return false;
-      _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
-      emit(const LoginState.success());
+      _completeLogin(attempt: attempt, accountStatus: result.accountStatus);
       return true;
     } catch (e, st) {
       _failOAuthAttempt(attempt: attempt, error: e, stackTrace: st, description: "${provider.label} login");
@@ -380,8 +380,7 @@ class LoginCubit({
     try {
       final result = await _authSession.loginWithApple(idToken: idToken, nonce: nonce);
       if (!_ownsAttempt(attempt: loginAttempt)) return false;
-      _reportCompletedAttempt(attempt: loginAttempt, accountStatus: result.accountStatus);
-      emit(const LoginState.success());
+      _completeLogin(attempt: loginAttempt, accountStatus: result.accountStatus);
       return true;
     } catch (e, st) {
       loge("Apple login failed", e, st);
@@ -412,8 +411,7 @@ class LoginCubit({
     try {
       final result = await _authSession.loginWithEmail(email: email.trim(), password: password);
       if (!_ownsAttempt(attempt: attempt)) return false;
-      _reportCompletedAttempt(attempt: attempt, accountStatus: result.accountStatus);
-      emit(const LoginState.success());
+      _completeLogin(attempt: attempt, accountStatus: result.accountStatus);
       return true;
     } catch (e, st) {
       loge("Email login failed", e, st);
@@ -448,6 +446,14 @@ class LoginCubit({
       return null;
     }
     return loginAttempt.analyticsOutcome == _LoginAnalyticsOutcome.open ? loginAttempt : null;
+  }
+
+  void _completeLogin({required _LoginAttempt attempt, required AccountStatus accountStatus}) {
+    _reportCompletedAttempt(attempt: attempt, accountStatus: accountStatus);
+    // Only a sign-in made here arms the CEO call invitation, so users who
+    // were already signed in when they updated never see it by itself.
+    unawaited(_founderCallService.recordFreshLogin());
+    emit(const LoginState.success());
   }
 
   void _reportCompletedAttempt({required _LoginAttempt attempt, required AccountStatus accountStatus}) {

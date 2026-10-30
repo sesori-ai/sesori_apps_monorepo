@@ -413,7 +413,8 @@ void main() {
         ..registerSingleton<OAuthFlowProvider>(MockOAuthFlowProvider())
         ..registerSingleton<UrlLauncher>(MockUrlLauncher())
         ..registerSingleton<LifecycleSource>(lifecycle)
-        ..registerSingleton<InstallationAnalyticsService>(_MockInstallationAnalyticsService());
+        ..registerSingleton<InstallationAnalyticsService>(_MockInstallationAnalyticsService())
+        ..registerSingleton<FounderCallService>(MockFounderCallService());
       tester.view.physicalSize = const Size(1200, 800);
       tester.view.devicePixelRatio = 1;
       addTearDown(tester.view.reset);

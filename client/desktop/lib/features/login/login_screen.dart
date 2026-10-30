@@ -42,6 +42,7 @@ class const LoginScreen({super.key}) extends StatelessWidget {
             authSession: getIt(),
             lifecycleSource: getIt(),
             installationAnalyticsService: getIt(),
+            founderCallService: getIt(),
           ),
         ),
         BlocProvider<LastSignInProviderCubit>(create: (_) => LastSignInProviderCubit(authSession: getIt())),

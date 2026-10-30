@@ -220,6 +220,18 @@ void main() {
           "computer_managed",
           {"action": wireValue},
         ),
+      for (final (surface, wireValue) in [
+        (FounderCallSurface.computerConnectedSheet, "computer_connected_sheet"),
+        (FounderCallSurface.settings, "settings"),
+      ]) ...[
+        (ProductAnalyticsEvent.founderCallShown(surface: surface), "founder_call_shown", {"surface": wireValue}),
+        (
+          ProductAnalyticsEvent.founderCallLinkOpened(surface: surface),
+          "founder_call_link_opened",
+          {"surface": wireValue},
+        ),
+        (ProductAnalyticsEvent.founderCallDeclined(surface: surface), "founder_call_declined", {"surface": wireValue}),
+      ],
     ];
 
     for (final (event, expectedName, expectedParameters) in cases) {

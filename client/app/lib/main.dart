@@ -17,6 +17,7 @@ import "package:theme_prego/module_prego.dart";
 import "core/di/analytics_runtime_bootstrap.dart";
 import "core/di/injection.dart";
 import "core/di/register_module.dart";
+import "core/external_link.dart";
 import "core/platform/firebase/firebase_messaging_static_adapter.dart";
 import "core/platform/firebase_analytics_startup.dart";
 import "core/platform/singular_attribution_startup.dart";
@@ -115,6 +116,7 @@ void main() async {
     startAttributionFn: () => getIt<AttributionService>().start(),
     startProductAnalyticsFn: () => getIt<ProductAnalyticsService>().start(),
     startFeedbackPromptFn: () => _startFeedbackPrompt(supportsCrashlytics: supportsFirebaseCrashlytics),
+    startFounderCallFn: () => getIt<FounderCallService>().start(),
     startAnalyticsRouteListenerFn: () => getIt<AnalyticsRouteListener>().start(),
     startNotificationStartupFn: () => startNotificationStartup(
       localNotificationClient: getIt<LocalNotificationClient>(),
@@ -139,6 +141,7 @@ Future<void> bootstrapSesoriApp({
   required void Function() startAttributionFn,
   required Future<void> Function() startProductAnalyticsFn,
   required void Function() startFeedbackPromptFn,
+  required void Function() startFounderCallFn,
   required Future<void> Function() startAnalyticsRouteListenerFn,
   required Future<void> Function() startNotificationStartupFn,
   required Future<AppearanceMode> Function() readAppearanceFn,
@@ -150,6 +153,7 @@ Future<void> bootstrapSesoriApp({
   initializeDeepLinks();
   await startProductAnalyticsFn();
   startFeedbackPromptFn();
+  startFounderCallFn();
   await startAnalyticsRouteListenerFn();
   if (shouldInitializeFirebase) {
     unawaited(
@@ -409,6 +413,9 @@ class const _SesoriAppShell() extends StatelessWidget {
                       create: (_) => FeedbackPromptCubit(feedbackPromptService: getIt<FeedbackPromptService>()),
                     ),
                     BlocProvider(
+                      create: (_) => FounderCallPromptCubit(founderCallService: getIt<FounderCallService>()),
+                    ),
+                    BlocProvider(
                       create: (_) => FeedbackSheetCubit(
                         appReviewClient: getIt<AppReviewClient>(),
                         feedbackRepository: getIt<FeedbackRepository>(),
@@ -421,19 +428,23 @@ class const _SesoriAppShell() extends StatelessWidget {
                   child: FeedbackPromptListener(
                     navigatorKey: appRootNavigatorKey,
                     voiceInputScopeBuilder: ({required child}) => FeedbackVoiceInputScope(child: child),
-                    // Archives, launches and their alerts live in the router's
-                    // signed-in SessionScope.
-                    child: BlocProvider(
-                      create: (_) => LinkedComputerAlertCubit(
-                        registeredBridgesService: getIt<RegisteredBridgesService>(),
-                        activeBridgeLocality: getIt<ActiveBridgeLocality>(),
-                      ),
-                      child: LinkedComputerAlerts(
-                        navigatorKey: appRootNavigatorKey,
-                        onSwitchComputer: ({required bridgeId, required source}) => unawaited(
-                          getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source),
+                    child: FounderCallPromptListener(
+                      navigatorKey: appRootNavigatorKey,
+                      openExternalLink: openExternalLink,
+                      // Archives, launches and their alerts live in the router's
+                      // signed-in SessionScope.
+                      child: BlocProvider(
+                        create: (_) => LinkedComputerAlertCubit(
+                          registeredBridgesService: getIt<RegisteredBridgesService>(),
+                          activeBridgeLocality: getIt<ActiveBridgeLocality>(),
                         ),
-                        child: child ?? const SizedBox.shrink(),
+                        child: LinkedComputerAlerts(
+                          navigatorKey: appRootNavigatorKey,
+                          onSwitchComputer: ({required bridgeId, required source}) => unawaited(
+                            getIt<ComputerSwitchDispatcher>().switchTo(bridgeId: bridgeId, source: source),
+                          ),
+                          child: child ?? const SizedBox.shrink(),
+                        ),
                       ),
                     ),
                   ),

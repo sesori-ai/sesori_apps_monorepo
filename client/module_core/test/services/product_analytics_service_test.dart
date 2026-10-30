@@ -384,6 +384,29 @@ void main() {
     expect(analyticsRepository.calls.last.envelope.occurredAtUtc, occurredAt);
   });
 
+  test("delivers a founder call sheet shown before the preference resolved", () async {
+    createService();
+    final enabled = _record(
+      userId: _userA.id,
+      userKey: _userKeyA,
+      preference: ProductAnalyticsPreference.enabled,
+    );
+    preferenceRepository.reconcileHandlers.add(
+      (_, _) async => ProductAnalyticsPreferenceSynchronized(record: enabled),
+    );
+    await service.start();
+    const shown = ProductAnalyticsEvent.founderCallShown(surface: FounderCallSurface.computerConnectedSheet);
+
+    expect(
+      await service.logEvent(event: shown, occurredAtUtc: DateTime.utc(2026, 10, 30)),
+      AnalyticsDeliveryResult.deferredUntilPreference,
+    );
+    await service.markPostSplashReady();
+    await waitForAnalyticsCalls(count: 3);
+
+    expect(analyticsRepository.calls.last.envelope.event, shown);
+  });
+
   test("retains deferred outcomes until schema readiness is accepted", () async {
     createService();
     final enabled = _record(

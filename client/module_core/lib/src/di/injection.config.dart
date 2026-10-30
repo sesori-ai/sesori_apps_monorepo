@@ -28,6 +28,7 @@ import 'package:sesori_dart_core/src/api/feedback_api.dart' as _i872;
 import 'package:sesori_dart_core/src/api/feedback_prompt_config_api.dart'
     as _i373;
 import 'package:sesori_dart_core/src/api/filesystem_api.dart' as _i1068;
+import 'package:sesori_dart_core/src/api/founder_call_config_api.dart' as _i298;
 import 'package:sesori_dart_core/src/api/installed_app_build_api.dart' as _i258;
 import 'package:sesori_dart_core/src/api/legal_api.dart' as _i835;
 import 'package:sesori_dart_core/src/api/mcp_api.dart' as _i187;
@@ -40,12 +41,14 @@ import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i958;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
-import 'package:sesori_dart_core/src/api/project_api.dart' as _i733;
+import 'package:sesori_dart_core/src/api/project_api.dart' as _i734;
 import 'package:sesori_dart_core/src/api/session_api.dart' as _i603;
 import 'package:sesori_dart_core/src/api/storage/composer_draft_storage.dart'
     as _i64;
 import 'package:sesori_dart_core/src/api/storage/feedback_prompt_storage.dart'
     as _i945;
+import 'package:sesori_dart_core/src/api/storage/founder_call_storage.dart'
+    as _i964;
 import 'package:sesori_dart_core/src/api/storage/notification_preferences_device_id_storage.dart'
     as _i407;
 import 'package:sesori_dart_core/src/api/storage/product_analytics_preference_storage.dart'
@@ -85,6 +88,8 @@ import 'package:sesori_dart_core/src/foundation/platform/composer_image_picker.d
     as _i65;
 import 'package:sesori_dart_core/src/foundation/platform/feedback_prompt_config_source.dart'
     as _i294;
+import 'package:sesori_dart_core/src/foundation/platform/founder_call_config_source.dart'
+    as _i1059;
 import 'package:sesori_dart_core/src/foundation/platform/installed_app_build_source.dart'
     as _i957;
 import 'package:sesori_dart_core/src/foundation/platform/plugin_authentication_browser.dart'
@@ -134,6 +139,8 @@ import 'package:sesori_dart_core/src/repositories/feedback_repository.dart'
     as _i860;
 import 'package:sesori_dart_core/src/repositories/file_preview_repository.dart'
     as _i704;
+import 'package:sesori_dart_core/src/repositories/founder_call_repository.dart'
+    as _i733;
 import 'package:sesori_dart_core/src/repositories/installed_app_build_repository.dart'
     as _i507;
 import 'package:sesori_dart_core/src/repositories/legal_repository.dart'
@@ -189,6 +196,8 @@ import 'package:sesori_dart_core/src/services/file_reference_open_service.dart'
     as _i996;
 import 'package:sesori_dart_core/src/services/foreground_notification_dispatcher.dart'
     as _i101;
+import 'package:sesori_dart_core/src/services/founder_call_service.dart'
+    as _i1013;
 import 'package:sesori_dart_core/src/services/installation_analytics_service.dart'
     as _i285;
 import 'package:sesori_dart_core/src/services/mcp_authentication_service.dart'
@@ -368,6 +377,11 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i556.AttributionApi>(
       () => _i556.AttributionApi(client: gh<_i14.AttributionClient>()),
     );
+    gh.lazySingleton<_i298.FounderCallConfigApi>(
+      () => _i298.FounderCallConfigApi(
+        source: gh<_i1059.FounderCallConfigSource>(),
+      ),
+    );
     gh.lazySingleton<_i938.MessageImageApi>(
       () => _i938.MessageImageApi(client: gh<_i519.Client>()),
     );
@@ -385,6 +399,10 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i945.FeedbackPromptStorage(
         persister: gh<_i903.PersisterRepository>(),
       ),
+    );
+    gh.lazySingleton<_i964.FounderCallStorage>(
+      () =>
+          _i964.FounderCallStorage(persister: gh<_i903.PersisterRepository>()),
     );
     gh.lazySingleton<_i407.NotificationPreferencesDeviceIdStorage>(
       () => _i407.NotificationPreferencesDeviceIdStorage(
@@ -549,6 +567,12 @@ extension GetItInjectableX on _i174.GetIt {
         failureReporter: gh<_i553.FailureReporter>(),
       ),
     );
+    gh.lazySingleton<_i733.FounderCallRepository>(
+      () => _i733.FounderCallRepository(
+        configApi: gh<_i298.FounderCallConfigApi>(),
+        storage: gh<_i964.FounderCallStorage>(),
+      ),
+    );
     gh.lazySingleton<_i723.FeedbackPromptRepository>(
       () => _i723.FeedbackPromptRepository(
         configApi: gh<_i373.FeedbackPromptConfigApi>(),
@@ -599,8 +623,8 @@ extension GetItInjectableX on _i174.GetIt {
     gh.lazySingleton<_i546.PluginApi>(
       () => _i546.PluginApi(client: gh<_i857.RelayHttpApiClient>()),
     );
-    gh.lazySingleton<_i733.ProjectApi>(
-      () => _i733.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
+    gh.lazySingleton<_i734.ProjectApi>(
+      () => _i734.ProjectApi(client: gh<_i857.RelayHttpApiClient>()),
     );
     gh.lazySingleton<_i603.SessionApi>(
       () => _i603.SessionApi(client: gh<_i857.RelayHttpApiClient>()),
@@ -610,7 +634,7 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i80.ProjectRepository>(
       () => _i80.ProjectRepository(
-        api: gh<_i733.ProjectApi>(),
+        api: gh<_i734.ProjectApi>(),
         filesystemApi: gh<_i1068.FilesystemApi>(),
       ),
     );
@@ -683,6 +707,14 @@ extension GetItInjectableX on _i174.GetIt {
     );
     gh.lazySingleton<_i337.PluginRepository>(
       () => _i337.PluginRepository(api: gh<_i546.PluginApi>()),
+    );
+    gh.lazySingleton<_i1013.FounderCallService>(
+      () => _i1013.FounderCallService(
+        connectionService: gh<_i369.ConnectionService>(),
+        repository: gh<_i733.FounderCallRepository>(),
+        productAnalyticsService: gh<_i204.ProductAnalyticsService>(),
+      ),
+      dispose: (i) => i.dispose(),
     );
     gh.lazySingleton<_i709.SessionDetailLoadService>(
       () => _i709.SessionDetailLoadService(

@@ -36,6 +36,7 @@ void main() {
     late MockAuthSession mockAuthSession;
     late StrictMockLifecycleSource mockLifecycleSource;
     late MockInstallationAnalyticsService mockInstallationAnalyticsService;
+    late MockFounderCallService mockFounderCallService;
 
     setUp(() {
       mockOAuthFlowProvider = MockOAuthFlowProvider();
@@ -43,6 +44,8 @@ void main() {
       mockAuthSession = MockAuthSession();
       mockLifecycleSource = StrictMockLifecycleSource();
       mockInstallationAnalyticsService = MockInstallationAnalyticsService();
+      mockFounderCallService = MockFounderCallService();
+      when(() => mockFounderCallService.recordFreshLogin()).thenAnswer((_) async {});
 
       // Default mock behaviors
       when(() => mockUrlLauncher.launch(any())).thenAnswer((_) async => true);
@@ -82,6 +85,7 @@ void main() {
       authSession: mockAuthSession,
       lifecycleSource: mockLifecycleSource,
       installationAnalyticsService: mockInstallationAnalyticsService,
+      founderCallService: mockFounderCallService,
     );
 
     test("initial state is LoginState.idle()", () {
