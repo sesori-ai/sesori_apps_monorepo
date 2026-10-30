@@ -85,15 +85,16 @@ The main pane hosts one full-width routed page.
   search field over Commands (New session once projects load, reading Add project while there are none; Toggle sidebar
   while the window is wide enough to expand it; Settings; Go back; each with its shortcut; and Archived sessions,
   without one, which reaches Archived while a narrow window hides the sidebar), every Project, then Sessions last,
-  each with its project: before typing, the 20 newest rows the sidebar's list has loaded (on a bridge that serves
-  pages these follow the list's filter, search and chip). Typing narrows commands and projects by title words,
+  each with its project: before typing, the 20 newest active sessions of every project, whatever the sidebar list's
+  filter, search and chip. The rows the sidebar's list has loaded show at once while one 20-row page request asks
+  the bridge, whose answer then settles them; clearing a typed query brings that answer back at once. Typing narrows commands and projects by title words,
   bolding the matched letters. Typed session search covers every project's active sessions, whatever the sidebar
   list's filter, search and chip: matches among the loaded rows, and among those already shown, appear at once, and
   200 ms after the last keystroke the bridge's newest 20 matches replace them, usually only adding rows below; every
   word must occur in the title or the project's own name, as in the list's search. A highlight the user moved
   stays on its row when the answer lands, so Enter still picks it. Nothing matching reads "No matches" only once the bridge has answered; a failed search keeps
-  the matches shown and is logged. On a bridge without session pages the palette searches every loaded session
-  instead. Signing out closes the palette with the cockpit. Up/Down move
+  the matches shown and is logged. On a bridge without session pages the palette lists and searches every loaded
+  session instead. Signing out closes the palette with the cockpit. Up/Down move
   the highlight past headings, Enter or a click closes the palette and runs the pick, and Esc closes it. A session pick
   opens it; a project pick filters the sidebar's list to that project and brings a collapsed sidebar back to show it.
   The highlighted row is plainly visible in both themes: a clear grey in light, the sidebar's selected tint in dark.
@@ -362,9 +363,11 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
   project's sessions whatever the sidebar's filter, search and chip, filtering with No matches, Enter
   opening a session or filtering the sidebar to a project and bringing it back, Down skipping a heading,
   Esc, a command run from the palette and by its shortcut, Archived sessions run from the palette, and loaded
-  matches shown at once with the bridge's added below them (`desktop_cockpit_shell_test`); loaded matches first,
+  matches shown at once with the bridge's added below them, before typing and for a typed query
+  (`desktop_cockpit_shell_test`); loaded matches first,
   the bridge's answer 200 ms after the last keystroke, stale answers dropped, a failed search keeping the shown
-  matches, and local search on a bridge without pages (`session_search_cubit_test`); a moved highlight kept when
+  matches, the empty palette's newest sessions of every project whatever the sidebar's key, and local listing and
+  search on a bridge without pages (`session_search_cubit_test`); a moved highlight kept when
   rows change for the same query (`prego_picker_search_list_test`).
 - Cmd/Ctrl+[ popping a pushed page and doing nothing on a direct one; New session reached directly, Mark unread,
   and deleting or archiving the open session all returning to the home (`desktop_router_test`).

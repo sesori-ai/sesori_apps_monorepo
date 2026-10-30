@@ -3504,10 +3504,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     'idx_sessions_children',
     'CREATE INDEX idx_sessions_children ON sessions_table (parent_session_id, updated_at, session_id)',
   );
-  late final Index idxSessionsArchive = Index(
-    'idx_sessions_archive',
-    'CREATE INDEX idx_sessions_archive ON sessions_table (updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL',
-  );
   late final ProjectsDao projectsDao = ProjectsDao(this as AppDatabase);
   late final SessionDao sessionDao = SessionDao(this as AppDatabase);
   late final CatalogHydrationsDao catalogHydrationsDao = CatalogHydrationsDao(
@@ -3531,7 +3527,6 @@ abstract class _$AppDatabase extends GeneratedDatabase {
     idxSessionsPluginBackend,
     idxSessionsRoots,
     idxSessionsChildren,
-    idxSessionsArchive,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([

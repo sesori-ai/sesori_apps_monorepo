@@ -134,9 +134,11 @@ void main() {
 
   List<String> ids(SessionSearchCubit cubit) => [for (final match in cubit.state.matches) match.session.id];
 
+  /// The cubit's requests: a blank query's has no query, so they are told
+  /// apart from the window's pages by their size.
   List<SessionPageRequest> searches() => [
     for (final request in requests)
-      if (request.query != null) request,
+      if (request.limit == SessionSearchCubit.limit) request,
   ];
 
   test("lists the newest loaded sessions once the window loads, with their projects", () {
@@ -149,6 +151,52 @@ void main() {
       expect(ids(cubit), [for (var index = 0; index < 20; index++) "s${index.toString().padLeft(3, "0")}"]);
       expect(cubit.state.matches.first.project, _alpha);
       expect(cubit.state.isSearching, isFalse);
+
+      unawaited(cubit.close());
+      unawaited(window.dispose());
+      async.flushMicrotasks();
+    });
+  });
+
+  test("a blank query lists the newest sessions of every project, whatever the sidebar's key", () {
+    fakeAsync((async) {
+      final sessions = [
+        _session(id: "b1", updatedAt: 2000, title: "Beta newest", projectId: "beta"),
+        ..._bridgeSessions(),
+      ];
+      answer = (request) async => page(
+        sessions: [
+          for (final session in sessions)
+            if (request.projectId == null || session.projectID == request.projectId) session,
+        ],
+        request: request,
+      );
+      final window = createWindow()..select(key: (projectId: "alpha", query: null, filter: SessionListQuickFilter.all));
+      async.flushMicrotasks();
+      expect((window.state.value as SessionWindowLoaded).sessions.first.id, "s000");
+      requests.clear();
+
+      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      // The sidebar's rows show at once, while the bridge is asked.
+      expect(ids(cubit).first, "s000");
+      expect(cubit.state.isSearching, isTrue);
+      final search = searches().single;
+      expect(search.projectId, isNull);
+      expect(search.query, isNull);
+      expect(search.filter, SessionPageFilter.all);
+      expect(search.cursor, isNull);
+
+      async.flushMicrotasks();
+      expect(ids(cubit), hasLength(20));
+      expect(ids(cubit).take(2), ["b1", "s000"]);
+      expect(cubit.state.matches.first.project, _beta);
+      expect(cubit.state.isSearching, isFalse);
+
+      // A cleared query brings the bridge's newest back at once.
+      cubit.setQuery(query: "deploy");
+      async.elapse(SessionSearchCubit.searchDelay);
+      cubit.setQuery(query: " ");
+      expect(ids(cubit).take(2), ["b1", "s000"]);
 
       unawaited(cubit.close());
       unawaited(window.dispose());
@@ -181,6 +229,7 @@ void main() {
       final window = createWindow();
       final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
       async.flushMicrotasks();
+      requests.clear();
 
       cubit.setQuery(query: "de");
       async.elapse(const Duration(milliseconds: 150));
@@ -192,7 +241,6 @@ void main() {
 
       async.elapse(const Duration(milliseconds: 1));
       expect(searches().single.query, "deploy");
-      expect(searches().single.limit, SessionSearchCubit.limit);
       expect(ids(cubit), ["s001", "s250"]);
       expect(cubit.state.isSearching, isFalse);
 
@@ -201,9 +249,10 @@ void main() {
       expect(ids(cubit), ["s250"]);
       cubit.setQuery(query: "");
       expect(ids(cubit), hasLength(20));
-      expect(cubit.state.isSearching, isFalse);
       async.elapse(const Duration(seconds: 1));
-      expect(searches(), hasLength(1));
+      expect(searches(), hasLength(2));
+      expect(searches().last.query, isNull);
+      expect(cubit.state.isSearching, isFalse);
 
       unawaited(cubit.close());
       unawaited(window.dispose());
@@ -277,6 +326,39 @@ void main() {
     });
   });
 
+  test("on a bridge without pages, a blank query lists the newest of every project locally", () {
+    fakeAsync((async) {
+      answer = (_) async => const SessionPageUnsupported();
+      when(() => projectRepository.listSessions(projectId: "alpha")).thenAnswer(
+        (_) async => ApiResponse.success(SessionListResponse(items: _bridgeSessions())),
+      );
+      when(() => projectRepository.listSessions(projectId: "beta")).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [_session(id: "b1", updatedAt: 2000, title: "Beta", projectId: "beta")],
+          ),
+        ),
+      );
+      final window = createWindow();
+      async.flushMicrotasks();
+      window.select(key: (projectId: "alpha", query: null, filter: SessionListQuickFilter.all));
+      expect((window.state.value as SessionWindowLoaded).sessions.first.id, "s000");
+      requests.clear();
+
+      final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
+      expect(ids(cubit), hasLength(20));
+      expect(ids(cubit).take(2), ["b1", "s000"]);
+      async.flushMicrotasks();
+      expect(requests, isEmpty);
+      expect(ids(cubit).take(2), ["b1", "s000"]);
+      expect(cubit.state.isSearching, isFalse);
+
+      unawaited(cubit.close());
+      unawaited(window.dispose());
+      async.flushMicrotasks();
+    });
+  });
+
   test("on a bridge without pages, it matches every session locally", () {
     fakeAsync((async) {
       answer = (_) async => const SessionPageUnsupported();
@@ -294,6 +376,8 @@ void main() {
       final cubit = SessionSearchCubit(window: window, projectInventory: projectInventory);
       async.flushMicrotasks();
       requests.clear();
+      expect(ids(cubit), hasLength(20));
+      expect(ids(cubit).take(2), ["s000", "s001"]);
 
       cubit.setQuery(query: "deploy");
       expect(ids(cubit), ["s001", "b1", "s250"]);

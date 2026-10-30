@@ -33,8 +33,11 @@ void main() {
     registerPorts();
   });
   tearDown(() async {
-    await getIt<LogSink>().flush();
+    // Detach the file sink before flushing: async work that outlives a test can
+    // still log, and a write admitted after the flush would recreate logs/
+    // while the directory is being deleted.
     setLogSink(sink: const StdoutLogSink());
+    await getIt<LogSink>().flush();
     await getIt.reset();
     getIt.skipDoubleRegistration = false;
     await root.delete(recursive: true);

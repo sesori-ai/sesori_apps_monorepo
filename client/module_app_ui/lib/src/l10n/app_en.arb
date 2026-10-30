@@ -777,6 +777,14 @@
   "@founderCallNotNow": {
     "description": "Button that closes the CEO call invitation"
   },
+  "founderCallName": "Alex",
+  "@founderCallName": {
+    "description": "The CEO's first name under the invitation's title; a name, so keep it as written"
+  },
+  "founderCallClose": "Close invitation",
+  "@founderCallClose": {
+    "description": "Accessibility label of the close button on the CEO call invitation"
+  },
   "settingsRateSesori": "Rate Sesori",
   "@settingsRateSesori": {
     "description": "Settings account row that opens the rating sheet"

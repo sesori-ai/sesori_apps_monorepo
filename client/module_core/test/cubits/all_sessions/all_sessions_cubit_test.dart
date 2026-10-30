@@ -349,6 +349,15 @@ void main() {
       expect(ids(cubit), ["b", "a"]);
       expect(cubit.state.loadMore, isNull);
       expect(cubit.state.counts.all, 2);
+
+      // A typed query narrows once typing pauses; until then the rows stay
+      // the same list.
+      final rows = cubit.state.rows;
+      cubit.setQuery(query: "Session a");
+      expect(cubit.state.query, "Session a");
+      expect(cubit.state.rows, same(rows));
+      async.elapse(SessionWindowService.queryDelay);
+      expect(ids(cubit), ["a"]);
     });
   });
 

@@ -86,6 +86,10 @@ class SessionWindowService({
   /// loads them again instead of relying on the replayed events. In complete
   /// mode: some project's sessions failed to list.
   bool _rowsOutdated = false;
+
+  /// The generation [loadMore]'s page request was sent under, so a lost
+  /// connection tells it from a load that replaces the rows.
+  int? _pageGeneration;
   Timer? _queryTimer;
   Timer? _reloadTimer;
   Timer? _countsTimer;
@@ -134,13 +138,22 @@ class SessionWindowService({
 
   /// Lists [key] instead. The rows already loaded narrow to it at once; the
   /// bridge's answer replaces them [queryDelay] after a typed query, and at
-  /// once for any other change.
+  /// once for any other change. Listing everything, a typed query narrows
+  /// the rows only once typing pauses: each narrowing reads every session.
   void select({required SessionWindowKey key}) {
     final previous = _key;
     if (key == previous || _state.isClosed) return;
     _key = key;
+    final typed = key.query != null && key.projectId == previous.projectId && key.filter == previous.filter;
     if (_completeSessions case final sessions?) {
-      _emitComplete(sessions: sessions);
+      _queryTimer?.cancel();
+      if (typed) {
+        _queryTimer = Timer(queryDelay, () {
+          if (_completeSessions case final current?) _emitComplete(sessions: current);
+        });
+      } else {
+        _emitComplete(sessions: sessions);
+      }
       return;
     }
     // Drops any answer for the previous key, and holds live changes for the
@@ -162,7 +175,6 @@ class SessionWindowService({
         ),
       );
     }
-    final typed = key.query != null && key.projectId == previous.projectId && key.filter == previous.filter;
     if (typed) {
       _queryTimer = Timer(queryDelay, () => unawaited(_loadPaged(limit: pageSize)));
     } else {
@@ -173,19 +185,25 @@ class SessionWindowService({
   /// Appends the next page. Does nothing while the rows are being replaced,
   /// while a page is already on its way, or when none follows. Rows a failed
   /// load left behind are reloaded instead: their cursor may belong to an
-  /// earlier key.
+  /// earlier key. While the bridge is away the page fails at once, and the
+  /// reconnect asks for it.
   Future<void> loadMore() async {
     if (_state.isClosed || _replay != null) return;
     final loaded = _state.value;
     if (loaded is! SessionWindowLoaded || loaded.loadMore == SessionWindowLoadMore.loading) return;
     final cursor = loaded.nextCursor;
     if (cursor == null) return;
+    if (!_connected) {
+      _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.failed));
+      return;
+    }
     if (_rowsOutdated) {
       _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
       await reload();
       return;
     }
     final generation = _generation;
+    _pageGeneration = generation;
     _replay = [];
     _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.loading));
     final unseenTick = _sessionUnseenTracker.tick;
@@ -238,24 +256,40 @@ class SessionWindowService({
   }
 
   /// The newest sessions of every project matching [query], at most [limit],
-  /// whatever the key.
+  /// whatever the key. A blank query matches every session. While the bridge
+  /// is away, and once it leaves, this fails at once.
   Future<SessionWindowSearchResult> search({required String query, required int limit}) async {
-    if (searchWords(query: query).isEmpty) return const SessionWindowSearchMatches(sessions: []);
     if (_completeSessions case final sessions?) {
       return SessionWindowSearchMatches(
         sessions: _searchLocally(sessions: sessions, query: query, limit: limit),
       );
     }
-    final result = await _sessionRepository.getSessionPage(
-      request: SessionPageRequest(
-        mode: _pageMode,
-        projectId: null,
-        query: query,
-        filter: SessionPageFilter.all,
-        cursor: null,
-        limit: limit,
-      ),
-    );
+    const away = SessionWindowSearchFailure(reason: RemoteFailureReason.networkDown);
+    if (!_connected) return away;
+    final lost = Completer<SessionPageResult?>();
+    final watch = _connectionService.status.where((status) => status is! ConnectionConnected).listen((_) {
+      if (!lost.isCompleted) lost.complete(null);
+    });
+    final SessionPageResult? result;
+    try {
+      result = await Future.any([
+        _sessionRepository.getSessionPage(
+          request: SessionPageRequest(
+            mode: _pageMode,
+            projectId: null,
+            // The bridge rejects a blank query; leaving it out lists every session.
+            query: searchWords(query: query).isEmpty ? null : query,
+            filter: SessionPageFilter.all,
+            cursor: null,
+            limit: limit,
+          ),
+        ),
+        lost.future,
+      ]);
+    } finally {
+      unawaited(watch.cancel());
+    }
+    if (result == null) return away;
     // The result keeps only the reason, so the original error is logged here.
     if (result case SessionPageFailure(:final error)) logw("Session search failed", error);
     return switch (result) {
@@ -469,6 +503,8 @@ class SessionWindowService({
   }
 
   void _emitComplete({required List<Session> sessions}) {
+    // A typed query still waiting narrows the latest sessions once it fires.
+    if (_queryTimer?.isActive ?? false) return;
     final projects = _projectsById();
     final counted = sessions.where((session) => _matchesSearch(session: session, projects: projects)).toList();
     _emit(
@@ -503,14 +539,35 @@ class SessionWindowService({
     }
     final connected = status is ConnectionConnected;
     final reconnected = connected && !_connected;
+    final lost = !connected && _connected;
     _connected = connected;
+    // A load sent before the bridge left may never answer, so it fails at
+    // once: a page's row offers Retry and the reconnect asks for it again,
+    // and rows being replaced are reloaded on reconnect.
+    if (_state.value case final SessionWindowLoaded loaded when lost && _replay != null) {
+      final pageOnItsWay = _pageGeneration == _generation;
+      _generation++;
+      _cancelTimers();
+      if (pageOnItsWay) {
+        _replay = null;
+        _emit(_withLoadMore(loaded: loaded, loadMore: SessionWindowLoadMore.failed));
+      } else {
+        _fail(reason: RemoteFailureReason.networkDown);
+      }
+    }
     if (!connected || !(changed || reconnected)) return;
     // A plain reconnect relies on the replayed events, unless a load failed
     // meanwhile, nothing loaded yet, or the bridge listed everything: it may
-    // serve pages since.
-    if (_completeSessions == null && _state.value is SessionWindowLoaded) {
-      if (_rowsOutdated) unawaited(reload());
-      return;
+    // serve pages since. A page that failed is asked again.
+    if (_completeSessions == null) {
+      if (_state.value case final SessionWindowLoaded loaded) {
+        if (_rowsOutdated) {
+          unawaited(reload());
+        } else if (loaded.loadMore == SessionWindowLoadMore.failed) {
+          unawaited(loadMore());
+        }
+        return;
+      }
     }
     _completeSessions = null;
     unawaited(_loadPaged(limit: pageSize));

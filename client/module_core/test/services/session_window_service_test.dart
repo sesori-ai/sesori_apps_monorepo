@@ -286,6 +286,95 @@ void main() {
       });
     });
 
+    test("a page asked for while the bridge is away fails at once, and the reconnect loads it once", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        bridge.requests.clear();
+
+        status.add(const ConnectionStatus.disconnected());
+        async.flushMicrotasks();
+        unawaited(window.loadMore());
+        expect(loaded(window).loadMore, SessionWindowLoadMore.failed);
+        unawaited(window.loadMore());
+        async.flushMicrotasks();
+        expect(bridge.requests, isEmpty);
+
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect([for (final request in bridge.requests) request.cursor], ["200"]);
+        expect(ids(window), hasLength(250));
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a page on its way when the bridge leaves offers Retry at once, and the reconnect asks again", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        final lost = Completer<SessionPageResult>();
+        bridge.answer = (_) => lost.future;
+        unawaited(window.loadMore());
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.loading);
+
+        status.add(const ConnectionStatus.disconnected());
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.failed);
+
+        bridge.answer = null;
+        bridge.requests.clear();
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect([for (final request in bridge.requests) request.cursor], ["200"]);
+        expect(ids(window), hasLength(250));
+
+        // The abandoned request's late answer changes nothing.
+        lost.complete(SessionPageFailure(error: ApiError.generic()));
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+        unawaited(window.dispose());
+      });
+    });
+
+    test("a reload on its way when the bridge leaves, even over a page, runs again on reconnect", () {
+      inFakeTime((async) {
+        bridge.sessions = _sessions(count: 250);
+        final window = create();
+        async.flushMicrotasks();
+        final lost = Completer<SessionPageResult>();
+        bridge.answer = (_) => lost.future;
+        unawaited(window.loadMore());
+        connection.emitDataMayBeStale();
+        async.flushMicrotasks();
+
+        status.add(const ConnectionStatus.disconnected());
+        async.flushMicrotasks();
+        expect(loaded(window).loadMore, SessionWindowLoadMore.failed);
+
+        bridge.answer = null;
+        bridge.sessions = [_session(id: "new", updatedAt: 2000000), ...bridge.sessions];
+        bridge.requests.clear();
+        status.add(_connected(bridgeId: "a"));
+        async.flushMicrotasks();
+        expect(
+          [for (final request in bridge.requests) (request.cursor, request.limit)],
+          [(null, SessionWindowService.pageSize)],
+        );
+        expect(ids(window).first, "new");
+
+        // The abandoned requests' late answers change nothing.
+        lost.complete(SessionPageFailure(error: ApiError.generic()));
+        async.flushMicrotasks();
+        expect(ids(window).first, "new");
+        expect(loaded(window).loadMore, SessionWindowLoadMore.idle);
+        unawaited(window.dispose());
+      });
+    });
+
     test("a key narrowed to no rows whose answer fails shows the failure", () {
       inFakeTime((async) {
         bridge.sessions = _sessions(count: 3);
@@ -715,7 +804,18 @@ void main() {
         expect(loaded(window).counts, const SessionPageCounts(all: 2, running: 0, unread: 1));
         bridge.requests.clear();
 
+        // Each narrowing reads every session, so a typed query waits for
+        // typing to pause.
+        window.select(key: (projectId: null, query: "f", filter: SessionListQuickFilter.all));
+        async.elapse(SessionWindowService.queryDelay - const Duration(milliseconds: 1));
         window.select(key: (projectId: null, query: "fix", filter: SessionListQuickFilter.all));
+        async.elapse(SessionWindowService.queryDelay - const Duration(milliseconds: 1));
+        // A live change meanwhile waits for the query too.
+        emit(SesoriSseEvent.sessionCreated(info: _session(id: "a0", updatedAt: 1, title: "Fix footer")));
+        expect(ids(window), ["b1", "a1"]);
+        async.elapse(const Duration(milliseconds: 1));
+        expect(ids(window), ["a1", "a0"]);
+        emit(SesoriSseEvent.sessionDeleted(info: _session(id: "a0", updatedAt: 1, title: "Fix footer")));
         expect(ids(window), ["a1"]);
         window.select(key: (projectId: null, query: null, filter: SessionListQuickFilter.unread));
         expect(ids(window), ["b1"]);
@@ -854,9 +954,22 @@ void main() {
       );
       expect(result, isA<SessionWindowSearchMatches>().having((matches) => matches.sessions.length, "length", 2));
 
-      unawaited(window.search(query: "  ", limit: 20));
+      // A blank query lists every session, without the query the bridge
+      // would reject.
+      unawaited(window.search(query: "  ", limit: 20).then((value) => result = value));
       async.flushMicrotasks();
-      expect(bridge.requests, hasLength(1));
+      expect(
+        bridge.requests.last,
+        const SessionPageRequest(
+          mode: SessionPageMode.active,
+          projectId: null,
+          query: null,
+          filter: SessionPageFilter.all,
+          cursor: null,
+          limit: 20,
+        ),
+      );
+      expect(result, isA<SessionWindowSearchMatches>().having((matches) => matches.sessions.length, "length", 2));
 
       bridge.answer = (_) async => SessionPageFailure(error: ApiError.generic());
       unawaited(window.search(query: "deploy", limit: 20).then((value) => result = value));
@@ -865,6 +978,33 @@ void main() {
         result,
         isA<SessionWindowSearchFailure>().having((failure) => failure.reason, "reason", RemoteFailureReason.unknown),
       );
+      unawaited(window.dispose());
+    });
+  });
+
+  test("a search on its way when the bridge leaves, or asked while it is away, fails at once", () {
+    inFakeTime((async) {
+      final window = create();
+      async.flushMicrotasks();
+      final lost = Completer<SessionPageResult>();
+      bridge.answer = (_) => lost.future;
+      SessionWindowSearchResult? result;
+      unawaited(window.search(query: "  ", limit: 20).then((value) => result = value));
+      async.flushMicrotasks();
+      expect(result, isNull);
+
+      status.add(const ConnectionStatus.disconnected());
+      async.flushMicrotasks();
+      const away = TypeMatcher<SessionWindowSearchFailure>();
+      expect(result, away.having((failure) => failure.reason, "reason", RemoteFailureReason.networkDown));
+
+      bridge.requests.clear();
+      result = null;
+      unawaited(window.search(query: "deploy", limit: 20).then((value) => result = value));
+      async.flushMicrotasks();
+      expect(bridge.requests, isEmpty);
+      expect(result, away.having((failure) => failure.reason, "reason", RemoteFailureReason.networkDown));
+      lost.complete(const SessionPageUnsupported());
       unawaited(window.dispose());
     });
   });
