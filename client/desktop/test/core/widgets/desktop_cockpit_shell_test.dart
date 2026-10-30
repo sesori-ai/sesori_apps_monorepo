@@ -1135,7 +1135,8 @@ void main() {
     whenListen(projects, projectUpdates.stream, initialState: const ProjectListState.loading());
 
     await tester.pumpWidget(app(state: running));
-    expect(find.descendant(of: list, matching: find.byKey(const ValueKey("prego-deep-scan-card"))), findsOneWidget);
+    // The card floats over the sidebar's list rather than scrolling in it.
+    expect(find.byKey(const ValueKey("prego-deep-scan-card")), findsOneWidget);
     await tester.pump(const Duration(milliseconds: 600));
     final search = find.descendant(of: list, matching: find.byType(EditableText));
     final searchTop = tester.getTopLeft(search).dy;

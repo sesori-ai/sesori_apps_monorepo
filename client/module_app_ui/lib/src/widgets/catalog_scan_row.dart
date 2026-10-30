@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math" as math;
 import "dart:ui" as ui;
 
 import "package:material_ui/material_ui.dart";
@@ -8,26 +9,49 @@ import "package:theme_prego/module_prego.dart";
 import "../extensions/build_context_x.dart";
 import "../l10n/app_localizations.dart";
 
-/// How long the row takes to grow in or fold away.
+/// How long the card takes to rise in or sink away.
 const Duration _revealDuration = Duration(milliseconds: 260);
 const Curve _revealEaseOut = Cubic(0.23, 1, 0.32, 1);
+// How far the card rises as it fades in, as a fraction of its own height.
+const double _revealRise = 0.2;
 // A compact optical entrance: close enough to full size that text stays stable,
-// with just enough blur to connect the card to the pull without looking glassy.
+// with just enough blur to soften the arrival without looking glassy.
 const double _entranceScaleFrom = 0.97;
 const double _entranceBlurSigma = 2;
 // Keep the leading footprint identical when loading becomes a result.
 const double _scanMarkSize = 20;
 const Duration _startupWaitThreshold = Duration(seconds: 3);
+// Both Deep Scan cards rest at this height at standard text size.
+const double _cardMinHeight = 69;
 
-/// The catalog scan reported as one quiet row above a list.
+/// The room a list hosting a floating [CatalogScanRow] reserves after its last
+/// row, so that row scrolls fully clear of the card. Reserved whether or not a
+/// scan is showing, so the card coming and going never changes the list.
+///
+/// Follows the text scale, since enlarged text grows the card's two lines past
+/// its resting height. A wrapped line at large text can still grow it further.
+double catalogScanRowClearance({required BuildContext context}) {
+  final style = context.prego.textTheme.textSm.medium;
+  final fontSize = style.fontSize;
+  final textHeight = fontSize == null
+      ? 0.0
+      : 2 * MediaQuery.textScalerOf(context).scale(fontSize) * (style.height ?? 1) + PregoSpacing.xxs;
+  // The terminal card pads its text vertically; the loading card centres it
+  // in the same resting height.
+  final cardHeight = math.max(_cardMinHeight, textHeight + 2 * PregoSpacing.lg);
+  return cardHeight + 2 * PregoSpacing.xl;
+}
+
+/// The catalog scan reported as one quiet card floating over a list.
+///
+/// Hosts float it over the bottom of the list instead of giving it a place in
+/// the list, so neither its arrival nor its exit moves a row or a filter chip
+/// under the user's finger. It rises in and sinks away where it floats rather
+/// than growing or folding, and only the card itself takes pointer events.
 ///
 /// Live scans use the coordinated loading card designed for this flow;
-/// terminal outcomes keep their severity-tinted report cards. The row has no
-/// controls: the scan clears itself once settled, and the row folds away.
-///
-/// Ordinary live phases keep one supporting row, so progress changes do not
-/// shove the list. The prolonged-startup heading and explanation may wrap and
-/// grow; preserving their guidance is more important than baseline card height.
+/// terminal outcomes keep their severity-tinted report cards. The card has no
+/// controls: the scan clears itself once settled, and the card fades away.
 class const CatalogScanRow({
   super.key,
 
@@ -63,11 +87,14 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     parent: _entrance,
     curve: _revealEaseOut,
   );
+  late final Animation<Offset> _rise = Tween(
+    begin: const Offset(0, _revealRise),
+    end: Offset.zero,
+  ).animate(_curve);
 
-  /// The last content worth showing, kept while the row folds away.
+  /// The last content worth showing, kept while the card fades away.
   ///
-  /// Without it the card would vanish on the frame the scan cleared and leave
-  /// an empty box collapsing behind it.
+  /// Without it the card would vanish on the frame the scan cleared.
   _RowContent? _shown;
 
   Timer? _startupWaitTimer;
@@ -83,8 +110,8 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
-    // Drops the retained card once it has finished folding away. Without this
-    // its labels stay mounted at zero height, where a screen reader can still
+    // Drops the retained card once it has finished fading away. Without this
+    // its labels stay mounted at zero opacity, where a screen reader can still
     // reach invisible text.
     _reveal.addStatusListener(_onRevealStatus);
     _syncStartupWait();
@@ -198,54 +225,59 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
     final shown = _shown;
     if (shown == null) return const SizedBox(width: double.infinity);
 
-    return SizeTransition(
-      sizeFactor: _curve,
-      // Grow downward from the top edge so the list below slides rather than
-      // the row expanding around its own centre.
-      alignment: AlignmentDirectional.topStart,
-      child: FadeTransition(
-        opacity: _curve,
-        // Announced when it appears without moving focus, the same treatment
-        // the connection banner uses: a scan started by a pull finishes with
-        // no other signal that it is done. Every state announces except the
-        // reading one, whose session count changes with each enumerated
-        // session and would otherwise interrupt a screen reader hundreds of
-        // times during one scan.
-        child: AnimatedBuilder(
-          animation: _entrance,
-          builder: (context, child) {
-            final progress = _entranceCurve.value;
-            final scale = _entranceScaleFrom + (1 - _entranceScaleFrom) * progress;
-            final blurSigma = _entranceBlurSigma * (1 - progress);
-            final filteredChild = blurSigma <= 0
-                ? child
-                : ImageFiltered(
-                    key: const ValueKey("catalog-scan-row-entrance-blur"),
-                    imageFilter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
-                    child: child,
-                  );
-            return Transform.scale(
-              key: const ValueKey("catalog-scan-row-entrance"),
-              alignment: Alignment.topCenter,
-              scale: scale,
-              child: filteredChild,
-            );
-          },
-          // AnimatedBuilder retains this subtree while only the composited
-          // entrance transform and its short-lived image filter change.
-          child: Semantics(
-            container: true,
-            liveRegion: widget._scan is! CatalogRescanReading,
-            child: shown.tone == _ScanTone.working
-                ? _ScanLoadingCard(
-                    title: shown.title,
-                    supportingText: shown.detail,
-                    wrapSupportingText: shown.wrapDetail,
-                  )
-                : Padding(
-                    padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
-                    child: _ScanCard(content: shown),
-                  ),
+    // A departing card takes no taps meant for the rows it uncovers, and a
+    // screen reader no longer reaches its fading text.
+    return ExcludeSemantics(
+      excluding: !_hasContent,
+      child: IgnorePointer(
+        ignoring: !_hasContent,
+        child: SlideTransition(
+          position: _rise,
+          child: FadeTransition(
+            opacity: _curve,
+            // Announced when it appears without moving focus, the same treatment
+            // the connection banner uses: a scan started by a pull finishes with
+            // no other signal that it is done. Every state announces except the
+            // reading one, whose session count changes with each enumerated
+            // session and would otherwise interrupt a screen reader hundreds of
+            // times during one scan.
+            child: AnimatedBuilder(
+              animation: _entrance,
+              builder: (context, child) {
+                final progress = _entranceCurve.value;
+                final scale = _entranceScaleFrom + (1 - _entranceScaleFrom) * progress;
+                final blurSigma = _entranceBlurSigma * (1 - progress);
+                final filteredChild = blurSigma <= 0
+                    ? child
+                    : ImageFiltered(
+                        key: const ValueKey("catalog-scan-row-entrance-blur"),
+                        imageFilter: ui.ImageFilter.blur(sigmaX: blurSigma, sigmaY: blurSigma),
+                        child: child,
+                      );
+                return Transform.scale(
+                  key: const ValueKey("catalog-scan-row-entrance"),
+                  alignment: Alignment.bottomCenter,
+                  scale: scale,
+                  child: filteredChild,
+                );
+              },
+              // AnimatedBuilder retains this subtree while only the composited
+              // entrance transform and its short-lived image filter change.
+              child: Semantics(
+                container: true,
+                liveRegion: widget._scan is! CatalogRescanReading,
+                child: shown.tone == _ScanTone.working
+                    ? _ScanLoadingCard(
+                        title: shown.title,
+                        supportingText: shown.detail,
+                        wrapSupportingText: shown.wrapDetail,
+                      )
+                    : Padding(
+                        padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
+                        child: _ScanCard(content: shown),
+                      ),
+              ),
+            ),
           ),
         ),
       ),
@@ -254,7 +286,7 @@ class _CatalogScanRowState() extends State<CatalogScanRow> with TickerProviderSt
 
   /// The one place the scan state decides how the row reads.
   ///
-  /// `null` is the idle row, which folds away to nothing.
+  /// `null` is the idle row, which fades away to nothing.
   _RowContent? _contentFor({required AppLocalizations loc, required CatalogRescanState scan}) => switch (scan) {
     CatalogRescanIdle() => null,
     CatalogRescanPreparingOne(:final pendingPluginName, :final finishedHarnessCount, :final pluginIds) => _RowContent(
@@ -360,7 +392,7 @@ class const _RowContent({
 
 /// The Figma result card: leading mark and two fixed lines.
 class const _ScanCard({required final _RowContent content}) extends StatelessWidget {
-  static const double _minHeight = 69;
+  static const double _minHeight = _cardMinHeight;
   // Figma's radial is 483.76px wide for a 69px vertical radius.
   static const double _glowScaleX = 7.011014492753623;
 
@@ -521,13 +553,15 @@ class _ScanLoadingCardState()
     final beamColor = colors.brandGradientTop;
     final beamOpacity = colors.brightness == Brightness.dark ? 0.6 : 0.48;
 
-    return Material(
-      type: MaterialType.transparency,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
+    // The margin outside the Material, which absorbs hits, so taps there reach
+    // the list the card floats over.
+    return Padding(
+      padding: const EdgeInsetsDirectional.all(PregoSpacing.xl),
+      child: Material(
+        type: MaterialType.transparency,
         child: Container(
           key: const ValueKey("prego-deep-scan-card"),
-          constraints: const BoxConstraints(minHeight: 69),
+          constraints: const BoxConstraints(minHeight: _cardMinHeight),
           clipBehavior: Clip.antiAlias,
           decoration: ShapeDecoration(
             color: colors.bgSurface5,
@@ -558,7 +592,7 @@ class _ScanLoadingCardState()
               Padding(
                 padding: const EdgeInsetsDirectional.symmetric(horizontal: PregoSpacing.xl),
                 child: ConstrainedBox(
-                  constraints: const BoxConstraints(minHeight: 69),
+                  constraints: const BoxConstraints(minHeight: _cardMinHeight),
                   child: Row(
                     children: [
                       RotationTransition(

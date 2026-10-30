@@ -14,7 +14,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../helpers/test_helpers.dart";
 
 /// The home is one of the surfaces that host a catalog scan: every pull
-/// imports, and the scan reports in a row above the list.
+/// imports, and the scan reports in a card floating over the list.
 ///
 /// A live scan row spins forever, so these pump a fixed duration rather than
 /// settling.
@@ -127,7 +127,7 @@ void main() {
     expect(rescanService.startAllCalls, 1);
   });
 
-  testWidgets("reports a running scan above the list without displacing it", (tester) async {
+  testWidgets("reports a running scan over the list without displacing it", (tester) async {
     final loc = await pumpLoadedList(tester);
     expect(find.text(loc.catalogScanRunningTitle(0, 1)), findsNothing);
 
@@ -146,8 +146,8 @@ void main() {
     expect(find.text("My Project"), findsOneWidget);
   });
 
-  // A scan already running when the home opens is no news: the row stands
-  // with the loading skeleton, so the projects arriving move nothing.
+  // A scan already running when the home opens is no news: the card floats
+  // over the loading skeleton, so the projects arriving move nothing.
   testWidgets("a load that starts mid-scan shows the row from its first frame and keeps the list still", (
     tester,
   ) async {
@@ -177,7 +177,7 @@ void main() {
     expect(tester.getTopLeft(search).dy, searchTop);
   });
 
-  testWidgets("folds the row away once the scan clears itself", (tester) async {
+  testWidgets("fades the card away once the scan clears itself", (tester) async {
     await pumpLoadedList(tester);
 
     final loc = await AppLocalizations.delegate.load(const Locale("en"));
@@ -195,6 +195,92 @@ void main() {
     expect(find.text(loc.catalogScanRunningTitle(0, 1)), findsNothing);
     expect(find.text("My Project"), findsOneWidget);
   });
+
+  // Seen on a phone: the result card folding away moved the list up under a
+  // finger, so a tap meant for a chip opened a session. The card floats, so
+  // nothing under it moves on any frame of its arrival or exit.
+  testWidgets("keeps the chips and the first row still while the card comes and goes", (tester) async {
+    final loc = await pumpLoadedList(tester);
+    final chip = find.byKey(const Key("session-list-filter-all"));
+    final firstRow = find.text("Fix the parser");
+    final chipAt = tester.getTopLeft(chip);
+    final rowAt = tester.getTopLeft(firstRow);
+
+    Future<void> expectStillFor({required int frames}) async {
+      for (var frame = 0; frame < frames; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(tester.getTopLeft(chip), chipAt, reason: "frame $frame moved the chips");
+        expect(tester.getTopLeft(firstRow), rowAt, reason: "frame $frame moved the first row");
+      }
+    }
+
+    rescanService.emit(
+      const CatalogRescanState.succeeded(
+        harnessCount: 1,
+        counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
+      ),
+    );
+    await expectStillFor(frames: 30);
+    final title = find.text(loc.catalogScanCompleteTitle);
+    expect(title, findsOneWidget);
+    expect(
+      tester.getRect(find.byKey(const ValueKey("catalog-scan-terminal-card"))).top,
+      greaterThan(tester.getRect(chip).bottom),
+      reason: "the card leaves the chips uncovered and tappable",
+    );
+
+    rescanService.emit(const CatalogRescanState.idle());
+    await expectStillFor(frames: 30);
+    expect(title, findsNothing);
+  });
+
+  // The card covers the bottom of the list while a scan runs, so the list
+  // always reserves room for it: scrolled to the end, the last row rests
+  // fully above the card and stays reachable, also at enlarged text, which
+  // grows the card.
+  for (final textScale in [1.0, 2.0]) {
+    testWidgets("the last row scrolls fully clear of the card at ${textScale}x text", (tester) async {
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      when(() => mockProjectRepository.listSessions(projectId: "project-1")).thenAnswer(
+        (_) async => ApiResponse.success(
+          SessionListResponse(
+            items: [
+              for (var index = 0; index < 30; index++)
+                testSession(id: "session-$index", title: "Session $index", updatedAt: 1700000000000 - index * 60000),
+            ],
+          ),
+        ),
+      );
+      final loc = await pumpLoadedList(tester);
+      await emitScan(
+        tester,
+        const CatalogRescanState.succeeded(
+          harnessCount: 1,
+          counts: CatalogRescanCounts.delta(newProjects: 0, newSessions: 2),
+        ),
+      );
+      expect(find.text(loc.catalogScanCompleteTitle), findsOneWidget);
+
+      final list = find.descendant(of: find.byType(CustomScrollView), matching: find.byType(Scrollable)).first;
+      final position = tester.state<ScrollableState>(list).position;
+      // Lazily built rows refine the extent as they lay out, so jump until the
+      // end holds still.
+      do {
+        position.jumpTo(position.maxScrollExtent);
+        await tester.pump();
+        await tester.pump(_rowSettled);
+      } while (position.pixels != position.maxScrollExtent);
+
+      final lastRow = find.text("Session 29");
+      expect(lastRow, findsOneWidget);
+      expect(
+        tester.getRect(find.ancestor(of: lastRow, matching: find.byType(SessionTile)).first).bottom,
+        lessThan(tester.getRect(find.byKey(const ValueKey("catalog-scan-terminal-card"))).top),
+        reason: "the last row rests above the card at the end of the list",
+      );
+    });
+  }
 
   testWidgets("reports a finished scan with no control to press", (tester) async {
     await pumpLoadedList(tester);

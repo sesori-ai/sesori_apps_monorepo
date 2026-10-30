@@ -109,20 +109,35 @@ class const SessionsHomeView({
       ),
       ProjectListLoading() || ProjectListFailed() => null,
     };
+    // Floats over the bottom of the list rather than taking a place in it, so
+    // neither its arrival nor its exit moves a row or a chip under a finger.
+    // The phone's disconnected pages report the connection themselves, and a
+    // scan a pull to reconnect recovers waits for the list.
+    final scan = context.select((SessionListRefreshCubit refresh) => refresh.state.scan);
+    Widget? scanCard({required double bottomClearance}) => projects is ProjectListBridgeDisconnected
+        ? null
+        : Stack(
+            children: [
+              PositionedDirectional(
+                start: 0,
+                end: 0,
+                bottom: 0,
+                child: SafeArea(
+                  top: false,
+                  child: Padding(
+                    padding: EdgeInsetsDirectional.only(bottom: bottomClearance),
+                    child: CatalogScanRow(scan: scan),
+                  ),
+                ),
+              ),
+            ],
+          );
     List<Widget> slivers({
       required String? selectedSessionId,
       required Widget? header,
       required double endClearance,
     }) => [
       if (isRefreshing) const SliverToBoxAdapter(child: LinearProgressIndicator()),
-      // Mounted with the loading skeleton, so a scan already running is there
-      // from the first frame and the projects arriving move nothing. A pull
-      // to reconnect keeps the disconnected page up until the list loads, and
-      // a scan it recovers waits for the list rather than shifting that page.
-      if (projects is! ProjectListBridgeDisconnected)
-        SliverToBoxAdapter(
-          child: CatalogScanRow(scan: context.select((SessionListRefreshCubit refresh) => refresh.state.scan)),
-        ),
       AllSessionsList(
         onSessionTap: onSessionTap,
         actionDispatcher: actionDispatcher,
@@ -140,7 +155,7 @@ class const SessionsHomeView({
     final SessionsHomePage page;
     switch (presentation) {
       case SessionsHomeSidebar(:final selectedSessionId):
-        return CustomScrollView(
+        final list = CustomScrollView(
           physics: onRefresh == null
               ? const AlwaysScrollableScrollPhysics()
               : const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics()),
@@ -155,11 +170,20 @@ class const SessionsHomeView({
             ),
             ...slivers(
               selectedSessionId: selectedSessionId,
-              endClearance: 0,
+              // The last row scrolls clear of the floating scan card.
+              endClearance: catalogScanRowClearance(context: context),
               header: switcher(
                 triggerBuilder: (context, open) => _SidebarSwitcherHeading(title: title, onPressed: open),
               ),
             ),
+          ],
+        );
+        // The list keeps its place in the stack, so the card coming and going
+        // never remounts it.
+        return Stack(
+          children: [
+            list,
+            if (scanCard(bottomClearance: 0) case final card?) Positioned.fill(child: card),
           ],
         );
       case final SessionsHomePage pagePresentation:
@@ -199,13 +223,17 @@ class const SessionsHomeView({
           onPressed: () => newSession(entry: _revealFrom(buttonContext: buttonContext)),
         ),
       ),
+      // Clear of the floating New session button.
+      overlay: scanCard(bottomClearance: _newSessionButtonSize.diameter + kFloatingActionButtonMargin),
       onRefresh: onRefresh,
       // An open session covers the page, so no row is selected.
       slivers: slivers(
         selectedSessionId: null,
         header: null,
-        // The last row scrolls clear of the floating New session button.
-        endClearance: _newSessionButtonSize.diameter + kFloatingActionButtonMargin,
+        // The last row scrolls clear of the floating New session button and
+        // the scan card floating above it.
+        endClearance:
+            _newSessionButtonSize.diameter + kFloatingActionButtonMargin + catalogScanRowClearance(context: context),
       ),
     );
   }

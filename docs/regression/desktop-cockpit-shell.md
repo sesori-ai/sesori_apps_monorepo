@@ -57,14 +57,14 @@ The main pane hosts one full-width routed page.
   opens the shared project picker, whose footer always holds "All projects" (beside "No project" when the bridge
   has it), and its pick is the shared filter that lasts for the app's run. The list is the phone's (see
   `projects-and-sessions.md`): its search field, All, Running and Unread chips, date headings with running sessions
-  under Today, launching rows, the catalog scan row, pages with their loader row and the Retry row. Each row names its project while the
+  under Today, launching rows, the floating catalog scan card, pages with their loader row and the Retry row. Each row names its project while the
   filter shows all of them ("No project" rows name none), and opens its session in
   that project; the open session is highlighted. Adding a project otherwise lives on home and in Settings ›
   Projects. Icon/status hints and truncated-label hints remain useful, while fully visible labels need no
   duplicate tooltip.
 - Explicit sidebar refresh runs through `SessionListRefreshCubit` and the shared `SessionListRefreshService` over the
   scoped project inventory and the list's sessions window, and starts the all-harness import beside the reload. The
-  sidebar's scan row above the list reports the import; a failed import raises the shared alert naming its
+  sidebar's scan card, floating over the list's bottom edge so nothing in the list moves, reports the import; a failed import raises the shared alert naming its
   harnesses. It awaits the project reload before reloading the window's loaded range. An ordinary project failure
   still lets the sessions reload; either failing produces failure feedback. Useful rows stay visible. A refresh
   while one runs joins it, busy controls cannot dispatch duplicate intent, and busy/idle refresh plus Settings expose
