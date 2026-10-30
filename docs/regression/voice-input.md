@@ -40,6 +40,9 @@ independently prepares optional project-scoped vocabulary from bounded local evi
   Deletion remains best-effort and logs failures.
 - Text is inserted for review, never auto-sent. The draft tracks voice-origin spans, so a message retaining one counts
   as voice-assisted input.
+- A voice-assisted message reaches the agent, and shows in the sender's own bubble, marked whole as `🎙️ "words"`, so the
+  agent allows for misheard words. The composer and a restored draft hold plain words, generated and pending titles use
+  plain words, and slash commands are never marked, including a dictated argument.
 - Existing-session voice entry is absent while that chat's harness is blocked. A block during recording or
   transcription disposes and invalidates the voice interaction, releases its resources, and prevents a late
   completion from restoring or sending input. Availability recovery creates a fresh eligible composer; the gate
@@ -78,7 +81,7 @@ independently prepares optional project-scoped vocabulary from bounded local evi
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, and shutdown cancellation. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, and shutdown cancellation. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, and music from another app keeps playing when a chat opens. |
@@ -92,6 +95,8 @@ reopen the page and verify the saved row value.
 On the macOS desktop build, grant the first microphone prompt, click the mic, speak, click again and edit the
 inserted transcript; start again and press Escape to cancel; click into the transcript mid-recording and confirm
 the recording continues.
+On either, send a dictated message and confirm the bubble and the harness transcript show `🎙️ "words"`, while the
+generated session title shows plain words.
 
 ## Exploration Guidance
 
@@ -118,6 +123,8 @@ interruptions such as a call.
 - Audio is uploaded despite denied permission, or denial is reported as a generic network or server failure.
 - A project glossary contains connector or everyday English words, or exceeds 100 terms.
 - Text is sent without review, or a message with surviving voice text is classified as typed.
+- A dictated message reaches the agent unmarked, a typed message or slash command is marked, or the marker appears in a
+  draft or a generated title.
 - Any audio, transcript, or prompt content reaches logs or analytics; raw project identity, project paths, repository
   origins, filenames, or metadata source text reach auth voice transport; glossary failure blocks recording or
   transcription; or concurrent
