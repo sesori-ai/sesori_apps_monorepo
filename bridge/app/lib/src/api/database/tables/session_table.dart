@@ -21,10 +21,6 @@ part "session_table.freezed.dart";
   name: "idx_sessions_children",
   columns: {#parentSessionId, #updatedAt, #sessionId},
 )
-@TableIndex.sql(
-  "CREATE INDEX idx_sessions_archive ON sessions_table "
-  "(updated_at DESC, session_id DESC) WHERE archived_at IS NOT NULL",
-)
 @UseRowClass(SessionDto)
 class SessionTable() extends Table {
   @override

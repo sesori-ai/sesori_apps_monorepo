@@ -210,12 +210,5 @@ void main() {
       ),
       contains("idx_sessions_children"),
     );
-    expect(
-      await plan(
-        "SELECT * FROM sessions_table WHERE archived_at IS NOT NULL "
-        "ORDER BY updated_at DESC, session_id DESC",
-      ),
-      allOf(contains("idx_sessions_archive"), isNot(contains("USE TEMP B-TREE"))),
-    );
   });
 }

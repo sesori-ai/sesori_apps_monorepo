@@ -45,7 +45,7 @@ class AppDatabase(super.e) extends _$AppDatabase {
   static const _readPoolSize = 4;
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 22;
 
   @override
   MigrationStrategy get migration => MigrationStrategy(
@@ -341,6 +341,11 @@ class AppDatabase(super.e) extends _$AppDatabase {
         if (violations.isNotEmpty) {
           throw StateError("Migration v20->v21 left foreign key violations: ${violations.map((row) => row.data)}");
         }
+      },
+      from21To22: (m, schema) async {
+        // Session pages order archived sessions by archived_at, so no query
+        // reads the updated_at archive index any more.
+        await customStatement("DROP INDEX idx_sessions_archive");
       },
     ),
     beforeOpen: (details) async {
