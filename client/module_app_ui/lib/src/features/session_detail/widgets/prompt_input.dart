@@ -2930,7 +2930,8 @@ class _PromptInputState() extends State<PromptInput> {
               opacity: settled ? 1 : enabledShown,
               alwaysIncludeSemantics: true,
               child: IgnorePointer(
-                ignoring: !enabled,
+                // Only the fade out: a disabled send at rest still shows its tooltip.
+                ignoring: !enabled && !settled,
                 child: PregoButtonSemantics(
                   label: context.loc.sessionDetailSend,
                   enabled: enabled,

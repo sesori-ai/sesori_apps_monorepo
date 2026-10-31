@@ -2741,6 +2741,14 @@ void main() {
         expect(tester.getSemantics(send), sendNode(enabled: enabling));
       }
 
+      testWidgets("a disabled send keeps its tooltip", (tester) async {
+        await pumpTypingWithEmptyBox(tester: tester);
+        await tester.longPress(send);
+        await tester.pump();
+        expect(find.text("Send"), findsOneWidget);
+        await tester.pump(const Duration(seconds: 3));
+      });
+
       testWidgets("dissolve per frame as typing starts and the box empties", (tester) async {
         final semantics = tester.ensureSemantics();
         await pumpTypingWithEmptyBox(tester: tester);

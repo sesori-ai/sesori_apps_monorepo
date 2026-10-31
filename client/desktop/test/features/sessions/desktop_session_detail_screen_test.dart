@@ -287,7 +287,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText), "Desktop follow-up");
     await tester.pump();
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
     await tester.pump();
     verify(
       () => cubit.sendMessage(
