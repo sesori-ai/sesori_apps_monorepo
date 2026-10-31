@@ -1374,7 +1374,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                 onRetry: widget.onRetryFailedSend,
                 onRemove: widget.onRemoveFailedSend,
               ),
-              _TransientStage.awaitingBridge => const QueuedMessageBubblePresentation.pendingReadOnly(),
+              // Accepted but not yet listed, so nothing says it is queued. The
+              // bubble keeps the clock it started sending under.
+              _TransientStage.awaitingBridge => QueuedMessageBubblePresentation.sending(
+                harnessName: widget.harnessName,
+                sendingSince: null,
+              ),
               _TransientStage.pending when submission is UnavailableQueuedCommandSubmission =>
                 QueuedMessageBubblePresentation.commandUnavailable(
                   onRemove: onCancelQueuedMessage == null

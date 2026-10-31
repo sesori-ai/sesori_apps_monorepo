@@ -15,6 +15,8 @@ Future<AppLocalizations> _pump(
   required NewSessionSubmissionSnapshot submission,
   required double? transcriptWidth,
   DateTime? sendingSince,
+  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
+  List<LaunchFollowUp> launchFollowUps = const [],
 }) async {
   await tester.pumpWidget(
     MaterialApp(
@@ -33,8 +35,8 @@ Future<AppLocalizations> _pump(
               harnessName: "Claude",
               transcriptWidth: transcriptWidth,
               sendingSince: sendingSince,
-              awaitingBridgeSubmissions: const [],
-              launchFollowUps: const [],
+              awaitingBridgeSubmissions: awaitingBridgeSubmissions,
+              launchFollowUps: launchFollowUps,
               queuedMessages: const [],
               onRetryLaunchFollowUp: null,
               onRemoveLaunchFollowUp: null,
@@ -67,7 +69,7 @@ void main() {
     expect(bubble, findsOneWidget);
     expect(find.descendant(of: bubble, matching: find.text("Fix the login bug")), findsOneWidget);
     expect(find.descendant(of: bubble, matching: find.byType(Image)), findsNWidgets(2));
-    expect(find.text(loc.sessionDetailSendingMessage), findsOneWidget);
+    expect(find.text(loc.sessionDetailSendingMessage), findsNothing);
 
     // A slow creation names the harness, as an existing session's send does.
     await tester.pump(const Duration(seconds: 2));
@@ -140,10 +142,37 @@ void main() {
       transcriptWidth: null,
       sendingSince: clock.now().subtract(const Duration(milliseconds: 1500)),
     );
-    expect(find.text(loc.sessionDetailSendingMessage), findsOneWidget);
+    expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsNothing);
 
     await tester.pump(const Duration(milliseconds: 500));
     expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
+  });
+
+  testWidgets("a message accepted but not yet listed reads as still sending, not as queued", (tester) async {
+    QueuedSessionSubmission submission({required String promptId}) => QueuedSessionSubmission.text(
+      promptId: promptId,
+      text: promptId,
+      inputMode: ComposerInputMode.typed,
+      attachments: const [],
+      agent: null,
+      agentModel: null,
+      fastMode: false,
+    );
+    final loc = await _pump(
+      tester,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Hi"),
+        attachments: const [],
+      ),
+      transcriptWidth: null,
+      awaitingBridgeSubmissions: [submission(promptId: "parked")],
+      launchFollowUps: [LaunchFollowUp.accepted(submission: submission(promptId: "accepted"))],
+    );
+    expect(find.byType(QueuedMessageBubble), findsNWidgets(3));
+    expect(find.text(loc.sessionDetailQueuedMessage), findsNothing);
+
+    await tester.pump(const Duration(seconds: 2));
+    expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsNWidgets(3));
   });
 
   testWidgets("shows a command with its arguments", (tester) async {

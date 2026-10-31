@@ -378,8 +378,8 @@ variant, and worktree mode, and creating the session with its first input.
   previews) at the transcript's newest-row position above the composer (live
   dictated words glide onto it first; see `voice-input.md`), while the
   unresolved URI remains `/sessions/new?project=<projectId>`. It never shows a
-  spinner page. After about two seconds the bubble reads "Sending to
-  `<harness>`…". The composer stays mounted with its text, staged images, voice
+  spinner page. It has no status line until about two seconds in, when "Sending
+  to `<harness>`…" fades in under it. The composer stays mounted with its text, staged images, voice
   and focus; on a pointer surface it moves once from the centred column to the
   bottom edge at the session page's composer width (240 ms, instant under
   reduced motion) while the top bar, header, options and footer fade out. A
