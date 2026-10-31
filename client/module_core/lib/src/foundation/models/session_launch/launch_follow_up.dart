@@ -10,11 +10,12 @@ part "launch_follow_up.freezed.dart";
 /// `LocalSendPhase`, so the session screen renders it the same way.
 @Freezed()
 sealed class LaunchFollowUp with _$LaunchFollowUp {
-  /// Not sent yet; it waits for the session, or for the one ahead of it.
-  const factory queued({required QueuedSessionSubmission submission}) = QueuedLaunchFollowUp;
+  /// Not sent yet; it waits for the session, or for the one ahead of it. [since]
+  /// is when the user sent it, which its bubble's status line counts from.
+  const factory queued({required QueuedSessionSubmission submission, required DateTime since}) = QueuedLaunchFollowUp;
 
-  /// The one being sent now, since [since], so its bubble names the harness
-  /// on time however often it is rebuilt.
+  /// The one being sent now. [since] is still when the user sent it, so its
+  /// bubble keeps one clock however often it is rebuilt.
   const factory sending({required QueuedSessionSubmission submission, required DateTime since}) = SendingLaunchFollowUp;
 
   /// The bridge accepted it; held only until a session screen parks it.

@@ -104,7 +104,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         followUpIds: {...launch.followUpIds, submission.promptId},
         followUps: [
           ...launch.followUps,
-          LaunchFollowUp.queued(submission: submission),
+          LaunchFollowUp.queued(submission: submission, since: DateTime.now()),
         ],
       ),
     );
@@ -120,11 +120,11 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     if (session == null) return null;
     final index = launch.followUps.indexWhere((followUp) => followUp is! AcceptedLaunchFollowUp);
     if (index < 0) return null;
-    if (launch.followUps[index] case QueuedLaunchFollowUp(:final submission)) {
+    if (launch.followUps[index] case QueuedLaunchFollowUp(:final submission, :final since)) {
       _replaceFollowUp(
         launch: launch,
         index: index,
-        followUp: LaunchFollowUp.sending(submission: submission, since: DateTime.now()),
+        followUp: LaunchFollowUp.sending(submission: submission, since: since),
       );
       return (sessionId: session.id, submission: submission);
     }
@@ -175,7 +175,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
         _replaceFollowUp(
           launch: launch,
           index: index,
-          followUp: LaunchFollowUp.queued(submission: submission),
+          followUp: LaunchFollowUp.queued(submission: submission, since: DateTime.now()),
         );
         return launch.launchId;
       }

@@ -267,6 +267,30 @@ void main() {
       expect(repository.cancelFollowUp(promptId: "prm_b"), isNull, reason: "a sending follow-up cannot be cancelled");
     });
 
+    test("keep the time they were sent while sending, and a retry starts it again", () async {
+      LaunchFollowUp current() => repository.launches.value.single.followUps.single;
+      DateTime since() => switch (current()) {
+        QueuedLaunchFollowUp(:final since) || SendingLaunchFollowUp(:final since) => since,
+        final other => fail("no send time on $other"),
+      };
+      start();
+      promote();
+      repository.addFollowUp(
+        launchId: "launch-1",
+        submission: followUp(promptId: "prm_a"),
+      );
+      final sent = since();
+      await Future<void>.delayed(const Duration(milliseconds: 2));
+
+      begin();
+      expect(current(), isA<SendingLaunchFollowUp>());
+      expect(since(), sent, reason: "beginning to send is not when the user sent it");
+
+      repository.followUpFailed(launchId: "launch-1", promptId: "prm_a", failure: PromptSendFailure.uncertain);
+      repository.retryFollowUp(promptId: "prm_a");
+      expect(since().isAfter(sent), isTrue);
+    });
+
     test("the handoff carries the accepted ones, and the launch goes once nothing is owed", () async {
       start();
       repository.addFollowUp(

@@ -15,8 +15,12 @@ sealed class const QueuedMessageBubblePresentation() {
   /// rebuilt mid-send keeps its slow-send copy; null starts the clock now.
   const factory sending({required String? harnessName, required DateTime? sendingSince}) =
       SendingMessageBubblePresentation;
-  const factory pending({required VoidCallback onCancel}) = PendingMessageBubblePresentation;
-  const factory pendingReadOnly() = ReadOnlyPendingMessageBubblePresentation;
+
+  /// [sentAt] is when the message was sent, as the Queued line follows the same
+  /// clock as a send's status. Null for a message this surface has no send time
+  /// for, which shows its line at once.
+  const factory pending({required VoidCallback onCancel, required DateTime? sentAt}) = PendingMessageBubblePresentation;
+  const factory pendingReadOnly({required DateTime? sentAt}) = ReadOnlyPendingMessageBubblePresentation;
   const factory commandUnavailable({required VoidCallback? onRemove}) = UnavailableCommandBubblePresentation;
 
   /// A send that failed. The callbacks are null on a read-only surface.
@@ -29,10 +33,13 @@ final class const SendingMessageBubblePresentation({
   required final DateTime? sendingSince,
 }) extends QueuedMessageBubblePresentation;
 
-final class const PendingMessageBubblePresentation({required final VoidCallback onCancel})
-    extends QueuedMessageBubblePresentation;
+final class const PendingMessageBubblePresentation({
+  required final VoidCallback onCancel,
+  required final DateTime? sentAt,
+}) extends QueuedMessageBubblePresentation;
 
-final class const ReadOnlyPendingMessageBubblePresentation() extends QueuedMessageBubblePresentation;
+final class const ReadOnlyPendingMessageBubblePresentation({required final DateTime? sentAt})
+    extends QueuedMessageBubblePresentation;
 
 final class const UnavailableCommandBubblePresentation({required final VoidCallback? onRemove})
     extends QueuedMessageBubblePresentation;
@@ -59,47 +66,68 @@ class const QueuedMessageBubble({
 }
 
 class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
-  /// How long a send runs before it shows a status at all. Until then its row has
-  /// no status line, the same height as the delivered message, so a fast send
-  /// moves nothing.
-  static const _slowSendDelay = Duration(seconds: 2);
+  /// How long a message waits before it shows its Sending or Queued line at all.
+  /// Until then its row has no status line, the same height as the delivered
+  /// message, so one delivered by then moves nothing.
+  static const _statusDelay = Duration(seconds: 2);
 
-  Timer? _slowSendTimer;
-  bool _isSlowSend = false;
+  static const _statusFade = Duration(milliseconds: 240);
+
+  Timer? _statusTimer;
+  bool _isStatusDue = false;
+
+  /// The states whose line waits. A failure and an unavailable command need
+  /// acting on, so theirs shows at once.
+  static bool _waitsForStatus(QueuedMessageBubblePresentation presentation) => switch (presentation) {
+    SendingMessageBubblePresentation() ||
+    PendingMessageBubblePresentation() ||
+    ReadOnlyPendingMessageBubblePresentation() => true,
+    UnavailableCommandBubblePresentation() || FailedMessageBubblePresentation() => false,
+  };
+
+  static DateTime? _statusClock(QueuedMessageBubblePresentation presentation) => switch (presentation) {
+    SendingMessageBubblePresentation(:final sendingSince) => sendingSince,
+    PendingMessageBubblePresentation(:final sentAt) => sentAt,
+    ReadOnlyPendingMessageBubblePresentation(:final sentAt) => sentAt,
+    UnavailableCommandBubblePresentation() || FailedMessageBubblePresentation() => null,
+  };
 
   @override
   void initState() {
     super.initState();
-    _syncSlowSendTimer();
+    _syncStatusTimer();
   }
 
   @override
   void didUpdateWidget(QueuedMessageBubble oldWidget) {
     super.didUpdateWidget(oldWidget);
-    final wasSending = oldWidget.presentation is SendingMessageBubblePresentation;
-    if (wasSending != widget.presentation is SendingMessageBubblePresentation) _syncSlowSendTimer();
+    final previous = oldWidget.presentation;
+    final presentation = widget.presentation;
+    // A line that has shown stays, whatever waiting state the message moves on to.
+    if (_waitsForStatus(previous) != _waitsForStatus(presentation) ||
+        (!_isStatusDue && _statusClock(previous) != _statusClock(presentation))) {
+      _syncStatusTimer();
+    }
   }
 
   @override
   void dispose() {
-    _slowSendTimer?.cancel();
+    _statusTimer?.cancel();
     super.dispose();
   }
 
-  void _syncSlowSendTimer() {
-    _slowSendTimer?.cancel();
-    _slowSendTimer = null;
-    _isSlowSend = false;
-    if (widget.presentation case SendingMessageBubblePresentation(:final sendingSince)) {
-      final remaining = sendingSince == null ? _slowSendDelay : _slowSendDelay - clock.now().difference(sendingSince);
-      if (remaining <= Duration.zero) {
-        _isSlowSend = true;
-        return;
-      }
-      _slowSendTimer = Timer(remaining, () {
-        if (mounted) setState(() => _isSlowSend = true);
-      });
-    }
+  void _syncStatusTimer() {
+    _statusTimer?.cancel();
+    final presentation = widget.presentation;
+    final remaining = switch (_statusClock(presentation)) {
+      final since? => _statusDelay - clock.now().difference(since),
+      null => presentation is SendingMessageBubblePresentation ? _statusDelay : Duration.zero,
+    };
+    _isStatusDue = remaining <= Duration.zero;
+    if (_isStatusDue) return;
+    _statusTimer = Timer(remaining, () {
+      if (mounted) setState(() => _isStatusDue = true);
+    });
   }
 
   @override
@@ -107,19 +135,17 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
     final prego = context.prego;
     final loc = context.loc;
     final reducedMotion = context.isReducedMotion;
-    final duration = reducedMotion ? Duration.zero : const Duration(milliseconds: 240);
+    final duration = reducedMotion ? Duration.zero : _statusFade;
     final presentation = widget.presentation;
     final isCommand = widget.isCommand;
     final displayText = widget.displayText;
     final attachmentCount = widget.attachmentCount;
     final localAttachments = widget.localAttachments;
-    final isPending =
-        presentation is PendingMessageBubblePresentation ||
-        presentation is ReadOnlyPendingMessageBubblePresentation ||
-        presentation is UnavailableCommandBubblePresentation ||
-        presentation is FailedMessageBubblePresentation;
     final Widget? status = switch (presentation) {
-      SendingMessageBubblePresentation() when !_isSlowSend => null,
+      // Absent rather than hidden, so that Cancel can't be reached before it shows.
+      SendingMessageBubblePresentation() ||
+      PendingMessageBubblePresentation() ||
+      ReadOnlyPendingMessageBubblePresentation() when !_isStatusDue => null,
       // The label names the harness, so it wraps rather than overflowing a
       // narrow pane at large text.
       SendingMessageBubblePresentation(:final harnessName) => Row(
@@ -268,15 +294,17 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
             if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
               _QueuedAttachmentCount(count: attachmentCount),
           ],
-          outlined: isPending,
+          // Nothing says it is queued before its line does.
+          outlined: status != null && presentation is! SendingMessageBubblePresentation,
           transitionDuration: duration,
         ),
-        // Cross-fade the status rail between its states, a slow send's arrival
-        // among them, so the swap reads as one row changing state; the enclosing
-        // prompt row eases the height difference. Reduced motion swaps instantly.
+        // Cross-fade the status rail between its states, a line's arrival among
+        // them, so the swap reads as one row changing state; the enclosing prompt
+        // row eases the height difference. Reduced motion keeps the fade, which
+        // moves nothing, and the row takes its height at once.
         // Cancelling a queued prompt must not dismiss an in-progress draft.
         TextFieldTapRegion(
-          child: reducedMotion ? statusRail : AnimatedSwitcher(duration: duration, child: statusRail),
+          child: AnimatedSwitcher(duration: _statusFade, child: statusRail),
         ),
       ],
     );

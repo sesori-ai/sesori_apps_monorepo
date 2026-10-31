@@ -1,5 +1,6 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
@@ -53,6 +54,10 @@ class const SessionDetailMessageList({
   /// The first message of a session this surface just created, shown as a
   /// sending bubble until the transcript holds its replacement.
   required final SessionLaunchHandoff? launchHandoff,
+
+  /// When this surface sent the first message of the session it just created,
+  /// kept after [launchHandoff] goes, as what replaces it still counts from then.
+  required final DateTime? launchStartedAt,
 
   /// Null on a read-only surface, which shows the failure without actions.
   required final VoidCallback? onRetryFailedSend,
@@ -332,6 +337,12 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the Working timer keeps this start instead of stepping back. A reopened
   /// list never saw it and counts from the delivery time.
   ({String promptId, int acceptedAt})? _lastHeldPrompt;
+
+  /// When each prompt row on its way was sent, so that the row has one clock for
+  /// its status line across its states and however often it is rebuilt. Kept here
+  /// because scrolling away drops the row. Null for a prompt that was already
+  /// waiting when the list opened: nothing just moved, so its line shows at once.
+  final Map<String, DateTime?> _promptSentAt = {};
 
   /// The last build's unloaded prompt pinned above the rendered messages.
   SessionPromptIndexEntry? _unloadedPin;
@@ -869,6 +880,28 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return pendingPromptRowIds.where((rowId) => !_rowIndexById.containsKey(rowId)).firstOrNull;
   }
 
+  void _updatePromptSentAt({
+    required List<String> pendingPromptRowIds,
+    required Map<String, _TransientSubmission> transientSubmissions,
+    required bool listOpening,
+  }) {
+    _promptSentAt.removeWhere((rowId, _) => !pendingPromptRowIds.contains(rowId));
+    for (final followUp in widget.launchFollowUps) {
+      if (followUp case QueuedLaunchFollowUp(:final since) || SendingLaunchFollowUp(:final since)) {
+        _promptSentAt["$_kPromptRowPrefix${followUp.submission.promptId}"] = since;
+      }
+    }
+    final now = clock.now();
+    for (final rowId in pendingPromptRowIds) {
+      final stage = transientSubmissions[rowId]?.stage;
+      // A retry is a new send.
+      if (stage == _TransientStage.failed) _promptSentAt.remove(rowId);
+      if (stage == _TransientStage.failed || _promptSentAt.containsKey(rowId)) continue;
+      final sendingHere = stage == _TransientStage.sending || stage == _TransientStage.awaitingBridge;
+      _promptSentAt[rowId] = rowId == _launchSlotRowId || (listOpening && !sendingHere) ? widget.launchStartedAt : now;
+    }
+  }
+
   List<String> _rowIdsFor({
     required Iterable<String> messageRows,
     required List<String> pendingPromptRowIds,
@@ -1054,6 +1087,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
     final previousRowIndexById = _rowIndexById;
     final previousRowIds = previousRowIndexById.keys.toList();
+    _updatePromptSentAt(
+      pendingPromptRowIds: pendingPromptRowIds,
+      transientSubmissions: transientSubmissions,
+      listOpening: previousRowIds.isEmpty,
+    );
     _knownRowIds = rowIds.toSet();
     _easedInRowIds.retainAll(rowIds);
     if (previousRowIds.isEmpty) _easedInRowIds.addAll(rowIds);
@@ -1308,7 +1346,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
             child: QueuedMessageBubble(
-              key: ValueKey(entryId),
+              // The row that replaced the launch bubble carries on from it.
+              key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
@@ -1316,12 +1355,15 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
               presentation: switch (prompt.dispatchState) {
                 QueuedPromptDispatchState.dispatched => QueuedMessageBubblePresentation.sending(
                   harnessName: widget.harnessName,
-                  sendingSince: null,
+                  sendingSince: _promptSentAt[entryId],
                 ),
                 QueuedPromptDispatchState.queued || QueuedPromptDispatchState.unknown =>
                   onCancel == null
-                      ? const QueuedMessageBubblePresentation.pendingReadOnly()
-                      : QueuedMessageBubblePresentation.pending(onCancel: () => onCancel(prompt.id)),
+                      ? QueuedMessageBubblePresentation.pendingReadOnly(sentAt: _promptSentAt[entryId])
+                      : QueuedMessageBubblePresentation.pending(
+                          onCancel: () => onCancel(prompt.id),
+                          sentAt: _promptSentAt[entryId],
+                        ),
               },
             ),
           ),
@@ -1368,17 +1410,16 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
             presentation: switch (transientSubmission.stage) {
               _TransientStage.sending => QueuedMessageBubblePresentation.sending(
                 harnessName: widget.harnessName,
-                sendingSince: null,
+                sendingSince: _promptSentAt[entryId],
               ),
               _TransientStage.failed => QueuedMessageBubblePresentation.failed(
                 onRetry: widget.onRetryFailedSend,
                 onRemove: widget.onRemoveFailedSend,
               ),
-              // Accepted but not yet listed, so nothing says it is queued. The
-              // bubble keeps the clock it started sending under.
+              // Accepted but not yet listed, so nothing says it is queued.
               _TransientStage.awaitingBridge => QueuedMessageBubblePresentation.sending(
                 harnessName: widget.harnessName,
-                sendingSince: null,
+                sendingSince: _promptSentAt[entryId],
               ),
               _TransientStage.pending when submission is UnavailableQueuedCommandSubmission =>
                 QueuedMessageBubblePresentation.commandUnavailable(
@@ -1388,9 +1429,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                 ),
               _TransientStage.pending =>
                 onCancelQueuedMessage == null
-                    ? const QueuedMessageBubblePresentation.pendingReadOnly()
+                    ? QueuedMessageBubblePresentation.pendingReadOnly(sentAt: _promptSentAt[entryId])
                     : QueuedMessageBubblePresentation.pending(
                         onCancel: () => _cancelQueuedSubmission(submission: submission),
+                        sentAt: _promptSentAt[entryId],
                       ),
             },
           ),

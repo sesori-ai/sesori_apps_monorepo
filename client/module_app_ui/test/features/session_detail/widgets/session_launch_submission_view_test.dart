@@ -175,6 +175,35 @@ void main() {
     expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsNWidgets(3));
   });
 
+  testWidgets("a follow-up waiting its turn shows Queued only two seconds after it was sent", (tester) async {
+    final loc = await _pump(
+      tester,
+      submission: NewSessionSubmissionSnapshot.text(
+        draft: ComposerDraft.typed(text: "Hi"),
+        attachments: const [],
+      ),
+      transcriptWidth: null,
+      launchFollowUps: [
+        LaunchFollowUp.queued(
+          submission: const QueuedSessionSubmission.text(
+            promptId: "prm_follow_up",
+            text: "and then",
+            inputMode: ComposerInputMode.typed,
+            attachments: [],
+            agent: null,
+            agentModel: null,
+            fastMode: false,
+          ),
+          since: clock.now().subtract(const Duration(milliseconds: 1500)),
+        ),
+      ],
+    );
+    expect(find.text(loc.sessionDetailQueuedMessage), findsNothing);
+
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.text(loc.sessionDetailQueuedMessage), findsOneWidget);
+  });
+
   testWidgets("shows a command with its arguments", (tester) async {
     await _pump(
       tester,

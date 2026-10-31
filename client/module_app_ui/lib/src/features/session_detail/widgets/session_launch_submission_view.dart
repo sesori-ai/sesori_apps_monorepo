@@ -106,8 +106,8 @@ class const SessionLaunchSubmissionView({
         queued(
           submission: submission,
           presentation: onCancelQueuedMessage == null
-              ? const QueuedMessageBubblePresentation.pendingReadOnly()
-              : QueuedMessageBubblePresentation.pending(onCancel: () => onCancelQueuedMessage(index)),
+              ? const QueuedMessageBubblePresentation.pendingReadOnly(sentAt: null)
+              : QueuedMessageBubblePresentation.pending(onCancel: () => onCancelQueuedMessage(index), sentAt: null),
         ),
     ];
     final column = SentBubbleArrival(
@@ -170,10 +170,11 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
       harnessName: harnessName,
       sendingSince: since,
     ),
-    QueuedLaunchFollowUp() when onRemove != null => QueuedMessageBubblePresentation.pending(
+    QueuedLaunchFollowUp(:final since) when onRemove != null => QueuedMessageBubblePresentation.pending(
       onCancel: () => onRemove(promptId: promptId),
+      sentAt: since,
     ),
-    QueuedLaunchFollowUp() => const QueuedMessageBubblePresentation.pendingReadOnly(),
+    QueuedLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.pendingReadOnly(sentAt: since),
     // Accepted but not yet listed reads as still sending, as the session's own do.
     AcceptedLaunchFollowUp() => QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
     // A lost response may already have reached the bridge, so only an

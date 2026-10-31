@@ -878,6 +878,7 @@ void main() {
       launchFollowUps: [
         LaunchFollowUp.queued(
           submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+          since: DateTime(2026),
         ),
       ],
       queuedMessages: [submission(promptId: "prm_early", text: "Sent before the load")],
@@ -2516,6 +2517,7 @@ void main() {
     final launchFollowUps = [
       LaunchFollowUp.queued(
         submission: submission(promptId: "prm_launch", text: "Sent while creating"),
+        since: DateTime(2026),
       ),
     ];
     final queuedMessages = [submission(promptId: "prm_early", text: "Sent before the load")];
@@ -5968,6 +5970,9 @@ void main() {
     states.add(state);
     await tester.pumpAndSettle();
     expect(find.text("Follow-up prompt"), findsOneWidget);
+    expect(find.text("Cancel"), findsNothing);
+    await tester.pump(const Duration(seconds: 2));
+    await tester.pumpAndSettle();
     expect(find.text("Cancel"), findsOneWidget);
     state = state.copyWith(
       messages: const [
@@ -6157,7 +6162,7 @@ void main() {
     expect(find.descendant(of: submissionFinder, matching: find.text("Cancel")), findsNothing);
   });
 
-  testWidgets("reduced motion swaps queued feedback immediately", (tester) async {
+  testWidgets("reduced motion fades queued feedback, with no gap on its way to Sending", (tester) async {
     tester.binding.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
       disableAnimations: true,
     );
@@ -6191,12 +6196,12 @@ void main() {
     await tester.idle();
     await tester.pump();
 
-    expect(find.text("Cancel"), findsNothing);
-    expect(find.byType(PregoActivityIndicator), findsNothing);
-
-    await tester.pump(const Duration(seconds: 2));
     expect(find.text("Sending to Claude Code…"), findsOneWidget);
     expect(find.byType(PregoActivityIndicator), findsOneWidget);
+
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.text("Cancel"), findsNothing);
+    expect(find.text("Sending to Claude Code…"), findsOneWidget);
   });
 
   testWidgets("an in-flight submission stays visible without a cancel action", (tester) async {

@@ -128,8 +128,8 @@ defaults and queued client sends coherent.
   A send shows no status line for its first two seconds, its row as tall as the
   delivered message's, so that a normal send never moves the chat when it lands.
   One still in flight then says "Sending to <harness>…", or "Sending" when the
-  harness name is unknown: the line fades in while the row eases its height, and
-  shows at once under reduced motion.
+  harness name is unknown: the line fades in while the row eases its height.
+  Under reduced motion the line still fades and the row takes its height at once.
 - Sends to an archived session are refused in the serialized lane archiving
   uses, so a send cannot slip past a concurrent archive.
 - Work enters a short per-plugin admission lane in arrival order, then execution
@@ -616,9 +616,18 @@ defaults and queued client sends coherent.
   message lands; Pi similarly remains represented until its correlated echo.
   Entries still waiting for process startup, an earlier turn or command, or a
   selection boundary can be cancelled individually; cancellation after dispatch
-  is refused because the prompt is then governed by Stop. Dispatched entries
-  remain visible without a cancel action, and take a slow send's status line
-  after two seconds. Older public
+  is refused because the prompt is then governed by Stop. A waiting entry says
+  "Queued", with its outline and Cancel, only once two seconds have passed since
+  it was sent, the same rule and motion as a slow send's line, so a prompt the
+  harness takes promptly never moves the chat on any harness. Until then Cancel
+  is not in the tree, so it cannot be tapped, focused or read by a screen reader.
+  A message already showing Sending goes straight to Queued, and one showing
+  Queued keeps it through rebuilds and scrolling away and back. A waiting entry
+  with no local send time shows Queued at once when it was already listed as the
+  transcript opened, so nothing rises as the chat settles; one arriving live from
+  another surface waits two seconds from when it first appears, and a session's
+  first message is timed from Send. Dispatched entries remain visible without a
+  cancel action, and take a slow send's status line after two seconds. Older public
   bridges without dispatch ownership retain best-effort cancellation.
   A refused/not-found cancellation surfaces a notice; only success removes a
   row as cancelled. Existing queue events and reconnect snapshots update the
@@ -686,8 +695,9 @@ defaults and queued client sends coherent.
 - Queued and sending text render as the newest rows inside the scrollable
   transcript. They use the same neutral bubble and Markdown rendering as settled
   user text, with local image thumbnails and remote attachment counts. A compact
-  status rail and subtle queued outline carry the transient state; transitions
-  respect reduced motion. Cancelling a pending prompt does not clear the draft
+  status rail and subtle queued outline carry the transient state, both absent for
+  a message's first two seconds; reduced motion keeps their fades and drops the
+  row's movement. Cancelling a pending prompt does not clear the draft
   or dismiss its keyboard. An unavailable command retains its arguments, warning,
   and removal action.
 - A session this surface just created shows its first message as the oldest
@@ -843,6 +853,10 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   rendered content, drops buffered events, or allows pagination to trigger a
   backend read while blocked.
 - A normal send shows a status line, or the chat moves when its message lands.
+- "Queued" or Cancel flashes on a prompt the harness takes promptly, on any harness; the chat rises and drops 48 px
+  for it; Cancel can be tapped, focused or read while hidden; the two seconds restart or the line blinks on a rebuild
+  or after scrolling away and back; a gap shows between Sending and Queued; a row listed as the transcript opens rises
+  as it settles; or a dictated message lands anywhere but the row's resting place in a busy session.
 - A failed send silently returns to "Queued", sends a later message ahead of
   it, gets a new prompt id on Retry, or shows "Couldn’t send" for a send that
   only lost its connection or had stale options.
