@@ -47,7 +47,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<QueuedSessionPrompt> _bridgeQueuedPrompts;
   LocalSendPhase _localSend = const LocalSendPhase.idle();
   int retriedFailedSends = 0;
-  List<QueuedSessionSubmission> _awaitingBridgeSubmissions = const [];
+  List<AwaitingBridgeSubmission> _awaitingBridgeSubmissions = const [];
   Map<String, List<ComposerAttachment>> _bridgePromptAttachments = const {};
   final List<String> cancelledBridgePromptIds = [];
   late String? _retryErrorMessage;
@@ -114,7 +114,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       final accepted = _launchFollowUps.where((followUp) => followUp.submission.promptId == promptId);
       _awaitingBridgeSubmissions = [
         ..._awaitingBridgeSubmissions,
-        for (final followUp in accepted) followUp.submission,
+        for (final followUp in accepted) (submission: followUp.submission, since: clock.now()),
       ];
       _launchFollowUps = [..._launchFollowUps.where((followUp) => followUp.submission.promptId != promptId)];
     });
@@ -219,7 +219,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   void acceptSendingSubmission() {
     if (_localSend case LocalSendSending(:final submission)) {
       setState(() {
-        _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, submission];
+        _awaitingBridgeSubmissions = [..._awaitingBridgeSubmissions, (submission: submission, since: null)];
         _localSend = const LocalSendPhase.idle();
       });
     }
@@ -235,7 +235,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       final bridgeIds = prompts.map((prompt) => prompt.id).toSet();
       _queuedMessages = _queuedMessages.where((submission) => !bridgeIds.contains(submission.promptId)).toList();
       _awaitingBridgeSubmissions = _awaitingBridgeSubmissions
-          .where((submission) => !bridgeIds.contains(submission.promptId))
+          .where((item) => !bridgeIds.contains(item.submission.promptId))
           .toList();
       if (_localSend case LocalSendSending(:final submission) when bridgeIds.contains(submission.promptId)) {
         _localSend = const LocalSendPhase.idle();

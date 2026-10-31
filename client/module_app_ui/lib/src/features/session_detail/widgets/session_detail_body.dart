@@ -227,7 +227,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   int _shellHandoffs = 0;
 
   /// What the launch view showed in the last build, for the list to pick up from.
-  SessionLaunchHandoff? _launchViewHandoff;
+  SessionDetailLoading? _launchView;
 
   /// The Prompts screen while it is up: the prompts as they were when it
   /// opened or an older page last landed, so other transcript changes
@@ -952,10 +952,13 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required SessionDetailColumnWidths? columnWidths,
   }) {
     final loc = context.loc;
-    final launchViewHandoff = _launchViewHandoff;
-    _launchViewHandoff = switch (state) {
-      SessionDetailLoading(:final launchHandoff) => launchHandoff,
-      SessionDetailLoaded() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
+    final launchView = _launchView;
+    _launchView = switch (state) {
+      SessionDetailLoading(launchHandoff: _?) => state,
+      SessionDetailLoading() ||
+      SessionDetailLoaded() ||
+      SessionDetailHarnessUnavailable() ||
+      SessionDetailFailed() => null,
     };
     return switch (state) {
       // A session this surface just created keeps showing its first message,
@@ -989,7 +992,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             ? SessionDetailLoadedView.readOnly(
                 projectId: widget.projectId,
                 sessionId: widget.sessionId,
-                state: _takingOverFromLaunchView(loaded: loaded, handoff: launchViewHandoff),
+                state: _takingOverFromLaunchView(loaded: loaded, launchView: launchView),
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
                 bottomControls: _buildReadOnlyControls(loaded: loaded),
@@ -1001,7 +1004,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             : SessionDetailLoadedView.interactive(
                 projectId: widget.projectId,
                 sessionId: widget.sessionId,
-                state: _takingOverFromLaunchView(loaded: loaded, handoff: launchViewHandoff),
+                state: _takingOverFromLaunchView(loaded: loaded, launchView: launchView),
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
                 bottomControls: !loaded.interaction.canInteract
@@ -1067,7 +1070,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   }
 
   static bool _owesMessages({
-    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     required List<LaunchFollowUp> launchFollowUps,
     required List<QueuedSessionSubmission> queuedMessages,
   }) => awaitingBridgeSubmissions.isNotEmpty || launchFollowUps.isNotEmpty || queuedMessages.isNotEmpty;
@@ -1090,7 +1093,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   Widget _withOwedMessages({
     required BuildContext context,
     required Widget status,
-    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     required List<LaunchFollowUp> launchFollowUps,
     required List<QueuedSessionSubmission> queuedMessages,
     required String? harnessName,
@@ -1133,16 +1136,17 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// row carrying on from the launch's. The composer already has the real state.
   SessionDetailLoaded _takingOverFromLaunchView({
     required SessionDetailLoaded loaded,
-    required SessionLaunchHandoff? handoff,
+    required SessionDetailLoading? launchView,
   }) {
-    if (handoff == null) return loaded;
+    if (launchView == null) return loaded;
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) setState(() {});
     });
     return loaded.copyWith(
-      launchHandoff: handoff,
+      launchHandoff: launchView.launchHandoff,
       messages: const [],
       bridgeQueuedPrompts: const [],
+      awaitingBridgeSubmissions: launchView.awaitingBridgeSubmissions,
       sessionStatus: const SessionStatus.idle(),
       childStatuses: const {},
       children: const [],

@@ -33,7 +33,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     // launch has not delivered, those this screen parked, and the prompts
     // sent here. An ordinary load has none.
     @Default([]) List<LaunchFollowUp> launchFollowUps,
-    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    @Default([]) List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     @Default([]) List<QueuedSessionSubmission> queuedMessages,
   }) = SessionDetailLoading;
 
@@ -110,7 +110,7 @@ sealed class SessionDetailState with _$SessionDetailState {
     // Accepted sends whose bridge-side representation has not arrived yet.
     // Rendered as rows still sending so a prompt never blanks between
     // its acceptance response and the bridge's queue event listing it.
-    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    @Default([]) List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     // Messages sent before this session existed that its launch has not
     // delivered yet: queued, sending or failed, in press order. The launch
     // owns and sends them; this screen only shows them.
@@ -164,7 +164,7 @@ sealed class SessionDetailState with _$SessionDetailState {
 
     /// What this screen still owes, as in [SessionDetailFailed], so a session
     /// just created keeps its unsent messages and their actions in view.
-    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    @Default([]) List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     @Default([]) List<LaunchFollowUp> launchFollowUps,
     @Default([]) List<QueuedSessionSubmission> queuedMessages,
   }) = SessionDetailHarnessUnavailable;
@@ -174,7 +174,7 @@ sealed class SessionDetailState with _$SessionDetailState {
 
     /// Sends the bridge took that it has not listed yet, shown read-only so
     /// a failed load does not hide a message that went out.
-    @Default([]) List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    @Default([]) List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
 
     /// Messages sent before this session existed that its launch still owes,
     /// so a failed load keeps their Retry and Remove actions in view.

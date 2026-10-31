@@ -19,8 +19,10 @@ sealed class LaunchFollowUp with _$LaunchFollowUp {
   /// keeps one clock however often it is rebuilt.
   const factory sending({required QueuedSessionSubmission submission, required DateTime since}) = SendingLaunchFollowUp;
 
-  /// The bridge accepted it; held only until a session screen parks it.
-  const factory accepted({required QueuedSessionSubmission submission}) = AcceptedLaunchFollowUp;
+  /// The bridge accepted it; held only until a session screen parks it. [since]
+  /// carries over from [sending].
+  const factory accepted({required QueuedSessionSubmission submission, required DateTime since}) =
+      AcceptedLaunchFollowUp;
 
   /// The bridge refused it or the send was lost. The ones behind it wait until
   /// the user retries or removes it.

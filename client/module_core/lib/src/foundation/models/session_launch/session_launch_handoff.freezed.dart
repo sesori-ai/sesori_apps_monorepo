@@ -24,7 +24,7 @@ mixin _$SessionLaunchHandoff {
 /// replacement.
  Set<String> get followUpIds;/// Follow-ups the bridge accepted before the handoff was taken, oldest
 /// first. The taker parks them so their bubbles never blank.
- List<QueuedSessionSubmission> get acceptedFollowUps;/// The composing route's composer, for the session screen to build its own
+ List<AcceptedLaunchFollowUp> get acceptedFollowUps;/// The composing route's composer, for the session screen to build its own
 /// before the first load; null when the route handed none over.
  SessionLaunchComposer? get composer;
 /// Create a copy of SessionLaunchHandoff
@@ -62,7 +62,7 @@ abstract mixin class $SessionLaunchHandoffCopyWith<$Res>  {
   factory $SessionLaunchHandoffCopyWith(SessionLaunchHandoff value, $Res Function(SessionLaunchHandoff) _then) = _$SessionLaunchHandoffCopyWithImpl;
 @useResult
 $Res call({
- NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<QueuedSessionSubmission> acceptedFollowUps, SessionLaunchComposer? composer
+ NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<AcceptedLaunchFollowUp> acceptedFollowUps, SessionLaunchComposer? composer
 });
 
 
@@ -86,7 +86,7 @@ as NewSessionSubmissionSnapshot,pluginId: null == pluginId ? _self.pluginId : pl
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self.followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,acceptedFollowUps: null == acceptedFollowUps ? _self.acceptedFollowUps : acceptedFollowUps // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,composer: freezed == composer ? _self.composer : composer // ignore: cast_nullable_to_non_nullable
+as List<AcceptedLaunchFollowUp>,composer: freezed == composer ? _self.composer : composer // ignore: cast_nullable_to_non_nullable
 as SessionLaunchComposer?,
   ));
 }
@@ -108,7 +108,7 @@ $NewSessionSubmissionSnapshotCopyWith<$Res> get submission {
 
 
 class _SessionLaunchHandoff implements SessionLaunchHandoff {
-  const _SessionLaunchHandoff({required this.submission, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<QueuedSessionSubmission> acceptedFollowUps, required this.composer}): _followUpIds = followUpIds,_acceptedFollowUps = acceptedFollowUps;
+  const _SessionLaunchHandoff({required this.submission, required this.pluginId, required this.startedAt, required  Set<String> followUpIds, required  List<AcceptedLaunchFollowUp> acceptedFollowUps, required this.composer}): _followUpIds = followUpIds,_acceptedFollowUps = acceptedFollowUps;
   
 
 @override final  NewSessionSubmissionSnapshot submission;
@@ -134,10 +134,10 @@ class _SessionLaunchHandoff implements SessionLaunchHandoff {
 
 /// Follow-ups the bridge accepted before the handoff was taken, oldest
 /// first. The taker parks them so their bubbles never blank.
- final  List<QueuedSessionSubmission> _acceptedFollowUps;
+ final  List<AcceptedLaunchFollowUp> _acceptedFollowUps;
 /// Follow-ups the bridge accepted before the handoff was taken, oldest
 /// first. The taker parks them so their bubbles never blank.
-@override List<QueuedSessionSubmission> get acceptedFollowUps {
+@override List<AcceptedLaunchFollowUp> get acceptedFollowUps {
   if (_acceptedFollowUps is EqualUnmodifiableListView) return _acceptedFollowUps;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_acceptedFollowUps);
@@ -179,7 +179,7 @@ abstract mixin class _$SessionLaunchHandoffCopyWith<$Res> implements $SessionLau
   factory _$SessionLaunchHandoffCopyWith(_SessionLaunchHandoff value, $Res Function(_SessionLaunchHandoff) _then) = __$SessionLaunchHandoffCopyWithImpl;
 @override @useResult
 $Res call({
- NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<QueuedSessionSubmission> acceptedFollowUps, SessionLaunchComposer? composer
+ NewSessionSubmissionSnapshot submission, String pluginId, DateTime startedAt, Set<String> followUpIds, List<AcceptedLaunchFollowUp> acceptedFollowUps, SessionLaunchComposer? composer
 });
 
 
@@ -203,7 +203,7 @@ as NewSessionSubmissionSnapshot,pluginId: null == pluginId ? _self.pluginId : pl
 as String,startedAt: null == startedAt ? _self.startedAt : startedAt // ignore: cast_nullable_to_non_nullable
 as DateTime,followUpIds: null == followUpIds ? _self._followUpIds : followUpIds // ignore: cast_nullable_to_non_nullable
 as Set<String>,acceptedFollowUps: null == acceptedFollowUps ? _self._acceptedFollowUps : acceptedFollowUps // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,composer: freezed == composer ? _self.composer : composer // ignore: cast_nullable_to_non_nullable
+as List<AcceptedLaunchFollowUp>,composer: freezed == composer ? _self.composer : composer // ignore: cast_nullable_to_non_nullable
 as SessionLaunchComposer?,
   ));
 }

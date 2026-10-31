@@ -869,6 +869,7 @@ void main() {
       WidgetTester tester, {
       required Duration age,
       List<QueuedSessionSubmission> queuedMessages = const [],
+      List<AwaitingBridgeSubmission> awaiting = const [],
     }) async {
       final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const [], pluginId: "claude");
       final startedAt = DateTime.now().subtract(age);
@@ -907,6 +908,7 @@ void main() {
           launchHandoff: handoff,
           seededComposer: SeededComposer(composer: composer, stagedCommand: null),
           queuedMessages: queuedMessages,
+          awaitingBridgeSubmissions: awaiting,
         ),
       );
       await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -1044,6 +1046,183 @@ void main() {
       expect(tester.getTopLeft(row).dy, top);
     });
 
+    group("a follow-up accepted during the launch", () {
+      const typedNext = QueuedSessionSubmission.text(
+        promptId: "prm_follow",
+        text: "Typed next",
+        inputMode: ComposerInputMode.typed,
+        attachments: [],
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      );
+      final row = find.ancestor(of: find.text("Typed next"), matching: find.byType(UserMessageBubble));
+      final line = find.descendant(
+        of: find.ancestor(of: find.text("Typed next"), matching: find.byType(QueuedMessageBubble)),
+        matching: find.text(sendingLine),
+      );
+
+      testWidgets("keeps its line and its place through a first load after two seconds", (tester) async {
+        final awaiting = <AwaitingBridgeSubmission>[(submission: typedNext, since: DateTime.now())];
+        final states = await showLaunchView(tester, age: Duration.zero, awaiting: awaiting);
+        await tester.pump(const Duration(milliseconds: 2500));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(frame);
+        final top = tester.getTopLeft(row).dy;
+        expect(line, findsOneWidget);
+        expect(opacityOf(tester, line), 1);
+
+        states.add(loaded().copyWith(messages: const [echo], awaitingBridgeSubmissions: awaiting));
+        await tester.pump();
+        for (var i = 0; i < 180; i++) {
+          expect(line, findsOneWidget, reason: "Frame $i");
+          expect(opacityOf(tester, line), 1, reason: "Frame $i");
+          expect(tester.getTopLeft(row).dy, top, reason: "Frame $i");
+          await tester.pump(frame);
+        }
+      });
+
+      testWidgets("waits out what is left of its two seconds through an earlier first load", (tester) async {
+        final awaiting = <AwaitingBridgeSubmission>[(submission: typedNext, since: DateTime.now())];
+        final states = await showLaunchView(tester, age: Duration.zero, awaiting: awaiting);
+        await tester.pump(const Duration(seconds: 1));
+        final top = tester.getTopLeft(row).dy;
+
+        states.add(loaded().copyWith(messages: const [echo], awaitingBridgeSubmissions: awaiting));
+        await tester.pump();
+        expect(await largestStep(tester, row), 0, reason: "No line for its first two seconds.");
+        expect(line, findsNothing);
+
+        await tester.pump(const Duration(milliseconds: 700));
+        await tester.pump(frame);
+        expect(line, findsOneWidget, reason: "Timed from the send, not from the load.");
+        await tester.pump(const Duration(milliseconds: 300));
+        await tester.pump(frame);
+        expect(tester.getTopLeft(row).dy, moreOrLessEquals(top - 22, epsilon: 0.01));
+      });
+
+      testWidgets("delivered by the first load after two seconds, its line fades as the row eases", (tester) async {
+        final states = await showLaunchView(
+          tester,
+          age: Duration.zero,
+          awaiting: [(submission: typedNext, since: DateTime.now())],
+        );
+        await tester.pump(const Duration(milliseconds: 2500));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(frame);
+        final top = tester.getTopLeft(row).dy;
+        expect(opacityOf(tester, line), 1);
+
+        states.add(
+          loaded().copyWith(
+            messages: const [
+              echo,
+              MessageWithParts(
+                info: Message.user(
+                  promptId: "prm_follow",
+                  id: "user-next",
+                  sessionID: "session-1",
+                  agent: null,
+                  time: null,
+                ),
+                parts: [
+                  MessagePart.text(id: "part-next", sessionID: "session-1", messageID: "user-next", text: "Typed next"),
+                ],
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+        await tester.pump();
+        expect(tester.getTopLeft(row).dy, moreOrLessEquals(top, epsilon: 0.01));
+
+        var opacity = 1.0;
+        for (var i = 0; i < 15; i++) {
+          expect(line, findsOneWidget, reason: "Frame $i");
+          final next = opacityOf(tester, line);
+          expect(next, inInclusiveRange(opacity - 0.07, opacity), reason: "Frame $i");
+          opacity = next;
+          await tester.pump(frame);
+        }
+        await tester.pump(frame);
+        await tester.pump(frame);
+        expect(line, findsNothing);
+        expect(tester.getTopLeft(row).dy, moreOrLessEquals(top + 22, epsilon: 0.01));
+      });
+
+      testWidgets("listed by the first load under an older launch, still waits out its two seconds", (tester) async {
+        final states = await showLaunchView(
+          tester,
+          age: const Duration(seconds: 3),
+          awaiting: [(submission: typedNext, since: DateTime.now())],
+        );
+        await tester.pump(const Duration(seconds: 1));
+        final top = tester.getTopLeft(row).dy;
+
+        states.add(
+          loaded().copyWith(
+            messages: const [echo],
+            bridgeQueuedPrompts: const [
+              QueuedSessionPrompt(
+                id: "prm_follow",
+                text: "Typed next",
+                command: null,
+                attachmentCount: 0,
+                createdAt: 1,
+                dispatchState: QueuedPromptDispatchState.queued,
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+
+        expect(await largestStep(tester, row), 0, reason: "No line for its first two seconds.");
+        expect(find.text("Queued"), findsNothing);
+        expect(tester.getTopLeft(row).dy, top);
+
+        await tester.pump(const Duration(milliseconds: 700));
+        await tester.pump(frame);
+        expect(find.text("Queued"), findsOneWidget);
+      });
+
+      testWidgets("listed by the first load after two seconds, its line cross-fades in place", (tester) async {
+        final states = await showLaunchView(
+          tester,
+          age: Duration.zero,
+          awaiting: [(submission: typedNext, since: DateTime.now())],
+        );
+        await tester.pump(const Duration(milliseconds: 2500));
+        await tester.pump(const Duration(milliseconds: 500));
+        await tester.pump(frame);
+        final top = tester.getTopLeft(row).dy;
+        expect(opacityOf(tester, line), 1);
+
+        states.add(
+          loaded().copyWith(
+            messages: const [echo],
+            bridgeQueuedPrompts: const [
+              QueuedSessionPrompt(
+                id: "prm_follow",
+                text: "Typed next",
+                command: null,
+                attachmentCount: 0,
+                createdAt: 1,
+                dispatchState: QueuedPromptDispatchState.queued,
+              ),
+            ],
+          ),
+        );
+        await tester.pump();
+        await tester.pump(frame);
+        await tester.pump(frame);
+        await tester.pump(frame);
+        expect(line, findsOneWidget, reason: "The line it had sees out its fade.");
+        expect(find.text("Queued"), findsOneWidget);
+        expect(await largestStep(tester, row), lessThan(9));
+        expect(tester.getTopLeft(row).dy, moreOrLessEquals(top - 26, epsilon: 0.01));
+      });
+    });
+
     testWidgets("a load that follows a failed first load doesn't bring the launch's bubble back", (tester) async {
       final states = await showLaunchView(tester, age: const Duration(seconds: 3));
 
@@ -1103,7 +1282,9 @@ void main() {
         );
     final state = SessionDetailState.failed(
       reason: RemoteFailureReason.unknown,
-      awaitingBridgeSubmissions: [submission(promptId: "prm_taken", text: "Taken by the bridge")],
+      awaitingBridgeSubmissions: [
+        (submission: submission(promptId: "prm_taken", text: "Taken by the bridge"), since: null),
+      ],
       launchFollowUps: [
         LaunchFollowUp.queued(
           submission: submission(promptId: "prm_launch", text: "Sent while creating"),
@@ -6176,7 +6357,7 @@ void main() {
       fastMode: false,
     );
     var state = _loadedState(pendingQuestions: const [], pendingPermissions: const []).copyWith(
-      awaitingBridgeSubmissions: const [submission],
+      awaitingBridgeSubmissions: const [(submission: submission, since: null)],
     );
     final states = StreamController<SessionDetailState>.broadcast();
     addTearDown(states.close);

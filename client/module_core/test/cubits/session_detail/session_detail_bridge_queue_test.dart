@@ -620,7 +620,7 @@ void main() {
       expect(state.selectedAgent, "Agent");
       expect(state.queuedMessages, isEmpty);
       expect(_sendingOf(state: state), isNull);
-      expect(state.awaitingBridgeSubmissions.map((submission) => submission.promptId), [promptIds.first]);
+      expect(state.awaitingBridgeSubmissions.map((item) => item.submission.promptId), [promptIds.first]);
       expect(notices, [const SessionDetailPromptOptionsUpdated()]);
     });
 
@@ -694,14 +694,14 @@ void main() {
         predicate: (candidate) =>
             candidate is SessionDetailLoaded &&
             candidate.awaitingBridgeSubmissions.length == 1 &&
-            candidate.awaitingBridgeSubmissions.single.text == "continue",
+            candidate.awaitingBridgeSubmissions.single.submission.text == "continue",
         description: "the next prompt to be accepted after removing the unavailable command",
       );
 
       state = cubit.state as SessionDetailLoaded;
       expect(sentCommands, ["review", null]);
       expect(state.queuedMessages, isEmpty);
-      expect(state.awaitingBridgeSubmissions.single.displayText, "continue");
+      expect(state.awaitingBridgeSubmissions.single.submission.displayText, "continue");
     });
 
     test("marks a removed command unavailable when a cache update overtakes recovery", () async {
@@ -790,14 +790,14 @@ void main() {
         predicate: (candidate) =>
             candidate is SessionDetailLoaded &&
             candidate.awaitingBridgeSubmissions.length == 1 &&
-            candidate.awaitingBridgeSubmissions.single.text == "continue",
+            candidate.awaitingBridgeSubmissions.single.submission.text == "continue",
         description: "the next prompt to be accepted after removing the unavailable command",
       );
 
       state = cubit.state as SessionDetailLoaded;
       expect(sentCommands, ["review", null]);
       expect(state.queuedMessages, isEmpty);
-      expect(state.awaitingBridgeSubmissions.single.displayText, "continue");
+      expect(state.awaitingBridgeSubmissions.single.submission.displayText, "continue");
     });
 
     test("an options update landing mid-recovery still retries the queued submission", () async {
@@ -1425,7 +1425,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
       var state = cubit.state as SessionDetailLoaded;
       expect(_sendingOf(state: state), isNull);
-      expect(state.awaitingBridgeSubmissions.map((item) => item.promptId), [promptId]);
+      expect(state.awaitingBridgeSubmissions.map((item) => item.submission.promptId), [promptId]);
 
       sessionEvents.add(
         SesoriSseEvent.sessionQueuedPrompts(
@@ -1446,7 +1446,7 @@ void main() {
         final visible =
             _sendingOf(state: emitted)?.promptId == promptId ||
             emitted.queuedMessages.any((item) => item.promptId == promptId) ||
-            emitted.awaitingBridgeSubmissions.any((item) => item.promptId == promptId) ||
+            emitted.awaitingBridgeSubmissions.any((item) => item.submission.promptId == promptId) ||
             emitted.bridgeQueuedPrompts.any((prompt) => prompt.id == promptId);
         expect(visible, isTrue, reason: "no frame may leave the accepted send without a surface");
       }
@@ -1474,7 +1474,7 @@ void main() {
         inputMode: ComposerInputMode.typed,
         attachments: const [],
       );
-      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.promptId;
+      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.submission.promptId;
 
       sessionEvents.add(
         SesoriSseEvent.sessionPromptSettled(sessionID: _sessionId, promptID: promptId) as SesoriSessionEvent,
@@ -1554,7 +1554,7 @@ void main() {
         expect(
           [
             ...refreshState.queuedMessages.map((item) => item.promptId),
-            ...refreshState.awaitingBridgeSubmissions.map((item) => item.promptId),
+            ...refreshState.awaitingBridgeSubmissions.map((item) => item.submission.promptId),
             _sendingOf(state: refreshState)?.promptId,
           ],
           isNot(contains(firstPromptId)),
@@ -1668,7 +1668,7 @@ void main() {
             sessionID: _sessionId,
             agent: null,
             time: const MessageTime(created: 200, completed: null),
-            promptId: parked.promptId,
+            promptId: parked.submission.promptId,
           ),
         ),
       );
@@ -1712,7 +1712,7 @@ void main() {
             sessionID: _sessionId,
             agent: null,
             time: const MessageTime(created: 200, completed: null),
-            promptId: parked.first.promptId,
+            promptId: parked.first.submission.promptId,
           ),
         ),
       );
@@ -1721,7 +1721,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(
-        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.text),
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.submission.text),
         ["second"],
         reason: "later updates of one echo must not retire further sends",
       );
@@ -1763,7 +1763,7 @@ void main() {
       await Future<void>.delayed(Duration.zero);
 
       expect(
-        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.text),
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.submission.text),
         ["mine"],
         reason: "a foreign echo carries different text and must not retire this copy",
       );
@@ -1866,7 +1866,7 @@ void main() {
 
       await cubit.sendMessage(text: "hello", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await Future<void>.delayed(Duration.zero);
-      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.promptId;
+      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.submission.promptId;
       final queued = QueuedSessionPrompt(id: promptId, text: "hello", command: null, attachmentCount: 0, createdAt: 1);
       sessionEvents.add(
         SesoriSseEvent.sessionQueuedPrompts(sessionID: _sessionId, prompts: [queued]) as SesoriSessionEvent,
@@ -1932,7 +1932,7 @@ void main() {
       final cubit = await createLoadedCubit();
       await cubit.sendMessage(text: "steer", command: null, inputMode: ComposerInputMode.typed, attachments: const []);
       await Future<void>.delayed(Duration.zero);
-      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.promptId;
+      final promptId = (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.single.submission.promptId;
 
       // The refresh carries the delivered message as a bare envelope: it
       // cannot render, so the parked copy must survive rather than be settled
@@ -1952,7 +1952,7 @@ void main() {
       await cubit.reload();
 
       expect(
-        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.promptId),
+        (cubit.state as SessionDetailLoaded).awaitingBridgeSubmissions.map((item) => item.submission.promptId),
         [promptId],
       );
     });
@@ -2670,8 +2670,29 @@ void main() {
         await Future<void>.delayed(Duration.zero);
 
         final state = cubit.state as SessionDetailLoaded;
-        expect(state.awaitingBridgeSubmissions.map((submission) => submission.promptId), ["prm_a"]);
+        expect(state.awaitingBridgeSubmissions.map((item) => item.submission.promptId), ["prm_a"]);
+        expect(state.awaitingBridgeSubmissions.single.since, DateTime(2026));
         expect(state.launchHandoff, isNotNull, reason: "a follow-up is not the first message's replacement");
+      });
+
+      test("a follow-up accepted before the screen took over keeps its send time", () async {
+        final repository = launchedRepository(
+          followUps: [
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+          ],
+        );
+        repository.beginFollowUp(launchId: "launch-1");
+        repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
+
+        final loadGate = Completer<void>();
+        final cubit = await createLoadedCubit(sessionLaunchRepository: repository, loadGate: loadGate);
+
+        final state = cubit.state as SessionDetailLoading;
+        expect(state.awaitingBridgeSubmissions.single.since, DateTime(2026));
+        loadGate.complete();
       });
 
       test("a follow-up whose message landed before its acceptance is not parked beside it", () async {
@@ -2847,7 +2868,7 @@ void main() {
         expect(repository.beginFollowUp(launchId: "launch-1")?.submission.promptId, "prm_a");
         repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
         await Future<void>.delayed(Duration.zero);
-        expect(loaded().awaitingBridgeSubmissions.map((submission) => submission.promptId), ["prm_a"]);
+        expect(loaded().awaitingBridgeSubmissions.map((item) => item.submission.promptId), ["prm_a"]);
       });
 
       test("a prompt sent here does not release the launch bubble when the bridge queues it", () async {
@@ -3006,7 +3027,7 @@ void main() {
           final accepted = cubit.state as SessionDetailFailed;
           expect(accepted.launchFollowUps, isEmpty);
           expect(
-            accepted.awaitingBridgeSubmissions.map((submission) => submission.promptId),
+            accepted.awaitingBridgeSubmissions.map((item) => item.submission.promptId),
             ["prm_a"],
             reason: "a send the bridge took stays shown until the load lists it",
           );

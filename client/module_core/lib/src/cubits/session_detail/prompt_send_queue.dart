@@ -116,20 +116,21 @@ class PromptSendQueue() {
     _active = null;
     if (active == null) return;
     if (_settledElsewhere.remove(active.promptId)) return;
-    _awaitingBridge.add((submission: active, epoch: epoch));
+    _awaitingBridge.add((submission: active, since: null, epoch: epoch));
   }
 
   /// Parks a submission another owner sent and the bridge accepted, exactly as
   /// [parkAccepted] parks one this queue sent. That owner hands over only
   /// submissions not yet settled, so there is no mark to consume here.
-  void adoptAccepted({required QueuedSessionSubmission submission, required int epoch}) {
-    _awaitingBridge.add((submission: submission, epoch: epoch));
+  void adoptAccepted({required QueuedSessionSubmission submission, required DateTime since, required int epoch}) {
+    _awaitingBridge.add((submission: submission, since: since, epoch: epoch));
   }
 
   /// Accepted submissions whose bridge-side representation has not arrived
   /// yet, oldest first.
-  List<QueuedSessionSubmission> get awaitingBridge =>
-      List.unmodifiable([for (final entry in _awaitingBridge) entry.submission]);
+  List<AwaitingBridgeSubmission> get awaitingBridge => List.unmodifiable([
+    for (final entry in _awaitingBridge) (submission: entry.submission, since: entry.since),
+  ]);
 
   /// Settles parked submissions an authoritative snapshot proves gone: parked
   /// at or before [parkedAtOrBeforeEpoch] (so the snapshot's fetch could see
@@ -141,7 +142,7 @@ class PromptSendQueue() {
     );
   }
 
-  final List<({QueuedSessionSubmission submission, int epoch})> _awaitingBridge = [];
+  final List<({QueuedSessionSubmission submission, DateTime? since, int epoch})> _awaitingBridge = [];
 
   /// Restores the active submission at the head after a failed send.
   ///

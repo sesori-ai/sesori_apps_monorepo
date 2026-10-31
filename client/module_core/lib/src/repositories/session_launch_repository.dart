@@ -139,7 +139,9 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
     if (launch == null) return;
     final index = _indexOf(launch: launch, promptId: promptId);
     if (index < 0) return;
-    final accepted = LaunchFollowUp.accepted(submission: launch.followUps[index].submission);
+    final sending = launch.followUps[index];
+    if (sending is! SendingLaunchFollowUp) return;
+    final accepted = LaunchFollowUp.accepted(submission: sending.submission, since: sending.since);
     if (launch is CreatedSessionLaunch) {
       _replaceFollowUp(launch: launch, index: index, followUp: accepted);
       return;
@@ -308,10 +310,7 @@ class SessionLaunchRepository({required final SessionLaunchStorage _storage}) {
       pluginId: launch.pluginId,
       startedAt: launch.startedAt,
       followUpIds: launch.followUpIds,
-      acceptedFollowUps: [
-        for (final followUp in launch.followUps)
-          if (followUp case AcceptedLaunchFollowUp(:final submission)) submission,
-      ],
+      acceptedFollowUps: launch.followUps.whereType<AcceptedLaunchFollowUp>().toList(),
       composer: launch.composer,
     );
   }

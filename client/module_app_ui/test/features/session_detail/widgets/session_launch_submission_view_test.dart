@@ -15,7 +15,7 @@ Future<AppLocalizations> _pump(
   required NewSessionSubmissionSnapshot submission,
   required double? transcriptWidth,
   DateTime? sendingSince,
-  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
+  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],
   List<LaunchFollowUp> launchFollowUps = const [],
 }) async {
   await tester.pumpWidget(
@@ -165,8 +165,13 @@ void main() {
         attachments: const [],
       ),
       transcriptWidth: null,
-      awaitingBridgeSubmissions: [submission(promptId: "parked")],
-      launchFollowUps: [LaunchFollowUp.accepted(submission: submission(promptId: "accepted"))],
+      awaitingBridgeSubmissions: [(submission: submission(promptId: "parked"), since: clock.now())],
+      launchFollowUps: [
+        LaunchFollowUp.accepted(
+          submission: submission(promptId: "accepted"),
+          since: clock.now(),
+        ),
+      ],
     );
     expect(find.byType(QueuedMessageBubble), findsNWidgets(3));
     expect(find.text(loc.sessionDetailQueuedMessage), findsNothing);
@@ -190,21 +195,20 @@ void main() {
       attachments: const [],
     );
     final sendingSince = clock.now().subtract(const Duration(seconds: 3));
+    final followUpSince = clock.now().subtract(const Duration(milliseconds: 1500));
     final loc = await _pump(
       tester,
       submission: firstMessage,
       transcriptWidth: null,
       sendingSince: sendingSince,
-      launchFollowUps: [
-        LaunchFollowUp.sending(submission: followUp, since: clock.now().subtract(const Duration(milliseconds: 1500))),
-      ],
+      launchFollowUps: [LaunchFollowUp.sending(submission: followUp, since: followUpSince)],
     );
     await _pump(
       tester,
       submission: firstMessage,
       transcriptWidth: null,
       sendingSince: sendingSince,
-      launchFollowUps: [const LaunchFollowUp.accepted(submission: followUp)],
+      launchFollowUps: [LaunchFollowUp.accepted(submission: followUp, since: followUpSince)],
     );
     expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
 

@@ -261,8 +261,8 @@ class SessionDetailCubit(
       launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps, :final composer, :final startedAt),
     )) {
       _launchStartedAt = startedAt;
-      for (final submission in acceptedFollowUps) {
-        _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
+      for (final AcceptedLaunchFollowUp(:submission, :since) in acceptedFollowUps) {
+        _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
       }
       // What the launch's composer held unsent becomes this composer's, before
       // the composer first reads it.
@@ -324,8 +324,8 @@ class SessionDetailCubit(
     if (isClosed) return;
     final unsent = <LaunchFollowUp>[];
     for (final followUp in followUps) {
-      if (followUp case AcceptedLaunchFollowUp(:final submission)) {
-        _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
+      if (followUp case AcceptedLaunchFollowUp(:final submission, :final since)) {
+        _promptQueue.adoptAccepted(submission: submission, since: since, epoch: ++_parkEpoch);
       } else {
         unsent.add(followUp);
       }
@@ -2484,13 +2484,13 @@ class SessionDetailCubit(
 
   /// Accepted-but-unlisted sends still owed a bridge representation. Hidden
   /// once the bridge queue lists their prompt id.
-  List<QueuedSessionSubmission> _visibleAwaitingBridge({required List<QueuedSessionPrompt> bridgePrompts}) {
+  List<AwaitingBridgeSubmission> _visibleAwaitingBridge({required List<QueuedSessionPrompt> bridgePrompts}) {
     final awaiting = _promptQueue.awaitingBridge;
     if (bridgePrompts.isEmpty || awaiting.isEmpty) return awaiting;
     final bridgeIds = {for (final prompt in bridgePrompts) prompt.id};
     return [
       for (final item in awaiting)
-        if (!bridgeIds.contains(item.promptId)) item,
+        if (!bridgeIds.contains(item.submission.promptId)) item,
     ];
   }
 
@@ -3493,7 +3493,7 @@ class SessionDetailCubit(
 typedef _QueueView = ({
   Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   List<QueuedSessionSubmission> queuedMessages,
-  List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
   LocalSendPhase localSend,
 });
 
