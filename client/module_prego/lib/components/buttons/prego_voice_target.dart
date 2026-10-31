@@ -59,6 +59,7 @@ class const PregoVoiceTarget({
     };
 
     return Semantics(
+      container: true,
       button: true,
       label: semanticLabel,
       child: MouseRegion(

@@ -15,7 +15,7 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
-final _mic = find.byTooltip("Record voice");
+final _mic = _labelledTooltip("Record voice");
 final _wideSend = find.byType(PregoVoiceSendButton);
 final _pencil = _labelledTooltip("Edit before sending");
 final _cancel = _labelledTooltip("Cancel recording");
@@ -671,7 +671,7 @@ void main() {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness, initialText: "typed first");
 
-      await tester.tap(find.byTooltip("Send").first);
+      await tester.tap(_labelledTooltip("Send").first);
       await tester.pump();
 
       expect(harness.sent, ["typed first"]);

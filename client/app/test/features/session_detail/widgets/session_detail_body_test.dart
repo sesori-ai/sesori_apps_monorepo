@@ -4293,8 +4293,11 @@ void main() {
 
     await tester.tap(find.byKey(const Key("voice_saved_retry")));
     await tester.pump();
-    expect(find.byTooltip("Cancel transcription"), findsOneWidget);
-    await tester.tap(find.byTooltip("Cancel transcription"));
+    expect(
+      find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Cancel transcription"),
+      findsOneWidget,
+    );
+    await tester.tap(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Cancel transcription"));
     await tester.pumpAndSettle();
 
     expect(find.text("Recording saved"), findsOneWidget);
@@ -4458,7 +4461,7 @@ void main() {
     await gesture.up();
     await tester.pump();
 
-    await tester.tap(find.byTooltip("Cancel transcription"));
+    await tester.tap(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Cancel transcription"));
     await tester.pump();
 
     // The default Android button emits its normal tap pulse before the voice

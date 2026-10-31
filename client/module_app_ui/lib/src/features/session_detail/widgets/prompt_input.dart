@@ -1429,14 +1429,11 @@ class _PromptInputState() extends State<PromptInput> {
                             trailing: Row(
                               spacing: PregoSpacing.sm,
                               children: [
-                                Tooltip(
-                                  message: context.loc.sessionDetailTypeMessage,
-                                  child: PregoButtonsSolid.iconOnly(
-                                    leadingIcon: TablerRegular.keyboard,
-                                    hierarchy: PregoButtonsSolidHierarchy.secondary,
-                                    size: PregoButtonsSolidSize.lg,
-                                    onPressed: _enterTypingMode,
-                                  ),
+                                _buildLabelledIconButton(
+                                  label: context.loc.sessionDetailTypeMessage,
+                                  icon: TablerRegular.keyboard,
+                                  hierarchy: PregoButtonsSolidHierarchy.secondary,
+                                  onPressed: _enterTypingMode,
                                 ),
                                 // The resting voice pill has no send affordance,
                                 // but stopping in-flight work must stay reachable.
@@ -1851,6 +1848,7 @@ class _PromptInputState() extends State<PromptInput> {
           Expanded(
             child: _buildHoldSurface(
               context,
+              hint: hint,
               child: _buildVoiceAwareSlot(height: _actionButtonSize, idle: const SizedBox()),
             ),
           ),
@@ -2603,14 +2601,11 @@ class _PromptInputState() extends State<PromptInput> {
       ),
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("cancel-transcription"),
-        child: Tooltip(
-          message: loc.voiceCancelTranscription,
-          child: PregoButtonsSolid.iconOnly(
-            leadingIcon: TablerRegular.x,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.lg,
-            onPressed: _cancelVoiceInteractionWithFeedback,
-          ),
+        child: _buildLabelledIconButton(
+          label: loc.voiceCancelTranscription,
+          icon: TablerRegular.x,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          onPressed: _cancelVoiceInteractionWithFeedback,
         ),
       ),
     };
@@ -2646,15 +2641,13 @@ class _PromptInputState() extends State<PromptInput> {
   /// that ends the hold. Semantic taps toggle recording and a semantic dismiss
   /// cancels it — assistive technologies cannot express the press-and-hold
   /// gesture or the slide out of it.
-  Widget _buildHoldSurface(BuildContext context, {required Widget child}) {
-    final loc = context.loc;
-
+  Widget _buildHoldSurface(BuildContext context, {required String hint, required Widget child}) {
     return Semantics(
+      // A node of its own, which nothing else in the composer merges into.
+      container: true,
       button: true,
       // The surface speaks for the pill, whose words it excludes.
-      label: _voicePresentation == _VoicePresentation.transcribing
-          ? _transcribingLabel(context)
-          : loc.sessionDetailHoldToTalk,
+      label: _voicePresentation == _VoicePresentation.transcribing ? _transcribingLabel(context) : hint,
       excludeSemantics: true,
       onTap: _toggleRecording,
       onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
@@ -2737,17 +2730,11 @@ class _PromptInputState() extends State<PromptInput> {
 
     // A pointer shell clicks to start; the wide Send takes it from there.
     if (ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer) {
-      return Semantics(
-        button: true,
-        child: Tooltip(
-          message: loc.voiceRecord,
-          child: PregoButtonsSolid.iconOnly(
-            leadingIcon: TablerRegular.microphone,
-            hierarchy: PregoButtonsSolidHierarchy.secondary,
-            size: PregoButtonsSolidSize.lg,
-            onPressed: _handleMicClick,
-          ),
-        ),
+      return _buildLabelledIconButton(
+        label: loc.voiceRecord,
+        icon: TablerRegular.microphone,
+        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        onPressed: _handleMicClick,
       );
     }
 
@@ -2788,26 +2775,49 @@ class _PromptInputState() extends State<PromptInput> {
     final showStop = widget.isBusy && !_hasSendableContent;
 
     if (showStop) {
-      return Tooltip(
-        message: loc.sessionDetailAbort,
-        child: PregoButtonsSolid.iconOnly(
-          leadingIcon: TablerSolid.player_stop,
-          hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-          size: PregoButtonsSolidSize.lg,
-          onPressed: widget.onAbort,
-        ),
+      return _buildLabelledIconButton(
+        label: loc.sessionDetailAbort,
+        icon: TablerSolid.player_stop,
+        hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+        onPressed: widget.onAbort,
       );
     }
 
+    return _buildLabelledIconButton(
+      label: loc.sessionDetailSend,
+      icon: TablerRegular.arrow_up,
+      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+      // An empty composer has nothing to send: show the action as genuinely
+      // unavailable instead of accepting a tap that does nothing.
+      onPressed: _hasSendableContent && !_isAwaitingDictatedWords ? _handleSend : null,
+    );
+  }
+
+  /// A composer icon button a screen reader hears as [label], with its tap and
+  /// focus, on one node. A plain [Tooltip] over the button leaves its words on
+  /// whichever node takes them, the whole pill when the button rests alone, and
+  /// its tap on an unnamed node of its own.
+  Widget _buildLabelledIconButton({
+    required String label,
+    required IconData icon,
+    required PregoButtonsSolidHierarchy hierarchy,
+    required VoidCallback? onPressed,
+  }) {
     return Tooltip(
-      message: loc.sessionDetailSend,
-      child: PregoButtonsSolid.iconOnly(
-        leadingIcon: TablerRegular.arrow_up,
-        hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-        size: PregoButtonsSolidSize.lg,
-        // An empty composer has nothing to send: show the action as genuinely
-        // unavailable instead of accepting a tap that does nothing.
-        onPressed: _hasSendableContent && !_isAwaitingDictatedWords ? _handleSend : null,
+      message: label,
+      excludeFromSemantics: true,
+      child: MergeSemantics(
+        child: Semantics(
+          button: true,
+          enabled: onPressed != null,
+          label: label,
+          child: PregoButtonsSolid.iconOnly(
+            leadingIcon: icon,
+            hierarchy: hierarchy,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: onPressed,
+          ),
+        ),
       ),
     );
   }
