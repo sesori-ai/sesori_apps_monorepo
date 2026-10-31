@@ -6370,6 +6370,157 @@ void main() {
       });
     });
 
+    group("a send with the keyboard down", () {
+      final composerBox = find.descendant(
+        of: find.byType(PromptInput),
+        matching: find.byWidgetPredicate(
+          (widget) => widget is AnimatedSize && widget.alignment == Alignment.bottomCenter,
+        ),
+      );
+      final typingSurface = find.ancestor(
+        of: find.byType(EditableText),
+        matching: find.byWidgetPredicate((widget) {
+          if (widget is! Container) return false;
+          final decoration = widget.decoration;
+          return decoration is BoxDecoration && decoration.boxShadow != null;
+        }),
+      );
+      Clip composerClip(WidgetTester tester) => tester
+          .widget<ClipRRect>(find.ancestor(of: composerBox.last, matching: find.byType(ClipRRect)).first)
+          .clipBehavior;
+      double restingRow(WidgetTester tester) => tester.getBottomLeft(find.text("Prompt 11")).dy;
+
+      void stubSentRow({required StreamController<SessionDetailState> states, required String text}) {
+        when(
+          () => cubit.sendMessage(
+            text: any(named: "text"),
+            command: any(named: "command"),
+            inputMode: any(named: "inputMode"),
+            attachments: any(named: "attachments"),
+          ),
+        ).thenAnswer((_) async {
+          final current = cubit.state;
+          if (current is! SessionDetailLoaded) return;
+          states.add(
+            current.copyWith(
+              localSend: LocalSendPhase.sending(
+                submission: QueuedSessionSubmission.text(
+                  promptId: "prompt-1",
+                  text: text,
+                  inputMode: ComposerInputMode.typed,
+                  attachments: const [],
+                  agent: "coder",
+                  agentModel: null,
+                  fastMode: false,
+                ),
+              ),
+            ),
+          );
+        });
+      }
+
+      Future<StreamController<SessionDetailState>> pumpPhone({required WidgetTester tester, required String draft}) =>
+          pumpSession(
+            tester: tester,
+            draft: draft,
+            mode: ChatInputMode.voiceFirst,
+            size: const Size(393, 852),
+            pageChrome: null,
+          );
+
+      /// The row above the send's follows the composer down as the send's row
+      /// pushes it up, so it only ever moves the one way, and stops with the rise.
+      Future<void> expectOneMotion({required WidgetTester tester}) async {
+        final startHeight = measure(tester: tester).height;
+        final positions = [restingRow(tester)];
+        var cutSurface = false;
+        for (var frame = 0; frame < 30; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          positions.add(restingRow(tester));
+          if (frame == 1) expect(measure(tester: tester).height, lessThan(startHeight), reason: "It closes at once.");
+          if (typingSurface.evaluate().isEmpty) continue;
+          if (tester.getTopLeft(typingSurface.first).dy < tester.getTopLeft(composerBox.last).dy - 0.01) {
+            cutSurface = true;
+            expect(composerClip(tester), isNot(Clip.none), reason: "Frame $frame must cut what stands above the box.");
+          }
+        }
+
+        final direction = (positions.last - positions.first).sign;
+        for (final (index, position) in positions.indexed.skip(1)) {
+          final step = (position - positions[index - 1]) * direction;
+          expect(step, greaterThanOrEqualTo(-0.01), reason: "Frame $index reverses the motion.");
+        }
+        // The rise takes 200 ms from the second frame; nothing moves after it.
+        for (final position in positions.skip(15)) {
+          expect(position, moreOrLessEquals(positions.last, epsilon: 0.01), reason: "The row moved after the rise.");
+        }
+        expect(cutSurface, isTrue, reason: "The layout the send left stands above the closing box.");
+        expect(composerClip(tester), Clip.none, reason: "A settled composer paints its shadow in full.");
+      }
+
+      for (final (label, draft) in const [("a grown draft", sixLines), ("a one-line draft", "draft")]) {
+        testWidgets("makes the rise and the shrink one motion with $label", (tester) async {
+          final states = await pumpPhone(tester: tester, draft: draft);
+          stubSentRow(states: states, text: draft);
+
+          await tester.tap(find.byIcon(TablerRegular.arrow_up));
+          await expectOneMotion(tester: tester);
+        });
+
+        testWidgets("lands at once with $label under reduced motion", (tester) async {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+            disableAnimations: true,
+          );
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          final states = await pumpPhone(tester: tester, draft: draft);
+          stubSentRow(states: states, text: draft);
+
+          await tester.tap(find.byIcon(TablerRegular.arrow_up));
+          await tester.pump(const Duration(milliseconds: 16));
+          final landed = (height: measure(tester: tester).height, row: restingRow(tester));
+          await tester.pumpAndSettle();
+
+          expect(measure(tester: tester).height, landed.height);
+          expect(restingRow(tester), landed.row);
+        });
+      }
+
+      testWidgets("makes them one motion when dictating more onto a draft", (tester) async {
+        when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
+        when(
+          () => voiceTranscriptionService.amplitudeStream(session: voiceSession),
+        ).thenAnswer((_) => const Stream<double>.empty());
+        final transcript = Completer<String>();
+        when(
+          () => voiceTranscriptionService.stopAndTranscribe(session: voiceSession),
+        ).thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: transcript.future));
+        final states = await pumpPhone(tester: tester, draft: "draft");
+        stubSentRow(states: states, text: "draft and more");
+
+        final gesture = await tester.startGesture(tester.getCenter(find.text("Hold to talk more")));
+        await tester.pump(const Duration(milliseconds: 250));
+        await gesture.up();
+        await tester.pump(const Duration(milliseconds: 400));
+        transcript.complete("and more");
+        await expectOneMotion(tester: tester);
+      });
+
+      testWidgets("leaves clearing the text alone: the box holds through the fade", (tester) async {
+        await pumpPhone(tester: tester, draft: "draft");
+        final startHeight = measure(tester: tester).height;
+
+        tester.widget<EditableText>(find.byType(EditableText)).controller.text = "";
+        for (var frame = 0; frame < 14; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(measure(tester: tester).height, startHeight, reason: "frame $frame");
+          expect(composerClip(tester), Clip.none, reason: "frame $frame");
+        }
+        await tester.pumpAndSettle();
+
+        expect(measure(tester: tester).height, lessThan(startHeight));
+      });
+    });
+
     testWidgets("the first frame already clears the composer", (tester) async {
       tester.view.physicalSize = const Size(393, 852);
       tester.view.devicePixelRatio = 1;

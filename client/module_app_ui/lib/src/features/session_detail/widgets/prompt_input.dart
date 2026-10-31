@@ -23,6 +23,7 @@ import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
 import "prompt_editor_sheet.dart";
 import "sent_bubble_landing.dart";
+import "transcript_motion.dart";
 
 // WORKAROUND: dart_style 3.1.12 crashes on empty enhanced enum constructors in this file.
 // ignore: use_primary_constructors
@@ -282,6 +283,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// Carries the composer's layouts, and the input's focus, across the
   /// [AnimatedSize] that [_morphSize] adds or drops as reduced motion toggles.
   final GlobalKey _composerBodyKey = GlobalKey();
+
+  /// Whether a send has just left the keyboard down, so that the composer closes
+  /// with the send's row rising in the transcript. Lasts while the layout the
+  /// send left fades, see [_layoutComposerBody].
+  bool _closesWithSend = false;
 
   /// Images staged for the next submission. Not part of the persisted
   /// draft — they live and die with this composer.
@@ -603,6 +609,8 @@ class _PromptInputState() extends State<PromptInput> {
       // collapses back to its resting pill and the chat keeps its height.
       if (wasFocused || (!_isVoiceFirst && !fromDictation)) {
         _focusNode.requestFocus();
+      } else {
+        setState(() => _closesWithSend = true);
       }
       return true;
     } finally {
@@ -1233,11 +1241,44 @@ class _PromptInputState() extends State<PromptInput> {
   static AnimatedSwitcherTransitionBuilder get _fadeEachEntry =>
       (child, animation) => FadeTransition(opacity: animation, child: child);
 
-  /// Eases [child]'s size changes in the house timing. Reduced motion resizes
-  /// at once: a zero-duration [AnimatedSize] would re-dirty itself mid-layout.
-  Widget _morphSize({required AlignmentGeometry alignment, required Widget child}) => prefersReducedMotion(context)
+  /// Eases [child]'s size changes. Reduced motion resizes at once: a
+  /// zero-duration [AnimatedSize] would re-dirty itself mid-layout.
+  Widget _morphSize({
+    required AlignmentGeometry alignment,
+    required Duration duration,
+    required Curve curve,
+    required Widget child,
+  }) => prefersReducedMotion(context)
       ? child
-      : AnimatedSize(duration: _morphDuration, curve: _morphCurve, alignment: alignment, child: child);
+      : AnimatedSize(duration: duration, curve: curve, alignment: alignment, child: child);
+
+  /// Stacks the composer's layouts on its bottom edge. A layout fading out holds
+  /// the box open until it has gone, unless a send left it: then it gives up its
+  /// height at once and the box closes in the frame the send's row starts to rise.
+  ///
+  /// The same [Align] carries a layout from current to outgoing, so that it keeps
+  /// its state when it starts to fade.
+  Widget _layoutComposerBody({required Widget? currentChild, required List<Widget> previousChildren}) {
+    if (_closesWithSend && previousChildren.isEmpty) {
+      SchedulerBinding.instance.addPostFrameCallback((_) {
+        if (mounted) setState(() => _closesWithSend = false);
+      });
+    }
+    Widget place({required Widget child, required double heightFactor}) => Align(
+      key: child.key,
+      alignment: Alignment.bottomCenter,
+      widthFactor: 1,
+      heightFactor: heightFactor,
+      child: child,
+    );
+    return Stack(
+      alignment: Alignment.bottomCenter,
+      children: [
+        for (final child in previousChildren) place(child: child, heightFactor: _closesWithSend ? 0 : 1),
+        if (currentChild != null) place(child: currentChild, heightFactor: 1),
+      ],
+    );
+  }
 
   /// The composer only cares which state it is in. Live words change many times
   /// a second and show in their own layer, so they must not rebuild it.
@@ -1340,48 +1381,54 @@ class _PromptInputState() extends State<PromptInput> {
               body: PregoPageHalo(
                 radius: PregoRadius.x3l,
                 reachesLayerBottom: true,
-                child: _morphSize(
-                  alignment: Alignment.bottomCenter,
-                  child: AnimatedSwitcher(
-                    key: _composerBodyKey,
-                    duration: _morphDuration,
-                    switchInCurve: Curves.easeOut,
-                    switchOutCurve: Curves.easeIn,
-                    layoutBuilder: (currentChild, previousChildren) => Stack(
-                      alignment: Alignment.bottomCenter,
-                      children: [...previousChildren, ?currentChild],
-                    ),
-                    child: KeyedSubtree(
-                      // Layout changes cross-fade; voice interactions pin
-                      // [_layout], so a switch never happens mid-hold.
-                      key: ValueKey(_layout),
-                      child: switch (_layout) {
-                        ComposerSurfaceLayout.typing => _buildTypingComposer(context),
-                        ComposerSurfaceLayout.compact => _buildCompactComposer(context),
-                        ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
-                          context,
-                          hint: context.loc.sessionDetailHoldToTalk,
-                          // The stop button beside the keyboard one.
-                          extraTrailingWidth: widget.isBusy ? _actionButtonSize + PregoSpacing.sm : 0,
-                          trailing: Row(
-                            spacing: PregoSpacing.sm,
-                            children: [
-                              Tooltip(
-                                message: context.loc.sessionDetailTypeMessage,
-                                child: PregoButtonsSolid.iconOnly(
-                                  leadingIcon: TablerRegular.keyboard,
-                                  hierarchy: PregoButtonsSolidHierarchy.secondary,
-                                  size: PregoButtonsSolidSize.lg,
-                                  onPressed: _enterTypingMode,
+                // Only a layout a send left stands above the closing box: it is cut
+                // along the top of the surface it is fading from.
+                child: ClipRRect(
+                  clipBehavior: _closesWithSend ? Clip.antiAlias : Clip.none,
+                  borderRadius: const BorderRadius.vertical(top: Radius.circular(PregoRadius.x3l)),
+                  child: _morphSize(
+                    alignment: Alignment.bottomCenter,
+                    duration: _closesWithSend ? transcriptMotionDuration : _morphDuration,
+                    curve: _closesWithSend ? transcriptMotionCurve : _morphCurve,
+                    child: AnimatedSwitcher(
+                      key: _composerBodyKey,
+                      duration: _morphDuration,
+                      switchInCurve: Curves.easeOut,
+                      switchOutCurve: Curves.easeIn,
+                      layoutBuilder: (currentChild, previousChildren) =>
+                          _layoutComposerBody(currentChild: currentChild, previousChildren: previousChildren),
+                      child: KeyedSubtree(
+                        // Layout changes cross-fade; voice interactions pin
+                        // [_layout], so a switch never happens mid-hold.
+                        key: ValueKey(_layout),
+                        child: switch (_layout) {
+                          ComposerSurfaceLayout.typing => _buildTypingComposer(context),
+                          ComposerSurfaceLayout.compact => _buildCompactComposer(context),
+                          ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
+                            context,
+                            hint: context.loc.sessionDetailHoldToTalk,
+                            // The stop button beside the keyboard one.
+                            extraTrailingWidth: widget.isBusy ? _actionButtonSize + PregoSpacing.sm : 0,
+                            trailing: Row(
+                              spacing: PregoSpacing.sm,
+                              children: [
+                                Tooltip(
+                                  message: context.loc.sessionDetailTypeMessage,
+                                  child: PregoButtonsSolid.iconOnly(
+                                    leadingIcon: TablerRegular.keyboard,
+                                    hierarchy: PregoButtonsSolidHierarchy.secondary,
+                                    size: PregoButtonsSolidSize.lg,
+                                    onPressed: _enterTypingMode,
+                                  ),
                                 ),
-                              ),
-                              // The resting voice pill has no send affordance,
-                              // but stopping in-flight work must stay reachable.
-                              if (widget.isBusy) _buildPrimaryActionButton(context),
-                            ],
+                                // The resting voice pill has no send affordance,
+                                // but stopping in-flight work must stay reachable.
+                                if (widget.isBusy) _buildPrimaryActionButton(context),
+                              ],
+                            ),
                           ),
-                        ),
-                      },
+                        },
+                      ),
                     ),
                   ),
                 ),
@@ -2512,6 +2559,8 @@ class _PromptInputState() extends State<PromptInput> {
     return ClipRect(
       child: _morphSize(
         alignment: AlignmentDirectional.centerStart,
+        duration: _morphDuration,
+        curve: _morphCurve,
         child: visible ? child : const SizedBox.shrink(),
       ),
     );

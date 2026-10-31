@@ -94,6 +94,10 @@ defaults and queued client sends coherent.
   down as it rises, and its bubble is held hidden until they land (see `voice-input.md`).
 - The newest row keeps its gap to the composer on every frame the bottom controls change height: through a send, a
   composer growing or shrinking with its text, a needs-you card coming or going, and the first frame of the transcript.
+- A send with the keyboard down, typed or dictated onto a draft, closes the composer as the send's row rises, on the
+  rise's timing: the rows above move one way and stop with it, with no drop afterwards. The layout it leaves fades inside
+  the closing box, cut along its top. Under reduced motion the composer lands in one frame. A layout change without a
+  send, such as clearing the text, still holds the box's height through the cross-fade.
 - DeepSeek preserves that bridge-facing acceptance contract: the shared ACP
   plugin enqueues and returns while the adapter's `session/prompt` response
   remains pending through owned work, projected output, and durability quiesce.
@@ -996,6 +1000,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   background around its rounded or translucent edges.
 - The transcript trails the composer's height by a frame: the newest row steps too far on a send, then back after a
   slow frame, or the composer closes over it for a frame as it grows.
+- The chat rises for a send with the keyboard down and then comes back down as the composer shrinks, or the layout the
+  send left paints above the closing box or overflows it.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.
