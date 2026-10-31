@@ -113,6 +113,17 @@ class const SentBubbleArrival({super.key, required final bool arriving, required
   bool updateShouldNotify(SentBubbleArrival oldWidget) => false;
 }
 
+/// Tells a composer under it how far the list's rows reach past its column on each
+/// side, as the two have their own widths on a wide pane. Words sent where no row
+/// is built yet have only this to find the row's edges by.
+class const SentBubbleRowReach({super.key, required final double reach, required super.child}) extends InheritedWidget {
+  static double of({required BuildContext context}) =>
+      context.getInheritedWidgetOfExactType<SentBubbleRowReach>()?.reach ?? 0;
+
+  @override
+  bool updateShouldNotify(SentBubbleRowReach oldWidget) => false;
+}
+
 /// A place words can land on: it hides what it wraps while they are on their way
 /// and says where it is. Hiding only skips the paint, so that nothing rebuilds or
 /// moves when the words arrive.
