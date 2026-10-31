@@ -48,7 +48,7 @@ void main() {
   late VoiceTranscriptionService service;
   late VoiceTranscriptionSession session;
   late List<VoiceLiveEvent> events;
-  VoiceMode mode = const VoiceModeLive(presentation: VoiceLivePresentation.panel);
+  VoiceMode mode = const VoiceModeLive();
 
   setUpAll(() {
     registerFallbackValue(_artifact);
@@ -86,7 +86,7 @@ void main() {
   setUp(() {
     channel = FakeRealtimeVoiceChannel();
     events = [];
-    mode = const VoiceModeLive(presentation: VoiceLivePresentation.panel);
+    mode = const VoiceModeLive();
     frames = StreamController<Uint8List>();
     repository = _MockVoiceRepository();
     voiceModeRepository = _MockVoiceModeRepository();
@@ -171,7 +171,7 @@ void main() {
 
       verify(capture.start).called(1);
       verifyNever(capture.startPcmStream);
-      expect(service.livePresentation(session: session), isNull);
+      expect(service.isLive(session: session), isFalse);
       load.complete();
     });
 
@@ -231,7 +231,7 @@ void main() {
 
     test("the switch changing mid-dictation leaves it live, and the next hold follows the switch", () async {
       await holdStreaming();
-      expect(service.livePresentation(session: session), VoiceLivePresentation.panel);
+      expect(service.isLive(session: session), isTrue);
 
       mode = const VoiceModeAfterRecording();
       final result = service.stopAndTranscribe(session: session);
@@ -242,27 +242,20 @@ void main() {
 
       await service.start(session: session);
       verify(capture.start).called(1);
-      expect(service.livePresentation(session: session), isNull);
+      expect(service.isLive(session: session), isFalse);
     });
 
     test("the switch turning live mid-recording leaves it recording", () async {
       session = await createSession();
       mode = const VoiceModeAfterRecording();
       await service.start(session: session);
-      mode = const VoiceModeLive(presentation: VoiceLivePresentation.focus);
+      mode = const VoiceModeLive();
 
       final result = await service.stopAndTranscribe(session: session);
 
       expect(result.mode, VoiceDictationMode.afterRecording);
       expect(result.outcome, VoiceDictationOutcome.finished);
       verifyNever(capture.startPcmStream);
-    });
-
-    test("the presentation comes from the mode at the hold", () async {
-      mode = const VoiceModeLive(presentation: VoiceLivePresentation.focus);
-      await holdLive();
-
-      expect(service.livePresentation(session: session), VoiceLivePresentation.focus);
     });
   });
 
@@ -756,7 +749,7 @@ void main() {
     void expectFellBack() {
       expect(events.whereType<VoiceLiveFellBack>(), hasLength(1));
       verify(capture.start).called(1);
-      expect(service.livePresentation(session: session), isNull);
+      expect(service.isLive(session: session), isFalse);
     }
 
     test("when the socket cannot open", () async {
@@ -827,7 +820,7 @@ void main() {
       expect(channel.sinkCloseCode, isNotNull);
       expect(sentAfterStart(), isEmpty);
       expect(events, isEmpty);
-      expect(service.livePresentation(session: session), isNull);
+      expect(service.isLive(session: session), isFalse);
       await expectRecordedResult();
     });
 
@@ -1185,7 +1178,7 @@ void main() {
         await pumpEventQueue();
 
         expect(sentAfterStart(), [_frame(fill: 1), _frame(fill: 2), _frame(fill: 3)]);
-        expect(service.livePresentation(session: session), VoiceLivePresentation.panel);
+        expect(service.isLive(session: session), isTrue);
       });
 
       test("words and the release work as they always have", () async {
@@ -1359,7 +1352,7 @@ void main() {
         async.flushMicrotasks();
         async.elapse(const Duration(seconds: 1));
 
-        expect(service.livePresentation(session: created), isNotNull);
+        expect(service.isLive(session: created), isTrue);
         async.elapse(maxRecordingDuration);
         expect(limitReached, 1);
       });
@@ -1384,7 +1377,7 @@ void main() {
       verify(capture.cancel).called(1);
       expect(channel.sinkCloseCode, isNotNull);
       expect(sentAfterStart(), isEmpty);
-      expect(service.livePresentation(session: session), isNull);
+      expect(service.isLive(session: session), isFalse);
     });
 
     test("while the socket connects closes it as soon as it opens", () async {
@@ -1446,7 +1439,7 @@ void main() {
       frames = StreamController<Uint8List>();
       await service.start(session: session);
 
-      expect(service.livePresentation(session: session), VoiceLivePresentation.panel);
+      expect(service.isLive(session: session), isTrue);
     });
   });
 

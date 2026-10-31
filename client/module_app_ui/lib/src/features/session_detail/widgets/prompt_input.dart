@@ -335,6 +335,7 @@ class _PromptInputState() extends State<PromptInput> {
       }
     }
     _syncSurfaceStyle();
+    _releaseHintHeight = _measureReleaseHintHeight();
   }
 
   @override
@@ -1555,7 +1556,7 @@ class _PromptInputState() extends State<PromptInput> {
     if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return body;
     return ComposerLiveWords(
       cancelProgress: _cancelDragProgress,
-      hint: _buildReleaseHint(context),
+      hintHeight: _releaseHintHeight,
       box: _wordsBox,
       boxStyle: _fieldStyle(context),
       child: body,
@@ -1565,6 +1566,24 @@ class _PromptInputState() extends State<PromptInput> {
   TextStyle _fieldStyle(BuildContext context) {
     final prego = context.prego;
     return prego.textTheme.textSm.regular.copyWith(color: prego.colors.textPrimary);
+  }
+
+  /// The design floats the helper spacing-3xl above the pill, less the padding
+  /// the tap-region below already contributes.
+  static const _releaseHintPadding = EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl);
+
+  /// The height of [_buildReleaseHint], which stays one line whatever it says.
+  double _releaseHintHeight = 0;
+
+  double _measureReleaseHintHeight() {
+    final line = TextPainter(
+      text: TextSpan(style: context.prego.textTheme.textMd.regular),
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
+    );
+    final height = line.preferredLineHeight;
+    line.dispose();
+    return _releaseHintPadding.vertical + height;
   }
 
   /// The floating helper above the recording pill. Follows the drag: what a
@@ -1578,9 +1597,7 @@ class _PromptInputState() extends State<PromptInput> {
         : loc.voiceReleaseToSend;
 
     return Padding(
-      // The design floats the helper spacing-3xl above the pill, less the
-      // padding the tap-region below already contributes.
-      padding: const EdgeInsetsDirectional.only(top: PregoSpacing.xs, bottom: PregoSpacing.xl),
+      padding: _releaseHintPadding,
       child: Center(
         // The halo hugs the label, not the full-width strip.
         child: PregoPageHalo(

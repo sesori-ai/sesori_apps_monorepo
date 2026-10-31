@@ -14,14 +14,7 @@ class VoiceModeRepository({required final VoiceModeConfigApi _configApi}) {
   /// Reads the switch into [mode]. This can take seconds on a phone, so a
   /// recording path must not await it.
   Future<void> load() async {
-    final values = await _configApi.fetchValues();
-    _mode = values.liveEnabled
-        ? VoiceModeLive(presentation: _parsePresentation(value: values.presentation))
-        : const VoiceModeAfterRecording();
+    final liveEnabled = await _configApi.fetchLiveEnabled();
+    _mode = liveEnabled ? const VoiceModeLive() : const VoiceModeAfterRecording();
   }
 }
-
-VoiceLivePresentation _parsePresentation({required String? value}) => switch (value) {
-  "panel" => VoiceLivePresentation.panel,
-  _ => VoiceLivePresentation.focus,
-};

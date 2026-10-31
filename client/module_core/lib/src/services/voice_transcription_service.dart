@@ -126,11 +126,8 @@ class VoiceTranscriptionService({
   Stream<VoiceLiveEvent> liveEventStream({required VoiceTranscriptionSession session}) =>
       session._liveEventsController.stream;
 
-  /// Where the running dictation shows its words, or null unless it is running live.
-  VoiceLivePresentation? livePresentation({required VoiceTranscriptionSession session}) {
-    final state = session._state;
-    return state is _VoiceSessionLiveRecording ? state.presentation : null;
-  }
+  /// Whether the dictation is running live.
+  bool isLive({required VoiceTranscriptionSession session}) => session._state is _VoiceSessionLiveRecording;
 
   Future<void> prewarm({required VoiceTranscriptionSession session}) {
     if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) {
@@ -192,8 +189,8 @@ class VoiceTranscriptionService({
       switch (mode) {
         case VoiceModeAfterRecording():
           await _startFileCapture(session: session, generation: generation, fellBackFromLive: false);
-        case VoiceModeLive(:final presentation):
-          await _startLiveCapture(session: session, generation: generation, presentation: presentation);
+        case VoiceModeLive():
+          await _startLiveCapture(session: session, generation: generation);
       }
     } on VoiceCapturePermissionDenied catch (error) {
       _restoreIdleAfterFailure(session: session, generation: generation);
@@ -229,11 +226,7 @@ class VoiceTranscriptionService({
   /// long the microphone takes. Whatever stops the dictation before the run takes
   /// the socket closes it. A microphone that refuses to stream may still record a
   /// file (D21). A denied permission is not that, and goes up as itself.
-  Future<void> _startLiveCapture({
-    required VoiceTranscriptionSession session,
-    required int generation,
-    required VoiceLivePresentation presentation,
-  }) async {
+  Future<void> _startLiveCapture({required VoiceTranscriptionSession session, required int generation}) async {
     final captureSession = session._captureSession;
     _logProjectGlossaryUse(session: session);
     final connecting = _repository.openRealtime(
@@ -267,7 +260,7 @@ class VoiceTranscriptionService({
       frames: frames,
       connecting: connecting,
     );
-    session._state = _VoiceSessionLiveRecording(run: run, presentation: presentation);
+    session._state = _VoiceSessionLiveRecording(run: run);
     _startMaxDurationTimer(session: session);
     unawaited(_handleLiveEndingWhileHolding(session: session, generation: generation, run: run));
   }
@@ -719,10 +712,7 @@ final class const _VoiceSessionStarting() extends _VoiceSessionState;
 /// [fellBackFromLive] means the first words may be missing (D33).
 final class const _VoiceSessionRecording({required final bool fellBackFromLive}) extends _VoiceSessionState;
 
-final class const _VoiceSessionLiveRecording({
-  required final LiveDictationRun run,
-  required final VoiceLivePresentation presentation,
-}) extends _VoiceSessionState;
+final class const _VoiceSessionLiveRecording({required final LiveDictationRun run}) extends _VoiceSessionState;
 
 final class const _VoiceSessionLiveFinishing({required final LiveDictationRun run}) extends _VoiceSessionState;
 

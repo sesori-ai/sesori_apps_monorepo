@@ -15,8 +15,6 @@ import "package:theme_prego/module_prego.dart";
 
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
-const _focus = VoiceLivePresentation.focus;
-const _panel = VoiceLivePresentation.panel;
 const _releaseToSend = "Release to send · slide up to cancel";
 
 /// Enough to wrap well past any room the layer has at the test window's size.
@@ -25,8 +23,10 @@ final String _longText = List.filled(240, "word ").join();
 const _screen = Size(800, 600);
 
 final _words = find.byType(LiveWordsText);
-final _dim = find.byKey(composerLiveWordsDimKey);
 final _paragraph = find.descendant(of: _words, matching: find.byType(RichText));
+
+/// The panel's surface around the words.
+final _card = find.ancestor(of: _words, matching: find.byType(DecoratedBox)).first;
 
 /// The fade the slide-out scrubs; the one nearest the words.
 AnimatedOpacity _scrub(WidgetTester tester) =>
@@ -42,9 +42,6 @@ double _wordsTravel(WidgetTester tester) => tester
     .transform
     .getTranslation()
     .y;
-
-double _dimOpacity(WidgetTester tester) =>
-    tester.widget<FadeTransition>(find.descendant(of: _dim, matching: find.byType(FadeTransition))).opacity.value;
 
 /// The alpha [word] paints with.
 double _alphaOf(WidgetTester tester, {required String word}) {
@@ -87,14 +84,12 @@ void main() {
 
   Future<void> live({
     required WidgetTester tester,
-    required VoiceLivePresentation presentation,
     String confirmed = "",
     String provisional = "",
   }) => emit(
     tester: tester,
     state: VoiceInputState.liveRecording(
       words: LiveWords(confirmed: confirmed, provisional: provisional),
-      presentation: presentation,
     ),
   );
 
@@ -103,174 +98,15 @@ void main() {
   /// explicitly.
   Future<void> settle(WidgetTester tester) => tester.pump(const Duration(milliseconds: 500));
 
-  group("focus", () {
-    testWidgets("dims the screen from the first frame of listening, before any word", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      expect(_dim, findsNothing);
-
-      await live(tester: tester, presentation: _focus);
-      expect(_dimOpacity(tester), lessThan(0.1));
-
-      await tester.pump(const Duration(milliseconds: 130));
-      final partWay = _dimOpacity(tester);
-      expect(partWay, inExclusiveRange(0.1, 1));
-
-      await tester.pump(const Duration(milliseconds: 130));
-      expect(_dimOpacity(tester), 1);
-    });
-
-    testWidgets("words never move or resize the composer, and a word never rebuilds it", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus);
-      await settle(tester);
-
-      final body = find.byType(PregoVoiceWaveform);
-      final rect = tester.getRect(body);
-      final waveform = tester.widget(body);
-
-      await live(tester: tester, presentation: _focus, confirmed: _longText, provisional: "and more");
-      await settle(tester);
-
-      expect(tester.getRect(body), rect);
-      // The same instance means the composer's build never ran for the words.
-      expect(identical(tester.widget(body), waveform), isTrue);
-    });
-
-    testWidgets("words reach only as far as the composer's own width, under the status bar", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: _longText);
-      await settle(tester);
-
-      final clip = tester.getRect(find.ancestor(of: _paragraph, matching: find.byType(ShaderMask)));
-      final composer = tester.getRect(find.byType(ComposerLiveWords));
-      expect(clip.left, greaterThanOrEqualTo(composer.left));
-      expect(clip.right, lessThanOrEqualTo(composer.right));
-      expect(clip.top, greaterThanOrEqualTo(0));
-      expect(clip.bottom, lessThan(composer.top));
-    });
-
-    testWidgets("the hint is redrawn exactly over the composer's own, and goes at the release", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "some words");
-      await settle(tester);
-
-      final hints = find.text(_releaseToSend);
-      expect(hints, findsNWidgets(2));
-      expect(tester.getRect(hints.first), tester.getRect(hints.last));
-
-      AnimatedOpacity overlayHint() => tester.widget(
-        find.ancestor(of: find.text(_releaseToSend).last, matching: find.byType(AnimatedOpacity)).first,
-      );
-      expect(overlayHint().opacity, 1);
-      final before = tester.getTopLeft(_paragraph);
-
-      await emit(
-        tester: tester,
-        state: const VoiceInputState.liveFinishing(
-          words: LiveWords(confirmed: "some words", provisional: ""),
-          presentation: _focus,
-        ),
-      );
-      await settle(tester);
-
-      expect(tester.widget<AnimatedOpacity>(_hintSlot()).opacity, 0);
-      expect(tester.getTopLeft(_paragraph), before);
-    });
-
-    testWidgets("touches pass through the layer, and a screen reader never gets the words", (tester) async {
-      var chatTaps = 0;
-      await tester.pumpWidget(
-        _ComposerApp(
-          voiceCubit: voiceCubit,
-          presentation: ComposerPresentation.touch,
-          home: (composer) => Scaffold(
-            body: Stack(
-              children: [
-                Positioned.fill(
-                  child: GestureDetector(onTap: () => chatTaps++, behavior: HitTestBehavior.opaque),
-                ),
-                Align(alignment: Alignment.bottomCenter, child: composer),
-              ],
-            ),
-          ),
-        ),
-      );
-      await settle(tester);
-      await live(tester: tester, presentation: _focus, confirmed: _longText);
-      await settle(tester);
-
-      await tester.tapAt(tester.getCenter(_dim));
-      await tester.pump();
-      expect(chatTaps, 1);
-      expect(find.ancestor(of: _words, matching: find.byType(ExcludeSemantics)), findsWidgets);
-    });
-
-    testWidgets("reads larger on a pointer shell", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "words");
-      expect(tester.widget<LiveWordsText>(_words).style.fontSize, 23);
-
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, presentation: ComposerPresentation.pointer);
-      await live(tester: tester, presentation: _focus, confirmed: "words");
-      expect(tester.widget<LiveWordsText>(_words).style.fontSize, 25);
-    });
-
-    testWidgets("dims only the pane, clear of the composer's column down to the bottom", (tester) async {
-      await tester.pumpWidget(
-        _ComposerApp(
-          voiceCubit: voiceCubit,
-          presentation: ComposerPresentation.pointer,
-          home: (composer) => Scaffold(
-            body: Row(
-              children: [
-                const SizedBox(width: 200),
-                Expanded(
-                  child: Scaffold(
-                    backgroundColor: const Color(0xFF123456),
-                    body: Center(
-                      child: SizedBox(
-                        width: 400,
-                        child: Align(alignment: Alignment.bottomCenter, child: composer),
-                      ),
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      );
-      await settle(tester);
-      await live(tester: tester, presentation: _focus);
-      await settle(tester);
-
-      expect(tester.getTopLeft(_dim).dx, 200);
-      expect(tester.getSize(_dim), const Size(600, 600));
-
-      final body = tester.getRect(find.byType(ComposerLiveWords)).shift(const Offset(-200, 0));
-      final painter = tester.renderObject(find.descendant(of: _dim, matching: find.byType(CustomPaint)));
-      expect(
-        painter,
-        paints..path(
-          // The gutters beside the composer and the chat above it dim; the
-          // composer and the strip below it stay clear.
-          includes: [Offset(body.left - 10, body.center.dy), Offset(body.center.dx, body.top - 10)],
-          excludes: [body.center, Offset(body.center.dx, 599)],
-          color: const Color(0xFF123456),
-        ),
-      );
-    });
-  });
-
   group("words", () {
     testWidgets("tentative words fade in dim, then brighten in place", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, provisional: "maybe");
+      await live(tester: tester, provisional: "maybe");
       await settle(tester);
       final top = _paragraphTop(tester);
       expect(_alphaOf(tester, word: "maybe"), closeTo(0.46, 0.01));
 
-      await live(tester: tester, presentation: _focus, confirmed: "maybe");
+      await live(tester: tester, confirmed: "maybe");
       await tester.pump(const Duration(milliseconds: 140));
       expect(_alphaOf(tester, word: "maybe"), inExclusiveRange(0.46, 1));
       await tester.pump(const Duration(milliseconds: 150));
@@ -280,10 +116,10 @@ void main() {
 
     testWidgets("a new word fades up to its standing over 170 ms, and leaves earlier ones alone", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "first");
+      await live(tester: tester, confirmed: "first");
       await settle(tester);
 
-      await live(tester: tester, presentation: _focus, confirmed: "first ", provisional: "second");
+      await live(tester: tester, confirmed: "first ", provisional: "second");
       await tester.pump(const Duration(milliseconds: 60));
       expect(_alphaOf(tester, word: "second"), inExclusiveRange(0, 0.46));
       expect(_alphaOf(tester, word: "first"), 1);
@@ -294,17 +130,17 @@ void main() {
 
     testWidgets("a dim word the server changes stays as dim, with no fade from nothing", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, provisional: "there");
+      await live(tester: tester, provisional: "there");
       await settle(tester);
 
-      await live(tester: tester, presentation: _focus, provisional: "their");
+      await live(tester: tester, provisional: "their");
       // No fade from nothing: at once the new word is as bright as the old one.
       expect(_alphaOf(tester, word: "their"), closeTo(0.46, 0.01));
     });
 
     testWidgets("the release brightens what was still tentative", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "said ", provisional: "maybe");
+      await live(tester: tester, confirmed: "said ", provisional: "maybe");
       await settle(tester);
       expect(_alphaOf(tester, word: "maybe"), closeTo(0.46, 0.01));
 
@@ -312,7 +148,6 @@ void main() {
         tester: tester,
         state: const VoiceInputState.liveFinishing(
           words: LiveWords(confirmed: "said ", provisional: "maybe"),
-          presentation: _focus,
         ),
       );
       await tester.pump(const Duration(milliseconds: 300));
@@ -322,7 +157,7 @@ void main() {
     testWidgets("a wrap rises the words smoothly, and the newest line ends up at the bottom", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
       const lines = "word word word word word word word word word word word word word word word word word word";
-      await live(tester: tester, presentation: _focus, confirmed: lines);
+      await live(tester: tester, confirmed: lines);
       await settle(tester);
 
       final style = tester.widget<LiveWordsText>(_words).style;
@@ -333,7 +168,7 @@ void main() {
       expect(bottom, clipBottom);
 
       // Enough words for one more line.
-      await live(tester: tester, presentation: _focus, confirmed: "$lines $lines");
+      await live(tester: tester, confirmed: "$lines $lines");
       final lineCount = (tester.getSize(_paragraph).height / lineHeight).round();
       final growth = tester.getSize(_paragraph).height - (bottom - top);
       expect(lineCount, greaterThan(1));
@@ -352,7 +187,7 @@ void main() {
 
     testWidgets("words too long for the room keep the newest at the bottom, the oldest cut off", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: _longText);
+      await live(tester: tester, confirmed: _longText);
       await settle(tester);
 
       final clip = tester.getRect(find.ancestor(of: _paragraph, matching: find.byType(ShaderMask)));
@@ -363,12 +198,12 @@ void main() {
 
     testWidgets("reduced motion shows words at once and rises nothing", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit, disableAnimations: true);
-      await live(tester: tester, presentation: _focus, confirmed: "said ", provisional: "maybe");
+      await live(tester: tester, confirmed: "said ", provisional: "maybe");
       expect(_alphaOf(tester, word: "said"), 1);
       expect(_alphaOf(tester, word: "maybe"), closeTo(0.46, 0.01));
 
       final clip = find.ancestor(of: _paragraph, matching: find.byType(ShaderMask));
-      await live(tester: tester, presentation: _focus, confirmed: _longText);
+      await live(tester: tester, confirmed: _longText);
       await tester.pump();
       expect(tester.getBottomLeft(_paragraph).dy, tester.getBottomLeft(clip).dy);
 
@@ -387,9 +222,9 @@ void main() {
 
     testWidgets("a word unchanged for a second eases bright, and later words wait their own", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await live(tester: tester, provisional: "alpha");
       await settle(tester);
-      await live(tester: tester, presentation: _focus, provisional: "alpha bravo");
+      await live(tester: tester, provisional: "alpha bravo");
       await tester.pump(const Duration(milliseconds: 490));
       expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
 
@@ -408,13 +243,13 @@ void main() {
 
     testWidgets("a changed word and the words after it ease dim, and earn their second again", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, provisional: "alpha bravo charlie");
+      await live(tester: tester, provisional: "alpha bravo charlie");
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1010));
       await tester.pump(fadeHalf + fadeRest);
       expect(_alphaOf(tester, word: "charlie"), 1);
 
-      await live(tester: tester, presentation: _focus, provisional: "alpha BRAVO charlie");
+      await live(tester: tester, provisional: "alpha BRAVO charlie");
       await tester.pump(fadeHalf);
       expect(_alphaOf(tester, word: "alpha"), 1);
       expect(_alphaOf(tester, word: "BRAVO"), inExclusiveRange(0.46, 1));
@@ -433,7 +268,7 @@ void main() {
     testWidgets("a word still arriving stays dim however long it takes", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
       for (final partial in const ["ta", "tak", "take", "taken"]) {
-        await live(tester: tester, presentation: _focus, provisional: partial);
+        await live(tester: tester, provisional: partial);
         await tester.pump(const Duration(milliseconds: 600));
         expect(_alphaOf(tester, word: partial), closeTo(0.46, 0.01));
       }
@@ -441,14 +276,14 @@ void main() {
 
     testWidgets("a word gaining its space hasn't changed, nor has one turning final", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await live(tester: tester, provisional: "alpha");
       await settle(tester);
-      await live(tester: tester, presentation: _focus, provisional: " alpha bravo");
+      await live(tester: tester, provisional: " alpha bravo");
       await tester.pump(const Duration(milliseconds: 510));
       await tester.pump(fadeHalf + fadeRest);
       expect(_alphaOf(tester, word: "alpha"), 1);
 
-      await live(tester: tester, presentation: _focus, confirmed: "alpha ", provisional: "bravo");
+      await live(tester: tester, confirmed: "alpha ", provisional: "bravo");
       expect(_alphaOf(tester, word: "alpha"), 1);
       expect(_alphaOf(tester, word: "bravo"), closeTo(0.46, 0.01));
     });
@@ -457,22 +292,22 @@ void main() {
       tester,
     ) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, provisional: "alpha bravo charlie");
+      await live(tester: tester, provisional: "alpha bravo charlie");
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 1010));
       await tester.pump(fadeHalf + fadeRest);
-      await live(tester: tester, presentation: _focus, provisional: "alpha bravo charlie delta");
+      await live(tester: tester, provisional: "alpha bravo charlie delta");
       await tester.pump(const Duration(milliseconds: 500));
       final deltaBefore = _alphaOf(tester, word: "delta");
 
-      await live(tester: tester, presentation: _focus, confirmed: "alpha bra", provisional: "vo charlie delta");
+      await live(tester: tester, confirmed: "alpha bra", provisional: "vo charlie delta");
       await tester.pump(fadeHalf);
       expect(_alphaOf(tester, word: "bravo"), 1);
       expect(_alphaOf(tester, word: "charlie"), 1);
       expect(_alphaOf(tester, word: "delta"), deltaBefore);
 
       await tester.pump(fadeRest + const Duration(milliseconds: 300));
-      await live(tester: tester, presentation: _focus, confirmed: "alpha bravo charlie delta");
+      await live(tester: tester, confirmed: "alpha bravo charlie delta");
       await tester.pump(fadeHalf + fadeRest);
       expect(_alphaOf(tester, word: "delta"), 1);
     });
@@ -480,9 +315,9 @@ void main() {
     testWidgets("brightening moves no text and rebuilds nothing but the words", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
       final body = find.byType(PregoVoiceWaveform);
-      await live(tester: tester, presentation: _focus, provisional: _longText);
+      await live(tester: tester, provisional: _longText);
       await settle(tester);
-      await live(tester: tester, presentation: _focus, provisional: "$_longText and more");
+      await live(tester: tester, provisional: "$_longText and more");
       await settle(tester);
       expect(_alphaOf(tester, word: "more"), closeTo(0.46, 0.01));
 
@@ -507,7 +342,7 @@ void main() {
 
     testWidgets("dim words stay dim as a cancel takes them away", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await live(tester: tester, provisional: "alpha");
       await tester.pump(const Duration(milliseconds: 900));
 
       await emit(tester: tester, state: const VoiceInputState.cancelling());
@@ -520,27 +355,16 @@ void main() {
       expect(_words, findsNothing);
     });
 
-    testWidgets("the panel's words settle too", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _panel, provisional: "alpha");
-      await settle(tester);
-      expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
-
-      await tester.pump(const Duration(milliseconds: 510));
-      await tester.pump(fadeHalf + fadeRest);
-      expect(_alphaOf(tester, word: "alpha"), 1);
-    });
-
     testWidgets("reduced motion brightens and dims at once", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit, disableAnimations: true);
-      await live(tester: tester, presentation: _focus, provisional: "alpha");
+      await live(tester: tester, provisional: "alpha");
       await tester.pump(const Duration(milliseconds: 900));
       expect(_alphaOf(tester, word: "alpha"), closeTo(0.46, 0.01));
 
       await tester.pump(const Duration(milliseconds: 110));
       expect(_alphaOf(tester, word: "alpha"), 1);
 
-      await live(tester: tester, presentation: _focus, provisional: "ALPHA");
+      await live(tester: tester, provisional: "ALPHA");
       expect(_alphaOf(tester, word: "ALPHA"), closeTo(0.46, 0.01));
     });
 
@@ -553,7 +377,7 @@ void main() {
                 child: LiveWordsText(
                   words: words,
                   settled: settled,
-                  maxLines: null,
+                  maxLines: 5,
                   style: const TextStyle(fontSize: 20, color: Color(0xFF000000)),
                 ),
               ),
@@ -614,15 +438,13 @@ void main() {
   });
 
   group("panel", () {
-    testWidgets("opens with the first word, rising, and never dims", (tester) async {
+    testWidgets("opens with the first word, rising", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _panel);
+      await live(tester: tester);
       await settle(tester);
       expect(_words, findsNothing);
-      expect(_dim, findsNothing);
 
-      await live(tester: tester, presentation: _panel, provisional: "first");
-      expect(_dim, findsNothing);
+      await live(tester: tester, provisional: "first");
       expect(_wordsTravel(tester), greaterThan(4));
       expect(_wordsPresence(tester), lessThan(0.2));
 
@@ -633,29 +455,132 @@ void main() {
 
     testWidgets("grows to five lines, then holds its height as older lines scroll away", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _panel, confirmed: "one line");
+      await live(tester: tester, confirmed: "one line");
       await settle(tester);
       final clip = find.ancestor(of: _paragraph, matching: find.byType(ShaderMask));
       final style = tester.widget<LiveWordsText>(_words).style;
       final oneLine = tester.getSize(clip).height;
       expect(oneLine, moreOrLessEquals((style.fontSize ?? 0) * (style.height ?? 0), epsilon: 1));
 
-      await live(tester: tester, presentation: _panel, confirmed: _longText);
+      await live(tester: tester, confirmed: _longText);
       await settle(tester);
       expect(tester.getSize(clip).height, moreOrLessEquals(oneLine * 5, epsilon: 1));
       expect(tester.getBottomLeft(_paragraph).dy, tester.getBottomLeft(clip).dy);
       expect(tester.getTopLeft(_paragraph).dy, lessThan(tester.getTopLeft(clip).dy));
     });
 
-    testWidgets("leaves the composer's own hint showing and reserves its room", (tester) async {
+    for (final scale in const [1.0, 2.0]) {
+      testWidgets("keeps clear of the composer's own hint at text x$scale", (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = scale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+        await live(tester: tester, confirmed: "words");
+        await settle(tester);
+
+        final hint = find.text(_releaseToSend);
+        expect(hint, findsOneWidget);
+        expect(tester.getBottomLeft(_card).dy, lessThan(tester.getTopLeft(hint).dy));
+      });
+    }
+
+    testWidgets("the release leaves the words where they stand as the hint goes", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _panel, confirmed: "words");
+      await live(tester: tester, confirmed: "some words");
+      await settle(tester);
+      final before = _paragraphTop(tester);
+
+      await emit(
+        tester: tester,
+        state: const VoiceInputState.liveFinishing(
+          words: LiveWords(confirmed: "some words", provisional: ""),
+        ),
+      );
       await settle(tester);
 
-      final hints = find.text(_releaseToSend);
-      expect(hints, findsNWidgets(2));
-      expect(tester.widget<AnimatedOpacity>(_hintSlot()).opacity, 0);
-      expect(tester.getBottomLeft(find.byType(LiveWordsText)).dy, lessThan(tester.getTopLeft(hints.first).dy));
+      expect(_paragraphTop(tester), before);
+    });
+
+    testWidgets("words never move or resize the composer, and a word never rebuilds it", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, confirmed: "words");
+      await settle(tester);
+
+      final body = find.byType(PregoVoiceWaveform);
+      final rect = tester.getRect(body);
+      final waveform = tester.widget(body);
+
+      await live(tester: tester, confirmed: _longText, provisional: "and more");
+      await settle(tester);
+
+      expect(tester.getRect(body), rect);
+      // The same instance means the composer's build never ran for the words.
+      expect(identical(tester.widget(body), waveform), isTrue);
+    });
+
+    testWidgets("words reach only as far as the composer's own width", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, confirmed: _longText);
+      await settle(tester);
+
+      final card = tester.getRect(_card);
+      final composer = tester.getRect(find.byType(ComposerLiveWords));
+      expect(card.left, composer.left);
+      expect(card.right, composer.right);
+      expect(card.bottom, lessThan(composer.top));
+    });
+
+    testWidgets("a short window keeps the words under the status bar", (tester) async {
+      tester.view.physicalSize = const Size(800, 240);
+      tester.view.devicePixelRatio = 1;
+      tester.view.padding = const FakeViewPadding(top: 47);
+      addTearDown(tester.view.reset);
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, confirmed: _longText);
+      await settle(tester);
+
+      expect(tester.getTopLeft(_card).dy, 47 + PregoSpacing.md);
+      expect(
+        tester.getBottomLeft(_paragraph).dy,
+        tester.getBottomLeft(find.ancestor(of: _paragraph, matching: find.byType(ShaderMask))).dy,
+      );
+    });
+
+    testWidgets("touches pass through the layer, and a screen reader never gets the words", (tester) async {
+      var chatTaps = 0;
+      await tester.pumpWidget(
+        _ComposerApp(
+          voiceCubit: voiceCubit,
+          presentation: ComposerPresentation.touch,
+          home: (composer) => Scaffold(
+            body: Stack(
+              children: [
+                Positioned.fill(
+                  child: GestureDetector(onTap: () => chatTaps++, behavior: HitTestBehavior.opaque),
+                ),
+                Align(alignment: Alignment.bottomCenter, child: composer),
+              ],
+            ),
+          ),
+        ),
+      );
+      await settle(tester);
+      await live(tester: tester, confirmed: _longText);
+      await settle(tester);
+
+      await tester.tapAt(tester.getCenter(_card));
+      await tester.pump();
+      expect(chatTaps, 1);
+      expect(find.ancestor(of: _words, matching: find.byType(ExcludeSemantics)), findsWidgets);
+    });
+
+    testWidgets("reads at one size on a touch and a pointer shell", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, confirmed: "words");
+      expect(tester.widget<LiveWordsText>(_words).style.fontSize, 16);
+
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, presentation: ComposerPresentation.pointer);
+      await live(tester: tester, confirmed: "words");
+      expect(tester.widget<LiveWordsText>(_words).style.fontSize, 16);
     });
   });
 
@@ -663,13 +588,13 @@ void main() {
     /// A real hold, under the layer, with its words up.
     Future<TestGesture> hold({required WidgetTester tester}) async {
       when(voiceCubit.startRecording).thenAnswer((_) async {
-        voiceStates.add(const VoiceInputState.liveRecording(words: LiveWords.none, presentation: _focus));
+        voiceStates.add(const VoiceInputState.liveRecording(words: LiveWords.none));
         await Future<void>.delayed(Duration.zero);
       });
       final gesture = await tester.startGesture(tester.getCenter(find.textContaining("Hold to talk")));
       await tester.pump();
       await tester.pump(const Duration(milliseconds: 300));
-      await live(tester: tester, presentation: _focus, confirmed: "words");
+      await live(tester: tester, confirmed: "words");
       await settle(tester);
       return gesture;
     }
@@ -689,7 +614,7 @@ void main() {
       await tester.pump();
       expect(_scrub(tester).opacity, closeTo(0.4, 0.001));
       expect(_scrub(tester).duration, Duration.zero);
-      expect(find.text("Release to cancel"), findsNWidgets(2));
+      expect(find.text("Release to cancel"), findsOneWidget);
 
       await gesture.up();
       await tester.pump();
@@ -728,7 +653,6 @@ void main() {
         tester: tester,
         state: const VoiceInputState.liveFinishing(
           words: LiveWords(confirmed: "words", provisional: ""),
-          presentation: _focus,
         ),
       );
       expect(_scrub(tester).opacity, 1);
@@ -739,7 +663,7 @@ void main() {
   group("leaving", () {
     testWidgets("a cancel drops the words 12 px as they fade, then the layer is gone", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "words");
+      await live(tester: tester, confirmed: "words");
       await settle(tester);
 
       await emit(tester: tester, state: const VoiceInputState.cancelling());
@@ -755,7 +679,6 @@ void main() {
 
       await tester.pump(const Duration(milliseconds: 90));
       expect(_words, findsNothing);
-      expect(_dim, findsNothing);
       // Really closed: a portal left open is laid out on every resize, even
       // under a pushed route.
       final portal = find.descendant(of: find.byType(ComposerLiveWords), matching: find.byType(OverlayPortal)).first;
@@ -764,7 +687,7 @@ void main() {
 
     testWidgets("words with no box or bubble to land in fade where they stand", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "words");
+      await live(tester: tester, confirmed: "words");
       await settle(tester);
       final top = _paragraphTop(tester);
       final glideOpacity = find.descendant(of: find.byKey(composerLiveWordsGlideKey), matching: find.byType(Opacity));
@@ -788,18 +711,17 @@ void main() {
 
     testWidgets("a fallback to recording takes the words away", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "words");
+      await live(tester: tester, confirmed: "words");
       await settle(tester);
 
       await emit(tester: tester, state: const VoiceInputState.recording());
       await tester.pump(const Duration(milliseconds: 300));
       expect(_words, findsNothing);
-      expect(_dim, findsNothing);
     });
 
     testWidgets("words stay put while the composer's body grows under them", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _focus, confirmed: "words");
+      await live(tester: tester, confirmed: "words");
       await settle(tester);
       final top = _paragraphTop(tester);
 
@@ -814,13 +736,13 @@ void main() {
 
     testWidgets("a wordless panel ending after an earlier card's fade leaves no layer behind", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
-      await live(tester: tester, presentation: _panel, confirmed: "words");
+      await live(tester: tester, confirmed: "words");
       await settle(tester);
       await emit(tester: tester, state: const VoiceInputState.idle());
       await tester.pump(const Duration(milliseconds: 50));
 
       await tester.startGesture(tester.getCenter(find.textContaining("Hold to talk").last));
-      await live(tester: tester, presentation: _panel);
+      await live(tester: tester);
       await settle(tester);
       await emit(tester: tester, state: const VoiceInputState.idle());
       await settle(tester);
@@ -834,14 +756,12 @@ void main() {
         voiceStates.stream,
         initialState: const VoiceInputState.liveRecording(
           words: LiveWords(confirmed: "words", provisional: ""),
-          presentation: _focus,
         ),
       );
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
       await settle(tester);
 
       expect(_words, findsOneWidget);
-      expect(_dimOpacity(tester), 1);
     });
 
     testWidgets("a composer without voice has no layer", (tester) async {
@@ -850,14 +770,6 @@ void main() {
     });
   });
 }
-
-/// The slot in the words' column that holds the hint.
-Finder _hintSlot() => find
-    .descendant(
-      of: find.ancestor(of: _words, matching: find.byType(Column)).first,
-      matching: find.byType(AnimatedOpacity),
-    )
-    .last;
 
 Future<void> _pumpComposer({
   required WidgetTester tester,

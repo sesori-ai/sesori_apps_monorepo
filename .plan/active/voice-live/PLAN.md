@@ -51,6 +51,9 @@ Implementation has not started.
 All are the user's, from the review pages, except where marked as a planning
 decision.
 
+Superseded 2026-10-31: the panel is the only live view on phone and desktop. Where this plan specifies focus, its dim and
+text, or `voice_live_presentation` (D1, D12, D27, D28 and the sections below), that part no longer applies.
+
 | # | Decision |
 | --- | --- |
 | D1 | Live words appear in **full focus** over the chat. A **floating panel** is built too, and remote config picks between them. |

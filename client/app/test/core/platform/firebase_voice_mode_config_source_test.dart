@@ -27,29 +27,21 @@ void main() {
     when(() => remoteConfig.setConfigSettings(any())).thenAnswer((_) async {});
     when(() => remoteConfig.fetchAndActivate()).thenAnswer((_) async => true);
     when(() => remoteConfig.getBool(FirebaseVoiceModeConfigSource.liveEnabledKey)).thenReturn(true);
-    when(() => remoteConfig.getString(FirebaseVoiceModeConfigSource.presentationKey)).thenReturn("panel");
   });
 
-  test("uses the agreed parameter keys", () {
+  test("uses the agreed parameter key", () {
     expect(FirebaseVoiceModeConfigSource.liveEnabledKey, "voice_live_enabled");
-    expect(FirebaseVoiceModeConfigSource.presentationKey, "voice_live_presentation");
   });
 
-  test("passes the activated values through unparsed", () async {
-    expect(await source.fetchValues(), (liveEnabled: true, presentation: "panel"));
+  test("passes the activated value through", () async {
+    expect(await source.fetchLiveEnabled(), isTrue);
 
     verify(() => remoteConfig.fetchAndActivate()).called(1);
   });
 
-  test("an unset presentation reads as null", () async {
-    when(() => remoteConfig.getString(FirebaseVoiceModeConfigSource.presentationKey)).thenReturn("");
-
-    expect(await source.fetchValues(), (liveEnabled: true, presentation: null));
-  });
-
-  test("reads the values activated on an earlier launch when the fetch fails", () async {
+  test("reads the value activated on an earlier launch when the fetch fails", () async {
     when(() => remoteConfig.fetchAndActivate()).thenThrow(StateError("offline"));
 
-    expect(await source.fetchValues(), (liveEnabled: true, presentation: "panel"));
+    expect(await source.fetchLiveEnabled(), isTrue);
   });
 }
