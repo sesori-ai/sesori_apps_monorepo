@@ -159,9 +159,9 @@ interruptions such as a call.
   no voice capability beyond the glossary.
 - Desktop capture is unverified on device: the macOS feel check has not been run yet and is pending a check on a
   build from `main` after merge. Windows records through Media Foundation and is unverified. Linux needs
-  `parecord` and `ffmpeg` on the PATH; the DEB and RPM packages recommend them, the AppImage cannot, and without them
-  the composer shows the recording-failed notice. Leaving a
-  desktop session while recording discards the recording, as on the phone.
+  `parecord` and `ffmpeg` on the PATH; the DEB and RPM packages recommend them on a fresh install (an upgrade may not
+  add them), the AppImage cannot, and without them the composer shows the recording-failed notice. Leaving a desktop
+  session while recording discards the recording, as on the phone.
 - Retained recordings are composer-local and memory-owned. They do not survive composer disposal, route replacement,
   process restart, or a valid submission of other composer content. Failed best-effort deletion can still leave an
   unowned audio file on disk.
