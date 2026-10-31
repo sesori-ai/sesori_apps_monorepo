@@ -4544,7 +4544,10 @@ void main() {
     expect(find.byType(PregoVoiceTarget), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.keyboard), findsNothing);
+    expect(
+      find.ancestor(of: find.byIcon(TablerRegular.keyboard), matching: find.byType(Tooltip)).first.hitTestable(),
+      findsNothing,
+    );
 
     final recordingSwitcher = tester.widget<AnimatedSwitcher>(
       find.byWidgetPredicate(
@@ -4944,8 +4947,11 @@ void main() {
     expect(tester.getSize(find.byType(PregoVoiceTarget)), const Size(44, 44));
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
-    // The keyboard button leaves the pill while the waveform needs its width.
-    expect(find.byIcon(TablerRegular.keyboard), findsNothing);
+    // The keyboard button fades out where it rests and takes no touches.
+    expect(
+      find.ancestor(of: find.byIcon(TablerRegular.keyboard), matching: find.byType(Tooltip)).first.hitTestable(),
+      findsNothing,
+    );
 
     await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
@@ -5211,7 +5217,11 @@ void main() {
     expect(find.byType(PregoVoiceTarget), findsOneWidget);
     expect(find.byType(PregoVoiceWaveform), findsOneWidget);
     expect(find.text("Release to send · slide up to cancel"), findsOneWidget);
-    expect(find.byIcon(TablerRegular.arrow_up), findsNothing);
+    expect(
+      find.ancestor(of: find.byIcon(TablerRegular.arrow_up), matching: find.byType(Tooltip)).first.hitTestable(),
+      findsNothing,
+      reason: "Send has faded where it rests, and takes no touches.",
+    );
 
     await slideOntoPencil(tester: tester, gesture: gesture);
     await gesture.up();
