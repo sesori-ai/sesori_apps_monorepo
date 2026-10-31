@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/rendering.dart";
@@ -22,6 +23,15 @@ class _Composer() {
   final List<AnalyticsVoiceMode> modes = [];
   int commandsCleared = 0;
 }
+
+/// How a hold ends: a plain release, or a slide up out of the pill first.
+enum _HoldEnding() {
+  send,
+  cancel,
+}
+
+/// Past this, two things fading in one place both read at once.
+const _visibleOverlap = 0.1;
 
 void main() {
   late StreamController<VoiceInputState> voiceStates;
@@ -282,11 +292,11 @@ void main() {
           tester: tester,
           voiceCubit: voiceCubit,
           mode: mode,
-          composerHeader: const SizedBox(key: Key("header"), height: 44),
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
           composerTrailing: const SizedBox(key: Key("trailing"), width: 90, height: 36),
         );
         final watched = <String, Finder>{
-          "header": find.byKey(const Key("header")),
+          "header": find.byKey(const Key("model row")),
           "trailing": find.byKey(const Key("trailing")),
           "accordion": find.byIcon(TablerRegular.chevron_right),
           "idle slot": switch (mode) {
@@ -328,7 +338,7 @@ void main() {
           tester: tester,
           voiceCubit: voiceCubit,
           mode: mode,
-          composerHeader: const SizedBox(key: Key("header"), height: 44),
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
         );
         final target = tester.getCenter(_holdTarget(mode: mode));
         for (var press = 0; press < 3; press++) {
@@ -341,7 +351,207 @@ void main() {
         }
         verify(voiceCubit.startRecording).called(3);
         await tester.pump(const Duration(milliseconds: 500));
-        expect(_shownOpacity(find.byKey(const Key("header"))), 1);
+        expect(_shownOpacity(find.byKey(const Key("model row"))), 1);
+      });
+
+      for (final ending in _HoldEnding.values) {
+        for (final frameMs in [8, 16]) {
+          testWidgets("a press dissolves and a release clears the hint first, ${ending.name}, $frameMs ms frames", (
+            tester,
+          ) async {
+            await _pumpComposer(
+              tester: tester,
+              voiceCubit: voiceCubit,
+              mode: mode,
+              composerHeader: const SizedBox(key: Key("model row"), height: 44),
+            );
+            final header = find.byKey(const Key("model row"));
+            final hint = find.textContaining("Release to");
+            final dots = find.byType(PregoVoiceWaveform);
+            final resting = _restingWords(mode: mode);
+
+            final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+            await tester.pump();
+            for (var elapsed = frameMs; elapsed <= 220; elapsed += frameMs) {
+              await tester.pump(Duration(milliseconds: frameMs));
+              final arrived = elapsed / 220;
+              expect(_shownOpacity(hint), closeTo(arrived, 0.01), reason: "hint at $elapsed ms");
+              expect(_shownOpacity(dots), closeTo(arrived, 0.01), reason: "dots at $elapsed ms");
+              expect(_shownOpacity(header), closeTo(1 - arrived, 0.01), reason: "header at $elapsed ms");
+              expect(_shownOpacity(resting), closeTo(1 - arrived, 0.01), reason: "resting words at $elapsed ms");
+            }
+            await tester.pump(const Duration(milliseconds: 100));
+
+            if (ending == _HoldEnding.cancel) {
+              await gesture.moveTo(abovePill(tester: tester, by: 64));
+              await tester.pump();
+              await tester.pump(const Duration(milliseconds: 300));
+            }
+            await gesture.up();
+            await tester.pump();
+            final incoming = switch (ending) {
+              _HoldEnding.send => find.byType(PregoShimmer),
+              _HoldEnding.cancel => resting,
+            };
+            for (var elapsed = frameMs; elapsed <= 240; elapsed += frameMs) {
+              await tester.pump(Duration(milliseconds: frameMs));
+              final overHeader = min(_shownOpacity(hint), _shownOpacity(header));
+              expect(overHeader, lessThan(_visibleOverlap), reason: "hint over the header at $elapsed ms");
+              final overDots = min(_shownOpacity(dots), _shownOpacity(incoming));
+              expect(overDots, lessThan(_visibleOverlap), reason: "words over the dots at $elapsed ms");
+            }
+            expect(_shownOpacity(header), 1);
+            expect(_shownOpacity(incoming), 1);
+            expect(hint, findsNothing);
+
+            if (ending == _HoldEnding.send) {
+              await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+            }
+          });
+        }
+      }
+
+      for (final tapMs in [64, 112, 160, 208]) {
+        testWidgets("a $tapMs ms tap dissolves back without blinking empty", (tester) async {
+          await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: mode,
+            composerHeader: const SizedBox(key: Key("model row"), height: 44),
+          );
+          final watched = [find.byKey(const Key("model row")), find.textContaining("Release to")];
+          final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+          await tester.pump();
+          await tester.pump(Duration(milliseconds: tapMs));
+          await gesture.up();
+          var previous = watched.map(_shownOpacity).toList();
+          for (var i = 0; i < 25; i++) {
+            await tester.pump(i == 0 ? Duration.zero : const Duration(milliseconds: 16));
+            final shown = watched.map(_shownOpacity).toList();
+            expect(shown.reduce(max), greaterThan(0.3), reason: "empty at frame $i");
+            for (var w = 0; w < watched.length; w++) {
+              expect((shown[w] - previous[w]).abs(), lessThan(0.1), reason: "${watched[w]} jumped at frame $i");
+            }
+            previous = shown;
+          }
+          expect(previous.first, tapMs < 200 ? 1 : closeTo(1, 0.01));
+        });
+      }
+
+      for (final pressAgainMs in [48, 96, 160, 200]) {
+        testWidgets("pressing again $pressAgainMs ms into a release carries on from where it was", (tester) async {
+          await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: mode,
+            composerHeader: const SizedBox(key: Key("model row"), height: 44),
+          );
+          final header = find.byKey(const Key("model row"));
+          final hint = find.textContaining("Release to");
+          final dots = find.byType(PregoVoiceWaveform);
+          final target = tester.getCenter(_holdTarget(mode: mode));
+
+          Future<void> slideOffAndLift(TestGesture gesture) async {
+            await gesture.moveTo(abovePill(tester: tester, by: 64));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 300));
+            await gesture.up();
+            await tester.pump();
+          }
+
+          await slideOffAndLift(await hold(tester: tester, mode: mode));
+          await tester.pump(Duration(milliseconds: pressAgainMs));
+          var previous = [_shownOpacity(header), _shownOpacity(hint), _shownOpacity(dots)];
+          final again = await tester.startGesture(target);
+          await tester.pump();
+          for (var i = 0; i < 24; i++) {
+            await tester.pump(const Duration(milliseconds: 16));
+            final shown = [_shownOpacity(header), _shownOpacity(hint), _shownOpacity(dots)];
+            // The header retraces its way in, whose steepest honest step is that ease leaving its start.
+            expect((shown[0] - previous[0]).abs(), lessThan(0.5), reason: "header snapped at frame $i");
+            expect((shown[1] - previous[1]).abs(), lessThan(0.1), reason: "hint snapped at frame $i");
+            expect((shown[2] - previous[2]).abs(), lessThan(0.1), reason: "dots snapped at frame $i");
+            previous = shown;
+          }
+          expect(previous, [0, 1, 1]);
+          await slideOffAndLift(again);
+          await tester.pump(const Duration(milliseconds: 300));
+          expect(_shownOpacity(header), 1);
+        });
+      }
+
+      testWidgets("reduced motion swaps the hint and what it covers at once", (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+          disableAnimations: true,
+        );
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
+        );
+        final header = find.byKey(const Key("model row"));
+        final hint = find.textContaining("Release to");
+        final dots = find.byType(PregoVoiceWaveform);
+        final resting = _restingWords(mode: mode);
+
+        final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+        await tester.pump();
+        expect(_shownOpacity(hint), 1);
+        expect(header, findsNothing);
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(_shownOpacity(dots), 1);
+        expect(resting, findsNothing);
+
+        await tester.pump(const Duration(milliseconds: 300));
+        await gesture.moveTo(abovePill(tester: tester, by: 64));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await gesture.up();
+        await tester.pump();
+        expect(_shownOpacity(header), 1);
+        expect(hint, findsNothing);
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(_shownOpacity(resting), 1);
+        expect(dots, findsNothing);
+      });
+
+      testWidgets("at large text the composer still eases open and closed around a release", (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("model row"), height: 28),
+        );
+        final composer = find.byType(PromptInput);
+        final resting = tester.getSize(composer).height;
+
+        final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+        await tester.pump();
+        final growth = <double>{};
+        for (var i = 0; i < 16; i++) {
+          final before = tester.getSize(composer).height;
+          await tester.pump(const Duration(milliseconds: 16));
+          final after = tester.getSize(composer).height;
+          expect(after - before, inInclusiveRange(0, 6), reason: "jumped growing at frame $i");
+          growth.add(after);
+        }
+        expect(growth.length, greaterThan(5), reason: "the growth eases over many frames");
+        final open = tester.getSize(composer).height;
+        expect(open, greaterThan(resting));
+
+        await gesture.up();
+        await tester.pump();
+        for (var i = 0; i < 40; i++) {
+          final before = tester.getSize(composer).height;
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(before - tester.getSize(composer).height, inInclusiveRange(0, 6), reason: "jumped closing at $i");
+        }
+        expect(tester.getSize(composer).height, resting);
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
       });
 
       testWidgets("a hold under 200 ms sends nothing", (tester) async {
@@ -1053,6 +1263,12 @@ void main() {
 Finder _holdTarget({required ChatInputMode mode}) => switch (mode) {
   ChatInputMode.voiceFirst => find.textContaining("Hold to talk"),
   ChatInputMode.textFirst => find.byIcon(TablerRegular.microphone),
+};
+
+/// The words at rest where the waveform shows during a hold.
+Finder _restingWords({required ChatInputMode mode}) => switch (mode) {
+  ChatInputMode.voiceFirst => find.textContaining("Hold to talk"),
+  ChatInputMode.textFirst => find.text("Follow up..."),
 };
 
 /// How opaque [finder] looks on screen, across every copy of it still fading.

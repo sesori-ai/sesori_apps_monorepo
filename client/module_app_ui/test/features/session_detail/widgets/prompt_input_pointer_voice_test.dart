@@ -1,4 +1,5 @@
 import "dart:async";
+import "dart:math";
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/rendering.dart";
@@ -508,7 +509,8 @@ void main() {
           for (var frame = 0; frame < 30; frame++) {
             await tester.pump(const Duration(milliseconds: 16));
             expect(tester.getRect(_hint), resting, reason: "moved returning, frame $frame");
-            expect(_shownOpacity(_hint), frame < 13 ? greaterThan(shown) : 1);
+            // Waits for the waveform to mostly go, then comes back, as on a release.
+            expect(_shownOpacity(_hint), frame < 13 ? greaterThanOrEqualTo(shown) : 1);
             shown = _shownOpacity(_hint);
           }
 
@@ -616,6 +618,40 @@ void main() {
       }
     });
 
+    testWidgets("sending clears the dots and the hint before the shimmer shows", (tester) async {
+      final harness = _Harness();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
+      await startListening(tester);
+
+      await tester.tap(_wideSend);
+      await tester.pump();
+      for (var elapsed = 16; elapsed <= 240; elapsed += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final shimmer = _shownOpacity(find.byType(PregoShimmer));
+        expect(min(_shownOpacity(find.byType(PregoVoiceWaveform)), shimmer), lessThan(0.1), reason: "at $elapsed ms");
+        expect(min(_shownOpacity(find.text("Enter to send")), shimmer), lessThan(0.1), reason: "at $elapsed ms");
+      }
+      expect(_shownOpacity(find.byType(PregoShimmer)), 1);
+    });
+
+    testWidgets("the X clears the dots and the hint before the resting words show", (tester) async {
+      final harness = _Harness();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
+      await startListening(tester);
+
+      await tester.tap(_cancel);
+      voiceStates.add(const VoiceInputState.idle());
+      await tester.pump();
+      await tester.pump();
+      for (var elapsed = 16; elapsed <= 240; elapsed += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final resting = _shownOpacity(_hint);
+        expect(min(_shownOpacity(find.byType(PregoVoiceWaveform)), resting), lessThan(0.1), reason: "at $elapsed ms");
+        expect(min(_shownOpacity(find.text("Enter to send")), resting), lessThan(0.1), reason: "at $elapsed ms");
+      }
+      expect(_shownOpacity(_hint), 1);
+    });
+
     testWidgets("reduced motion merges at once", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness, reducedMotion: true);
@@ -673,12 +709,15 @@ void main() {
 bool _fieldHasFocus() =>
     FocusManager.instance.primaryFocus?.context?.findAncestorWidgetOfExactType<TextField>() != null;
 
+/// How opaque [finder] looks on screen, under every fade above it.
 double _shownOpacity(Finder finder) {
-  var opacity = 1.0;
-  RenderObject? render = finder.evaluate().single.renderObject;
-  while (render != null) {
-    if (render is RenderAnimatedOpacity) opacity *= render.opacity.value;
-    render = render.parent;
+  var opacity = finder.evaluate().isEmpty ? 0.0 : 1.0;
+  for (final element in finder.evaluate()) {
+    RenderObject? render = element.renderObject;
+    while (render != null) {
+      if (render is RenderAnimatedOpacity) opacity *= render.opacity.value;
+      render = render.parent;
+    }
   }
   return opacity;
 }
