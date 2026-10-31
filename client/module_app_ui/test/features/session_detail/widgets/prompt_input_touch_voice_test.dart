@@ -724,6 +724,24 @@ void main() {
     });
   }
 
+  testWidgets("voice-first's pill says it's transcribing to a screen reader", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, initialText: "");
+    expect(find.bySemanticsLabel("Transcribing..."), findsNothing);
+
+    final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
+    await gesture.up();
+    await tester.pump(const Duration(milliseconds: 300));
+    expect(find.bySemanticsLabel("Transcribing..."), findsOneWidget);
+    expect(find.bySemanticsLabel("Hold to talk"), findsNothing);
+
+    await emitVoice(tester: tester, state: const VoiceInputState.idle());
+    await tester.pump(const Duration(milliseconds: 500));
+    expect(find.bySemanticsLabel("Transcribing..."), findsNothing);
+    expect(find.bySemanticsLabel("Hold to talk"), findsOneWidget);
+    semantics.dispose();
+  });
+
   for (final (layout, initialText) in [("compact", ""), ("typing", "draft words")]) {
     testWidgets("text-first's shimmer fades where it stands, $layout", (tester) async {
       final semantics = tester.ensureSemantics();
