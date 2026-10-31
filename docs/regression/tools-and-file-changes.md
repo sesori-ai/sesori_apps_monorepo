@@ -58,8 +58,8 @@ sub-agent parts, plus the signal that a tool changed files.
   slides up and out, the new one in from below, so “2 steps” rolls only its
   digit), and the summary's width eases so the text after it moves rather than
   jumps. At rest the summary is one line that ellipsizes on a narrow screen. A new group, a new live row, the
-  thinking tail's first words and a new agent message row ease their height in
-  the same way; user prompts appear at once. A row that takes the place of one
+  thinking tail's first words, a new agent message row and a new prompt row ease
+  their height in the same way. A row that takes the place of one
   that left in the same update, as when a refresh swaps a live row for its
   history twin under a new id, stays put. Only the rows that change animate,
   and a reader pinned to the newest edge stays pinned while they do. Reduced

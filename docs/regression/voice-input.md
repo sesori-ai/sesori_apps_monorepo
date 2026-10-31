@@ -99,7 +99,7 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   brightening become instant.
 - A sent dictation's words glide to its bubble, in session detail and in a new session's launch view. The bubble is built
   hidden, the list rises for its row as the words come down, and the bubble shows under the words once they have landed
-  on it, so there is one copy throughout. If no bubble is built within two frames, the words glide to where it would
+  on it, so there is one copy throughout. If no bubble is built within five frames, the words glide to where it would
   have been, right-aligned above the composer, and fade. If the screen goes mid-glide, they go with it.
 - Live words that land in the box (the pencil or a cut-off) glide to the field, which holds its text back
   until they arrive. A dictation with nothing to land in, or under reduced motion, fades where it stands.
@@ -201,7 +201,7 @@ interruptions such as a call.
 - While the user speaks, live words move, relayout or rebuild the chat or the composer, snap when they wrap, hide the
   release hint, or block the pill's gesture. Words stay on screen after their glide or fade ends.
 - A glide shows two copies of the words, or pops the text at its end: a change of weight, wrap or position when the
-  bubble or the box takes over. The list jumps instead of rising for a dictated send's row, a word lands on an older
+  bubble or the box takes over. The list jumps instead of rising for the row, a word lands on an older
   row or a pinned copy, the panel's shadow shows as a plate under a clear surface, or reduced motion travels.
 - A desktop dictation sends the box and the words as two messages, Enter inserts a newline while listening, or the
   second click misses because the control moved.
