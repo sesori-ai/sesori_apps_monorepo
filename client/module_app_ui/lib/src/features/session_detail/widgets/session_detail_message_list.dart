@@ -275,6 +275,11 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
 
+  /// Rows that have eased all the way in, or were there when the list opened.
+  /// Scrolling can drop one and build it again, and it only eases in again if it
+  /// was dropped before it had opened.
+  final Set<String> _easedInRowIds = {};
+
   /// The row that replaced the launch bubble. It keeps the bubble's key, so
   /// the swap eases in place like a queued prompt turning into its message.
   String? _launchSlotRowId;
@@ -1048,25 +1053,27 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final previousRowIndexById = _rowIndexById;
     final previousRowIds = previousRowIndexById.keys.toList();
     _knownRowIds = rowIds.toSet();
+    _easedInRowIds.retainAll(rowIds);
+    if (previousRowIds.isEmpty) _easedInRowIds.addAll(rowIds);
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _userMessagesById = {
       for (final message in messages)
         if (message.info is MessageUser && message.hasRenderableUserContent) message.info.id: message,
     };
-    // Rows held still while scrolled away never animate, and a prompt shows
-    // at once: only the agent's side of the transcript eases in. A row that
-    // takes the place of one that just left is that row re-keyed, as when a
-    // refresh swaps a live row for its history twin, so it stays put. The prompt
-    // a dictation's words are gliding to is the exception: the list rises for it
-    // as they come down, rather than jumping beside them.
-    final wordsGlidingIn = SentBubbleLanding.of(context: context).isExpecting;
-    final enteringRowIds = knownRowIds == null || snap != null || context.isReducedMotion
+    // Rows ease in, prompts as much as replies, so that the list rises for a
+    // send instead of jumping. Not rows held still while scrolled away, nor those
+    // found on returning from there, and a row that takes the place of one that
+    // just left is that row re-keyed, as when a refresh swaps a live row for its
+    // history twin. The row of a send on its way eases in whenever it is first
+    // built, wherever the reader is: a glide back to the latest edge reaches it
+    // some frames on, and at full height it would throw the list forward then.
+    // The first rows of a list show at once, having nothing to move.
+    final enteringRowIds = context.isReducedMotion || previousRowIds.isEmpty
         ? const <String>{}
-        : _rowsArriving(previous: previousRowIds, current: rowIds).difference({
-            if (!wordsGlidingIn)
-              for (final rowId in rowIds)
-                if (_isUserRow(rowId: rowId, messages: messages, indexById: indexById)) rowId,
-          });
+        : {
+            ...transientSubmissions.keys,
+            if (knownRowIds != null && snap == null) ..._rowsArriving(previous: previousRowIds, current: rowIds),
+          };
     // Coalesced post-frame pin-to-edge while following. The scheduler
     // collapses repeated calls within a frame and the jump is skipped
     // when `position.pixels` is already at the edge.
@@ -1152,8 +1159,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                         // Not the old rows a glide back to the latest edge builds on its way.
                         arriving: !previousRowIndexById.containsKey(entryId),
                         child: TranscriptPresence(
-                          entering: enteringRowIds.contains(entryId),
+                          entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
                           exiting: false,
+                          onEntered: () => _easedInRowIds.add(entryId),
                           onExited: null,
                           child: _buildRow(
                             entryId: entryId,

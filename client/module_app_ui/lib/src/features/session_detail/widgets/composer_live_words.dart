@@ -177,8 +177,10 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   static const double _rewrapAt = 0.5;
 
   /// How many frames a sent bubble gets to be built before the words stop
-  /// waiting for it.
-  static const int _bubbleFrames = 2;
+  /// waiting for it. A list scrolled up a little builds it as its glide back
+  /// begins, by when a few frames have gone: one that opens from nothing isn't
+  /// kept until it comes within the list's cache.
+  static const int _bubbleFrames = 5;
 
   /// From the composer's body up to where the list's last row ends, past the
   /// selectors above the body.

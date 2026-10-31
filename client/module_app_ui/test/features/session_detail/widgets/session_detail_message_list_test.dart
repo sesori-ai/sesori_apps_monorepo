@@ -619,7 +619,7 @@ void main() {
       expect(landing(tester).heldRect(ancestor: tester.renderObject(find.byType(SessionDetailMessageList))), isNotNull);
     });
 
-    testWidgets("the list rises for the row, where any other prompt shows at once", (tester) async {
+    testWidgets("the list rises for the row, as it does for any other prompt", (tester) async {
       final harness = await _pumpTurns(
         tester,
         messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
@@ -635,13 +635,6 @@ void main() {
       final risen = tester.getTopLeft(find.text("Earlier")).dy;
       expect(risen, lessThan(before));
       expect(starting, greaterThan(risen));
-      landing(tester).handOver();
-
-      harness.sendDirectly(_textSubmission(promptId: "prm_typed", text: "Typed"));
-      await tester.pump();
-      final typedAtOnce = tester.getTopLeft(find.text("Earlier")).dy;
-      await tester.pumpAndSettle();
-      expect(typedAtOnce, tester.getTopLeft(find.text("Earlier")).dy);
     });
 
     testWidgets("doesn't take an old row built while scrolling back for the new one", (tester) async {
@@ -1539,7 +1532,7 @@ void main() {
     key.currentState!.appendNewestMessage(
       _message(messageId: "visible-user", role: "user", text: "Visible prompt"),
     );
-    await _pumpListUpdate(tester);
+    await tester.pumpAndSettle();
 
     expect(find.text("Visible prompt"), findsOneWidget);
     expect(_messageKey("empty-user"), findsNothing);
@@ -2591,6 +2584,8 @@ void main() {
 
     expect(_position(tester).pixels, 0);
     expect(find.byKey(_jumpToLatestKey), findsNothing);
+    await tester.pumpAndSettle();
+    expect(_position(tester).pixels, 0);
     expect(_messageKey("user-following"), findsOneWidget);
   });
 
@@ -2891,11 +2886,57 @@ void main() {
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 181));
     await tester.pump();
+    // Its row eases in from when the glide reached it.
+    await tester.pump(const Duration(milliseconds: 201));
 
     expect(find.text("Direct sending prompt"), findsOneWidget);
     expect(find.text("Sending"), findsOneWidget);
     expect(find.byKey(_jumpToLatestKey), findsNothing);
     expect(_position(tester).pixels, 0);
+  });
+
+  group("a send at the latest edge", () {
+    Future<_SessionDetailMessageListHarnessState> pump(WidgetTester tester) => _pumpTurns(
+      tester,
+      messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+    );
+
+    final sends = <String, void Function(_SessionDetailMessageListHarnessState harness)>{
+      "sent directly": (harness) => harness.sendDirectly(_textSubmission(promptId: "prm_new", text: "Typed")),
+      "queued": (harness) => harness.enqueueSubmission(_textSubmission(promptId: "prm_new", text: "Typed")),
+    };
+    for (final MapEntry(key: name, value: send) in sends.entries) {
+      testWidgets("lifts the list over the rise when $name", (tester) async {
+        final harness = await pump(tester);
+        final before = tester.getTopLeft(find.text("Earlier")).dy;
+
+        send(harness);
+        await tester.pump();
+        expect(tester.getTopLeft(find.text("Earlier")).dy, before);
+        await tester.pump(const Duration(milliseconds: 100));
+        final partway = tester.getTopLeft(find.text("Earlier")).dy;
+        await tester.pumpAndSettle();
+        final risen = tester.getTopLeft(find.text("Earlier")).dy;
+
+        expect(partway, lessThan(before));
+        expect(partway, greaterThan(risen));
+      });
+    }
+
+    testWidgets("shows at once under reduced motion", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+        disableAnimations: true,
+      );
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final harness = await pump(tester);
+
+      harness.sendDirectly(_textSubmission(promptId: "prm_new", text: "Typed"));
+      await tester.pump();
+      final atOnce = tester.getTopLeft(find.text("Earlier")).dy;
+      await tester.pumpAndSettle();
+
+      expect(atOnce, tester.getTopLeft(find.text("Earlier")).dy);
+    });
   });
 
   group("returning to latest from history glides there", () {
@@ -3008,6 +3049,8 @@ void main() {
       await tester.tap(find.byKey(_jumpToLatestKey), warnIfMissed: false);
       harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Dictated on the way back"));
       await tester.pump();
+      // Folded shut, it is too far off to stay built until the glide's first tick.
+      await tester.pump(const Duration(milliseconds: 16));
 
       expect(landing.heldText, "Dictated on the way back");
     });
@@ -3041,7 +3084,98 @@ void main() {
       expect(offsets.first, greaterThan(from / 2), reason: "The list is still on its way: $offsets");
       expect(offsets.last, 0);
       expect(aims, isNotEmpty);
-      expect(aims.every((aim) => (aim - aims.last).abs() < 1), isTrue, reason: "$aims");
+      // Up with the row as it opens, not along with the glide.
+      for (final (index, aim) in aims.indexed.skip(1)) {
+        expect(aim, lessThanOrEqualTo(aims[index - 1] + 1), reason: "$aims");
+      }
+      expect(aims.first - aims.last, lessThan(from / 2), reason: "$aims");
+    });
+
+    for (final from in const [150.0, 280.0]) {
+      testWidgets("rising with a send from $from up in one motion", (tester) async {
+        final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+        await tester.drag(find.byKey(_listViewKey), Offset(0, from));
+        await tester.pumpAndSettle();
+        final startOffset = _position(tester).pixels;
+        final reference = find.byKey(const ValueKey("user-58"), skipOffstage: false);
+        final start = tester.getTopLeft(reference).dy;
+
+        harness.sendDirectly(
+          _textSubmission(
+            promptId: "prm_sent",
+            text: _multilineText(label: "Sent nearby", lines: 8),
+          ),
+        );
+        final tops = <double>[];
+        for (var frame = 0; frame < 20; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          tops.add(tester.getTopLeft(reference).dy);
+        }
+
+        final rowHeight = start - tops.last - startOffset;
+        expect(rowHeight, greaterThan(100));
+        final steps = [for (final (index, top) in tops.indexed) (index == 0 ? start : tops[index - 1]) - top];
+        expect(steps.every((step) => step >= 0), isTrue, reason: "$tops");
+        expect(steps.reduce(math.max), lessThan(rowHeight * 0.75), reason: "No frame holds the row's height: $tops");
+      });
+    }
+
+    testWidgets("not easing a queued row in again when scrolling brings it back", (tester) async {
+      final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+      harness.enqueueSubmission(_textSubmission(promptId: "prm_kept", text: "Kept"));
+      await tester.pumpAndSettle();
+      final settled = tester.getTopLeft(find.text("Kept")).dy;
+
+      final position = _position(tester);
+      position.jumpTo(position.maxScrollExtent / 2);
+      await tester.pump();
+      expect(find.text("Kept", skipOffstage: false), findsNothing);
+      position.jumpTo(0);
+      await tester.pump();
+
+      expect(tester.getTopLeft(find.text("Kept")).dy, settled);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
+    testWidgets("not easing in a queued row that was there when the list opened", (tester) async {
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _userMessages(count: 60),
+          initialStreamingText: const {},
+          initialQueuedMessages: [_textSubmission(promptId: "prm_kept", text: "Kept")],
+          topInset: _topInset,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final settled = tester.getTopLeft(find.text("Kept")).dy;
+
+      final position = _position(tester);
+      position.jumpTo(position.maxScrollExtent / 2);
+      await tester.pump();
+      expect(find.text("Kept", skipOffstage: false), findsNothing);
+      position.jumpTo(0);
+      await tester.pump();
+
+      expect(tester.getTopLeft(find.text("Kept")).dy, settled);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
+    testWidgets("leaving a prompt from elsewhere to appear as it always has", (tester) async {
+      final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+      await tester.drag(find.byKey(_listViewKey), const Offset(0, 150));
+      await tester.pumpAndSettle();
+      final from = _position(tester).pixels;
+
+      harness.updateBridgeQueue(
+        prompts: const [
+          QueuedSessionPrompt(id: "prm_other", text: "From elsewhere", command: null, attachmentCount: 0, createdAt: 1),
+        ],
+        attachments: const {},
+      );
+      await tester.pump();
+
+      expect(tester.hasRunningAnimations, isFalse);
+      expect(_position(tester).pixels, from);
     });
   });
 

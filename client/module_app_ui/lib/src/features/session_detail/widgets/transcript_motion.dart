@@ -26,6 +26,9 @@ class const TranscriptPresence({
   required final bool entering,
   required final bool exiting,
 
+  /// Called once an entering row has eased all the way in.
+  required final VoidCallback? onEntered,
+
   /// Called once an exiting row has folded away; the parent drops it then.
   required final VoidCallback? onExited,
   required final Widget child,
@@ -85,7 +88,10 @@ class _TranscriptPresenceState() extends State<TranscriptPresence> with TickerPr
           });
         }
         // A settled row gives its controller back; leaving makes a new one.
-        if (status.isCompleted) setState(_release);
+        if (status.isCompleted) {
+          widget.onEntered?.call();
+          setState(_release);
+        }
       });
     return controller;
   }
@@ -197,6 +203,7 @@ class _TranscriptPresenceColumnState() extends State<TranscriptPresenceColumn> {
             key: ValueKey<Key?>(row.key),
             entering: _entering.contains(row.key),
             exiting: _leaving.contains(row.key),
+            onEntered: null,
             onExited: () => setState(() {
               _leaving.remove(row.key);
               _rows = [

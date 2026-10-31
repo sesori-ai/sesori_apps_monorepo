@@ -303,17 +303,18 @@ void main() {
   });
 
   group("when no bubble is built", () {
-    testWidgets("the words wait two frames, then glide above the composer and fade", (tester) async {
+    testWidgets("the words wait a few frames, then glide above the composer and fade", (tester) async {
       await _pumpScreen(tester: tester, voiceCubit: voiceCubit, buildsRows: false);
       final gesture = await hold(tester: tester);
       final start = tester.getRect(find.byType(LiveWordsText));
       await send(tester: tester, gesture: gesture);
       expect(_glideOpacity(tester), 1);
 
-      // The second frame still holds them; the row could yet be built. The next is
+      // The fifth frame still holds them; the row could yet be built. The next is
       // the glide's first, and a controller's first tick has no time on it.
-      await tester.pump(_frame);
-      await tester.pump(_frame);
+      for (var frame = 0; frame < 5; frame++) {
+        await tester.pump(_frame);
+      }
       expect(tester.getRect(_glide).left, lessThanOrEqualTo(start.left));
       expect(_glideOpacity(tester), 1);
 
@@ -334,12 +335,26 @@ void main() {
       expect(_glide, findsNothing);
     });
 
+    testWidgets("a bubble built during the wait gets the words", (tester) async {
+      final screen = await _pumpScreen(tester: tester, voiceCubit: voiceCubit, buildsRows: false);
+      final gesture = await hold(tester: tester);
+      await send(tester: tester, gesture: gesture);
+      for (var frame = 0; frame < 3; frame++) {
+        await tester.pump(_frame);
+      }
+
+      screen.addRowLate(text: "spoken words");
+      await tester.pump();
+      expect(_bubbleSlot(tester).hidden, isTrue);
+    });
+
     testWidgets("a bubble built afterwards isn't kept hidden", (tester) async {
       final screen = await _pumpScreen(tester: tester, voiceCubit: voiceCubit, buildsRows: false);
       final gesture = await hold(tester: tester);
       await send(tester: tester, gesture: gesture);
-      await tester.pump();
-      await tester.pump();
+      for (var frame = 0; frame < 5; frame++) {
+        await tester.pump();
+      }
 
       screen.addRowLate(text: "spoken words");
       await tester.pump();
