@@ -73,10 +73,13 @@ the server. Desktop always uses the server.
   cold launch.
 - Unset, `voice_on_device_enabled` leaves on-device on, and a phone reads it at launch like `voice_live_enabled`. Until
   it has loaded and the device has answered, a hold uses the server. The feedback sheet always uses the server.
-- A device runs a dictation only when it already has the model for its own language. A model it can get downloads in the
-  background without any prompt, and that hold uses the server. Each such hold checks again, so the next one after the
-  download runs on the device. There is no auto-detect: the
-  engine hears the device language only, and the project glossary does not apply.
+- iOS runs a dictation only when it already has the model for a locale equivalent to the device's. A model it can get
+  downloads in the background without any prompt, and that hold uses the server. Each such hold checks again, so the
+  next one after the download runs on the device.
+- Android runs a dictation whenever the device has an on-device recognizer and never checks the language. A recognizer
+  with no model for its language rejects the dictation, which uses the server, and the app requests that model in the
+  background for a later one.
+- There is no auto-detect, and the project glossary does not apply.
 - An on-device engine that won't start during the hold falls back to a recording for the server, like a live session
   that can't start. After a release there is nothing left to record, so it shows a failure.
   One that fails mid-dictation lands the words so far in the box with the cut-off notice, or shows a failure with no

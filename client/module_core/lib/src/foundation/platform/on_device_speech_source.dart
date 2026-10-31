@@ -4,9 +4,9 @@ import "../models/voice/voice_realtime.dart";
 
 /// The operating system's own speech engine, which keeps audio on the device.
 abstract interface class OnDeviceSpeechSource() {
-  /// Whether a dictation can run on the device right now. When only the language
-  /// model is missing, this starts its download in the background and answers
-  /// false, so a later dictation can use it.
+  /// Whether to try a dictation on the device. On iOS, when only the language
+  /// model is missing, this starts its download and answers false. On Android,
+  /// an available recognizer may reject a missing model and request it for later.
   Future<bool> prepare();
 
   /// Starts the engine, which then accepts PCM16 mono audio at [sampleRate]. Only
