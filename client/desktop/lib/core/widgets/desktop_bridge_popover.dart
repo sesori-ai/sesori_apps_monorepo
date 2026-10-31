@@ -151,7 +151,7 @@ class const _BridgeAction({
     child: Row(
       children: [
         Icon(icon, size: 20),
-        const SizedBox(width: 12),
+        const SizedBox(width: PregoSpacing.lg),
         Expanded(child: Text(label, style: context.prego.textTheme.textSm.medium)),
       ],
     ),

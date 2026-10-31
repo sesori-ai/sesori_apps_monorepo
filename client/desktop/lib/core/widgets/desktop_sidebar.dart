@@ -379,7 +379,7 @@ class const _SidebarComputerRow({
       ),
       (true, final BridgeSummary current) => (
         name: current.name,
-        dot: current.status == BridgeRegistrationStatus.active ? colors.textSuccessPrimary : colors.textErrorPrimary,
+        dot: ComputerMenu.presenceStatus(computer: current).dotColor(colors: colors),
         statusLabel: ComputerMenu.presenceLabel(context: context, computer: current),
       ),
       // Another computer, until the account's list names it.

@@ -41,8 +41,8 @@ The main pane hosts one full-width routed page.
   Idle gesture cancellation does not write; explicit sidebar collapse toggles do.
 - Collapse hides the sidebar completely: the panel and its resize gap slide out past the window's start edge
   in 220 ms while the page widens into their room, and the panel never squeezes its rows on the way. A restore
-  button fades in at the page's top-left, centred in the 54-pixel toolbar band; page toolbars and the home's
-  Viewing header move their content past it while it shows, and it slides just ahead of that content, never
+  button fades in at the page's top-left, centred in the 54-pixel toolbar band; page toolbars move
+  their content past it while it shows, and it slides just ahead of that content, never
   over it. The button and Cmd/Ctrl+B bring the sidebar back
   at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
   screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize handle's name
@@ -325,8 +325,9 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Modal tab/entry selection, keyboard entry, route/element/draft preservation, nested Back/Close,
   text-edit/dialog Escape order, logout failure/late completion/auth rejection, every tab and Close at minimum size
   with 100%/200%/250% text. Use packaged fonts for geometry checks; preserve the requested text scaler.
-- Home computer header shown, hidden for a lone local computer, fading in and out over the top band without moving the
-  composer (at once with reduced motion), and switching from its menu; disconnected home for a remote target (offline
+- Sidebar computer row naming the viewed computer on every page, crossfading in place on a switch, and switching from
+  its menu; the bridge controls alone for a lone local computer; the palette listing the other computers; disconnected
+  home for a remote target (offline
   body, other computers, no Start, also while this computer's bridge launches) versus
   this computer (supervised Start; the loader while its bridge launches, its still-starting line after 10 s,
   recovery once the start fails); the desktop target following a new or changed supervised bridge id unless
@@ -413,8 +414,8 @@ Executed checks and outstanding native/live gaps are recorded in the step eviden
 - Fresh-account autostart, login-item registration, optional Full Disk Access grant/deny/focus-return
   and helper inheritance.
 - Settings entries/tabs, native startup preference, dialog keyboard/backdrop/accessibility and retained composer.
-- Popover Start/Stop/Retry, Take Over versus Stop, logs and Settings.
-- Viewing a remote computer from the home header while the local bridge keeps serving a phone, and the remote
+- The computer row's menu: Start/Stop/Retry, Take Over versus Stop, logs and Settings.
+- Viewing a remote computer from the sidebar's computer row while the local bridge keeps serving a phone, and the remote
   offline body when that computer's bridge stops.
 - Relay drop/reconnect and intentional-Off presentation, sidebar recovery, resize feel, hover and selected rows.
 - Archived from the sidebar: the page fades in over the open page with nothing closing first, a row opens
@@ -459,7 +460,8 @@ On home, watch for a session starting in a project other than the one picked, a 
 reorder or surviving a new pick, the composer moving when a session elsewhere turns newest, a jump or flash of
 the prompt while the list loads on launch, the composer building up part by part or its heading shifting
 after the bridge connects, a Start button
-offered for another computer, the computer row saying This computer while another computer is viewed, or its name jumping on a switch, or the desktop jumping back to
+offered for another computer, the computer row saying This computer while another computer is viewed, its name
+jumping on a switch, or the desktop jumping back to
 this computer after the user picked another one.
 
 ## Maintenance Sources

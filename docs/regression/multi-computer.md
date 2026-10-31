@@ -27,8 +27,8 @@ area documents linked below own the detail.
   chips' room as a load ending with none folds it. The new computer's content then fades in from the skeleton as a
   first load's does, and a load that ends sooner lets the old content finish fading first. Reduced motion cuts
   straight to the skeleton. Each switch reports `computer_switched` with its
-  `source` (`menu`, `offline_screen`, `settings`, `computers_page`, `alert`, `notification`, `command_palette`) and whether the target
-  was online, never a name or id
+  `source` (`menu`, `offline_screen`, `settings`, `computers_page`, `alert`, `notification`, `command_palette`) and
+  whether the target was online, never a name or id
   ([analytics](analytics.md)). Picking the current computer in a menu only closes the menu.
 - **Computer menu.** The phone home's computer button, whose label and status dot name the target computer and
   its state, and the desktop sidebar footer's row, which names it and ends in a chevron, open an anchored menu
@@ -38,7 +38,8 @@ area documents linked below own the detail.
   green for "Online", and red for "Offline" or "Offline · last seen …", in the computer button's dot colours, in
   both themes. The dot is silent for screen readers, which read only the words. The Computers
   page rows and the Settings entry lead their presence with the same dot. From the
-  Settings entry and the desktop row, and from the home while the account has more than one computer, the menu
+  Settings entry, from the desktop row while it lists computers, and from the home while the account has more than one
+  computer, the menu
   ends in "Manage computers…" after a divider, which closes the menu and opens the Computers page; the offline
   card's menu has no such footer.
 - **Computers page.** Lists every computer in menu order: platform icon, name, the hostname under a name of the
@@ -77,7 +78,8 @@ area documents linked below own the detail.
   below it apply to that computer only. The desktop Bridge tab shows the same entry and closes Settings before it
   switches ([account and onboarding](account-and-onboarding.md)).
 - **Desktop.** The sidebar footer's row names the computer on every page and opens the same menu above this
-  computer's bridge controls; the command palette lists the other computers. The desktop starts on the stored pick, else on this computer once its supervised bridge id is known, and
+  computer's bridge controls; the command palette lists the other computers. The desktop starts on the stored pick,
+  else on this computer once its supervised bridge id is known, and
   follows that id when it appears or changes unless the user picked another computer in this sign-in. Viewing
   another computer leaves the local bridge running and serving other apps; that computer's offline body never offers
   Start ([desktop cockpit shell](desktop-cockpit-shell.md)).
@@ -128,7 +130,7 @@ and another while a phone works on the local bridge.
 - An app reaching a computer other than its target, a reconnect or relaunch landing elsewhere, or one app's traffic,
   broadcasts or live events reaching a bridge or app on another computer.
 - A switch leaving the previous computer's projects, sessions, activity, project filter or a pushed page on
-  screen once the skeleton has faded in, the header keeping the old name, or a late answer from the previous computer
+  screen once the skeleton has faded in, the sidebar's computer row keeping the old name, or a late answer from the previous computer
   repopulating the new one.
 - A blank session list between computers, the previous rows, Retry rows, chips, search field or empty state
   vanishing, jumping or staying tappable instead of fading into the skeleton, a scrolled list snapping to the top as
