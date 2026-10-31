@@ -3,7 +3,7 @@ import "dart:async";
 import "package:fake_async/fake_async.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_shared/sesori_shared.dart" show Project, ProjectGlossaryKey;
+import "package:sesori_shared/sesori_shared.dart" show HealthResponse, Project, ProjectGlossaryKey;
 import "package:test/test.dart";
 
 class MockVoiceRepository() extends Mock implements VoiceRepository;
@@ -16,12 +16,20 @@ class MockVoiceCapture() extends Mock implements VoiceCapture;
 
 class MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
 
+class MockConnectionService() extends Mock implements ConnectionService;
+
+ConnectionStatus _connectedTo({required String bridgeId}) => ConnectionStatus.connected(
+  config: ServerConnectionConfig(relayHost: "relay.example.com", authToken: "test-token", bridgeId: bridgeId),
+  health: const HealthResponse(healthy: true, version: "0.1.200", filesystemAccessDegraded: false),
+);
+
 void main() {
   late MockVoiceRepository repository;
   late MockProjectRepository projectRepository;
   late MockVoiceModeRepository voiceModeRepository;
   late MockVoiceCapture capture;
   late MockVoiceCaptureSession captureSession;
+  late MockConnectionService connectionService;
   late VoiceTranscriptionService service;
   late VoiceTranscriptionSession session;
 
@@ -56,11 +64,14 @@ void main() {
         projectGlossaryKey: any(named: "projectGlossaryKey"),
       ),
     ).thenAnswer((_) async => const VoiceTranscriptionOutcome.success(transcript: "hello"));
+    connectionService = MockConnectionService();
+    when(() => connectionService.currentStatus).thenReturn(_connectedTo(bridgeId: "computer-a"));
     service = VoiceTranscriptionService(
       repository: repository,
       projectRepository: projectRepository,
       voiceModeRepository: voiceModeRepository,
       capture: capture,
+      connectionService: connectionService,
     );
     session = service.createSession(projectId: null, allowLive: false);
   });
@@ -170,6 +181,112 @@ void main() {
       ),
     ).captured;
     expect(forwardedKeys, [null, glossaryKey]);
+  });
+
+  group("remembered project glossary keys", () {
+    final glossaryKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+    );
+
+    ApiResponse<Project> projectAnswer({required ProjectGlossaryKey? key}) => ApiResponse.success(
+      Project(id: "project-1", name: "Project", path: "/project", time: null, voiceGlossaryKey: key),
+    );
+
+    Future<void> learnKey() async {
+      when(
+        () => projectRepository.getProject(projectId: "project-1"),
+      ).thenAnswer((_) async => projectAnswer(key: glossaryKey));
+      service.createSession(projectId: "project-1", allowLive: false);
+      await Future<void>.delayed(Duration.zero);
+    }
+
+    Future<ProjectGlossaryKey?> uploadedKey({required VoiceTranscriptionSession from}) async {
+      await service.start(session: from);
+      await service.stopAndTranscribe(session: from);
+      return verify(
+            () => repository.transcribe(
+              audioFilePath: artifact.path,
+              mimeType: artifact.mimeType,
+              projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
+            ),
+          ).captured.single
+          as ProjectGlossaryKey?;
+    }
+
+    void leaveBridgeUnanswered() {
+      when(
+        () => projectRepository.getProject(projectId: "project-1"),
+      ).thenAnswer((_) => Completer<ApiResponse<Project>>().future);
+    }
+
+    test("a new composer has the key before the bridge answers, and still asks", () async {
+      await learnKey();
+      leaveBridgeUnanswered();
+      clearInteractions(projectRepository);
+
+      final next = service.createSession(projectId: "project-1", allowLive: false);
+
+      verify(() => projectRepository.getProject(projectId: "project-1")).called(1);
+      expect(await uploadedKey(from: next), glossaryKey);
+    });
+
+    test("another computer does not get the key", () async {
+      await learnKey();
+      leaveBridgeUnanswered();
+      when(() => connectionService.currentStatus).thenReturn(_connectedTo(bridgeId: "computer-b"));
+
+      final next = service.createSession(projectId: "project-1", allowLive: false);
+
+      expect(await uploadedKey(from: next), isNull);
+    });
+
+    test("an answer is remembered for the computer that was asked", () async {
+      final answer = Completer<ApiResponse<Project>>();
+      when(() => projectRepository.getProject(projectId: "project-1")).thenAnswer((_) => answer.future);
+      service.createSession(projectId: "project-1", allowLive: false);
+      when(() => connectionService.currentStatus).thenReturn(_connectedTo(bridgeId: "computer-b"));
+      answer.complete(projectAnswer(key: glossaryKey));
+      await Future<void>.delayed(Duration.zero);
+      leaveBridgeUnanswered();
+
+      final next = service.createSession(projectId: "project-1", allowLive: false);
+
+      expect(await uploadedKey(from: next), isNull);
+    });
+
+    test("an answer without a key keeps the known one", () async {
+      await learnKey();
+      when(
+        () => projectRepository.getProject(projectId: "project-1"),
+      ).thenAnswer((_) async => projectAnswer(key: null));
+
+      final next = service.createSession(projectId: "project-1", allowLive: false);
+      await Future<void>.delayed(Duration.zero);
+
+      expect(await uploadedKey(from: next), glossaryKey);
+    });
+
+    test("a known key does not ask again for each dictation", () async {
+      await learnKey();
+      final next = service.createSession(projectId: "project-1", allowLive: false);
+      await Future<void>.delayed(Duration.zero);
+      clearInteractions(projectRepository);
+
+      await uploadedKey(from: next);
+
+      verifyNever(() => projectRepository.getProject(projectId: "project-1"));
+    });
+
+    test("nothing is remembered while disconnected", () async {
+      when(() => connectionService.currentStatus).thenReturn(const ConnectionStatus.disconnected());
+      await learnKey();
+      leaveBridgeUnanswered();
+      when(() => connectionService.currentStatus).thenReturn(_connectedTo(bridgeId: "computer-a"));
+
+      final next = service.createSession(projectId: "project-1", allowLive: false);
+
+      expect(await uploadedKey(from: next), isNull);
+    });
   });
 
   test("a key that arrives during the recording reaches the upload", () async {
@@ -384,7 +501,7 @@ void main() {
     verify(() => captureSession.deleteArtifact(artifact: artifact)).called(1);
   });
 
-  test("retry retains its interaction snapshot after project context becomes available", () async {
+  test("a retry uses a key that arrived after the first attempt", () async {
     final glossaryKey = ProjectGlossaryKey.parse(
       value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
     );
@@ -441,7 +558,7 @@ void main() {
         projectGlossaryKey: captureAny(named: "projectGlossaryKey"),
       ),
     ).captured;
-    expect(forwardedKeys, [null, null, glossaryKey]);
+    expect(forwardedKeys, [null, glossaryKey, glossaryKey]);
     verify(captureSession.start).called(2);
     verify(captureSession.stop).called(2);
   });

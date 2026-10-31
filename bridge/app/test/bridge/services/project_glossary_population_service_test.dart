@@ -1,18 +1,15 @@
 import "dart:async";
 
+import "package:clock/clock.dart";
 import "package:sesori_bridge/src/repositories/models/project_glossary_source.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_publication_repository.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_repository.dart";
-import "package:sesori_bridge/src/repositories/project_repository.dart";
 import "package:sesori_bridge/src/services/project_glossary_population_service.dart";
-import "package:sesori_bridge/src/services/project_glossary_scope_service.dart";
 import "package:sesori_bridge/src/services/project_glossary_term_calculator.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
 
 void main() {
-  late _FakeProjectRepository projectRepository;
-  late _FakeProjectGlossaryScopeService scopeService;
   late _FakeProjectGlossaryRepository glossaryRepository;
   late _FakeProjectGlossaryTermCalculator termCalculator;
   late _FakeProjectGlossaryPublicationRepository publicationRepository;
@@ -23,16 +20,23 @@ void main() {
       value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
     ),
   );
+  final otherScope = ProjectGlossaryScope.repository(
+    projectKey: ProjectGlossaryKey.parse(
+      value: "prj_v1_gBrBSzNu-bDcQWAcJVHWREq3Mlkj9J6GQoxl2Mlt7LY",
+    ),
+  );
+  final startTime = DateTime.utc(2026, 10, 31, 12);
+
+  Future<void> refreshAt({required Duration elapsed, String projectPath = "/workspace/project"}) => withClock(
+    Clock.fixed(startTime.add(elapsed)),
+    () => service.refreshIfDue(scope: scope, projectPath: projectPath),
+  );
 
   setUp(() {
-    projectRepository = _FakeProjectRepository();
-    scopeService = _FakeProjectGlossaryScopeService(scope: scope);
     glossaryRepository = _FakeProjectGlossaryRepository();
     termCalculator = _FakeProjectGlossaryTermCalculator();
     publicationRepository = _FakeProjectGlossaryPublicationRepository();
     service = ProjectGlossaryPopulationService(
-      projectRepository: projectRepository,
-      scopeService: scopeService,
       glossaryRepository: glossaryRepository,
       termCalculator: termCalculator,
       publicationRepository: publicationRepository,
@@ -47,10 +51,8 @@ void main() {
       for (var index = 0; index < 203; index++) "LegacyTerm$index",
     ];
 
-    await service.populate(projectId: "project-1");
+    await service.refreshIfDue(scope: scope, projectPath: "/workspace/project");
 
-    expect(projectRepository.requestedProjectIds, ["project-1"]);
-    expect(scopeService.projectPaths, ["/workspace/project"]);
     expect(glossaryRepository.projectPaths, ["/workspace/project"]);
     // The whole glossary must fit the single add request.
     expect(termCalculator.requestedMaximumTerms, [100]);
@@ -69,7 +71,7 @@ void main() {
   test("removes this scope's stale ownership when inference yields no terms", () async {
     publicationRepository.existingWords = ["LegacyOne", "LegacyTwo"];
 
-    await service.populate(projectId: "project-1");
+    await service.refreshIfDue(scope: scope, projectPath: "/workspace/project");
 
     expect(publicationRepository.additions, isEmpty);
     expect(publicationRepository.removals, hasLength(1));
@@ -77,106 +79,98 @@ void main() {
     expect(publicationRepository.removals.single.words, ["LegacyOne", "LegacyTwo"]);
   });
 
-  test("does not scan or publish when no exact scope is available", () async {
-    scopeService.scope = null;
+  test("refreshes a glossary once a day", () async {
+    await refreshAt(elapsed: Duration.zero);
+    await refreshAt(elapsed: const Duration(hours: 23, minutes: 59));
+    expect(glossaryRepository.projectPaths, hasLength(1));
 
-    await service.populate(projectId: "project-1");
-
-    expect(glossaryRepository.projectPaths, isEmpty);
-    expect(publicationRepository.operations, isEmpty);
+    await refreshAt(elapsed: const Duration(hours: 24));
+    expect(glossaryRepository.projectPaths, hasLength(2));
   });
 
-  test("coalesces concurrent population requests for the same project", () async {
-    final getStarted = Completer<void>();
-    final releaseGet = Completer<void>();
-    publicationRepository
-      ..getStarted = getStarted
-      ..releaseGet = releaseGet;
+  test("worktrees that share a glossary share its refresh", () async {
+    await refreshAt(elapsed: Duration.zero, projectPath: "/workspace/project");
+    await refreshAt(elapsed: const Duration(minutes: 1), projectPath: "/workspace/project-worktree");
 
-    final first = service.populate(projectId: "project-1");
-    await getStarted.future;
-    final second = service.populate(projectId: "project-1");
+    expect(glossaryRepository.projectPaths, ["/workspace/project"]);
+  });
 
-    expect(identical(first, second), isTrue);
-    releaseGet.complete();
-    await Future.wait([first, second]);
+  test("a failed refresh retries after ten minutes, not on the next request", () async {
+    glossaryRepository.error = StateError("git failed");
 
-    expect(projectRepository.requestedProjectIds, ["project-1"]);
+    await refreshAt(elapsed: Duration.zero);
+    await refreshAt(elapsed: const Duration(minutes: 9));
+    expect(glossaryRepository.projectPaths, hasLength(1));
+    expect(publicationRepository.operations, isEmpty);
+
+    glossaryRepository.error = null;
+    await refreshAt(elapsed: const Duration(minutes: 10));
+    expect(glossaryRepository.projectPaths, hasLength(2));
     expect(publicationRepository.operations, ["get"]);
   });
 
-  test("serializes concurrent population requests", () async {
+  test("a request during a running refresh starts no second one", () async {
     final getStarted = Completer<void>();
     final releaseGet = Completer<void>();
     publicationRepository
       ..getStarted = getStarted
       ..releaseGet = releaseGet;
-    termCalculator.words = ["CurrentTerm"];
-    publicationRepository.existingWords = ["CurrentTerm"];
 
-    final first = service.populate(projectId: "project-1");
+    final first = service.refreshIfDue(scope: scope, projectPath: "/workspace/project");
     await getStarted.future;
-    final second = service.populate(projectId: "project-2");
+    await service.refreshIfDue(scope: scope, projectPath: "/workspace/project");
+    releaseGet.complete();
+    await first;
+
+    expect(publicationRepository.operations, ["get"]);
+  });
+
+  test("refreshes different glossaries one at a time", () async {
+    final getStarted = Completer<void>();
+    final releaseGet = Completer<void>();
+    publicationRepository
+      ..getStarted = getStarted
+      ..releaseGet = releaseGet;
+
+    final first = service.refreshIfDue(scope: scope, projectPath: "/workspace/project");
+    await getStarted.future;
+    final second = service.refreshIfDue(scope: otherScope, projectPath: "/workspace/other");
     await Future<void>.delayed(Duration.zero);
 
-    expect(projectRepository.requestedProjectIds, ["project-1"]);
+    expect(glossaryRepository.projectPaths, ["/workspace/project"]);
     releaseGet.complete();
     await Future.wait([first, second]);
 
-    expect(projectRepository.requestedProjectIds, ["project-1", "project-2"]);
+    expect(glossaryRepository.projectPaths, ["/workspace/project", "/workspace/other"]);
     expect(publicationRepository.maximumConcurrentReads, 1);
   });
 
-  test("shutdown aborts transport and rejects later population", () async {
-    service.beginShutdown();
+  test("shutdown aborts transport, skips queued work and rejects later refreshes", () async {
+    final getStarted = Completer<void>();
+    final releaseGet = Completer<void>();
+    publicationRepository
+      ..getStarted = getStarted
+      ..releaseGet = releaseGet;
 
-    await service.populate(projectId: "project-1");
+    final running = service.refreshIfDue(scope: scope, projectPath: "/workspace/project");
+    await getStarted.future;
+    final queued = service.refreshIfDue(scope: otherScope, projectPath: "/workspace/other");
+    service.beginShutdown();
+    await service.refreshIfDue(
+      scope: ProjectGlossaryScope.repository(
+        projectKey: ProjectGlossaryKey.parse(
+          value: "prj_v1_AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA",
+        ),
+      ),
+      projectPath: "/workspace/late",
+    );
+    releaseGet.complete();
+    await Future.wait([running, queued]);
 
     expect(publicationRepository.shutdownCount, 1);
-    expect(projectRepository.requestedProjectIds, isEmpty);
+    expect(glossaryRepository.projectPaths, ["/workspace/project"]);
+    expect(publicationRepository.operations, ["get"]);
   });
-
-  test("fails closed before publication when bounded source loading fails", () async {
-    final failure = StateError("git failed");
-    glossaryRepository.error = failure;
-
-    await expectLater(
-      service.populate(projectId: "project-1"),
-      throwsA(same(failure)),
-    );
-
-    expect(publicationRepository.operations, isEmpty);
-  });
-}
-
-final class _FakeProjectRepository() implements ProjectRepository {
-  final List<String> requestedProjectIds = [];
-
-  @override
-  Future<Project> getProject({required String projectId}) async {
-    requestedProjectIds.add(projectId);
-    return Project(
-      id: projectId,
-      name: "Project",
-      path: "/workspace/project",
-      time: null,
-      voiceGlossaryKey: null,
-    );
-  }
-
-  @override
-  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
-}
-
-final class _FakeProjectGlossaryScopeService({required var ProjectGlossaryScope? scope})
-    implements ProjectGlossaryScopeService {
-  final List<String> projectPaths = [];
-
-  @override
-  Future<ProjectGlossaryScope?> resolve({required String projectPath}) async {
-    projectPaths.add(projectPath);
-    return scope;
-  }
 }
 
 final class _FakeProjectGlossaryRepository() implements ProjectGlossaryRepository {

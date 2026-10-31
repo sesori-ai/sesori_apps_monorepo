@@ -1,10 +1,12 @@
 import "package:sesori_shared/sesori_shared.dart";
 
-import "../services/current_project_service.dart";
+import "../services/project_details_service.dart";
 import "request_handler.dart";
 
 /// Handles `POST /project/current` — returns project for a given project id.
-class GetCurrentProjectHandler({required final CurrentProjectService _currentProjectService})
+/// The route keeps its name for released apps; nothing on the bridge tracks a
+/// current project.
+class GetCurrentProjectHandler({required final ProjectDetailsService _projectDetailsService})
     extends BodyRequestHandler<ProjectIdRequest, Project> {
   this
     : super(
@@ -21,6 +23,6 @@ class GetCurrentProjectHandler({required final CurrentProjectService _currentPro
     final projectId = body.projectId;
     requireNonEmpty(request: request, value: projectId, label: "project id");
 
-    return await _currentProjectService.getCurrentProject(projectId: projectId);
+    return await _projectDetailsService.getProject(projectId: projectId);
   }
 }

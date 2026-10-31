@@ -37,7 +37,6 @@ import "foundation/relay_plaintext_codec.dart";
 import "foundation/streaming_process_runner.dart";
 import "listeners/chat_history_activity_listener.dart";
 import "listeners/chat_history_listener.dart";
-import "listeners/current_project_glossary_listener.dart";
 import "listeners/plugin_catalog_hydration_listener.dart";
 import "listeners/plugin_event_listener.dart";
 import "listeners/plugin_warmup_setting_listener.dart";
@@ -175,7 +174,6 @@ import "services/bridge_startup_retry_service.dart";
 import "services/catalog_import_service.dart";
 import "services/chat_history_reconcile_service.dart";
 import "services/chat_history_service.dart";
-import "services/current_project_service.dart";
 import "services/deleted_session_storage_cleanup_service.dart";
 import "services/mcp_authentication_service.dart";
 import "services/mcp_service.dart";
@@ -185,9 +183,9 @@ import "services/plugin_lifecycle_service.dart";
 import "services/plugin_warmup_service.dart";
 import "services/plugin_warmup_settings_service.dart";
 import "services/project_activity_service.dart";
+import "services/project_details_service.dart";
 import "services/project_glossary_population_service.dart";
 import "services/project_glossary_scope_service.dart";
-import "services/project_glossary_scope_tracker.dart";
 import "services/project_glossary_term_calculator.dart";
 import "services/project_initialization_service.dart";
 import "services/project_mutation_service.dart";
@@ -412,18 +410,9 @@ class Orchestrator({
     final pullRequestRefreshSettingsService = PullRequestRefreshSettingsService(
       bridgeSettingsRepository: _bridgeSettingsRepository,
     );
-    final projectGlossaryScopeTracker = ProjectGlossaryScopeTracker(
-      bridgeIdProvider: _bridgeRegistrationService,
-    );
     final projectGlossaryScopeService = ProjectGlossaryScopeService(
       repository: ProjectGlossaryScopeRepository(gitCliApi: gitCliApi),
       bridgeIdProvider: _bridgeRegistrationService,
-      scopeTracker: projectGlossaryScopeTracker,
-    );
-    final currentProjectService = CurrentProjectService(
-      projectRepository: projectRepository,
-      projectGlossaryScopeTracker: projectGlossaryScopeTracker,
-      projectGlossaryScopeService: projectGlossaryScopeService,
     );
     final sesoriServerApi = SesoriServerApi(
       authBackendUrl: config.authBackendURL,
@@ -432,8 +421,6 @@ class Orchestrator({
       tokenRefresher: _tokenRefresher,
     );
     final projectGlossaryPopulationService = ProjectGlossaryPopulationService(
-      projectRepository: projectRepository,
-      scopeService: projectGlossaryScopeService,
       glossaryRepository: ProjectGlossaryRepository(
         gitCliApi: gitCliApi,
         filesystemApi: const FilesystemApi(),
@@ -441,9 +428,10 @@ class Orchestrator({
       termCalculator: const ProjectGlossaryTermCalculator(),
       publicationRepository: ProjectGlossaryPublicationRepository(api: sesoriServerApi),
     );
-    final currentProjectGlossaryListener = CurrentProjectGlossaryListener(
-      source: currentProjectService.loadedProjectIds,
-      service: projectGlossaryPopulationService,
+    final projectDetailsService = ProjectDetailsService(
+      projectRepository: projectRepository,
+      projectGlossaryScopeService: projectGlossaryScopeService,
+      projectGlossaryPopulationService: projectGlossaryPopulationService,
     );
     final projectActivityService = ProjectActivityService(
       projectRepository: projectRepository,
@@ -715,7 +703,7 @@ class Orchestrator({
           pluginIds: pluginComposition.sessionOptionsScopeById.keys.toSet(),
         ),
         RestartBridgeHandler(restartService: _restartService),
-        GetCurrentProjectHandler(currentProjectService: currentProjectService),
+        GetCurrentProjectHandler(projectDetailsService: projectDetailsService),
         GetProjectsHandler(projectActivityService: projectActivityService),
         GetCommandsHandler(sessionRepository: sessionRepository),
         GetSessionStatusesHandler(sessionRepository: sessionRepository),
@@ -822,9 +810,7 @@ class Orchestrator({
       sessionRepository: sessionRepository,
       pluginWarmupSettingListener: pluginWarmupSettingListener,
       viewedSessionPluginWarmupListener: viewedSessionPluginWarmupListener,
-      currentProjectGlossaryListener: currentProjectGlossaryListener,
       projectGlossaryPopulationService: projectGlossaryPopulationService,
-      currentProjectService: currentProjectService,
       sessionUnseenService: sessionUnseenService,
       sessionViewTracker: sessionViewTracker,
       projectActivityService: projectActivityService,
@@ -938,9 +924,7 @@ class OrchestratorSession._({
   required final SessionRepository _sessionRepository,
   required final PluginWarmupSettingListener _pluginWarmupSettingListener,
   required final ViewedSessionPluginWarmupListener _viewedSessionPluginWarmupListener,
-  required final CurrentProjectGlossaryListener _currentProjectGlossaryListener,
   required final ProjectGlossaryPopulationService _projectGlossaryPopulationService,
-  required final CurrentProjectService _currentProjectService,
   required final SessionUnseenService _sessionUnseenService,
   required final SessionViewTracker _sessionViewTracker,
   required final ProjectActivityService _projectActivityService,
@@ -1120,7 +1104,6 @@ class OrchestratorSession._({
     _sessionOptionsChangedRefreshListener.start();
     _pluginWarmupSettingListener.start();
     _viewedSessionPluginWarmupListener.start();
-    _currentProjectGlossaryListener.start();
     _chatHistoryActivityListener.start();
     _sessionContinuationTimer.start();
     final readiness = Completer<OrchestratorSessionStartResult>();
@@ -1298,13 +1281,11 @@ class OrchestratorSession._({
       attempt(_sessionBindingCommitListener.dispose),
       attempt(_chatHistoryListener.dispose),
       attempt(_chatHistoryActivityListener.dispose),
-      attempt(_currentProjectGlossaryListener.dispose),
     ]);
     Log.v("[shutdown] event producers cancelled (+${teardownSw.elapsedMilliseconds}ms)");
     await Future.wait([attempt(_routedRequestDispatcher.drain), attempt(_drainRelayCompletions)]);
     await Future.wait([
       attempt(_mcpService.dispose),
-      attempt(_currentProjectService.dispose),
       attempt(_projectGlossaryPopulationService.dispose),
     ]);
     Log.v(
