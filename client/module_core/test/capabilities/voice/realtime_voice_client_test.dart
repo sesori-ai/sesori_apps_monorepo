@@ -50,6 +50,24 @@ void main() {
       return session;
     }
 
+    test("logs the time from connect to ready once, and nothing about the session's content", () async {
+      final records = <LogRecord>[];
+      setLogSink(sink: _RecordingSink(records: records));
+      addTearDown(() => setLogSink(sink: const StdoutLogSink()));
+
+      final session = await openUpgraded();
+      unawaited(session.events.drain<void>());
+      channel.inbound
+        ..add(_ready)
+        ..add(_ready);
+      await pumpEventQueue();
+
+      final messages = records.map((record) => record.message).where((message) => message.contains("ready"));
+      expect(messages.single, matches(RegExp(r"^\[voice\] realtime ready \d+ ms after open$")));
+      expect(records.single.level, LogLevel.info);
+      await session.cancel();
+    });
+
     test("the token goes only in the upgrade header, and start is first, after the upgrade", () async {
       final opening = client.open(sampleRate: VoiceRealtimeSampleRate.hz24000, projectKey: null);
       await pumpEventQueue();
@@ -300,6 +318,8 @@ void main() {
         seen.add(event);
         if (event is RealtimeVoiceReadyEvent) {
           session.sendAudio(frame: Uint8List.fromList([1, 2, 3, 4]));
+          // The capture's aligner sends views of larger buffers.
+          session.sendAudio(frame: Uint8List.sublistView(Uint8List.fromList([9, 5, 6, 9]), 1, 3));
           session.finish();
         }
       }
@@ -312,7 +332,8 @@ void main() {
       expect(authorization, "Bearer secret-token");
       expect(jsonDecode(received[0]! as String), containsPair("type", "start"));
       expect(received[1], [1, 2, 3, 4]);
-      expect(received[2], realtimeVoiceFinishFrame);
+      expect(received[2], [5, 6]);
+      expect(received[3], realtimeVoiceFinishFrame);
     });
 
     test("a close before ready is a failure carrying the real close code", () async {
@@ -354,4 +375,12 @@ void main() {
       expect(received.last, realtimeVoiceCancelFrame);
     });
   });
+}
+
+class _RecordingSink({required final List<LogRecord> _records}) implements LogSink {
+  @override
+  void write({required LogRecord record}) => _records.add(record);
+
+  @override
+  Future<void> flush() async {}
 }

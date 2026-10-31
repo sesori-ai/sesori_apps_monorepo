@@ -206,8 +206,8 @@ Do not port #918's interaction code.
 `VoiceCaptureSession` gains a PCM16 mono 16 kHz stream start using `record`'s
 `startStream`, and reports whether the platform supports it. A platform that can't
 stream uses after-recording. Wake lock, audio session and the amplitude stream
-carry over. This step measures connect-to-`ready` time on a real device, because
-D29's buffer depends on it.
+carry over. This step logs connect-to-`ready` time, because D29's buffer depends on
+it. A real value needs an authenticated session, so step 12 reads it on a real device.
 
 ### Live session (step 8)
 
@@ -394,8 +394,8 @@ Fixed titles are in [TRACKER](TRACKER.md).
 5. **Voice mode switch.** Sources, API, repository, tests. Nothing reads it yet.
 6. **Realtime transport.** Client, protocol, repository method, fixture, tests
    against the real server shape. No UI.
-7. **Streaming capture.** PCM start on each platform, the support check,
-   connect-time measurement on a device.
+7. **Streaming capture.** PCM start on each platform, the support check, the
+   connect-time log.
 8. **Live session.** `LiveDictationRun`, the service contract, cubit states, the
    buffer, fallback, terminal rules, the `mode` parameter. Live works when enabled,
    with only the waveform on screen until step 9.

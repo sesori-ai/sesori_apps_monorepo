@@ -1,5 +1,6 @@
 import "dart:async";
 import "dart:io";
+import "dart:typed_data";
 
 import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
@@ -40,6 +41,7 @@ void main() {
   setUpAll(() {
     registerFallbackValue(const RecordConfig());
     registerFallbackValue(Duration.zero);
+    registerFallbackValue(AudioEncoder.pcm16bits);
   });
 
   setUp(() async {
@@ -391,5 +393,354 @@ void main() {
 
     expect(identical(first, second), isFalse);
     expect(index, 2);
+  });
+
+  group("PCM stream", () {
+    late StreamController<Uint8List> chunks;
+    void Function(RecordConfig)? onConfigChanged;
+
+    setUp(() {
+      chunks = StreamController<Uint8List>.broadcast();
+      onConfigChanged = null;
+      when(() => recorder.setOnConfigChanged(any())).thenAnswer((invocation) async {
+        onConfigChanged = invocation.positionalArguments.single as void Function(RecordConfig)?;
+      });
+      when(() => recorder.startStream(any())).thenAnswer((_) async => chunks.stream);
+      when(recorder.stop).thenAnswer((_) async {
+        await chunks.close();
+        return null;
+      });
+    });
+
+    /// Collects what the caller sees: frames as lists, and errors.
+    ({List<List<int>> frames, List<Object> errors, Future<void> done}) collect(Stream<Uint8List> stream) {
+      final frames = <List<int>>[];
+      final errors = <Object>[];
+      final done = Completer<void>();
+      stream.listen(frames.add, onError: errors.add, onDone: done.complete);
+      return (frames: frames, errors: errors, done: done.future);
+    }
+
+    test("asks for PCM16 mono at 16 kHz with the same effects as recording, and no file", () async {
+      final session = capture.createSession();
+
+      await session.startPcmStream();
+
+      final config = verify(() => recorder.startStream(captureAny())).captured.single as RecordConfig;
+      expect(config.encoder, AudioEncoder.pcm16bits);
+      expect(config.sampleRate, 16000);
+      expect(voiceCapturePcmSampleRate.hertz, 16000);
+      expect(config.numChannels, 1);
+      expect(config.autoGain, isTrue);
+      expect(config.noiseSuppress, isTrue);
+      expect(config.audioInterruption, AudioInterruptionMode.none);
+      expect(config.iosConfig.allowHapticsAndSystemSoundsDuringRecording, isTrue);
+      verifyNever(() => fileProvider.createRecordingPath());
+      verifyNever(() => recorder.start(any(), path: any(named: "path")));
+      await session.close();
+    });
+
+    test("delivers even frames from odd chunks, and the amplitude and wake lock carry over", () async {
+      final session = capture.createSession();
+      final amplitudes = <double>[];
+      final amplitudeSubscription = session.amplitudeStream.listen(amplitudes.add);
+      addTearDown(amplitudeSubscription.cancel);
+
+      final seen = collect(await session.startPcmStream());
+      chunks.add(Uint8List.fromList([1, 2, 3]));
+      chunks.add(Uint8List.fromList([4, 5, 6, 7]));
+      chunks.add(Uint8List.fromList([8]));
+      amplitudeController.add(Amplitude(current: -30, max: 0));
+      await pumpEventQueue();
+
+      expect(seen.frames, [
+        [1, 2],
+        [3, 4, 5, 6],
+        [7, 8],
+      ]);
+      expect(amplitudes, contains(closeTo(0.5, 0.001)));
+      verify(wakeLockService.acquire).called(1);
+      await session.close();
+    });
+
+    test("stopping closes the stream without an error, delivers late chunks, and drops a last half sample", () async {
+      final session = capture.createSession();
+      final seen = collect(await session.startPcmStream());
+      when(recorder.stop).thenAnswer((_) async {
+        chunks.add(Uint8List.fromList([1, 2, 3]));
+        await chunks.close();
+        return null;
+      });
+
+      await session.stopPcmStream();
+      await seen.done;
+
+      expect(seen.frames, [
+        [1, 2],
+      ]);
+      expect(seen.errors, isEmpty);
+      verifyNever(wakeLockLease.release);
+
+      await session.releaseOperation();
+      verify(wakeLockLease.release).called(1);
+      await session.close();
+    });
+
+    test("a stop that fails keeps the cause, and cancel stops the recorder again", () async {
+      final stopError = StateError("native stop failed");
+      when(recorder.stop).thenThrow(stopError);
+      final session = capture.createSession();
+      final seen = collect(await session.startPcmStream());
+
+      await expectLater(
+        session.stopPcmStream(),
+        throwsA(isA<VoiceCaptureFailed>().having((error) => error.innerError, "innerError", same(stopError))),
+      );
+      verify(recorder.stop).called(1);
+
+      when(recorder.stop).thenAnswer((_) async => null);
+      await session.cancel();
+      verify(recorder.stop).called(1);
+      await seen.done;
+      await session.close();
+    });
+
+    test("a recorder error reaches the frames as a capture failure holding its cause", () async {
+      final session = capture.createSession();
+      final seen = collect(await session.startPcmStream());
+      final nativeError = StateError("AudioRecord read failed");
+
+      chunks.addError(nativeError);
+      await seen.done;
+
+      expect(
+        seen.errors.single,
+        isA<VoiceCaptureFailed>().having((e) => e.innerError, "innerError", same(nativeError)),
+      );
+      await session.cancel();
+      verify(recorder.stop).called(1);
+      verify(wakeLockLease.release).called(1);
+      await session.close();
+    });
+
+    test("a recorder that ends by itself is a failure, as parecord exiting would be", () async {
+      final session = capture.createSession();
+      final seen = collect(await session.startPcmStream());
+
+      await chunks.close();
+      await seen.done;
+
+      expect(
+        seen.errors.single,
+        isA<VoiceCaptureFailed>().having((e) => e.innerError, "innerError", isA<StateError>()),
+      );
+      await session.close();
+    });
+
+    test("a changed rate or channel count fails the stream and later chunks are dropped", () async {
+      for (final changed in const [
+        RecordConfig(encoder: AudioEncoder.pcm16bits, sampleRate: 16000, numChannels: 2),
+        RecordConfig(encoder: AudioEncoder.pcm16bits, sampleRate: 48000, numChannels: 1),
+      ]) {
+        chunks = StreamController<Uint8List>.broadcast();
+        final session = capture.createSession();
+        final seen = collect(await session.startPcmStream());
+
+        onConfigChanged?.call(changed);
+        chunks.add(Uint8List.fromList([1, 2]));
+        await seen.done;
+
+        expect(seen.frames, isEmpty);
+        expect(
+          seen.errors.single,
+          isA<VoiceCaptureFailed>().having((e) => e.innerError, "innerError", isA<UnsupportedError>()),
+        );
+        await session.close();
+      }
+    });
+
+    test("a change that leaves the format alone is ignored", () async {
+      final session = capture.createSession();
+      final seen = collect(await session.startPcmStream());
+
+      onConfigChanged?.call(
+        const RecordConfig(encoder: AudioEncoder.pcm16bits, bitRate: 1, sampleRate: 16000, numChannels: 1),
+      );
+      chunks.add(Uint8List.fromList([1, 2]));
+      await pumpEventQueue();
+
+      expect(seen.frames, [
+        [1, 2],
+      ]);
+      expect(seen.errors, isEmpty);
+      await session.close();
+    });
+
+    test("falls back: after cancel a file recording starts, and its own config changes are not failures", () async {
+      await File(recordingPath).writeAsBytes([1, 2, 3]);
+      final session = capture.createSession();
+      final seen = collect(await session.startPcmStream());
+
+      await session.cancel();
+      await seen.done;
+      expect(seen.errors, isEmpty);
+      verify(wakeLockLease.release).called(1);
+
+      when(recorder.stop).thenAnswer((_) async => recordingPath);
+      await session.start();
+      onConfigChanged?.call(const RecordConfig(sampleRate: 44100, numChannels: 2));
+      final artifact = await session.stop();
+
+      expect(artifact.path, recordingPath);
+      expect(seen.errors, isEmpty);
+      await session.close();
+    });
+
+    test("denied permission starts nothing", () async {
+      when(recorder.hasPermission).thenAnswer((_) async => false);
+      final session = capture.createSession();
+
+      await expectLater(session.startPcmStream(), throwsA(isA<VoiceCapturePermissionDenied>()));
+
+      verifyNever(() => recorder.startStream(any()));
+      await session.close();
+    });
+
+    test("a failed start keeps the cause, releases everything, and a file recording still starts", () async {
+      final nativeError = Exception("parecord: command not found");
+      when(() => recorder.startStream(any())).thenThrow(nativeError);
+      final session = capture.createSession();
+
+      await expectLater(
+        session.startPcmStream(),
+        throwsA(isA<VoiceCaptureFailed>().having((error) => error.innerError, "innerError", same(nativeError))),
+      );
+      verifyNever(wakeLockService.acquire);
+      verifyNever(recorder.stop);
+
+      await session.start();
+      verify(() => recorder.start(any(), path: recordingPath)).called(1);
+      when(recorder.stop).thenAnswer((_) async => recordingPath);
+      await session.close();
+    });
+
+    test("a failure after the native start stops the recorder again", () async {
+      final amplitudeError = StateError("native amplitude stream unavailable");
+      when(() => recorder.onAmplitudeChanged(any())).thenThrow(amplitudeError);
+      final session = capture.createSession();
+
+      await expectLater(
+        session.startPcmStream(),
+        throwsA(isA<VoiceCaptureFailed>().having((error) => error.innerError, "innerError", same(amplitudeError))),
+      );
+
+      verify(recorder.stop).called(1);
+      await session.close();
+    });
+
+    test("holds the shared activity, so a prewarm waits until the stream's operation is released", () async {
+      final session = capture.createSession();
+      await session.startPcmStream();
+
+      await capture.prewarm();
+      verifyNever(
+        () => prewarmClient.prewarm(
+          sampleRate: any(named: "sampleRate"),
+          bitRate: any(named: "bitRate"),
+          numChannels: any(named: "numChannels"),
+        ),
+      );
+
+      await session.stopPcmStream();
+      await session.releaseOperation();
+      await capture.prewarm();
+      verify(
+        () => prewarmClient.prewarm(
+          sampleRate: any(named: "sampleRate"),
+          bitRate: any(named: "bitRate"),
+          numChannels: any(named: "numChannels"),
+        ),
+      ).called(1);
+      await session.close();
+    });
+
+    test("the two modes refuse each other, and stopping refuses the wrong one", () async {
+      final session = capture.createSession();
+      await expectLater(session.stopPcmStream(), throwsA(isA<VoiceCaptureFailed>()));
+
+      await session.startPcmStream();
+      await expectLater(session.start(), throwsA(isA<VoiceCaptureFailed>()));
+      await expectLater(session.startPcmStream(), throwsA(isA<VoiceCaptureFailed>()));
+      await expectLater(session.stop(), throwsA(isA<VoiceCaptureFailed>()));
+      await session.stopPcmStream();
+
+      when(recorder.stop).thenAnswer((_) async => recordingPath);
+      await session.start();
+      await expectLater(session.startPcmStream(), throwsA(isA<VoiceCaptureFailed>()));
+      await session.close();
+    });
+
+    test("closing while streaming stops the recorder and closes the frames", () async {
+      final session = capture.createSession();
+      final seen = collect(await session.startPcmStream());
+
+      await session.close();
+      await seen.done;
+
+      expect(seen.errors, isEmpty);
+      verify(recorder.stop).called(1);
+      verify(recorder.dispose).called(1);
+    });
+  });
+
+  group("PCM support check", () {
+    FlutterVoiceCapture captureWith({required bool toolAvailable}) => FlutterVoiceCapture(
+      recorderPrewarm: null,
+      fileProvider: fileProvider,
+      wakeLockService: wakeLockService,
+      audioFormat: audioFormat,
+      recorderFactory: () => recorder,
+      pcmCaptureToolCheck: () async => toolAvailable,
+    );
+
+    test("needs both the recorder's encoder and the tool", () async {
+      when(() => recorder.isEncoderSupported(AudioEncoder.pcm16bits)).thenAnswer((_) async => true);
+      expect(await captureWith(toolAvailable: true).createSession().supportsPcmStream(), isTrue);
+      expect(await captureWith(toolAvailable: false).createSession().supportsPcmStream(), isFalse);
+
+      when(() => recorder.isEncoderSupported(AudioEncoder.pcm16bits)).thenAnswer((_) async => false);
+      expect(await captureWith(toolAvailable: true).createSession().supportsPcmStream(), isFalse);
+    });
+
+    test("a check that fails reports no support", () async {
+      when(() => recorder.isEncoderSupported(AudioEncoder.pcm16bits)).thenThrow(StateError("no channel"));
+      expect(await captureWith(toolAvailable: true).createSession().supportsPcmStream(), isFalse);
+    });
+
+    test("only Linux looks for a tool", () async {
+      expect(await isPcmCaptureToolAvailable(isLinux: false, parecord: "${tempDirectory.path}/missing"), isTrue);
+    });
+
+    test("on Linux a missing parecord reports no support", () async {
+      expect(await isPcmCaptureToolAvailable(isLinux: true, parecord: "${tempDirectory.path}/missing"), isFalse);
+    });
+
+    test("on Linux parecord has to run", () async {
+      Future<String> script({required String name, required int exitCode}) async {
+        final file = File("${tempDirectory.path}/$name");
+        await file.writeAsString("#!/bin/sh\nexit $exitCode\n");
+        await Process.run("chmod", ["+x", file.path]);
+        return file.path;
+      }
+
+      expect(
+        await isPcmCaptureToolAvailable(isLinux: true, parecord: await script(name: "good", exitCode: 0)),
+        isTrue,
+      );
+      expect(
+        await isPcmCaptureToolAvailable(isLinux: true, parecord: await script(name: "bad", exitCode: 1)),
+        isFalse,
+      );
+    }, testOn: "!windows");
   });
 }
