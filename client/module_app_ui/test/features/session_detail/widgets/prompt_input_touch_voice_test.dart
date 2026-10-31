@@ -724,6 +724,64 @@ void main() {
     });
   }
 
+  for (final (layout, initialText) in [("compact", ""), ("typing", "draft words")]) {
+    testWidgets("text-first's shimmer fades where it stands, $layout", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.textFirst,
+        initialText: initialText,
+      );
+      // Centred between the actions as they rest, with the send button back.
+      final firstAction = tester.getCenter(find.byIcon(TablerRegular.chevron_right)).dx;
+      final mic = find.byIcon(TablerRegular.microphone);
+      final restingCentre = (firstAction + tester.getCenter(mic).dx) / 2;
+      final restingY = tester.getCenter(mic).dy;
+      final shimmer = find.text("Transcribing...");
+
+      void expectInPlace({required String frame}) {
+        for (var i = 0; i < shimmer.evaluate().length; i++) {
+          final centre = tester.getCenter(shimmer.at(i));
+          expect(centre.dx, closeTo(restingCentre, 0.01), reason: "moved sideways at $frame");
+          expect(centre.dy, closeTo(restingY, 0.5), reason: "left the row at $frame");
+        }
+      }
+
+      final gesture = await hold(tester: tester, mode: ChatInputMode.textFirst);
+      await gesture.up();
+      await tester.pump();
+      for (var i = 0; i < 16; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(shimmer, findsOneWidget);
+        expectInPlace(frame: "fading in, $i");
+      }
+      expect(_shownOpacity(shimmer), 1);
+      expect(
+        find.bySemanticsLabel("Transcribing..."),
+        findsOneWidget,
+        reason: "text-first has no hold surface to speak",
+      );
+      semantics.dispose();
+
+      await emitVoice(
+        tester: tester,
+        state: const VoiceInputState.completed(
+          transcript: "spoken words",
+          outcome: VoiceDictationOutcome.finished,
+          mode: VoiceDictationMode.afterRecording,
+        ),
+      );
+      await emitVoice(tester: tester, state: const VoiceInputState.idle());
+      for (var i = 0; i < 16; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectInPlace(frame: "fading out, $i");
+      }
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(shimmer, findsNothing);
+    });
+  }
+
   testWidgets("a field that had the keyboard keeps it across a dictated send", (tester) async {
     final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
     await tester.tap(find.text("Follow up..."));

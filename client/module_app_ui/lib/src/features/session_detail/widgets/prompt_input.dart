@@ -1695,11 +1695,25 @@ class _PromptInputState() extends State<PromptInput> {
     required double extraTrailingWidth,
     required Widget trailing,
   }) {
+    final prego = context.prego;
+
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.subtle,
       tightensTrailingWhileRecording: true,
-      overlay: _buildVoicePillCaption(context, hint: hint, extraTrailingWidth: extraTrailingWidth),
+      // The hold surface beneath takes the touches and speaks for the pill.
+      overlay: ExcludeSemantics(
+        child: _buildVoiceCaption(
+          context,
+          idle: Text(
+            hint,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+          ),
+          extraTrailingWidth: extraTrailingWidth,
+        ),
+      ),
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1707,11 +1721,7 @@ class _PromptInputState() extends State<PromptInput> {
           Expanded(
             child: _buildHoldSurface(
               context,
-              child: _buildVoiceAwareSlot(
-                height: _actionButtonSize,
-                idle: const SizedBox(),
-                transcribing: const SizedBox(),
-              ),
+              child: _buildVoiceAwareSlot(height: _actionButtonSize, idle: const SizedBox()),
             ),
           ),
           _buildCollapsibleTrailing(
@@ -1723,25 +1733,14 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// The pill's words, in a layer over its row: the slot beneath widens as the
-  /// trailing actions collapse, which would carry them sideways as they fade.
-  /// The insets match the row's at rest, so they sit centred between its actions.
-  /// [extraTrailingWidth] is how much wider the trailing actions rest than the
-  /// leading ones.
-  Widget _buildVoicePillCaption(
-    BuildContext context, {
-    required String hint,
-    required double extraTrailingWidth,
-  }) {
-    final prego = context.prego;
+  /// The composer's centred words, in a layer over its row: the slot beneath
+  /// widens as the trailing actions collapse, which would carry them sideways as
+  /// they fade. The insets match the row's at rest, so they sit centred between
+  /// its actions. [extraTrailingWidth] is how much wider the trailing actions
+  /// rest than the leading ones.
+  Widget _buildVoiceCaption(BuildContext context, {required Widget idle, required double extraTrailingWidth}) {
     final Widget child = switch (_voicePresentation) {
-      _VoicePresentation.idle => Text(
-        hint,
-        key: const ValueKey("voice-caption-idle"),
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-      ),
+      _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("voice-caption-idle"), child: idle),
       _VoicePresentation.recording => const SizedBox.shrink(key: ValueKey("voice-caption-recording")),
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("voice-caption-transcribing"),
@@ -1749,21 +1748,30 @@ class _PromptInputState() extends State<PromptInput> {
       ),
     };
 
-    // The hold surface beneath takes the touches and speaks for the pill.
     return IgnorePointer(
-      child: ExcludeSemantics(
-        child: Padding(
-          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm + _actionButtonSize + PregoSpacing.md),
-          child: AnimatedPadding(
-            duration: _morphDuration,
-            curve: _morphCurve,
-            padding: EdgeInsetsDirectional.only(end: extraTrailingWidth),
-            child: Center(
-              child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
-            ),
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm + _actionButtonSize + PregoSpacing.md),
+        child: AnimatedPadding(
+          duration: _morphDuration,
+          curve: _morphCurve,
+          padding: EdgeInsetsDirectional.only(end: extraTrailingWidth),
+          child: Center(
+            child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
           ),
         ),
       ),
+    );
+  }
+
+  /// The text-first layouts' caption. Their hint stays in the slot, where it can
+  /// be tapped, so only the shimmer shows here. A pointer shell's voice targets
+  /// and wide Send are equally wide; a touch shell has the mic beyond the send.
+  Widget _buildTextFirstCaption(BuildContext context) {
+    final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
+    return _buildVoiceCaption(
+      context,
+      idle: const SizedBox.shrink(),
+      extraTrailingWidth: pointer ? 0 : _actionButtonSize + PregoSpacing.sm,
     );
   }
 
@@ -1775,7 +1783,7 @@ class _PromptInputState() extends State<PromptInput> {
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.emphasized,
-      overlay: null,
+      overlay: _buildTextFirstCaption(context),
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1802,7 +1810,6 @@ class _PromptInputState() extends State<PromptInput> {
                   ),
                 ),
               ),
-              transcribing: Center(child: _buildTranscribingShimmer(context)),
             ),
           ),
           _buildMicAndPrimaryActions(context),
@@ -2035,8 +2042,8 @@ class _PromptInputState() extends State<PromptInput> {
 
   /// The text-first typing container's bottom strip: accordion, a voice-aware
   /// gap, then mic and send/stop. It has no surface of its own, so the red wash
-  /// reaches out over the container's padding to read as the same pill the
-  /// other layouts wash.
+  /// and the caption reach out over the container's padding to read as the same
+  /// pill the other layouts have.
   Widget _buildTypingActionRow(BuildContext context) {
     return Stack(
       clipBehavior: Clip.none,
@@ -2053,14 +2060,17 @@ class _PromptInputState() extends State<PromptInput> {
           children: [
             _buildLeadingSlot(context),
             Expanded(
-              child: _buildVoiceAwareSlot(
-                height: _actionButtonSize,
-                idle: const SizedBox(),
-                transcribing: Center(child: _buildTranscribingShimmer(context)),
-              ),
+              child: _buildVoiceAwareSlot(height: _actionButtonSize, idle: const SizedBox()),
             ),
             _buildMicAndPrimaryActions(context),
           ],
+        ),
+        Positioned.fill(
+          left: -PregoSpacing.sm,
+          top: -PregoSpacing.sm,
+          right: -PregoSpacing.sm,
+          bottom: -PregoSpacing.sm,
+          child: _buildTextFirstCaption(context),
         ),
       ],
     );
@@ -2487,20 +2497,17 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Shows [idle] normally, or the recording waveform or [transcribing] in its
-  /// place while a voice interaction is running. [height] pins the slot to the
-  /// resting pills' 44pt row.
-  Widget _buildVoiceAwareSlot({required double height, required Widget idle, required Widget transcribing}) {
+  /// Shows [idle] normally, the recording waveform in its place while recording,
+  /// and nothing while transcribing, when the caption above shows the shimmer.
+  /// [height] pins the slot to the resting pills' 44pt row.
+  Widget _buildVoiceAwareSlot({required double height, required Widget idle}) {
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("voice-slot-idle"), child: idle),
       _VoicePresentation.recording => KeyedSubtree(
         key: const ValueKey("voice-slot-recording"),
         child: Center(child: _buildWaveform(context)),
       ),
-      _VoicePresentation.transcribing => KeyedSubtree(
-        key: const ValueKey("voice-slot-transcribing"),
-        child: transcribing,
-      ),
+      _VoicePresentation.transcribing => const SizedBox(key: ValueKey("voice-slot-transcribing")),
     };
 
     return SizedBox(

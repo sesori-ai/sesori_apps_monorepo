@@ -430,6 +430,30 @@ void main() {
       expect(tester.widget<PregoVoiceSendButton>(_wideSend).enabled, isFalse);
     });
 
+    testWidgets("the shimmer stands centred between the targets and the wide Send", (tester) async {
+      final harness = _Harness();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
+      final centre = tester.getCenter(find.byType(PromptInput)).dx;
+      final shimmer = find.text("Transcribing...");
+
+      await startListening(tester);
+      await tester.tap(_wideSend);
+      await tester.pump();
+      for (var frame = 0; frame < 16; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(tester.getCenter(shimmer).dx, closeTo(centre, 0.01), reason: "moved at frame $frame");
+      }
+
+      voiceStates.add(const VoiceInputState.idle());
+      await tester.pump();
+      await tester.pump();
+      for (var frame = 0; frame < 12; frame++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(tester.getCenter(shimmer).dx, closeTo(centre, 0.01), reason: "moved leaving, frame $frame");
+      }
+      await tester.pump(const Duration(milliseconds: 500));
+    });
+
     testWidgets("the composer and the send's far edge hold still on every frame of the merge and back", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
