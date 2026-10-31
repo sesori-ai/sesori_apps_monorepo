@@ -3137,6 +3137,29 @@ void main() {
       expect(tester.hasRunningAnimations, isFalse);
     });
 
+    testWidgets("not easing in a queued row that was there when the list opened", (tester) async {
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: _userMessages(count: 60),
+          initialStreamingText: const {},
+          initialQueuedMessages: [_textSubmission(promptId: "prm_kept", text: "Kept")],
+          topInset: _topInset,
+        ),
+      );
+      await tester.pumpAndSettle();
+      final settled = tester.getTopLeft(find.text("Kept")).dy;
+
+      final position = _position(tester);
+      position.jumpTo(position.maxScrollExtent / 2);
+      await tester.pump();
+      expect(find.text("Kept", skipOffstage: false), findsNothing);
+      position.jumpTo(0);
+      await tester.pump();
+
+      expect(tester.getTopLeft(find.text("Kept")).dy, settled);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
     testWidgets("leaving a prompt from elsewhere to appear as it always has", (tester) async {
       final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
       await tester.drag(find.byKey(_listViewKey), const Offset(0, 150));

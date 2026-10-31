@@ -275,8 +275,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
 
-  /// Rows that have eased all the way in. Scrolling can drop one and build it
-  /// again, and it only eases in again if it was dropped before it had opened.
+  /// Rows that have eased all the way in, or were there when the list opened.
+  /// Scrolling can drop one and build it again, and it only eases in again if it
+  /// was dropped before it had opened.
   final Set<String> _easedInRowIds = {};
 
   /// The row that replaced the launch bubble. It keeps the bubble's key, so
@@ -1053,6 +1054,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final previousRowIds = previousRowIndexById.keys.toList();
     _knownRowIds = rowIds.toSet();
     _easedInRowIds.retainAll(rowIds);
+    if (previousRowIds.isEmpty) _easedInRowIds.addAll(rowIds);
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _userMessagesById = {
       for (final message in messages)

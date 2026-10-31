@@ -89,8 +89,9 @@ defaults and queued client sends coherent.
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
   leaves the list following, with no jump-to-latest pill. The list rises for every send's row rather than moving in one
   frame, typed or dictated, and a send from a little way up rises and glides back as one motion. The first prompt in an
-  empty transcript shows at once, with nothing to move, and a row eases in only once: scrolling back to it doesn't repeat it. A dictated send's words
-  glide down as it rises, and its bubble is held hidden until they land (see `voice-input.md`).
+  empty transcript shows at once, with nothing to move. A row that has fully eased in, or was there when the list opened,
+  doesn't ease in again when scrolling brings it back; one dropped before it had opened does. A dictated send's words glide
+  down as it rises, and its bubble is held hidden until they land (see `voice-input.md`).
 - DeepSeek preserves that bridge-facing acceptance contract: the shared ACP
   plugin enqueues and returns while the adapter's `session/prompt` response
   remains pending through owned work, projected output, and durability quiesce.
