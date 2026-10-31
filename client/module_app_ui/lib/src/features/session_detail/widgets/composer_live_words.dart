@@ -847,7 +847,7 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
 
   /// How long a tentative word has to stay the same to read as solid. The server
   /// takes far longer than this to confirm it, and it can still change after.
-  static const _settleAfter = Duration(seconds: 1);
+  static const _settleAfter = Duration(milliseconds: 500);
 
   /// A word and its spacing. Tokens line up by index between updates, so a word
   /// keeps its place when it turns final, or when the server changes its mind.
