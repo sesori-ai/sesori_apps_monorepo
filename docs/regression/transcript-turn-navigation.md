@@ -52,7 +52,8 @@ stored or sent to the bridge.
   bubble, and the pin line never clips it. The next user message, never an
   answer or automation, pushes the pinned one up and out, step for step with
   the scroll. A move too far for the next pin to be ready holds the last pin
-  for a frame or so, showing the previous prompt's words rather than blinking.
+  until that pin's copy is built, showing the previous prompt's words rather
+  than blinking.
   Only the end of a
   pasted document is built, so pinning it costs no more than pinning a
   sentence, and nothing in the pinned bubble takes a press or a
