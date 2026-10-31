@@ -2470,7 +2470,10 @@ class _PromptInputState() extends State<PromptInput> {
 
     return Semantics(
       button: true,
-      label: loc.sessionDetailHoldToTalk,
+      // The surface speaks for the pill, whose words it excludes.
+      label: _voicePresentation == _VoicePresentation.transcribing
+          ? _transcribingLabel(context)
+          : loc.sessionDetailHoldToTalk,
       excludeSemantics: true,
       onTap: _toggleRecording,
       onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
@@ -2531,11 +2534,12 @@ class _PromptInputState() extends State<PromptInput> {
 
   /// The design's `Transcribing...` treatment: primary-coloured text swept by
   /// a placeholder-dark band.
+  String _transcribingLabel(BuildContext context) =>
+      _renderedVoiceState is VoiceInputLiveFinishing ? context.loc.voiceFinishing : context.loc.voiceTranscribing;
+
   Widget _buildTranscribingShimmer(BuildContext context) {
     final prego = context.prego;
-    final label = _renderedVoiceState is VoiceInputLiveFinishing
-        ? context.loc.voiceFinishing
-        : context.loc.voiceTranscribing;
+    final label = _transcribingLabel(context);
 
     return PregoShimmer(
       appearDelay: Duration.zero,
