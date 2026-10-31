@@ -105,9 +105,14 @@ class const SessionLaunchSubmissionView({
       for (final (index, submission) in queuedMessages.indexed)
         queued(
           submission: submission,
+          // The session screen's list times them from the launch too, so it
+          // takes over with their lines as they are.
           presentation: onCancelQueuedMessage == null
-              ? const QueuedMessageBubblePresentation.pendingReadOnly(sentAt: null)
-              : QueuedMessageBubblePresentation.pending(onCancel: () => onCancelQueuedMessage(index), sentAt: null),
+              ? QueuedMessageBubblePresentation.pendingReadOnly(sentAt: sendingSince)
+              : QueuedMessageBubblePresentation.pending(
+                  onCancel: () => onCancelQueuedMessage(index),
+                  sentAt: sendingSince,
+                ),
         ),
     ];
     final column = SentBubbleArrival(

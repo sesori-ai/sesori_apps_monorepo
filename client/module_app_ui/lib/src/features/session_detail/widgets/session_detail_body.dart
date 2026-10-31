@@ -226,6 +226,9 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
   /// content so each replacement fades in.
   int _shellHandoffs = 0;
 
+  /// What the launch view showed in the last build, for the list to pick up from.
+  SessionLaunchHandoff? _launchViewHandoff;
+
   /// The Prompts screen while it is up: the prompts as they were when it
   /// opened or an older page last landed, so other transcript changes
   /// meanwhile cannot reshape the list under the reader, the prompt it opened
@@ -949,6 +952,11 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
     required SessionDetailColumnWidths? columnWidths,
   }) {
     final loc = context.loc;
+    final launchViewHandoff = _launchViewHandoff;
+    _launchViewHandoff = switch (state) {
+      SessionDetailLoading(:final launchHandoff) => launchHandoff,
+      SessionDetailLoaded() || SessionDetailHarnessUnavailable() || SessionDetailFailed() => null,
+    };
     return switch (state) {
       // A session this surface just created keeps showing its first message,
       // in the rect the new-session screen drew it, instead of a status.
@@ -981,7 +989,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             ? SessionDetailLoadedView.readOnly(
                 projectId: widget.projectId,
                 sessionId: widget.sessionId,
-                state: loaded,
+                state: _takingOverFromLaunchView(loaded: loaded, handoff: launchViewHandoff),
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
                 bottomControls: _buildReadOnlyControls(loaded: loaded),
@@ -993,7 +1001,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
             : SessionDetailLoadedView.interactive(
                 projectId: widget.projectId,
                 sessionId: widget.sessionId,
-                state: loaded,
+                state: _takingOverFromLaunchView(loaded: loaded, handoff: launchViewHandoff),
                 onShowPendingQuestions: _showPendingQuestions,
                 onShowPendingPermissions: _showPendingPermissions,
                 bottomControls: !loaded.interaction.canInteract
@@ -1104,7 +1112,7 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           child: SessionLaunchSubmissionView(
             submission: null,
             harnessName: harnessName,
-            sendingSince: null,
+            sendingSince: cubit.launchStartedAt,
             transcriptWidth: columnWidths?.transcript,
             awaitingBridgeSubmissions: awaitingBridgeSubmissions,
             launchFollowUps: launchFollowUps,
@@ -1116,6 +1124,30 @@ class _SessionDetailBodyState() extends State<SessionDetailBody> with SingleTick
           ),
         ),
       ],
+    );
+  }
+
+  /// The list's first frame after the launch view shows what that view showed,
+  /// then the next brings what the first load found, so all of it eases and
+  /// cross-fades from there as any change in the list does, the first message's
+  /// row carrying on from the launch's. The composer already has the real state.
+  SessionDetailLoaded _takingOverFromLaunchView({
+    required SessionDetailLoaded loaded,
+    required SessionLaunchHandoff? handoff,
+  }) {
+    if (handoff == null) return loaded;
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) setState(() {});
+    });
+    return loaded.copyWith(
+      launchHandoff: handoff,
+      messages: const [],
+      bridgeQueuedPrompts: const [],
+      sessionStatus: const SessionStatus.idle(),
+      childStatuses: const {},
+      children: const [],
+      streamingText: const {},
+      mainAgentRunning: false,
     );
   }
 

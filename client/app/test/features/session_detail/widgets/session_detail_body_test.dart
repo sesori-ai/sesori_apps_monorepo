@@ -796,6 +796,7 @@ void main() {
         queuedMessages: [queued],
       ),
     );
+    when(() => cubit.launchStartedAt).thenReturn(handoff.startedAt);
     when(() => cubit.launchAttachments).thenReturn([
       ComposerAttachment(mime: "image/png", bytes: _tinyPng, filename: "staged.png"),
     ]);
@@ -833,6 +834,194 @@ void main() {
     expect(tester.getRect(launchBubble), launchRect);
     expect(tester.getRect(queuedBubble), queuedRect);
     expect(find.descendant(of: prompt, matching: find.byType(Image)), findsOneWidget);
+  });
+
+  group("the list taking over from the launch view", () {
+    const firstText = "Launch prompt";
+    const frame = Duration(milliseconds: 16);
+    const sendingLine = "Sending to Claude Code…";
+    final bubble = find.ancestor(of: find.text(firstText), matching: find.byType(UserMessageBubble));
+    const listedQueued = QueuedSessionPrompt(
+      id: "prm_first",
+      text: firstText,
+      command: null,
+      attachmentCount: 0,
+      createdAt: 1,
+      dispatchState: QueuedPromptDispatchState.queued,
+    );
+    const echo = MessageWithParts(
+      info: Message.user(promptId: "prm_first", id: "user-first", sessionID: "session-1", agent: null, time: null),
+      parts: [MessagePart.text(id: "part-first", sessionID: "session-1", messageID: "user-first", text: firstText)],
+    );
+
+    double opacityOf(WidgetTester tester, Finder line) => tester
+        .widgetList<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)))
+        .fold(1, (opacity, fade) => opacity * fade.opacity.value);
+
+    late SessionLaunchHandoff handoff;
+
+    /// Shows the launch view of a launch [age] old, returning the session's states.
+    Future<StreamController<SessionDetailState>> showLaunchView(
+      WidgetTester tester, {
+      required Duration age,
+      List<QueuedSessionSubmission> queuedMessages = const [],
+    }) async {
+      final loaded = _loadedState(pendingQuestions: const [], pendingPermissions: const [], pluginId: "claude");
+      final startedAt = DateTime.now().subtract(age);
+      final composer = SessionLaunchComposer(
+        agents: [testAgentInfo()],
+        agent: "coder",
+        providers: loaded.availableProviders,
+        agentModel: loaded.selectedAgentModel,
+        availableVariants: loaded.availableVariants,
+        commands: const [],
+        fastMode: false,
+        supportsPromptAttachments: true,
+        hadFocus: false,
+        unsent: null,
+      );
+      handoff = SessionLaunchHandoff(
+        submission: NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: firstText),
+          attachments: const [],
+        ),
+        pluginId: "claude",
+        startedAt: startedAt,
+        followUpIds: const {},
+        acceptedFollowUps: const [],
+        composer: composer,
+      );
+      final states = StreamController<SessionDetailState>();
+      addTearDown(states.close);
+      when(() => cubit.launchStartedAt).thenReturn(startedAt);
+      when(() => cubit.launchAttachments).thenReturn(const []);
+      when(cubit.acknowledgeLaunchAttachments).thenReturn(null);
+      whenListen(
+        cubit,
+        states.stream,
+        initialState: SessionDetailState.loading(
+          launchHandoff: handoff,
+          seededComposer: SeededComposer(composer: composer, stagedCommand: null),
+          queuedMessages: queuedMessages,
+        ),
+      );
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      return states;
+    }
+
+    /// The largest step [row] takes in any frame of the next half second.
+    Future<double> largestStep(WidgetTester tester, Finder row) async {
+      var largest = 0.0;
+      var last = tester.getTopLeft(row).dy;
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(frame);
+        final top = tester.getTopLeft(row).dy;
+        largest = math.max(largest, (top - last).abs());
+        last = top;
+      }
+      return largest;
+    }
+
+    SessionDetailLoaded loaded() =>
+        _loadedState(pendingQuestions: const [], pendingPermissions: const [], pluginId: "claude");
+
+    testWidgets("a first load listing the message queued eases the row and cross-fades its line", (tester) async {
+      final states = await showLaunchView(tester, age: const Duration(seconds: 3));
+      final top = tester.getTopLeft(bubble).dy;
+      expect(find.text(sendingLine), findsOneWidget);
+
+      states.add(loaded().copyWith(bridgeQueuedPrompts: const [listedQueued]));
+      await tester.pump();
+      await tester.pump(frame);
+      await tester.pump(frame);
+      await tester.pump(const Duration(milliseconds: 96));
+      expect(opacityOf(tester, find.text(sendingLine)), inExclusiveRange(0, 1));
+      expect(opacityOf(tester, find.text("Queued")), inExclusiveRange(0, 1));
+      expect(tester.getTopLeft(bubble).dy, inExclusiveRange(top - 26, top));
+
+      expect(await largestStep(tester, bubble), lessThan(8));
+      expect(tester.getTopLeft(bubble).dy, moreOrLessEquals(top - 26, epsilon: 0.01));
+      expect(find.text(sendingLine), findsNothing);
+      expect(opacityOf(tester, find.text("Queued")), 1);
+    });
+
+    testWidgets("a first load with the message's echo eases the row down", (tester) async {
+      final states = await showLaunchView(tester, age: const Duration(seconds: 3));
+      final top = tester.getTopLeft(bubble).dy;
+
+      states.add(loaded().copyWith(messages: const [echo]));
+      await tester.pump();
+
+      expect(await largestStep(tester, bubble), lessThan(8));
+      expect(tester.getTopLeft(bubble).dy, moreOrLessEquals(top + 22, epsilon: 0.01));
+    });
+
+    testWidgets("a first load finding the session at work eases the working row in", (tester) async {
+      final states = await showLaunchView(tester, age: Duration.zero);
+      final top = tester.getTopLeft(bubble).dy;
+
+      states.add(loaded().copyWith(messages: const [echo], sessionStatus: const SessionStatus.busy(since: 1)));
+      await tester.pump();
+
+      expect(await largestStep(tester, bubble), lessThan(9));
+      expect(tester.getTopLeft(bubble).dy, moreOrLessEquals(top - 60, epsilon: 0.01));
+    });
+
+    testWidgets("under reduced motion the row takes its height at once and the line still fades", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final states = await showLaunchView(tester, age: const Duration(seconds: 3));
+      final top = tester.getTopLeft(bubble).dy;
+
+      states.add(loaded().copyWith(bridgeQueuedPrompts: const [listedQueued]));
+      await tester.pump();
+      await tester.pump(frame);
+      await tester.pump(frame);
+      await tester.pump(const Duration(milliseconds: 96));
+
+      expect(tester.getTopLeft(bubble).dy, top - 26);
+      expect(opacityOf(tester, find.text("Queued")), inExclusiveRange(0, 1));
+    });
+
+    testWidgets("a message queued under a launch under two seconds old keeps its row as the list takes over", (
+      tester,
+    ) async {
+      const queued = QueuedSessionSubmission.text(
+        promptId: "prm_queued",
+        text: "Typed next",
+        inputMode: ComposerInputMode.typed,
+        attachments: [],
+        agent: null,
+        agentModel: null,
+        fastMode: false,
+      );
+      final states = await showLaunchView(tester, age: Duration.zero, queuedMessages: const [queued]);
+      final row = find.ancestor(of: find.text("Typed next"), matching: find.byType(UserMessageBubble));
+      final top = tester.getTopLeft(row).dy;
+
+      states.add(loaded().copyWith(launchHandoff: handoff, queuedMessages: const [queued]));
+      await tester.pump();
+
+      expect(await largestStep(tester, row), 0);
+      expect(tester.getTopLeft(row).dy, top);
+    });
+
+    testWidgets("a load that follows a failed first load doesn't bring the launch's bubble back", (tester) async {
+      final states = await showLaunchView(tester, age: const Duration(seconds: 3));
+
+      states.add(const SessionDetailState.failed(reason: RemoteFailureReason.unknown));
+      await tester.pump();
+      states.add(const SessionDetailState.loading(launchHandoff: null, seededComposer: null));
+      await tester.pump();
+      states.add(loaded().copyWith(messages: const [echo]));
+      for (var i = 0; i < 6; i++) {
+        await tester.pump(frame);
+        expect(find.byType(QueuedMessageBubble), findsNothing);
+      }
+      expect(find.text(firstText), findsOneWidget);
+    });
   });
 
   testWidgets("messages sent before a failed first load stay in view, scrolling when many", (tester) async {
@@ -2527,6 +2716,8 @@ void main() {
     final queuedMessages = [submission(promptId: "prm_early", text: "Sent before the load")];
     final states = StreamController<SessionDetailState>();
     addTearDown(states.close);
+    final startedAt = DateTime(2026);
+    when(() => cubit.launchStartedAt).thenReturn(startedAt);
     whenListen(
       cubit,
       states.stream,
@@ -2537,7 +2728,7 @@ void main() {
             attachments: const [],
           ),
           pluginId: "claude",
-          startedAt: DateTime.now(),
+          startedAt: startedAt,
           followUpIds: const {"prm_launch"},
           acceptedFollowUps: const [],
           composer: null,
