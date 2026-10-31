@@ -30,6 +30,7 @@ const _finished = '{"type":"complete","reason":"finished","dailySecondsRemaining
 const _sessionLimit = '{"type":"complete","reason":"session_limit","dailySecondsRemaining":0}';
 const _quotaLimit = '{"type":"complete","reason":"quota_limit","dailySecondsRemaining":0}';
 const _serverError = '{"type":"error","code":"internal_error","retryable":true}';
+const _audioTimeout = '{"type":"error","code":"audio_timeout","retryable":true}';
 const _artifact = VoiceRecordingArtifact(path: "/tmp/voice.m4a", mimeType: "audio/mp4");
 
 String _words({required String confirmed, required String provisional}) =>
@@ -806,27 +807,34 @@ void main() {
       await expectRecordedResult();
     });
 
-    test("when the microphone cannot stream, without opening a socket or reporting a live event", () async {
+    test("when the microphone cannot stream, closing the socket and reporting no live event", () async {
       when(capture.startPcmStream).thenThrow(VoiceCaptureError.failed(innerError: StateError("no pcm")));
       session = await createSession();
 
       await service.start(session: session);
+      channel.upgrade.complete();
+      await pumpEventQueue();
 
       verify(capture.cancel).called(1);
       verify(capture.start).called(1);
-      expectNoSocket();
+      expect(channel.sinkCloseCode, isNotNull);
+      expect(sentAfterStart(), isEmpty);
+      expect(events, isEmpty);
       expect(service.isLive(session: session), isFalse);
       await expectRecordedResult();
     });
 
-    test("not when the microphone permission is denied", () async {
+    test("not when the microphone permission is denied, and the socket closes", () async {
       when(capture.startPcmStream).thenThrow(VoiceCaptureError.permissionDenied(innerError: null));
       session = await createSession();
 
       await expectLater(service.start(session: session), throwsA(isA<MicrophonePermissionDeniedError>()));
+      channel.upgrade.complete();
+      await pumpEventQueue();
 
       verifyNever(capture.start);
-      expectNoSocket();
+      expect(channel.sinkCloseCode, isNotNull);
+      expect(sentAfterStart(), isEmpty);
     });
 
     test("a recorder that cannot restart fails the dictation", () async {
@@ -872,6 +880,388 @@ void main() {
       verify(capture.cancel).called(1);
       expect(events.whereType<VoiceLiveFellBack>(), isEmpty);
       await expectLater(service.stopAndTranscribe(session: session), throwsA(isA<NotRecordingError>()));
+    });
+  });
+
+  group("the socket starts with the microphone", () {
+    late Completer<Stream<Uint8List>> micStarting;
+    late Future<void> start;
+
+    setUp(() {
+      micStarting = Completer<Stream<Uint8List>>();
+      when(capture.startPcmStream).thenAnswer((_) => micStarting.future);
+    });
+
+    Future<void> holdWithMicStarting() async {
+      session = await createSession();
+      start = service.start(session: session);
+      await pumpEventQueue();
+    }
+
+    void expectOneSocket() {
+      verify(
+        () => repository.openRealtime(
+          sampleRate: voiceCapturePcmSampleRate,
+          projectKey: null,
+        ),
+      ).called(1);
+    }
+
+    test("and only after any prewarm has settled, as the microphone does", () async {
+      final prewarm = Completer<void>();
+      final platform = _MockVoiceCapture();
+      when(platform.createSession).thenReturn(capture);
+      when(platform.prewarm).thenAnswer((_) => prewarm.future);
+      service = VoiceTranscriptionService(
+        repository: repository,
+        projectRepository: _MockProjectRepository(),
+        voiceModeRepository: voiceModeRepository,
+        capture: platform,
+        connectionService: connectionService,
+      );
+      session = await createSession();
+      unawaited(service.prewarm(session: session));
+
+      start = service.start(session: session);
+      await pumpEventQueue();
+      expectNoSocket();
+      verifyNever(capture.startPcmStream);
+
+      prewarm.complete();
+      await pumpEventQueue();
+      expectOneSocket();
+      verify(capture.startPcmStream).called(1);
+
+      micStarting.complete(frames.stream);
+      await start;
+    });
+
+    test("before the microphone is up, and doesn't open a second one once it is", () async {
+      await holdWithMicStarting();
+      verify(capture.startPcmStream).called(1);
+      expect(micStarting.isCompleted, isFalse);
+      channel.upgrade.complete();
+      await pumpEventQueue();
+      expect(channel.outbound, hasLength(1), reason: "`start` is out while the microphone still starts.");
+
+      micStarting.complete(frames.stream);
+      await start;
+      await pumpEventQueue();
+
+      expectOneSocket();
+      expect(channel.sinkCloseCode, isNull);
+    });
+
+    test("a microphone that fails closes the open socket and falls back as before", () async {
+      await holdWithMicStarting();
+      channel.upgrade.complete();
+      await pumpEventQueue();
+      hear(_ready);
+      await pumpEventQueue();
+
+      micStarting.completeError(VoiceCaptureError.failed(innerError: StateError("no pcm")));
+      await start;
+      await pumpEventQueue();
+
+      expect(channel.sinkCloseCode, isNotNull);
+      expect(sentAfterStart(), [realtimeVoiceCancelFrame], reason: "No audio, and a streaming server is told.");
+      verifyInOrder([capture.cancel, capture.start]);
+      expect(events, isEmpty);
+      final result = await service.stopAndTranscribe(session: session);
+      expect(result.mode, VoiceDictationMode.afterRecording);
+      expect(result.outcome, VoiceDictationOutcome.interrupted);
+    });
+
+    test("a microphone that fails while the socket still connects closes it once it opens", () async {
+      await holdWithMicStarting();
+
+      micStarting.completeError(VoiceCaptureError.failed(innerError: StateError("no pcm")));
+      await start;
+      verify(capture.start).called(1);
+      expect(channel.sinkCloseCode, isNull);
+
+      channel.upgrade.complete();
+      await pumpEventQueue();
+
+      expect(channel.sinkCloseCode, isNotNull);
+      expect(sentAfterStart(), isEmpty);
+    });
+
+    test("a denied permission closes the open socket and goes up as itself", () async {
+      await holdWithMicStarting();
+      channel.upgrade.complete();
+      await pumpEventQueue();
+
+      micStarting.completeError(VoiceCaptureError.permissionDenied(innerError: null));
+      await expectLater(start, throwsA(isA<MicrophonePermissionDeniedError>()));
+      await pumpEventQueue();
+
+      expect(channel.sinkCloseCode, isNotNull);
+      verifyNever(capture.start);
+      expect(events, isEmpty);
+    });
+
+    test("a denied permission with a socket that also fails to open reports only the denial", () async {
+      await holdWithMicStarting();
+      channel.upgrade.completeError(StateError("no route"));
+      await pumpEventQueue();
+
+      micStarting.completeError(VoiceCaptureError.permissionDenied(innerError: null));
+      await expectLater(start, throwsA(isA<MicrophonePermissionDeniedError>()));
+      await pumpEventQueue();
+
+      verifyNever(capture.start);
+    });
+
+    test("a cancel while both start closes the socket once it opens", () async {
+      await holdWithMicStarting();
+
+      await service.cancel(session: session);
+      micStarting.complete(frames.stream);
+      await expectLater(start, throwsA(isA<TranscriptionCancelledError>()));
+      channel.upgrade.complete();
+      await pumpEventQueue();
+
+      expect(channel.sinkCloseCode, isNotNull);
+      expect(sentAfterStart(), isEmpty);
+      expect(frames.hasListener, isFalse);
+    });
+
+    test("closing the composer while both start closes the socket", () async {
+      await holdWithMicStarting();
+      channel.upgrade.complete();
+      await pumpEventQueue();
+
+      final closed = service.close(session: session);
+      micStarting.complete(frames.stream);
+      await expectLater(start, throwsA(isA<TranscriptionCancelledError>()));
+      await closed;
+      await pumpEventQueue();
+
+      expect(channel.sinkCloseCode, isNotNull);
+    });
+
+    group("a hold the composer drops once the start settles", () {
+      test("before the upgrade finishes sends nothing", () async {
+        await holdWithMicStarting();
+        micStarting.complete(frames.stream);
+        await start;
+
+        await service.cancel(session: session);
+        channel.upgrade.complete();
+        await pumpEventQueue();
+
+        expect(channel.sinkCloseCode, isNotNull);
+        expect(sentAfterStart(), isEmpty);
+      });
+
+      test("before ready sends no audio", () async {
+        await holdWithMicStarting();
+        channel.upgrade.complete();
+        await pumpEventQueue();
+        micStarting.complete(frames.stream);
+        await start;
+        frames.add(_frame(fill: 1));
+        await pumpEventQueue();
+
+        await service.cancel(session: session);
+        await pumpEventQueue();
+
+        expect(channel.sinkCloseCode, isNotNull);
+        expect(sentAfterStart(), isEmpty);
+      });
+
+      test("after ready sends only cancel when no frame has come", () async {
+        await holdWithMicStarting();
+        channel.upgrade.complete();
+        await pumpEventQueue();
+        hear(_ready);
+        await pumpEventQueue();
+        micStarting.complete(frames.stream);
+        await start;
+
+        await service.cancel(session: session);
+        await pumpEventQueue();
+
+        expect(channel.sinkCloseCode, isNotNull);
+        expect(sentAfterStart(), [realtimeVoiceCancelFrame]);
+        expect(events, isEmpty);
+      });
+
+      test("after ready has already forwarded the frames that came, and hands nothing over", () async {
+        await holdWithMicStarting();
+        channel.upgrade.complete();
+        await pumpEventQueue();
+        hear(_ready);
+        await pumpEventQueue();
+        micStarting.complete(frames.stream);
+        await start;
+        await pumpEventQueue();
+        frames.add(_frame(fill: 1));
+        await pumpEventQueue();
+
+        await service.cancel(session: session);
+        await pumpEventQueue();
+
+        expect(channel.sinkCloseCode, isNotNull);
+        expect(sentAfterStart(), [_frame(fill: 1), realtimeVoiceCancelFrame]);
+        expect(events, isEmpty);
+      });
+    });
+
+    test("a socket that cannot open while the microphone starts falls back once it is up", () async {
+      await holdWithMicStarting();
+      channel.upgrade.completeError(StateError("no route"));
+      await pumpEventQueue();
+      verifyNever(capture.start);
+
+      micStarting.complete(frames.stream);
+      await start;
+      await pumpEventQueue();
+
+      expect(events.whereType<VoiceLiveFellBack>(), hasLength(1));
+      verifyInOrder([capture.cancel, capture.start]);
+      expect(frames.hasListener, isFalse);
+      expect((await service.stopAndTranscribe(session: session)).mode, VoiceDictationMode.afterRecording);
+    });
+
+    test("a server that fails while the microphone starts falls back once it is up, socket closed", () async {
+      await holdWithMicStarting();
+      channel.upgrade.complete();
+      await pumpEventQueue();
+      hear(_ready);
+      hear(_audioTimeout);
+      await pumpEventQueue();
+      expect(channel.sinkCloseCode, isNotNull);
+      verifyNever(capture.start);
+
+      micStarting.complete(frames.stream);
+      await start;
+      await pumpEventQueue();
+
+      expect(events.whereType<VoiceLiveFellBack>(), hasLength(1));
+      verifyInOrder([capture.cancel, capture.start]);
+      expect(sentAfterStart(), isEmpty);
+    });
+
+    test("audio already waiting when the microphone comes up doesn't stop that fallback", () async {
+      await holdWithMicStarting();
+      channel.upgrade.complete();
+      await pumpEventQueue();
+      hear(_ready);
+      hear(_audioTimeout);
+      await pumpEventQueue();
+
+      frames.add(_frame(fill: 1));
+      micStarting.complete(frames.stream);
+      await start;
+      await pumpEventQueue();
+
+      expect(events.whereType<VoiceLiveFellBack>(), hasLength(1));
+      verifyInOrder([capture.cancel, capture.start]);
+      expect(sentAfterStart(), isEmpty);
+    });
+
+    test("a socket failing while the microphone starts leaves the composer recording", () async {
+      session = await createSession();
+      final cubit = VoiceInputCubit(service: service, session: session);
+      addTearDown(cubit.close);
+      final starting = cubit.startRecording();
+      await pumpEventQueue();
+      channel.upgrade.completeError(StateError("no route"));
+      await pumpEventQueue();
+
+      micStarting.complete(frames.stream);
+      await starting;
+      await pumpEventQueue();
+
+      expect(cubit.state, isA<VoiceInputRecording>());
+      verify(capture.start).called(1);
+    });
+
+    group("ready before the microphone is up", () {
+      test("waits for the run, then the first frames go out in order", () async {
+        await holdWithMicStarting();
+        channel.upgrade.complete();
+        await pumpEventQueue();
+        hear(_ready);
+        await pumpEventQueue();
+
+        frames.add(_frame(fill: 1));
+        frames.add(_frame(fill: 2));
+        micStarting.complete(frames.stream);
+        await start;
+        await pumpEventQueue();
+        frames.add(_frame(fill: 3));
+        await pumpEventQueue();
+
+        expect(sentAfterStart(), [_frame(fill: 1), _frame(fill: 2), _frame(fill: 3)]);
+        expect(service.isLive(session: session), isTrue);
+      });
+
+      test("words and the release work as they always have", () async {
+        await holdWithMicStarting();
+        channel.upgrade.complete();
+        await pumpEventQueue();
+        hear(_ready);
+        await pumpEventQueue();
+        micStarting.complete(frames.stream);
+        await start;
+        await pumpEventQueue();
+        frames.add(_frame(fill: 1));
+        await pumpEventQueue();
+
+        hear(_words(confirmed: "heard ", provisional: ""));
+        final result = service.stopAndTranscribe(session: session);
+        await pumpEventQueue();
+        expect(sentAfterStart(), [_frame(fill: 1), realtimeVoiceFinishFrame]);
+        hear(_finished);
+
+        expect((await result).transcript, "heard");
+      });
+
+      test("needs no pacing and stays behind real time on the server's clock, which started at ready", () {
+        const bytesPerTick = 3200;
+        const bytesPerSecond = 32000;
+        fakeAsync((async) {
+          // As in the slow start tests: these have to belong to fake time.
+          channel = FakeRealtimeVoiceChannel();
+          frames = StreamController<Uint8List>(onCancel: () async {});
+          micStarting = Completer<Stream<Uint8List>>();
+          unawaited(holdWithMicStarting());
+          async.elapse(Duration.zero);
+          channel.upgrade.complete();
+          async.elapse(Duration.zero);
+
+          hear(_ready);
+          async.elapse(Duration.zero);
+          final readyAt = async.elapsed;
+          var sentBytes = 0;
+          var mostAhead = -const Duration(days: 1);
+          channel.onOutbound = ({required data}) {
+            if (data is! Uint8List) return;
+            sentBytes += data.length;
+            final sent = Duration(microseconds: sentBytes * 1000000 ~/ bytesPerSecond);
+            final ahead = sent - (async.elapsed - readyAt);
+            if (ahead > mostAhead) mostAhead = ahead;
+          };
+
+          async.elapse(const Duration(seconds: 3));
+          micStarting.complete(frames.stream);
+          async.elapse(Duration.zero);
+          for (var tick = 0; tick < 50; tick++) {
+            frames.add(Uint8List(bytesPerTick));
+            async.elapse(Duration.zero);
+            expect(async.periodicTimerCount, 0, reason: "Nothing waited, so nothing paces.");
+            async.elapse(const Duration(milliseconds: 100));
+          }
+
+          expect(sentBytes, 50 * bytesPerTick);
+          // The first frame is a tenth of a second of audio, sent three seconds after ready.
+          expect(mostAhead, const Duration(milliseconds: -2900), reason: "Behind by the microphone's delay.");
+          expect(channel.sinkCloseCode, isNull);
+        });
+      });
     });
   });
 
@@ -988,20 +1378,23 @@ void main() {
   });
 
   group("cancelling", () {
-    test("during the start stops the microphone and opens no socket", () async {
+    test("during the start stops the microphone and closes the socket", () async {
       final starting = Completer<Stream<Uint8List>>();
       when(capture.startPcmStream).thenAnswer((_) => starting.future);
       session = await createSession();
 
       final start = service.start(session: session);
+      channel.upgrade.complete();
       await pumpEventQueue();
       await service.cancel(session: session);
       clearInteractions(capture);
       starting.complete(frames.stream);
 
       await expectLater(start, throwsA(isA<TranscriptionCancelledError>()));
+      await pumpEventQueue();
       verify(capture.cancel).called(1);
-      expectNoSocket();
+      expect(channel.sinkCloseCode, isNotNull);
+      expect(sentAfterStart(), isEmpty);
       expect(service.isLive(session: session), isFalse);
     });
 

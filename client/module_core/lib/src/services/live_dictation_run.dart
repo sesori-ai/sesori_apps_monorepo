@@ -2,8 +2,6 @@ import "dart:async";
 import "dart:collection";
 import "dart:typed_data";
 
-import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
-
 import "../foundation/models/voice/voice_dictation_outcome.dart";
 import "../foundation/models/voice/voice_live.dart";
 import "../foundation/models/voice/voice_realtime.dart";
@@ -68,12 +66,13 @@ final class const _SocketEnded() extends _SocketPhase;
 
 /// One live dictation: its socket, its microphone frames and the audio that waits
 /// for `ready`. It starts as soon as it is built, and [ended] always completes.
+/// [connecting] began before the microphone was up, so what the socket has said or
+/// how it failed by then waits for the run.
 final class LiveDictationRun({
-  required final VoiceRepository _repository,
   required final VoiceCaptureSession _capture,
   required final void Function({required LiveWords words}) _onWords,
   required Stream<Uint8List> frames,
-  required ProjectGlossaryKey? projectKey,
+  required Future<VoiceRealtimeConnection> connecting,
 }) {
   final Completer<LiveDictationEnding> _ended = Completer<LiveDictationEnding>();
   final Queue<Uint8List> _heldAudio = Queue<Uint8List>();
@@ -96,7 +95,7 @@ final class LiveDictationRun({
       ),
       onDone: _onFramesDone,
     );
-    unawaited(_connect(projectKey: projectKey));
+    unawaited(_connect(connecting: connecting));
   }
 
   Future<LiveDictationEnding> get ended => _ended.future;
@@ -115,10 +114,10 @@ final class LiveDictationRun({
     await _ended.future;
   }
 
-  Future<void> _connect({required ProjectGlossaryKey? projectKey}) async {
+  Future<void> _connect({required Future<VoiceRealtimeConnection> connecting}) async {
     final VoiceRealtimeConnection connection;
     try {
-      connection = await _repository.openRealtime(sampleRate: voiceCapturePcmSampleRate, projectKey: projectKey);
+      connection = await connecting;
     } on VoiceTranscriptionError catch (error, stackTrace) {
       _fail(error: error, stackTrace: stackTrace);
       return;
@@ -213,8 +212,7 @@ final class LiveDictationRun({
   }
 
   void _forward({required VoiceRealtimeConnection connection, required Uint8List frame}) {
-    _audioForwarded = true;
-    connection.sendAudio(frame: frame);
+    if (connection.sendAudio(frame: frame)) _audioForwarded = true;
   }
 
   /// The server finalizes before it completes, so what is still provisional is
