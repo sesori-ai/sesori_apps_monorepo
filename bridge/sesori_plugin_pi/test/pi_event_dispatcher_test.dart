@@ -579,7 +579,7 @@ void main() {
   });
 
   test("streamed read carries its path as the title once arguments arrive", () {
-    const path = ".agents/skills/sesori-plan-worker/SKILL.md";
+    const path = ".agents/skills/plan-worker/SKILL.md";
     dispatcher.map(
       sessionId: sessionId,
       event: _event("message_start", {"message": _assistant(content: const [], timestamp: 101)}),
