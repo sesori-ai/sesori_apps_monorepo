@@ -87,7 +87,8 @@ defaults and queued client sends coherent.
 - A sent prompt stays on screen from send to delivered message. Scrolling while
   it is delivered, or a refresh whose fetch began before a queue event, must not
   blank its row. A wheel or trackpad touch that moves nothing at the newest edge
-  leaves the list following, with no jump-to-latest pill.
+  leaves the list following, with no jump-to-latest pill. The list rises for a dictated send's row as its words glide
+  down, and its bubble is held hidden until they land (see `voice-input.md`).
 - DeepSeek preserves that bridge-facing acceptance contract: the shared ACP
   plugin enqueues and returns while the adapter's `session/prompt` response
   remains pending through owned work, projected output, and durability quiesce.
