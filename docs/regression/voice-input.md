@@ -9,8 +9,8 @@ text-first and adds the mic as an extra control on the same pipeline: one click 
 the same place or Enter sends; the pencil or Shift+Enter puts the words in the prompt field, and the X or Escape
 cancels. The device microphone and transcription endpoint are external. The bridge independently prepares optional
 project-scoped vocabulary from bounded local evidence; no backend plugin participates. When the voice mode switch turns
-live on and the host can stream, the same gestures run over a realtime socket instead of an upload. On a phone the switch
-is the Firebase Remote Config keys `voice_live_enabled` and `voice_live_presentation`. On desktop the build fixes it: the
+live on and the host can stream, the same gestures run over a realtime socket instead of an upload. On a phone the Firebase
+Remote Config keys `voice_live_enabled` and `voice_live_presentation` control the switch. On desktop the build fixes it: the
 `internal` channel runs live with focus, and `stable` records first.
 
 ## Required Behavior
@@ -155,8 +155,7 @@ spoken and nothing under them moves. Release to send and confirm the words glide
 and confirm they glide into the box; slide out and confirm the fade. Repeat with the server unreachable, and confirm the
 dictation falls back and lands in the box with a notice. On the desktop `internal` build, confirm the same with its
 controls.
-Before a public release containing this code, confirm the release's intended live state in Firebase: `voice_live_enabled`
-was agreed off for the first one.
+Before the first public release containing this code, confirm `voice_live_enabled` is `false` in Firebase.
 On either, send a dictated message and confirm the bubble and the harness transcript show `🎙️ "words"`, while the
 generated session title shows plain words.
 
