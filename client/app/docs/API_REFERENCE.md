@@ -265,11 +265,13 @@ List all projects that have been opened with OpenCode.
 
 **Response 200:** `Project[]`
 
-### GET /project/current
+### POST /project/current
 
 > `operationId: project.current`
 
-Get the currently active project.
+Get one project by id. The name is historical: nothing tracks a current project.
+
+**Body:** `{ "projectId": string }`
 
 **Response 200:** `Project`
 

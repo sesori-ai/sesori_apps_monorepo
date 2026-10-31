@@ -113,9 +113,10 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
   `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live` or `after_recording`, which a fallback
   counts as. No audio, transcript, or prompt text reaches logs or analytics.
-- A successful current-project load starts best-effort bridge glossary population. It delegates to one serialized
-  coordinator that coalesces concurrent work for the same project and never delays the route response, recording, or
-  transcription.
+- A successful current-project load starts a best-effort bridge glossary refresh when that glossary is due: at most once
+  every 24 hours, 10 minutes after a failure, and shared by worktrees of one repository. Refreshes run one at a time and
+  never delay the route response, recording, or transcription. A bridge restart allows one more refresh, and the bridge
+  log records each refresh with its word counts, never the words.
 - Apps older than v1.10.0 still send `project_view`. The bridge decodes it, with a project id or null, and ignores it:
   no reply, no warning, and later requests are still answered.
 - A current-project response carries the project's glossary key from its first load; a failed key lookup leaves it

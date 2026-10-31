@@ -2,7 +2,6 @@ import "package:sesori_bridge/src/auth/bridge_id_provider.dart";
 import "package:sesori_bridge/src/repositories/models/project_glossary_scope_identity.dart";
 import "package:sesori_bridge/src/repositories/project_glossary_scope_repository.dart";
 import "package:sesori_bridge/src/services/project_glossary_scope_service.dart";
-import "package:sesori_bridge/src/services/project_glossary_scope_tracker.dart";
 import "package:test/test.dart";
 
 void main() {
@@ -63,11 +62,9 @@ ProjectGlossaryScopeService _service({
   required ProjectGlossaryScopeIdentity? identity,
   required String? bridgeId,
 }) {
-  final bridgeIdProvider = _FakeBridgeIdProvider(bridgeId: bridgeId);
   return ProjectGlossaryScopeService(
     repository: _FakeProjectGlossaryScopeRepository(identity: identity),
-    bridgeIdProvider: bridgeIdProvider,
-    scopeTracker: ProjectGlossaryScopeTracker(bridgeIdProvider: bridgeIdProvider),
+    bridgeIdProvider: _FakeBridgeIdProvider(bridgeId: bridgeId),
   );
 }
 

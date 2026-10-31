@@ -3,9 +3,9 @@ import "dart:convert";
 import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/get_current_project_handler.dart";
-import "package:sesori_bridge/src/services/current_project_service.dart";
+import "package:sesori_bridge/src/services/project_details_service.dart";
+import "package:sesori_bridge/src/services/project_glossary_population_service.dart";
 import "package:sesori_bridge/src/services/project_glossary_scope_service.dart";
-import "package:sesori_bridge/src/services/project_glossary_scope_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
 import "package:test/test.dart";
@@ -19,7 +19,6 @@ void main() {
   group("GetCurrentProjectHandler", () {
     late FakeBridgePlugin plugin;
     late AppDatabase db;
-    late CurrentProjectService currentProjectService;
     late GetCurrentProjectHandler handler;
 
     setUp(() async {
@@ -27,7 +26,7 @@ void main() {
       db = createTestDatabase();
       await db.projectsDao.insertProjectsIfMissing(projectIds: ["/tmp/project"]);
       await db.projectsDao.setActivity(projectId: "/tmp/project", createdAt: 101, updatedAt: 202);
-      currentProjectService = CurrentProjectService(
+      final projectDetailsService = ProjectDetailsService(
         projectRepository: singlePluginProjectRepository(
           gitCliApi: FakeGitCliApi(),
           projectsDao: db.projectsDao,
@@ -35,14 +34,13 @@ void main() {
           unseenCalculator: const SessionUnseenCalculator(),
           filesystemApi: FakeFilesystemApi(),
         ),
-        projectGlossaryScopeTracker: _NoGlossaryScopeTracker(),
         projectGlossaryScopeService: _NoGlossaryScopeService(),
+        projectGlossaryPopulationService: _UnusedGlossaryPopulationService(),
       );
-      handler = GetCurrentProjectHandler(currentProjectService: currentProjectService);
+      handler = GetCurrentProjectHandler(projectDetailsService: projectDetailsService);
     });
 
     tearDown(() async {
-      await currentProjectService.dispose();
       await plugin.close();
       await db.close();
     });
@@ -69,15 +67,13 @@ void main() {
       );
     });
 
-    test("returns typed project and publishes its successful load", () async {
-      final loadedProjectId = currentProjectService.loadedProjectIds.first;
+    test("returns typed project", () async {
       final response = await handler.handle(
         makeRequest("POST", "/project/current"),
         body: const ProjectIdRequest(projectId: "/tmp/project"),
       );
 
       expect(response, isA<Project>());
-      expect(await loadedProjectId, "/tmp/project");
     });
 
     test("maps fields", () async {
@@ -122,18 +118,15 @@ void main() {
   });
 }
 
-final class _NoGlossaryScopeTracker() implements ProjectGlossaryScopeTracker {
+final class _NoGlossaryScopeService() implements ProjectGlossaryScopeService {
   @override
-  ProjectGlossaryKey? projectKeyFor({required String projectPath}) => null;
+  Future<ProjectGlossaryScope?> resolve({required String projectPath}) async => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
 
-final class _NoGlossaryScopeService() implements ProjectGlossaryScopeService {
-  @override
-  Future<ProjectGlossaryScope?> resolve({required String projectPath}) async => null;
-
+final class _UnusedGlossaryPopulationService() implements ProjectGlossaryPopulationService {
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
 }
