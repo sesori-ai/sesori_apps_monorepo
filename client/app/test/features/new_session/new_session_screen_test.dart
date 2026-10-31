@@ -3197,7 +3197,7 @@ void main() {
     await enterTypingMode(tester);
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Attach image"));
     await tester.pumpAndSettle();
     await tester.enterText(find.byType(EditableText), "test message");
     await tester.pump();

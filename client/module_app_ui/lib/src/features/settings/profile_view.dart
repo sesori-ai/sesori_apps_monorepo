@@ -209,15 +209,13 @@ class const _ProductAnalyticsPreferenceRow({required final bool blocked}) extend
       value: preference == ProductAnalyticsPreference.enabled,
       onChanged: canToggle ? (enabled) => toggle(enabled: enabled) : null,
     );
-    final retryButton = Semantics(
-      label: loc.settingsBasicUsageAnalyticsRetry,
-      child: PregoButtonsSolid.iconOnly(
-        key: const Key("analytics_preference_retry"),
-        hierarchy: PregoButtonsSolidHierarchy.link,
-        size: PregoButtonsSolidSize.sm,
-        leadingIcon: TablerRegular.refresh,
-        onPressed: blocked ? null : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
-      ),
+    final retryButton = PregoButtonsSolid.iconOnly(
+      key: const Key("analytics_preference_retry"),
+      semanticLabel: loc.settingsBasicUsageAnalyticsRetry,
+      hierarchy: PregoButtonsSolidHierarchy.link,
+      size: PregoButtonsSolidSize.sm,
+      leadingIcon: TablerRegular.refresh,
+      onPressed: blocked ? null : () => unawaited(context.read<ProductAnalyticsPreferenceCubit>().refresh()),
     );
     final Widget trailing;
     if (!hasFailure) {

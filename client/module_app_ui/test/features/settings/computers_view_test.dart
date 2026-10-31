@@ -224,6 +224,33 @@ void main() {
     verify(() => computersCubit.rename(computer: _studio, name: "studio-mac.local")).called(1);
   });
 
+  testWidgets("a screen reader hears each row's actions as a named button, disabled while busy", (tester) async {
+    final semantics = tester.ensureSemantics();
+    final actions = StreamController<ComputersState>();
+    addTearDown(actions.close);
+    whenListen(computersCubit, actions.stream, initialState: const ComputersIdle());
+    await pumpView(tester, pointer: false);
+    actions.add(const ComputersRemoving(bridgeId: "c"));
+    await tester.pump();
+    await tester.pump();
+
+    expect(
+      find.semantics.byLabel("Actions for Studio").evaluate().single,
+      isSemantics(label: "Actions for Studio", tooltip: "", isButton: true, isEnabled: true, hasTapAction: true),
+    );
+    expect(
+      find.semantics.byLabel("Actions for build-box").evaluate().single,
+      isSemantics(
+        label: "Actions for build-box",
+        isButton: true,
+        hasEnabledState: true,
+        isEnabled: false,
+        hasTapAction: false,
+      ),
+    );
+    semantics.dispose();
+  });
+
   testWidgets("while an action runs, other computers can switch but not rename", (tester) async {
     final actions = StreamController<ComputersState>();
     addTearDown(actions.close);

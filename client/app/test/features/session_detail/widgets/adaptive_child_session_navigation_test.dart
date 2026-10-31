@@ -307,7 +307,10 @@ void main() {
 
       expect(find.text("2"), findsOneWidget);
       expect(find.byType(PregoActivityIndicator), findsOneWidget);
-      expect(find.byTooltip("2 sub-agents, 1 working"), findsOneWidget);
+      expect(
+        find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "2 sub-agents, 1 working"),
+        findsOneWidget,
+      );
 
       await tester.tap(find.byKey(const ValueKey("sub_agents_pill")));
       await tester.pump();

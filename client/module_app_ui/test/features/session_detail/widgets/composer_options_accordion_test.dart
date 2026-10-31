@@ -1,8 +1,13 @@
+import "package:flutter/rendering.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/composer_options_accordion.dart";
 import "package:sesori_app_ui/src/l10n/app_localizations.dart";
 import "package:theme_prego/module_prego.dart";
+
+/// The composer's labelled buttons keep their tooltip's words off the semantics
+/// tree, which is what `find.byTooltip` reads.
+Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
 
 void main() {
   for (final brightness in Brightness.values) {
@@ -21,7 +26,7 @@ void main() {
 
       final accordion = find.byType(ComposerOptionsAccordion);
       expect(tester.getSize(accordion), const Size(44, 44));
-      expect(find.byTooltip("Attach image"), findsNothing);
+      expect(_tooltip("Attach image"), findsNothing);
       expect(find.byIcon(TablerRegular.slash), findsNothing);
       final decoration =
           tester
@@ -35,11 +40,11 @@ void main() {
       expect(decoration.border, Border.all(color: prego.colors.borderPrimary));
       expect(decoration.boxShadow, isNull);
 
-      await tester.tap(find.byTooltip("More actions"));
+      await tester.tap(_tooltip("More actions"));
       await tester.pumpAndSettle();
       expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
-      expect(find.byTooltip("More actions"), findsNothing);
-      expect(find.byTooltip("Hide actions"), findsNothing);
+      expect(_tooltip("More actions"), findsNothing);
+      expect(_tooltip("Hide actions"), findsNothing);
       expect(find.byIcon(TablerRegular.plus), findsOneWidget);
       expect(find.byIcon(TablerRegular.slash), findsOneWidget);
       expect(tester.getSize(accordion), const Size(81, 44));
@@ -47,21 +52,21 @@ void main() {
       final slashCenter = tester.getCenter(find.byIcon(TablerRegular.slash));
       expect(slashCenter - plusCenter, const Offset(40, 0));
 
-      await tester.tap(find.byTooltip("Attach image"));
+      await tester.tap(_tooltip("Attach image"));
       await tester.pumpAndSettle();
       expect(attachmentPicks, 1);
       expect(commandPicks, 0);
-      expect(find.byTooltip("More actions"), findsOneWidget);
-      expect(find.byTooltip("Attach image"), findsNothing);
+      expect(_tooltip("More actions"), findsOneWidget);
+      expect(_tooltip("Attach image"), findsNothing);
       expect(tester.getSize(accordion), const Size(44, 44));
 
-      await tester.tap(find.byTooltip("More actions"));
+      await tester.tap(_tooltip("More actions"));
       await tester.pumpAndSettle();
       await tester.tap(find.byIcon(TablerRegular.slash));
       await tester.pumpAndSettle();
       expect(attachmentPicks, 1);
       expect(commandPicks, 1);
-      expect(find.byTooltip("More actions"), findsOneWidget);
+      expect(_tooltip("More actions"), findsOneWidget);
       expect(find.byIcon(TablerRegular.slash), findsNothing);
     });
   }
@@ -77,9 +82,9 @@ void main() {
       onAttachImageTap: () => fail("Unsupported attachment action was invoked"),
       onSlashCommandsTap: () => commandPicks++,
     );
-    await tester.tap(find.byTooltip("More actions"));
+    await tester.tap(_tooltip("More actions"));
     await tester.pumpAndSettle();
-    expect(find.byTooltip("Attach image"), findsNothing);
+    expect(_tooltip("Attach image"), findsNothing);
     expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
     final accordion = find.byType(ComposerOptionsAccordion);
     expect(tester.getSize(accordion), const Size(44, 44));
@@ -87,7 +92,7 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.slash));
     await tester.pumpAndSettle();
     expect(commandPicks, 1);
-    expect(find.byTooltip("More actions"), findsOneWidget);
+    expect(_tooltip("More actions"), findsOneWidget);
   });
 
   testWidgets("an always-open pill shows its actions without an opener and keeps them after a pick", (tester) async {
@@ -103,17 +108,17 @@ void main() {
       onSlashCommandsTap: () => commandPicks++,
     );
     expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
 
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(TablerRegular.slash));
     await tester.pumpAndSettle();
 
     expect(attachmentPicks, 1);
     expect(commandPicks, 1);
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
     expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
   });
@@ -131,21 +136,21 @@ void main() {
     );
 
     await pump(alwaysOpen: true, isTyping: false);
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
     await pump(alwaysOpen: true, isTyping: true);
-    expect(find.byTooltip("Attach image"), findsNothing);
-    expect(find.byTooltip("More actions"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsNothing);
+    expect(_tooltip("More actions"), findsOneWidget);
 
-    await tester.tap(find.byTooltip("More actions"));
+    await tester.tap(_tooltip("More actions"));
     await tester.pumpAndSettle();
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
 
     // A pill opened by hand, here while typing, folds when typing starts again.
     await pump(alwaysOpen: false, isTyping: false);
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
     await pump(alwaysOpen: false, isTyping: true);
-    expect(find.byTooltip("Attach image"), findsNothing);
-    expect(find.byTooltip("More actions"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsNothing);
+    expect(_tooltip("More actions"), findsOneWidget);
   });
 
   testWidgets("disabled actions remain inert while the opener still works", (tester) async {
@@ -158,14 +163,70 @@ void main() {
       onAttachImageTap: () => fail("Disabled attachment action was invoked"),
       onSlashCommandsTap: () => fail("Disabled command action was invoked"),
     );
-    await tester.tap(find.byTooltip("More actions"));
+    await tester.tap(_tooltip("More actions"));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.tap(find.byIcon(TablerRegular.slash));
     await tester.pumpAndSettle();
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
     expect(find.byIcon(TablerRegular.chevron_right), findsNothing);
+  });
+
+  group("a screen reader", () {
+    SemanticsNode nodeNamed(String label) => find.semantics.byLabel(label).evaluate().single;
+    const platforms = TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS});
+
+    testWidgets("hears the opener and its actions as named buttons that can be activated", (tester) async {
+      final semantics = tester.ensureSemantics();
+      var attachmentPicks = 0;
+      var commandPicks = 0;
+      await _pumpAccordion(
+        tester: tester,
+        brightness: Brightness.light,
+        alwaysOpen: false,
+        actionsEnabled: true,
+        showAttachImage: true,
+        onAttachImageTap: () => attachmentPicks++,
+        onSlashCommandsTap: () => commandPicks++,
+      );
+
+      expect(
+        nodeNamed("More actions"),
+        isSemantics(label: "More actions", tooltip: "", isButton: true, isEnabled: true, hasTapAction: true),
+      );
+      tester.semantics.tap(find.semantics.byLabel("More actions"));
+      await tester.pumpAndSettle();
+
+      expect(nodeNamed("Attach image"), isSemantics(label: "Attach image", isButton: true, hasTapAction: true));
+      expect(nodeNamed("Slash commands"), isSemantics(label: "Slash commands", isButton: true, hasTapAction: true));
+      tester.semantics.tap(find.semantics.byLabel("Slash commands"));
+      await tester.pumpAndSettle();
+      expect(commandPicks, 1);
+      expect(attachmentPicks, 0);
+      semantics.dispose();
+    }, variant: platforms);
+
+    testWidgets("hears unavailable actions as disabled, with no tap", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpAccordion(
+        tester: tester,
+        brightness: Brightness.light,
+        alwaysOpen: true,
+        actionsEnabled: false,
+        showAttachImage: true,
+        onAttachImageTap: () => fail("Disabled attachment action was invoked"),
+        onSlashCommandsTap: () => fail("Disabled command action was invoked"),
+      );
+
+      for (final label in ["Attach image", "Slash commands"]) {
+        expect(
+          nodeNamed(label),
+          isSemantics(label: label, isButton: true, hasEnabledState: true, isEnabled: false, hasTapAction: false),
+        );
+      }
+      semantics.dispose();
+    }, variant: platforms);
   });
 
   testWidgets("an attach action whose support is unknown holds its place inert", (tester) async {
@@ -179,9 +240,9 @@ void main() {
       onAttachImageTap: null,
       onSlashCommandsTap: () => commandPicks++,
     );
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
 
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.tap(find.byIcon(TablerRegular.slash));
     await tester.pumpAndSettle();
     expect(commandPicks, 1);

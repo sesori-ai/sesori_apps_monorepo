@@ -147,8 +147,10 @@ class const _AccordionIconButton({
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;
-    return Tooltip(
-      message: tooltip,
+    return PregoButtonSemantics(
+      label: tooltip,
+      enabled: onTap != null,
+      showsTooltip: true,
       child: PregoTappable(
         onTap: onTap,
         borderRadius: BorderRadius.circular(PregoRadius.full),

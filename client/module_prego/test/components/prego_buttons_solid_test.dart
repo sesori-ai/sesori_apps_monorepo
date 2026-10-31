@@ -1,3 +1,4 @@
+import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
@@ -30,6 +31,7 @@ void main() {
                   ),
                 for (final hierarchy in hierarchies)
                   PregoButtonsSolid.iconOnly(
+                    semanticLabel: "Icon",
                     leadingIcon: TablerRegular.check,
                     hierarchy: hierarchy,
                     size: PregoButtonsSolidSize.lg,
@@ -94,6 +96,7 @@ void main() {
                   onPressed: null,
                 ),
                 PregoButtonsSolid.iconOnly(
+                  semanticLabel: "Icon",
                   leadingIcon: TablerRegular.check,
                   hierarchy: PregoButtonsSolidHierarchy.secondary,
                   size: PregoButtonsSolidSize.lg,
@@ -128,6 +131,7 @@ void main() {
                 onPressed: () {},
               ),
               PregoButtonsSolid.iconOnly(
+                semanticLabel: "Icon",
                 leadingIcon: TablerRegular.check,
                 hierarchy: PregoButtonsSolidHierarchy.tertiary,
                 size: PregoButtonsSolidSize.xs,
@@ -168,4 +172,161 @@ void main() {
     await tester.sendKeyEvent(LogicalKeyboardKey.space);
     expect(presses, 2);
   });
+
+  group("a screen reader", () {
+    const platforms = TargetPlatformVariant({TargetPlatform.android, TargetPlatform.iOS, TargetPlatform.macOS});
+    SemanticsNode nodeNamed(String label) => find.semantics.byLabel(label).evaluate().single;
+    final unnamedTaps = find.semantics.byPredicate((node) {
+      final data = node.getSemanticsData();
+      return !node.isMergedIntoParent && data.hasAction(SemanticsAction.tap) && data.label.isEmpty;
+    });
+
+    // Nothing between the button and its neighbour draws a line, so words and
+    // taps that aren't held on their own node land together on the shared parent.
+    Future<void> pump(WidgetTester tester, {required Widget button}) => tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        home: Scaffold(
+          body: Center(
+            child: Semantics(
+              container: true,
+              child: Row(children: [const Text("Beside"), button]),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    testWidgets("hears an icon-only button as one named node with its tap and focus", (tester) async {
+      final semantics = tester.ensureSemantics();
+      var presses = 0;
+      await pump(
+        tester,
+        button: PregoButtonsSolid.iconOnly(
+          leadingIcon: TablerRegular.x,
+          semanticLabel: "Close",
+          showsTooltip: true,
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.lg,
+          onPressed: () => presses++,
+        ),
+      );
+
+      expect(
+        nodeNamed("Close"),
+        isSemantics(
+          label: "Close",
+          tooltip: "",
+          isButton: true,
+          hasEnabledState: true,
+          isEnabled: true,
+          isFocusable: true,
+          hasTapAction: true,
+        ),
+      );
+      expect(nodeNamed("Beside"), isSemantics(label: "Beside", isButton: false, hasTapAction: false));
+      expect(unnamedTaps, findsNothing);
+      tester.semantics.tap(find.semantics.byLabel("Close"));
+      expect(presses, 1);
+      semantics.dispose();
+    }, variant: platforms);
+
+    for (final isLoading in [false, true]) {
+      testWidgets("hears a ${isLoading ? "loading" : "disabled"} icon-only button as disabled, with no tap", (
+        tester,
+      ) async {
+        final semantics = tester.ensureSemantics();
+        await pump(
+          tester,
+          button: PregoButtonsSolid.iconOnly(
+            leadingIcon: TablerRegular.x,
+            semanticLabel: "Close",
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            isLoading: isLoading,
+            // Loading wins over a live callback.
+            onPressed: isLoading ? () => fail("A loading button took a tap") : null,
+          ),
+        );
+
+        expect(
+          nodeNamed("Close"),
+          isSemantics(label: "Close", isButton: true, hasEnabledState: true, isEnabled: false, hasTapAction: false),
+        );
+        semantics.dispose();
+      }, variant: platforms);
+    }
+
+    testWidgets("hears a text button as one node, named by its text", (tester) async {
+      final semantics = tester.ensureSemantics();
+      var presses = 0;
+      await pump(
+        tester,
+        button: PregoButtonsSolid(
+          label: "Retry",
+          hierarchy: PregoButtonsSolidHierarchy.secondary,
+          size: PregoButtonsSolidSize.lg,
+          onPressed: () => presses++,
+        ),
+      );
+
+      expect(
+        nodeNamed("Retry"),
+        isSemantics(label: "Retry", isButton: true, hasEnabledState: true, isEnabled: true, hasTapAction: true),
+      );
+      expect(unnamedTaps, findsNothing);
+      tester.semantics.tap(find.semantics.byLabel("Retry"));
+      expect(presses, 1);
+      semantics.dispose();
+    }, variant: platforms);
+
+    testWidgets("leaves the name to a wrapper around an icon-only button with none", (tester) async {
+      final semantics = tester.ensureSemantics();
+      var holds = 0;
+      await pump(
+        tester,
+        button: Semantics(
+          container: true,
+          button: true,
+          label: "Record",
+          excludeSemantics: true,
+          onTap: () => holds++,
+          child: const PregoButtonsSolid.iconOnly(
+            leadingIcon: TablerRegular.microphone,
+            semanticLabel: null,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: _noop,
+          ),
+        ),
+      );
+
+      expect(nodeNamed("Record"), isSemantics(label: "Record", isButton: true, hasTapAction: true));
+      expect(find.byType(Tooltip), findsNothing);
+      tester.semantics.tap(find.semantics.byLabel("Record"));
+      expect(holds, 1);
+      semantics.dispose();
+    });
+
+    testWidgets("the tooltip shows on request, without adding words to the node", (tester) async {
+      Widget button({required bool showsTooltip}) => PregoButtonsSolid.iconOnly(
+        leadingIcon: TablerRegular.x,
+        semanticLabel: "Close",
+        showsTooltip: showsTooltip,
+        hierarchy: PregoButtonsSolidHierarchy.secondary,
+        size: PregoButtonsSolidSize.lg,
+        onPressed: _noop,
+      );
+      await pump(tester, button: button(showsTooltip: false));
+      expect(find.byType(Tooltip), findsNothing);
+
+      await pump(tester, button: button(showsTooltip: true));
+      await tester.longPress(find.byIcon(TablerRegular.x));
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text("Close"), findsOneWidget);
+      await tester.pumpAndSettle(const Duration(seconds: 2));
+    });
+  });
 }
+
+void _noop() {}

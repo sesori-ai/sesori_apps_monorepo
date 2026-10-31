@@ -45,7 +45,8 @@ The main pane hosts one full-width routed page.
   Viewing header move their content past it while it shows, and it slides just ahead of that content, never
   over it. The button and Cmd/Ctrl+B bring the sidebar back
   at the saved width. Hidden, the sidebar keeps its list and scroll offset but leaves the focus order and the
-  screen reader. Reduced motion removes the slide without delaying drag feedback.
+  screen reader. Reduced motion removes the slide without delaying drag feedback. Shown, the resize handle's name
+  sits on the handle's own screen reader node, not on the window behind it.
 - Windows narrower than 760 pixels temporarily hide the sidebar without changing saved preferences; the
   restore button shows disabled and Cmd/Ctrl+B does nothing, so the palette reaches sessions there. Widening
   restores the user's choice. The native minimum window remains 560 × 480.

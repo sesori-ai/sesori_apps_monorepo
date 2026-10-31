@@ -1115,6 +1115,24 @@ void main() {
       semantics.dispose();
     });
 
+    testWidgets("text-first's expand button and options are named buttons, off the words beside them", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.textFirst,
+        initialText: "line one\nline two\nline three",
+      );
+
+      for (final label in ["Expand editor", "More actions"]) {
+        expect(
+          nodeNamed(label),
+          isSemantics(label: label, tooltip: "", isButton: true, isEnabled: true, hasTapAction: true),
+        );
+      }
+      semantics.dispose();
+    });
+
     testWidgets("a pointer shell's mic is a named button that starts recording", (tester) async {
       final semantics = tester.ensureSemantics();
       await _pumpComposer(

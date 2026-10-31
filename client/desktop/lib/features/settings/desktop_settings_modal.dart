@@ -231,20 +231,15 @@ class _DesktopSettingsModalState() extends State<_DesktopSettingsModal> {
                               PositionedDirectional(
                                 top: PregoSpacing.md,
                                 end: PregoSpacing.md,
-                                child: Semantics(
-                                  label: context.loc.settingsClose,
-                                  child: Tooltip(
-                                    message: context.loc.settingsClose,
-                                    excludeFromSemantics: true,
-                                    child: PregoButtonsSolid.iconOnly(
-                                      key: const Key("desktop-settings-close"),
-                                      leadingIcon: TablerRegular.x,
-                                      // Filled, so it stays legible over content scrolling beneath it.
-                                      hierarchy: PregoButtonsSolidHierarchy.secondary,
-                                      size: PregoButtonsSolidSize.sm,
-                                      onPressed: widget.onClose,
-                                    ),
-                                  ),
+                                child: PregoButtonsSolid.iconOnly(
+                                  key: const Key("desktop-settings-close"),
+                                  leadingIcon: TablerRegular.x,
+                                  semanticLabel: context.loc.settingsClose,
+                                  showsTooltip: true,
+                                  // Filled, so it stays legible over content scrolling beneath it.
+                                  hierarchy: PregoButtonsSolidHierarchy.secondary,
+                                  size: PregoButtonsSolidSize.sm,
+                                  onPressed: widget.onClose,
                                 ),
                               ),
                             ],

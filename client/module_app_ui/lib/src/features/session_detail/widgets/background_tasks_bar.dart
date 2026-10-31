@@ -57,6 +57,7 @@ class _BackgroundTasksBarState() extends State<BackgroundTasksBar> {
       overlayChildBuilder: (context, info) => _buildOverlay(context: context, info: info),
       child: Tooltip(
         message: loc.subAgentsSummary(count, runningCount),
+        excludeFromSemantics: true,
         child: Semantics(
           button: true,
           label: loc.subAgentsSummary(count, runningCount),

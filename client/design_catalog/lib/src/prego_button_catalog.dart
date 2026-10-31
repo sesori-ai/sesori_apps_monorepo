@@ -144,6 +144,7 @@ Widget _buildScenarioButton(CatalogScenario scenario) {
   return switch (scenario.content) {
     CatalogButtonIconOnlyContent(:final icon) => PregoButtonsSolid.iconOnly(
       leadingIcon: _iconFor(icon),
+      semanticLabel: "Icon only",
       hierarchy: _hierarchyFor(scenario.hierarchy),
       size: _sizeFor(scenario.size),
       onPressed: onPressed,
@@ -229,6 +230,7 @@ class _InteractiveButtonPreviewState() extends State<_InteractiveButtonPreview> 
     final button = widget.iconOnly
         ? PregoButtonsSolid.iconOnly(
             leadingIcon: widget.leadingIcon ?? TablerRegular.plus,
+            semanticLabel: widget.label,
             hierarchy: widget.hierarchy,
             size: widget.size,
             onPressed: onPressed,

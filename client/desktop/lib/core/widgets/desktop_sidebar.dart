@@ -271,14 +271,12 @@ class const _SidebarRefreshButton({
       tooltip: refreshing ? loc.desktopSidebarRefreshing : loc.desktopSidebarRefresh,
       padding: EdgeInsets.zero,
       onPressed: canRefresh ? () => unawaited(context.read<SessionListRefreshCubit>().refresh()) : null,
+      // The tooltip names it for screen readers too.
       icon: refreshing
-          ? Semantics(
-              label: loc.desktopSidebarRefreshing,
-              child: ExcludeSemantics(
-                child: SizedBox.square(dimension: iconSize, child: const PregoActivityIndicator(color: null)),
-              ),
+          ? ExcludeSemantics(
+              child: SizedBox.square(dimension: iconSize, child: const PregoActivityIndicator(color: null)),
             )
-          : Icon(TablerRegular.refresh, size: iconSize, color: color, semanticLabel: loc.desktopSidebarRefresh),
+          : Icon(TablerRegular.refresh, size: iconSize, color: color),
     );
   }
 }
@@ -351,7 +349,7 @@ class const _SidebarFooter({
                       tooltip: loc.desktopShortcutHint(loc.settingsTitle, macOS ? "⌘," : "Ctrl+,"),
                       padding: const EdgeInsets.all(PregoSpacing.sm),
                       onPressed: onOpenSettings,
-                      icon: Icon(TablerRegular.settings, size: PregoIconSize.md, semanticLabel: loc.settingsTitle),
+                      icon: const Icon(TablerRegular.settings, size: PregoIconSize.md),
                     ),
                   ),
                   control(
@@ -451,6 +449,7 @@ class const _SidebarButton({
           ? button
           : Tooltip(
               message: shortcut == null ? description : context.loc.desktopShortcutHint(description, shortcut),
+              excludeFromSemantics: true,
               child: button,
             ),
     );

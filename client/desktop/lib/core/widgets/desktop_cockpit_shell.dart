@@ -410,23 +410,27 @@ class _SidebarResizeHandleState() extends State<_SidebarResizeHandle> {
   @override
   Widget build(BuildContext context) => MouseRegion(
     cursor: SystemMouseCursors.resizeLeftRight,
-    child: Tooltip(
-      message: context.loc.desktopSidebarResize,
-      child: GestureDetector(
-        key: const Key("desktop-sidebar-resize"),
-        behavior: HitTestBehavior.opaque,
-        dragStartBehavior: DragStartBehavior.down,
-        onHorizontalDragStart: (details) =>
-            _dragOrigin = (width: widget.sidebar.state.width, pointerX: details.globalPosition.dx),
-        onHorizontalDragUpdate: (details) {
-          if (_dragOrigin case final origin?) {
-            widget.sidebar.resize(width: origin.width + details.globalPosition.dx - origin.pointerX);
-          }
-        },
-        onHorizontalDragEnd: (_) => _finishDrag(),
-        onHorizontalDragCancel: _finishDrag,
-        onDoubleTap: () => unawaited(widget.sidebar.resetWidth()),
-        child: const SizedBox.expand(),
+    // A node of its own, or its name lands on the whole window.
+    child: Semantics(
+      container: true,
+      child: Tooltip(
+        message: context.loc.desktopSidebarResize,
+        child: GestureDetector(
+          key: const Key("desktop-sidebar-resize"),
+          behavior: HitTestBehavior.opaque,
+          dragStartBehavior: DragStartBehavior.down,
+          onHorizontalDragStart: (details) =>
+              _dragOrigin = (width: widget.sidebar.state.width, pointerX: details.globalPosition.dx),
+          onHorizontalDragUpdate: (details) {
+            if (_dragOrigin case final origin?) {
+              widget.sidebar.resize(width: origin.width + details.globalPosition.dx - origin.pointerX);
+            }
+          },
+          onHorizontalDragEnd: (_) => _finishDrag(),
+          onHorizontalDragCancel: _finishDrag,
+          onDoubleTap: () => unawaited(widget.sidebar.resetWidth()),
+          child: const SizedBox.expand(),
+        ),
       ),
     ),
   );

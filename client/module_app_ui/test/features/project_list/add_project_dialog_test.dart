@@ -743,6 +743,10 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.bySemanticsLabel("Parent folder"), findsOneWidget);
+      expect(
+        tester.getSemantics(find.bySemanticsLabel("Parent folder")),
+        isSemantics(label: "Parent folder", isButton: true, isEnabled: true, hasTapAction: true),
+      );
       expect(_button(tester, _upButton).onPressed, isNotNull);
 
       // From Home, up leaves the starting folder for its real parent.

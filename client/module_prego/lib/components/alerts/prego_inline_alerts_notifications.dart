@@ -147,14 +147,18 @@ class const PregoInlineAlertsNotifications({
           clipBehavior: Clip.antiAlias,
           child: Padding(
             padding: const EdgeInsets.all(PregoSpacing.xl),
-            child: _buildBody(prego, brightness: Theme.of(context).brightness),
+            child: _buildBody(
+              prego,
+              brightness: Theme.of(context).brightness,
+              closeLabel: MaterialLocalizations.of(context).closeButtonTooltip,
+            ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildBody(PregoDesignSystem prego, {required Brightness brightness}) {
+  Widget _buildBody(PregoDesignSystem prego, {required Brightness brightness, required String closeLabel}) {
     final colors = prego.colors;
     final hasBelow = supportingText != null || additionalContent != null;
 
@@ -173,7 +177,7 @@ class const PregoInlineAlertsNotifications({
             style: prego.textTheme.textSm.medium.copyWith(color: colors.textPrimary),
           ),
         ),
-        if (_buildActions() case final actions?) ...[
+        if (_buildActions(closeLabel: closeLabel) case final actions?) ...[
           const SizedBox(width: PregoSpacing.md),
           actions,
         ],
@@ -231,7 +235,7 @@ class const PregoInlineAlertsNotifications({
 
   /// Builds the trailing action cluster (secondary + primary + close), or
   /// `null` when none of the three are present.
-  Widget? _buildActions() {
+  Widget? _buildActions({required String closeLabel}) {
     final primary = primaryAction;
     final secondary = secondaryAction;
     final close = onClose;
@@ -260,6 +264,7 @@ class const PregoInlineAlertsNotifications({
       if (close != null)
         PregoButtonsSolid.iconOnly(
           leadingIcon: TablerRegular.x,
+          semanticLabel: closeLabel,
           hierarchy: PregoButtonsSolidHierarchy.tertiary,
           size: PregoButtonsSolidSize.sm,
           onPressed: close,

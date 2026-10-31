@@ -146,4 +146,23 @@ void main() {
       expect(tester.takeException(), isNull);
     });
   }
+
+  testWidgets("a screen reader hears the close button as a named button", (tester) async {
+    final semantics = tester.ensureSemantics();
+    var closes = 0;
+    await tester.pumpWidget(
+      app(
+        brightness: Brightness.light,
+        alert: PregoInlineAlertsNotifications(title: "Alert", onClose: () => closes++),
+      ),
+    );
+
+    expect(
+      tester.getSemantics(find.bySemanticsLabel("Close")),
+      isSemantics(label: "Close", isButton: true, isEnabled: true, hasTapAction: true),
+    );
+    tester.semantics.tap(find.semantics.byLabel("Close"));
+    expect(closes, 1);
+    semantics.dispose();
+  });
 }
