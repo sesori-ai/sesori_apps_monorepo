@@ -223,7 +223,9 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
       case VoiceInputIdle() ||
           VoiceInputStarting() ||
           VoiceInputRecording() ||
+          VoiceInputLiveRecording() ||
           VoiceInputTranscribing() ||
+          VoiceInputLiveFinishing() ||
           VoiceInputRetrying() ||
           VoiceInputRetryCancelling() ||
           VoiceInputDiscarding() ||
@@ -286,8 +288,8 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
     final failed = state.submission == FeedbackSubmission.failed;
     final sending = state.submission == FeedbackSubmission.submitting;
     final voice = switch (context.watch<VoiceInputCubit>().state) {
-      VoiceInputStarting() || VoiceInputRecording() => _VoicePresentation.recording,
-      VoiceInputTranscribing() || VoiceInputRetrying() => _VoicePresentation.transcribing,
+      VoiceInputStarting() || VoiceInputRecording() || VoiceInputLiveRecording() => _VoicePresentation.recording,
+      VoiceInputTranscribing() || VoiceInputLiveFinishing() || VoiceInputRetrying() => _VoicePresentation.transcribing,
       VoiceInputIdle() ||
       VoiceInputRetryPending() ||
       VoiceInputRetryCancelling() ||

@@ -271,6 +271,7 @@ void main() {
     registerFallbackValue(ComposerDraft.typed(text: ""));
     registerFallbackValue(ComposerInputMode.typed);
     registerFallbackValue(AnalyticsVoiceFinish.sent);
+    registerFallbackValue(AnalyticsVoiceMode.afterRecording);
     registerFallbackValue(SessionAbortSubAgentPolicy.stop);
     registerFallbackValue(
       const DeclineFormRequest(requestId: "fixture", sessionId: "fixture", choice: FormDismissalChoice.cancel),
@@ -310,6 +311,7 @@ void main() {
     when(
       () => cubit.reportVoiceTranscriptionCompleted(
         finish: any(named: "finish"),
+        mode: any(named: "mode"),
       ),
     ).thenReturn(null);
     when(cubit.recheckHarnessAvailability).thenAnswer((_) async {});
@@ -520,7 +522,7 @@ void main() {
                   submittedDraft = draft;
                   submitted = attachments;
                 },
-                onVoiceTranscriptionFinished: ({required finish}) {},
+                onVoiceTranscriptionFinished: ({required finish, required mode}) {},
                 onDraftChanged: (_) {},
                 onDraftCleared: () {},
                 onAbort: () {},
@@ -4143,6 +4145,7 @@ void main() {
     verifyNever(
       () => cubit.reportVoiceTranscriptionCompleted(
         finish: any(named: "finish"),
+        mode: any(named: "mode"),
       ),
     );
 
@@ -4155,6 +4158,7 @@ void main() {
     verify(
       () => cubit.reportVoiceTranscriptionCompleted(
         finish: AnalyticsVoiceFinish.edited,
+        mode: AnalyticsVoiceMode.afterRecording,
       ),
     ).called(1);
   });
@@ -5244,6 +5248,7 @@ void main() {
     verify(
       () => cubit.reportVoiceTranscriptionCompleted(
         finish: AnalyticsVoiceFinish.sent,
+        mode: AnalyticsVoiceMode.afterRecording,
       ),
     ).called(1);
     expect(find.text("dictated words"), findsNothing);

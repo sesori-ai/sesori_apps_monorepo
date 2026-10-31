@@ -68,7 +68,14 @@ final class LiveDictationRun({
   Future<void>? _micStop;
 
   this {
-    _frameSubscription = frames.listen(_onFrame, onError: _onFrameError, onDone: _onFramesDone);
+    _frameSubscription = frames.listen(
+      _onFrame,
+      onError: (Object error, StackTrace stackTrace) => _fail(
+        error: VoiceTranscriptionError.recordingFailed(innerError: error),
+        stackTrace: stackTrace,
+      ),
+      onDone: _onFramesDone,
+    );
     unawaited(_connect(projectKey: projectKey));
   }
 
@@ -119,14 +126,6 @@ final class LiveDictationRun({
       case _SocketEnded():
         break;
     }
-  }
-
-  // ignore: no_slop_linter/prefer_required_named_parameters, no_slop_linter/prefer_specific_type, stream callback signature is positional and stream errors can be any object
-  void _onFrameError(Object error, StackTrace stackTrace) {
-    _fail(
-      error: VoiceTranscriptionError.recordingFailed(innerError: error),
-      stackTrace: stackTrace,
-    );
   }
 
   void _onFramesDone() {

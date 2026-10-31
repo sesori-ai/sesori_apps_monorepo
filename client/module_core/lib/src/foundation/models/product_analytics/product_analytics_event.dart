@@ -169,6 +169,12 @@ enum AnalyticsVoiceFinish({required final String wireValue}) {
   cutOff(wireValue: "cut_off");
 }
 
+/// How a dictation actually ran, so a fallback reports [afterRecording].
+enum AnalyticsVoiceMode({required final String wireValue}) {
+  live(wireValue: "live"),
+  afterRecording(wireValue: "after_recording");
+}
+
 @immutable
 sealed class const ProductAnalyticsEvent() {
   const factory analyticsSchemaReady() = AnalyticsSchemaReadyEvent;
@@ -192,6 +198,7 @@ sealed class const ProductAnalyticsEvent() {
   }) = SessionCreationFailedEvent;
   const factory voiceTranscriptionCompleted({
     required AnalyticsVoiceFinish finish,
+    required AnalyticsVoiceMode mode,
   }) = VoiceTranscriptionCompletedEvent;
   const factory sessionQuestionAnswered() = SessionQuestionAnsweredEvent;
   const factory sessionQuestionRejected() = SessionQuestionRejectedEvent;
@@ -345,12 +352,13 @@ final class const SessionCreationFailedEvent({
 
 final class const VoiceTranscriptionCompletedEvent({
   required final AnalyticsVoiceFinish finish,
+  required final AnalyticsVoiceMode mode,
 }) extends ProductAnalyticsEvent {
   @override
   String get wireName => "voice_transcription_completed";
 
   @override
-  Map<String, String> get parameters => {"finish": finish.wireValue};
+  Map<String, String> get parameters => {"finish": finish.wireValue, "mode": mode.wireValue};
 }
 
 final class const SessionQuestionAnsweredEvent() extends ProductAnalyticsEvent {

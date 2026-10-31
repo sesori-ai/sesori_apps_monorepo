@@ -68,6 +68,9 @@ void main() {
     when(
       () => voiceService.maxDurationReachedStream(session: any(named: "session")),
     ).thenAnswer((_) => maxDurationReached.stream);
+    when(
+      () => voiceService.liveEventStream(session: any(named: "session")),
+    ).thenAnswer((_) => const Stream<VoiceLiveEvent>.empty());
     // The recorder's level stream is broadcast, like the real capture's.
     final levels = StreamController<double>.broadcast();
     addTearDown(levels.close);

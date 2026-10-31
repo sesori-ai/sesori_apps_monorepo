@@ -2199,6 +2199,15 @@ class AppLocalizationsEn extends AppLocalizations {
   String get voiceTranscribing => 'Transcribing...';
 
   @override
+  String get voiceFinishing => 'Finishing...';
+
+  @override
+  String get voiceDictationCutOff => 'Dictation was cut off. Check your words before sending.';
+
+  @override
+  String get voiceDictationLimitReached => 'Dictation limit reached';
+
+  @override
   String get voiceRecordingSaved => 'Recording saved';
 
   @override

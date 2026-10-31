@@ -131,7 +131,10 @@ typedef PromptSubmitCallback = void Function({
   required List<ComposerAttachment> attachments,
 });
 
-typedef VoiceTranscriptionFinishedCallback = void Function({required AnalyticsVoiceFinish finish});
+typedef VoiceTranscriptionFinishedCallback = void Function({
+  required AnalyticsVoiceFinish finish,
+  required AnalyticsVoiceMode mode,
+});
 
 class const PromptInput({
   super.key,
@@ -479,8 +482,8 @@ class _PromptInputState() extends State<PromptInput> {
   /// claiming that the underlying recording lifecycle has advanced yet.
   _VoicePresentation get _voicePresentation => switch (_renderedVoiceState) {
     VoiceInputStarting() when _releaseRequestedWhileStarting => _VoicePresentation.idle,
-    VoiceInputStarting() || VoiceInputRecording() => _VoicePresentation.recording,
-    VoiceInputTranscribing() || VoiceInputRetrying() => _VoicePresentation.transcribing,
+    VoiceInputStarting() || VoiceInputRecording() || VoiceInputLiveRecording() => _VoicePresentation.recording,
+    VoiceInputTranscribing() || VoiceInputLiveFinishing() || VoiceInputRetrying() => _VoicePresentation.transcribing,
     VoiceInputIdle() ||
     VoiceInputRetryPending() ||
     VoiceInputRetryCancelling() ||
@@ -894,7 +897,8 @@ class _PromptInputState() extends State<PromptInput> {
 
   Future<bool> _startRecording() async {
     await _voiceCubit.startRecording();
-    return _voiceCubit.state is VoiceInputRecording;
+    final state = _voiceCubit.state;
+    return state is VoiceInputRecording || state is VoiceInputLiveRecording;
   }
 
   Future<void> _stopAndTranscribe({required _VoiceFinish finish}) async {
@@ -916,6 +920,7 @@ class _PromptInputState() extends State<PromptInput> {
         if (_voiceInteraction is _VoiceCancelling) _resetVoicePresentation();
       case VoiceInputStarting() ||
           VoiceInputRecording() ||
+          VoiceInputLiveRecording() ||
           VoiceInputRetrying() ||
           VoiceInputRetryCancelling() ||
           VoiceInputDiscarding() ||
@@ -925,10 +930,13 @@ class _PromptInputState() extends State<PromptInput> {
         // Reached only when the cubit stopped by itself, with no release to
         // say otherwise.
         _showTranscribingPresentation(limitReached: limitReached, finish: _VoiceFinish.edit);
+      case VoiceInputLiveFinishing():
+        // The same, and its limit notice comes with the words.
+        _showTranscribingPresentation(limitReached: false, finish: _VoiceFinish.edit);
       case VoiceInputRetryPending():
         _resetVoicePresentation();
-      case VoiceInputCompleted(:final transcript, :final outcome):
-        _handleCompletedTranscription(transcript: transcript, outcome: outcome);
+      case VoiceInputCompleted(:final transcript, :final outcome, :final mode):
+        _handleCompletedTranscription(transcript: transcript, outcome: outcome, mode: mode);
         _voiceCubit.acknowledgeOutcome();
       case VoiceInputStartFailed(:final error):
         _handleVoiceStartFailure(error: error);
@@ -955,7 +963,11 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  void _handleCompletedTranscription({required String transcript, required VoiceDictationOutcome outcome}) {
+  void _handleCompletedTranscription({
+    required String transcript,
+    required VoiceDictationOutcome outcome,
+    required VoiceDictationMode mode,
+  }) {
     final int interactionId;
     final _VoiceFinish finish;
     switch (_voiceInteraction) {
@@ -971,6 +983,7 @@ class _PromptInputState() extends State<PromptInput> {
         return;
     }
 
+    _showDictationOutcomeNotice(outcome: outcome, mode: mode);
     if (transcript.trim().isNotEmpty) {
       final nextDraft = _draftCalculator.appendVoiceTranscript(
         draft: _draft,
@@ -978,14 +991,31 @@ class _PromptInputState() extends State<PromptInput> {
       );
       _applyDraft(draft: nextDraft, notify: true);
       unawaited(_playSuccessFeedback(interactionId: interactionId));
-      unawaited(_settleDictation(finish: finish, outcome: outcome));
+      unawaited(_settleDictation(finish: finish, outcome: outcome, mode: mode));
     }
     _resetVoicePresentation();
   }
 
+  /// After recording, the limit's notice came when the recording stopped.
+  void _showDictationOutcomeNotice({required VoiceDictationOutcome outcome, required VoiceDictationMode mode}) {
+    switch ((outcome, mode)) {
+      case (VoiceDictationOutcome.interrupted, _):
+        _showComposerNotice(context.loc.voiceDictationCutOff);
+      case (VoiceDictationOutcome.limitReached, VoiceDictationMode.live):
+        _showComposerNotice(context.loc.voiceDictationLimitReached);
+      case (VoiceDictationOutcome.limitReached, VoiceDictationMode.afterRecording):
+      case (VoiceDictationOutcome.finished, _):
+        break;
+    }
+  }
+
   /// Sends the words now in the draft when the gesture and the outcome both
   /// allow it. A send runs before the next frame, so the box never shows them.
-  Future<void> _settleDictation({required _VoiceFinish finish, required VoiceDictationOutcome outcome}) async {
+  Future<void> _settleDictation({
+    required _VoiceFinish finish,
+    required VoiceDictationOutcome outcome,
+    required VoiceDictationMode mode,
+  }) async {
     final report = widget.onVoiceTranscriptionFinished;
     final sendRequested = finish == _VoiceFinish.send && outcome == VoiceDictationOutcome.finished;
     final sent = sendRequested && await _submitComposer(fromDictation: true);
@@ -993,6 +1023,10 @@ class _PromptInputState() extends State<PromptInput> {
       finish: switch (outcome) {
         VoiceDictationOutcome.limitReached || VoiceDictationOutcome.interrupted => AnalyticsVoiceFinish.cutOff,
         VoiceDictationOutcome.finished => sent ? AnalyticsVoiceFinish.sent : AnalyticsVoiceFinish.edited,
+      },
+      mode: switch (mode) {
+        VoiceDictationMode.live => AnalyticsVoiceMode.live,
+        VoiceDictationMode.afterRecording => AnalyticsVoiceMode.afterRecording,
       },
     );
     if (sent || !mounted) return;
@@ -1016,7 +1050,10 @@ class _PromptInputState() extends State<PromptInput> {
     final message = switch (error) {
       NotAuthenticatedVoiceError() => context.loc.voiceErrorNotAuthenticated,
       MissingRecordingArtifactError() => context.loc.voiceErrorSavedRecordingMissing,
-      NetworkVoiceError() || RetryableServerVoiceError() => context.loc.voiceRecordingSaved,
+      // Only live reaches here with these: after recording they keep the recording
+      // for Retry instead, and live has no recording to mention.
+      NetworkVoiceError() ||
+      RetryableServerVoiceError() ||
       MicrophonePermissionDeniedError() ||
       RecordingFailedError() ||
       NotRecordingError() ||
@@ -1903,7 +1940,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// transcribing, dimmed and inert, so a second click lands on nothing. A
   /// retried recording leaves the send button free, as sending abandons it.
   Widget _buildPointerVoiceActions(BuildContext context) {
-    final merged = _voicePresentation == _VoicePresentation.recording || _renderedVoiceState is VoiceInputTranscribing;
+    final merged =
+        _voicePresentation == _VoicePresentation.recording ||
+        _renderedVoiceState is VoiceInputTranscribing ||
+        _renderedVoiceState is VoiceInputLiveFinishing;
     final loc = context.loc;
 
     return SizedBox(
@@ -2334,14 +2374,16 @@ class _PromptInputState() extends State<PromptInput> {
   /// a placeholder-dark band.
   Widget _buildTranscribingShimmer(BuildContext context) {
     final prego = context.prego;
-    final loc = context.loc;
+    final label = _renderedVoiceState is VoiceInputLiveFinishing
+        ? context.loc.voiceFinishing
+        : context.loc.voiceTranscribing;
 
     return PregoShimmer(
       appearDelay: Duration.zero,
       highlightColor: prego.colors.textPlaceholderSubtle,
-      semanticLabel: loc.voiceTranscribing,
+      semanticLabel: label,
       child: Text(
-        loc.voiceTranscribing,
+        label,
         maxLines: 1,
         overflow: TextOverflow.ellipsis,
         style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
