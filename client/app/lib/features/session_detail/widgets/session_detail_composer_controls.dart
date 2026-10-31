@@ -19,7 +19,7 @@ class const MobileSessionDetailComposerControls({
     return BlocProvider(
       create: (_) => VoiceInputCubit(
         service: service,
-        session: service.createSession(projectId: projectId),
+        session: service.createSession(projectId: projectId, allowLive: false),
       ),
       child: MobileComposerPresentationScope(
         child: SessionDetailComposerControls(

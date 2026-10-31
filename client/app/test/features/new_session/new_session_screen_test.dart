@@ -610,7 +610,8 @@ void main() {
 
   testWidgets("legacy bridge shows a Load action, stays typeable, and Load uses legacy routes", (tester) async {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => afterRecordingResult(transcript: ""));
     when(pluginRepository.listPlugins).thenAnswer(
       (_) async => ApiResponse.success(
         PluginDiscoverySnapshot(
@@ -2690,7 +2691,7 @@ void main() {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(
       () => voiceTranscriptionService.stopAndTranscribe(session: voiceSession),
-    ).thenAnswer((_) async => "spoken words");
+    ).thenAnswer((_) async => afterRecordingResult(transcript: "spoken words"));
 
     await tester.pumpWidget(_buildApp());
     await tester.pumpAndSettle();
@@ -2736,7 +2737,8 @@ void main() {
     ).thenAnswer((_) => createCompleter.future);
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     final transcript = Completer<String>();
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) => transcript.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => afterRecordingResultOf(transcript: transcript.future));
     SessionLaunchHandoff? handoff;
     await tester.pumpWidget(
       _buildApp(
@@ -2791,7 +2793,8 @@ void main() {
     ).thenAnswer((_) => createCompleter.future);
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     final transcript = Completer<String>();
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) => transcript.future);
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) => afterRecordingResultOf(transcript: transcript.future));
     when(
       () => sessionService.sendMessage(
         sessionId: any(named: "sessionId"),

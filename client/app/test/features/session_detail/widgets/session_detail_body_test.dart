@@ -308,7 +308,9 @@ void main() {
     ).thenReturn(null);
     when(cubit.clearComposerDraft).thenReturn(null);
     when(
-      () => cubit.reportVoiceTranscriptionCompleted(finish: any(named: "finish")),
+      () => cubit.reportVoiceTranscriptionCompleted(
+        finish: any(named: "finish"),
+      ),
     ).thenReturn(null);
     when(cubit.recheckHarnessAvailability).thenAnswer((_) async {});
 
@@ -4064,7 +4066,8 @@ void main() {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: ""));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4086,7 +4089,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4137,7 +4140,11 @@ void main() {
     expect(find.text("Recording saved"), findsOneWidget);
     expect(find.byKey(const Key("voice_saved_retry")), findsOneWidget);
     expect(find.byKey(const Key("voice_saved_discard")), findsOneWidget);
-    verifyNever(() => cubit.reportVoiceTranscriptionCompleted(finish: any(named: "finish")));
+    verifyNever(
+      () => cubit.reportVoiceTranscriptionCompleted(
+        finish: any(named: "finish"),
+      ),
+    );
 
     await tester.tap(find.byKey(const Key("voice_saved_retry")));
     await tester.pumpAndSettle();
@@ -4145,7 +4152,11 @@ void main() {
     expect(find.text("retried words"), findsOneWidget);
     expect(find.text("Recording saved"), findsNothing);
     verify(() => voiceTranscriptionService.retry(session: voiceSession)).called(1);
-    verify(() => cubit.reportVoiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.edited)).called(1);
+    verify(
+      () => cubit.reportVoiceTranscriptionCompleted(
+        finish: AnalyticsVoiceFinish.edited,
+      ),
+    ).called(1);
   });
 
   testWidgets("sending other content serializes discard before submission", (tester) async {
@@ -4347,7 +4358,8 @@ void main() {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: ""));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4392,7 +4404,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) async => "dictated words");
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: "dictated words"));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4415,7 +4427,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
     when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -4549,7 +4561,8 @@ void main() {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "yes");
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: "yes"));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4571,7 +4584,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) async => "limit words");
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: "limit words"));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4770,7 +4783,8 @@ void main() {
     });
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: ""));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4895,7 +4909,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4956,7 +4970,8 @@ void main() {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) => startCompleter.future);
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: ""));
     when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -5014,7 +5029,8 @@ void main() {
     final third = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
     await tester.pump(const Duration(milliseconds: 600));
     verify(() => voiceTranscriptionService.start(session: voiceSession)).called(1);
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => "");
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: ""));
     await third.up();
     await tester.pumpAndSettle();
   });
@@ -5025,7 +5041,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
     when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
@@ -5061,7 +5077,7 @@ void main() {
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) {
       final completer = Completer<String>();
       stopCompleters.add(completer);
-      return completer.future;
+      return core_testing.afterRecordingResultOf(transcript: completer.future);
     });
     when(() => voiceTranscriptionService.cancel(session: voiceSession)).thenAnswer((_) async {});
 
@@ -5105,7 +5121,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5159,7 +5175,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5195,7 +5211,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
     when(
       () => cubit.sendMessage(
         text: "dictated words",
@@ -5225,7 +5241,11 @@ void main() {
         attachments: const [],
       ),
     ).called(1);
-    verify(() => cubit.reportVoiceTranscriptionCompleted(finish: AnalyticsVoiceFinish.sent)).called(1);
+    verify(
+      () => cubit.reportVoiceTranscriptionCompleted(
+        finish: AnalyticsVoiceFinish.sent,
+      ),
+    ).called(1);
     expect(find.text("dictated words"), findsNothing);
     expect(find.text("Hold to talk"), findsOneWidget);
     expect(find.byType(EditableText), findsNothing);
@@ -5239,7 +5259,7 @@ void main() {
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
     when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
-        .thenAnswer((_) => stopCompleter.future);
+        .thenAnswer((_) => core_testing.afterRecordingResultOf(transcript: stopCompleter.future));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -5267,7 +5287,8 @@ void main() {
     when(() => voiceTranscriptionService.start(session: voiceSession)).thenAnswer((_) async {});
     when(() => voiceTranscriptionService.amplitudeStream(session: voiceSession))
         .thenAnswer((_) => const Stream<double>.empty());
-    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession)).thenAnswer((_) async => transcript);
+    when(() => voiceTranscriptionService.stopAndTranscribe(session: voiceSession))
+        .thenAnswer((_) async => core_testing.afterRecordingResult(transcript: transcript));
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();

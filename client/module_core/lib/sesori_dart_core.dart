@@ -195,6 +195,7 @@ export "src/foundation/models/session_launch/session_launch_composer.dart";
 export "src/foundation/models/session_launch/session_launch_handoff.dart";
 export "src/foundation/models/session_launch/session_launch_outcome.dart";
 export "src/foundation/models/voice/voice_dictation_outcome.dart";
+export "src/foundation/models/voice/voice_live.dart";
 export "src/foundation/models/voice/voice_mode.dart";
 export "src/foundation/models/voice/voice_realtime.dart";
 export "src/foundation/models/voice/voice_transcription_error.dart";

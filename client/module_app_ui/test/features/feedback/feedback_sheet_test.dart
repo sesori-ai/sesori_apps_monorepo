@@ -547,7 +547,8 @@ void main() {
       tester,
     ) async {
       final transcript = Completer<String>();
-      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) => transcript.future);
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session")))
+          .thenAnswer((_) => afterRecordingResultOf(transcript: transcript.future));
       await openPrivateStep(tester: tester, typed: "Typed first");
       final draftRect = tester.getRect(text);
 
@@ -587,7 +588,8 @@ void main() {
     });
 
     testWidgets("a recording that hits the limit keeps its words in the field and sends nothing", (tester) async {
-      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) async => "cut off");
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session")))
+          .thenAnswer((_) async => afterRecordingResult(transcript: "cut off"));
       await openPrivateStep(tester: tester, typed: "Typed first");
 
       final gesture = await hold(tester);
@@ -671,7 +673,8 @@ void main() {
     });
 
     testWidgets("the draft and the recording survive turning on Reduce Motion mid-recording", (tester) async {
-      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) async => "spoken");
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session")))
+          .thenAnswer((_) async => afterRecordingResult(transcript: "spoken"));
       await openPrivateStep(tester: tester, typed: "Typed");
 
       final gesture = await hold(tester);
@@ -691,7 +694,8 @@ void main() {
     });
 
     testWidgets("a transcript stops at the 4,000-character limit", (tester) async {
-      when(() => voiceService.stopAndTranscribe(session: any(named: "session"))).thenAnswer((_) async => "a" * 50);
+      when(() => voiceService.stopAndTranscribe(session: any(named: "session")))
+          .thenAnswer((_) async => afterRecordingResult(transcript: "a" * 50));
       await openPrivateStep(tester: tester, typed: "b" * 3980);
 
       final gesture = await hold(tester);

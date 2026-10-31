@@ -660,6 +660,14 @@ extension GetItInjectableX on _i174.GetIt {
         filesystemApi: gh<_i1068.FilesystemApi>(),
       ),
     );
+    gh.lazySingleton<_i679.VoiceTranscriptionService>(
+      () => _i679.VoiceTranscriptionService(
+        repository: gh<_i107.VoiceRepository>(),
+        projectRepository: gh<_i80.ProjectRepository>(),
+        voiceModeRepository: gh<_i509.VoiceModeRepository>(),
+        capture: gh<_i359.VoiceCapture>(),
+      ),
+    );
     gh.lazySingleton<_i703.ProjectListService>(
       () => _i703.ProjectListService(repository: gh<_i80.ProjectRepository>()),
       dispose: (i) => i.dispose(),
@@ -671,13 +679,6 @@ extension GetItInjectableX on _i174.GetIt {
         preferenceService: gh<_i555.ProductAnalyticsPreferenceService>(),
       ),
       dispose: (i) => i.dispose(),
-    );
-    gh.lazySingleton<_i679.VoiceTranscriptionService>(
-      () => _i679.VoiceTranscriptionService(
-        repository: gh<_i107.VoiceRepository>(),
-        projectRepository: gh<_i80.ProjectRepository>(),
-        capture: gh<_i359.VoiceCapture>(),
-      ),
     );
     gh.lazySingleton<_i704.FilePreviewRepository>(
       () => _i704.FilePreviewRepository(api: gh<_i1068.FilesystemApi>()),

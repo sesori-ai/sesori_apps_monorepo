@@ -13,7 +13,7 @@ class const FeedbackVoiceInputScope({super.key, required final Widget child}) ex
     return BlocProvider(
       create: (_) {
         final service = getIt<VoiceTranscriptionService>();
-        return VoiceInputCubit(service: service, session: service.createSession(projectId: null));
+        return VoiceInputCubit(service: service, session: service.createSession(projectId: null, allowLive: false));
       },
       child: child,
     );

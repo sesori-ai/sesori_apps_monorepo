@@ -51,12 +51,14 @@ class VoiceInputCubit({
     emit(VoiceInputState.transcribing(limitReached: limitReached));
 
     try {
-      final transcript = await _service.stopAndTranscribe(session: _session);
+      final result = await _service.stopAndTranscribe(session: _session);
       if (isClosed || state is! VoiceInputTranscribing) return;
       emit(
         VoiceInputState.completed(
-          transcript: transcript,
-          outcome: limitReached ? VoiceDictationOutcome.limitReached : VoiceDictationOutcome.finished,
+          transcript: result.transcript,
+          outcome: limitReached && result.outcome == VoiceDictationOutcome.finished
+              ? VoiceDictationOutcome.limitReached
+              : result.outcome,
         ),
       );
     } on TranscriptionCancelledError {

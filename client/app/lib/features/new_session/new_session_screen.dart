@@ -78,7 +78,7 @@ class const NewSessionScreen({
             final service = getIt<VoiceTranscriptionService>();
             return VoiceInputCubit(
               service: service,
-              session: service.createSession(projectId: projectId),
+              session: service.createSession(projectId: projectId, allowLive: false),
             );
           },
           child: MobileComposerPresentationScope(child: child),

@@ -1,14 +1,20 @@
 import "dart:async";
+import "dart:typed_data";
 
 import "package:injectable/injectable.dart";
 import "package:sesori_auth/sesori_auth.dart" show ErrorResponse, SuccessResponse;
 import "package:sesori_shared/sesori_shared.dart" show ProjectGlossaryKey;
 
+import "../foundation/models/voice/voice_dictation_outcome.dart";
+import "../foundation/models/voice/voice_live.dart";
+import "../foundation/models/voice/voice_mode.dart";
 import "../foundation/models/voice/voice_transcription_error.dart";
 import "../logging/logging.dart";
 import "../platform/voice_capture.dart";
 import "../repositories/project_repository.dart";
+import "../repositories/voice_mode_repository.dart";
 import "../repositories/voice_repository.dart";
+import "live_dictation_run.dart";
 
 const maxRecordingDuration = Duration(minutes: 15);
 const _recorderPrewarmTimeout = Duration(seconds: 2);
@@ -17,15 +23,31 @@ const _recorderPrewarmTimeout = Duration(seconds: 2);
 class VoiceTranscriptionService({
   required final VoiceRepository _repository,
   required final ProjectRepository _projectRepository,
+  required final VoiceModeRepository _voiceModeRepository,
   required final VoiceCapture _capture,
 }) {
-  VoiceTranscriptionSession createSession({required String? projectId}) {
+  /// [allowLive] is false where dictation keeps recording first, whatever the
+  /// voice mode says.
+  VoiceTranscriptionSession createSession({required String? projectId, required bool allowLive}) {
     final session = VoiceTranscriptionSession._(
       captureSession: _capture.createSession(),
       projectId: projectId == null || projectId.trim().isEmpty ? null : projectId,
     );
     _refreshProjectGlossaryKey(session: session);
+    if (allowLive) unawaited(_loadLiveAvailability(session: session));
     return session;
+  }
+
+  /// Both answers can take seconds, so a hold never waits for them (D26). The
+  /// support check spawns a process on Linux, so it runs only when live is on.
+  Future<void> _loadLiveAvailability({required VoiceTranscriptionSession session}) async {
+    try {
+      await _voiceModeRepository.load();
+    } catch (error, stackTrace) {
+      logw("Could not load the voice mode; keeping the last one", error, stackTrace);
+    }
+    if (_voiceModeRepository.mode is! VoiceModeLive) return;
+    session._canRunLive = await session._captureSession.supportsPcmStream();
   }
 
   void _refreshProjectGlossaryKey({required VoiceTranscriptionSession session}) {
@@ -71,6 +93,17 @@ class VoiceTranscriptionService({
   Stream<void> maxDurationReachedStream({required VoiceTranscriptionSession session}) =>
       session._maxDurationReachedController.stream;
 
+  /// Reports a live dictation while the user may still be holding. Delivered
+  /// synchronously, so a release can never overtake an ending.
+  Stream<VoiceLiveEvent> liveEventStream({required VoiceTranscriptionSession session}) =>
+      session._liveEventsController.stream;
+
+  /// Where the running dictation shows its words, or null unless it is running live.
+  VoiceLivePresentation? livePresentation({required VoiceTranscriptionSession session}) {
+    final state = session._state;
+    return state is _VoiceSessionLiveRecording ? state.presentation : null;
+  }
+
   Future<void> prewarm({required VoiceTranscriptionSession session}) {
     if (session._state is _VoiceSessionClosing || session._state is _VoiceSessionDisposed) {
       return Future<void>.value();
@@ -101,7 +134,13 @@ class VoiceTranscriptionService({
       return Future<void>.value();
     }
 
-    final operation = _start(session: session);
+    return _trackStart(
+      session: session,
+      operation: _start(session: session),
+    );
+  }
+
+  Future<void> _trackStart({required VoiceTranscriptionSession session, required Future<void> operation}) {
     session._startFuture = operation;
     return operation.whenComplete(() {
       if (identical(session._startFuture, operation)) session._startFuture = null;
@@ -113,6 +152,8 @@ class VoiceTranscriptionService({
     session._state = const _VoiceSessionStarting();
     session._interactionProjectGlossaryKey = session._availableProjectGlossaryKey;
     _refreshProjectGlossaryKey(session: session);
+    // Read once, here: the dictation keeps this mode whatever the switch does next.
+    final mode = session._canRunLive ? _voiceModeRepository.mode : const VoiceModeAfterRecording();
 
     try {
       final prewarmFuture = session._prewarmFuture;
@@ -121,14 +162,12 @@ class VoiceTranscriptionService({
         throw VoiceTranscriptionError.cancelled();
       }
 
-      await session._captureSession.start();
-      if (!_ownsGeneration(session: session, generation: generation)) {
-        await session._captureSession.cancel();
-        throw VoiceTranscriptionError.cancelled();
+      switch (mode) {
+        case VoiceModeAfterRecording():
+          await _startFileCapture(session: session, generation: generation, fellBackFromLive: false);
+        case VoiceModeLive(:final presentation):
+          await _startLiveCapture(session: session, generation: generation, presentation: presentation);
       }
-
-      session._state = const _VoiceSessionRecording();
-      _startMaxDurationTimer(session: session);
     } on VoiceCapturePermissionDenied catch (error) {
       _restoreIdleAfterFailure(session: session, generation: generation);
       throw VoiceTranscriptionError.microphonePermissionDenied(innerError: error);
@@ -144,11 +183,146 @@ class VoiceTranscriptionService({
     }
   }
 
-  Future<String> stopAndTranscribe({required VoiceTranscriptionSession session}) async {
-    if (session._state is! _VoiceSessionRecording) {
-      throw VoiceTranscriptionError.notRecording();
+  Future<void> _startFileCapture({
+    required VoiceTranscriptionSession session,
+    required int generation,
+    required bool fellBackFromLive,
+  }) async {
+    await session._captureSession.start();
+    if (!_ownsGeneration(session: session, generation: generation)) {
+      await session._captureSession.cancel();
+      throw VoiceTranscriptionError.cancelled();
     }
 
+    session._state = _VoiceSessionRecording(fellBackFromLive: fellBackFromLive);
+    _startMaxDurationTimer(session: session);
+  }
+
+  /// A microphone that refuses to stream may still record a file (D21). A denied
+  /// permission is not that, and goes up as itself.
+  Future<void> _startLiveCapture({
+    required VoiceTranscriptionSession session,
+    required int generation,
+    required VoiceLivePresentation presentation,
+  }) async {
+    final captureSession = session._captureSession;
+    final Stream<Uint8List> frames;
+    try {
+      frames = await captureSession.startPcmStream();
+    } on VoiceCaptureFailed catch (error, stackTrace) {
+      logw("Live capture could not start; recording instead", error, stackTrace);
+      await captureSession.cancel();
+      await _startFileCapture(session: session, generation: generation, fellBackFromLive: true);
+      return;
+    }
+    if (!_ownsGeneration(session: session, generation: generation)) {
+      await captureSession.cancel();
+      throw VoiceTranscriptionError.cancelled();
+    }
+
+    final run = LiveDictationRun(
+      repository: _repository,
+      capture: captureSession,
+      onWords: ({required words}) => session._liveEventsController.add(VoiceLiveWordsChanged(words: words)),
+      frames: frames,
+      projectKey: session._interactionProjectGlossaryKey,
+    );
+    session._state = _VoiceSessionLiveRecording(run: run, presentation: presentation);
+    _startMaxDurationTimer(session: session);
+    unawaited(_handleLiveEndingWhileHolding(session: session, generation: generation, run: run));
+  }
+
+  /// A release hands the ending to [stopAndTranscribe], and a cancel takes the
+  /// generation, so this acts only on a session that ended by itself.
+  Future<void> _handleLiveEndingWhileHolding({
+    required VoiceTranscriptionSession session,
+    required int generation,
+    required LiveDictationRun run,
+  }) async {
+    final ending = await run.ended;
+    if (!_ownsGeneration(session: session, generation: generation)) return;
+    if (session._state is! _VoiceSessionLiveRecording) return;
+
+    _cancelMaxDurationTimer(session: session);
+    switch (ending) {
+      case LiveDictationFellBack():
+        session._state = const _VoiceSessionStarting();
+        unawaited(
+          _trackStart(
+            session: session,
+            operation: _fallBackFromLive(session: session, generation: generation),
+          ),
+        );
+      case LiveDictationEnded(:final transcript, :final outcome):
+        session._state = const _VoiceSessionIdle();
+        session._liveEventsController.add(VoiceLiveEnded(transcript: transcript, outcome: outcome));
+      case LiveDictationFailed(:final error):
+        session._state = const _VoiceSessionIdle();
+        session._liveEventsController.add(VoiceLiveFailed(error: error));
+      case LiveDictationCancelled():
+        session._state = const _VoiceSessionIdle();
+    }
+  }
+
+  Future<void> _fallBackFromLive({required VoiceTranscriptionSession session, required int generation}) async {
+    try {
+      await _startFileCapture(session: session, generation: generation, fellBackFromLive: true);
+      session._liveEventsController.add(const VoiceLiveFellBack());
+    } on TranscriptionCancelledError {
+      // A cancel or disposal took over while the recorder was starting.
+    } catch (error, stackTrace) {
+      logw("Could not fall back from live dictation", error, stackTrace);
+      if (!_ownsGeneration(session: session, generation: generation)) return;
+      session._state = const _VoiceSessionIdle();
+      session._liveEventsController.add(
+        VoiceLiveFailed(error: VoiceTranscriptionError.recordingFailed(innerError: error)),
+      );
+    }
+  }
+
+  Future<VoiceDictationResult> stopAndTranscribe({required VoiceTranscriptionSession session}) async {
+    // A hold can end while a failed live session is still restarting the recorder.
+    final restart = session._startFuture;
+    if (session._state is _VoiceSessionStarting && restart != null) await restart;
+
+    final state = session._state;
+    if (state is _VoiceSessionLiveRecording) return await _finishLive(session: session, run: state.run);
+    if (state is! _VoiceSessionRecording) throw VoiceTranscriptionError.notRecording();
+    return await _stopFileCapture(
+      session: session,
+      outcome: state.fellBackFromLive ? VoiceDictationOutcome.interrupted : VoiceDictationOutcome.finished,
+    );
+  }
+
+  Future<VoiceDictationResult> _finishLive({
+    required VoiceTranscriptionSession session,
+    required LiveDictationRun run,
+  }) async {
+    _cancelMaxDurationTimer(session: session);
+    final generation = session._generation;
+    session._state = _VoiceSessionLiveFinishing(run: run);
+
+    final ending = await run.finish();
+    if (!_ownsGeneration(session: session, generation: generation)) {
+      throw VoiceTranscriptionError.cancelled();
+    }
+    session._state = const _VoiceSessionIdle();
+
+    switch (ending) {
+      case LiveDictationEnded(:final transcript, :final outcome):
+        return VoiceDictationResult(transcript: transcript, outcome: outcome, mode: VoiceDictationMode.live);
+      // The user has already released, so there is nothing left to record.
+      case LiveDictationFailed(:final error) || LiveDictationFellBack(:final error):
+        throw error;
+      case LiveDictationCancelled():
+        throw VoiceTranscriptionError.cancelled();
+    }
+  }
+
+  Future<VoiceDictationResult> _stopFileCapture({
+    required VoiceTranscriptionSession session,
+    required VoiceDictationOutcome outcome,
+  }) async {
     _cancelMaxDurationTimer(session: session);
     final generation = session._generation;
     late final VoiceRecordingArtifact artifact;
@@ -174,12 +348,13 @@ class VoiceTranscriptionService({
     }
 
     session._state = _VoiceSessionInitialTranscribing(artifact: artifact);
-    return await _transcribeArtifact(
+    final transcript = await _transcribeArtifact(
       session: session,
       artifact: artifact,
       generation: generation,
       releaseCaptureOperation: true,
     );
+    return VoiceDictationResult(transcript: transcript, outcome: outcome, mode: VoiceDictationMode.afterRecording);
   }
 
   Future<String> retry({required VoiceTranscriptionSession session}) async {
@@ -295,6 +470,8 @@ class VoiceTranscriptionService({
     switch (state) {
       case _VoiceSessionStarting() || _VoiceSessionRecording():
         await session._captureSession.cancel();
+      case _VoiceSessionLiveRecording(:final run) || _VoiceSessionLiveFinishing(:final run):
+        await run.cancel();
       case _VoiceSessionStopping():
         final stopFuture = session._stopFuture;
         VoiceRecordingArtifact? artifact;
@@ -340,6 +517,9 @@ class VoiceTranscriptionService({
 
     session._generation++;
     _cancelMaxDurationTimer(session: session);
+    if (state case _VoiceSessionLiveRecording(:final run) || _VoiceSessionLiveFinishing(:final run)) {
+      session._cancelFuture = run.cancel();
+    }
     session._state = switch (state) {
       _VoiceSessionInitialTranscribing(:final artifact) ||
       _VoiceSessionRetryTranscribing(:final artifact) ||
@@ -347,6 +527,8 @@ class VoiceTranscriptionService({
       _VoiceSessionIdle() ||
       _VoiceSessionStarting() ||
       _VoiceSessionRecording() ||
+      _VoiceSessionLiveRecording() ||
+      _VoiceSessionLiveFinishing() ||
       _VoiceSessionStopping() => const _VoiceSessionClosingWithoutArtifact(),
       _VoiceSessionClosing() || _VoiceSessionDisposed() => throw StateError("Voice session already closing"),
     };
@@ -402,6 +584,8 @@ class VoiceTranscriptionService({
       _VoiceSessionIdle() ||
       _VoiceSessionStarting() ||
       _VoiceSessionRecording() ||
+      _VoiceSessionLiveRecording() ||
+      _VoiceSessionLiveFinishing() ||
       _VoiceSessionStopping() ||
       _VoiceSessionInitialTranscribing() ||
       _VoiceSessionRetryTranscribing() ||
@@ -417,6 +601,7 @@ class VoiceTranscriptionService({
       logw("Failed to close voice capture session", error, stackTrace);
     }
     await session._maxDurationReachedController.close();
+    await session._liveEventsController.close();
     session._state = const _VoiceSessionDisposed();
   }
 
@@ -440,7 +625,8 @@ class VoiceTranscriptionService({
   static void _startMaxDurationTimer({required VoiceTranscriptionSession session}) {
     _cancelMaxDurationTimer(session: session);
     session._maxDurationTimer = Timer(maxRecordingDuration, () {
-      if (session._state is _VoiceSessionRecording && !session._maxDurationReachedController.isClosed) {
+      final recording = session._state is _VoiceSessionRecording || session._state is _VoiceSessionLiveRecording;
+      if (recording && !session._maxDurationReachedController.isClosed) {
         session._maxDurationReachedController.add(null);
       }
     });
@@ -457,6 +643,7 @@ class VoiceTranscriptionSession._({
   required final String? _projectId,
 }) {
   final StreamController<void> _maxDurationReachedController = StreamController<void>.broadcast();
+  final StreamController<VoiceLiveEvent> _liveEventsController = StreamController<VoiceLiveEvent>.broadcast(sync: true);
 
   _VoiceSessionState _state = const _VoiceSessionIdle();
   Future<void>? _prewarmFuture;
@@ -467,6 +654,10 @@ class VoiceTranscriptionSession._({
   Timer? _maxDurationTimer;
   ProjectGlossaryKey? _availableProjectGlossaryKey;
   ProjectGlossaryKey? _interactionProjectGlossaryKey;
+
+  /// False until the voice mode says live and this host can stream, which is also
+  /// the answer for a session that doesn't allow live.
+  bool _canRunLive = false;
   int _generation = 0;
 }
 
@@ -476,7 +667,15 @@ final class const _VoiceSessionIdle() extends _VoiceSessionState;
 
 final class const _VoiceSessionStarting() extends _VoiceSessionState;
 
-final class const _VoiceSessionRecording() extends _VoiceSessionState;
+/// [fellBackFromLive] means the first words may be missing (D33).
+final class const _VoiceSessionRecording({required final bool fellBackFromLive}) extends _VoiceSessionState;
+
+final class const _VoiceSessionLiveRecording({
+  required final LiveDictationRun run,
+  required final VoiceLivePresentation presentation,
+}) extends _VoiceSessionState;
+
+final class const _VoiceSessionLiveFinishing({required final LiveDictationRun run}) extends _VoiceSessionState;
 
 final class const _VoiceSessionStopping() extends _VoiceSessionState;
 

@@ -10,6 +10,8 @@ class MockVoiceRepository() extends Mock implements VoiceRepository;
 
 class MockProjectRepository() extends Mock implements ProjectRepository;
 
+class MockVoiceModeRepository() extends Mock implements VoiceModeRepository;
+
 class MockVoiceCapture() extends Mock implements VoiceCapture;
 
 class MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
@@ -17,6 +19,7 @@ class MockVoiceCaptureSession() extends Mock implements VoiceCaptureSession;
 void main() {
   late MockVoiceRepository repository;
   late MockProjectRepository projectRepository;
+  late MockVoiceModeRepository voiceModeRepository;
   late MockVoiceCapture capture;
   late MockVoiceCaptureSession captureSession;
   late VoiceTranscriptionService service;
@@ -31,6 +34,7 @@ void main() {
   setUp(() {
     repository = MockVoiceRepository();
     projectRepository = MockProjectRepository();
+    voiceModeRepository = MockVoiceModeRepository();
     capture = MockVoiceCapture();
     captureSession = MockVoiceCaptureSession();
     when(capture.createSession).thenReturn(captureSession);
@@ -55,9 +59,10 @@ void main() {
     service = VoiceTranscriptionService(
       repository: repository,
       projectRepository: projectRepository,
+      voiceModeRepository: voiceModeRepository,
       capture: capture,
     );
-    session = service.createSession(projectId: null);
+    session = service.createSession(projectId: null, allowLive: false);
   });
 
   test("creates one distinct platform session for each composer", () {
@@ -66,8 +71,8 @@ void main() {
     var created = 0;
     when(capture.createSession).thenAnswer((_) => created++ == 0 ? firstCapture : secondCapture);
 
-    final first = service.createSession(projectId: null);
-    final second = service.createSession(projectId: null);
+    final first = service.createSession(projectId: null, allowLive: false);
+    final second = service.createSession(projectId: null, allowLive: false);
 
     expect(identical(first, second), isFalse);
     expect(created, 2);
@@ -75,9 +80,11 @@ void main() {
 
   test("owns capture, repository mapping, cleanup, and lifecycle transitions", () async {
     await service.start(session: session);
-    final transcript = await service.stopAndTranscribe(session: session);
+    final result = await service.stopAndTranscribe(session: session);
 
-    expect(transcript, "hello");
+    expect(result.transcript, "hello");
+    expect(result.outcome, VoiceDictationOutcome.finished);
+    expect(result.mode, VoiceDictationMode.afterRecording);
     verify(captureSession.start).called(1);
     verify(captureSession.stop).called(1);
     verify(
@@ -111,7 +118,7 @@ void main() {
         ),
       ),
     );
-    final scopedSession = service.createSession(projectId: "project-1");
+    final scopedSession = service.createSession(projectId: "project-1", allowLive: false);
     await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
     await Future<void>.delayed(Duration.zero);
 
@@ -135,7 +142,7 @@ void main() {
     when(
       () => projectRepository.getProject(projectId: "project-1"),
     ).thenAnswer((_) => projectResponse.future);
-    final scopedSession = service.createSession(projectId: "project-1");
+    final scopedSession = service.createSession(projectId: "project-1", allowLive: false);
     await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
 
     await service.start(session: scopedSession);
@@ -192,7 +199,7 @@ void main() {
       refreshRequested.complete();
       return refreshResponse.future;
     });
-    final scopedSession = service.createSession(projectId: "project-1");
+    final scopedSession = service.createSession(projectId: "project-1", allowLive: false);
     await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
     await Future<void>.delayed(Duration.zero);
 
@@ -296,7 +303,7 @@ void main() {
           projectGlossaryKey: any(named: "projectGlossaryKey"),
         ),
       ).thenAnswer((_) async => outcome);
-      final candidateSession = service.createSession(projectId: null);
+      final candidateSession = service.createSession(projectId: null, allowLive: false);
 
       await service.start(session: candidateSession);
       await expectLater(
@@ -364,7 +371,7 @@ void main() {
         _ => const VoiceTranscriptionOutcome.success(transcript: "next interaction"),
       },
     );
-    final scopedSession = service.createSession(projectId: "project-1");
+    final scopedSession = service.createSession(projectId: "project-1", allowLive: false);
     await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
 
     await service.start(session: scopedSession);
@@ -388,7 +395,7 @@ void main() {
     expect(await service.retry(session: scopedSession), "retried");
     await service.start(session: scopedSession);
     expect(
-      await service.stopAndTranscribe(session: scopedSession),
+      (await service.stopAndTranscribe(session: scopedSession)).transcript,
       "next interaction",
     );
 
