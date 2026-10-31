@@ -116,10 +116,17 @@ Upload order:
 
 1. Unchanged packages, public key, APT by-hash objects and checksum-named RPM indexes.
    Existing identical bytes are accepted; conflicting bytes are refused. New objects
-   use a generation-zero precondition. Old objects are never pruned.
+   use a generation-zero precondition.
 2. Canonical APT package indexes.
 3. `Release` and RPM `repomd.xml`, followed by detached signatures.
 4. APT `InRelease` last, after anonymous byte verification of preceding objects.
+
+After an internal publication, the workflow deletes internal DEB, RPM and Velopack
+packages older than the newest five builds of each target. The current signed indexes
+and feeds name only the newest build. A retained older by-hash index, or a client's
+cached index, can still name a pruned package; that client gets a 404 until it
+refreshes. A failed prune shows on its step without failing the release, and the next
+run retries it. Stable packages and old metadata objects are never pruned.
 
 Immutable objects use long-lived caching; replaceable metadata uses `no-store`.
 Every uploaded object's anonymous SHA-256 must match. `repository.json` stays in CI;

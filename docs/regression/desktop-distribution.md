@@ -284,8 +284,11 @@ The repository workflow supplies protected signing and weekly metadata-only refr
 for quiet channels through the same publisher. This is not a second product release cycle and
 must never rebuild apps, change release completion or dispatch stores. RPM metadata
 signatures do not provide APT's expiry guarantee; its filenames contain checksums.
-Publishing must retain old referenced objects and place payloads/indexes before signed
-entrypoints; RPM's separate XML/signature update can safely refuse a concurrent refresh
+Publishing must retain objects the current signed entrypoints reference and place
+payloads/indexes before those entrypoints. Internal publication then prunes packages older
+than the newest five builds of each target, so a client holding an older index gets a 404
+until it refreshes. A failed prune never blocks the release, and stable packages are never
+pruned. RPM's separate XML/signature update can safely refuse a concurrent refresh
 rather than install unauthenticated data. This tooling does not publish or replace
 compiled-identity/native qualification in release preparation.
 

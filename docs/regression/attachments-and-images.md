@@ -58,7 +58,7 @@ content the transcript renders live and after reload.
   with text/voice/command intent before the composer remounts; failure after route
   exit never restores them. Reconnect and options refresh cannot erase a pending
   one-shot restoration. The submitting surface keeps its staged-image previews
-  through local sending, acceptance, bridge queuing, and dispatched “Sending”,
+  through local sending, acceptance, bridge queuing, and dispatch,
   including fast handoffs that skip intermediate UI frames and scrolling away
   and back. The prompt queue owns these memory-only references with a 50 MB
   aggregate budget per session, evicting the oldest previews for newer ones.
@@ -177,7 +177,7 @@ account-level rejection without changing the descriptor's capability claim.
   reaches the bridge; staged bytes survive solely because availability
   recovered; or read-only mode prevents viewing existing transcript images.
 - A locally submitted image within the retained-preview budget becomes only an
-  attachment count during bridge queuing or “Sending”, disappears after
+  attachment count during bridge queuing or dispatch, disappears after
   scrolling back to the pending row, or remains retained after the row leaves
   the bridge queue; retained preview bytes exceed the session's aggregate budget.
 - An image renders live but is missing, duplicated, reordered, or re-identified

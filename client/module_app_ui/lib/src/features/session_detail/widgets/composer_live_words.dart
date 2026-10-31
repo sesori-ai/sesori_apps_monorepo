@@ -184,11 +184,10 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   /// kept until it comes within the list's cache.
   static const int _bubbleFrames = 5;
 
-  /// From the composer's body up to the foot of a bubble still being sent, less
-  /// the status caption, which grows with the text: the selectors above the body
-  /// and their gap (52), the list's end padding (8), the caption's padding (xs),
-  /// and the row's margin (xs).
-  static const double _estimatedSlotGap = 52 + 8 + PregoSpacing.xs * 2;
+  /// From the composer's body up to the foot of a bubble still being sent: the
+  /// selectors above the body and their gap (52), the list's end padding (8), and
+  /// the row's margin (xs).
+  static const double _estimatedSlotGap = 52 + 8 + PregoSpacing.xs;
 
   /// How far the composer keeps in from the sides of its column.
   static const double _composerSideInset = 16;
@@ -400,21 +399,14 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     final composer = _composerRect;
     if (layer is! _Gliding || composer == null) return const _InPlace();
     final text = wrapDictatedText(text: transcript.trim());
-    final textDirection = Directionality.of(context);
-    final textScaler = MediaQuery.textScalerOf(context);
     final sideInset = _composerSideInset + SentBubbleRowReach.of(context: context);
     final painter = TextPainter(
       text: TextSpan(text: text, style: _bubbleLook().style),
-      textDirection: textDirection,
-      textScaler: textScaler,
+      textDirection: Directionality.of(context),
+      textScaler: MediaQuery.textScalerOf(context),
     )..layout(maxWidth: UserMessageBubble.maxContentWidth(rowWidth: composer.width + sideInset * 2));
-    final caption = TextPainter(
-      text: TextSpan(text: context.loc.sessionDetailSendingMessage, style: context.prego.textTheme.textXs.medium),
-      textDirection: textDirection,
-      textScaler: textScaler,
-    )..layout();
     final right = composer.right + sideInset - UserMessageBubble.margin.right;
-    final bottom = composer.top - _estimatedSlotGap - caption.height;
+    final bottom = composer.top - _estimatedSlotGap;
     final rect = Rect.fromLTRB(
       right - painter.width - UserMessageBubble.padding * 2,
       bottom - painter.height - UserMessageBubble.padding * 2,
@@ -422,7 +414,6 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       bottom,
     );
     painter.dispose();
-    caption.dispose();
     return _Estimate(rect: rect, text: text);
   }
 
@@ -997,32 +988,32 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
   void _syncWords({required LiveWords words, required bool settled}) {
     final instant = context.isReducedMotion;
     final tentative = settled ? 1.0 : _tentativeOpacity;
-    final parts = [(text: words.confirmed, target: 1.0), (text: words.provisional, target: tentative)];
     var index = 0;
     // The first word to differ and all those after it have changed. Spacing
     // doesn't count: a word gains its space when the next one comes.
     var changed = false;
-    for (final part in parts) {
-      for (final match in _tokens.allMatches(part.text)) {
-        final token = match.group(0) ?? "";
-        if (index == _words.length) {
-          final word = _FadingWord(text: token, target: part.target, duration: instant ? Duration.zero : _newWordFade);
-          _words.add(word);
-          _restartSettling(word: word);
-        } else {
-          final word = _words[index];
-          changed = changed || word.text.trim() != token.trim();
-          word.text = token;
-          // A tentative word that hasn't changed stands wherever it has got to.
-          if (part.target == 1 || changed) {
-            if (word.target != part.target) {
-              word.fadeTo(target: part.target, duration: instant ? Duration.zero : _brightenFade);
-            }
-            _restartSettling(word: word);
+    // Split as one text, as the server can confirm a word partway through.
+    for (final match in _tokens.allMatches(words.confirmed + words.provisional)) {
+      final token = match.group(0) ?? "";
+      final isConfirmed = match.start + token.trimRight().length <= words.confirmed.length;
+      final target = isConfirmed ? 1.0 : tentative;
+      if (index == _words.length) {
+        final word = _FadingWord(text: token, target: target, duration: instant ? Duration.zero : _newWordFade);
+        _words.add(word);
+        _restartSettling(word: word);
+      } else {
+        final word = _words[index];
+        changed = changed || word.text.trim() != token.trim();
+        word.text = token;
+        // A tentative word that hasn't changed stands wherever it has got to.
+        if (target == 1 || changed) {
+          if (word.target != target) {
+            word.fadeTo(target: target, duration: instant ? Duration.zero : _brightenFade);
           }
+          _restartSettling(word: word);
         }
-        index++;
       }
+      index++;
     }
     for (final word in _words.skip(index)) {
       word.settling?.cancel();

@@ -2560,7 +2560,7 @@ void main() {
     final bubble = find.byType(QueuedMessageBubble);
     expect(bubble, findsOneWidget);
     expect(find.descendant(of: bubble, matching: find.text("test message")), findsOneWidget);
-    expect(find.descendant(of: bubble, matching: find.text(loc.sessionDetailSendingMessage)), findsOneWidget);
+    expect(find.descendant(of: bubble, matching: find.text(loc.sessionDetailSendingMessage)), findsNothing);
     expect(find.byType(PregoLaunchStatus), findsNothing);
     expect(find.text(loc.sessionListNewSession), findsOneWidget);
     expect(
@@ -3085,6 +3085,7 @@ void main() {
     await tester.pumpAndSettle();
     // Past the slow-send threshold, so the words must survive the swap too.
     await tester.pump(const Duration(seconds: 3));
+    await tester.pumpAndSettle();
     final loc = AppLocalizations.of(tester.element(find.byType(QueuedMessageBubble)))!;
     final slowSendCopy = loc.sessionDetailSendingToHarness(PregoBrandLogo.displayNameFor("plugin-1"));
     expect(find.text(slowSendCopy), findsOneWidget);

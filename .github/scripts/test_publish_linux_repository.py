@@ -120,6 +120,50 @@ class RepositoryPublicationTest(unittest.TestCase):
         self.assertEqual(self.writes, [])
 
 
+class InternalPackagePruningTest(unittest.TestCase):
+    def names(self, *, pattern, builds):
+        return [pattern.format(version=version, build=build) for version, build in builds]
+
+    def test_keeps_the_newest_five_builds_of_each_target_by_version_not_text(self):
+        builds = [("1.9.2", 98), ("1.9.2", 99), ("1.9.2", 100), ("1.10.0", 101), ("1.10.0", 102), ("1.10.0", 103),
+                  ("1.10.0", 104)]
+        every_target = []
+        for pattern in ("apt/pool/internal/amd64/Sesori-linux-x64-{version}-{build}.deb",
+                        "rpm/internal/aarch64/Packages/Sesori-linux-arm64-{version}-{build}.rpm",
+                        "desktop-updates/k1/internal/linux-x64/sesori-desktop-{version}-internal.{build}-internal-full.nupkg"):
+            with self.subTest(pattern=pattern):
+                names = self.names(pattern=pattern, builds=builds)
+                self.assertEqual(publisher.stale_internal_packages(names=names), sorted(names[:2]))
+                every_target.extend(names)
+        # Each target keeps its own five, so another target's builds never count against it.
+        self.assertEqual(len(publisher.stale_internal_packages(names=every_target)), 6)
+
+    def test_never_selects_stable_packages_or_metadata(self):
+        builds = [("1.9.2", build) for build in range(10)]
+        names = [name for pattern in ("apt/pool/stable/amd64/Sesori-linux-x64-{version}-{build}.deb",
+                                      "rpm/stable/x86_64/Packages/Sesori-linux-x64-{version}-{build}.rpm",
+                                      "desktop-updates/k1/stable/linux-x64/sesori-desktop-{version}-stable-full.nupkg",
+                                      "apt/dists/internal/main/binary-amd64/by-hash/SHA256/{build}",
+                                      "rpm/internal/x86_64/repodata/{build}-primary.xml.gz")
+                 for name in self.names(pattern=pattern, builds=builds)]
+        self.assertEqual(publisher.stale_internal_packages(names=names), [])
+
+    def test_prune_removes_only_stale_objects_and_skips_an_empty_removal(self):
+        directory = "apt/pool/internal/amd64"
+        names = [f"{directory}/Sesori-linux-x64-1.9.2-{build}.deb" for build in range(1, 7)]
+        listing = "".join(f"gs://{publisher.BUCKET}/{name}\n" for name in names)
+        with mock.patch.object(publisher.subprocess, "run",
+                               return_value=subprocess.CompletedProcess([], 0, stdout=listing)) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            publisher.prune_internal_packages()
+        self.assertEqual(run.call_args.args[0], ["gcloud", "storage", "rm", f"gs://{publisher.BUCKET}/{names[0]}"])
+        with mock.patch.object(publisher.subprocess, "run",
+                               return_value=subprocess.CompletedProcess([], 0, stdout="")) as run, \
+                contextlib.redirect_stdout(io.StringIO()):
+            publisher.prune_internal_packages()
+        self.assertEqual(run.call_count, 1)
+
+
 def release(tag, complete=True, **extra):
     return {"tag_name": tag, "draft": False, "prerelease": True,
             "assets": [{"name": publisher.MANIFEST}] if complete else [], **extra}

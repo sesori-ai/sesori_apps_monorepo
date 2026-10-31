@@ -53,7 +53,8 @@ Internal and stable are separate feeds. Internal builds never reach the stable f
 
 A failed hosting job can be rerun from its signed artifact. Swapping a feed and its
 signature is not atomic: a client that checks in between refuses the feed and retries at
-its next check. Old packages are never pruned.
+its next check. `linux-repository.yml` prunes internal packages older than the newest five
+builds ([Linux repositories](linux-repositories.md)). Stable packages are never pruned.
 
 ## Rotation and compromise
 
