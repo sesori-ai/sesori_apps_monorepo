@@ -107,7 +107,7 @@ Shift+Enter is the keyboard path to the box.
 | Pencil arms | At 90% of the way from the hold point to the pencil's centre; a cancel in progress wins |
 | New word fade-in | 170 ms |
 | Tentative word opacity | 0.46, easing to 1 over 280 ms, with no movement |
-| Focus dim | 0.98 of the background, over 260 ms |
+| Focus dim | Solid background, over 260 ms (`voice-live-r3`, changed from 0.98) |
 | Focus text | 23 pt on phone, 25 pt on desktop, medium weight |
 | Panel | Grows upward to about five lines, then older lines fade at the top |
 | Glide to bubble or box | 340 ms, `cubic-bezier(.2, .8, .2, 1)` |

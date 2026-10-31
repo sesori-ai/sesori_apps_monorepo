@@ -254,7 +254,7 @@ void main() {
           // composer and the strip below it stay clear.
           includes: [Offset(body.left - 10, body.center.dy), Offset(body.center.dx, body.top - 10)],
           excludes: [body.center, Offset(body.center.dx, 599)],
-          color: const Color(0xFF123456).withValues(alpha: 0.98),
+          color: const Color(0xFF123456),
         ),
       );
     });
