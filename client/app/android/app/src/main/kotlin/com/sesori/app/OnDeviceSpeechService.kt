@@ -32,6 +32,10 @@ internal class OnDeviceSpeechService(
 ) {
     companion object {
         const val channelName = "com.sesori.app/on-device-speech"
+
+        // Not every recognizer reports readiness, and a dictation's audio waits on
+        // this answer, so it can't wait long. A rejection normally comes well before.
+        private const val START_WAIT_MILLIS = 1000L
     }
 
     private val mainHandler = Handler(Looper.getMainLooper())
@@ -66,13 +70,15 @@ internal class OnDeviceSpeechService(
                     return
                 }
                 session?.cancel()
-                try {
-                    session = Session(id = sessionId, sampleRate = sampleRate).also { it.start() }
-                    result.success(null)
+                session = null
+                val started = try {
+                    Session(id = sessionId, sampleRate = sampleRate)
                 } catch (error: Exception) {
-                    session = null
                     result.error("start_failed", error.toString(), null)
+                    return
                 }
+                session = started
+                started.start(result)
             }
             "sendAudio" -> {
                 val bytes = call.argument<ByteArray>("bytes")
@@ -122,7 +128,8 @@ internal class OnDeviceSpeechService(
                     ) {
                         recognizer.triggerModelDownload(intent)
                     }
-                    recognizer.destroy()
+                    // Android 13 only queues that request, and crashes on it if destroyed first.
+                    mainHandler.post { recognizer.destroy() }
                     result.success(installed)
                 }
 
@@ -150,20 +157,47 @@ internal class OnDeviceSpeechService(
         private val pipe = ParcelFileDescriptor.createPipe()
         private val readSide: ParcelFileDescriptor = pipe[0]
         private val output = ParcelFileDescriptor.AutoCloseOutputStream(pipe[1])
+        private val startWait = Runnable { answerStart() }
+        private var pendingStart: MethodChannel.Result? = null
         private var ended = false
 
-        fun start() {
-            recognizer.setRecognitionListener(this)
-            recognizer.startListening(
-                recognitionIntent().apply {
-                    putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
-                    putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, readSide)
-                    putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
-                    putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
-                    putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, sampleRate)
-                    putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
-                },
-            )
+        /**
+         * Answers once the recognizer is ready or [START_WAIT_MILLIS] has passed. A
+         * rejection before then answers with an error, so the dictation can fall back.
+         */
+        fun start(result: MethodChannel.Result) {
+            pendingStart = result
+            try {
+                recognizer.setRecognitionListener(this)
+                recognizer.startListening(
+                    recognitionIntent().apply {
+                        putExtra(RecognizerIntent.EXTRA_PARTIAL_RESULTS, true)
+                        putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE, readSide)
+                        putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_CHANNEL_COUNT, 1)
+                        putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_ENCODING, AudioFormat.ENCODING_PCM_16BIT)
+                        putExtra(RecognizerIntent.EXTRA_AUDIO_SOURCE_SAMPLING_RATE, sampleRate)
+                        putExtra(RecognizerIntent.EXTRA_SEGMENTED_SESSION, RecognizerIntent.EXTRA_AUDIO_SOURCE)
+                    },
+                )
+                mainHandler.postDelayed(startWait, START_WAIT_MILLIS)
+            } catch (error: RuntimeException) {
+                rejectStart(error.toString())
+            }
+        }
+
+        private fun answerStart() {
+            mainHandler.removeCallbacks(startWait)
+            pendingStart?.success(null)
+            pendingStart = null
+        }
+
+        private fun rejectStart(reason: String) {
+            mainHandler.removeCallbacks(startWait)
+            pendingStart?.error("start_failed", reason, null)
+            pendingStart = null
+            ended = true
+            release()
+            if (session === this) session = null
         }
 
         fun append(bytes: ByteArray) {
@@ -190,6 +224,7 @@ internal class OnDeviceSpeechService(
 
         fun cancel() {
             if (ended) return
+            answerStart()
             ended = true
             recognizer.cancel()
             release()
@@ -212,11 +247,15 @@ internal class OnDeviceSpeechService(
         }
 
         override fun onError(error: Int) {
+            if (pendingStart != null) {
+                rejectStart("recognizer error $error")
+                return
+            }
             // Audio with no words in it, which the composer reports as an empty transcript.
             if (error == SpeechRecognizer.ERROR_NO_MATCH) complete() else fail("recognizer error $error")
         }
 
-        override fun onReadyForSpeech(params: Bundle) = Unit
+        override fun onReadyForSpeech(params: Bundle) = answerStart()
 
         override fun onBeginningOfSpeech() = Unit
 
