@@ -255,6 +255,7 @@ jobs:
           # nothing (binary submit only). Empty also when the checkout was skipped.
           IOS_METADATA_PATH:                 ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/metadata', github.workspace) || '' }}
           IOS_SCREENSHOTS_PATH:              ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/screenshots', github.workspace) || '' }}
+          IOS_CREATIVE_ASSETS_PATH:          ${{ steps.gate.outputs.publish == 'true' && format('{0}/store-metadata/ios/creative_assets', github.workspace) || '' }}
           # Release notes ("What's New") are version-scoped: Apple requires them on
           # every new version before review, even when the listing copy is unchanged
           # and the gated upload above is skipped. Expose the cloned metadata dir
