@@ -19,7 +19,13 @@ void main() {
     );
 
     expect(
-      mapper.mapSummary(row: base, hasUnseenChanges: true, directoryMissing: true, kind: ProjectKind.scratch),
+      mapper.mapSummary(
+        row: base,
+        hasUnseenChanges: true,
+        directoryMissing: true,
+        kind: ProjectKind.scratch,
+        sessionCount: 4,
+      ),
       const ProjectSummary(
         id: "project-1",
         name: "repository",
@@ -28,6 +34,7 @@ void main() {
         hasUnseenChanges: true,
         directoryMissing: true,
         kind: ProjectKind.scratch,
+        sessionCount: 4,
       ),
     );
     expect(
@@ -37,6 +44,7 @@ void main() {
             hasUnseenChanges: false,
             directoryMissing: false,
             kind: ProjectKind.folder,
+            sessionCount: 0,
           )
           .name,
       "Renamed",

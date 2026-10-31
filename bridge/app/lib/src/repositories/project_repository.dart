@@ -37,7 +37,7 @@ class ProjectRepository({
 
   Future<List<ProjectSummary>> getProjects() async {
     final rows = await _projectsDao.getCatalogProjects();
-    final unseenById = await unseenByProjectId(
+    final activeRootsById = await _sessionDao.getActiveRootUnseenRowsForProjects(
       projectIds: [for (final row in rows) row.projectId],
     );
     final directoryMissing = await Future.wait([for (final row in rows) _directoryMissing(row.path)]);
@@ -45,12 +45,13 @@ class ProjectRepository({
       for (final (index, row) in rows.indexed)
         _projectCatalogMapper.mapSummary(
           row: row,
-          hasUnseenChanges: unseenById[row.projectId] ?? false,
+          hasUnseenChanges: _anyUnseen(activeRootsById[row.projectId] ?? const []),
           directoryMissing: directoryMissing[index],
           // Keyed on the row's stable id rather than its path.
           kind: _projectCatalogIdentityCalculator.isScratchRoot(path: row.projectId)
               ? ProjectKind.scratch
               : ProjectKind.folder,
+          sessionCount: activeRootsById[row.projectId]?.length ?? 0,
         ),
     ];
   }
@@ -59,17 +60,8 @@ class ProjectRepository({
   /// changes. Child activity remains owned by its root and does not contribute
   /// independently to the project aggregate.
   Future<bool> projectHasUnseenChanges({required String projectId}) async {
-    final unseenById = await unseenByProjectId(projectIds: [projectId]);
-    return unseenById[projectId] ?? false;
-  }
-
-  /// Batch variant of [projectHasUnseenChanges] for the `/projects` list. Reads
-  /// every project's active roots in a single query to avoid N+1.
-  Future<Map<String, bool>> unseenByProjectId({required List<String> projectIds}) async {
-    final rowsByProject = await _sessionDao.getActiveRootUnseenRowsForProjects(projectIds: projectIds);
-    return {
-      for (final id in projectIds) id: _anyUnseen(rowsByProject[id] ?? const []),
-    };
+    final rowsByProject = await _sessionDao.getActiveRootUnseenRowsForProjects(projectIds: [projectId]);
+    return _anyUnseen(rowsByProject[projectId] ?? const []);
   }
 
   bool _anyUnseen(List<SessionUnseenRow> rows) {
