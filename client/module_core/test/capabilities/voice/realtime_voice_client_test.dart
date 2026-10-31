@@ -63,7 +63,7 @@ void main() {
       await pumpEventQueue();
 
       final messages = records.map((record) => record.message).where((message) => message.contains("ready"));
-      expect(messages.single, matches(RegExp(r"^\[voice\] realtime ready \d+ ms after connect$")));
+      expect(messages.single, matches(RegExp(r"^\[voice\] realtime ready \d+ ms after open$")));
       expect(records.single.level, LogLevel.info);
       await session.cancel();
     });

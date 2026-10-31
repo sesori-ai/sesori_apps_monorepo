@@ -486,7 +486,7 @@ void main() {
       await session.close();
     });
 
-    test("a stop that fails keeps the cause, and the stream still closes", () async {
+    test("a stop that fails keeps the cause, and cancel stops the recorder again", () async {
       final stopError = StateError("native stop failed");
       when(recorder.stop).thenThrow(stopError);
       final session = capture.createSession();
@@ -496,6 +496,11 @@ void main() {
         session.stopPcmStream(),
         throwsA(isA<VoiceCaptureFailed>().having((error) => error.innerError, "innerError", same(stopError))),
       );
+      verify(recorder.stop).called(1);
+
+      when(recorder.stop).thenAnswer((_) async => null);
+      await session.cancel();
+      verify(recorder.stop).called(1);
       await seen.done;
       await session.close();
     });

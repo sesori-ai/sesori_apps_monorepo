@@ -199,6 +199,14 @@ final class _PcmCapture() {
   }
 }
 
+sealed class const _CaptureMode();
+
+final class const _CaptureIdle() extends _CaptureMode;
+
+final class const _CaptureRecordingFile() extends _CaptureMode;
+
+final class _CaptureStreamingPcm({required final _PcmCapture pcmCapture}) extends _CaptureMode;
+
 final class _FlutterVoiceCaptureSession({
   required final AudioRecorder _recorder,
   required final RecordingFileProvider _fileProvider,
@@ -209,11 +217,10 @@ final class _FlutterVoiceCaptureSession({
   final StreamController<double> _amplitudeController = StreamController<double>.broadcast();
 
   StreamSubscription<Amplitude>? _amplitudeSubscription;
-  _PcmCapture? _pcmCapture;
+  _CaptureMode _captureMode = const _CaptureIdle();
   WakeLockLease? _wakeLockLease;
   _VoiceCaptureActivityLease? _activityLease;
   String? _currentPath;
-  bool _isRecording = false;
   bool _isClosed = false;
 
   @override
@@ -236,7 +243,7 @@ final class _FlutterVoiceCaptureSession({
   Future<Stream<Uint8List>> startPcmStream() => _startLeased(startNative: _startPcmNative);
 
   Future<T> _startLeased<T>({required Future<T> Function() startNative}) async {
-    if (_isClosed || _isRecording || _pcmCapture != null) throw VoiceCaptureError.failed(innerError: null);
+    if (_isClosed || _captureMode is! _CaptureIdle) throw VoiceCaptureError.failed(innerError: null);
 
     final activityLease = await _owner._acquireActivity();
     try {
@@ -297,12 +304,12 @@ final class _FlutterVoiceCaptureSession({
 
     try {
       await _recorder.start(config, path: path);
-      _isRecording = true;
+      _captureMode = const _CaptureRecordingFile();
       _startAmplitudeMonitoring();
       _wakeLockLease = _wakeLockService.acquire();
     } catch (error, stackTrace) {
       loge("Failed to start recording", error, stackTrace);
-      if (_isRecording) {
+      if (_captureMode is _CaptureRecordingFile) {
         try {
           await _recorder.stop();
         } catch (rollbackError, rollbackStackTrace) {
@@ -310,7 +317,7 @@ final class _FlutterVoiceCaptureSession({
         }
       }
       _stopAmplitudeMonitoring();
-      _isRecording = false;
+      _captureMode = const _CaptureIdle();
       await releaseOperation();
       await _deletePath(path: path);
       _currentPath = null;
@@ -332,13 +339,13 @@ final class _FlutterVoiceCaptureSession({
     try {
       await _recorder.setOnConfigChanged((changed) => pcmCapture.checkFormat(config: changed));
       pcmCapture.listenTo(chunks: await _recorder.startStream(config));
-      _pcmCapture = pcmCapture;
+      _captureMode = _CaptureStreamingPcm(pcmCapture: pcmCapture);
       _startAmplitudeMonitoring();
       _wakeLockLease = _wakeLockService.acquire();
       return pcmCapture.frames;
     } catch (error, stackTrace) {
       loge("Failed to start PCM capture", error, stackTrace);
-      if (_pcmCapture != null) {
+      if (_captureMode is _CaptureStreamingPcm) {
         pcmCapture.expectEnd();
         try {
           await _recorder.stop();
@@ -347,7 +354,7 @@ final class _FlutterVoiceCaptureSession({
         }
       }
       _stopAmplitudeMonitoring();
-      _pcmCapture = null;
+      _captureMode = const _CaptureIdle();
       pcmCapture.end();
       await releaseOperation();
       throw VoiceCaptureError.failed(innerError: error);
@@ -356,25 +363,25 @@ final class _FlutterVoiceCaptureSession({
 
   @override
   Future<void> stopPcmStream() async {
-    final pcmCapture = _pcmCapture;
-    if (pcmCapture == null) throw VoiceCaptureError.failed(innerError: null);
+    final mode = _captureMode;
+    if (mode is! _CaptureStreamingPcm) throw VoiceCaptureError.failed(innerError: null);
 
-    pcmCapture.expectEnd();
+    mode.pcmCapture.expectEnd();
     try {
       await _recorder.stop();
     } catch (error, stackTrace) {
+      // The microphone may still be on, so the mode stays for cancel to stop it again.
       loge("Failed to stop PCM capture", error, stackTrace);
       throw VoiceCaptureError.failed(innerError: error);
-    } finally {
-      _stopAmplitudeMonitoring();
-      _pcmCapture = null;
-      pcmCapture.end();
     }
+    _stopAmplitudeMonitoring();
+    _captureMode = const _CaptureIdle();
+    mode.pcmCapture.end();
   }
 
   @override
   Future<VoiceRecordingArtifact> stop() async {
-    if (!_isRecording) throw VoiceCaptureError.failed(innerError: null);
+    if (_captureMode is! _CaptureRecordingFile) throw VoiceCaptureError.failed(innerError: null);
 
     String? path;
     try {
@@ -384,7 +391,7 @@ final class _FlutterVoiceCaptureSession({
       throw VoiceCaptureError.failed(innerError: error);
     } finally {
       _stopAmplitudeMonitoring();
-      _isRecording = false;
+      _captureMode = const _CaptureIdle();
     }
 
     if (path == null || path.isEmpty) throw VoiceCaptureError.failed(innerError: null);
@@ -410,18 +417,17 @@ final class _FlutterVoiceCaptureSession({
   @override
   Future<void> cancel() async {
     _stopAmplitudeMonitoring();
-    final pcmCapture = _pcmCapture;
-    pcmCapture?.expectEnd();
-    if (_isRecording || pcmCapture != null) {
+    final mode = _captureMode;
+    if (mode is _CaptureStreamingPcm) mode.pcmCapture.expectEnd();
+    if (mode is! _CaptureIdle) {
       try {
         await _recorder.stop();
       } catch (error, stackTrace) {
         loge("Failed to stop recorder during cancel", error, stackTrace);
       }
     }
-    _isRecording = false;
-    _pcmCapture = null;
-    pcmCapture?.end();
+    _captureMode = const _CaptureIdle();
+    if (mode is _CaptureStreamingPcm) mode.pcmCapture.end();
     await releaseOperation();
 
     final path = _currentPath;

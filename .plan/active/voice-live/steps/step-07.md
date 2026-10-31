@@ -8,7 +8,7 @@
 - `FlutterVoiceCapture` implements them on `record`'s `startStream`. Effects, audio session
   config, wake lock, the activity lease and the amplitude stream match file recording.
 - `PcmFrameBuilder` in `client/module_app_ui/.../platform/voice/`.
-- `RealtimeVoiceSession` logs `[voice] realtime ready N ms after connect` at info level, once
+- `RealtimeVoiceSession` logs `[voice] realtime ready N ms after open` at info level, once
   per socket, so release builds show it too. The clock starts when `open` is called, so it
   includes the token refresh.
 - The frame limits moved to `foundation/models/voice/voice_realtime.dart`, so the capture and
@@ -74,14 +74,15 @@ Checks only the user can run, all with a dev account and live on:
 
 1. **Connect-to-`ready`, iPhone and Android.** About ten dictations each on Wi-Fi and on
    cellular, including the first after a cold launch. Read `[voice] realtime ready N ms after
-   connect` from the logs. Compare the worst value with step 8's buffer bound.
+   open` from the logs. That span includes the token read, because the buffer has to hold that wait too. Compare the worst value with step 8's buffer bound.
 2. **Real microphone, iPhone, Android and macOS.** Words come out right, which proves the format
    end to end. The last word isn't clipped. Haptics still fire on iPhone. A second dictation works
    after a prewarm.
 3. **Android with a stereo-only input,** such as a USB microphone, if one is at hand: it must
    fall back rather than produce noise.
 4. **Linux.** A real microphone with `parecord`. No audio server. An AppImage build, which
-   runs `parecord` from its own environment. Record whether streaming or the fallback is what works.
+   runs `parecord` from its own environment. The last word isn't clipped. Record whether streaming
+   or the fallback is what works.
 5. **Windows.** Confirm streaming with a real microphone. If it misbehaves without failing,
    make `supportsPcmStream` report no there and record it.
 
@@ -109,7 +110,7 @@ Checks only the user can run, all with a dev account and live on:
   without closing the event channel. No watchdog was added: the user sees a flat waveform and
   finishing still works.
 - `record` cancels its stream when `stop` returns, so anything still unread is lost. Real
-  `parecord` wrote nothing after SIGTERM, but with a null sink, so the check is item 2 above.
+  `parecord` wrote nothing after SIGTERM, but with a null sink, so the checks are items 2 and 4 above.
 
 ## Found while building
 
