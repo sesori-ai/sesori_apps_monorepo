@@ -516,6 +516,47 @@ void main() {
         expect(find.byType(QueuedMessageBubble), findsNothing);
       });
 
+      testWidgets("words sent in a busy session end where its queued row rests, and it rises at two seconds", (
+        tester,
+      ) async {
+        final moveSendOn = await _pumpSessionScreen(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          scrolledUp: 2500,
+          sessionStatus: const SessionStatus.busy(since: 1),
+        );
+        final gesture = await hold(tester: tester);
+        await gesture.up();
+        await tester.pump();
+
+        await expectToLandOnTheBubbleThatComes(
+          tester: tester,
+          text: "spoken words",
+          onTheWay: () => moveSendOn(
+            (sent) => sent.copyWith(
+              localSend: const LocalSendPhase.idle(),
+              bridgeQueuedPrompts: [
+                QueuedSessionPrompt(
+                  id: "prm_sent",
+                  text: wrapDictatedText(text: "spoken words"),
+                  command: null,
+                  attachmentCount: 0,
+                  createdAt: 112,
+                  dispatchState: QueuedPromptDispatchState.queued,
+                ),
+              ],
+            ),
+          ),
+        );
+        expect(find.text("Queued"), findsNothing);
+        final rested = tester.getTopLeft(find.byType(QueuedMessageBubble)).dy;
+
+        await tester.pump(const Duration(seconds: 2));
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(find.text("Queued"), findsOneWidget);
+        expect(tester.getTopLeft(find.byType(QueuedMessageBubble)).dy, moreOrLessEquals(rested - 48, epsilon: 0.01));
+      });
+
       testWidgets("the words read as the bubble will, marker and all", (tester) async {
         await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: 2500);
         final gesture = await hold(tester: tester);
@@ -893,6 +934,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
   Size size = const Size(390, 844),
   SessionDetailColumnWidths? columnWidths,
   ComposerPresentation presentation = ComposerPresentation.touch,
+  SessionStatus sessionStatus = const SessionStatus.idle(),
   TextScaler textScaler = TextScaler.noScaling,
 }) async {
   tester.view.physicalSize = size;
@@ -921,7 +963,7 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
     userMessagesBeforeOldest: null,
     promptIndex: null,
     streamingText: const {},
-    sessionStatus: const SessionStatus.idle(),
+    sessionStatus: sessionStatus,
     pendingQuestions: const [],
     pendingPermissions: const [],
     sessionTitle: "Session",

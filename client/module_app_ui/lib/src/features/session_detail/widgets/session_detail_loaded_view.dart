@@ -191,6 +191,7 @@ class SessionDetailLoadedView extends StatelessWidget {
                           queuedMessages: state.queuedMessages,
                           harnessName: state.interaction.harnessDisplayName,
                           launchHandoff: state.launchHandoff,
+                          launchStartedAt: context.read<SessionDetailCubit>().launchStartedAt,
                           onRetryFailedSend: readOnly || !state.interaction.canInteract
                               ? null
                               : context.read<SessionDetailCubit>().retryFailedSend,

@@ -405,8 +405,9 @@ variant, and worktree mode, and creating the session with its first input.
   a loading status or "No messages yet" in between. The bubble stays until the
   harness's own transcript or queue shows the message, and a stop removes it.
   The follow-ups follow it in the same rows, sent in press order once the session
-  exists, whether or not any screen is open; a failed one offers Retry, and
-  Remove after an authoritative rejection. The session screen's composer is
+  exists, whether or not any screen is open, each saying "Queued" or "Sending"
+  only two seconds after it was sent; a failed one offers Retry, and Remove after
+  an authoritative rejection. The session screen's composer is
   there from its first frame, in the new-session composer's place, with the
   committed options (read-only), any unsent text with its caret or selection
   (including which end is active), command and images, and the keyboard up when

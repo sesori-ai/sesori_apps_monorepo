@@ -2656,7 +2656,12 @@ void main() {
 
       test("a follow-up the launch delivers while the screen is open is parked beside the bubble", () async {
         final repository = launchedRepository(
-          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+          followUps: [
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+          ],
         );
         final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
 
@@ -2671,7 +2676,12 @@ void main() {
 
       test("a follow-up whose message landed before its acceptance is not parked beside it", () async {
         final repository = launchedRepository(
-          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+          followUps: [
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+          ],
         );
         final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
         repository.beginFollowUp(launchId: "launch-1");
@@ -2698,7 +2708,12 @@ void main() {
 
       test("a follow-up the bridge settled before its acceptance is not parked", () async {
         final repository = launchedRepository(
-          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+          followUps: [
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+          ],
         );
         final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
         repository.beginFollowUp(launchId: "launch-1");
@@ -2717,7 +2732,12 @@ void main() {
         final sentTexts = <String>[];
         stubSends(sentTexts: sentTexts);
         final repository = launchedRepository(
-          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+          followUps: [
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+          ],
         );
         final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
         await cubit.sendMessage(
@@ -2743,7 +2763,12 @@ void main() {
         final sentTexts = <String>[];
         stubSends(sentTexts: sentTexts);
         final repository = launchedRepository(
-          followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+          followUps: [
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+          ],
         );
         final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
 
@@ -2767,8 +2792,14 @@ void main() {
       test("the loaded screen shows the launch's unsent follow-ups as they change", () async {
         final repository = launchedRepository(
           followUps: [
-            LaunchFollowUp.queued(submission: followUp(promptId: "prm_a")),
-            LaunchFollowUp.queued(submission: followUp(promptId: "prm_b")),
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_a"),
+              since: DateTime(2026),
+            ),
+            LaunchFollowUp.queued(
+              submission: followUp(promptId: "prm_b"),
+              since: DateTime(2026),
+            ),
           ],
         );
         final cubit = await createLoadedCubit(sessionLaunchRepository: repository);
@@ -2907,7 +2938,12 @@ void main() {
           stubSends(sentTexts: sentTexts);
           final gate = Completer<void>();
           final repository = launchedRepository(
-            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            followUps: [
+              LaunchFollowUp.queued(
+                submission: followUp(promptId: "prm_a"),
+                since: DateTime(2026),
+              ),
+            ],
             composer: composer(unsent: null),
           );
           final cubit = await createLoadedCubit(sessionLaunchRepository: repository, loadGate: gate);
@@ -2944,7 +2980,12 @@ void main() {
           stubSends(sentTexts: sentTexts);
           final gate = Completer<void>();
           final repository = launchedRepository(
-            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            followUps: [
+              LaunchFollowUp.queued(
+                submission: followUp(promptId: "prm_a"),
+                since: DateTime(2026),
+              ),
+            ],
             composer: composer(unsent: null),
           );
           final cubit = await createLoadedCubit(
@@ -2978,7 +3019,12 @@ void main() {
         test("a first load that finds the harness blocked keeps what is owed in view", () async {
           final gate = Completer<void>();
           final repository = launchedRepository(
-            followUps: [LaunchFollowUp.queued(submission: followUp(promptId: "prm_a"))],
+            followUps: [
+              LaunchFollowUp.queued(
+                submission: followUp(promptId: "prm_a"),
+                since: DateTime(2026),
+              ),
+            ],
             composer: composer(unsent: null),
           );
           final cubit = await createLoadedCubit(

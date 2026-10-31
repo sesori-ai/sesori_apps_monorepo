@@ -33,6 +33,7 @@ class const _SessionDetailMessageListHarness({
   final EdgeInsets systemGestureInsets = EdgeInsets.zero,
   final double topInset = 0,
   final SessionLaunchHandoff? launchHandoff,
+  final DateTime? launchStartedAt,
   final List<LaunchFollowUp> launchFollowUps = const [],
 }) extends StatefulWidget {
   @override
@@ -92,6 +93,15 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
   late List<LaunchFollowUp> _launchFollowUps;
   final List<String> retriedLaunchFollowUpIds = [];
   final List<String> removedLaunchFollowUpIds = [];
+
+  /// The bridge lists the first message and releases the launch bubble in the
+  /// same build, as the detail cubit emits it.
+  void releaseLaunchTo({required List<QueuedSessionPrompt> prompts}) {
+    setState(() {
+      _bridgeQueuedPrompts = prompts;
+      _launchHandoff = null;
+    });
+  }
 
   void setLaunchFollowUps(List<LaunchFollowUp> followUps) {
     setState(() => _launchFollowUps = followUps);
@@ -280,6 +290,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
           localSend: _localSend,
           harnessName: "OpenCode",
           launchHandoff: _launchHandoff,
+          launchStartedAt: widget.launchStartedAt ?? widget.launchHandoff?.startedAt,
           onRetryFailedSend: () {
             if (_localSend case LocalSendFailed(:final submission)) {
               setState(() {
@@ -680,7 +691,7 @@ void main() {
       }
     });
 
-    testWidgets("under reduced motion a slow send's shows at once", (tester) async {
+    testWidgets("under reduced motion a slow send's fades in, and the chat takes its height at once", (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       final harness = await _pumpTurns(
@@ -693,9 +704,374 @@ void main() {
       expect(find.textContaining("Sending"), findsNothing);
 
       await tester.pump(const Duration(seconds: 2));
-      expect(find.text("Sending to OpenCode…"), findsOneWidget);
+      final line = find.text("Sending to OpenCode…");
+      expect(line, findsOneWidget);
+      expect(
+        tester
+            .widget<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)).first)
+            .opacity
+            .value,
+        lessThan(0.1),
+      );
       expect(tester.getTopLeft(find.text("Earlier")).dy, moreOrLessEquals(before - 22, epsilon: 0.01));
       await tester.pumpWidget(const SizedBox.shrink());
+    });
+  });
+
+  group("a queued line", () {
+    final row = find.byKey(const ValueKey("session-detail-prompt-prm_sent")).first;
+    final queuedLine = find.text("Queued");
+    final bubble = find.descendant(of: find.byType(QueuedMessageBubble), matching: find.byType(UserMessageBubble));
+    const frame = Duration(milliseconds: 16);
+
+    QueuedSessionPrompt listed({QueuedPromptDispatchState state = QueuedPromptDispatchState.queued}) =>
+        QueuedSessionPrompt(
+          id: "prm_sent",
+          text: "Fresh",
+          command: null,
+          attachmentCount: 0,
+          createdAt: 112,
+          dispatchState: state,
+        );
+
+    MessageWithParts delivered() =>
+        _message(messageId: "echo", role: "user", text: "Fresh", createdAtMs: 200, promptId: "prm_sent");
+
+    Future<_SessionDetailMessageListHarnessState> pumpChat(WidgetTester tester) => _pumpTurns(
+      tester,
+      messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+    );
+
+    double opacityOf(WidgetTester tester, Finder line) => tester
+        .widget<FadeTransition>(find.ancestor(of: line, matching: find.byType(FadeTransition)).first)
+        .opacity
+        .value;
+
+    /// Sends a message and lets a harness list it as queued, as Claude's does,
+    /// [listedAfter] later.
+    Future<_SessionDetailMessageListHarnessState> sendAndList(
+      WidgetTester tester, {
+      Duration listedAfter = const Duration(milliseconds: 112),
+    }) async {
+      final harness = await pumpChat(tester);
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(listedAfter);
+      harness.updateBridgeQueue(prompts: [listed()], attachments: const {});
+      await tester.pump();
+      return harness;
+    }
+
+    testWidgets("a send listed before it is written shows none, and delivery moves nothing", (tester) async {
+      final harness = await pumpChat(tester);
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      final tops = <double>[];
+      final heights = <double>[];
+      for (var ms = 16; ms <= 1500; ms += 16) {
+        await tester.pump(frame);
+        if (ms == 112) harness.updateBridgeQueue(prompts: [listed()], attachments: const {});
+        if (ms == 704) {
+          harness.deliverBridgePrompt(promptId: "prm_sent", message: delivered(), insertionIndex: 1);
+        }
+        expect(queuedLine, findsNothing, reason: "At $ms ms");
+        expect(find.text("Cancel"), findsNothing, reason: "At $ms ms");
+        tops.add(tester.getTopLeft(row).dy);
+        heights.add(tester.getSize(row).height);
+        if (ms < 704) {
+          expect(
+            tester.widget<UserMessageBubble>(bubble).outlined,
+            isFalse,
+            reason: "Nothing says it is queued at $ms ms.",
+          );
+        }
+      }
+      // Risen once the row has eased in, at 240 ms, and still from then on.
+      final risen = tops[15];
+      expect(tops.skip(15), everyElement(moreOrLessEquals(risen, epsilon: 0.01)));
+      expect(heights.skip(15), everyElement(moreOrLessEquals(heights[15], epsilon: 0.01)));
+    });
+
+    testWidgets("one still queued at two seconds fades in as the chat eases up, and Cancel comes with it", (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      final harness = await sendAndList(tester);
+      await tester.pump(const Duration(milliseconds: 1400));
+      final before = tester.getTopLeft(row).dy;
+      final height = tester.getSize(row).height;
+      expect(queuedLine, findsNothing);
+      expect(find.text("Cancel"), findsNothing);
+      expect(find.byType(TextButton), findsNothing, reason: "Nothing to tap or focus.");
+      expect(find.bySemanticsLabel("Cancel"), findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 500));
+      expect(queuedLine, findsOneWidget);
+      expect(opacityOf(tester, queuedLine), lessThan(0.1));
+
+      final path = [before];
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(frame);
+        path.add(tester.getTopLeft(row).dy);
+      }
+      expect(opacityOf(tester, queuedLine), 1);
+      expect(tester.getSize(row).height, moreOrLessEquals(height + 48, epsilon: 0.01));
+      expect(path.last, moreOrLessEquals(before - 48, epsilon: 0.01));
+      for (var i = 1; i < path.length; i++) {
+        expect(path[i - 1] - path[i], inInclusiveRange(0, 10), reason: "Frame $i of ${path.join(", ")}");
+      }
+      expect(tester.widget<UserMessageBubble>(bubble).outlined, isTrue);
+      expect(find.bySemanticsLabel("Cancel"), findsOneWidget);
+
+      await tester.tap(find.text("Cancel"));
+      await tester.pump();
+      expect(harness.cancelledBridgePromptIds, ["prm_sent"]);
+      semantics.dispose();
+    });
+
+    testWidgets("one queued behind another here waits too, and goes on to Sending with no gap", (tester) async {
+      final harness = await pumpChat(tester);
+      harness.enqueueSubmission(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1900));
+      expect(queuedLine, findsNothing);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(queuedLine, findsOneWidget);
+      await tester.pump(const Duration(milliseconds: 500));
+
+      harness.beginSending();
+      await tester.pump();
+      expect(find.text("Sending to OpenCode…"), findsOneWidget);
+    });
+
+    testWidgets("after a Sending line it shows at once, the row only growing", (tester) async {
+      final harness = await pumpChat(tester);
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.text("Sending to OpenCode…"), findsOneWidget);
+
+      harness.updateBridgeQueue(prompts: [listed()], attachments: const {});
+      var height = tester.getSize(row).height;
+      await tester.pump();
+      expect(queuedLine, findsOneWidget);
+      for (var i = 0; i < 30; i++) {
+        await tester.pump(frame);
+        final next = tester.getSize(row).height;
+        expect(next, greaterThanOrEqualTo(height - 0.01), reason: "Frame $i");
+        height = next;
+      }
+      expect(opacityOf(tester, queuedLine), 1);
+      expect(find.text("Sending to OpenCode…"), findsNothing);
+    });
+
+    testWidgets("dispatched after showing it, it says Sending at once, with no gap", (tester) async {
+      final harness = await sendAndList(tester);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(queuedLine, findsOneWidget);
+
+      harness.updateBridgeQueue(
+        prompts: [listed(state: QueuedPromptDispatchState.dispatched)],
+        attachments: const {},
+      );
+      await tester.pump();
+      expect(find.text("Sending to OpenCode…"), findsOneWidget);
+    });
+
+    testWidgets("scrolling away and back neither restarts nor replays it", (tester) async {
+      final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 112));
+      harness.updateBridgeQueue(prompts: [listed()], attachments: const {});
+      await tester.pump();
+
+      // Away and back while it waits: the two seconds still run from the send.
+      final position = _position(tester);
+      await tester.pump(const Duration(milliseconds: 500));
+      position.jumpTo(position.maxScrollExtent / 2);
+      await tester.pump();
+      expect(find.text("Fresh", skipOffstage: false), findsNothing);
+      await tester.pump(const Duration(milliseconds: 500));
+      position.jumpTo(0);
+      await tester.pump();
+      expect(queuedLine, findsNothing);
+      await tester.pump(const Duration(milliseconds: 860));
+      expect(queuedLine, findsNothing);
+      await tester.pump(const Duration(milliseconds: 40));
+      expect(queuedLine, findsOneWidget);
+      await tester.pumpAndSettle();
+      final settled = tester.getTopLeft(row).dy;
+
+      // Away and back once shown: it is there on the first frame, at rest.
+      position.jumpTo(position.maxScrollExtent / 2);
+      await tester.pump();
+      expect(find.text("Fresh", skipOffstage: false), findsNothing);
+      position.jumpTo(0);
+      await tester.pump();
+      expect(queuedLine, findsOneWidget);
+      expect(opacityOf(tester, queuedLine), 1);
+      expect(tester.getTopLeft(row).dy, settled);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
+    testWidgets("listed when the list opens it shows at once, and the chat never rises for it", (tester) async {
+      await tester.pumpWidget(
+        _SessionDetailMessageListHarness(
+          initialMessages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+          initialStreamingText: const {},
+          initialBridgeQueuedPrompts: [listed()],
+        ),
+      );
+      expect(queuedLine, findsOneWidget);
+      expect(find.text("Cancel"), findsOneWidget);
+      expect(opacityOf(tester, queuedLine), 1);
+      final top = tester.getTopLeft(row).dy;
+
+      await tester.pump(const Duration(seconds: 3));
+      await tester.pump(const Duration(seconds: 1));
+      expect(tester.getTopLeft(row).dy, top);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
+    testWidgets("one another surface sends while the chat is open waits as a send here does", (tester) async {
+      final harness = await pumpChat(tester);
+      harness.updateBridgeQueue(prompts: [listed()], attachments: const {});
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1900));
+      expect(queuedLine, findsNothing);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(queuedLine, findsOneWidget);
+    });
+
+    group("for a session's first message", () {
+      SessionLaunchHandoff handoff({required DateTime startedAt}) => SessionLaunchHandoff(
+        submission: NewSessionSubmissionSnapshot.text(
+          draft: ComposerDraft.typed(text: "Fresh"),
+          attachments: const [],
+        ),
+        pluginId: "claude",
+        startedAt: startedAt,
+        composer: null,
+        followUpIds: const {},
+        acceptedFollowUps: const [],
+      );
+
+      testWidgets("listed by the first load, it counts from when Send was pressed", (tester) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: const [],
+            initialStreamingText: const {},
+            initialBridgeQueuedPrompts: [listed()],
+            launchStartedAt: clock.now().subtract(const Duration(seconds: 1)),
+          ),
+        );
+        expect(queuedLine, findsNothing);
+        await tester.pump(const Duration(milliseconds: 900));
+        expect(queuedLine, findsNothing);
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(queuedLine, findsOneWidget);
+      });
+
+      testWidgets("listed by the first load after its Sending line, it shows at once", (tester) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: const [],
+            initialStreamingText: const {},
+            initialBridgeQueuedPrompts: [listed()],
+            launchStartedAt: clock.now().subtract(const Duration(seconds: 3)),
+          ),
+        );
+        expect(queuedLine, findsOneWidget);
+      });
+
+      testWidgets("replacing a bubble with no line yet, it keeps the clock it had", (tester) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: const [],
+            initialStreamingText: const {},
+            launchHandoff: handoff(startedAt: clock.now()),
+          ),
+        );
+        final harness = tester.state<_SessionDetailMessageListHarnessState>(
+          find.byType(_SessionDetailMessageListHarness),
+        );
+        await tester.pump(const Duration(milliseconds: 1500));
+        harness.releaseLaunchTo(prompts: [listed()]);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 400));
+        expect(queuedLine, findsNothing);
+        await tester.pump(const Duration(milliseconds: 200));
+        expect(queuedLine, findsOneWidget);
+      });
+
+      testWidgets("replacing a bubble's Sending line, it cross-fades with no gap", (tester) async {
+        await tester.pumpWidget(
+          _SessionDetailMessageListHarness(
+            initialMessages: const [],
+            initialStreamingText: const {},
+            launchHandoff: handoff(startedAt: clock.now().subtract(const Duration(seconds: 3))),
+          ),
+        );
+        final harness = tester.state<_SessionDetailMessageListHarnessState>(
+          find.byType(_SessionDetailMessageListHarness),
+        );
+        await tester.pumpAndSettle();
+        final sending = find.text("Sending to Claude Code…");
+        expect(sending, findsOneWidget);
+        var height = tester.getSize(find.byType(QueuedMessageBubble)).height;
+
+        harness.releaseLaunchTo(prompts: [listed()]);
+        await tester.pump();
+        expect(queuedLine, findsOneWidget);
+        expect(sending, findsOneWidget, reason: "Still fading out.");
+        expect(opacityOf(tester, queuedLine), lessThan(0.1));
+        for (var i = 0; i < 30; i++) {
+          await tester.pump(frame);
+          final next = tester.getSize(find.byType(QueuedMessageBubble)).height;
+          expect(next, greaterThanOrEqualTo(height - 0.01), reason: "Frame $i");
+          height = next;
+        }
+        expect(sending, findsNothing);
+      });
+    });
+
+    testWidgets("under reduced motion it still fades, and the row takes its height at once", (tester) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      await sendAndList(tester);
+      await tester.pump(const Duration(milliseconds: 1500));
+      final before = tester.getTopLeft(row).dy;
+      expect(queuedLine, findsNothing);
+
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(queuedLine, findsOneWidget);
+      expect(opacityOf(tester, queuedLine), lessThan(0.1));
+      expect(tester.getTopLeft(row).dy, moreOrLessEquals(before - 48, epsilon: 0.01));
+
+      await tester.pump(const Duration(milliseconds: 120));
+      expect(opacityOf(tester, queuedLine), inExclusiveRange(0.1, 0.9));
+      expect(tester.getTopLeft(row).dy, moreOrLessEquals(before - 48, epsilon: 0.01));
+      await tester.pumpWidget(const SizedBox.shrink());
+    });
+
+    testWidgets("a retried send starts its wait again", (tester) async {
+      final harness = await pumpChat(tester);
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Fresh"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 500));
+      harness.failSending();
+      await tester.pump();
+      await tester.pump(const Duration(seconds: 3));
+
+      await tester.tap(find.text("Retry"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 1900));
+      expect(find.textContaining("Sending"), findsNothing);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text("Sending to OpenCode…"), findsOneWidget);
     });
   });
 
@@ -1130,16 +1506,16 @@ void main() {
         key: harnessKey,
         initialMessages: const [],
         initialStreamingText: const {},
-        initialQueuedMessages: [_textSubmission(promptId: "prm_slow", text: "slow")],
       ),
     );
     await tester.pumpAndSettle();
-    harnessKey.currentState!.beginSending();
+    harnessKey.currentState!.sendDirectly(_textSubmission(promptId: "prm_slow", text: "slow"));
     await tester.pump();
+    await tester.pump(const Duration(milliseconds: 100));
 
     expect(find.text("slow"), findsOneWidget);
     expect(find.text("Sending"), findsNothing);
-    await tester.pump(const Duration(milliseconds: 1900));
+    await tester.pump(const Duration(milliseconds: 1800));
     expect(find.text("Sending"), findsNothing);
     expect(find.text("Sending to OpenCode…"), findsNothing);
     await tester.pump(const Duration(milliseconds: 200));
@@ -1392,6 +1768,7 @@ void main() {
           ),
           LaunchFollowUp.queued(
             submission: _textSubmission(promptId: "prm_waiting", text: "waiting"),
+            since: DateTime(2026),
           ),
         ],
       ),

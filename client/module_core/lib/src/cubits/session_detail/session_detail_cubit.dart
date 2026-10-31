@@ -247,13 +247,20 @@ class SessionDetailCubit(
   final StreamController<SessionDetailNotice> _noticeStream = StreamController.broadcast();
   Stream<SessionDetailNotice> get noticeStream => _noticeStream.stream;
 
+  /// When this screen's session was created by sending its first message from
+  /// this surface; null for one reopened. It outlives the state's handoff, as the
+  /// row that replaces the first message's bubble still counts from then.
+  DateTime? get launchStartedAt => _launchStartedAt;
+  DateTime? _launchStartedAt;
+
   // The launch's first message is taken before the first frame, so a session
   // screen replacing the composer shows it where the composer left it.
   // ignore: no_slop_linter/prefer_required_named_parameters, public cubit constructor API
   this : super(_launchState(launchHandoff: _sessionLaunchService.takeHandoff(sessionId: _sessionId))) {
     if (state case SessionDetailLoading(
-      launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps, :final composer),
+      launchHandoff: SessionLaunchHandoff(:final acceptedFollowUps, :final composer, :final startedAt),
     )) {
+      _launchStartedAt = startedAt;
       for (final submission in acceptedFollowUps) {
         _promptQueue.adoptAccepted(submission: submission, epoch: ++_parkEpoch);
       }
