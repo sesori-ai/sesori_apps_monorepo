@@ -634,6 +634,24 @@ void main() {
       expect(_shownOpacity(find.byType(PregoShimmer)), 1);
     });
 
+    testWidgets("the X clears the dots and the hint before the resting words show", (tester) async {
+      final harness = _Harness();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
+      await startListening(tester);
+
+      await tester.tap(_cancel);
+      voiceStates.add(const VoiceInputState.idle());
+      await tester.pump();
+      await tester.pump();
+      for (var elapsed = 16; elapsed <= 240; elapsed += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        final resting = _shownOpacity(_hint);
+        expect(min(_shownOpacity(find.byType(PregoVoiceWaveform)), resting), lessThan(0.1), reason: "at $elapsed ms");
+        expect(min(_shownOpacity(find.text("Enter to send")), resting), lessThan(0.1), reason: "at $elapsed ms");
+      }
+      expect(_shownOpacity(_hint), 1);
+    });
+
     testWidgets("reduced motion merges at once", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness, reducedMotion: true);
