@@ -6,6 +6,7 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "queued_message_bubble.dart";
+import "sent_bubble_landing.dart";
 import "transcript_motion.dart";
 
 typedef LaunchFollowUpAction = void Function({required String promptId});
@@ -106,10 +107,14 @@ class const SessionLaunchSubmissionView({
               : QueuedMessageBubblePresentation.pending(onCancel: () => onCancelQueuedMessage(index)),
         ),
     ];
-    final column = Column(
-      mainAxisSize: MainAxisSize.min,
-      crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: rows,
+    final column = SentBubbleArrival(
+      // Nothing here scrolls back into being: a bubble built is a bubble sent.
+      arriving: true,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: rows,
+      ),
     );
     return LayoutBuilder(
       builder: (context, constraints) {

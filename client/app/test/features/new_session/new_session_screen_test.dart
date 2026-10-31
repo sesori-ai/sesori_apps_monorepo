@@ -13,6 +13,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_dart_core/src/foundation/models/session_options/session_options_request_mode.dart";
 import "package:sesori_dart_core/src/repositories/models/plugin_discovery_snapshot.dart";
@@ -511,6 +512,13 @@ void main() {
     await tester.pumpAndSettle();
 
     expect(find.byType(NewSessionScreen), findsNothing);
+  });
+
+  testWidgets("a sent dictation has a landing over the composer", (tester) async {
+    await tester.pumpWidget(_buildApp());
+    await tester.pumpAndSettle();
+
+    expect(SentBubbleLanding.of(context: tester.element(find.byType(PromptInput))), isNotNull);
   });
 
   testWidgets("the header names the project and switches to another one", (tester) async {

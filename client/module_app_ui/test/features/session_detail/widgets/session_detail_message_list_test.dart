@@ -8,6 +8,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/compaction_part_widget.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_jump_notifier.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_motion.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_prompt_slot.dart";
@@ -255,7 +256,7 @@ class _SessionDetailMessageListHarnessState() extends State<_SessionDetailMessag
       darkTheme: ThemeData(platform: widget.platform, extensions: [PregoDesignSystem.dark]),
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(systemGestureInsets: widget.systemGestureInsets),
-        child: child!,
+        child: SentBubbleLanding(child: child ?? const SizedBox.shrink()),
       ),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
@@ -595,6 +596,75 @@ void main() {
     expect(easing(), isTrue);
   });
 
+  group("a dictated send's landing", () {
+    SentBubbleLandingController landing(WidgetTester tester) =>
+        SentBubbleLanding.of(context: tester.element(find.byType(SessionDetailMessageList)));
+
+    testWidgets("holds the new row's bubble, across the message's own taking its place", (tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+      );
+      landing(tester).expect();
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Dictated"));
+      await tester.pump();
+      expect(landing(tester).heldText, "Dictated");
+
+      harness.appendNewestMessage(
+        _message(messageId: "echo", role: "user", text: "Dictated", createdAtMs: 200, promptId: "prm_sent"),
+      );
+      await tester.pump();
+      expect(landing(tester).heldText, "Dictated");
+      expect(landing(tester).heldRect(ancestor: tester.renderObject(find.byType(SessionDetailMessageList))), isNotNull);
+    });
+
+    testWidgets("the list rises for the row, where any other prompt shows at once", (tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [_message(messageId: "old", role: "user", text: "Earlier", createdAtMs: 100)],
+      );
+      final before = tester.getTopLeft(find.text("Earlier")).dy;
+
+      landing(tester).expect();
+      harness.sendDirectly(_textSubmission(promptId: "prm_sent", text: "Dictated"));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      final starting = tester.getTopLeft(find.text("Earlier")).dy;
+      await tester.pumpAndSettle();
+      final risen = tester.getTopLeft(find.text("Earlier")).dy;
+      expect(risen, lessThan(before));
+      expect(starting, greaterThan(risen));
+      landing(tester).handOver();
+
+      harness.sendDirectly(_textSubmission(promptId: "prm_typed", text: "Typed"));
+      await tester.pump();
+      final typedAtOnce = tester.getTopLeft(find.text("Earlier")).dy;
+      await tester.pumpAndSettle();
+      expect(typedAtOnce, tester.getTopLeft(find.text("Earlier")).dy);
+    });
+
+    testWidgets("doesn't take an old row built while scrolling back for the new one", (tester) async {
+      final harness = await _pumpTurns(
+        tester,
+        messages: [
+          for (var i = 0; i < 40; i++) _message(messageId: "user-$i", role: "user", text: "Row $i", createdAtMs: i),
+        ],
+      );
+      await tester.drag(find.byKey(_listViewKey), const Offset(0, 2000));
+      await tester.pump();
+      // A list build past the first, as any send causes, knows its rows.
+      harness.setBusy(true);
+      await tester.pump();
+
+      landing(tester).expect();
+      await tester.drag(find.byKey(_listViewKey), const Offset(0, -600));
+      await tester.pump();
+
+      expect(landing(tester).heldText, isNull);
+      expect(landing(tester).isExpecting, isTrue);
+    });
+  });
+
   testWidgets("renders system and unknown senders as automation instead of agent output", (tester) async {
     await tester.pumpWidget(
       _SessionDetailMessageListHarness(
@@ -894,7 +964,7 @@ void main() {
           supportedLocales: AppLocalizations.supportedLocales,
           builder: (context, child) => MediaQuery(
             data: MediaQuery.of(context).copyWith(textScaler: const TextScaler.linear(2)),
-            child: child!,
+            child: SentBubbleLanding(child: child ?? const SizedBox.shrink()),
           ),
           home: Scaffold(
             body: Align(

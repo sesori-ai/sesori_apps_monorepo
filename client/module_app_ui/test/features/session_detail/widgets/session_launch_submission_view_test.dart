@@ -4,6 +4,7 @@ import "package:clock/clock.dart";
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/queued_message_bubble.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/session_launch_submission_view.dart";
 import "package:sesori_app_ui/src/l10n/app_localizations.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -20,6 +21,7 @@ Future<AppLocalizations> _pump(
       theme: ThemeData(extensions: [PregoDesignSystem.light]),
       localizationsDelegates: AppLocalizations.localizationsDelegates,
       supportedLocales: AppLocalizations.supportedLocales,
+      builder: (context, child) => SentBubbleLanding(child: child ?? const SizedBox.shrink()),
       // Every host fills a pane with it, as the session transcript does.
       home: Scaffold(
         body: SizedBox.expand(
@@ -70,6 +72,48 @@ void main() {
     // A slow creation names the harness, as an existing session's send does.
     await tester.pump(const Duration(seconds: 2));
     expect(find.text(loc.sessionDetailSendingToHarness("Claude")), findsOneWidget);
+  });
+
+  testWidgets("its bubble is the one a sent dictation lands on", (tester) async {
+    late SentBubbleLandingController landing;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: ThemeData(extensions: [PregoDesignSystem.light]),
+        localizationsDelegates: AppLocalizations.localizationsDelegates,
+        supportedLocales: AppLocalizations.supportedLocales,
+        home: SentBubbleLanding(
+          child: Builder(
+            builder: (context) {
+              landing = SentBubbleLanding.of(context: context)..expect();
+              return Scaffold(
+                body: PregoTopBarInsetScope(
+                  baseInset: 0,
+                  bannerHeight: const AlwaysStoppedAnimation<double>(0),
+                  child: SessionLaunchSubmissionView(
+                    submission: NewSessionSubmissionSnapshot.text(
+                      draft: ComposerDraft.typed(text: "Dictated"),
+                      attachments: const [],
+                    ),
+                    harnessName: "Claude",
+                    transcriptWidth: null,
+                    sendingSince: null,
+                    awaitingBridgeSubmissions: const [],
+                    launchFollowUps: const [],
+                    queuedMessages: const [],
+                    onRetryLaunchFollowUp: null,
+                    onRemoveLaunchFollowUp: null,
+                    onCancelQueuedMessage: null,
+                    bottomInset: null,
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+      ),
+    );
+
+    expect(landing.heldText, "Dictated");
   });
 
   testWidgets("a send already past two seconds names the harness on its first frame", (tester) async {

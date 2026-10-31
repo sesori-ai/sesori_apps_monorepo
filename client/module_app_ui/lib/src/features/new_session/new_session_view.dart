@@ -17,6 +17,7 @@ import "../session_detail/composer_presentation_scope.dart";
 import "../session_detail/widgets/agent_model_buttons.dart";
 import "../session_detail/widgets/composer_surface_style.dart";
 import "../session_detail/widgets/prompt_input.dart";
+import "../session_detail/widgets/sent_bubble_landing.dart";
 import "../session_detail/widgets/session_launch_submission_view.dart";
 import "../session_detail/widgets/transcript_motion.dart";
 import "new_session_header.dart";
@@ -736,7 +737,7 @@ class _NewSessionViewState() extends State<NewSessionView> with SingleTickerProv
           );
         }
       },
-      child: child,
+      child: SentBubbleLanding(child: child),
     );
     if (chromePage != null) return listening(child: chromePage);
 

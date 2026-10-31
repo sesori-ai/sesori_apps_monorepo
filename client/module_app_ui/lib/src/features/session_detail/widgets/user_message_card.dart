@@ -8,6 +8,7 @@ import "../../../widgets/markdown_styles.dart";
 import "../file_preview/file_reference_code_syntax.dart";
 import "../session_detail_markdown_link_handler.dart";
 import "attachment_collection_widget.dart";
+import "sent_bubble_landing.dart";
 import "user_prompt_markdown_image.dart";
 
 class const UserMessageCard({super.key, required final MessageWithParts message}) extends StatelessWidget {
@@ -64,25 +65,28 @@ class const UserMessageBubble({
     return LayoutBuilder(
       builder: (context, constraints) => Align(
         alignment: .centerRight,
-        child: AnimatedContainer(
-          duration: transitionDuration,
-          curve: Curves.easeInOutCubic,
-          margin: margin,
-          padding: const EdgeInsets.all(padding),
-          constraints: BoxConstraints(
-            maxWidth: maxContentWidth(rowWidth: constraints.maxWidth) + padding * 2,
-          ),
-          decoration: BoxDecoration(
-            color: prego.colors.bgSurface2,
-            borderRadius: BorderRadius.circular(radius),
-          ),
-          foregroundDecoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(radius),
-            border: Border.all(
-              color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
+        child: SentBubbleSlot(
+          text: markdown,
+          child: AnimatedContainer(
+            duration: transitionDuration,
+            curve: Curves.easeInOutCubic,
+            margin: margin,
+            padding: const EdgeInsets.all(padding),
+            constraints: BoxConstraints(
+              maxWidth: maxContentWidth(rowWidth: constraints.maxWidth) + padding * 2,
             ),
+            decoration: BoxDecoration(
+              color: prego.colors.bgSurface2,
+              borderRadius: BorderRadius.circular(radius),
+            ),
+            foregroundDecoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(radius),
+              border: Border.all(
+                color: prego.colors.borderBrand.withValues(alpha: outlined ? 0.55 : 0),
+              ),
+            ),
+            child: UserMessageBubbleContent(markdown: markdown, attachments: attachments),
           ),
-          child: UserMessageBubbleContent(markdown: markdown, attachments: attachments),
         ),
       ),
     );
