@@ -1892,6 +1892,32 @@ void main() {
       expect(removals, 1);
     });
 
+    testWidgets("a queued message's line and Cancel wrap instead of overflowing", (tester) async {
+      var cancels = 0;
+      await pumpNarrowBubble(
+        tester,
+        presentation: QueuedMessageBubblePresentation.pending(sentAt: null, onCancel: () => cancels++),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.widgetWithText(TextButton, "Cancel"));
+      expect(cancels, 1);
+    });
+
+    testWidgets("an unavailable command's line and Remove wrap instead of overflowing", (tester) async {
+      var removals = 0;
+      await pumpNarrowBubble(
+        tester,
+        presentation: QueuedMessageBubblePresentation.commandUnavailable(onRemove: () => removals++),
+      );
+      await tester.pumpAndSettle();
+
+      expect(tester.takeException(), isNull);
+      await tester.tap(find.widgetWithText(TextButton, "Remove"));
+      expect(removals, 1);
+    });
+
     testWidgets("a slow send's harness label wraps instead of overflowing", (tester) async {
       const harnessName = "A Very Long Custom Harness Name";
       await pumpNarrowBubble(

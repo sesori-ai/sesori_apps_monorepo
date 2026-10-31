@@ -183,8 +183,10 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
           ),
         ],
       ),
-      PendingMessageBubblePresentation(:final onCancel) => Row(
-        mainAxisSize: MainAxisSize.min,
+      PendingMessageBubblePresentation(:final onCancel) => Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: PregoSpacing.xs,
         children: [
           _status(
             prego: prego,
@@ -196,7 +198,6 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
             label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
             color: prego.colors.textTertiary,
           ),
-          const SizedBox(width: PregoSpacing.xs),
           TextButton.icon(
             onPressed: onCancel,
             icon: const Icon(TablerRegular.x, size: PregoIconSize.sm),
@@ -224,8 +225,10 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         label: isCommand ? loc.sessionDetailQueuedCommand : loc.sessionDetailQueuedMessage,
         color: prego.colors.textTertiary,
       ),
-      UnavailableCommandBubblePresentation(:final onRemove) => Row(
-        mainAxisSize: MainAxisSize.min,
+      UnavailableCommandBubblePresentation(:final onRemove) => Wrap(
+        alignment: WrapAlignment.end,
+        crossAxisAlignment: WrapCrossAlignment.center,
+        spacing: PregoSpacing.xs,
         children: [
           _status(
             prego: prego,
@@ -238,7 +241,6 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
             color: prego.colors.textErrorPrimary,
           ),
           if (onRemove != null) ...[
-            const SizedBox(width: PregoSpacing.xs),
             TextButton.icon(
               onPressed: onRemove,
               icon: const Icon(TablerRegular.x, size: PregoIconSize.sm),
@@ -392,9 +394,11 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       children: [
         icon,
         const SizedBox(width: PregoSpacing.xs),
-        Text(
-          label,
-          style: prego.textTheme.textXs.medium.copyWith(color: color),
+        Flexible(
+          child: Text(
+            label,
+            style: prego.textTheme.textXs.medium.copyWith(color: color),
+          ),
         ),
       ],
     );
