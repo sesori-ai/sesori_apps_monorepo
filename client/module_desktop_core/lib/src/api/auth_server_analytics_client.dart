@@ -1,9 +1,9 @@
 import "dart:async";
 
-import "package:flutter/foundation.dart" show TargetPlatform, defaultTargetPlatform, visibleForTesting;
 import "package:injectable/injectable.dart";
-import "package:package_info_plus/package_info_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+
+import "../foundation/platform/desktop_app_info_source.dart";
 
 // With the 5 second attempt deadline, retrying ends after about 50 seconds.
 const _retryDelays = [Duration(seconds: 5), Duration(seconds: 30)];
@@ -15,30 +15,17 @@ const _retryDelays = [Duration(seconds: 5), Duration(seconds: 30)];
 /// Events still in flight when the app quits, or outlasting the retries during
 /// an outage, are lost by design.
 @LazySingleton(as: AnalyticsClient)
-class AuthServerAnalyticsClient implements AnalyticsClient {
-  final ProductAnalyticsEventApi _api;
-  final AuthSession _authSession;
-  final Future<PackageInfo> Function() _readPackageInfo;
+class AuthServerAnalyticsClient({
+  required final ProductAnalyticsEventClient _eventClient,
+  required final AuthSession _authSession,
+  required final DesktopAppInfoSource _appInfoSource,
+}) implements AnalyticsClient {
   late final Future<String?> _appVersion = _readAppVersion();
-
-  new({required ProductAnalyticsEventApi api, required AuthSession authSession})
-    : _api = api,
-      _authSession = authSession,
-      _readPackageInfo = PackageInfo.fromPlatform;
-
-  @visibleForTesting
-  new withPackageInfoReader({
-    required ProductAnalyticsEventApi api,
-    required AuthSession authSession,
-    required Future<PackageInfo> Function() readPackageInfo,
-  }) : _api = api,
-       _authSession = authSession,
-       _readPackageInfo = readPackageInfo;
 
   @override
   Future<void> logProductEvent({required ProductAnalyticsEnvelope envelope, required String userKey}) async {
     final params = _wireParams(event: envelope.event);
-    final platform = _wirePlatform();
+    final platform = _appInfoSource.platform;
     if (params == null || platform == null) return;
     final authState = _authSession.currentState;
     if (authState is! AuthAuthenticated) {
@@ -61,7 +48,10 @@ class AuthServerAnalyticsClient implements AnalyticsClient {
     required ProductAnalyticsEventPlatform platform,
   }) async {
     final appVersion = await _appVersion;
-    if (appVersion == null) return;
+    if (appVersion == null) {
+      logw("Dropped a product analytics event with no app version: ${envelope.event.wireName}");
+      return;
+    }
     final request = ProductAnalyticsEventRequest(
       schemaVersion: ProductAnalyticsEventSchemaVersion.v1,
       platform: platform,
@@ -71,32 +61,42 @@ class AuthServerAnalyticsClient implements AnalyticsClient {
       params: params,
     );
 
-    var result = await _api.send(userId: userId, request: request);
+    var result = await _eventClient.send(userId: userId, request: request);
     for (final delay in _retryDelays) {
-      if (result is! ProductAnalyticsEventApiTransientFailure) break;
+      if (result is! ProductAnalyticsEventClientTransientFailure) break;
       logw(
-        "Will retry a product analytics event: ${request.name} (${result.description})",
+        "A product analytics attempt failed: ${request.name} (${result.description})",
         result.cause,
         result.stackTrace,
       );
       await Future<void>.delayed(delay);
-      result = await _api.send(userId: userId, request: request);
+      if (!_isSignedIn(userId: userId)) break;
+      result = await _eventClient.send(userId: userId, request: request);
     }
     switch (result) {
-      case ProductAnalyticsEventApiDelivered():
+      case ProductAnalyticsEventClientDelivered():
         break;
-      case ProductAnalyticsEventApiPermanentFailure(:final description, :final cause):
+      case ProductAnalyticsEventClientPermanentFailure(:final description, :final cause):
         loge("Dropped a product analytics event without retrying: ${request.name} ($description)", cause);
-      case ProductAnalyticsEventApiTransientFailure(:final description, :final cause, :final stackTrace):
-        loge("Gave up sending a product analytics event: ${request.name} ($description)", cause, stackTrace);
+      case ProductAnalyticsEventClientTransientFailure(:final description, :final cause, :final stackTrace):
+        if (_isSignedIn(userId: userId)) {
+          loge("Gave up sending a product analytics event: ${request.name} ($description)", cause, stackTrace);
+        } else {
+          logi("Stopped sending a product analytics event after a sign-out: ${request.name}");
+        }
     }
   }
 
-  /// Read once for the process, so a failed read drops every event with one warning.
+  bool _isSignedIn({required String userId}) {
+    final authState = _authSession.currentState;
+    return authState is AuthAuthenticated && authState.user.id == userId;
+  }
+
+  /// Read once for the process, so a failed read drops every event.
   Future<String?> _readAppVersion() async {
     try {
-      final info = await _readPackageInfo();
-      return info.version.split("+").first;
+      final version = await _appInfoSource.readVersion();
+      return version.split("+").first;
     } on Object catch (error, stackTrace) {
       logw("Failed to read the app version for product analytics", error, stackTrace);
       return null;
@@ -139,13 +139,5 @@ class AuthServerAnalyticsClient implements AnalyticsClient {
     RunCommandCopiedEvent() ||
     RunCommandSharedEvent() ||
     ProductScreenViewedEvent() => event.parameters,
-  };
-
-  ProductAnalyticsEventPlatform? _wirePlatform() => switch (defaultTargetPlatform) {
-    TargetPlatform.macOS => ProductAnalyticsEventPlatform.macos,
-    TargetPlatform.linux => ProductAnalyticsEventPlatform.linux,
-    TargetPlatform.windows => ProductAnalyticsEventPlatform.windows,
-    // Unreachable in the desktop shell.
-    TargetPlatform.iOS || TargetPlatform.android || TargetPlatform.fuchsia => null,
   };
 }

@@ -50,17 +50,17 @@ class _RecordingAuthenticatedClient() extends Mock implements AuthenticatedHttpA
 
 void main() {
   late _RecordingAuthenticatedClient client;
-  late ProductAnalyticsEventApi api;
+  late ProductAnalyticsEventClient eventClient;
 
   setUp(() {
     client = _RecordingAuthenticatedClient();
-    api = ProductAnalyticsEventApi(client: client);
+    eventClient = ProductAnalyticsEventClient(client: client);
   });
 
   test("posts the pinned contract's exact body to the pinned URL for the given account", () async {
-    final result = await api.send(userId: _userId, request: _request);
+    final result = await eventClient.send(userId: _userId, request: _request);
 
-    expect(result, isA<ProductAnalyticsEventApiDelivered>());
+    expect(result, isA<ProductAnalyticsEventClientDelivered>());
     expect(client.lastUrl, Uri.parse("https://api.sesori.com/product-analytics/events"));
     expect(client.lastUserId, _userId);
     expect(jsonDecode(client.lastBody ?? ""), {
@@ -74,7 +74,7 @@ void main() {
   });
 
   test("keeps empty params as a required empty object", () async {
-    await api.send(
+    await eventClient.send(
       userId: _userId,
       request: _request.copyWith(name: "session_abort_succeeded", params: const {}),
     );
@@ -88,12 +88,28 @@ void main() {
 
   group("a status that won't change on a retry is a permanent failure", () {
     for (final status in [400, 401, 404, 413, 429]) {
-      test("$status keeps the status and drops the response body", () async {
-        client.error = ApiError.nonSuccessCode(errorCode: status, rawErrorString: "echoed request");
+      test("$status keeps the status and the response body", () async {
+        client.error = ApiError.nonSuccessCode(errorCode: status, rawErrorString: '{"error":"bad_request"}');
 
-        final result = await api.send(userId: _userId, request: _request);
+        final result = await eventClient.send(userId: _userId, request: _request);
 
-        expect(result, ProductAnalyticsEventApiResult.permanentFailure(description: "HTTP $status", cause: null));
+        expect(
+          result,
+          ProductAnalyticsEventClientResult.permanentFailure(
+            description: 'HTTP $status: {"error":"bad_request"}',
+            cause: null,
+          ),
+        );
+      });
+    }
+
+    for (final body in ["", null]) {
+      test("a 400 with the body ${body == null ? "missing" : "empty"} keeps only the status", () async {
+        client.error = ApiError.nonSuccessCode(errorCode: 400, rawErrorString: body);
+
+        final result = await eventClient.send(userId: _userId, request: _request);
+
+        expect(result, const ProductAnalyticsEventClientResult.permanentFailure(description: "HTTP 400", cause: null));
       });
     }
   });
@@ -104,11 +120,11 @@ void main() {
       innerError: const FormatException("bad", "<html>", 0),
     );
 
-    final result = await api.send(userId: _userId, request: _request);
+    final result = await eventClient.send(userId: _userId, request: _request);
 
     expect(
       result,
-      isA<ProductAnalyticsEventApiPermanentFailure>()
+      isA<ProductAnalyticsEventClientPermanentFailure>()
           .having((failure) => failure.description, "description", "unusable response")
           .having(
             (failure) => failure.cause.toString(),
@@ -120,28 +136,41 @@ void main() {
 
   group("a failure that can pass is a transient failure", () {
     Matcher transientFailure({required String description, required Matcher cause, required Matcher stackTrace}) =>
-        isA<ProductAnalyticsEventApiTransientFailure>()
+        isA<ProductAnalyticsEventClientTransientFailure>()
             .having((failure) => failure.description, "description", description)
             .having((failure) => failure.cause, "cause", cause)
             .having((failure) => failure.stackTrace, "stackTrace", stackTrace);
 
     for (final status in [500, 502, 503]) {
-      test("$status keeps the status and drops the response body", () async {
-        client.error = ApiError.nonSuccessCode(errorCode: status, rawErrorString: "echoed request");
+      test("$status keeps the status and the response body", () async {
+        client.error = ApiError.nonSuccessCode(errorCode: status, rawErrorString: '{"error":"internal_server_error"}');
 
         expect(
-          await api.send(userId: _userId, request: _request),
-          transientFailure(description: "HTTP $status", cause: isNull, stackTrace: isNull),
+          await eventClient.send(userId: _userId, request: _request),
+          transientFailure(
+            description: 'HTTP $status: {"error":"internal_server_error"}',
+            cause: isNull,
+            stackTrace: isNull,
+          ),
         );
       });
     }
+
+    test("a long response body keeps only its first 500 characters", () async {
+      client.error = ApiError.nonSuccessCode(errorCode: 502, rawErrorString: "x" * 2000);
+
+      expect(
+        await eventClient.send(userId: _userId, request: _request),
+        transientFailure(description: "HTTP 502: ${"x" * 500}", cause: isNull, stackTrace: isNull),
+      );
+    });
 
     test("a network error keeps the original error", () async {
       const cause = SocketException("unreachable");
       client.error = ApiError.dartHttpClient(cause);
 
       expect(
-        await api.send(userId: _userId, request: _request),
+        await eventClient.send(userId: _userId, request: _request),
         transientFailure(description: "network error", cause: same(cause), stackTrace: isNull),
       );
     });
@@ -150,7 +179,7 @@ void main() {
       client.error = ApiError.notAuthenticated();
 
       expect(
-        await api.send(userId: _userId, request: _request),
+        await eventClient.send(userId: _userId, request: _request),
         transientFailure(description: "not authenticated", cause: isNull, stackTrace: isNull),
       );
     });
@@ -160,7 +189,7 @@ void main() {
       client.thrown = cause;
 
       expect(
-        await api.send(userId: _userId, request: _request),
+        await eventClient.send(userId: _userId, request: _request),
         transientFailure(description: "no response", cause: same(cause), stackTrace: isNotNull),
       );
     });
@@ -168,8 +197,8 @@ void main() {
     test("an attempt still pending at its 5 second deadline", () {
       fakeAsync((async) {
         client.hang = true;
-        ProductAnalyticsEventApiResult? result;
-        unawaited(api.send(userId: _userId, request: _request).then((value) => result = value));
+        ProductAnalyticsEventClientResult? result;
+        unawaited(eventClient.send(userId: _userId, request: _request).then((value) => result = value));
 
         async.elapse(const Duration(seconds: 4, milliseconds: 999));
         expect(result, isNull);

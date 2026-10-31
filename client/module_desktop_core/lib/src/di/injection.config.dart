@@ -16,6 +16,8 @@ import 'package:injectable/injectable.dart' as _i526;
 import 'package:sesori_dart_core/logging.dart' as _i798;
 import 'package:sesori_dart_core/sesori_dart_core.dart' as _i948;
 import 'package:sesori_desktop_core/src/api/app_log_storage.dart' as _i1024;
+import 'package:sesori_desktop_core/src/api/auth_server_analytics_client.dart'
+    as _i991;
 import 'package:sesori_desktop_core/src/api/bridge_id_storage.dart' as _i73;
 import 'package:sesori_desktop_core/src/api/bridge_process_api.dart' as _i874;
 import 'package:sesori_desktop_core/src/api/bridge_process_log_storage.dart'
@@ -36,6 +38,8 @@ import 'package:sesori_desktop_core/src/foundation/platform/bridge_executable_pa
     as _i962;
 import 'package:sesori_desktop_core/src/foundation/platform/bridge_process_environment.dart'
     as _i961;
+import 'package:sesori_desktop_core/src/foundation/platform/desktop_app_info_source.dart'
+    as _i893;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_support_directory.dart'
     as _i695;
 import 'package:sesori_desktop_core/src/foundation/platform/desktop_application_terminator.dart'
@@ -156,6 +160,13 @@ extension GetItInjectableX on _i174.GetIt {
       () => _i155.DesktopInstanceStorage(
         applicationSupportDirectory:
             gh<_i695.DesktopApplicationSupportDirectory>(),
+      ),
+    );
+    gh.lazySingleton<_i948.AnalyticsClient>(
+      () => _i991.AuthServerAnalyticsClient(
+        eventClient: gh<_i948.ProductAnalyticsEventClient>(),
+        authSession: gh<_i948.AuthSession>(),
+        appInfoSource: gh<_i893.DesktopAppInfoSource>(),
       ),
     );
     gh.lazySingleton<_i227.BridgeStatusTracker>(

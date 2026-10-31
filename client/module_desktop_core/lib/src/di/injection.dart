@@ -9,6 +9,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
         ConnectionService,
         LocalNotificationClient,
         NotificationCanceller,
+        ProductAnalyticsEventClient,
         ProductAnalyticsService,
         RouteDispatcher,
         RouteSource,
@@ -17,6 +18,7 @@ import "package:sesori_dart_core/sesori_dart_core.dart"
 
 import "../foundation/platform/bridge_executable_path_resolver.dart";
 import "../foundation/platform/bridge_process_environment.dart";
+import "../foundation/platform/desktop_app_info_source.dart";
 import "../foundation/platform/desktop_application_support_directory.dart";
 import "../foundation/platform/desktop_application_terminator.dart";
 import "../foundation/platform/installed_desktop_bundle_source.dart";
@@ -39,6 +41,7 @@ import "injection.config.dart";
     ConnectionService,
     LocalNotificationClient,
     NotificationCanceller,
+    ProductAnalyticsEventClient,
     ProductAnalyticsService,
     RouteDispatcher,
     RouteSource,
@@ -48,6 +51,7 @@ import "injection.config.dart";
     BridgeExecutablePathResolver,
     BridgeProcessEnvironment,
     BridgeRepository,
+    DesktopAppInfoSource,
     DesktopApplicationSupportDirectory,
     DesktopApplicationTerminator,
     InstalledDesktopBundleSource,

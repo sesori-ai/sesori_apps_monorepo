@@ -2,13 +2,11 @@ import "dart:async";
 import "dart:convert";
 
 import "package:fake_async/fake_async.dart";
-import "package:flutter/foundation.dart";
-import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
-import "package:package_info_plus/package_info_plus.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
-import "package:sesori_desktop/core/platform/auth_server_analytics_client.dart";
+import "package:sesori_desktop_core/sesori_desktop_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:test/test.dart";
 
 const _userA = AuthUser(
   id: "user-a",
@@ -23,17 +21,22 @@ const _userB = AuthUser(
   providerUsername: "beta",
 );
 const _userKey = "user-key-that-must-not-be-sent";
-const _transient = ProductAnalyticsEventApiResult.transientFailure(
-  description: "HTTP 503",
+const _transient = ProductAnalyticsEventClientResult.transientFailure(
+  description: 'HTTP 503: {"error":"unavailable"}',
   cause: null,
   stackTrace: null,
 );
-const _permanent = ProductAnalyticsEventApiResult.permanentFailure(description: "HTTP 400", cause: null);
-const _delivered = ProductAnalyticsEventApiResult.delivered();
+const _permanent = ProductAnalyticsEventClientResult.permanentFailure(
+  description: 'HTTP 400: {"error":"bad_request"}',
+  cause: null,
+);
+const _delivered = ProductAnalyticsEventClientResult.delivered();
 
 final _occurredAtUtc = DateTime.fromMicrosecondsSinceEpoch(1793232000000000, isUtc: true);
 
 class _MockAuthSession() extends Mock implements AuthSession;
+
+class _MockAppInfoSource() extends Mock implements DesktopAppInfoSource;
 
 class _RecordingLogSink() implements LogSink {
   final List<LogRecord> records = [];
@@ -46,16 +49,19 @@ class _RecordingLogSink() implements LogSink {
 }
 
 /// Answers each attempt from [results], then keeps answering with the last one.
-class _FakeEventApi({required final List<ProductAnalyticsEventApiResult> results}) implements ProductAnalyticsEventApi {
+class _FakeEventClient({required final List<ProductAnalyticsEventClientResult> results})
+    implements ProductAnalyticsEventClient {
   final List<({String userId, ProductAnalyticsEventRequest request})> attempts = [];
-  Future<ProductAnalyticsEventApiResult>? never;
+  Future<ProductAnalyticsEventClientResult>? never;
+  void Function({required int attempt})? onAttempt;
 
   @override
-  Future<ProductAnalyticsEventApiResult> send({
+  Future<ProductAnalyticsEventClientResult> send({
     required String userId,
     required ProductAnalyticsEventRequest request,
   }) async {
     attempts.add((userId: userId, request: request));
+    onAttempt?.call(attempt: attempts.length);
     final pending = never;
     if (pending != null) return await pending;
     return results[attempts.length > results.length ? results.length - 1 : attempts.length - 1];
@@ -64,19 +70,11 @@ class _FakeEventApi({required final List<ProductAnalyticsEventApiResult> results
 
 void main() {
   late _MockAuthSession authSession;
+  late _MockAppInfoSource appInfo;
   late _RecordingLogSink logs;
 
-  PackageInfo packageInfo({required String version}) =>
-      PackageInfo(appName: "Sesori", packageName: "com.sesori.desktop", version: version, buildNumber: "1066");
-
-  AuthServerAnalyticsClient clientFor({
-    required _FakeEventApi api,
-    Future<PackageInfo> Function()? readPackageInfo,
-  }) => AuthServerAnalyticsClient.withPackageInfoReader(
-    api: api,
-    authSession: authSession,
-    readPackageInfo: readPackageInfo ?? () async => packageInfo(version: "1.11.0"),
-  );
+  AuthServerAnalyticsClient clientFor({required _FakeEventClient events}) =>
+      AuthServerAnalyticsClient(eventClient: events, authSession: authSession, appInfoSource: appInfo);
 
   ProductAnalyticsEnvelope envelopeOf({required ProductAnalyticsEvent event}) =>
       ProductAnalyticsEnvelope(event: event, occurredAtUtc: _occurredAtUtc);
@@ -93,25 +91,24 @@ void main() {
   setUp(() {
     authSession = _MockAuthSession();
     when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userA));
+    appInfo = _MockAppInfoSource();
+    when(() => appInfo.platform).thenReturn(ProductAnalyticsEventPlatform.macos);
+    when(() => appInfo.readVersion()).thenAnswer((_) async => "1.11.0");
     logs = _RecordingLogSink();
     setLogSink(sink: logs);
-    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
   });
 
-  tearDown(() {
-    setLogSink(sink: const StdoutLogSink());
-    debugDefaultTargetPlatformOverride = null;
-  });
+  tearDown(() => setLogSink(sink: const StdoutLogSink()));
 
   group("pinned contract", () {
     test("sends the exact body, and never the user key", () async {
-      final api = _FakeEventApi(results: [_delivered]);
+      final events = _FakeEventClient(results: [_delivered]);
 
-      await logSample(client: clientFor(api: api));
+      await logSample(client: clientFor(events: events));
       await pumpEventQueue();
 
-      expect(api.attempts.single.userId, _userA.id);
-      final body = jsonEncode(api.attempts.single.request.toJson());
+      expect(events.attempts.single.userId, _userA.id);
+      final body = jsonEncode(events.attempts.single.request.toJson());
       expect(jsonDecode(body), {
         "schemaVersion": 1,
         "platform": "MACOS",
@@ -267,15 +264,15 @@ void main() {
 
     for (final sent in sentEvents) {
       test("sends ${sent.name} with exactly its params, within the 1 KiB limit", () async {
-        final api = _FakeEventApi(results: [_delivered]);
+        final events = _FakeEventClient(results: [_delivered]);
 
-        await clientFor(api: api).logProductEvent(
+        await clientFor(events: events).logProductEvent(
           envelope: envelopeOf(event: sent.event),
           userKey: _userKey,
         );
         await pumpEventQueue();
 
-        final request = api.attempts.single.request;
+        final request = events.attempts.single.request;
         expect(request.name, sent.name);
         expect(request.params, sent.params);
         expect(utf8.encode(jsonEncode(request.toJson())).length, lessThan(1024));
@@ -315,16 +312,16 @@ void main() {
 
     for (final notSent in notSentEvents) {
       test("doesn't send ${notSent.reason}, which is outside the warehouse allowlist", () async {
-        final api = _FakeEventApi(results: [_delivered]);
+        final events = _FakeEventClient(results: [_delivered]);
 
-        await clientFor(api: api).logProductEvent(
+        await clientFor(events: events).logProductEvent(
           envelope: envelopeOf(event: notSent.event),
           userKey: _userKey,
         );
         await pumpEventQueue();
 
         expect(notSent.event.wireName, notSent.reason);
-        expect(api.attempts, isEmpty);
+        expect(events.attempts, isEmpty);
       });
     }
 
@@ -416,192 +413,211 @@ void main() {
   });
 
   group("platform", () {
-    for (final (target, wire) in const [
-      (TargetPlatform.macOS, "MACOS"),
-      (TargetPlatform.linux, "LINUX"),
-      (TargetPlatform.windows, "WINDOWS"),
+    for (final (platform, wire) in const [
+      (ProductAnalyticsEventPlatform.macos, "MACOS"),
+      (ProductAnalyticsEventPlatform.linux, "LINUX"),
+      (ProductAnalyticsEventPlatform.windows, "WINDOWS"),
     ]) {
-      test("$target reports $wire", () async {
-        debugDefaultTargetPlatformOverride = target;
-        final api = _FakeEventApi(results: [_delivered]);
+      test("$platform reports $wire", () async {
+        when(() => appInfo.platform).thenReturn(platform);
+        final events = _FakeEventClient(results: [_delivered]);
 
-        await logSample(client: clientFor(api: api));
+        await logSample(client: clientFor(events: events));
         await pumpEventQueue();
 
-        expect(api.attempts.single.request.toJson()["platform"], wire);
+        expect(events.attempts.single.request.toJson()["platform"], wire);
       });
     }
 
-    for (final target in const [TargetPlatform.iOS, TargetPlatform.android, TargetPlatform.fuchsia]) {
-      test("$target sends nothing", () async {
-        debugDefaultTargetPlatformOverride = target;
-        final api = _FakeEventApi(results: [_delivered]);
+    test("no desktop OS sends nothing", () async {
+      when(() => appInfo.platform).thenReturn(null);
+      final events = _FakeEventClient(results: [_delivered]);
 
-        await logSample(client: clientFor(api: api));
-        await pumpEventQueue();
+      await logSample(client: clientFor(events: events));
+      await pumpEventQueue();
 
-        expect(api.attempts, isEmpty);
-      });
-    }
+      expect(events.attempts, isEmpty);
+    });
   });
 
   group("app version", () {
     test("removes a build suffix", () async {
-      final api = _FakeEventApi(results: [_delivered]);
-      final client = clientFor(
-        api: api,
-        readPackageInfo: () async => packageInfo(version: "1.11.0+1066"),
-      );
+      when(() => appInfo.readVersion()).thenAnswer((_) async => "1.11.0+1066");
+      final events = _FakeEventClient(results: [_delivered]);
 
-      await logSample(client: client);
+      await logSample(client: clientFor(events: events));
       await pumpEventQueue();
 
-      expect(api.attempts.single.request.appVersion, "1.11.0");
+      expect(events.attempts.single.request.appVersion, "1.11.0");
     });
 
     test("is read once", () async {
-      final api = _FakeEventApi(results: [_delivered]);
-      var reads = 0;
-      final client = clientFor(
-        api: api,
-        readPackageInfo: () async {
-          reads++;
-          return packageInfo(version: "1.11.0");
-        },
-      );
+      final events = _FakeEventClient(results: [_delivered]);
+      final client = clientFor(events: events);
 
       await logSample(client: client);
       await logSample(client: client);
       await pumpEventQueue();
 
-      expect(api.attempts, hasLength(2));
-      expect(reads, 1);
+      expect(events.attempts, hasLength(2));
+      verify(() => appInfo.readVersion()).called(1);
     });
 
-    test("a failed read sends nothing, doesn't throw and logs a warning", () async {
-      final api = _FakeEventApi(results: [_delivered]);
-      final client = clientFor(api: api, readPackageInfo: () async => throw StateError("no package info"));
+    test("a failed read warns once with the error, and each dropped event is named", () async {
+      when(() => appInfo.readVersion()).thenAnswer((_) async => throw StateError("no package info"));
+      final events = _FakeEventClient(results: [_delivered]);
+      final client = clientFor(events: events);
 
+      await logSample(client: client);
       await logSample(client: client);
       await pumpEventQueue();
 
-      expect(api.attempts, isEmpty);
-      expect(logs.records.map((record) => record.level), [LogLevel.warning]);
+      expect(events.attempts, isEmpty);
+      expect(logs.records.map((record) => record.level), everyElement(LogLevel.warning));
+      final [readFailure, firstDrop, secondDrop] = logs.records;
+      expect(readFailure.diagnosticError, contains("no package info"));
+      expect(readFailure.stackTrace, isNotNull);
+      for (final drop in [firstDrop, secondDrop]) {
+        expect(drop.message, contains("session_message_sent"));
+        expect(drop.diagnosticError, isNull);
+      }
+      verify(() => appInfo.readVersion()).called(1);
     });
   });
 
   group("not blocking the caller", () {
     test("returns before a POST that never completes", () async {
-      final api = _FakeEventApi(results: [_delivered]);
-      api.never = Completer<ProductAnalyticsEventApiResult>().future;
+      final events = _FakeEventClient(results: [_delivered]);
+      events.never = Completer<ProductAnalyticsEventClientResult>().future;
 
-      await logSample(client: clientFor(api: api));
+      await logSample(client: clientFor(events: events));
       await pumpEventQueue();
 
-      expect(api.attempts, hasLength(1));
+      expect(events.attempts, hasLength(1));
     });
 
     test("returns before an app version read that never completes", () async {
-      final api = _FakeEventApi(results: [_delivered]);
-      final client = clientFor(api: api, readPackageInfo: () => Completer<PackageInfo>().future);
+      when(() => appInfo.readVersion()).thenAnswer((_) => Completer<String>().future);
+      final events = _FakeEventClient(results: [_delivered]);
 
-      await logSample(client: client);
+      await logSample(client: clientFor(events: events));
 
-      expect(api.attempts, isEmpty);
+      expect(events.attempts, isEmpty);
     });
 
     test("a failed send never reaches the caller", () async {
-      final api = _FakeEventApi(results: [_permanent]);
+      final events = _FakeEventClient(results: [_permanent]);
 
-      await expectLater(logSample(client: clientFor(api: api)), completes);
+      await expectLater(logSample(client: clientFor(events: events)), completes);
       await pumpEventQueue();
 
-      expect(api.attempts, hasLength(1));
+      expect(events.attempts, hasLength(1));
     });
   });
 
   group("retry", () {
     test("waits 5 and then 30 seconds, and stops after 3 attempts", () {
       fakeAsync((async) {
-        final api = _FakeEventApi(results: [_transient]);
-        unawaited(logSample(client: clientFor(api: api)));
+        final events = _FakeEventClient(results: [_transient]);
+        unawaited(logSample(client: clientFor(events: events)));
         async.flushMicrotasks();
-        expect(api.attempts, hasLength(1));
+        expect(events.attempts, hasLength(1));
 
         async.elapse(const Duration(seconds: 4, milliseconds: 999));
-        expect(api.attempts, hasLength(1));
+        expect(events.attempts, hasLength(1));
         async.elapse(const Duration(milliseconds: 1));
-        expect(api.attempts, hasLength(2));
+        expect(events.attempts, hasLength(2));
 
         async.elapse(const Duration(seconds: 29, milliseconds: 999));
-        expect(api.attempts, hasLength(2));
+        expect(events.attempts, hasLength(2));
         async.elapse(const Duration(milliseconds: 1));
-        expect(api.attempts, hasLength(3));
+        expect(events.attempts, hasLength(3));
 
         async.elapse(const Duration(hours: 1));
-        expect(api.attempts, hasLength(3));
+        expect(events.attempts, hasLength(3));
         expect(async.pendingTimers, isEmpty);
       });
     });
 
     test("stops once an attempt is delivered", () {
       fakeAsync((async) {
-        final api = _FakeEventApi(results: [_transient, _delivered]);
-        unawaited(logSample(client: clientFor(api: api)));
+        final events = _FakeEventClient(results: [_transient, _delivered]);
+        unawaited(logSample(client: clientFor(events: events)));
 
         async.elapse(const Duration(hours: 1));
 
-        expect(api.attempts, hasLength(2));
+        expect(events.attempts, hasLength(2));
       });
     });
 
     test("stops at a permanent failure reached during a retry", () {
       fakeAsync((async) {
-        final api = _FakeEventApi(results: [_transient, _permanent]);
-        unawaited(logSample(client: clientFor(api: api)));
+        final events = _FakeEventClient(results: [_transient, _permanent]);
+        unawaited(logSample(client: clientFor(events: events)));
 
         async.elapse(const Duration(hours: 1));
 
-        expect(api.attempts, hasLength(2));
+        expect(events.attempts, hasLength(2));
       });
     });
 
     test("doesn't retry a permanent failure", () {
       fakeAsync((async) {
-        final api = _FakeEventApi(results: [_permanent]);
-        unawaited(logSample(client: clientFor(api: api)));
+        final events = _FakeEventClient(results: [_permanent]);
+        unawaited(logSample(client: clientFor(events: events)));
 
         async.elapse(const Duration(hours: 1));
 
-        expect(api.attempts, hasLength(1));
+        expect(events.attempts, hasLength(1));
         expect(async.pendingTimers, isEmpty);
       });
     });
 
     test("resends the same request with the same occurrence time", () {
       fakeAsync((async) {
-        final api = _FakeEventApi(results: [_transient]);
-        unawaited(logSample(client: clientFor(api: api)));
+        final events = _FakeEventClient(results: [_transient]);
+        unawaited(logSample(client: clientFor(events: events)));
 
         async.elapse(const Duration(hours: 1));
 
-        expect(api.attempts.map((attempt) => attempt.request).toSet(), hasLength(1));
-        expect(api.attempts.first.request.occurredAtMicros, _occurredAtUtc.microsecondsSinceEpoch);
+        expect(events.attempts.map((attempt) => attempt.request).toSet(), hasLength(1));
+        expect(events.attempts.first.request.occurredAtMicros, _occurredAtUtc.microsecondsSinceEpoch);
       });
     });
 
-    test("keeps the account captured when the event was logged after the account changes", () {
-      fakeAsync((async) {
-        final api = _FakeEventApi(results: [_transient]);
-        unawaited(logSample(client: clientFor(api: api)));
-        async.flushMicrotasks();
+    for (final (name, state) in const [
+      ("signs out", AuthState.unauthenticated()),
+      ("is replaced by another account", AuthState.authenticated(user: _userB)),
+    ]) {
+      test("stops before a retry once the account $name, logging at info and no error", () {
+        fakeAsync((async) {
+          final events = _FakeEventClient(results: [_transient]);
+          unawaited(logSample(client: clientFor(events: events)));
+          async.flushMicrotasks();
 
-        when(() => authSession.currentState).thenReturn(const AuthState.authenticated(user: _userB));
+          when(() => authSession.currentState).thenReturn(state);
+          async.elapse(const Duration(hours: 1));
+
+          expect(events.attempts, hasLength(1));
+          expect(logs.records.map((record) => record.level), [LogLevel.warning, LogLevel.info]);
+          expect(logs.records.last.message, contains("session_message_sent"));
+          expect(async.pendingTimers, isEmpty);
+        });
+      });
+    }
+
+    test("a sign-out during the last attempt logs at info, not as giving up", () {
+      fakeAsync((async) {
+        final events = _FakeEventClient(results: [_transient]);
+        events.onAttempt = ({required attempt}) {
+          if (attempt == 3) when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
+        };
+        unawaited(logSample(client: clientFor(events: events)));
+
         async.elapse(const Duration(hours: 1));
 
-        // postForUser refuses userId user-a before any network call now that
-        // user-b is current; that half is covered in module_auth.
-        expect(api.attempts.map((attempt) => attempt.userId).toSet(), {_userA.id});
+        expect(events.attempts, hasLength(3));
+        expect(logs.records.map((record) => record.level), [LogLevel.warning, LogLevel.warning, LogLevel.info]);
       });
     });
   });
@@ -609,12 +625,12 @@ void main() {
   group("signed-out account", () {
     test("sends nothing and logs the event name", () async {
       when(() => authSession.currentState).thenReturn(const AuthState.unauthenticated());
-      final api = _FakeEventApi(results: [_delivered]);
+      final events = _FakeEventClient(results: [_delivered]);
 
-      await logSample(client: clientFor(api: api));
+      await logSample(client: clientFor(events: events));
       await pumpEventQueue();
 
-      expect(api.attempts, isEmpty);
+      expect(events.attempts, isEmpty);
       expect(logs.records.single.message, contains("session_message_sent"));
     });
   });
@@ -629,14 +645,14 @@ void main() {
       }
     }
 
-    test("a 400 logs the event name and status, and no error it doesn't have", () async {
+    test("a 400 logs the event name, status and response body, and no error it doesn't have", () async {
       await logSample(
-        client: clientFor(api: _FakeEventApi(results: [_permanent])),
+        client: clientFor(events: _FakeEventClient(results: [_permanent])),
       );
       await pumpEventQueue();
 
       final record = logs.records.single;
-      expectDiagnostics(record: record, level: LogLevel.error, description: "HTTP 400");
+      expectDiagnostics(record: record, level: LogLevel.error, description: 'HTTP 400: {"error":"bad_request"}');
       expect(record.diagnosticError, isNull);
       expect(record.stackTrace, isNull);
     });
@@ -644,9 +660,9 @@ void main() {
     test("a permanent failure keeps its original error", () async {
       await logSample(
         client: clientFor(
-          api: _FakeEventApi(
+          events: _FakeEventClient(
             results: [
-              const ProductAnalyticsEventApiResult.permanentFailure(
+              const ProductAnalyticsEventClientResult.permanentFailure(
                 description: "unusable response",
                 cause: FormatException("not json"),
               ),
@@ -667,9 +683,9 @@ void main() {
         unawaited(
           logSample(
             client: clientFor(
-              api: _FakeEventApi(
+              events: _FakeEventClient(
                 results: [
-                  ProductAnalyticsEventApiResult.transientFailure(
+                  ProductAnalyticsEventClientResult.transientFailure(
                     description: "no response",
                     cause: TimeoutException("attempt deadline"),
                     stackTrace: stackTrace,
@@ -695,13 +711,17 @@ void main() {
       fakeAsync((async) {
         unawaited(
           logSample(
-            client: clientFor(api: _FakeEventApi(results: [_transient])),
+            client: clientFor(events: _FakeEventClient(results: [_transient])),
           ),
         );
 
         async.elapse(const Duration(hours: 1));
 
-        expectDiagnostics(record: logs.records.last, level: LogLevel.error, description: "HTTP 503");
+        expectDiagnostics(
+          record: logs.records.last,
+          level: LogLevel.error,
+          description: 'HTTP 503: {"error":"unavailable"}',
+        );
       });
     });
 
@@ -709,20 +729,24 @@ void main() {
       fakeAsync((async) {
         unawaited(
           logSample(
-            client: clientFor(api: _FakeEventApi(results: [_transient, _delivered])),
+            client: clientFor(events: _FakeEventClient(results: [_transient, _delivered])),
           ),
         );
 
         async.elapse(const Duration(hours: 1));
 
-        expectDiagnostics(record: logs.records.single, level: LogLevel.warning, description: "HTTP 503");
+        expectDiagnostics(
+          record: logs.records.single,
+          level: LogLevel.warning,
+          description: 'HTTP 503: {"error":"unavailable"}',
+        );
       });
     });
   });
 
   test("the installation and activation calls send nothing", () async {
-    final api = _FakeEventApi(results: [_delivered]);
-    final client = clientFor(api: api);
+    final events = _FakeEventClient(results: [_delivered]);
+    final client = clientFor(events: events);
 
     await client.logInstallationEvent(
       event: const InstallationAnalyticsEvent.loginAttemptStarted(provider: AnalyticsLoginProvider.github),
@@ -730,6 +754,6 @@ void main() {
     await client.activateAfterInteractiveAuthentication();
     await pumpEventQueue();
 
-    expect(api.attempts, isEmpty);
+    expect(events.attempts, isEmpty);
   });
 }

@@ -3,7 +3,6 @@ import "dart:io";
 import "package:flutter_test/flutter_test.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_desktop/core/di/injection.dart";
-import "package:sesori_desktop/core/platform/auth_server_analytics_client.dart";
 import "package:sesori_desktop/core/platform/channel_voice_mode_config_source.dart";
 import "package:sesori_desktop/core/platform/desktop_active_bridge_locality.dart";
 import "package:sesori_desktop/core/platform/desktop_composer_image_picker.dart";

@@ -178,29 +178,33 @@ list and modes.
 
 ### Client
 
-Two small classes, because `client/AGENTS.md` forbids `client/desktop` from importing `module_auth` types outside DI
-wiring:
+Three small classes, because `client/AGENTS.md` keeps desktop logic out of `client/desktop`, and forbids it and
+`module_desktop_core` from importing `module_auth` types:
 
-- `ProductAnalyticsEventApi` in `client/module_core/lib/src/api/product_analytics_event_api.dart`, next to and patterned on
-  `product_analytics_preference_api.dart`, with the Freezed request model. It makes one attempt through a new
+- `ProductAnalyticsEventClient` in
+  `client/module_core/lib/src/foundation/transport/product_analytics_event_client.dart`, a Layer 0 `Client` with the
+  Freezed request model. It makes one attempt through a new
   `AuthenticatedHttpApiClient.postForUser`, a copy of `putForUser`, and returns a sealed result: delivered, permanent
   failure or transient failure.
-- `AuthServerAnalyticsClient` in `client/desktop/lib/core/platform/`, replacing `NoOpAnalyticsClient` at the same
-  registration point as the `AnalyticsClient` platform capability. It owns the event mapping, OS, version and retry. It
-  reads the account from `AuthSession`, which `module_core` already exports.
+- `AuthServerAnalyticsClient` in `client/module_desktop_core/lib/src/api/`, replacing `NoOpAnalyticsClient` as the desktop's
+  `AnalyticsClient`. It owns the event allowlist and mapping, version handling, the account decision and retry. It reads the
+  account from `AuthSession`, which `module_core` already exports.
+- `DesktopAppInfoSource` in `client/module_desktop_core/lib/src/foundation/platform/` supplies the OS and app version.
+  `FlutterDesktopAppInfoSource` in `client/desktop/lib/core/platform/` is its dumb adapter.
 
 Behavior:
 
 - `logProductEvent` returns at once. It maps the event, captures the current account from `AuthSession.currentState`,
   and starts sending in `unawaited`. A failure never reaches the caller. Per `AGENTS.md`, its local log keeps the event
-  name, the failure category or HTTP status, and the original error and stack trace where there is one. It leaves out the
-  request body and credentials.
+  name, the failure category or HTTP status with the first 500 characters of any non-2xx response body, and the original
+  error and stack trace where there is one. It leaves out the request body and credentials.
 - `postForUser` refuses to send if the account changed, before any network call. That covers retries after a sign-out
   or account switch without any new state.
 - Each attempt has a 5 second deadline. There are at most 3 attempts, 5 seconds and then 30 seconds apart, on network
   errors, timeouts, `5xx` and `NotAuthenticatedError`. The last one is how a failed token refresh surfaces, so it's the
-  usual failure after waking from sleep, when the 15 minute access token has expired and the network isn't back yet. After
-  a real sign-out those attempts stop locally and send nothing.
+  usual failure after waking from sleep, when the 15 minute access token has expired and the network isn't back yet.
+  Before each retry, and before giving up, the client checks that the captured account is still signed in. If it isn't, it
+  stops and logs at info level, because a sign-out isn't a failure.
 - Retry scheduling ends after about 50 seconds even if the endpoint is dead. `.timeout()` abandons a request instead of
   cancelling it, so a socket can outlive its attempt. That's harmless, because the server ignores the duplicate.
 - No queue, batch, timer or flush hook. Events in flight when the app quits are lost, and so are events during an outage
@@ -214,9 +218,10 @@ Behavior:
   - `voice_transcription_completed` sends `{}`. The warehouse has no `finish` or `mode` column, and a server enum would
     reject the next new mode, as `on_device` was added this week.
   - Everything else sends `event.parameters` unchanged.
-- `platform` comes from a `switch` on `defaultTargetPlatform`. iOS, Android and Fuchsia are unreachable in this shell and
-  send nothing. `appVersion` comes from `PackageInfo.version`, read once, with anything from a `+` onward removed, because
-  no Windows app can be run to confirm its format. If that read fails, the event is dropped and a warning logged.
+- `platform` comes from a `switch` on `defaultTargetPlatform` in the adapter. iOS, Android and Fuchsia are unreachable in
+  this shell and send nothing. `appVersion` comes from `PackageInfo.version`, read once, with anything from a `+` onward
+  removed, because no Windows app can be run to confirm its format. If that read fails, one warning has the error and stack
+  trace, and each dropped event logs a warning naming it.
 - `logInstallationEvent` and `activateAfterInteractiveAuthentication` stay no-ops. Asset 15's login diagnostics therefore
   remain mobile-only, and the `userKey` argument is unused because the server derives it.
 - Sending turns on through the capability: `kReleaseMode ? enabled() : disabled(reason: debugOrProfile)`, the same rule as
@@ -623,9 +628,11 @@ stay, and they are valid. If they ever need removing, use the rescan procedure.
 - **Complexity:** moderate. A new sink, a new auth client method, and retry behavior.
 - **What:**
   - `module_auth/.../authenticated_http_api_client.dart`: `postForUser`.
-  - `client/module_core/lib/src/api/product_analytics_event_api.dart`, its sealed Freezed request model with `toJson`, and
-    its sealed result.
-  - `client/desktop/lib/core/platform/auth_server_analytics_client.dart`, importing no `module_auth` types.
+  - `client/module_core/lib/src/foundation/transport/product_analytics_event_client.dart`, its sealed Freezed request
+    model with `toJson`, and its sealed result.
+  - `client/module_desktop_core/lib/src/api/auth_server_analytics_client.dart`, importing no `module_auth` types.
+  - `client/module_desktop_core/lib/src/foundation/platform/desktop_app_info_source.dart`, and its adapter
+    `client/desktop/lib/core/platform/flutter_desktop_app_info_source.dart`.
   - Deletes `no_op_analytics_client.dart`.
   - `injection_test.dart`: expects the new client, capability still disabled.
 - **Why:** it can be reviewed and merged with no release risk, ahead of the privacy decision.
@@ -638,7 +645,7 @@ stay, and they are valid. If they ever need removing, use the rescan procedure.
   - Platform mapping for all three OSes, with `debugDefaultTargetPlatformOverride`.
   - A `1.11.0+1066` version is sent as `1.11.0`.
   - A `PackageInfo` failure sends nothing and doesn't throw.
-  - `flutter test` and analyze across `client/desktop`, `module_auth` and `module_core`.
+  - Tests and analyze across `client/desktop`, `client/app`, `module_auth`, `module_core` and `module_desktop_core`.
 - **Expected result:** no user-visible or database change.
 
 ### Step 7: turn it on
@@ -813,7 +820,7 @@ no redesign is needed. This revised version was not re-reviewed, because the fix
 | Finding | Outcome |
 | --- | --- |
 | Rated blocking: the Mongo delete may be denied for a separate suppression identity | Downgraded. The owner's 2026-08-08 decision runs suppression under the app's production environment. Kept the doc updates and proof by drill |
-| The client imported `module_auth` types into `client/desktop`, against a project rule | Fixed. The API moved to `module_core` |
+| The client imported `module_auth` types into `client/desktop`, against a project rule | Fixed. The request moved to `module_core`, as `ProductAnalyticsEventClient` after step 6's architecture review |
 | Rolling back the export after step 7 can leave a permanent gap | Fixed. Added a bounded rescan procedure |
 | The QA check in step 7 was wrong, because release probes do sign in to production | Fixed. Replaced with an exclusion check |
 | The privacy gate didn't name the live public notice | Fixed. Added to the gate |

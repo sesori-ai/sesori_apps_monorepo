@@ -3,7 +3,7 @@
 // ignore_for_file: type=lint, type=warning, deprecated_member_use, deprecated_member_use_from_same_package
 // ignore_for_file: unused_element, deprecated_member_use, deprecated_member_use_from_same_package, use_function_type_syntax_for_parameters, unnecessary_const, avoid_init_to_null, invalid_override_different_default_values_named, prefer_expression_function_bodies, annotate_overrides, invalid_annotation_target, unnecessary_question_mark
 
-part of 'product_analytics_event_api.dart';
+part of 'product_analytics_event_client.dart';
 
 // **************************************************************************
 // FreezedGenerator
@@ -174,7 +174,7 @@ as Map<String, String>,
 }
 
 /// @nodoc
-mixin _$ProductAnalyticsEventApiResult {
+mixin _$ProductAnalyticsEventClientResult {
 
 
 
@@ -182,7 +182,7 @@ mixin _$ProductAnalyticsEventApiResult {
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventApiResult);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventClientResult);
 }
 
 
@@ -191,15 +191,15 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-    return 'ProductAnalyticsEventApiResult()';
+    return 'ProductAnalyticsEventClientResult()';
 }
 
 
 }
 
 /// @nodoc
-class $ProductAnalyticsEventApiResultCopyWith<$Res>  {
-$ProductAnalyticsEventApiResultCopyWith(ProductAnalyticsEventApiResult _, $Res Function(ProductAnalyticsEventApiResult) __);
+class $ProductAnalyticsEventClientResultCopyWith<$Res>  {
+$ProductAnalyticsEventClientResultCopyWith(ProductAnalyticsEventClientResult _, $Res Function(ProductAnalyticsEventClientResult) __);
 }
 
 
@@ -207,8 +207,8 @@ $ProductAnalyticsEventApiResultCopyWith(ProductAnalyticsEventApiResult _, $Res F
 /// @nodoc
 
 
-class ProductAnalyticsEventApiDelivered implements ProductAnalyticsEventApiResult {
-  const ProductAnalyticsEventApiDelivered();
+class ProductAnalyticsEventClientDelivered implements ProductAnalyticsEventClientResult {
+  const ProductAnalyticsEventClientDelivered();
   
 
 
@@ -218,7 +218,7 @@ class ProductAnalyticsEventApiDelivered implements ProductAnalyticsEventApiResul
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventApiDelivered);
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventClientDelivered);
 }
 
 
@@ -227,7 +227,7 @@ int get hashCode => runtimeType.hashCode;
 
 @override
 String toString() {
-    return 'ProductAnalyticsEventApiResult.delivered()';
+    return 'ProductAnalyticsEventClientResult.delivered()';
 }
 
 
@@ -239,24 +239,24 @@ String toString() {
 /// @nodoc
 
 
-class ProductAnalyticsEventApiPermanentFailure implements ProductAnalyticsEventApiResult {
-  const ProductAnalyticsEventApiPermanentFailure({required this.description, required this.cause});
+class ProductAnalyticsEventClientPermanentFailure implements ProductAnalyticsEventClientResult {
+  const ProductAnalyticsEventClientPermanentFailure({required this.description, required this.cause});
   
 
  final  String description;
  final  Object? cause;
 
-/// Create a copy of ProductAnalyticsEventApiResult
+/// Create a copy of ProductAnalyticsEventClientResult
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$ProductAnalyticsEventApiPermanentFailureCopyWith<ProductAnalyticsEventApiPermanentFailure> get copyWith => _$ProductAnalyticsEventApiPermanentFailureCopyWithImpl<ProductAnalyticsEventApiPermanentFailure>(this, _$identity);
+$ProductAnalyticsEventClientPermanentFailureCopyWith<ProductAnalyticsEventClientPermanentFailure> get copyWith => _$ProductAnalyticsEventClientPermanentFailureCopyWithImpl<ProductAnalyticsEventClientPermanentFailure>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventApiPermanentFailure&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.cause, cause));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventClientPermanentFailure&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.cause, cause));
 }
 
 
@@ -267,15 +267,15 @@ int get hashCode {
 
 @override
 String toString() {
-    return 'ProductAnalyticsEventApiResult.permanentFailure(description: $description, cause: $cause)';
+    return 'ProductAnalyticsEventClientResult.permanentFailure(description: $description, cause: $cause)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $ProductAnalyticsEventApiPermanentFailureCopyWith<$Res> implements $ProductAnalyticsEventApiResultCopyWith<$Res> {
-  factory $ProductAnalyticsEventApiPermanentFailureCopyWith(ProductAnalyticsEventApiPermanentFailure value, $Res Function(ProductAnalyticsEventApiPermanentFailure) _then) = _$ProductAnalyticsEventApiPermanentFailureCopyWithImpl;
+abstract mixin class $ProductAnalyticsEventClientPermanentFailureCopyWith<$Res> implements $ProductAnalyticsEventClientResultCopyWith<$Res> {
+  factory $ProductAnalyticsEventClientPermanentFailureCopyWith(ProductAnalyticsEventClientPermanentFailure value, $Res Function(ProductAnalyticsEventClientPermanentFailure) _then) = _$ProductAnalyticsEventClientPermanentFailureCopyWithImpl;
 @useResult
 $Res call({
  String description, Object? cause
@@ -286,17 +286,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$ProductAnalyticsEventApiPermanentFailureCopyWithImpl<$Res>
-    implements $ProductAnalyticsEventApiPermanentFailureCopyWith<$Res> {
-  _$ProductAnalyticsEventApiPermanentFailureCopyWithImpl(this._self, this._then);
+class _$ProductAnalyticsEventClientPermanentFailureCopyWithImpl<$Res>
+    implements $ProductAnalyticsEventClientPermanentFailureCopyWith<$Res> {
+  _$ProductAnalyticsEventClientPermanentFailureCopyWithImpl(this._self, this._then);
 
-  final ProductAnalyticsEventApiPermanentFailure _self;
-  final $Res Function(ProductAnalyticsEventApiPermanentFailure) _then;
+  final ProductAnalyticsEventClientPermanentFailure _self;
+  final $Res Function(ProductAnalyticsEventClientPermanentFailure) _then;
 
-/// Create a copy of ProductAnalyticsEventApiResult
+/// Create a copy of ProductAnalyticsEventClientResult
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? description = null,Object? cause = freezed,}) {
-  return _then(ProductAnalyticsEventApiPermanentFailure(
+  return _then(ProductAnalyticsEventClientPermanentFailure(
 description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,cause: freezed == cause ? _self.cause : cause ,
   ));
@@ -308,25 +308,25 @@ as String,cause: freezed == cause ? _self.cause : cause ,
 /// @nodoc
 
 
-class ProductAnalyticsEventApiTransientFailure implements ProductAnalyticsEventApiResult {
-  const ProductAnalyticsEventApiTransientFailure({required this.description, required this.cause, required this.stackTrace});
+class ProductAnalyticsEventClientTransientFailure implements ProductAnalyticsEventClientResult {
+  const ProductAnalyticsEventClientTransientFailure({required this.description, required this.cause, required this.stackTrace});
   
 
  final  String description;
  final  Object? cause;
  final  StackTrace? stackTrace;
 
-/// Create a copy of ProductAnalyticsEventApiResult
+/// Create a copy of ProductAnalyticsEventClientResult
 /// with the given fields replaced by the non-null parameter values.
 @JsonKey(includeFromJson: false, includeToJson: false)
 @pragma('vm:prefer-inline')
-$ProductAnalyticsEventApiTransientFailureCopyWith<ProductAnalyticsEventApiTransientFailure> get copyWith => _$ProductAnalyticsEventApiTransientFailureCopyWithImpl<ProductAnalyticsEventApiTransientFailure>(this, _$identity);
+$ProductAnalyticsEventClientTransientFailureCopyWith<ProductAnalyticsEventClientTransientFailure> get copyWith => _$ProductAnalyticsEventClientTransientFailureCopyWithImpl<ProductAnalyticsEventClientTransientFailure>(this, _$identity);
 
 
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventApiTransientFailure&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.cause, cause)&&(identical(other.stackTrace, stackTrace) || other.stackTrace == stackTrace));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is ProductAnalyticsEventClientTransientFailure&&(identical(other.description, description) || other.description == description)&&const DeepCollectionEquality().equals(other.cause, cause)&&(identical(other.stackTrace, stackTrace) || other.stackTrace == stackTrace));
 }
 
 
@@ -337,15 +337,15 @@ int get hashCode {
 
 @override
 String toString() {
-    return 'ProductAnalyticsEventApiResult.transientFailure(description: $description, cause: $cause, stackTrace: $stackTrace)';
+    return 'ProductAnalyticsEventClientResult.transientFailure(description: $description, cause: $cause, stackTrace: $stackTrace)';
 }
 
 
 }
 
 /// @nodoc
-abstract mixin class $ProductAnalyticsEventApiTransientFailureCopyWith<$Res> implements $ProductAnalyticsEventApiResultCopyWith<$Res> {
-  factory $ProductAnalyticsEventApiTransientFailureCopyWith(ProductAnalyticsEventApiTransientFailure value, $Res Function(ProductAnalyticsEventApiTransientFailure) _then) = _$ProductAnalyticsEventApiTransientFailureCopyWithImpl;
+abstract mixin class $ProductAnalyticsEventClientTransientFailureCopyWith<$Res> implements $ProductAnalyticsEventClientResultCopyWith<$Res> {
+  factory $ProductAnalyticsEventClientTransientFailureCopyWith(ProductAnalyticsEventClientTransientFailure value, $Res Function(ProductAnalyticsEventClientTransientFailure) _then) = _$ProductAnalyticsEventClientTransientFailureCopyWithImpl;
 @useResult
 $Res call({
  String description, Object? cause, StackTrace? stackTrace
@@ -356,17 +356,17 @@ $Res call({
 
 }
 /// @nodoc
-class _$ProductAnalyticsEventApiTransientFailureCopyWithImpl<$Res>
-    implements $ProductAnalyticsEventApiTransientFailureCopyWith<$Res> {
-  _$ProductAnalyticsEventApiTransientFailureCopyWithImpl(this._self, this._then);
+class _$ProductAnalyticsEventClientTransientFailureCopyWithImpl<$Res>
+    implements $ProductAnalyticsEventClientTransientFailureCopyWith<$Res> {
+  _$ProductAnalyticsEventClientTransientFailureCopyWithImpl(this._self, this._then);
 
-  final ProductAnalyticsEventApiTransientFailure _self;
-  final $Res Function(ProductAnalyticsEventApiTransientFailure) _then;
+  final ProductAnalyticsEventClientTransientFailure _self;
+  final $Res Function(ProductAnalyticsEventClientTransientFailure) _then;
 
-/// Create a copy of ProductAnalyticsEventApiResult
+/// Create a copy of ProductAnalyticsEventClientResult
 /// with the given fields replaced by the non-null parameter values.
 @pragma('vm:prefer-inline') $Res call({Object? description = null,Object? cause = freezed,Object? stackTrace = freezed,}) {
-  return _then(ProductAnalyticsEventApiTransientFailure(
+  return _then(ProductAnalyticsEventClientTransientFailure(
 description: null == description ? _self.description : description // ignore: cast_nullable_to_non_nullable
 as String,cause: freezed == cause ? _self.cause : cause ,stackTrace: freezed == stackTrace ? _self.stackTrace : stackTrace // ignore: cast_nullable_to_non_nullable
 as StackTrace?,

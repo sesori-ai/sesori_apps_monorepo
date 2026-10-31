@@ -40,8 +40,6 @@ import 'package:sesori_dart_core/src/api/on_device_speech_api.dart' as _i736;
 import 'package:sesori_dart_core/src/api/permission_api.dart' as _i232;
 import 'package:sesori_dart_core/src/api/plugin_api.dart' as _i546;
 import 'package:sesori_dart_core/src/api/plugin_preference_api.dart' as _i958;
-import 'package:sesori_dart_core/src/api/product_analytics_event_api.dart'
-    as _i221;
 import 'package:sesori_dart_core/src/api/product_analytics_preference_api.dart'
     as _i560;
 import 'package:sesori_dart_core/src/api/project_api.dart' as _i734;
@@ -106,6 +104,8 @@ import 'package:sesori_dart_core/src/foundation/platform/temporary_directory_pro
     as _i800;
 import 'package:sesori_dart_core/src/foundation/platform/voice_mode_config_source.dart'
     as _i172;
+import 'package:sesori_dart_core/src/foundation/transport/product_analytics_event_client.dart'
+    as _i216;
 import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/api/legacy_native_storage_migration_api.dart'
     as _i691;
 import 'package:sesori_dart_core/src/migrations/deprecated_native_storage_v1/foundation/platform/legacy_native_storage.dart'
@@ -329,13 +329,13 @@ extension GetItInjectableX on _i174.GetIt {
         client: gh<_i442.AuthenticatedHttpApiClient>(),
       ),
     );
-    gh.lazySingleton<_i221.ProductAnalyticsEventApi>(
-      () => _i221.ProductAnalyticsEventApi(
+    gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
+      () => _i560.ProductAnalyticsPreferenceApi(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
       ),
     );
-    gh.lazySingleton<_i560.ProductAnalyticsPreferenceApi>(
-      () => _i560.ProductAnalyticsPreferenceApi(
+    gh.lazySingleton<_i216.ProductAnalyticsEventClient>(
+      () => _i216.ProductAnalyticsEventClient(
         client: gh<_i442.AuthenticatedHttpApiClient>(),
       ),
     );
