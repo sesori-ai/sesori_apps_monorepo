@@ -145,8 +145,9 @@ and `stable` records first.
   on the words' own clock, so they keep their length under iOS Reduce Motion and Android's Remove animations alike.
 - A sent dictation's words glide to its bubble, in session detail and in a new session's launch view. The bubble is built
   hidden, the list rises for its row as the words come down, and the bubble shows under the words once they have landed
-  on it, so there is one copy throughout. If no bubble is built within five frames, the words glide to where it would
-  have been, right-aligned above the composer, and fade. If the screen goes mid-glide, they go with it.
+  on it, so there is one copy throughout; as they fade they stay on it, if the working row is lifting it by then. If no
+  bubble is built within five frames, the words glide to where it will rest, right-aligned above the composer and above
+  the working row a message to an idle session brings, and fade. If the screen goes mid-glide, they go with it.
 - Live words that land in the box (the pencil or a cut-off) glide to the field, which holds its text back
   until they arrive. A dictation with nothing to land in, or under reduced motion, fades where it stands.
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,

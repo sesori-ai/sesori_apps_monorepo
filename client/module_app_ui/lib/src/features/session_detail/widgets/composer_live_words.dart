@@ -13,6 +13,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/markdown_styles.dart";
 import "sent_bubble_landing.dart";
+import "transcript_live_row.dart";
 import "user_message_card.dart";
 
 /// The words of a live dictation, in a layer of their own over the screen.
@@ -34,6 +35,10 @@ class const ComposerLiveWords({
   /// Where words that aren't sent land.
   required final ComposerWordsBox box,
   required final TextStyle boxStyle,
+
+  /// Whether the session is working. Words sent to an idle one wake it, and its
+  /// working row comes in under them.
+  required final bool isBusy,
   required final Widget child,
 }) extends StatefulWidget {
   @override
@@ -308,7 +313,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     });
     _presence.reverse();
     if (landing.isExpecting) {
-      _awaitBubble(landing: landing, frames: _bubbleFrames, transcript: transcript);
+      _awaitBubble(landing: landing, frames: _bubbleFrames, transcript: transcript, wakesSession: !widget.isBusy);
     } else {
       widget.box._hold(held: true);
       SchedulerBinding.instance.addPostFrameCallback((_) => _glideToBox());
@@ -322,18 +327,25 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     return MatrixUtils.transformRect(words.getTransformTo(overlay), Offset.zero & words.size);
   }
 
-  void _awaitBubble({required SentBubbleLandingController landing, required int frames, required String transcript}) {
+  void _awaitBubble({
+    required SentBubbleLandingController landing,
+    required int frames,
+    required String transcript,
+    required bool wakesSession,
+  }) {
     SchedulerBinding.instance.addPostFrameCallback((_) {
       if (!mounted || _layer is! _Gliding) return;
       final text = landing.heldText;
       if (text != null) {
         _startGlide(destination: _Bubble(text: text));
       } else if (frames > 1) {
-        _awaitBubble(landing: landing, frames: frames - 1, transcript: transcript);
+        _awaitBubble(landing: landing, frames: frames - 1, transcript: transcript, wakesSession: wakesSession);
         SchedulerBinding.instance.scheduleFrame();
       } else {
         landing.handOver();
-        _startGlide(destination: _estimatedSlot(transcript: transcript));
+        _startGlide(
+          destination: _estimatedSlot(transcript: transcript, wakesSession: wakesSession),
+        );
       }
     });
   }
@@ -366,7 +378,10 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   }
 
   void _handleGlideTick() {
-    if (_glide.value >= _handOverAt) _handOver();
+    if (_glide.value >= _handOverAt) {
+      if (_layer case _Gliding(:final landing)) landing.showBubble();
+      widget.box._hold(held: false);
+    }
     // Runs the layer's builder again, which reads where the destination is now.
     // It lays out ahead of the list, so it follows a moving row a frame behind.
     setState(() {});
@@ -386,8 +401,10 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
 
   /// Right-aligned above the composer, where the bubble goes when the list is at
   /// its end. The [transcript], with the marker a bubble adds, is what there is to
-  /// size it by.
-  _Destination _estimatedSlot({required String transcript}) {
+  /// size it by. A message that [wakesSession] comes to rest above the working row
+  /// it brings, wherever that row has got to by now: words aimed there meet the
+  /// bubble as it rises, where words aimed below would be left behind.
+  _Destination _estimatedSlot({required String transcript, required bool wakesSession}) {
     final layer = _layer;
     final composer = _composerRect;
     if (layer is! _Gliding || composer == null) return const _InPlace();
@@ -399,7 +416,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       textScaler: MediaQuery.textScalerOf(context),
     )..layout(maxWidth: UserMessageBubble.maxContentWidth(rowWidth: composer.width + sideInset * 2));
     final right = composer.right + sideInset - UserMessageBubble.margin.right;
-    final bottom = composer.top - _estimatedSlotGap;
+    final bottom =
+        composer.top - _estimatedSlotGap - (wakesSession ? TranscriptWorkingRow.heightAsFirstRow(context: context) : 0);
     final rect = Rect.fromLTRB(
       right - painter.width - UserMessageBubble.padding * 2,
       bottom - painter.height - UserMessageBubble.padding * 2,

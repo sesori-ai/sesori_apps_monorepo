@@ -412,7 +412,7 @@ void main() {
       for (final (length, text) in const [("few words", "spoken words"), ("words that wrap", longWords)]) {
         for (final from in const [2500.0, 20000.0]) {
           testWidgets("$length sent from $from up end on the bubble that comes", (tester) async {
-            await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: from);
+            final moveSendOn = await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: from);
             final gesture = await hold(
               tester: tester,
               words: LiveWords(confirmed: text, provisional: ""),
@@ -420,13 +420,17 @@ void main() {
             await gesture.up();
             await tester.pump();
 
-            await expectToLandOnTheBubbleThatComes(tester: tester, text: text);
+            await expectToLandOnTheBubbleThatComes(
+              tester: tester,
+              text: text,
+              onTheWay: () => moveSendOn(_woken),
+            );
           });
         }
 
         for (final scale in const [1.3, 2.0]) {
           testWidgets("$length sent at text x$scale end on the bubble that comes", (tester) async {
-            await _pumpSessionScreen(
+            final moveSendOn = await _pumpSessionScreen(
               tester: tester,
               voiceCubit: voiceCubit,
               scrolledUp: 2500,
@@ -439,13 +443,17 @@ void main() {
             await gesture.up();
             await tester.pump();
 
-            await expectToLandOnTheBubbleThatComes(tester: tester, text: text);
+            await expectToLandOnTheBubbleThatComes(
+              tester: tester,
+              text: text,
+              onTheWay: () => moveSendOn(_woken),
+            );
           });
         }
 
         for (final width in const [800.0, 1300.0, 1800.0]) {
           testWidgets("$length sent in a pane $width wide end on the bubble that comes", (tester) async {
-            await _pumpSessionScreen(
+            final moveSendOn = await _pumpSessionScreen(
               tester: tester,
               voiceCubit: voiceCubit,
               scrolledUp: 2500,
@@ -468,7 +476,11 @@ void main() {
             await tester.tap(find.byType(PregoVoiceSendButton));
             await tester.pump();
 
-            await expectToLandOnTheBubbleThatComes(tester: tester, text: text);
+            await expectToLandOnTheBubbleThatComes(
+              tester: tester,
+              text: text,
+              onTheWay: () => moveSendOn(_woken),
+            );
           });
         }
       }
@@ -511,10 +523,44 @@ void main() {
         await expectToLandOnTheBubbleThatComes(
           tester: tester,
           text: "spoken words",
-          onTheWay: () => moveSendOn(_delivered),
+          onTheWay: () => moveSendOn((sent) => _woken(_delivered(sent))),
         );
         expect(find.byType(QueuedMessageBubble), findsNothing);
       });
+
+      for (final (place, from) in const [("at the end", 0.0), ("a little way up", 300.0)]) {
+        testWidgets("words sent $place stay on the bubble as they fade, while the working row lifts it", (
+          tester,
+        ) async {
+          final moveSendOn = await _pumpSessionScreen(tester: tester, voiceCubit: voiceCubit, scrolledUp: from);
+          final gesture = await hold(tester: tester);
+          await gesture.up();
+          await tester.pump();
+          await complete(tester: tester, transcript: "spoken words");
+          // Far enough on that the bubble shows under the words before it has risen.
+          for (var frame = 0; frame < 18; frame++) {
+            await tester.pump(_frame);
+          }
+          moveSendOn(_woken);
+
+          var compared = 0;
+          while (_glide.evaluate().isNotEmpty) {
+            await tester.pump(_frame);
+            if (_glide.evaluate().isEmpty) break;
+            final surface = UserMessageBubble.margin.deflateRect(
+              find
+                  .byType(SentBubbleSlot)
+                  .evaluate()
+                  .map((slot) => tester.getRect(find.byElementPredicate((element) => element == slot)))
+                  .reduce((lowest, rect) => rect.bottom > lowest.bottom ? rect : lowest),
+            );
+            // They follow it a frame behind, and it rises at most 8 px a frame.
+            expect((tester.getRect(_glide).bottom - surface.bottom).abs(), lessThan(9));
+            compared++;
+          }
+          expect(compared, greaterThan(3));
+        });
+      }
 
       testWidgets("words sent in a busy session end where its queued row rests, and it rises at two seconds", (
         tester,
@@ -896,6 +942,10 @@ Future<_ScreenState> _pumpScreen({
 }
 
 /// The state once the message of the send has come back.
+/// The session waking for the message sent to it.
+SessionDetailLoaded _woken(SessionDetailLoaded sent) =>
+    sent.copyWith(sessionStatus: const SessionStatus.busy(since: 1));
+
 SessionDetailLoaded _delivered(SessionDetailLoaded sent) {
   final localSend = sent.localSend;
   if (localSend is! LocalSendSending) throw StateError("Nothing is being sent");
