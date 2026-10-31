@@ -1235,6 +1235,20 @@ class _PromptInputState() extends State<PromptInput> {
   static const Duration _morphDuration = Duration(milliseconds: 220);
   static const Curve _morphCurve = Curves.easeOutCubic;
   static const Interval _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
+  static const Curve _heldLeaveCurve = FlippedCurve(_morphCurve);
+
+  /// The latest hold's fade in, which its hint's transition reports.
+  Animation<double>? _holdFade;
+
+  /// The hint and the waveform dissolve in on a press, then leave on the house
+  /// curve so what rests beneath them can come back into a clear space. An
+  /// [AnimatedSwitcher] entry keeps the curves of the build that made it, and one
+  /// turned back mid-fade retraces its way in, so a quick tap never jumps.
+  Curve get _heldOutCurve => _voicePresentation == _VoicePresentation.recording ? _heldLeaveCurve : Curves.linear;
+
+  /// How what rests beneath a hold comes back: after the hint has mostly gone,
+  /// unless a quick tap turned the press back, when waiting would blink empty.
+  Curve get _restingInCurve => (_holdFade?.isCompleted ?? false) ? _trailingReturnCurve : Curves.linear;
 
   /// [AnimatedSwitcher.defaultTransitionBuilder] keys a fade by its child's key,
   /// and the switcher drops an outgoing fade sharing the incoming one's key, so a
@@ -1566,7 +1580,10 @@ class _PromptInputState() extends State<PromptInput> {
       clipBehavior: hintWidth == null ? Clip.hardEdge : Clip.none,
       child: AnimatedSwitcher(
         duration: _morphDuration,
+        switchInCurve: _restingInCurve,
+        switchOutCurve: _heldOutCurve,
         transitionBuilder: (transitionChild, animation) {
+          if (transitionChild.key == const ValueKey("release-hint")) _holdFade = animation;
           // Only the staged chip bears glass. Picker/voice/retry content keeps
           // its ordinary fade, including while the outgoing chip dematerializes.
           if (transitionChild.key == const ValueKey("staged-command")) {
@@ -1874,7 +1891,12 @@ class _PromptInputState() extends State<PromptInput> {
           curve: _morphCurve,
           padding: EdgeInsetsDirectional.only(end: extraTrailingWidth),
           child: Center(
-            child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
+            child: AnimatedSwitcher(
+              duration: _morphDuration,
+              switchInCurve: _restingInCurve,
+              transitionBuilder: _fadeEachEntry,
+              child: child,
+            ),
           ),
         ),
       ),
@@ -2662,7 +2684,13 @@ class _PromptInputState() extends State<PromptInput> {
 
     return SizedBox(
       height: height,
-      child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
+      child: AnimatedSwitcher(
+        duration: _morphDuration,
+        switchInCurve: _restingInCurve,
+        switchOutCurve: _heldOutCurve,
+        transitionBuilder: _fadeEachEntry,
+        child: child,
+      ),
     );
   }
 
