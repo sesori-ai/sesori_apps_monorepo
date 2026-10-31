@@ -99,7 +99,8 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   are the result, and a bright word can still change.
 - A word the server changes keeps its place. It eases dim again, as do the words after it, and each waits out its second
   again; words before it are untouched. A word gaining only its spacing hasn't changed, nor has one the server confirms
-  partway through. A word that keeps changing stays dim. None of this moves or rewraps the text, and each word leaves on a glide as bright as it stood.
+  partway through. A word that keeps changing stays dim. None of this moves or rewraps the text, and each word leaves
+  on a glide as bright as it stood.
 - Sliding up to cancel fades the words with the finger, to 40% at the arm line, and coming back restores them. A cancel
   fades them with a 12 px drop. Reduced motion removes the movement, and word fades and
   brightening become instant.
