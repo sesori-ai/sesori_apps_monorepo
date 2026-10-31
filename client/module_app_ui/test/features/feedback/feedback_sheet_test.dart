@@ -75,6 +75,7 @@ void main() {
     final levels = StreamController<double>.broadcast();
     addTearDown(levels.close);
     when(() => voiceService.amplitudeStream(session: any(named: "session"))).thenAnswer((_) => levels.stream);
+    when(() => voiceService.isLive(session: any(named: "session"))).thenReturn(false);
     when(() => voiceService.prewarm(session: any(named: "session"))).thenAnswer((_) async {});
     when(() => voiceService.start(session: any(named: "session"))).thenAnswer((_) async {});
     when(() => voiceService.cancel(session: any(named: "session"))).thenAnswer((_) async {});

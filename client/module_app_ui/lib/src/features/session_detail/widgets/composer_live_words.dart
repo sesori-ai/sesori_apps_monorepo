@@ -12,7 +12,6 @@ import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
 import "../../../widgets/markdown_styles.dart";
-import "../composer_presentation_scope.dart";
 import "sent_bubble_landing.dart";
 import "user_message_card.dart";
 
@@ -21,16 +20,16 @@ import "user_message_card.dart";
 /// so the hold on the pill carries on undisturbed.
 ///
 /// [child] is the composer's body, the part of the composer the layer stays clear
-/// of. Which presentation shows comes from the dictation's own state.
+/// of.
 class const ComposerLiveWords({
   super.key,
 
   /// How far the hold has slid out of the pill. Fades the words with the finger.
   required final ValueListenable<double> cancelProgress,
 
-  /// What a release does. The focus dim covers the composer's own hint, so the
-  /// layer draws this one in its place. The panel only keeps clear of it.
-  required final Widget hint,
+  /// How much of the room above the body the composer's release hint takes. The
+  /// words keep clear of it, and stay put when it goes.
+  required final double hintHeight,
 
   /// Where words that aren't sent land.
   required final ComposerWordsBox box,
@@ -51,17 +50,15 @@ final class const _Hidden() extends _Layer;
 
 final class const _Live({
   required final LiveWords words,
-  required final VoiceLivePresentation presentation,
 
-  /// The user has released: the words stop being tentative and the hint goes.
+  /// The user has released: the words stop being tentative.
   required final bool finishing,
 }) extends _Layer;
 
 /// Fading out, showing the [last] words. Only a cancel drops them as they go.
 final class const _Leaving({required final _Live last, required final bool cancelled}) extends _Layer;
 
-/// On their way from where they stood, [from], to the [destination]. Only the
-/// words travel: the dim and the hint go as they do when the words fade.
+/// On their way from where they stood, [from], to the [destination].
 final class _Gliding({
   required final _Live last,
   required final Rect from,
@@ -139,7 +136,7 @@ class const ComposerWordsBoxSlot({super.key, required final ComposerWordsBox box
 }
 
 class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProviderStateMixin {
-  /// How long the layer takes to come in, dim and all, and to go.
+  /// How long the layer takes to come in and to go.
   static const _enterDuration = Duration(milliseconds: 260);
   static const _exitDuration = Duration(milliseconds: 240);
 
@@ -154,9 +151,6 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
 
   /// Words dimmed by a slide coming back when the release finishes the dictation.
   static const _slideBackDuration = Duration(milliseconds: 180);
-  static const _hintFadeDuration = Duration(milliseconds: 150);
-
-  static const double _dimOpacity = 1;
 
   /// Between the words and whatever sits under them.
   static const double _wordsGap = PregoSpacing.md;
@@ -175,7 +169,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   static const _handOverDuration = Duration(milliseconds: 90);
   static final double _handOverAt = _glideDuration.inMicroseconds / (_glideDuration + _handOverDuration).inMicroseconds;
 
-  /// How far along its travel the text takes its final face and wrap.
+  /// How far along its travel the text takes its final style and wrap.
   static const double _rewrapAt = 0.5;
 
   /// How many frames a sent bubble gets to be built before the words stop
@@ -235,13 +229,13 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
 
   void _handleVoiceState({required VoiceInputState state}) {
     switch (state) {
-      case VoiceInputLiveRecording(:final words, :final presentation):
+      case VoiceInputLiveRecording(:final words):
         _showLive(
-          live: _Live(words: words, presentation: presentation, finishing: false),
+          live: _Live(words: words, finishing: false),
         );
-      case VoiceInputLiveFinishing(:final words, :final presentation):
+      case VoiceInputLiveFinishing(:final words):
         _showLive(
-          live: _Live(words: words, presentation: presentation, finishing: true),
+          live: _Live(words: words, finishing: true),
         );
       case VoiceInputCancelling():
         _leave(cancelled: true);
@@ -265,9 +259,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     // Another hold starting this soon doesn't wait for the last words to arrive.
     if (_layer is _Gliding) _endGlide();
     setState(() => _layer = live);
-    // Focus clears the screen as soon as the dictation starts; the panel has
-    // nothing to show until there are words.
-    if (live.presentation == VoiceLivePresentation.panel && live.words.text.isEmpty) return;
+    // The panel has nothing to show until there are words.
+    if (live.words.text.isEmpty) return;
     if (!_portal.isShowing) _portal.show();
     _presence.forward();
   }
@@ -443,8 +436,6 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
 
     final measured = MatrixUtils.transformRect(info.childPaintTransform, Offset.zero & info.childSize);
     final composer = layer is _Live ? (_composerRect = measured) : _composerRect ?? measured;
-    final pane = _paneRect(context: context, overlaySize: info.overlaySize);
-    final focus = live.presentation == VoiceLivePresentation.focus;
     final overlay = info.overlaySize;
 
     return IgnorePointer(
@@ -453,97 +444,47 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       child: ExcludeSemantics(
         child: Stack(
           children: [
-            if (focus)
-              Positioned.fromRect(
-                key: composerLiveWordsDimKey,
-                rect: pane,
-                child: FadeTransition(
-                  opacity: _presenceCurve,
-                  child: CustomPaint(
-                    painter: _FocusDimPainter(
-                      color: _paneBackground(context: context).withValues(alpha: _dimOpacity),
-                      composer: composer.shift(-pane.topLeft),
-                    ),
-                  ),
+            if (layer is _Gliding)
+              _buildGlide(layer: layer)
+            else
+              Positioned(
+                left: composer.left,
+                right: overlay.width - composer.right,
+                top: math.max(_paneTop(context: context), MediaQuery.paddingOf(context).top) + _wordsGap,
+                bottom: overlay.height - composer.top + _hintBaseline + widget.hintHeight + _wordsGap,
+                child: Align(
+                  alignment: AlignmentDirectional.bottomStart,
+                  child: _buildWords(context: context, live: live),
                 ),
               ),
-            Positioned(
-              left: composer.left,
-              right: overlay.width - composer.right,
-              top: math.max(pane.top, MediaQuery.paddingOf(context).top) + _wordsGap,
-              bottom: overlay.height - composer.top + _hintBaseline,
-              child: Column(
-                children: [
-                  Expanded(
-                    child: Align(
-                      alignment: AlignmentDirectional.bottomStart,
-                      child: layer is _Gliding ? const SizedBox.shrink() : _buildWords(context: context, live: live),
-                    ),
-                  ),
-                  const SizedBox(height: _wordsGap),
-                  // Laid out in both presentations, so the words sit above the
-                  // hint's place without measuring it, and stay put when it goes.
-                  FadeTransition(
-                    opacity: _presenceCurve,
-                    child: AnimatedOpacity(
-                      opacity: focus && layer is _Live && !live.finishing ? 1 : 0,
-                      duration: _hintFadeDuration,
-                      child: widget.hint,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (layer is _Gliding) _buildGlide(layer: layer),
           ],
         ),
       ),
     );
   }
 
-  /// The nearest [Scaffold] within the overlay, which is the chat pane. On a
-  /// touch shell that is the one `PregoGlassScaffold` wraps its page in, so
-  /// removing that wrapper would make the dim cover the sidebar on a wide layout.
-  Rect _paneRect({required BuildContext context, required Size overlaySize}) {
-    final whole = Offset.zero & overlaySize;
+  /// The top of the nearest [Scaffold] within the overlay, which is the chat pane.
+  /// On a touch shell that is the one `PregoGlassScaffold` wraps its page in.
+  double _paneTop({required BuildContext context}) {
     final pane = Scaffold.of(context).context.findRenderObject();
     final overlay = Overlay.of(context).context.findRenderObject();
-    if (pane is! RenderBox || overlay == null) return whole;
-    return MatrixUtils.transformRect(pane.getTransformTo(overlay), Offset.zero & pane.size).intersect(whole);
+    if (pane is! RenderBox || overlay == null) return 0;
+    return math.max(MatrixUtils.transformPoint(pane.getTransformTo(overlay), Offset.zero).dy, 0);
   }
 
-  Color _paneBackground({required BuildContext context}) =>
-      Scaffold.of(context).widget.backgroundColor ?? Theme.of(context).scaffoldBackgroundColor;
-
-  /// How live words look. A focus has no surface; its look starts from a clear
-  /// copy of the bubble's, so that one fades in with no other change.
-  _WordsLook _liveLook({required VoiceLivePresentation presentation}) {
+  /// How live words look. The card stays solid so the slide never lets the chat
+  /// show through words.
+  _WordsLook _liveLook() {
     final prego = context.prego;
-    final desktop = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
-    return switch (presentation) {
-      VoiceLivePresentation.focus => (
-        style: prego.textTheme.displayXs.medium.copyWith(
-          fontSize: desktop ? 25 : 23,
-          height: 1.32,
-          color: prego.colors.textPrimary,
-        ),
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.md),
-        decoration: BoxDecoration(
-          color: prego.colors.bgSurface2.withValues(alpha: 0),
-          borderRadius: BorderRadius.circular(UserMessageBubble.radius),
-        ),
-      ),
-      // The card stays solid so the slide never lets the chat show through words.
-      VoiceLivePresentation.panel => (
-        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
-        padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
-        decoration: pregoComposerSurfaceDecoration(
-          prego: prego,
-          style: PregoComposerSurfaceStyle.emphasized,
-          borderRadius: BorderRadius.circular(_panelRadius),
-        ).copyWith(boxShadow: prego.shadows.lg),
-      ),
-    };
+    return (
+      style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textPrimary),
+      padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.lg, vertical: PregoSpacing.md),
+      decoration: pregoComposerSurfaceDecoration(
+        prego: prego,
+        style: PregoComposerSurfaceStyle.emphasized,
+        borderRadius: BorderRadius.circular(_panelRadius),
+      ).copyWith(boxShadow: prego.shadows.lg),
+    );
   }
 
   /// The bubble's surface, and its Markdown body's paragraph.
@@ -561,7 +502,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
 
   Widget _buildGlide({required _Gliding layer}) {
     final last = layer.last;
-    final start = _liveLook(presentation: last.presentation);
+    final start = _liveLook();
     final overlay = Overlay.of(context).context.findRenderObject();
     final (_WordsLook end, Rect? target) = switch (layer.destination) {
       _Undecided() || _InPlace() => (start, layer.from),
@@ -580,16 +521,14 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
 
     final flight = math.min(_glide.value / _handOverAt, 1.0);
     final t = _glideCurve.transform(flight);
-    // Two weights are two font files with nothing between them, so a lerped weight
-    // stays on the heavier face until its very last frame and the text pops narrower
-    // as it lands. The face and the wrap change once instead, while the words move
-    // fastest; from there the final paragraph only scales, and can't wrap again.
+    // The style and the wrap change once, while the words move fastest; from there
+    // the final paragraph only scales, and can't wrap again as it lands.
     final rewrapped = t >= _rewrapAt;
     final fontSize = lerpDouble(start.style.fontSize, end.style.fontSize, t);
     final endFontSize = end.style.fontSize;
     final TextStyle style = rewrapped
         ? end.style.copyWith(color: Color.lerp(start.style.color, end.style.color, t))
-        : (TextStyle.lerp(start.style, end.style, t) ?? end.style).copyWith(fontWeight: start.style.fontWeight);
+        : TextStyle.lerp(start.style, end.style, t) ?? end.style;
     final double opacity = switch (layer.destination) {
       _Undecided() => 1,
       _Bubble() || _Box() => 1 - (_glide.value - _handOverAt) / (1 - _handOverAt),
@@ -727,16 +666,13 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   }
 
   Widget _buildWords({required BuildContext context, required _Live live}) {
-    final look = _liveLook(presentation: live.presentation);
+    final look = _liveLook();
     final text = _buildFadingWithSlide(
       child: LiveWordsText(
         key: _liveTextKey,
         words: live.words,
         settled: live.finishing,
-        maxLines: switch (live.presentation) {
-          VoiceLivePresentation.focus => null,
-          VoiceLivePresentation.panel => _panelLines,
-        },
+        maxLines: _panelLines,
         style: look.style,
       ),
     );
@@ -755,8 +691,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
         final away = 1 - _presenceCurve.value;
         final double travel = switch (_layer) {
           _Leaving(cancelled: true) => _cancelDrop,
-          _Live(presentation: VoiceLivePresentation.panel) => _panelRise,
-          _Hidden() || _Leaving() || _Live() || _Gliding() => 0,
+          _Live() => _panelRise,
+          _Hidden() || _Leaving() || _Gliding() => 0,
         };
         return Transform.translate(
           offset: Offset(0, reducedMotion ? 0 : travel * away),
@@ -789,28 +725,6 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     );
   }
 }
-
-/// Dims the pane under the words, all but the column down from the composer's
-/// body. The pill stays in full view there, and the composer's own halo already
-/// hides whatever would pass behind it.
-class const _FocusDimPainter({required final Color color, required final Rect composer}) extends CustomPainter {
-  @override
-  void paint(Canvas canvas, Size size) {
-    final pane = Offset.zero & size;
-    final path = Path()
-      ..fillType = PathFillType.evenOdd
-      ..addRect(pane)
-      ..addRect(Rect.fromLTRB(composer.left, composer.top, composer.right, size.height).intersect(pane));
-    canvas.drawPath(path, Paint()..color = color);
-  }
-
-  @override
-  bool shouldRepaint(_FocusDimPainter oldDelegate) => oldDelegate.color != color || oldDelegate.composer != composer;
-}
-
-/// Finds the focus dim, for a test to measure.
-@visibleForTesting
-const composerLiveWordsDimKey = Key("composer_live_words_dim");
 
 /// Finds the words on their way to where they land, for a test to measure.
 @visibleForTesting
@@ -884,9 +798,8 @@ class const LiveWordsText({
   /// Treats the tentative words as final: they brighten where they stand.
   required final bool settled,
 
-  /// How many lines show before the oldest fade away; null fills the height
-  /// given.
-  required final int? maxLines,
+  /// How many lines show before the oldest fade away.
+  required final int maxLines,
   required final TextStyle style,
 }) extends StatefulWidget {
   @override
@@ -1111,8 +1024,7 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
     return LayoutBuilder(
       builder: (context, constraints) {
         final (:words, :line) = _measure(width: constraints.maxWidth);
-        final maxLines = widget.maxLines;
-        final room = maxLines == null ? constraints.maxHeight : math.min(constraints.maxHeight, line * maxLines);
+        final room = math.min(constraints.maxHeight, line * widget.maxLines);
 
         // One value carries the rise: how much of the words' height shows. A new
         // line starts below the clip and comes up as the lines above it do.

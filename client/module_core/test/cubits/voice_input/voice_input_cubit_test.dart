@@ -24,6 +24,7 @@ void main() {
     when(() => service.amplitudeStream(session: session)).thenAnswer((_) => const Stream<double>.empty());
     when(() => service.maxDurationReachedStream(session: session)).thenAnswer((_) => maxDurationController.stream);
     when(() => service.liveEventStream(session: session)).thenAnswer((_) => liveEvents.stream);
+    when(() => service.isLive(session: session)).thenReturn(false);
     when(() => service.prewarm(session: session)).thenAnswer((_) async {});
     when(() => service.start(session: session)).thenAnswer((_) async {});
     when(() => service.stopAndTranscribe(session: session))
@@ -258,15 +259,13 @@ void main() {
   );
 
   group("live", () {
-    const panel = VoiceLivePresentation.panel;
     const hello = LiveWords(confirmed: "hello ", provisional: "wor");
 
     setUp(() {
-      when(() => service.livePresentation(session: session)).thenReturn(panel);
+      when(() => service.isLive(session: session)).thenReturn(true);
     });
 
-    VoiceInputState liveRecording({LiveWords words = LiveWords.none}) =>
-        VoiceInputState.liveRecording(words: words, presentation: panel);
+    VoiceInputState liveRecording({LiveWords words = LiveWords.none}) => VoiceInputState.liveRecording(words: words);
 
     VoiceDictationResult liveResult({required String transcript, required VoiceDictationOutcome outcome}) =>
         VoiceDictationResult(transcript: transcript, outcome: outcome, mode: VoiceDictationMode.live);
@@ -288,7 +287,7 @@ void main() {
         const VoiceInputState.starting(),
         liveRecording(),
         liveRecording(words: hello),
-        const VoiceInputState.liveFinishing(words: hello, presentation: panel),
+        const VoiceInputState.liveFinishing(words: hello),
         const VoiceInputState.completed(
           transcript: "hello world",
           outcome: VoiceDictationOutcome.finished,
@@ -307,7 +306,7 @@ void main() {
 
       liveEvents.add(const VoiceLiveWordsChanged(words: hello));
 
-      expect(cubit.state, const VoiceInputState.liveFinishing(words: hello, presentation: panel));
+      expect(cubit.state, const VoiceInputState.liveFinishing(words: hello));
       finishing.complete(liveResult(transcript: "hello", outcome: VoiceDictationOutcome.finished));
       await stop;
     });
@@ -329,7 +328,7 @@ void main() {
         expect: () => [
           const VoiceInputState.starting(),
           liveRecording(),
-          const VoiceInputState.liveFinishing(words: LiveWords.none, presentation: panel),
+          const VoiceInputState.liveFinishing(words: LiveWords.none),
           VoiceInputState.transcriptionFailed(error: error),
         ],
         verify: (_) => verifyNever(() => service.retry(session: session)),
@@ -353,7 +352,7 @@ void main() {
       expect: () => [
         const VoiceInputState.starting(),
         liveRecording(),
-        const VoiceInputState.liveFinishing(words: LiveWords.none, presentation: panel),
+        const VoiceInputState.liveFinishing(words: LiveWords.none),
         const VoiceInputState.completed(
           transcript: "words",
           outcome: VoiceDictationOutcome.limitReached,
@@ -474,7 +473,7 @@ void main() {
     blocTest<VoiceInputCubit, VoiceInputState>(
       "a hold that the service ran as a recording shows as one",
       setUp: () {
-        when(() => service.livePresentation(session: session)).thenReturn(null);
+        when(() => service.isLive(session: session)).thenReturn(false);
       },
       build: () => VoiceInputCubit(service: service, session: session),
       act: (cubit) => cubit.startRecording(),

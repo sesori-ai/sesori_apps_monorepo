@@ -14,15 +14,15 @@ void main() {
     source = ChannelVoiceModeConfigSource(bundleSource: bundleSource);
   });
 
-  test("internal builds run live, with the default presentation", () async {
+  test("internal builds run live", () async {
     when(() => bundleSource.channel).thenReturn(DesktopReleaseChannel.internal);
 
-    expect(await source.fetchValues(), (liveEnabled: true, presentation: null));
+    expect(await source.fetchLiveEnabled(), isTrue);
   });
 
   test("stable builds run after recording", () async {
     when(() => bundleSource.channel).thenReturn(DesktopReleaseChannel.stable);
 
-    expect(await source.fetchValues(), (liveEnabled: false, presentation: null));
+    expect(await source.fetchLiveEnabled(), isFalse);
   });
 }

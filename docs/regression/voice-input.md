@@ -10,8 +10,8 @@ the same place or Enter sends; the pencil or Shift+Enter puts the words in the p
 cancels. The device microphone and transcription endpoint are external. The bridge independently prepares optional
 project-scoped vocabulary from bounded local evidence; no backend plugin participates. When the voice mode switch turns
 live on and the host can stream, the same gestures run over a realtime socket instead of an upload. On a phone the Firebase
-Remote Config keys `voice_live_enabled` and `voice_live_presentation` control the switch. On desktop the build fixes it: the
-`internal` channel runs live with focus, and `stable` records first.
+Remote Config key `voice_live_enabled` controls the switch. On desktop the build fixes it: the `internal` channel runs live,
+and `stable` records first.
 
 ## Required Behavior
 
@@ -63,8 +63,8 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   transcription disposes and invalidates the voice interaction, releases its resources, and prevents a late
   completion from restoring or sending input. Availability recovery creates a fresh eligible composer; the gate
   does not retain the recording or transcript.
-- An unset `voice_live_enabled` means record first. `voice_live_presentation` is `focus` or `panel`, and any other value
-  means focus. A phone reads both at launch, so a Firebase change applies from its next cold launch.
+- An unset `voice_live_enabled` means record first. A phone reads it at launch, so a Firebase change applies from its next
+  cold launch.
 - A hold takes the voice mode once, when it starts, and keeps it whatever the switch does next. It never waits for an
   answer: until the mode has loaded and the host has said it can stream, a hold records first. The feedback sheet always
   records first.
@@ -88,12 +88,11 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   microphone, and hands nothing over.
 - The release hint centres over the whole composer. A background tasks pill beside it fades where it stands and takes
   no touches or keyboard focus while the hint shows, and comes back afterwards; nothing in that row moves.
-- A live dictation's words show in a layer of their own while the user speaks, in the presentation remote config chose.
-  Nothing under that layer moves or resizes for them, and they never take a touch away from the pill or the chat.
-- Focus fades a solid cover over the chat pane, and only that pane, from the first frame of listening, and shows the
-  words large above the composer: 23 pt on a touch shell, 25 pt on a pointer shell. The panel leaves the chat in view
-  and opens at the first word, growing to five lines. In both, the newest words stay at the bottom, a new line rises
-  smoothly, and older lines fade away at the top once the words run out of room.
+- A live dictation's words show in a panel, in a layer of their own, while the user speaks. Nothing under that layer moves
+  or resizes for them, and they never take a touch away from the pill or the chat.
+- The panel leaves the chat in view, on phone and desktop alike. It opens at the first word and grows to five lines, as
+  wide as the composer and clear of the release hint. The newest words stay at the bottom, a new line rises smoothly, and
+  older lines fade away at the top once the words run out of room.
 - A tentative word fades in dim and brightens where it stands when it turns final or when the user releases, and on its
   way to the box when a dictation is cut off. It also brightens once the server has left it unchanged for a second, so
   most of a sentence reads as solid while only the latest words stay dim. This is presentation only: only confirmed words
@@ -154,7 +153,7 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, a key arriving mid-recording, a remembered key per computer and project, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger with its daily and after-failure refresh limits, the first-load glossary key and its failed lookup, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, the backlog's pace and its stops, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word layer's focus and panel presentation, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, reduced motion, a tentative word brightening after its unchanged second, easing dim again when the server changes it while the words before it stay put, a spacing-only update or a word confirmed partway through leaving it alone, and the glide: the bubble's handover with one copy on every frame, the five-frame fallback above the composer, the screen or row going mid-glide, the box holding its text back, and no travel under reduced motion. The release hint centred over the composer with a trailing control that fades in place, takes no focus, and doesn't move. The screen reader label of voice-first's hold surface while transcribing. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, a key arriving mid-recording, a remembered key per computer and project, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger with its daily and after-failure refresh limits, the first-load glossary key and its failed lookup, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, the backlog's pace and its stops, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word panel, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, reduced motion, a tentative word brightening after its unchanged second, easing dim again when the server changes it while the words before it stay put, a spacing-only update or a word confirmed partway through leaving it alone, and the glide: the bubble's handover with one copy on every frame, the five-frame fallback above the composer, the screen or row going mid-glide, the box holding its text back, and no travel under reduced motion. The release hint centred over the composer with a trailing control that fades in place, takes no focus, and doesn't move. The screen reader label of voice-first's hold surface while transcribing. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, music from another app keeps playing when a chat opens, and live words keep up with speech with first words not clipped, on a real microphone. |
@@ -169,7 +168,7 @@ On the macOS desktop build, grant the first microphone prompt, click the mic, sp
 mouse to send; start again and press Enter to send, with text already in the box; start again and use Shift+Enter, then
 the pencil, and edit the inserted transcript; start again and cancel with Escape, then the X, and confirm the box keeps
 its text; click into the transcript mid-recording and confirm the recording continues.
-With live on, in focus and in panel, hold and speak on the mobile platform, and confirm the words appear as they are
+With live on, hold and speak on the mobile platform, and confirm the words appear as they are
 spoken and nothing under them moves. Release to send and confirm the words glide into the bubble; slide onto the pencil
 and confirm they glide into the box; slide out and confirm the fade. Repeat with the server unreachable, and confirm the
 dictation falls back and lands in the box with a notice. On the desktop `internal` build, confirm the same with its

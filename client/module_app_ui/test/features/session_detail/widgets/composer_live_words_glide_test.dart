@@ -101,16 +101,15 @@ void main() {
   /// Holds, says the words and settles them on screen.
   Future<TestGesture> hold({
     required WidgetTester tester,
-    VoiceLivePresentation presentation = VoiceLivePresentation.focus,
     LiveWords words = _words,
   }) async {
     when(() => voiceCubit.stopAndTranscribe(limitReached: false)).thenAnswer((_) async {
-      voiceStates.add(VoiceInputState.liveFinishing(words: words, presentation: presentation));
+      voiceStates.add(VoiceInputState.liveFinishing(words: words));
     });
     final gesture = await tester.startGesture(tester.getCenter(find.textContaining("Hold to talk")));
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 300));
-    voiceStates.add(VoiceInputState.liveRecording(words: words, presentation: presentation));
+    voiceStates.add(VoiceInputState.liveRecording(words: words));
     await tester.pump();
     await tester.pump();
     // Long enough to show them, not for a word that hasn't changed to brighten.
@@ -456,13 +455,13 @@ void main() {
             );
             final words = LiveWords(confirmed: text, provisional: "");
             when(() => voiceCubit.stopAndTranscribe(limitReached: false)).thenAnswer((_) async {
-              voiceStates.add(VoiceInputState.liveFinishing(words: words, presentation: VoiceLivePresentation.focus));
+              voiceStates.add(VoiceInputState.liveFinishing(words: words));
             });
             await tester.tap(find.byTooltip("Record voice"));
             await tester.pump();
             await tester.pump();
             await tester.pump(const Duration(milliseconds: 300));
-            voiceStates.add(VoiceInputState.liveRecording(words: words, presentation: VoiceLivePresentation.focus));
+            voiceStates.add(VoiceInputState.liveRecording(words: words));
             await tester.pump();
             await tester.pump();
             await tester.pump(const Duration(milliseconds: 500));
@@ -472,6 +471,35 @@ void main() {
             await expectToLandOnTheBubbleThatComes(tester: tester, text: text);
           });
         }
+      }
+
+      for (final width in const [800.0, 1300.0, 2560.0]) {
+        testWidgets("in a pane $width wide the panel keeps to the composer's column", (tester) async {
+          await _pumpSessionScreen(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            scrolledUp: 0,
+            size: Size(width, 900),
+            columnWidths: const SessionDetailColumnWidths(transcript: 960, composer: 760),
+            presentation: ComposerPresentation.pointer,
+          );
+          await tester.tap(find.byTooltip("Record voice"));
+          await tester.pump();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 300));
+          voiceStates.add(const VoiceInputState.liveRecording(words: _words));
+          await tester.pump();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 500));
+
+          final words = find.byType(LiveWordsText);
+          final panel = tester.getRect(find.ancestor(of: words, matching: find.byType(DecoratedBox)).first);
+          final composer = tester.getRect(find.byType(ComposerLiveWords));
+          expect(panel.left, composer.left);
+          expect(panel.right, composer.right);
+          expect(panel.bottom, lessThan(composer.top));
+          expect(composer.center.dx, width / 2);
+        });
       }
 
       testWidgets("words whose message is delivered on their way end on its bubble", (tester) async {
@@ -610,7 +638,6 @@ void main() {
       voiceStates.add(
         const VoiceInputState.liveRecording(
           words: LiveWords(confirmed: "", provisional: "spoken words"),
-          presentation: VoiceLivePresentation.focus,
         ),
       );
       await tester.pump();
@@ -655,7 +682,7 @@ void main() {
         words: const LiveWords(confirmed: "", provisional: "spoken "),
       );
       voiceStates
-        ..add(const VoiceInputState.liveRecording(words: _tentativeWords, presentation: VoiceLivePresentation.focus))
+        ..add(const VoiceInputState.liveRecording(words: _tentativeWords))
         ..add(
           const VoiceInputState.completed(
             transcript: "spoken words",
@@ -708,13 +735,15 @@ void main() {
     await tester.pump(_flight ~/ 2);
 
     await tester.startGesture(tester.getCenter(find.textContaining("Hold to talk").last));
-    voiceStates.add(
-      const VoiceInputState.liveRecording(words: LiveWords.none, presentation: VoiceLivePresentation.focus),
-    );
+    voiceStates.add(const VoiceInputState.liveRecording(words: LiveWords.none));
     await tester.pump(Duration.zero);
 
     expect(_glide, findsNothing);
     expect(_bubbleSlot(tester).hidden, isFalse);
+    expect(find.byType(LiveWordsText), findsNothing);
+
+    voiceStates.add(const VoiceInputState.liveRecording(words: _words));
+    await tester.pump(Duration.zero);
     expect(find.byType(LiveWordsText), findsOneWidget);
   });
 
@@ -731,14 +760,14 @@ void main() {
       await tester.pump(const Duration(milliseconds: 120));
       expect(tester.getTopLeft(find.byType(LiveWordsText)), top);
 
-      final dim = find.descendant(of: find.byKey(composerLiveWordsDimKey), matching: find.byType(FadeTransition));
-      expect(tester.widget<FadeTransition>(dim).opacity.value, inExclusiveRange(0, 1));
+      final fade = find.ancestor(of: find.byType(LiveWordsText), matching: find.byType(Opacity)).first;
+      expect(tester.widget<Opacity>(fade).opacity, inExclusiveRange(0, 1));
     });
   });
 
   testWidgets("a panel's shadow fades where it is, rather than shrinking into a hard plate", (tester) async {
     await _pumpScreen(tester: tester, voiceCubit: voiceCubit);
-    final gesture = await hold(tester: tester, presentation: VoiceLivePresentation.panel);
+    final gesture = await hold(tester: tester);
     await send(tester: tester, gesture: gesture);
     List<BoxShadow> shadows() {
       final surface = tester.widget<DecoratedBox>(find.descendant(of: _glide, matching: find.byType(DecoratedBox)));
@@ -754,19 +783,18 @@ void main() {
     expect(midway.first.color.a, lessThan(atRest.first.color.a));
   });
 
-  testWidgets("the words change face and wrap while moving fast, never as they land", (tester) async {
+  testWidgets("the words change style and wrap while moving fast, never as they land", (tester) async {
     await _pumpScreen(tester: tester, voiceCubit: voiceCubit);
     final gesture = await hold(tester: tester);
     await send(tester: tester, gesture: gesture);
-    final heavy = tester.widget<RichText>(_glideText).text.style?.fontWeight;
-    final FontWeight? landing = buildChatMessageMarkdownStyleSheet(prego: PregoDesignSystem.light).p?.fontWeight;
-    expect(heavy, isNot(landing));
+    final landing = buildChatMessageMarkdownStyleSheet(prego: PregoDesignSystem.light).p?.fontSize;
+    expect(tester.widget<RichText>(_glideText).text.style?.fontSize, isNot(landing));
 
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 80));
     final paragraph = tester.renderObject<RenderParagraph>(_glideText);
     final laidOut = paragraph.size;
-    expect(tester.widget<RichText>(_glideText).text.style?.fontWeight, landing);
+    expect(tester.widget<RichText>(_glideText).text.style?.fontSize, landing);
 
     // From here it only scales: the very same layout, down to its last frame.
     for (var i = 0; i < 12; i++) {
@@ -779,7 +807,7 @@ void main() {
 
   testWidgets("a panel's surface turns into the bubble's", (tester) async {
     await _pumpScreen(tester: tester, voiceCubit: voiceCubit);
-    final gesture = await hold(tester: tester, presentation: VoiceLivePresentation.panel);
+    final gesture = await hold(tester: tester);
     await send(tester: tester, gesture: gesture);
     await tester.pump();
     await tester.pump(_flight);
