@@ -997,32 +997,32 @@ class _LiveWordsTextState() extends State<LiveWordsText> with SingleTickerProvid
   void _syncWords({required LiveWords words, required bool settled}) {
     final instant = context.isReducedMotion;
     final tentative = settled ? 1.0 : _tentativeOpacity;
-    final parts = [(text: words.confirmed, target: 1.0), (text: words.provisional, target: tentative)];
     var index = 0;
     // The first word to differ and all those after it have changed. Spacing
     // doesn't count: a word gains its space when the next one comes.
     var changed = false;
-    for (final part in parts) {
-      for (final match in _tokens.allMatches(part.text)) {
-        final token = match.group(0) ?? "";
-        if (index == _words.length) {
-          final word = _FadingWord(text: token, target: part.target, duration: instant ? Duration.zero : _newWordFade);
-          _words.add(word);
-          _restartSettling(word: word);
-        } else {
-          final word = _words[index];
-          changed = changed || word.text.trim() != token.trim();
-          word.text = token;
-          // A tentative word that hasn't changed stands wherever it has got to.
-          if (part.target == 1 || changed) {
-            if (word.target != part.target) {
-              word.fadeTo(target: part.target, duration: instant ? Duration.zero : _brightenFade);
-            }
-            _restartSettling(word: word);
+    // Split as one text, as the server can confirm a word partway through.
+    for (final match in _tokens.allMatches(words.confirmed + words.provisional)) {
+      final token = match.group(0) ?? "";
+      final isConfirmed = match.start + token.trimRight().length <= words.confirmed.length;
+      final target = isConfirmed ? 1.0 : tentative;
+      if (index == _words.length) {
+        final word = _FadingWord(text: token, target: target, duration: instant ? Duration.zero : _newWordFade);
+        _words.add(word);
+        _restartSettling(word: word);
+      } else {
+        final word = _words[index];
+        changed = changed || word.text.trim() != token.trim();
+        word.text = token;
+        // A tentative word that hasn't changed stands wherever it has got to.
+        if (target == 1 || changed) {
+          if (word.target != target) {
+            word.fadeTo(target: target, duration: instant ? Duration.zero : _brightenFade);
           }
+          _restartSettling(word: word);
         }
-        index++;
       }
+      index++;
     }
     for (final word in _words.skip(index)) {
       word.settling?.cancel();
