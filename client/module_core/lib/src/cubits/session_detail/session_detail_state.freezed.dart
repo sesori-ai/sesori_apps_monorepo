@@ -19,7 +19,7 @@ mixin _$SessionDetailState {
 /// so a failed load keeps their Retry and Remove actions in view.
  List<LaunchFollowUp> get launchFollowUps;/// What this screen still owes, as in [SessionDetailFailed], so a session
 /// just created keeps its unsent messages and their actions in view.
- List<QueuedSessionSubmission> get awaitingBridgeSubmissions;/// Prompts sent before the first load that are still waiting for it, so
+ List<AwaitingBridgeSubmission> get awaitingBridgeSubmissions;/// Prompts sent before the first load that are still waiting for it, so
 /// a failed load never hides them. Retry sends them once it loads.
  List<QueuedSessionSubmission> get queuedMessages;
 /// Create a copy of SessionDetailState
@@ -57,7 +57,7 @@ abstract mixin class $SessionDetailStateCopyWith<$Res>  {
   factory $SessionDetailStateCopyWith(SessionDetailState value, $Res Function(SessionDetailState) _then) = _$SessionDetailStateCopyWithImpl;
 @useResult
 $Res call({
- List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
+ List<LaunchFollowUp> launchFollowUps, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -78,7 +78,7 @@ class _$SessionDetailStateCopyWithImpl<$Res>
   return _then(_self.copyWith(
 launchFollowUps: null == launchFollowUps ? _self.launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self.awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,queuedMessages: null == queuedMessages ? _self.queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
+as List<AwaitingBridgeSubmission>,queuedMessages: null == queuedMessages ? _self.queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionSubmission>,
   ));
 }
@@ -91,7 +91,7 @@ as List<QueuedSessionSubmission>,
 
 
 class SessionDetailLoading implements SessionDetailState {
-  const SessionDetailLoading({required this.launchHandoff, required this.seededComposer,  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _launchFollowUps = launchFollowUps,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_queuedMessages = queuedMessages;
+  const SessionDetailLoading({required this.launchHandoff, required this.seededComposer,  List<LaunchFollowUp> launchFollowUps = const [],  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _launchFollowUps = launchFollowUps,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_queuedMessages = queuedMessages;
   
 
 /// The first message of the launch this screen took over, shown as a
@@ -108,8 +108,8 @@ class SessionDetailLoading implements SessionDetailState {
   return EqualUnmodifiableListView(_launchFollowUps);
 }
 
- final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
-@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+ final  List<AwaitingBridgeSubmission> _awaitingBridgeSubmissions;
+@override@JsonKey() List<AwaitingBridgeSubmission> get awaitingBridgeSubmissions {
   if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
@@ -155,7 +155,7 @@ abstract mixin class $SessionDetailLoadingCopyWith<$Res> implements $SessionDeta
   factory $SessionDetailLoadingCopyWith(SessionDetailLoading value, $Res Function(SessionDetailLoading) _then) = _$SessionDetailLoadingCopyWithImpl;
 @override @useResult
 $Res call({
- SessionLaunchHandoff? launchHandoff, SeededComposer? seededComposer, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
+ SessionLaunchHandoff? launchHandoff, SeededComposer? seededComposer, List<LaunchFollowUp> launchFollowUps, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -178,7 +178,7 @@ launchHandoff: freezed == launchHandoff ? _self.launchHandoff : launchHandoff //
 as SessionLaunchHandoff?,seededComposer: freezed == seededComposer ? _self.seededComposer : seededComposer // ignore: cast_nullable_to_non_nullable
 as SeededComposer?,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
+as List<AwaitingBridgeSubmission>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionSubmission>,
   ));
 }
@@ -202,7 +202,7 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
 
 
 class SessionDetailLoaded implements SessionDetailState {
-  const SessionDetailLoaded({required this.interaction, required  List<MessageWithParts> messages, required this.olderMessagesCursor, required this.userMessagesBeforeOldest, this.isLoadingOlderMessages = false, required  List<SessionPromptIndexEntry>? promptIndex,  Map<ToolOutputKey, ToolOutputFetch> toolOutputs = const {}, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.session, this.isUpdatingAutoContinuation = false, required this.pluginId, required this.supportsPromptAttachments, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required this.cannotContinueMessage, required  List<QueuedSessionSubmission> queuedMessages, required this.localSend,  List<QueuedSessionPrompt> bridgeQueuedPrompts = const [], required  Map<String, List<ComposerAttachment>> bridgePromptAttachments,  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [], required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.promptDefaults, required this.fastMode, required this.stagedCommand, required this.isRefreshing,  List<SessionVariant> availableVariants = const [], this.bridgeYolo = const YoloSettingsResponse(enabled: false), this.mainAgentRunning = false, this.isUpdatingApproval = false, required this.launchHandoff}): _messages = messages,_promptIndex = promptIndex,_toolOutputs = toolOutputs,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_bridgeQueuedPrompts = bridgeQueuedPrompts,_bridgePromptAttachments = bridgePromptAttachments,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
+  const SessionDetailLoaded({required this.interaction, required  List<MessageWithParts> messages, required this.olderMessagesCursor, required this.userMessagesBeforeOldest, this.isLoadingOlderMessages = false, required  List<SessionPromptIndexEntry>? promptIndex,  Map<ToolOutputKey, ToolOutputFetch> toolOutputs = const {}, required  Map<String, String> streamingText, required this.sessionStatus, required  List<SesoriQuestionAsked> pendingQuestions, required  List<SesoriPermissionAsked> pendingPermissions, required this.sessionTitle, required this.session, this.isUpdatingAutoContinuation = false, required this.pluginId, required this.supportsPromptAttachments, required this.assistantAgentModel, required  List<Session> children, required  Map<String, SessionStatus> childStatuses, required this.isRootSession, required this.isArchived, required this.cannotContinueMessage, required  List<QueuedSessionSubmission> queuedMessages, required this.localSend,  List<QueuedSessionPrompt> bridgeQueuedPrompts = const [], required  Map<String, List<ComposerAttachment>> bridgePromptAttachments,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [], required  List<AgentInfo> availableAgents, required  List<ProviderInfo> availableProviders, required  List<CommandInfo> availableCommands, required this.selectedAgent, required this.selectedAgentModel, required this.promptDefaults, required this.fastMode, required this.stagedCommand, required this.isRefreshing,  List<SessionVariant> availableVariants = const [], this.bridgeYolo = const YoloSettingsResponse(enabled: false), this.mainAgentRunning = false, this.isUpdatingApproval = false, required this.launchHandoff}): _messages = messages,_promptIndex = promptIndex,_toolOutputs = toolOutputs,_streamingText = streamingText,_pendingQuestions = pendingQuestions,_pendingPermissions = pendingPermissions,_children = children,_childStatuses = childStatuses,_queuedMessages = queuedMessages,_bridgeQueuedPrompts = bridgeQueuedPrompts,_bridgePromptAttachments = bridgePromptAttachments,_awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_availableAgents = availableAgents,_availableProviders = availableProviders,_availableCommands = availableCommands,_availableVariants = availableVariants;
   
 
  final  SessionInteractionState interaction;
@@ -324,8 +324,8 @@ class SessionDetailLoaded implements SessionDetailState {
   return EqualUnmodifiableMapView(_bridgePromptAttachments);
 }
 
- final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
-@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+ final  List<AwaitingBridgeSubmission> _awaitingBridgeSubmissions;
+@override@JsonKey() List<AwaitingBridgeSubmission> get awaitingBridgeSubmissions {
   if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
@@ -422,7 +422,7 @@ abstract mixin class $SessionDetailLoadedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailLoadedCopyWith(SessionDetailLoaded value, $Res Function(SessionDetailLoaded) _then) = _$SessionDetailLoadedCopyWithImpl;
 @override @useResult
 $Res call({
- SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBeforeOldest, bool isLoadingOlderMessages, List<SessionPromptIndexEntry>? promptIndex, Map<ToolOutputKey, ToolOutputFetch> toolOutputs, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, bool isUpdatingAutoContinuation, String? pluginId, bool? supportsPromptAttachments, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, String? cannotContinueMessage, List<QueuedSessionSubmission> queuedMessages, LocalSendPhase localSend, List<QueuedSessionPrompt> bridgeQueuedPrompts, Map<String, List<ComposerAttachment>> bridgePromptAttachments, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, SessionPromptDefaults? promptDefaults, bool fastMode, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants, YoloSettingsResponse bridgeYolo, bool mainAgentRunning, bool isUpdatingApproval, SessionLaunchHandoff? launchHandoff
+ SessionInteractionState interaction, List<MessageWithParts> messages, int? olderMessagesCursor, int? userMessagesBeforeOldest, bool isLoadingOlderMessages, List<SessionPromptIndexEntry>? promptIndex, Map<ToolOutputKey, ToolOutputFetch> toolOutputs, Map<String, String> streamingText, SessionStatus sessionStatus, List<SesoriQuestionAsked> pendingQuestions, List<SesoriPermissionAsked> pendingPermissions, String? sessionTitle, Session session, bool isUpdatingAutoContinuation, String? pluginId, bool? supportsPromptAttachments, AgentModel? assistantAgentModel, List<Session> children, Map<String, SessionStatus> childStatuses, bool? isRootSession, bool isArchived, String? cannotContinueMessage, List<QueuedSessionSubmission> queuedMessages, LocalSendPhase localSend, List<QueuedSessionPrompt> bridgeQueuedPrompts, Map<String, List<ComposerAttachment>> bridgePromptAttachments, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<AgentInfo> availableAgents, List<ProviderInfo> availableProviders, List<CommandInfo> availableCommands, String selectedAgent, AgentModel? selectedAgentModel, SessionPromptDefaults? promptDefaults, bool fastMode, CommandInfo? stagedCommand, bool isRefreshing, List<SessionVariant> availableVariants, YoloSettingsResponse bridgeYolo, bool mainAgentRunning, bool isUpdatingApproval, SessionLaunchHandoff? launchHandoff
 });
 
 
@@ -468,7 +468,7 @@ as List<QueuedSessionSubmission>,localSend: null == localSend ? _self.localSend 
 as LocalSendPhase,bridgeQueuedPrompts: null == bridgeQueuedPrompts ? _self._bridgeQueuedPrompts : bridgeQueuedPrompts // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionPrompt>,bridgePromptAttachments: null == bridgePromptAttachments ? _self._bridgePromptAttachments : bridgePromptAttachments // ignore: cast_nullable_to_non_nullable
 as Map<String, List<ComposerAttachment>>,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as List<AwaitingBridgeSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,availableAgents: null == availableAgents ? _self._availableAgents : availableAgents // ignore: cast_nullable_to_non_nullable
 as List<AgentInfo>,availableProviders: null == availableProviders ? _self._availableProviders : availableProviders // ignore: cast_nullable_to_non_nullable
 as List<ProviderInfo>,availableCommands: null == availableCommands ? _self._availableCommands : availableCommands // ignore: cast_nullable_to_non_nullable
@@ -581,7 +581,7 @@ $SessionLaunchHandoffCopyWith<$Res>? get launchHandoff {
 
 
 class SessionDetailHarnessUnavailable implements SessionDetailState {
-  const SessionDetailHarnessUnavailable({required this.session, required this.interaction, this.isUpdatingAutoContinuation = false,  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
+  const SessionDetailHarnessUnavailable({required this.session, required this.interaction, this.isUpdatingAutoContinuation = false,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
   
 
  final  Session session;
@@ -589,10 +589,10 @@ class SessionDetailHarnessUnavailable implements SessionDetailState {
 @JsonKey() final  bool isUpdatingAutoContinuation;
 /// What this screen still owes, as in [SessionDetailFailed], so a session
 /// just created keeps its unsent messages and their actions in view.
- final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
+ final  List<AwaitingBridgeSubmission> _awaitingBridgeSubmissions;
 /// What this screen still owes, as in [SessionDetailFailed], so a session
 /// just created keeps its unsent messages and their actions in view.
-@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+@override@JsonKey() List<AwaitingBridgeSubmission> get awaitingBridgeSubmissions {
   if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
@@ -645,7 +645,7 @@ abstract mixin class $SessionDetailHarnessUnavailableCopyWith<$Res> implements $
   factory $SessionDetailHarnessUnavailableCopyWith(SessionDetailHarnessUnavailable value, $Res Function(SessionDetailHarnessUnavailable) _then) = _$SessionDetailHarnessUnavailableCopyWithImpl;
 @override @useResult
 $Res call({
- Session session, SessionInteractionState interaction, bool isUpdatingAutoContinuation, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
+ Session session, SessionInteractionState interaction, bool isUpdatingAutoContinuation, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -668,7 +668,7 @@ session: null == session ? _self.session : session // ignore: cast_nullable_to_n
 as Session,interaction: null == interaction ? _self.interaction : interaction // ignore: cast_nullable_to_non_nullable
 as SessionInteractionState,isUpdatingAutoContinuation: null == isUpdatingAutoContinuation ? _self.isUpdatingAutoContinuation : isUpdatingAutoContinuation // ignore: cast_nullable_to_non_nullable
 as bool,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as List<AwaitingBridgeSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionSubmission>,
   ));
@@ -690,16 +690,16 @@ $SessionCopyWith<$Res> get session {
 
 
 class SessionDetailFailed implements SessionDetailState {
-  const SessionDetailFailed({required this.reason,  List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
+  const SessionDetailFailed({required this.reason,  List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],  List<LaunchFollowUp> launchFollowUps = const [],  List<QueuedSessionSubmission> queuedMessages = const []}): _awaitingBridgeSubmissions = awaitingBridgeSubmissions,_launchFollowUps = launchFollowUps,_queuedMessages = queuedMessages;
   
 
  final  RemoteFailureReason reason;
 /// Sends the bridge took that it has not listed yet, shown read-only so
 /// a failed load does not hide a message that went out.
- final  List<QueuedSessionSubmission> _awaitingBridgeSubmissions;
+ final  List<AwaitingBridgeSubmission> _awaitingBridgeSubmissions;
 /// Sends the bridge took that it has not listed yet, shown read-only so
 /// a failed load does not hide a message that went out.
-@override@JsonKey() List<QueuedSessionSubmission> get awaitingBridgeSubmissions {
+@override@JsonKey() List<AwaitingBridgeSubmission> get awaitingBridgeSubmissions {
   if (_awaitingBridgeSubmissions is EqualUnmodifiableListView) return _awaitingBridgeSubmissions;
   // ignore: implicit_dynamic_type
   return EqualUnmodifiableListView(_awaitingBridgeSubmissions);
@@ -760,7 +760,7 @@ abstract mixin class $SessionDetailFailedCopyWith<$Res> implements $SessionDetai
   factory $SessionDetailFailedCopyWith(SessionDetailFailed value, $Res Function(SessionDetailFailed) _then) = _$SessionDetailFailedCopyWithImpl;
 @override @useResult
 $Res call({
- RemoteFailureReason reason, List<QueuedSessionSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
+ RemoteFailureReason reason, List<AwaitingBridgeSubmission> awaitingBridgeSubmissions, List<LaunchFollowUp> launchFollowUps, List<QueuedSessionSubmission> queuedMessages
 });
 
 
@@ -781,7 +781,7 @@ class _$SessionDetailFailedCopyWithImpl<$Res>
   return _then(SessionDetailFailed(
 reason: null == reason ? _self.reason : reason // ignore: cast_nullable_to_non_nullable
 as RemoteFailureReason,awaitingBridgeSubmissions: null == awaitingBridgeSubmissions ? _self._awaitingBridgeSubmissions : awaitingBridgeSubmissions // ignore: cast_nullable_to_non_nullable
-as List<QueuedSessionSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
+as List<AwaitingBridgeSubmission>,launchFollowUps: null == launchFollowUps ? _self._launchFollowUps : launchFollowUps // ignore: cast_nullable_to_non_nullable
 as List<LaunchFollowUp>,queuedMessages: null == queuedMessages ? _self._queuedMessages : queuedMessages // ignore: cast_nullable_to_non_nullable
 as List<QueuedSessionSubmission>,
   ));

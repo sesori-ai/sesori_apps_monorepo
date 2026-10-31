@@ -644,7 +644,12 @@ defaults and queued client sends coherent.
   bridge) → queued (bridge-owned) → sent (the
   transcript message). The dispatched message carries the prompt id and
   replaces the queued entry in the same client state emission, so no frame
-  shows the prompt twice or not at all. Client-staged sends preserve order,
+  shows the prompt twice or not at all. A status line showing as its prompt is
+  delivered fades out as the row's height eases, with the motion of the line's
+  other transitions, on every path to delivery, and so does a queued outline: the
+  line takes no tap or focus and is gone for a screen reader from that frame, and
+  scrolling away and back doesn't replay it. Reduced motion keeps the fades and
+  takes the height at once. Client-staged sends preserve order,
   survive a transient disconnection while the session-detail cubit is alive,
   retain the agent, model, and variant selected at submission, and drain with
   the same prompt id so retries stay idempotent.
@@ -719,7 +724,10 @@ defaults and queued client sends coherent.
   after the first message and before anything sent from the session screen,
   with the options committed at the first Send. A delivered one stays as a
   bubble until the transcript or the harness's queue shows it, exactly like a
-  prompt the session screen sent. A failed one offers Retry, and Remove once
+  prompt the session screen sent. Its status line stays timed from when it was
+  sent, so the first load neither resets the line nor moves the row: a late load
+  leaves a showing line in place and an early one leaves what remains of its two
+  seconds, whether the load still awaits it, lists it or delivers it. A failed one offers Retry, and Remove once
   the rejection is authoritative.
 - The session screen of a session this surface just created shows its composer
   from the first frame, before the transcript loads, in the new-session
@@ -863,6 +871,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   rendered content, drops buffered events, or allows pagination to trigger a
   backend read while blocked.
 - A normal send shows a status line, or the chat moves when its message lands.
+- A status line vanishes in one frame as its message is delivered, or fades again after scrolling back.
+- A launch's accepted follow-up loses its line, blanks or moves as the first load takes over.
 - "Queued" or Cancel flashes on a prompt the harness takes promptly, on any harness; the chat rises and drops 48 px
   for it; Cancel can be tapped, focused or read while hidden; the two seconds restart or the line blinks on a rebuild
   or after scrolling away and back; a gap shows between Sending and Queued; a row listed as the transcript opens rises

@@ -26,6 +26,11 @@ sealed class const QueuedMessageBubblePresentation() {
   /// A send that failed. The callbacks are null on a read-only surface.
   const factory failed({required VoidCallback? onRetry, required VoidCallback? onRemove}) =
       FailedMessageBubblePresentation;
+
+  /// A message that has arrived: [message] takes the bubble's place, under the
+  /// line it had while it waited, if any, on its way out, and fades its outline.
+  const factory delivered({required Widget Function({required Duration? outlineFade}) message}) =
+      DeliveredMessageBubblePresentation;
 }
 
 final class const SendingMessageBubblePresentation({
@@ -47,6 +52,10 @@ final class const UnavailableCommandBubblePresentation({required final VoidCallb
 final class const FailedMessageBubblePresentation({
   required final VoidCallback? onRetry,
   required final VoidCallback? onRemove,
+}) extends QueuedMessageBubblePresentation;
+
+final class const DeliveredMessageBubblePresentation({
+  required final Widget Function({required Duration? outlineFade}) message,
 }) extends QueuedMessageBubblePresentation;
 
 class const QueuedMessageBubble({
@@ -76,20 +85,28 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
   Timer? _statusTimer;
   bool _isStatusDue = false;
 
+  /// Whether the last build outlined the bubble, for a message delivered on it to
+  /// fade the outline.
+  bool _wasOutlined = false;
+
   /// The states whose line waits. A failure and an unavailable command need
   /// acting on, so theirs shows at once.
   static bool _waitsForStatus(QueuedMessageBubblePresentation presentation) => switch (presentation) {
     SendingMessageBubblePresentation() ||
     PendingMessageBubblePresentation() ||
     ReadOnlyPendingMessageBubblePresentation() => true,
-    UnavailableCommandBubblePresentation() || FailedMessageBubblePresentation() => false,
+    UnavailableCommandBubblePresentation() ||
+    FailedMessageBubblePresentation() ||
+    DeliveredMessageBubblePresentation() => false,
   };
 
   static DateTime? _statusClock(QueuedMessageBubblePresentation presentation) => switch (presentation) {
     SendingMessageBubblePresentation(:final sendingSince) => sendingSince,
     PendingMessageBubblePresentation(:final sentAt) => sentAt,
     ReadOnlyPendingMessageBubblePresentation(:final sentAt) => sentAt,
-    UnavailableCommandBubblePresentation() || FailedMessageBubblePresentation() => null,
+    UnavailableCommandBubblePresentation() ||
+    FailedMessageBubblePresentation() ||
+    DeliveredMessageBubblePresentation() => null,
   };
 
   @override
@@ -136,8 +153,6 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
   Widget build(BuildContext context) {
     final prego = context.prego;
     final loc = context.loc;
-    final reducedMotion = context.isReducedMotion;
-    final duration = reducedMotion ? Duration.zero : _statusFade;
     final presentation = widget.presentation;
     final isCommand = widget.isCommand;
     final displayText = widget.displayText;
@@ -268,7 +283,13 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
             _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
         ],
       ),
+      DeliveredMessageBubblePresentation() => null,
     };
+
+    // Nothing says it is queued before its line does.
+    final outlined = status != null && presentation is! SendingMessageBubblePresentation;
+    final wasOutlined = _wasOutlined;
+    _wasOutlined = outlined;
 
     // Nothing at all without a status, padding included, so that the row is the
     // same height as the delivered message.
@@ -289,17 +310,19 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       crossAxisAlignment: .end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        UserMessageBubble(
-          markdown: displayText,
-          attachments: [
-            if (localAttachments.isNotEmpty) _QueuedAttachmentPreviews(attachments: localAttachments),
-            if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
-              _QueuedAttachmentCount(count: attachmentCount),
-          ],
-          // Nothing says it is queued before its line does.
-          outlined: status != null && presentation is! SendingMessageBubblePresentation,
-          transitionDuration: duration,
-        ),
+        if (presentation case DeliveredMessageBubblePresentation(:final message))
+          message(outlineFade: wasOutlined ? _statusFade : null)
+        else
+          UserMessageBubble(
+            markdown: displayText,
+            attachments: [
+              if (localAttachments.isNotEmpty) _QueuedAttachmentPreviews(attachments: localAttachments),
+              if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
+                _QueuedAttachmentCount(count: attachmentCount),
+            ],
+            outlined: outlined,
+            transitionDuration: _statusFade,
+          ),
         // Cross-fade the status rail between its states, a line's arrival among
         // them, so the swap reads as one row changing state; the enclosing prompt
         // row eases the height difference. Reduced motion keeps the fade, which
@@ -318,7 +341,14 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
                   excluding: outgoing,
                   child: IgnorePointer(
                     ignoring: outgoing,
-                    child: FadeTransition(opacity: animation, child: child),
+                    // Delivery takes the line's room at once, for the prompt row to
+                    // ease, and the line rides on below the message as it fades.
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      widthFactor: 1,
+                      heightFactor: outgoing && presentation is DeliveredMessageBubblePresentation ? 0 : 1,
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
                   ),
                 ),
               );

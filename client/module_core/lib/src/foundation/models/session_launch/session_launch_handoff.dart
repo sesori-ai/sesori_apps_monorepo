@@ -1,7 +1,7 @@
 import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../composer/new_session_submission_snapshot.dart";
-import "../composer/queued_session_submission.dart";
+import "launch_follow_up.dart";
 import "session_launch_composer.dart";
 
 part "session_launch_handoff.freezed.dart";
@@ -29,7 +29,7 @@ sealed class SessionLaunchHandoff with _$SessionLaunchHandoff {
 
     /// Follow-ups the bridge accepted before the handoff was taken, oldest
     /// first. The taker parks them so their bubbles never blank.
-    required List<QueuedSessionSubmission> acceptedFollowUps,
+    required List<AcceptedLaunchFollowUp> acceptedFollowUps,
 
     /// The composing route's composer, for the session screen to build its own
     /// before the first load; null when the route handed none over.

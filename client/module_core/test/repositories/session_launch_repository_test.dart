@@ -306,7 +306,7 @@ void main() {
       repository.followUpAccepted(launchId: "launch-1", promptId: "prm_a");
 
       final handoff = repository.takeHandoff(sessionId: "session-1");
-      expect(handoff?.acceptedFollowUps.map((submission) => submission.promptId), ["prm_a"]);
+      expect(handoff?.acceptedFollowUps.map((item) => item.submission.promptId), ["prm_a"]);
       expect(handoff?.followUpIds, {"prm_a", "prm_b"});
 
       final watched = <List<LaunchFollowUp>>[];

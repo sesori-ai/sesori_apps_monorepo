@@ -3,6 +3,11 @@ import "package:sesori_shared/sesori_shared.dart";
 import "composer_attachment.dart";
 import "composer_draft.dart";
 
+/// A send the bridge accepted and hasn't listed yet. [since] is when a launch
+/// follow-up was sent, so its status line keeps one clock onto the session screen;
+/// null for a send from that screen, whose row has timed it from the start.
+typedef AwaitingBridgeSubmission = ({QueuedSessionSubmission submission, DateTime? since});
+
 sealed class const QueuedSessionSubmission() {
   const factory text({
     required String promptId,

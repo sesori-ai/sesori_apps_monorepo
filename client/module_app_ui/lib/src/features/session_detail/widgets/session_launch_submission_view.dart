@@ -36,7 +36,7 @@ class const SessionLaunchSubmissionView({
   /// Follow-ups the session screen already parked as accepted, then the
   /// launch's own, then the prompts sent on the session screen — the order the
   /// session's transcript lists them in.
-  required final List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+  required final List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
   required final List<LaunchFollowUp> launchFollowUps,
   required final List<QueuedSessionSubmission> queuedMessages,
   required final LaunchFollowUpAction? onRetryLaunchFollowUp,
@@ -87,10 +87,10 @@ class const SessionLaunchSubmissionView({
           },
           presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: sendingSince),
         ),
-      for (final submission in awaitingBridgeSubmissions)
+      for (final (:submission, :since) in awaitingBridgeSubmissions)
         queued(
           submission: submission,
-          presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
+          presentation: QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: since),
         ),
       for (final followUp in launchFollowUps)
         queued(
@@ -181,7 +181,10 @@ QueuedMessageBubblePresentation launchFollowUpPresentation({
     ),
     QueuedLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.pendingReadOnly(sentAt: since),
     // Accepted but not yet listed reads as still sending, as the session's own do.
-    AcceptedLaunchFollowUp() => QueuedMessageBubblePresentation.sending(harnessName: harnessName, sendingSince: null),
+    AcceptedLaunchFollowUp(:final since) => QueuedMessageBubblePresentation.sending(
+      harnessName: harnessName,
+      sendingSince: since,
+    ),
     // A lost response may already have reached the bridge, so only an
     // authoritative rejection can be removed; Retry is safe either way,
     // since the bridge drops a promptId it already took.

@@ -74,7 +74,7 @@ class const SessionDetailMessageList({
   /// Accepted sends the bridge has not listed yet — rendered as read-only
   /// queued bubbles so the prompt never blanks between its acceptance
   /// response and the bridge's queue event.
-  final List<QueuedSessionSubmission> awaitingBridgeSubmissions = const [],
+  final List<AwaitingBridgeSubmission> awaitingBridgeSubmissions = const [],
   required final List<QueuedSessionPrompt> bridgeQueuedPrompts,
   required final Map<String, List<ComposerAttachment>> bridgePromptAttachments,
   final void Function(String promptId)? onCancelBridgeQueuedPrompt,
@@ -285,7 +285,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// was dropped before it had opened.
   final Set<String> _easedInRowIds = {};
 
-  /// The row that replaced the launch bubble. It keeps the bubble's key, so
+  /// The row that replaced the launch bubble. It keeps the launch row's key, so
   /// the swap eases in place like a queued prompt turning into its message.
   String? _launchSlotRowId;
 
@@ -807,7 +807,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     }
     if (oldWidget.awaitingBridgeSubmissions.length != widget.awaitingBridgeSubmissions.length) return false;
     for (var i = 0; i < widget.awaitingBridgeSubmissions.length; i++) {
-      if (!identical(oldWidget.awaitingBridgeSubmissions[i], widget.awaitingBridgeSubmissions[i])) return false;
+      if (oldWidget.awaitingBridgeSubmissions[i] != widget.awaitingBridgeSubmissions[i]) return false;
     }
     return true;
   }
@@ -818,7 +818,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       for (final submission in oldWidget.queuedMessages) submission.promptId,
       // A fast acceptance can move a send straight to the parked surface
       // between two builds; it is still the reader's new submission.
-      for (final submission in oldWidget.awaitingBridgeSubmissions) submission.promptId,
+      for (final (:submission, since: _) in oldWidget.awaitingBridgeSubmissions) submission.promptId,
       // An accepted launch follow-up is parked under its promptId; it was
       // already on screen, not a new submission.
       for (final LaunchFollowUp(:submission) in oldWidget.launchFollowUps) submission.promptId,
@@ -826,7 +826,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     return [
       ?_localSendRow(localSend: widget.localSend)?.submission,
       ...widget.queuedMessages,
-      ...widget.awaitingBridgeSubmissions,
+      for (final (:submission, since: _) in widget.awaitingBridgeSubmissions) submission,
     ].any((submission) => !previousPromptIds.contains(submission.promptId));
   }
 
@@ -836,7 +836,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     required QueuedSessionSubmission? localSendSubmission,
     required List<QueuedSessionSubmission> queuedMessages,
     required List<QueuedSessionPrompt> bridgeQueuedPrompts,
-    required List<QueuedSessionSubmission> awaitingBridgeSubmissions,
+    required List<AwaitingBridgeSubmission> awaitingBridgeSubmissions,
     required List<LaunchFollowUp> launchFollowUps,
   }) {
     final deliveredPromptIds = <String>{
@@ -847,7 +847,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final entries = <String>[
       for (final prompt in bridgeQueuedPrompts)
         if (!deliveredPromptIds.contains(prompt.id)) "$_kPromptRowPrefix${prompt.id}",
-      for (final submission in awaitingBridgeSubmissions)
+      for (final (:submission, since: _) in awaitingBridgeSubmissions)
         if (!deliveredPromptIds.contains(submission.promptId)) "$_kPromptRowPrefix${submission.promptId}",
       // Pressed before the session existed, so ahead of this screen's sends.
       for (final LaunchFollowUp(:submission) in launchFollowUps)
@@ -890,6 +890,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       if (followUp case QueuedLaunchFollowUp(:final since) || SendingLaunchFollowUp(:final since)) {
         _promptSentAt["$_kPromptRowPrefix${followUp.submission.promptId}"] = since;
       }
+    }
+    for (final (:submission, :since) in widget.awaitingBridgeSubmissions) {
+      if (since != null) _promptSentAt["$_kPromptRowPrefix${submission.promptId}"] = since;
     }
     final now = clock.now();
     for (final rowId in pendingPromptRowIds) {
@@ -1030,7 +1033,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       // In the order their rows show.
       pendingPrompts: [
         for (final prompt in widget.bridgeQueuedPrompts) (promptId: prompt.id, acceptedAt: prompt.createdAt),
-        for (final submission in widget.awaitingBridgeSubmissions) (promptId: submission.promptId, acceptedAt: null),
+        for (final (:submission, since: _) in widget.awaitingBridgeSubmissions)
+          (promptId: submission.promptId, acceptedAt: null),
         for (final followUp in widget.launchFollowUps)
           if (followUp case SendingLaunchFollowUp(:final submission) || AcceptedLaunchFollowUp(:final submission))
             (promptId: submission.promptId, acceptedAt: null),
@@ -1040,7 +1044,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
       lastHeldPrompt: _lastHeldPrompt,
     );
     final transientSubmissions = <String, _TransientSubmission>{
-      for (final submission in widget.awaitingBridgeSubmissions)
+      for (final (:submission, since: _) in widget.awaitingBridgeSubmissions)
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: _TransientStage.awaitingBridge),
       if (localSendRow case (:final submission, :final stage))
         "$_kPromptRowPrefix${submission.promptId}": (submission: submission, stage: stage),
@@ -1311,7 +1315,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
-            key: const ValueKey(_kLaunchRowId),
             displayText: submission.displayText,
             isCommand: submission is NewSessionCommandSubmissionSnapshot,
             attachmentCount: attachments.length,
@@ -1335,7 +1338,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         final message = messages[index];
         return _revealable(
           createdAtMs: message.info.time?.created,
-          child: _animatedPromptRow(child: _userMessage(message: message)),
+          child: _deliveredPromptRow(message: message),
         );
       }
       final promptId = entryId.substring(_kPromptRowPrefix.length);
@@ -1346,8 +1349,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
             child: QueuedMessageBubble(
-              // The row that replaced the launch bubble carries on from it.
-              key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
@@ -1379,7 +1380,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
-            key: ValueKey(entryId),
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
@@ -1402,7 +1402,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
-            key: ValueKey(entryId),
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
@@ -1448,8 +1447,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final createdAtMs = message.info.time?.created;
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
-      MessageUser() when entryId == _launchSlotRowId => _animatedPromptRow(child: _userMessage(message: message)),
-      MessageUser() => _userMessage(message: message),
+      MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
+      MessageUser() => _userMessage(message: message, outlineFade: null),
       MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,
         blocks: transcript.blocksFor(messageId: id),
@@ -1470,10 +1469,25 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
 
   /// A user message's bubble, registered where it is so its pin can stand in
   /// for it.
-  Widget _userMessage({required MessageWithParts message}) => TranscriptPromptSlot(
+  Widget _userMessage({required MessageWithParts message, required Duration? outlineFade}) => TranscriptPromptSlot(
     openerId: message.info.id,
     registry: _promptSlots,
-    child: UserMessageCard(message: message),
+    child: UserMessageCard(message: message, outlineFade: outlineFade),
+  );
+
+  /// A delivered prompt's row. It carries on from the bubble that waited, the row's
+  /// key keeping them one, so a line that showed sees out its fade, and a row built
+  /// later has none to replay.
+  Widget _deliveredPromptRow({required MessageWithParts message}) => _animatedPromptRow(
+    child: QueuedMessageBubble(
+      displayText: null,
+      isCommand: false,
+      attachmentCount: 0,
+      localAttachments: const [],
+      presentation: QueuedMessageBubblePresentation.delivered(
+        message: ({required outlineFade}) => _userMessage(message: message, outlineFade: outlineFade),
+      ),
+    ),
   );
 
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {

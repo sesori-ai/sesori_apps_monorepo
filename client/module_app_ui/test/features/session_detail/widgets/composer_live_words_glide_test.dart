@@ -77,6 +77,10 @@ void _expectRect(Rect actual, Rect expected) {
   expect(actual.bottom, moreOrLessEquals(expected.bottom, epsilon: 0.01));
 }
 
+final _waitingBubble = find.byWidgetPredicate(
+  (widget) => widget is QueuedMessageBubble && widget.presentation is! DeliveredMessageBubblePresentation,
+);
+
 void main() {
   late StreamController<VoiceInputState> voiceStates;
   late _MockVoiceInputCubit voiceCubit;
@@ -388,7 +392,7 @@ void main() {
         for (var frame = 0; frame < 6; frame++) {
           await tester.pump(_frame);
         }
-        expect(find.byType(QueuedMessageBubble), findsNothing, reason: "The words have stopped waiting for it.");
+        expect(_waitingBubble, findsNothing, reason: "The words have stopped waiting for it.");
         onTheWay?.call();
 
         var landed = tester.getRect(_glide);
@@ -525,7 +529,7 @@ void main() {
           text: "spoken words",
           onTheWay: () => moveSendOn((sent) => _woken(_delivered(sent))),
         );
-        expect(find.byType(QueuedMessageBubble), findsNothing);
+        expect(_waitingBubble, findsNothing);
       });
 
       for (final (place, from) in const [("at the end", 0.0), ("a little way up", 300.0)]) {
