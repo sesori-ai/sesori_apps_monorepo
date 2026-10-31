@@ -51,7 +51,10 @@ stored or sent to the bridge.
   soft page-coloured halo shows only while rows slide under the compacted
   bubble, and the pin line never clips it. The next user message, never an
   answer or automation, pushes the pinned one up and out, step for step with
-  the scroll. Only the end of a
+  the scroll. A move too far for the next pin to be ready holds the last pin
+  until that pin's copy is built, showing the previous prompt's words rather
+  than blinking.
+  Only the end of a
   pasted document is built, so pinning it costs no more than pinning a
   sentence, and nothing in the pinned bubble takes a press or a
   scroll of its own: a press anywhere on it glides to its message, and a remote
@@ -256,6 +259,8 @@ Touch and trackpad cases run per platform (iOS, Android, macOS).
   - compacted to three lines at a narrow width and at a large text scale, while
     a short prompt pins whole;
   - hidden before the first prompt;
+  - held through far moves and runs of them, painted every frame, with one
+    bubble per message and none hidden on screen without its pin;
   - a steer pinning, taking over exactly, compacting, pushed out by the next
     user message as a prompt is, and gliding back on a tap;
   - a message taller than the screen scrolling as a row with its last line

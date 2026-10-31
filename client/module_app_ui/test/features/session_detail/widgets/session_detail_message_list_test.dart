@@ -3592,6 +3592,68 @@ void main() {
       expect(pin.view, const TranscriptPinStart(), reason: "a prompt that fits on screen pins its start");
     });
 
+    group("across a far move", () {
+      final openerIds = [for (var turn = 0; turn < 20; turn++) "u$turn"];
+
+      /// Pumps a frame and checks what it painted: a pin, one bubble per prompt,
+      /// and no bubble hidden on screen without its pin standing in for it.
+      Future<void> pumpAndExpectPinned(WidgetTester tester, {required String step}) async {
+        await tester.pump();
+        expect(
+          pins(tester),
+          paints..something(
+            (method, arguments) => switch (arguments) {
+              [final RRect bubble, final Paint paint] when method == #drawRRect =>
+                paint.color.toARGB32() == pins(tester).bubbleColor.toARGB32() && bubble.bottom > 0,
+              _ => false,
+            },
+          ),
+          reason: "no pin painted at $step",
+        );
+        seenBubbles(tester, openerIds: openerIds, screen: tester.getRect(find.byKey(_listViewKey)));
+        for (final slot in tester.renderObjectList<RenderTranscriptPromptSlot>(find.byType(TranscriptPromptSlot))) {
+          if (!slot.hidden || pinOf(tester, slot.openerId) != null) continue;
+          final bottom = slot.localToGlobal(Offset(0, slot.size.height)).dy;
+          expect(bottom, lessThanOrEqualTo(pinTop + 0.01), reason: "${slot.openerId} is hidden, unpinned, at $step");
+        }
+      }
+
+      testWidgets("holds the last pin for the frame until the new one's copy is built", (tester) async {
+        await _pumpTurns(tester, messages: shortTurns);
+        await _scrollRowTo(tester, rowId: "u15", top: pinTop - 200);
+        final position = _position(tester);
+
+        // Far off and back; then near enough that the held pin's own bubble is on
+        // screen, where it stays hidden so the prompt shows once.
+        for (final (move, heldBubbleShown) in [(3000.0, false), (-3000.0, false), (600.0, true)]) {
+          final held = pins(tester).stickyLayout.pinned.single;
+          position.jumpTo(position.pixels + move);
+          await pumpAndExpectPinned(tester, step: "$move, held");
+          expect(pins(tester).stickyLayout.pinned.single, held);
+          if (heldBubbleShown) {
+            expect(tester.renderObject<RenderTranscriptPromptSlot>(slotOf(held.openerId)).hidden, isTrue);
+          }
+          await pumpAndExpectPinned(tester, step: "$move, next frame");
+          expect(pins(tester).stickyLayout.pinned.single.openerId, isNot(held.openerId));
+        }
+      });
+
+      testWidgets("keeps a pin up through a run of far frames", (tester) async {
+        await _pumpTurns(tester, messages: shortTurns);
+        await _scrollRowTo(tester, rowId: "u15", top: pinTop - 200);
+        final position = _position(tester);
+
+        // Each frame moves on before the last frame's copies are of use. At the
+        // shorter step, the held pin's own bubble is still on screen.
+        for (final step in [1500.0, -1500.0, 700.0, -700.0]) {
+          for (var frame = 0; frame < 4; frame++) {
+            position.jumpTo(position.pixels + step);
+            await pumpAndExpectPinned(tester, step: "$step, frame $frame");
+          }
+        }
+      });
+    });
+
     group("a steer", () {
       // Turn 3 gains a twelve-line steer, sent before the agent answered.
       final withSteer = [

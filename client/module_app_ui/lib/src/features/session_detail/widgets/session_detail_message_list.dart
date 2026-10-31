@@ -689,6 +689,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     if (pins is! RenderTranscriptStickyPrompts || !pins.hasSize) return;
     final layout = layOutTranscriptStickyPrompts(
       openers: openers,
+      previous: pins.stickyLayout,
       fullHeights: pins.fullHeights,
       cutOpenerIds: pins.cutOpenerIds,
       compactHeight: pins.compactHeight,
@@ -706,7 +707,8 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     ];
     if (listEquals(stickyOpenerIds, _stickyOpenerIds.value)) return;
     // Layout cannot rebuild; the copies join from the next frame, well before
-    // a prompt that could pin reaches the pin line.
+    // a prompt that could pin reaches the pin line, unless a far move outruns
+    // them, when the last pin holds.
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _stickyOpenerIds.value = stickyOpenerIds;
     });
