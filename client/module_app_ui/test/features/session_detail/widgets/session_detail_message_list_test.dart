@@ -3120,6 +3120,23 @@ void main() {
       });
     }
 
+    testWidgets("not easing a queued row in again when scrolling brings it back", (tester) async {
+      final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
+      harness.enqueueSubmission(_textSubmission(promptId: "prm_kept", text: "Kept"));
+      await tester.pumpAndSettle();
+      final settled = tester.getTopLeft(find.text("Kept")).dy;
+
+      final position = _position(tester);
+      position.jumpTo(position.maxScrollExtent / 2);
+      await tester.pump();
+      expect(find.text("Kept", skipOffstage: false), findsNothing);
+      position.jumpTo(0);
+      await tester.pump();
+
+      expect(tester.getTopLeft(find.text("Kept")).dy, settled);
+      expect(tester.hasRunningAnimations, isFalse);
+    });
+
     testWidgets("leaving a prompt from elsewhere to appear as it always has", (tester) async {
       final harness = await _pumpTurns(tester, messages: _userMessages(count: 60));
       await tester.drag(find.byKey(_listViewKey), const Offset(0, 150));

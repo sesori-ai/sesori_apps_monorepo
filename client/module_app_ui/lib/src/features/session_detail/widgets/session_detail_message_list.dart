@@ -275,6 +275,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// the rows already there, or caught up at once, do not animate.
   Set<String>? _knownRowIds;
 
+  /// Rows that have eased all the way in. Scrolling can drop one and build it
+  /// again, and it only eases in again if it was dropped before it had opened.
+  final Set<String> _easedInRowIds = {};
+
   /// The row that replaced the launch bubble. It keeps the bubble's key, so
   /// the swap eases in place like a queued prompt turning into its message.
   String? _launchSlotRowId;
@@ -1048,6 +1052,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final previousRowIndexById = _rowIndexById;
     final previousRowIds = previousRowIndexById.keys.toList();
     _knownRowIds = rowIds.toSet();
+    _easedInRowIds.retainAll(rowIds);
     _rowIndexById = {for (final (index, rowId) in rowIds.indexed) rowId: index};
     _userMessagesById = {
       for (final message in messages)
@@ -1152,8 +1157,9 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
                         // Not the old rows a glide back to the latest edge builds on its way.
                         arriving: !previousRowIndexById.containsKey(entryId),
                         child: TranscriptPresence(
-                          entering: enteringRowIds.contains(entryId),
+                          entering: enteringRowIds.contains(entryId) && !_easedInRowIds.contains(entryId),
                           exiting: false,
+                          onEntered: () => _easedInRowIds.add(entryId),
                           onExited: null,
                           child: _buildRow(
                             entryId: entryId,
