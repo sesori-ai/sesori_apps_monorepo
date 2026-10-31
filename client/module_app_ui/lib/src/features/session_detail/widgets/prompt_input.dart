@@ -1497,6 +1497,12 @@ class _PromptInputState() extends State<PromptInput> {
           }
           return _fadeEachEntry(transitionChild, animation);
         },
+        // Sat on the pill: centred, a taller hint at large text would lift the
+        // fading header off it by half the difference in one frame.
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: Alignment.bottomCenter,
+          children: [...previousChildren, ?currentChild],
+        ),
         child: child,
       ),
     );

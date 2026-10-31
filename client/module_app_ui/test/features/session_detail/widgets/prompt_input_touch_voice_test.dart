@@ -242,6 +242,41 @@ void main() {
         expect(trailingFocus.canRequestFocus, isTrue);
       });
 
+      testWidgets("at large text a taller hint leaves the fading header where it sits", (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
+        );
+        final header = find.byKey(const Key("model row"));
+        final hint = find.textContaining("Release");
+        final restingTop = tester.getTopLeft(header).dy;
+
+        final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+        await tester.pump();
+        for (var i = 0; i < 16; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          for (var copy = 0; copy < header.evaluate().length; copy++) {
+            expect(tester.getTopLeft(header.at(copy)).dy, restingTop, reason: "moved holding, frame $i");
+          }
+        }
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(hint, findsOneWidget);
+
+        await gesture.up();
+        await tester.pump();
+        for (var i = 0; i < 16; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          for (var copy = 0; copy < header.evaluate().length; copy++) {
+            expect(tester.getTopLeft(header.at(copy)).dy, restingTop, reason: "moved releasing, frame $i");
+          }
+        }
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+      });
+
       testWidgets("a quick tap turns every fade back from where it had reached", (tester) async {
         await _pumpComposer(
           tester: tester,
