@@ -457,7 +457,7 @@ void main() {
             when(() => voiceCubit.stopAndTranscribe(limitReached: false)).thenAnswer((_) async {
               voiceStates.add(VoiceInputState.liveFinishing(words: words));
             });
-            await tester.tap(find.byTooltip("Record voice"));
+            await tester.tap(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Record voice"));
             await tester.pump();
             await tester.pump();
             await tester.pump(const Duration(milliseconds: 300));
@@ -483,7 +483,7 @@ void main() {
             columnWidths: const SessionDetailColumnWidths(transcript: 960, composer: 760),
             presentation: ComposerPresentation.pointer,
           );
-          await tester.tap(find.byTooltip("Record voice"));
+          await tester.tap(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Record voice"));
           await tester.pump();
           await tester.pump();
           await tester.pump(const Duration(milliseconds: 300));

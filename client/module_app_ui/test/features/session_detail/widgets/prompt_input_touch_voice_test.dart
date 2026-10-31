@@ -2,6 +2,7 @@ import "dart:async";
 import "dart:math";
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/gestures.dart";
 import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -947,6 +948,217 @@ void main() {
     expect(find.ancestor(of: hint, matching: find.byType(GestureDetector)), findsWidgets);
   });
 
+  group("a screen reader on the composer's icon buttons", () {
+    SemanticsNode nodeNamed(String label) => find.semantics.byLabel(label).evaluate().single;
+    FinderBase<SemanticsNode> tapNamed(String label) => find.semantics.byPredicate((node) {
+      final data = node.getSemanticsData();
+      return data.label == label && data.hasAction(SemanticsAction.tap);
+    });
+    final unnamedTaps = find.semantics.byPredicate((node) {
+      final data = node.getSemanticsData();
+      return !node.isMergedIntoParent &&
+          data.hasAction(SemanticsAction.tap) &&
+          data.label.isEmpty &&
+          data.tooltip.isEmpty;
+    });
+
+    for (final presentation in ComposerPresentation.values) {
+      for (final isBusy in [false, true]) {
+        testWidgets("voice-first's pill and buttons each say their own words, ${presentation.name}, busy: $isBusy", (
+          tester,
+        ) async {
+          final semantics = tester.ensureSemantics();
+          final composer = await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: ChatInputMode.voiceFirst,
+            isBusy: isBusy,
+            presentation: presentation,
+            composerHeader: const Text("Header words"),
+          );
+
+          expect(
+            nodeNamed("Hold to talk"),
+            isSemantics(label: "Hold to talk", tooltip: "", isButton: true, hasTapAction: true),
+          );
+          expect(
+            nodeNamed("Type a message"),
+            isSemantics(
+              label: "Type a message",
+              tooltip: "",
+              isButton: true,
+              isEnabled: true,
+              hasTapAction: true,
+              hasFocusAction: true,
+            ),
+          );
+          expect(unnamedTaps, findsNothing);
+          if (isBusy) {
+            expect(nodeNamed("Stop"), isSemantics(label: "Stop", isButton: true, hasTapAction: true));
+            tester.semantics.tap(find.semantics.byLabel("Stop"));
+            expect(composer.aborts, 1);
+          } else {
+            expect(find.semantics.byLabel("Stop"), findsNothing);
+          }
+          semantics.dispose();
+        });
+      }
+    }
+
+    testWidgets("voice-first's pill says what it shows with a draft in the box", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.voiceFirst,
+        initialText: "draft words",
+      );
+      expect(find.text("Hold to talk more"), findsOneWidget);
+      expect(nodeNamed("Hold to talk more"), isSemantics(label: "Hold to talk more", isButton: true));
+      expect(find.semantics.byLabel("Hold to talk"), findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets("a semantic tap on the keyboard button opens typing, not a recording", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+      expect(find.byType(EditableText), findsNothing);
+
+      tester.semantics.tap(find.semantics.byLabel("Type a message"));
+      await tester.pumpAndSettle();
+
+      expect(tester.widget<EditableText>(find.byType(EditableText)).focusNode.hasFocus, isTrue);
+      verifyNever(voiceCubit.startRecording);
+      semantics.dispose();
+    });
+
+    testWidgets("a semantic tap on the pill still toggles recording, and the keyboard button takes none meanwhile", (
+      tester,
+    ) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+      expect(tapNamed("Type a message"), findsOne);
+
+      tester.semantics.tap(find.semantics.byLabel("Hold to talk"));
+      await tester.pump();
+      await tester.pump();
+      verify(voiceCubit.startRecording).called(1);
+      expect(tapNamed("Type a message"), findsNothing);
+      expect(nodeNamed("Hold to talk"), isSemantics(hasTapAction: true, hasDismissAction: true));
+
+      // Past the recording's minimum, which a shorter one is cancelled under.
+      await tester.pump(const Duration(seconds: 1));
+      tester.semantics.tap(find.semantics.byLabel("Hold to talk"));
+      await tester.pump();
+      verify(() => voiceCubit.stopAndTranscribe(limitReached: false)).called(1);
+      semantics.dispose();
+    });
+
+    testWidgets("the keyboard button takes no screen reader tap during a hold", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+
+      final gesture = await tester.startGesture(tester.getCenter(find.textContaining("Hold to talk")));
+      await tester.pump();
+      expect(tapNamed("Type a message"), findsNothing, reason: "From the hold's first frame.");
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(tapNamed("Type a message"), findsNothing);
+
+      await gesture.up();
+      await tester.pump(const Duration(milliseconds: 500));
+      semantics.dispose();
+    });
+
+    for (final (name, state, label) in [
+      ("transcribing", const VoiceInputState.transcribing(limitReached: false), "Transcribing..."),
+      ("finishing", const VoiceInputState.liveFinishing(words: LiveWords.none), "Finishing..."),
+    ]) {
+      testWidgets("the pill says only that it's $name, and cancelling is named", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+
+        final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
+        await gesture.up();
+        await tester.pump();
+        await emitVoice(tester: tester, state: state);
+        await tester.pump(const Duration(milliseconds: 500));
+
+        expect(nodeNamed(label), isSemantics(label: label, tooltip: "", isButton: true, hasTapAction: true));
+        expect(unnamedTaps, findsNothing);
+        tester.semantics.tap(find.semantics.byLabel("Cancel transcription"));
+        await tester.pump();
+        verify(voiceCubit.cancel).called(1);
+        await tester.pump(const Duration(milliseconds: 500));
+        semantics.dispose();
+      });
+    }
+
+    testWidgets("text-first's send and stop keep their words off the pill", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
+      expect(find.semantics.byPredicate((node) => node.getSemanticsData().tooltip == "Send"), findsNothing);
+      expect(
+        nodeNamed("Send"),
+        isSemantics(label: "Send", isButton: true, isEnabled: false, hasEnabledState: true, hasTapAction: false),
+      );
+
+      final composer = await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.textFirst,
+        isBusy: true,
+      );
+      expect(find.semantics.byPredicate((node) => node.getSemanticsData().tooltip == "Stop"), findsNothing);
+      tester.semantics.tap(find.semantics.byLabel("Stop"));
+      expect(composer.aborts, 1);
+      expect(unnamedTaps, findsNothing);
+      semantics.dispose();
+    });
+
+    testWidgets("a pointer shell's mic is a named button that starts recording", (tester) async {
+      final semantics = tester.ensureSemantics();
+      await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.textFirst,
+        presentation: ComposerPresentation.pointer,
+      );
+
+      expect(nodeNamed("Record voice"), isSemantics(label: "Record voice", tooltip: "", isButton: true));
+      expect(unnamedTaps, findsNothing);
+      tester.semantics.tap(find.semantics.byLabel("Record voice"));
+      await tester.pump();
+      verify(voiceCubit.startRecording).called(1);
+      await tester.pump(const Duration(milliseconds: 500));
+      semantics.dispose();
+    });
+
+    testWidgets("the keyboard button still shows its tooltip on long-press and hover, and still taps", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+      final keyboard = find.byIcon(TablerRegular.keyboard);
+
+      await tester.longPress(keyboard);
+      await tester.pump(const Duration(milliseconds: 200));
+      expect(find.text("Type a message"), findsOneWidget);
+      await tester.pumpAndSettle(const Duration(seconds: 2));
+      expect(find.text("Type a message"), findsNothing);
+
+      final mouse = await tester.createGesture(kind: PointerDeviceKind.mouse);
+      addTearDown(mouse.removePointer);
+      await mouse.addPointer(location: Offset.zero);
+      await mouse.moveTo(tester.getCenter(keyboard));
+      await tester.pump(const Duration(seconds: 1));
+      expect(find.text("Type a message"), findsOneWidget);
+      await mouse.moveTo(Offset.zero);
+      await tester.pumpAndSettle(const Duration(seconds: 1));
+
+      expect(find.byType(EditableText), findsNothing);
+      await tester.tap(keyboard);
+      await tester.pumpAndSettle();
+      expect(find.byType(EditableText), findsOneWidget);
+    });
+  });
+
   testWidgets("voice-first's pill says it's transcribing to a screen reader", (tester) async {
     final semantics = tester.ensureSemantics();
     await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, initialText: "");
@@ -1096,7 +1308,7 @@ void main() {
     final mic = find.byIcon(TablerRegular.microphone);
     final send = find.byIcon(TablerRegular.arrow_up);
     final waveform = find.byType(PregoVoiceWaveform);
-    final sendForScreenReader = find.semantics.byPredicate((node) => node.getSemanticsData().tooltip == "Send");
+    final sendForScreenReader = find.semantics.byLabel("Send");
 
     void setPhone({required WidgetTester tester, required double width}) {
       tester.view.physicalSize = Size(width * 3, 844 * 3);
@@ -1201,10 +1413,10 @@ void main() {
       bool excludesFocus() => tester
           .widgetList<ExcludeFocus>(find.ancestor(of: send, matching: find.byType(ExcludeFocus)))
           .any((exclude) => exclude.excluding);
-      final sendTapForScreenReader = find.semantics.descendant(
-        of: sendForScreenReader,
-        matching: find.semantics.byAction(SemanticsAction.tap),
-      );
+      final sendTapForScreenReader = find.semantics.byPredicate((node) {
+        final data = node.getSemanticsData();
+        return data.label == "Send" && data.hasAction(SemanticsAction.tap);
+      });
       expect(sendTapForScreenReader, findsOne);
       expect(excludesFocus(), isFalse);
 
