@@ -3,6 +3,7 @@ import "package:material_ui/material_ui.dart";
 
 import "../../interactions/prego_tappable.dart";
 import "../../theme/prego_theme.dart";
+import "prego_button_semantics.dart";
 import "prego_button_trailing.dart";
 
 // Horizontal padding for md size — not a named spacing token.
@@ -144,15 +145,19 @@ class PregoButtonsSolid extends StatefulWidget {
          type != PregoButtonsSolidType.success || hierarchy == PregoButtonsSolidHierarchy.primary,
          'The success tone is only defined for the primary hierarchy.',
        ),
-       iconOnly = false;
+       iconOnly = false,
+       semanticLabel = null,
+       showsTooltip = false;
 
   /// Icon-only variant — renders a square button with a single centred icon.
   const new iconOnly({
     super.key,
     required this.leadingIcon,
+    required this.semanticLabel,
     required this.hierarchy,
     required this.size,
     required this.onPressed,
+    this.showsTooltip = false,
     this.isLoading = false,
     this.type = PregoButtonsSolidType.regular,
   }) : assert(
@@ -167,6 +172,7 @@ class PregoButtonsSolid extends StatefulWidget {
          type != PregoButtonsSolidType.success || hierarchy == PregoButtonsSolidHierarchy.primary,
          'The success tone is only defined for the primary hierarchy.',
        ),
+       assert(!showsTooltip || semanticLabel != null, 'A tooltip shows the semantic label, so it needs one.'),
        iconOnly = true,
        fullWidth = false,
        label = null,
@@ -212,6 +218,16 @@ class PregoButtonsSolid extends StatefulWidget {
 
   /// Whether the button renders in icon-only mode (square, no label).
   final bool iconOnly;
+
+  /// What a screen reader calls an icon-only button, which shows no words of its
+  /// own. Null only under a wrapper that speaks for the button, such as a
+  /// press-and-hold control or a larger touch target. Always null for the
+  /// standard constructor, whose text names it.
+  final String? semanticLabel;
+
+  /// Also shows [semanticLabel] as a tooltip on hover and long-press. Leave it
+  /// off where a long-press means something else.
+  final bool showsTooltip;
 
   /// When `true`, the button expands to fill its parent's width and centres
   /// the icon + label horizontally. Requires the parent to provide bounded
@@ -324,7 +340,17 @@ class _PregoButtonsSolidState() extends State<PregoButtonsSolid> {
         widget.hierarchy != PregoButtonsSolidHierarchy.primary &&
         widget.hierarchy != PregoButtonsSolidHierarchy.primaryAlt;
 
-    return isNonPrimaryDisabled ? Opacity(opacity: 0.8, child: button) : button;
+    final content = isNonPrimaryDisabled ? Opacity(opacity: 0.8, child: button) : button;
+
+    // An icon-only button with no name has a wrapper speaking for it.
+    if (widget.iconOnly && widget.semanticLabel == null) return content;
+
+    return PregoButtonSemantics(
+      label: widget.semanticLabel,
+      enabled: onTap != null,
+      showsTooltip: widget.showsTooltip,
+      child: content,
+    );
   }
 
   // ---------------------------------------------------------------------------

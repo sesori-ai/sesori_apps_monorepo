@@ -567,6 +567,17 @@ void main() {
       await tester.pump(const Duration(milliseconds: 300));
       verify(() => voiceService.stopAndTranscribe(session: any(named: "session"))).called(1);
       expect(transcribing, findsOneWidget);
+      final semantics = tester.ensureSemantics();
+      await tester.pump();
+      expect(
+        find.semantics.byLabel("Cancel transcription").evaluate().single,
+        isSemantics(label: "Cancel transcription", tooltip: "", isButton: true, isEnabled: true, hasTapAction: true),
+      );
+      expect(
+        find.semantics.byLabel("Send feedback").evaluate().single,
+        isSemantics(label: "Send feedback", isButton: true, isEnabled: false, hasTapAction: false),
+      );
+      semantics.dispose();
       expect(waveform, findsNothing);
       expect(draft(tester), "Typed first");
 

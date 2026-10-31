@@ -544,6 +544,16 @@ void main() {
     }
   });
 
+  testWidgets("a screen reader finds the resize handle's name on the handle, not the window", (tester) async {
+    final semantics = tester.ensureSemantics();
+    await tester.pumpWidget(app(state: running));
+    await tester.pump();
+    final handle = tester.getSemantics(resize);
+    expect(handle.getSemanticsData().tooltip, "Resize sidebar; double-click to reset");
+    expect(handle.rect.size, tester.getSize(resize));
+    semantics.dispose();
+  });
+
   testWidgets("the sidebar floats as an inset panel whose gap is the resize handle", (tester) async {
     await tester.pumpWidget(app(state: running));
     final rect = tester.getRect(panel);
@@ -637,7 +647,10 @@ void main() {
         when(refreshService.refresh).thenAnswer((_) => reply.future);
         await tester.pumpWidget(app(state: running));
         await tester.pumpAndSettle();
-        expect(find.byTooltip("This computer, Bridge status"), findsOneWidget);
+        expect(
+          find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "This computer, Bridge status"),
+          findsOneWidget,
+        );
         final refresh = find.byKey(const Key("desktop-sidebar-refresh"));
         final icon = find.descendant(of: refresh, matching: find.byType(Icon));
         Focus.of(tester.element(icon)).requestFocus();
@@ -645,7 +658,7 @@ void main() {
         await tester.sendKeyEvent(LogicalKeyboardKey.enter);
         await tester.pump();
         expect(tester.widget<IconButton>(refresh).onPressed, isNull);
-        expect(find.bySemanticsLabel("Refreshing projects and sessions"), findsOneWidget);
+        expect(find.byTooltip("Refreshing projects and sessions"), findsOneWidget);
         expect(find.descendant(of: refresh, matching: find.byType(PregoActivityIndicator)), findsOneWidget);
         expect(find.descendant(of: list, matching: find.text("Fix the build")), findsOneWidget);
         expect(tester.widget<IconButton>(find.byKey(const Key("desktop-sidebar-settings"))).onPressed, isNotNull);

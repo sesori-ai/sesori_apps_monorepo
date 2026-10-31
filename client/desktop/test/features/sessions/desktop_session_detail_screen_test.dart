@@ -176,6 +176,10 @@ class _StubDiffSummaryCubit() extends Cubit<DiffSummaryState> implements DiffSum
   Duration get refreshInterval => Duration.zero;
 }
 
+/// The composer's labelled buttons keep their tooltip's words off the semantics
+/// tree, which is what `find.byTooltip` reads.
+Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
+
 void main() {
   testWidgets("desktop renders the transcript and text-first composer", (tester) async {
     final cubit = _MockSessionDetailCubit();
@@ -296,7 +300,7 @@ void main() {
 
     // `+` and `/` are always visible on desktop, and the box grows instead of
     // offering the editor sheet.
-    expect(find.byTooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("Attach image"), findsOneWidget);
     final composer = find.byType(SessionDetailComposerControls);
     expect(find.descendant(of: composer, matching: find.byIcon(TablerRegular.chevron_right)), findsNothing);
     expect(find.byIcon(TablerRegular.maximize), findsNothing);

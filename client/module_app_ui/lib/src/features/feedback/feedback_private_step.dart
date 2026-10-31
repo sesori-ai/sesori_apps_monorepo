@@ -484,15 +484,14 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
                       _VoicePresentation.transcribing => Row(
                         key: const ValueKey("feedback-voice-transcribing"),
                         children: [
-                          Tooltip(
-                            message: loc.voiceCancelTranscription,
-                            child: PregoButtonsSolid.iconOnly(
-                              key: const ValueKey("feedback-voice-cancel-transcription"),
-                              leadingIcon: TablerRegular.x,
-                              hierarchy: PregoButtonsSolidHierarchy.secondary,
-                              size: PregoButtonsSolidSize.lg,
-                              onPressed: _cancelVoice,
-                            ),
+                          PregoButtonsSolid.iconOnly(
+                            key: const ValueKey("feedback-voice-cancel-transcription"),
+                            leadingIcon: TablerRegular.x,
+                            semanticLabel: loc.voiceCancelTranscription,
+                            showsTooltip: true,
+                            hierarchy: PregoButtonsSolidHierarchy.secondary,
+                            size: PregoButtonsSolidSize.lg,
+                            onPressed: _cancelVoice,
                           ),
                           const SizedBox(width: PregoSpacing.md),
                           Flexible(
@@ -516,20 +515,14 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
                 const SizedBox(width: PregoSpacing.md),
                 _buildMicrophone(context: context, editable: editable),
                 const SizedBox(width: PregoSpacing.md),
-                Semantics(
-                  label: loc.feedbackSend,
-                  button: true,
-                  enabled: canSend,
-                  excludeSemantics: true,
-                  onTap: canSend ? _submit : null,
-                  child: PregoButtonsSolid.iconOnly(
-                    key: const ValueKey("feedback-send"),
-                    leadingIcon: TablerRegular.arrow_up,
-                    hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-                    size: PregoButtonsSolidSize.lg,
-                    isLoading: sending,
-                    onPressed: canSend ? _submit : null,
-                  ),
+                PregoButtonsSolid.iconOnly(
+                  key: const ValueKey("feedback-send"),
+                  leadingIcon: TablerRegular.arrow_up,
+                  semanticLabel: loc.feedbackSend,
+                  hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+                  size: PregoButtonsSolidSize.lg,
+                  isLoading: sending,
+                  onPressed: canSend ? _submit : null,
                 ),
               ],
             ),
@@ -577,6 +570,7 @@ class _FeedbackPrivateStepState() extends State<FeedbackPrivateStep> {
           child: PregoButtonsSolid.iconOnly(
             key: const ValueKey("feedback-voice"),
             leadingIcon: TablerRegular.microphone,
+            semanticLabel: null,
             hierarchy: PregoButtonsSolidHierarchy.secondary,
             size: PregoButtonsSolidSize.lg,
             // Keeps the enabled look; the listener drives recording.

@@ -195,19 +195,14 @@ class const _ProjectRow({
             acquireOpenLease: null,
             menuWidth: _menuWidth,
             entriesBuilder: entries,
-            triggerBuilder: (context, openMenu) => Semantics(
-              label: loc.settingsProjectActions(displayName),
-              child: Tooltip(
-                message: loc.settingsProjectActions(displayName),
-                excludeFromSemantics: true,
-                child: PregoButtonsSolid.iconOnly(
-                  key: ValueKey("projects-settings-actions-${project.id}"),
-                  leadingIcon: TablerRegular.dots,
-                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                  size: PregoButtonsSolidSize.sm,
-                  onPressed: online ? openMenu : null,
-                ),
-              ),
+            triggerBuilder: (context, openMenu) => PregoButtonsSolid.iconOnly(
+              key: ValueKey("projects-settings-actions-${project.id}"),
+              leadingIcon: TablerRegular.dots,
+              semanticLabel: loc.settingsProjectActions(displayName),
+              showsTooltip: true,
+              hierarchy: PregoButtonsSolidHierarchy.tertiary,
+              size: PregoButtonsSolidSize.sm,
+              onPressed: online ? openMenu : null,
             ),
           ),
         ),

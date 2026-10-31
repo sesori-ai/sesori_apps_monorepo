@@ -562,6 +562,8 @@ class const _Breadcrumb({
 
     final upButton = PregoButtonsSolid.iconOnly(
       leadingIcon: TablerRegular.arrow_up,
+      // The wrapper below speaks for the padded touch area too.
+      semanticLabel: null,
       hierarchy: PregoButtonsSolidHierarchy.secondary,
       // md is 40 tall, with the touch target padded out below; sm is 36,
       // over the pointer one.
@@ -573,14 +575,12 @@ class const _Breadcrumb({
       padding: const EdgeInsetsDirectional.only(start: PregoSpacing.xl, bottom: PregoSpacing.md),
       child: Row(
         children: [
-          // Icon-only, so the label it drops travels in its semantics. Marked
-          // a button here too, so at a root it reads as a disabled button
-          // rather than as plain text. Wrapping the padded touch area makes
-          // the one semantics node as large as the tap target.
-          Semantics(
+          // Wrapping the padded touch area makes the one semantics node as
+          // large as the tap target.
+          PregoButtonSemantics(
             label: context.loc.folderBrowserParentFolder,
-            button: true,
             enabled: onNavigateUp != null,
+            showsTooltip: false,
             child: touch
                 // A tap just outside the drawn button still opens the parent.
                 ? GestureDetector(
@@ -921,16 +921,13 @@ class const _ActionMenu({
         child: Row(
           spacing: PregoSpacing.xl,
           children: [
-            // Icon-only, so the label it drops travels in its semantics.
-            Semantics(
-              label: loc.createNewFolder,
-              child: PregoButtonsSolid.iconOnly(
-                leadingIcon: TablerRegular.folder_plus,
-                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                size: PregoButtonsSolidSize.xl,
-                isLoading: inFlight == _AddProjectAction.createFolder,
-                onPressed: onCreateFolder,
-              ),
+            PregoButtonsSolid.iconOnly(
+              leadingIcon: TablerRegular.folder_plus,
+              semanticLabel: loc.createNewFolder,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              size: PregoButtonsSolidSize.xl,
+              isLoading: inFlight == _AddProjectAction.createFolder,
+              onPressed: onCreateFolder,
             ),
             Expanded(
               child: PregoButtonsSolid(

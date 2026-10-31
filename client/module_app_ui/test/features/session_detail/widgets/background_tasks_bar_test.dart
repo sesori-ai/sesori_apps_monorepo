@@ -87,7 +87,7 @@ void main() {
     // A screen reader can open the list from the summary it reads out.
     expect(
       tester.getSemantics(find.bySemanticsLabel("28 sub-agents, 3 working")),
-      isSemantics(isButton: true, hasTapAction: true),
+      isSemantics(tooltip: "", isButton: true, hasTapAction: true),
     );
   });
 

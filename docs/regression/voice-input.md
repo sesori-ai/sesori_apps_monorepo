@@ -178,9 +178,10 @@ and `stable` records first.
   to talk" or, with a draft in the box, "Hold to talk more".
   A semantic tap on it toggles recording.
 - The composer's icon buttons are each a named screen reader button that can be activated, in every layout: "Type a
-  message", "Stop", "Send", "Cancel transcription" and a pointer shell's "Record voice". Send reads as disabled when
-  there is nothing to send, and no button's tooltip lands on the pill. During a hold the keyboard button takes no screen
-  reader tap.
+  message", "Stop", "Send", "Cancel transcription", a pointer shell's "Record voice", "More actions", "Attach image",
+  "Slash commands" and "Expand editor". Send reads as disabled when there is nothing to send, and "Attach image",
+  "Slash commands" and "Expand editor" while a dictation is under way. No button's tooltip lands on the pill. During a
+  hold the keyboard button takes no screen reader tap.
 - The Default input page has an inline title, explanatory subtitle, and two mutually exclusive Voice/Text previews.
   Selection updates the existing app-root preference and persists immediately; external preference changes update
   both the row and the open page. Back is the sole navigation action and returns to Settings.

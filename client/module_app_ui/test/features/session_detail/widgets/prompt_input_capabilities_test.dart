@@ -35,6 +35,10 @@ class _PendingComposerImagePicker() implements ComposerImagePicker {
 
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
 
+/// The composer's labelled buttons keep their tooltip's words off the semantics
+/// tree, which is what `find.byTooltip` reads.
+Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
+
 void main() {
   testWidgets("starts at the handed-over caret and reports busy while an insert or a word is pending", (tester) async {
     final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.subtle);
@@ -101,7 +105,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pump();
     expect(busy, [true]);
     picker.pick.complete(null);
@@ -138,7 +142,7 @@ void main() {
     picker.pick = Completer();
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pump();
     expect(busy, [true, false, true, false, true, false, true]);
     await tester.pumpWidget(const SizedBox());
@@ -507,8 +511,8 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    expect(find.byTooltip("Attach image"), findsOneWidget);
-    expect(find.byTooltip("More actions"), findsNothing);
+    expect(_tooltip("Attach image"), findsOneWidget);
+    expect(_tooltip("More actions"), findsNothing);
   });
 
   testWidgets("defers surface-style synchronization while dependencies rebuild", (tester) async {

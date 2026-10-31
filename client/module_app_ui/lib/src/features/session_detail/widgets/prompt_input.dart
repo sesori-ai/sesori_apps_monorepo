@@ -2150,8 +2150,10 @@ class _PromptInputState() extends State<PromptInput> {
               PositionedDirectional(
                 top: 0,
                 end: 0,
-                child: Tooltip(
-                  message: loc.sessionDetailExpandEditor,
+                child: PregoButtonSemantics(
+                  label: loc.sessionDetailExpandEditor,
+                  enabled: _voicePresentation == _VoicePresentation.idle,
+                  showsTooltip: true,
                   child: PregoTappable(
                     onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
                     borderRadius: BorderRadius.circular(PregoRadius.full),
@@ -2803,6 +2805,7 @@ class _PromptInputState() extends State<PromptInput> {
         onPointerCancel: _handleRecordPointerEnd,
         child: const PregoButtonsSolid.iconOnly(
           leadingIcon: TablerRegular.microphone,
+          semanticLabel: null,
           hierarchy: PregoButtonsSolidHierarchy.secondary,
           size: PregoButtonsSolidSize.lg,
           onPressed: _ignoreTap,
@@ -2842,32 +2845,21 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// A composer icon button a screen reader hears as [label], with its tap and
-  /// focus, on one node. A plain [Tooltip] over the button leaves its words on
-  /// whichever node takes them, the whole pill when the button rests alone, and
-  /// its tap on an unnamed node of its own.
+  /// A composer icon button with its name on one screen reader node and in a
+  /// tooltip.
   Widget _buildLabelledIconButton({
     required String label,
     required IconData icon,
     required PregoButtonsSolidHierarchy hierarchy,
     required VoidCallback? onPressed,
   }) {
-    return Tooltip(
-      message: label,
-      excludeFromSemantics: true,
-      child: MergeSemantics(
-        child: Semantics(
-          button: true,
-          enabled: onPressed != null,
-          label: label,
-          child: PregoButtonsSolid.iconOnly(
-            leadingIcon: icon,
-            hierarchy: hierarchy,
-            size: PregoButtonsSolidSize.lg,
-            onPressed: onPressed,
-          ),
-        ),
-      ),
+    return PregoButtonsSolid.iconOnly(
+      leadingIcon: icon,
+      semanticLabel: label,
+      showsTooltip: true,
+      hierarchy: hierarchy,
+      size: PregoButtonsSolidSize.lg,
+      onPressed: onPressed,
     );
   }
 }

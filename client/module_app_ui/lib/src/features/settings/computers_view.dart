@@ -230,21 +230,16 @@ class const _ComputerRow({
                 acquireOpenLease: null,
                 menuWidth: _menuWidth,
                 entriesBuilder: entries,
-                triggerBuilder: (context, openMenu) => Semantics(
-                  label: loc.computersActions(computer.name),
-                  child: Tooltip(
-                    message: loc.computersActions(computer.name),
-                    excludeFromSemantics: true,
-                    child: PregoButtonsSolid.iconOnly(
-                      key: ValueKey("computers-actions-${computer.id}"),
-                      leadingIcon: TablerRegular.dots,
-                      hierarchy: PregoButtonsSolidHierarchy.tertiary,
-                      size: PregoButtonsSolidSize.sm,
-                      // The spinner takes the button's place, so the row keeps its size.
-                      isLoading: isBusy,
-                      onPressed: isBusy ? null : openMenu,
-                    ),
-                  ),
+                triggerBuilder: (context, openMenu) => PregoButtonsSolid.iconOnly(
+                  key: ValueKey("computers-actions-${computer.id}"),
+                  leadingIcon: TablerRegular.dots,
+                  semanticLabel: loc.computersActions(computer.name),
+                  showsTooltip: true,
+                  hierarchy: PregoButtonsSolidHierarchy.tertiary,
+                  size: PregoButtonsSolidSize.sm,
+                  // The spinner takes the button's place, so the row keeps its size.
+                  isLoading: isBusy,
+                  onPressed: isBusy ? null : openMenu,
                 ),
               ),
             ],

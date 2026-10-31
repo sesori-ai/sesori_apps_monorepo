@@ -263,6 +263,10 @@ List<Object?> _captureHapticFeedback({required bool throwsPlatformException}) {
   return feedback;
 }
 
+/// The composer's labelled buttons keep their tooltip's words off the semantics
+/// tree, which is what `find.byTooltip` reads.
+Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
+
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -5355,7 +5359,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
     // The staged image switches the composer to the typing layout so the
@@ -5622,7 +5626,7 @@ void main() {
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
 
-    expect(find.byTooltip("Attach image"), findsNothing);
+    expect(_tooltip("Attach image"), findsNothing);
     // The accordion still opens for its other action.
     expect(find.byIcon(TablerRegular.slash), findsOneWidget);
   });
@@ -5652,7 +5656,7 @@ void main() {
     await tester.pumpAndSettle();
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
     states.add(supported.copyWith(supportsPromptAttachments: null));
@@ -5691,7 +5695,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
     await tester.enterText(find.byType(EditableText), "with image");
@@ -5728,7 +5732,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
     expect(semanticsWithLabel("Attached image"), findsOneWidget);
@@ -5762,13 +5766,13 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
     expect(semanticsWithLabel("small.png"), findsOneWidget);
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
     expect(find.text("Attached images are limited to 50 MB per message."), findsOneWidget);
@@ -5785,7 +5789,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
     expect(find.text("That image is too large to attach."), findsOneWidget);
@@ -5817,7 +5821,7 @@ void main() {
 
     await tester.tap(find.byIcon(TablerRegular.chevron_right));
     await tester.pumpAndSettle();
-    await tester.tap(find.byTooltip("Attach image"));
+    await tester.tap(_tooltip("Attach image"));
     await tester.pumpAndSettle();
 
     await tester.tap(find.byIcon(TablerRegular.arrow_up));
