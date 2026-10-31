@@ -16,6 +16,7 @@ import "package:theme_prego/module_prego.dart";
 import "../../../extensions/build_context_x.dart";
 import "../composer_presentation_scope.dart";
 import "command_picker.dart";
+import "composer_live_words.dart";
 import "composer_options_accordion.dart";
 import "composer_surface_style.dart";
 import "image_attachment_viewer.dart";
@@ -1220,11 +1221,19 @@ class _PromptInputState() extends State<PromptInput> {
       ? child
       : AnimatedSize(duration: _morphDuration, curve: _morphCurve, alignment: alignment, child: child);
 
+  /// The composer only cares which state it is in. Live words change many times
+  /// a second and show in their own layer, so they must not rebuild it.
+  static VoiceInputState _withoutLiveWords({required VoiceInputState state}) {
+    if (state is VoiceInputLiveRecording) return state.copyWith(words: LiveWords.none);
+    if (state is VoiceInputLiveFinishing) return state.copyWith(words: LiveWords.none);
+    return state;
+  }
+
   @override
   Widget build(BuildContext context) {
     final capabilities = ComposerPresentationScope.of(context);
     _renderedVoiceState = capabilities.voiceSupport.isSupported
-        ? context.watch<VoiceInputCubit>().state
+        ? context.select<VoiceInputCubit, VoiceInputState>((cubit) => _withoutLiveWords(state: cubit.state))
         : const VoiceInputState.idle();
 
     // Escape cancels a running recording from anywhere in the composer. The
@@ -1309,49 +1318,52 @@ class _PromptInputState() extends State<PromptInput> {
             // The composer's halo runs on to the bottom edge, so nothing
             // shows below it. It follows the animated size rather than one
             // layout's surface, so it stays put while layouts cross-fade.
-            child: PregoPageHalo(
-              radius: PregoRadius.x3l,
-              reachesLayerBottom: true,
-              child: _morphSize(
-                alignment: Alignment.bottomCenter,
-                child: AnimatedSwitcher(
-                  key: _composerBodyKey,
-                  duration: _morphDuration,
-                  switchInCurve: Curves.easeOut,
-                  switchOutCurve: Curves.easeIn,
-                  layoutBuilder: (currentChild, previousChildren) => Stack(
-                    alignment: Alignment.bottomCenter,
-                    children: [...previousChildren, ?currentChild],
-                  ),
-                  child: KeyedSubtree(
-                    // Layout changes cross-fade; voice interactions pin
-                    // [_layout], so a switch never happens mid-hold.
-                    key: ValueKey(_layout),
-                    child: switch (_layout) {
-                      ComposerSurfaceLayout.typing => _buildTypingComposer(context),
-                      ComposerSurfaceLayout.compact => _buildCompactComposer(context),
-                      ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
-                        context,
-                        hint: context.loc.sessionDetailHoldToTalk,
-                        trailing: Row(
-                          spacing: PregoSpacing.sm,
-                          children: [
-                            Tooltip(
-                              message: context.loc.sessionDetailTypeMessage,
-                              child: PregoButtonsSolid.iconOnly(
-                                leadingIcon: TablerRegular.keyboard,
-                                hierarchy: PregoButtonsSolidHierarchy.secondary,
-                                size: PregoButtonsSolidSize.lg,
-                                onPressed: _enterTypingMode,
+            child: _withLiveWords(
+              context: context,
+              body: PregoPageHalo(
+                radius: PregoRadius.x3l,
+                reachesLayerBottom: true,
+                child: _morphSize(
+                  alignment: Alignment.bottomCenter,
+                  child: AnimatedSwitcher(
+                    key: _composerBodyKey,
+                    duration: _morphDuration,
+                    switchInCurve: Curves.easeOut,
+                    switchOutCurve: Curves.easeIn,
+                    layoutBuilder: (currentChild, previousChildren) => Stack(
+                      alignment: Alignment.bottomCenter,
+                      children: [...previousChildren, ?currentChild],
+                    ),
+                    child: KeyedSubtree(
+                      // Layout changes cross-fade; voice interactions pin
+                      // [_layout], so a switch never happens mid-hold.
+                      key: ValueKey(_layout),
+                      child: switch (_layout) {
+                        ComposerSurfaceLayout.typing => _buildTypingComposer(context),
+                        ComposerSurfaceLayout.compact => _buildCompactComposer(context),
+                        ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
+                          context,
+                          hint: context.loc.sessionDetailHoldToTalk,
+                          trailing: Row(
+                            spacing: PregoSpacing.sm,
+                            children: [
+                              Tooltip(
+                                message: context.loc.sessionDetailTypeMessage,
+                                child: PregoButtonsSolid.iconOnly(
+                                  leadingIcon: TablerRegular.keyboard,
+                                  hierarchy: PregoButtonsSolidHierarchy.secondary,
+                                  size: PregoButtonsSolidSize.lg,
+                                  onPressed: _enterTypingMode,
+                                ),
                               ),
-                            ),
-                            // The resting voice pill has no send affordance,
-                            // but stopping in-flight work must stay reachable.
-                            if (widget.isBusy) _buildPrimaryActionButton(context),
-                          ],
+                              // The resting voice pill has no send affordance,
+                              // but stopping in-flight work must stay reachable.
+                              if (widget.isBusy) _buildPrimaryActionButton(context),
+                            ],
+                          ),
                         ),
-                      ),
-                    },
+                      },
+                    ),
                   ),
                 ),
               ),
@@ -1462,6 +1474,13 @@ class _PromptInputState() extends State<PromptInput> {
         ),
       ),
     );
+  }
+
+  /// Hangs the live words' layer on the composer's body, where a composer with
+  /// no voice has no cubit to take them from.
+  Widget _withLiveWords({required BuildContext context, required Widget body}) {
+    if (!ComposerPresentationScope.of(context).voiceSupport.isSupported) return body;
+    return ComposerLiveWords(cancelProgress: _cancelDragProgress, hint: _buildReleaseHint(context), child: body);
   }
 
   /// The floating helper above the recording pill. Follows the drag: what a

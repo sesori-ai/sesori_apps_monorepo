@@ -75,6 +75,17 @@ live on and the host can stream, the same gestures run over a realtime socket in
   with the finger still down.
 - Cancelling a live dictation at any point sends `cancel` when the socket is streaming, closes the socket, releases the
   microphone, and hands nothing over.
+- A live dictation's words show in a layer of their own while the user speaks, in the presentation remote config chose.
+  Nothing under that layer moves or resizes for them, and they never take a touch away from the pill or the chat.
+- Focus dims the chat pane, and only that pane, from the first frame of listening, and shows the words large above the
+  composer: 23 pt on a touch shell, 25 pt on a pointer shell. The panel leaves the chat in view and opens at the first
+  word, growing to five lines. In both, the newest words stay at the bottom, a new line rises smoothly, and older lines
+  fade away at the top once the words run out of room.
+- A tentative word fades in dim and brightens where it stands when it turns final or when the user releases. A word the
+  server changes keeps its place and brightness.
+- Sliding up to cancel fades the words with the finger, to 40% at the arm line, and coming back restores them. A cancel
+  fades them with a 12 px drop; a send, an edit, a fallback or a failure fades them where they stand. Reduced motion
+  removes the movement.
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
   `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live` or `after_recording`, which a fallback
   counts as. No audio, transcript, or prompt text reaches logs or analytics.
@@ -161,6 +172,8 @@ interruptions such as a call.
   message with surviving voice text is classified as typed.
 - A hold waits for the voice mode, a switch change alters a dictation already running, a live failure offers Retry, a
   fallback loses the hold, or audio or `finish` reaches the socket before ready.
+- Live words move, relayout or rebuild the chat or the composer, snap when they wrap, hide the release hint, block the
+  pill's gesture, or stay on screen after the dictation ends.
 - A desktop dictation sends the box and the words as two messages, Enter inserts a newline while listening, or the
   second click misses because the control moved.
 - A dictated message reaches the agent unmarked, a typed message or slash command is marked, or the marker appears in a
