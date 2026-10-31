@@ -103,7 +103,7 @@ class VoiceTranscriptionService({
   Stream<VoiceLiveEvent> liveEventStream({required VoiceTranscriptionSession session}) =>
       session._liveEventsController.stream;
 
-  /// Whether the running dictation is running live.
+  /// Whether the dictation is running live.
   bool isLive({required VoiceTranscriptionSession session}) => session._state is _VoiceSessionLiveRecording;
 
   Future<void> prewarm({required VoiceTranscriptionSession session}) {
