@@ -1234,7 +1234,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// House transition timing for the composer's state morphs.
   static const Duration _morphDuration = Duration(milliseconds: 220);
   static const Curve _morphCurve = Curves.easeOutCubic;
-  static const Interval _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
+
+  /// Even through its stretch: the house ease squeezed into these 88 ms would show
+  /// half of what returns in a single 60 Hz frame.
+  static const Interval _trailingReturnCurve = Interval(0.6, 1);
   static const Curve _heldLeaveCurve = FlippedCurve(_morphCurve);
 
   /// The latest fade in of what covers the resting words, a hold's and then its
