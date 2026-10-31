@@ -95,6 +95,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
         setState(() => _layer = const _Hidden());
       });
     _presenceCurve = CurvedAnimation(parent: _presence, curve: Curves.ease);
+    // A listener skips the current state, and a composer can remount mid-dictation.
+    _handleVoiceState(state: context.read<VoiceInputCubit>().state);
   }
 
   @override
@@ -143,6 +145,13 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with SingleTick
   void _leave({required bool cancelled}) {
     final layer = _layer;
     if (layer is! _Live) return;
+    // Nothing to fade: a panel that never got a word. Reversing wouldn't fire the
+    // status listener, and a portal still open from an earlier dictation would stay.
+    if (_presence.isDismissed) {
+      _portal.hide();
+      setState(() => _layer = const _Hidden());
+      return;
+    }
     setState(() => _layer = _Leaving(last: layer, cancelled: cancelled));
     _presence.reverse();
   }

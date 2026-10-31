@@ -62,7 +62,7 @@ Toolchain: Flutter 3.47.8.
 
 | Command | Result |
 | --- | --- |
-| `module_app_ui`: `flutter test --no-pub` | +1115 passed, 25 of them in `prompt_input_live_words_test.dart` |
+| `module_app_ui`: `flutter test --no-pub` | +1117 passed, 27 of them in `prompt_input_live_words_test.dart` |
 | `module_app_ui`: `dart analyze --fatal-infos` | No issues |
 
 `app`, `desktop` and `module_core` have no changed files and were not run.
@@ -77,8 +77,9 @@ slide fade size; layer never hiding; portal never closing; panel not rising; wor
 reduced motion travelling; reduced motion fading; replaced word fading again; a voice-less composer
 getting the layer.
 
-One survived: `_presence.isDismissed` in `_leave`, for a panel that never opened. It was dead code and
-was removed. The top fade's gradient has no test, since a shader can't be read back; it was checked by
+One survived: `_presence.isDismissed` in `_leave`, for a panel that never opened, and was removed. Review
+then named the flow that needs it: a second hold during the first card's fade, ended with no words, left
+the portal open. It came back with a test. The top fade's gradient has no test, since a shader can't be read back; it was checked by
 eye.
 
 ## Feel, on a simulator

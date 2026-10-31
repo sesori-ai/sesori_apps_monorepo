@@ -85,7 +85,7 @@ live on and the host can stream, the same gestures run over a realtime socket in
   server changes keeps its place and brightness.
 - Sliding up to cancel fades the words with the finger, to 40% at the arm line, and coming back restores them. A cancel
   fades them with a 12 px drop; a send, an edit, a fallback or a failure fades them where they stand. Reduced motion
-  removes the movement.
+  removes the movement, and word fades and brightening become instant.
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
   `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live` or `after_recording`, which a fallback
   counts as. No audio, transcript, or prompt text reaches logs or analytics.
@@ -125,7 +125,7 @@ live on and the host can stream, the same gestures run over a realtime socket in
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, every fallback, the cut-off and limit endings, and cancel and close at each stage. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word layer's focus and panel presentation, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, and reduced motion. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, and music from another app keeps playing when a chat opens. |
@@ -199,6 +199,9 @@ interruptions such as a call.
 - Live has no client deadline for `ready` once the user has released: a dead network shows Finishing until the socket
   gives up, and the X still stops it.
 - A fallen-back recording that fails and is retried lands in the box without the cut-off notice.
+- A very long live dictation lays out its whole text once per update; no slowdown showed at about 100 words, and much
+  longer text is unmeasured. A route pushed mid-dictation followed by a window resize can trip an assert while the live
+  words' portal is open (flutter/flutter#192030).
 - Retained recordings are composer-local and memory-owned. They do not survive composer disposal, route replacement,
   process restart, or a valid submission of other composer content. Failed best-effort deletion can still leave an
   unowned audio file on disk.
@@ -211,6 +214,7 @@ interruptions such as a call.
 `client/app/test/features/settings/`, `client/desktop/test/features/settings/`,
 `client/module_app_ui/test/platform/voice/`, `client/app/test/features/session_detail/widgets/`,
 `client/module_app_ui/test/features/session_detail/widgets/prompt_input_pointer_voice_test.dart`,
+`client/module_app_ui/test/features/session_detail/widgets/prompt_input_live_words_test.dart`,
 `client/module_core/test/{capabilities,cubits,repositories,services}/`, and bridge glossary tests under
 `bridge/app/test/{bridge,listeners}/`; production code under `client/module_app_ui/lib/src/platform/voice/`,
 `client/module_app_ui/lib/src/features/session_detail/widgets/`, `client/app/lib/features/session_detail/widgets/`,

@@ -576,6 +576,37 @@ void main() {
       expect(_paragraphTop(tester), top);
     });
 
+    testWidgets("a wordless panel ending after an earlier card's fade leaves no layer behind", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await live(tester: tester, presentation: _panel, confirmed: "words");
+      await settle(tester);
+      await emit(tester: tester, state: const VoiceInputState.idle());
+      await tester.pump(const Duration(milliseconds: 50));
+
+      await live(tester: tester, presentation: _panel);
+      await settle(tester);
+      await emit(tester: tester, state: const VoiceInputState.idle());
+      await settle(tester);
+
+      expect(_words, findsNothing);
+    });
+
+    testWidgets("a composer mounting mid-dictation shows the words", (tester) async {
+      whenListen(
+        voiceCubit,
+        voiceStates.stream,
+        initialState: const VoiceInputState.liveRecording(
+          words: LiveWords(confirmed: "words", provisional: ""),
+          presentation: _focus,
+        ),
+      );
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
+      await settle(tester);
+
+      expect(_words, findsOneWidget);
+      expect(_dimOpacity(tester), 1);
+    });
+
     testWidgets("a composer without voice has no layer", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit, voiceSupport: ComposerVoiceSupport.unsupported);
       expect(find.byType(ComposerLiveWords), findsNothing);
