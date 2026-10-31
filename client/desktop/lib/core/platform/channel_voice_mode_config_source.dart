@@ -14,4 +14,8 @@ class ChannelVoiceModeConfigSource({
     DesktopReleaseChannel.internal => true,
     DesktopReleaseChannel.stable => false,
   };
+
+  /// Desktop has no on-device engine yet.
+  @override
+  Future<bool> fetchOnDeviceEnabled() async => false;
 }

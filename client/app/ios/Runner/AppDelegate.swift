@@ -5,6 +5,7 @@ import UIKit
 @main
 @objc class AppDelegate: FlutterAppDelegate, FlutterImplicitEngineDelegate {
   private var recorderPrewarmService: RecorderPrewarmService?
+  private var onDeviceSpeechService: OnDeviceSpeechService?
 
   override func application(
     _ application: UIApplication,
@@ -19,6 +20,12 @@ import UIKit
     recorderPrewarmService = RecorderPrewarmService(
       channel: FlutterMethodChannel(
         name: RecorderPrewarmService.channelName,
+        binaryMessenger: messenger
+      )
+    )
+    onDeviceSpeechService = OnDeviceSpeechService(
+      channel: FlutterMethodChannel(
+        name: OnDeviceSpeechService.channelName,
         binaryMessenger: messenger
       )
     )

@@ -43,6 +43,8 @@ void main() {
     repository = MockVoiceRepository();
     projectRepository = MockProjectRepository();
     voiceModeRepository = MockVoiceModeRepository();
+    when(() => voiceModeRepository.onDeviceEnabled).thenReturn(false);
+    when(() => voiceModeRepository.mode).thenReturn(const VoiceModeAfterRecording());
     capture = MockVoiceCapture();
     captureSession = MockVoiceCaptureSession();
     when(capture.createSession).thenReturn(captureSession);

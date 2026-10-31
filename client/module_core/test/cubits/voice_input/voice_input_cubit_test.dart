@@ -427,7 +427,11 @@ void main() {
       build: () => VoiceInputCubit(service: service, session: session),
       act: (cubit) async {
         await cubit.startRecording();
-        liveEvents.add(const VoiceLiveEnded(transcript: "cut", outcome: VoiceDictationOutcome.interrupted));
+        liveEvents.add(const VoiceLiveEnded(
+            transcript: "cut",
+            outcome: VoiceDictationOutcome.interrupted,
+            mode: VoiceDictationMode.live,
+          ));
       },
       skip: 2,
       expect: () => const [
@@ -438,6 +442,47 @@ void main() {
         ),
       ],
     );
+
+    group("with the words hidden on the device", () {
+      setUp(() {
+        when(() => service.isLive(session: session)).thenReturn(false);
+      });
+
+      blocTest<VoiceInputCubit, VoiceInputState>(
+        "a session that ends while held completes from the plain recording",
+        build: () => VoiceInputCubit(service: service, session: session),
+        act: (cubit) async {
+          await cubit.startRecording();
+          liveEvents.add(
+            const VoiceLiveEnded(
+              transcript: "cut",
+              outcome: VoiceDictationOutcome.interrupted,
+              mode: VoiceDictationMode.onDeviceHidden,
+            ),
+          );
+        },
+        expect: () => const [
+          VoiceInputState.starting(),
+          VoiceInputState.recording(),
+          VoiceInputState.completed(
+            transcript: "cut",
+            outcome: VoiceDictationOutcome.interrupted,
+            mode: VoiceDictationMode.onDeviceHidden,
+          ),
+        ],
+      );
+
+      blocTest<VoiceInputCubit, VoiceInputState>(
+        "a session that fails while held reports the failure",
+        build: () => VoiceInputCubit(service: service, session: session),
+        act: (cubit) async {
+          await cubit.startRecording();
+          liveEvents.add(VoiceLiveFailed(error: VoiceTranscriptionError.recordingFailed(innerError: "engine")));
+        },
+        skip: 2,
+        expect: () => [isA<VoiceInputTranscriptionFailed>()],
+      );
+    });
 
     blocTest<VoiceInputCubit, VoiceInputState>(
       "a session that fails while held reports the failure with no retry",
@@ -459,7 +504,11 @@ void main() {
         liveEvents
           ..add(const VoiceLiveWordsChanged(words: hello))
           ..add(const VoiceLiveFellBack())
-          ..add(const VoiceLiveEnded(transcript: "late", outcome: VoiceDictationOutcome.finished))
+          ..add(const VoiceLiveEnded(
+              transcript: "late",
+              outcome: VoiceDictationOutcome.finished,
+              mode: VoiceDictationMode.live,
+            ))
           ..add(VoiceLiveFailed(error: VoiceTranscriptionError.emptyTranscript()));
       },
       expect: () => [

@@ -13,10 +13,23 @@ void main() {
   setUp(() {
     configApi = _MockVoiceModeConfigApi();
     repository = VoiceModeRepository(configApi: configApi);
+    when(configApi.fetchOnDeviceEnabled).thenAnswer((_) async => true);
   });
 
   void answerLiveEnabled({required bool liveEnabled}) =>
       when(configApi.fetchLiveEnabled).thenAnswer((_) async => liveEnabled);
+
+  test("on-device stays off until a load has answered, then follows the kill switch", () async {
+    answerLiveEnabled(liveEnabled: false);
+    expect(repository.onDeviceEnabled, isFalse);
+
+    await repository.load();
+    expect(repository.onDeviceEnabled, isTrue);
+
+    when(configApi.fetchOnDeviceEnabled).thenAnswer((_) async => false);
+    await repository.load();
+    expect(repository.onDeviceEnabled, isFalse);
+  });
 
   test("live on gives live", () async {
     answerLiveEnabled(liveEnabled: true);

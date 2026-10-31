@@ -173,7 +173,10 @@ enum AnalyticsVoiceFinish({required final String wireValue}) {
 /// How a dictation actually ran, so a fallback reports [afterRecording].
 enum AnalyticsVoiceMode({required final String wireValue}) {
   live(wireValue: "live"),
-  afterRecording(wireValue: "after_recording");
+  afterRecording(wireValue: "after_recording"),
+
+  /// The device's own engine, whether or not the words showed.
+  onDevice(wireValue: "on_device");
 }
 
 @immutable

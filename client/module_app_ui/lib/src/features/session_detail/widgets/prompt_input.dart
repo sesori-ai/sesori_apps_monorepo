@@ -1028,9 +1028,9 @@ class _PromptInputState() extends State<PromptInput> {
     switch ((outcome, mode)) {
       case (VoiceDictationOutcome.interrupted, _):
         _showComposerNotice(context.loc.voiceDictationCutOff);
-      case (VoiceDictationOutcome.limitReached, VoiceDictationMode.live):
+      case (VoiceDictationOutcome.limitReached, VoiceDictationMode.live || VoiceDictationMode.onDeviceLive):
         _showComposerNotice(context.loc.voiceDictationLimitReached);
-      case (VoiceDictationOutcome.limitReached, VoiceDictationMode.afterRecording):
+      case (VoiceDictationOutcome.limitReached, VoiceDictationMode.afterRecording || VoiceDictationMode.onDeviceHidden):
       case (VoiceDictationOutcome.finished, _):
         break;
     }
@@ -1054,6 +1054,7 @@ class _PromptInputState() extends State<PromptInput> {
       mode: switch (mode) {
         VoiceDictationMode.live => AnalyticsVoiceMode.live,
         VoiceDictationMode.afterRecording => AnalyticsVoiceMode.afterRecording,
+        VoiceDictationMode.onDeviceLive || VoiceDictationMode.onDeviceHidden => AnalyticsVoiceMode.onDevice,
       },
     );
     if (sent || !mounted) return;
@@ -1360,7 +1361,10 @@ class _PromptInputState() extends State<PromptInput> {
               unawaited(_endRecording(finish: _VoiceFinish.edit)),
         },
       },
-      child: Focus(focusNode: _composerFocusNode, child: _buildComposerColumn(context, capabilities: capabilities)),
+      child: Focus(
+        focusNode: _composerFocusNode,
+        child: _buildComposerColumn(context, capabilities: capabilities),
+      ),
     );
   }
 
@@ -1391,7 +1395,9 @@ class _PromptInputState() extends State<PromptInput> {
                     crossAxisAlignment: CrossAxisAlignment.end,
                     spacing: 8,
                     children: [
-                      Expanded(child: _buildComposerTopSlot(context: context, hintWidth: constraints.maxWidth)),
+                      Expanded(
+                        child: _buildComposerTopSlot(context: context, hintWidth: constraints.maxWidth),
+                      ),
                       _buildComposerTrailing(trailing: trailing),
                     ],
                   ),

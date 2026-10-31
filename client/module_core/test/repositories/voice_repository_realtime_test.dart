@@ -3,6 +3,7 @@ import "dart:io" show WebSocketException;
 
 import "package:mocktail/mocktail.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_dart_core/src/api/on_device_speech_api.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_client.dart";
 import "package:sesori_dart_core/src/capabilities/voice/realtime_voice_protocol.dart";
 import "package:test/test.dart";
@@ -20,11 +21,14 @@ class _ThrowingTokenProvider({required final Exception failure}) implements Auth
   }) async => throw failure;
 }
 
+class _MockOnDeviceSpeechApi() extends Mock implements OnDeviceSpeechApi;
+
 void main() {
   late FakeRealtimeVoiceChannel channel;
 
   Future<VoiceRealtimeConnection> open({required String? token}) => VoiceRepository(
     api: _MockVoiceApi(),
+    onDeviceSpeechApi: _MockOnDeviceSpeechApi(),
     realtimeClient: RealtimeVoiceClient.withChannelConnector(
       tokenProvider: FakeRealtimeVoiceTokenProvider(token: token),
       channelConnector: ({required uri, required headers}) => channel,
@@ -85,6 +89,7 @@ void main() {
       final failure = Exception("storage locked");
       final repository = VoiceRepository(
         api: _MockVoiceApi(),
+        onDeviceSpeechApi: _MockOnDeviceSpeechApi(),
         realtimeClient: RealtimeVoiceClient(tokenProvider: _ThrowingTokenProvider(failure: failure)),
       );
 

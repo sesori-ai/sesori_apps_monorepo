@@ -8,4 +8,7 @@ import "../../di/firebase_register_module.dart";
 class NoOpVoiceModeConfigSource() implements VoiceModeConfigSource {
   @override
   Future<bool> fetchLiveEnabled() async => false;
+
+  @override
+  Future<bool> fetchOnDeviceEnabled() async => true;
 }
