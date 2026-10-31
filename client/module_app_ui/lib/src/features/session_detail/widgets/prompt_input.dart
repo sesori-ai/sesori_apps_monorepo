@@ -1237,8 +1237,9 @@ class _PromptInputState() extends State<PromptInput> {
   static const Interval _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
   static const Curve _heldLeaveCurve = FlippedCurve(_morphCurve);
 
-  /// The latest hold's fade in, which its hint's transition reports.
-  Animation<double>? _holdFade;
+  /// The latest fade in of what covers the resting words, a hold's and then its
+  /// transcribing's, which the caption's transition reports.
+  Animation<double>? _coverFade;
 
   /// The hint and the waveform dissolve in on a press, then leave on the house
   /// curve so what rests beneath them can come back into a clear space. An
@@ -1246,9 +1247,11 @@ class _PromptInputState() extends State<PromptInput> {
   /// turned back mid-fade retraces its way in, so a quick tap never jumps.
   Curve get _heldOutCurve => _voicePresentation == _VoicePresentation.recording ? _heldLeaveCurve : Curves.linear;
 
-  /// How what rests beneath a hold comes back: after the hint has mostly gone,
-  /// unless a quick tap turned the press back, when waiting would blink empty.
-  Curve get _restingInCurve => (_holdFade?.isCompleted ?? false) ? _trailingReturnCurve : Curves.linear;
+  /// How what rests beneath a hold or a transcribing comes back: after what
+  /// covered it has mostly gone, unless that was turned back mid-fade, when waiting
+  /// would blink empty. Read once per build: with a trailing control the top slot
+  /// builds in layout, after the caption has reported the fade this build started.
+  Curve _restingInCurve = Curves.linear;
 
   /// [AnimatedSwitcher.defaultTransitionBuilder] keys a fade by its child's key,
   /// and the switcher drops an outgoing fade sharing the incoming one's key, so a
@@ -1311,6 +1314,10 @@ class _PromptInputState() extends State<PromptInput> {
     _renderedVoiceState = capabilities.voiceSupport.isSupported
         ? context.select<VoiceInputCubit, VoiceInputState>((cubit) => _withoutLiveWords(state: cubit.state))
         : const VoiceInputState.idle();
+    // A press is never a return: words landing in the box can swap the layout, and
+    // its caption with them, leaving the last report settled and never turned back.
+    final coverSettled = _voicePresentation != _VoicePresentation.recording && (_coverFade?.isCompleted ?? false);
+    _restingInCurve = coverSettled ? _trailingReturnCurve : Curves.linear;
 
     // Escape cancels a running recording from anywhere in the composer. The
     // binding exists only while listening (for a pointer shell, until its words
@@ -1424,22 +1431,8 @@ class _PromptInputState() extends State<PromptInput> {
                           ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
                             context,
                             hint: context.loc.sessionDetailHoldToTalk,
-                            // The stop button beside the keyboard one.
-                            extraTrailingWidth: widget.isBusy ? _actionButtonSize + PregoSpacing.sm : 0,
-                            trailing: Row(
-                              spacing: PregoSpacing.sm,
-                              children: [
-                                _buildLabelledIconButton(
-                                  label: context.loc.sessionDetailTypeMessage,
-                                  icon: TablerRegular.keyboard,
-                                  hierarchy: PregoButtonsSolidHierarchy.secondary,
-                                  onPressed: _enterTypingMode,
-                                ),
-                                // The resting voice pill has no send affordance,
-                                // but stopping in-flight work must stay reachable.
-                                if (widget.isBusy) _buildPrimaryActionButton(context),
-                              ],
-                            ),
+                            extraTrailingWidth: widget.isBusy ? _stopRoom : 0,
+                            trailing: _buildRestingActions(context),
                           ),
                         },
                       ),
@@ -1476,9 +1469,9 @@ class _PromptInputState() extends State<PromptInput> {
     final duration = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
     final opacity = visible ? 1.0 : 0.0;
     // Leaves on the house curve and comes back once what is over its place (the
-    // release hint, the waveform's end) has mostly gone: each fade holds one
-    // curve, as an implicit animation given a new curve restarts from the wrong
-    // value when a quick tap turns it back.
+    // release hint, the waveform's end, the keyboard button) has mostly gone: each
+    // fade holds one curve, as an implicit animation given a new curve restarts from
+    // the wrong value when a quick tap turns it back.
     return AnimatedOpacity(
       duration: duration,
       curve: _morphCurve,
@@ -1577,10 +1570,11 @@ class _PromptInputState() extends State<PromptInput> {
       clipBehavior: hintWidth == null ? Clip.hardEdge : Clip.none,
       child: AnimatedSwitcher(
         duration: _morphDuration,
-        switchInCurve: _restingInCurve,
+        // A failed transcribing's Retry and Discard take taps as they arrive, so they
+        // show at once rather than waiting behind the shimmer's exit.
+        switchInCurve: _renderedVoiceState is VoiceInputRetryPending ? Curves.linear : _restingInCurve,
         switchOutCurve: _heldOutCurve,
         transitionBuilder: (transitionChild, animation) {
-          if (transitionChild.key == const ValueKey("release-hint")) _holdFade = animation;
           // Only the staged chip bears glass. Picker/voice/retry content keeps
           // its ordinary fade, including while the outgoing chip dematerializes.
           if (transitionChild.key == const ValueKey("staged-command")) {
@@ -1830,16 +1824,7 @@ class _PromptInputState() extends State<PromptInput> {
       restingActions: _fadeInPlace(
         context: context,
         visible: trailingVisible,
-        child: _inertUntilShowing(
-          context: context,
-          visible: trailingVisible,
-          child: _morphSize(
-            alignment: AlignmentDirectional.centerStart,
-            duration: _morphDuration,
-            curve: _morphCurve,
-            child: trailing,
-          ),
-        ),
+        child: _inertUntilShowing(context: context, visible: trailingVisible, child: trailing),
       ),
       child: Row(
         spacing: PregoSpacing.md,
@@ -1885,18 +1870,57 @@ class _PromptInputState() extends State<PromptInput> {
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm + _actionButtonSize + PregoSpacing.md),
         child: AnimatedPadding(
-          duration: _morphDuration,
+          duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
           curve: _morphCurve,
           padding: EdgeInsetsDirectional.only(end: extraTrailingWidth),
           child: Center(
             child: AnimatedSwitcher(
               duration: _morphDuration,
               switchInCurve: _restingInCurve,
-              transitionBuilder: _fadeEachEntry,
+              // Only the shimmer shows on the way out: the words at rest dissolve
+              // into a press, and the transcribing words clear for them to return.
+              switchOutCurve: _voicePresentation == _VoicePresentation.idle ? Curves.linear : _heldLeaveCurve,
+              transitionBuilder: (transitionChild, animation) {
+                if (transitionChild.key != const ValueKey("voice-caption-idle")) _coverFade = animation;
+                return _fadeEachEntry(transitionChild, animation);
+              },
               child: child,
             ),
           ),
         ),
+      ),
+    );
+  }
+
+  /// Voice-first's resting actions: the keyboard button and, while work runs, the
+  /// stop button at the row's end. Stop never travels: it fades where it rests, in
+  /// the spot the keyboard button leaves, and stays mounted so that it still is a
+  /// stop button as it goes. The keyboard button glides past on top, in step with
+  /// the room behind it and the words beside it.
+  Widget _buildRestingActions(BuildContext context) {
+    final busy = widget.isBusy;
+    return SizedBox(
+      width: _actionButtonSize + _stopRoom,
+      child: Stack(
+        alignment: AlignmentDirectional.centerEnd,
+        children: [
+          _fadeInPlace(
+            context: context,
+            visible: busy,
+            child: _inertUntilShowing(context: context, visible: busy, child: _buildStopButton(context)),
+          ),
+          AnimatedPositionedDirectional(
+            duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+            curve: _morphCurve,
+            end: busy ? _stopRoom : 0,
+            child: _buildLabelledIconButton(
+              label: context.loc.sessionDetailTypeMessage,
+              icon: TablerRegular.keyboard,
+              hierarchy: PregoButtonsSolidHierarchy.secondary,
+              onPressed: _enterTypingMode,
+            ),
+          ),
+        ],
       ),
     );
   }
@@ -2410,6 +2434,9 @@ class _PromptInputState() extends State<PromptInput> {
   /// The mic / send buttons and the accordion's closed pill are all 44pt.
   static const double _actionButtonSize = 44;
 
+  /// What the stop button adds to voice-first's resting actions.
+  static const double _stopRoom = _actionButtonSize + PregoSpacing.sm;
+
   /// A pointer shell's two 44pt controls and the gap between them, as the mic
   /// and send sit at rest.
   static const double _pointerVoiceGroupWidth = _actionButtonSize * 2 + PregoSpacing.sm;
@@ -2797,14 +2824,7 @@ class _PromptInputState() extends State<PromptInput> {
     final loc = context.loc;
     final showStop = widget.isBusy && !_hasSendableContent;
 
-    if (showStop) {
-      return _buildLabelledIconButton(
-        label: loc.sessionDetailAbort,
-        icon: TablerSolid.player_stop,
-        hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
-        onPressed: widget.onAbort,
-      );
-    }
+    if (showStop) return _buildStopButton(context);
 
     return _buildLabelledIconButton(
       label: loc.sessionDetailSend,
@@ -2813,6 +2833,15 @@ class _PromptInputState() extends State<PromptInput> {
       // An empty composer has nothing to send: show the action as genuinely
       // unavailable instead of accepting a tap that does nothing.
       onPressed: _hasSendableContent && !_isAwaitingDictatedWords ? _handleSend : null,
+    );
+  }
+
+  Widget _buildStopButton(BuildContext context) {
+    return _buildLabelledIconButton(
+      label: context.loc.sessionDetailAbort,
+      icon: TablerSolid.player_stop,
+      hierarchy: PregoButtonsSolidHierarchy.primaryAlt,
+      onPressed: widget.onAbort,
     );
   }
 

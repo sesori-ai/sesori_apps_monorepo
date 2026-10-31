@@ -23,6 +23,7 @@ class _Composer() {
   final List<({String text, String? command})> sent = [];
   final List<AnalyticsVoiceFinish> finishes = [];
   final List<AnalyticsVoiceMode> modes = [];
+  final ValueNotifier<bool> busy = ValueNotifier(false);
   int commandsCleared = 0;
   int aborts = 0;
 }
@@ -1907,6 +1908,458 @@ void main() {
       });
     }
   });
+
+  group("voice-first's stop button fades where it rests", () {
+    final keyboardIcon = find.byIcon(TablerRegular.keyboard);
+    final stopIcon = find.byIcon(TablerSolid.player_stop);
+    final keyboard = find.ancestor(of: keyboardIcon, matching: find.byType(Tooltip)).first;
+    final stop = find.ancestor(of: stopIcon, matching: find.byType(Tooltip)).first;
+    final words = find.textContaining("Hold to talk");
+    final waveform = find.byType(PregoVoiceWaveform);
+    final stopForScreenReader = find.semantics.byLabel("Stop");
+    // The stop button and the gap before it.
+    const room = 50.0;
+
+    double progress(int ms) => (ms / 220).clamp(0.0, 1.0);
+    double glided(int ms) => Curves.easeOutCubic.transform(progress(ms));
+    double waited(int ms) => const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
+    double arrived(int ms) => glided(ms) * waited(ms);
+    double leftBehind(int ms) => (1 - glided(ms)) * (1 - waited(ms));
+
+    void setPhone({required WidgetTester tester, required double width, required double textScale}) {
+      tester.view.physicalSize = Size(width * 3, 844 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+      tester.platformDispatcher.textScaleFactorTestValue = textScale;
+      addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+    }
+
+    bool excludesFocus({required WidgetTester tester}) => tester
+        .widgetList<ExcludeFocus>(find.ancestor(of: stopIcon, matching: find.byType(ExcludeFocus)))
+        .any((exclude) => exclude.excluding);
+
+    for (final (screen, width, textScale) in [("phone", 390.0, 1.0), ("small and large text", 320.0, 2.0)]) {
+      for (final frameMs in [8, 16]) {
+        testWidgets("arrives uncut once the keyboard button has cleared its place, $screen, $frameMs ms frames", (
+          tester,
+        ) async {
+          setPhone(tester: tester, width: width, textScale: textScale);
+          final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+          final keyboardStart = tester.getRect(keyboard).left;
+          final wordsStart = tester.getCenter(words).dx;
+          final place = tester.getRect(stop);
+          expect(_shownOpacity(stopIcon), 0);
+
+          composer.busy.value = true;
+          await tester.pump();
+          for (var ms = frameMs; ms <= 240; ms += frameMs) {
+            await tester.pump(Duration(milliseconds: frameMs));
+            final reason = "at $ms ms";
+            expect(tester.getRect(stop), place, reason: reason);
+            expect(
+              _shownRect(tester: tester, finder: stop).width,
+              place.width,
+              reason: "cut off $reason",
+            );
+            expect(_shownOpacity(stopIcon), closeTo(arrived(ms), 0.01), reason: reason);
+            expect(tester.getRect(keyboard).left, closeTo(keyboardStart - room * glided(ms), 0.01), reason: reason);
+            expect(
+              _shownRect(tester: tester, finder: keyboard).width,
+              place.width,
+              reason: "cut off $reason",
+            );
+            expect(_shownOpacity(keyboardIcon), 1, reason: reason);
+            expect(tester.getCenter(words).dx, closeTo(wordsStart - room / 2 * glided(ms), 0.01), reason: reason);
+            if (_shownOpacity(stopIcon) > 0) {
+              expect(tester.getRect(keyboard).right, lessThanOrEqualTo(place.left), reason: "still over it $reason");
+            }
+          }
+          expect(_shownOpacity(stopIcon), 1);
+        });
+
+        testWidgets("leaves where it is, still a stop button, as the keyboard button glides back, $screen, "
+            "$frameMs ms frames", (tester) async {
+          setPhone(tester: tester, width: width, textScale: textScale);
+          final composer = await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: ChatInputMode.voiceFirst,
+            isBusy: true,
+          );
+          final keyboardStart = tester.getRect(keyboard).left;
+          final wordsStart = tester.getCenter(words).dx;
+          final place = tester.getRect(stop);
+
+          composer.busy.value = false;
+          await tester.pump();
+          for (var ms = frameMs; ms <= 240; ms += frameMs) {
+            await tester.pump(Duration(milliseconds: frameMs));
+            final reason = "at $ms ms";
+            expect(find.byIcon(TablerRegular.arrow_up), findsNothing, reason: reason);
+            expect(tester.getRect(stop), place, reason: reason);
+            expect(
+              _shownRect(tester: tester, finder: stop).width,
+              place.width,
+              reason: "cut off $reason",
+            );
+            expect(_shownOpacity(stopIcon), closeTo(leftBehind(ms), 0.01), reason: reason);
+            expect(tester.getRect(keyboard).left, closeTo(keyboardStart + room * glided(ms), 0.01), reason: reason);
+            expect(tester.getCenter(words).dx, closeTo(wordsStart + room / 2 * glided(ms), 0.01), reason: reason);
+          }
+          expect(_shownOpacity(stopIcon), 0);
+        });
+      }
+    }
+
+    testWidgets("takes no touch, focus or screen reader tap until it starts to show", (tester) async {
+      final semantics = tester.ensureSemantics();
+      final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+      expect(stopForScreenReader, findsNothing);
+      expect(stop.hitTestable(), findsNothing);
+      expect(excludesFocus(tester: tester), isTrue);
+      final spot = tester.getCenter(stop);
+
+      composer.busy.value = true;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 112));
+      expect(_shownOpacity(stopIcon), 0);
+      expect(stop.hitTestable(), findsNothing);
+      expect(stopForScreenReader, findsNothing);
+      expect(excludesFocus(tester: tester), isTrue);
+      await tester.tapAt(spot);
+      await tester.pump();
+      expect(composer.aborts, 0, reason: "An unseen stop stopped the work.");
+
+      await tester.pump(const Duration(milliseconds: 32));
+      expect(_shownOpacity(stopIcon), greaterThan(0));
+      expect(stop.hitTestable(), findsOne);
+      expect(excludesFocus(tester: tester), isFalse);
+      await tester.pump(const Duration(milliseconds: 100));
+      expect(_offersTap(tester.getSemantics(stopIcon)), isTrue);
+      await tester.tapAt(spot);
+      await tester.pump();
+      expect(composer.aborts, 1);
+      semantics.dispose();
+    });
+
+    testWidgets("takes no touch, focus or screen reader tap from the moment it starts to go", (tester) async {
+      final semantics = tester.ensureSemantics();
+      final composer = await _pumpComposer(
+        tester: tester,
+        voiceCubit: voiceCubit,
+        mode: ChatInputMode.voiceFirst,
+        isBusy: true,
+      );
+      final spot = tester.getCenter(stop);
+      expect(stop.hitTestable(), findsOne);
+      expect(_offersTap(tester.getSemantics(stopIcon)), isTrue);
+
+      composer.busy.value = false;
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 16));
+      expect(_shownOpacity(stopIcon), greaterThan(0.5), reason: "Still mostly visible, and already dead.");
+      expect(stop.hitTestable(), findsNothing);
+      expect(_offersTap(tester.getSemantics(stopIcon)), isFalse);
+      expect(excludesFocus(tester: tester), isTrue);
+      await tester.tapAt(spot);
+      await tester.pump();
+      expect(composer.aborts, 0);
+
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(stopForScreenReader, findsNothing, reason: "Nothing to read out once it has gone.");
+      expect(composer.aborts, 0);
+      semantics.dispose();
+    });
+
+    testWidgets("the room it isn't using still takes a hold", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+      final keyboardRect = tester.getRect(keyboard);
+
+      final gesture = await tester.startGesture(Offset(keyboardRect.left - room / 2, keyboardRect.center.dy));
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(waveform, findsOneWidget);
+      await gesture.moveTo(abovePill(tester: tester, by: 64));
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+    });
+
+    for (final (toward, from) in [("back to rest", false), ("back to busy", true)]) {
+      testWidgets("work flipping again mid-fade turns everything back without a jump, $toward", (tester) async {
+        final composer = await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: ChatInputMode.voiceFirst,
+          isBusy: from,
+        );
+        final atRest = tester.getRect(keyboard).left;
+        final wordsAtRest = tester.getCenter(words).dx;
+
+        composer.busy.value = !from;
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 64));
+        var previousX = tester.getRect(keyboard).left;
+        var previousOpacity = _shownOpacity(stopIcon);
+        composer.busy.value = from;
+        await tester.pump();
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final x = tester.getRect(keyboard).left;
+          final opacity = _shownOpacity(stopIcon);
+          expect((x - previousX).abs(), lessThan(12), reason: "keyboard jumped at $ms ms");
+          expect((opacity - previousOpacity).abs(), lessThan(0.4), reason: "stop jumped at $ms ms");
+          previousX = x;
+          previousOpacity = opacity;
+        }
+        expect(previousX, atRest);
+        expect(tester.getCenter(words).dx, wordsAtRest);
+        expect(previousOpacity, from ? 1 : 0);
+      });
+    }
+
+    for (final startsBusy in [false, true]) {
+      testWidgets("work ${startsBusy ? "ending" : "starting"} mid-hold moves nothing, and both return in place", (
+        tester,
+      ) async {
+        final endsBusy = !startsBusy;
+        final composer = await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: ChatInputMode.voiceFirst,
+          isBusy: startsBusy,
+        );
+        final spot = tester.getCenter(startsBusy ? stop : keyboard);
+        final keyboardRest = tester.getRect(keyboard).left;
+        final keyboardEnd = keyboardRest + (startsBusy ? room : -room);
+
+        final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
+        final waveformRight = tester.getRect(waveform).right;
+        composer.busy.value = endsBusy;
+        await tester.pump();
+        for (var ms = 16; ms <= 288; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(tester.getRect(waveform).right, waveformRight, reason: "the waveform at $ms ms");
+          expect(_shownOpacity(keyboardIcon), 0, reason: "keyboard at $ms ms");
+          expect(_shownOpacity(stopIcon), 0, reason: "stop at $ms ms");
+          expect(keyboard.hitTestable(), findsNothing);
+        }
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.aborts, 0);
+
+        await gesture.moveTo(abovePill(tester: tester, by: 64));
+        await tester.pump();
+        await gesture.up();
+        await tester.pump();
+        for (var ms = 16; ms <= 288; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(_shownOpacity(keyboardIcon), closeTo(arrived(ms), 0.01), reason: "keyboard at $ms ms");
+          expect(_shownOpacity(stopIcon), closeTo(endsBusy ? arrived(ms) : 0, 0.01), reason: "stop at $ms ms");
+          expect(tester.getRect(keyboard).left, keyboardEnd, reason: "keyboard at $ms ms");
+        }
+        expect(stop.hitTestable(), endsBusy ? findsOne : findsNothing);
+      });
+    }
+
+    for (final (name, features) in [
+      ("Android's", const FakeAccessibilityFeatures(disableAnimations: true)),
+      ("iOS's", const FakeAccessibilityFeatures(reduceMotion: true)),
+    ]) {
+      testWidgets("$name reduced motion swaps it, the keyboard button and the words at once", (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = features;
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+        final keyboardRest = tester.getRect(keyboard).left;
+        final wordsRest = tester.getCenter(words).dx;
+
+        composer.busy.value = true;
+        await tester.pump();
+        expect(tester.getRect(keyboard).left, keyboardRest - room);
+        expect(tester.getCenter(words).dx, wordsRest - room / 2);
+        expect(_shownOpacity(stopIcon), 1);
+        expect(stop.hitTestable(), findsOne, reason: "Nothing holds it back once it shows.");
+
+        composer.busy.value = false;
+        await tester.pump();
+        expect(tester.getRect(keyboard).left, keyboardRest);
+        expect(tester.getCenter(words).dx, wordsRest);
+        expect(_shownOpacity(stopIcon), 0);
+        expect(stop.hitTestable(), findsNothing);
+      });
+    }
+  });
+
+  group("a transcription's end clears its words before what rests returns", () {
+    const transcribing = VoiceInputState.transcribing(limitReached: false);
+    const finishing = VoiceInputState.liveFinishing(words: LiveWords.none);
+    const emptyResult = VoiceInputState.completed(
+      transcript: "",
+      outcome: VoiceDictationOutcome.finished,
+      mode: VoiceDictationMode.afterRecording,
+    );
+    double progress(int ms) => (ms / 220).clamp(0.0, 1.0);
+    double leaving(int ms) => 1 - Curves.easeOutCubic.transform(progress(ms));
+    double returning(int ms) => const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
+
+    Future<void> release({
+      required WidgetTester tester,
+      required ChatInputMode mode,
+      required VoiceInputState state,
+    }) async {
+      final gesture = await hold(tester: tester, mode: mode);
+      await gesture.up();
+      await tester.pump();
+      if (state != transcribing) await emitVoice(tester: tester, state: state);
+    }
+
+    Future<void> end({required WidgetTester tester}) async {
+      await emitVoice(tester: tester, state: emptyResult);
+      await emitVoice(tester: tester, state: const VoiceInputState.idle());
+    }
+
+    for (final (name, mode, draft, restingWords) in [
+      ("voice-first", ChatInputMode.voiceFirst, "", "Hold to talk"),
+      ("voice-first with a draft", ChatInputMode.voiceFirst, "draft words", "Hold to talk more"),
+      ("text-first", ChatInputMode.textFirst, "", "Follow up..."),
+      ("text-first with a draft", ChatInputMode.textFirst, "draft words", null),
+    ]) {
+      for (final (label, state) in [("Transcribing...", transcribing), ("Finishing...", finishing)]) {
+        for (final frameMs in [8, 16]) {
+          testWidgets("$label, $name, $frameMs ms frames", (tester) async {
+            await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode, initialText: draft);
+            final shown = find.text(label);
+            final resting = find.text(restingWords ?? "nothing rests here");
+
+            await release(tester: tester, mode: mode, state: state);
+            await tester.pump(const Duration(milliseconds: 300));
+            expect(_shownOpacity(shown), 1);
+            final place = tester.getCenter(shown);
+
+            await end(tester: tester);
+            for (var ms = frameMs; ms <= 240; ms += frameMs) {
+              await tester.pump(Duration(milliseconds: frameMs));
+              final reason = "at $ms ms";
+              expect(_shownOpacity(shown), closeTo(leaving(ms), 0.01), reason: reason);
+              if (restingWords != null) {
+                expect(_shownOpacity(resting), closeTo(returning(ms), 0.01), reason: reason);
+              }
+              expect(min(_shownOpacity(shown), _shownOpacity(resting)), lessThan(_visibleOverlap), reason: reason);
+              if (shown.evaluate().isNotEmpty) expect(tester.getCenter(shown), place, reason: reason);
+            }
+            expect(shown, findsNothing);
+            if (restingWords != null) expect(_shownOpacity(resting), 1);
+          });
+        }
+      }
+    }
+
+    for (final mode in ChatInputMode.values) {
+      for (final endMs in [64, 112, 160, 208]) {
+        testWidgets("one ending $endMs ms in retraces with no wait, ${mode.name}", (tester) async {
+          await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+          final shown = find.text("Transcribing...");
+          final resting = _restingWords(mode: mode);
+
+          await release(tester: tester, mode: mode, state: transcribing);
+          for (var ms = 16; ms <= endMs; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          var previous = _shownOpacity(shown);
+          await end(tester: tester);
+          for (var ms = 16; ms <= 240; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            final words = _shownOpacity(shown);
+            final back = _shownOpacity(resting);
+            expect(back, closeTo(progress(ms), 0.01), reason: "what rests waited, at $ms ms");
+            expect(words, lessThanOrEqualTo(previous), reason: "the words turned round at $ms ms");
+            // Once they have shown, the two together never leave the spot bare.
+            if (endMs >= 160) expect(max(words, back), greaterThan(_visibleOverlap), reason: "bare at $ms ms");
+            previous = words;
+          }
+          expect(_shownOpacity(resting), 1);
+        });
+      }
+
+      testWidgets("a release with a trailing control still clears the hint first, ${mode.name}", (tester) async {
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
+          composerTrailing: const SizedBox(key: Key("tasks"), width: 44, height: 44),
+        );
+        final header = find.byKey(const Key("model row"));
+        final hint = find.textContaining("Release to");
+        final shimmer = find.byType(PregoShimmer);
+
+        await release(tester: tester, mode: mode, state: transcribing);
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(_shownOpacity(header), closeTo(returning(ms), 0.01), reason: "header at $ms ms");
+          expect(_shownOpacity(shimmer), closeTo(returning(ms), 0.01), reason: "shimmer at $ms ms");
+          expect(min(_shownOpacity(hint), _shownOpacity(header)), lessThan(_visibleOverlap), reason: "at $ms ms");
+        }
+      });
+
+      testWidgets("a failure's Retry shows at once rather than waiting unseen, ${mode.name}", (tester) async {
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+        final retry = find.text("Retry");
+        final shown = find.text("Transcribing...");
+        final resting = _restingWords(mode: mode);
+
+        await release(tester: tester, mode: mode, state: transcribing);
+        await tester.pump(const Duration(milliseconds: 300));
+        await emitVoice(
+          tester: tester,
+          state: VoiceInputState.retryPending(error: VoiceTranscriptionError.networkError(innerError: null)),
+        );
+        for (var ms = 16; ms <= 240; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(_shownOpacity(retry), closeTo(progress(ms), 0.01), reason: "Retry at $ms ms");
+          expect(min(_shownOpacity(shown), _shownOpacity(resting)), lessThan(_visibleOverlap), reason: "at $ms ms");
+        }
+      });
+
+      testWidgets("a press after words landed in the box still dissolves, ${mode.name}", (tester) async {
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+        final gesture = await hold(tester: tester, mode: mode);
+        await slideOntoPencil(tester: tester, gesture: gesture);
+        await gesture.up();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+        expect(find.text("spoken words"), findsOneWidget);
+
+        final again = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+        await tester.pump();
+        final dots = find.byType(PregoVoiceWaveform);
+        for (var ms = 16; ms <= 208; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(_shownOpacity(dots), closeTo(progress(ms), 0.01), reason: "dots at $ms ms");
+        }
+        await again.moveTo(abovePill(tester: tester, by: 64));
+        await tester.pump();
+        await again.up();
+        await tester.pump();
+      });
+
+      testWidgets("reduced motion swaps them at once, ${mode.name}", (tester) async {
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+          disableAnimations: true,
+        );
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+        await release(tester: tester, mode: mode, state: transcribing);
+        await tester.pump(const Duration(milliseconds: 300));
+        await end(tester: tester);
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(find.text("Transcribing..."), findsNothing);
+        expect(_shownOpacity(_restingWords(mode: mode)), 1);
+      });
+    }
+  });
 }
 
 /// Whether a screen reader can tap [node] or, as with a button in its tooltip, a node under it.
@@ -1972,7 +2425,8 @@ Future<_Composer> _pumpComposer({
   bool isBusy = false,
   ComposerPresentation presentation = ComposerPresentation.touch,
 }) async {
-  final composer = _Composer();
+  final composer = _Composer()..busy.value = isBusy;
+  addTearDown(composer.busy.dispose);
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
   addTearDown(surfaceStyle.dispose);
   final attachmentDispatcher = ComposerAttachmentDispatcher(imagePicker: _NoOpComposerImagePicker());
@@ -1997,38 +2451,41 @@ Future<_Composer> _pumpComposer({
           child: Scaffold(
             body: Align(
               alignment: Alignment.bottomCenter,
-              child: PromptInput(
-                initialSelection: null,
-                onBusyChanged: null,
-                onSelectionChanged: null,
-                isBusy: isBusy,
-                hasMessages: true,
-                canSend: canSend,
-                onSend: ({required draft, required command, required attachments}) {
-                  composer.sent.add((text: draft.text, command: command));
-                },
-                onVoiceTranscriptionFinished: ({required finish, required mode}) {
-                  composer.finishes.add(finish);
-                  composer.modes.add(mode);
-                },
-                onDraftChanged: (_) {},
-                onDraftCleared: () {},
-                onAbort: () => composer.aborts++,
-                surfaceStyleController: surfaceStyle,
-                composerHeader: composerHeader,
-                composerTrailing: composerTrailing,
-                availableCommands: const [],
-                stagedCommand: stagedCommand,
-                onCommandSelected: (_) {},
-                onCommandCleared: () => composer.commandsCleared++,
-                attachmentsSupported: false,
-                draftIdentity: "touch-voice-test",
-                restorationKey: null,
-                initialDraft: ComposerDraft.typed(text: initialText),
-                initialAttachments: const [],
-                onAttachmentsChanged: null,
-                autofocus: false,
-                onInitialAttachmentsConsumed: () {},
+              child: ValueListenableBuilder<bool>(
+                valueListenable: composer.busy,
+                builder: (_, busy, _) => PromptInput(
+                  initialSelection: null,
+                  onBusyChanged: null,
+                  onSelectionChanged: null,
+                  isBusy: busy,
+                  hasMessages: true,
+                  canSend: canSend,
+                  onSend: ({required draft, required command, required attachments}) {
+                    composer.sent.add((text: draft.text, command: command));
+                  },
+                  onVoiceTranscriptionFinished: ({required finish, required mode}) {
+                    composer.finishes.add(finish);
+                    composer.modes.add(mode);
+                  },
+                  onDraftChanged: (_) {},
+                  onDraftCleared: () {},
+                  onAbort: () => composer.aborts++,
+                  surfaceStyleController: surfaceStyle,
+                  composerHeader: composerHeader,
+                  composerTrailing: composerTrailing,
+                  availableCommands: const [],
+                  stagedCommand: stagedCommand,
+                  onCommandSelected: (_) {},
+                  onCommandCleared: () => composer.commandsCleared++,
+                  attachmentsSupported: false,
+                  draftIdentity: "touch-voice-test",
+                  restorationKey: null,
+                  initialDraft: ComposerDraft.typed(text: initialText),
+                  initialAttachments: const [],
+                  onAttachmentsChanged: null,
+                  autofocus: false,
+                  onInitialAttachmentsConsumed: () {},
+                ),
               ),
             ),
           ),

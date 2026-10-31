@@ -652,6 +652,27 @@ void main() {
       expect(_shownOpacity(_hint), 1);
     });
 
+    testWidgets("a transcription's end clears its words before the hint returns", (tester) async {
+      final harness = _Harness();
+      await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness);
+      await startListening(tester);
+      final shimmer = find.text("Transcribing...");
+
+      await tester.tap(_wideSend);
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(_shownOpacity(shimmer), 1);
+
+      voiceStates.add(const VoiceInputState.idle());
+      await tester.pump();
+      await tester.pump();
+      for (var elapsed = 16; elapsed <= 240; elapsed += 16) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(min(_shownOpacity(shimmer), _shownOpacity(_hint)), lessThan(0.1), reason: "at $elapsed ms");
+      }
+      expect(_shownOpacity(_hint), 1);
+    });
+
     testWidgets("reduced motion merges at once", (tester) async {
       final harness = _Harness();
       await _pumpPointerComposer(tester: tester, voiceCubit: voiceCubit, harness: harness, reducedMotion: true);
