@@ -650,6 +650,45 @@ void main() {
     });
   }
 
+  for (final isBusy in [false, true]) {
+    testWidgets("the hold to talk label and shimmer fade where they stand, busy: $isBusy", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, isBusy: isBusy);
+      final label = find.textContaining("Hold to talk");
+      final shimmer = find.byType(PregoShimmer);
+      final restingCentre = tester.getCenter(label).dx;
+      // Centred between the actions, with or without the stop button beside the
+      // keyboard one: the distance from each button's centre to the gap is equal.
+      final firstAction = tester.getCenter(find.byIcon(TablerRegular.chevron_right)).dx;
+      final lastAction = tester.getCenter(find.byIcon(TablerRegular.keyboard)).dx;
+      expect(restingCentre, closeTo((firstAction + lastAction) / 2, 0.5));
+
+      void expectInPlace({required Finder finder, required String frame}) {
+        for (var i = 0; i < finder.evaluate().length; i++) {
+          expect(tester.getCenter(finder.at(i)).dx, closeTo(restingCentre, 0.01), reason: "moved at $frame");
+        }
+      }
+
+      final gesture = await tester.startGesture(tester.getCenter(label));
+      await tester.pump();
+      for (var i = 0; i < 16; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectInPlace(finder: label, frame: "fading out, $i");
+      }
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(label, findsNothing);
+
+      await gesture.up();
+      await tester.pump();
+      for (var i = 0; i < 16; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(shimmer, findsOneWidget);
+        expectInPlace(finder: shimmer, frame: "transcribing, $i");
+      }
+      await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+      expect(tester.getCenter(label).dx, restingCentre);
+    });
+  }
+
   testWidgets("a field that had the keyboard keeps it across a dictated send", (tester) async {
     final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
     await tester.tap(find.text("Follow up..."));

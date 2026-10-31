@@ -1358,6 +1358,8 @@ class _PromptInputState() extends State<PromptInput> {
                         ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
                           context,
                           hint: context.loc.sessionDetailHoldToTalk,
+                          // The stop button beside the keyboard one.
+                          extraTrailingWidth: widget.isBusy ? _actionButtonSize + PregoSpacing.sm : 0,
                           trailing: Row(
                             spacing: PregoSpacing.sm,
                             children: [
@@ -1623,6 +1625,7 @@ class _PromptInputState() extends State<PromptInput> {
     BuildContext context, {
     required PregoComposerSurfaceStyle surfaceStyle,
     required Widget child,
+    required Widget? overlay,
     bool tightensTrailingWhileRecording = false,
   }) {
     final prego = context.prego;
@@ -1649,6 +1652,7 @@ class _PromptInputState() extends State<PromptInput> {
             ),
             child: child,
           ),
+          if (overlay != null) Positioned.fill(child: overlay),
         ],
       ),
     );
@@ -1680,14 +1684,14 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildVoicePill(
     BuildContext context, {
     required String hint,
+    required double extraTrailingWidth,
     required Widget trailing,
   }) {
-    final prego = context.prego;
-
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.subtle,
       tightensTrailingWhileRecording: true,
+      overlay: _buildVoicePillCaption(context, hint: hint, extraTrailingWidth: extraTrailingWidth),
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1697,14 +1701,8 @@ class _PromptInputState() extends State<PromptInput> {
               context,
               child: _buildVoiceAwareSlot(
                 height: _actionButtonSize,
-                idle: Center(
-                  child: Text(
-                    hint,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-                  ),
-                ),
+                idle: const SizedBox(),
+                transcribing: const SizedBox(),
               ),
             ),
           ),
@@ -1717,6 +1715,50 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  /// The pill's words, in a layer over its row: the slot beneath widens as the
+  /// trailing actions collapse, which would carry them sideways as they fade.
+  /// The insets match the row's at rest, so they sit centred between its actions.
+  /// [extraTrailingWidth] is how much wider the trailing actions rest than the
+  /// leading ones.
+  Widget _buildVoicePillCaption(
+    BuildContext context, {
+    required String hint,
+    required double extraTrailingWidth,
+  }) {
+    final prego = context.prego;
+    final Widget child = switch (_voicePresentation) {
+      _VoicePresentation.idle => Text(
+        hint,
+        key: const ValueKey("voice-caption-idle"),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+      ),
+      _VoicePresentation.recording => const SizedBox.shrink(key: ValueKey("voice-caption-recording")),
+      _VoicePresentation.transcribing => KeyedSubtree(
+        key: const ValueKey("voice-caption-transcribing"),
+        child: _buildTranscribingShimmer(context),
+      ),
+    };
+
+    // The hold surface beneath takes the touches and speaks for the pill.
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm + _actionButtonSize + PregoSpacing.md),
+          child: AnimatedPadding(
+            duration: _morphDuration,
+            curve: _morphCurve,
+            padding: EdgeInsetsDirectional.only(end: extraTrailingWidth),
+            child: Center(
+              child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Resting state for text-first mode: a compact pill whose field area
   /// invites typing, with mic and send/stop alongside.
   Widget _buildCompactComposer(BuildContext context) {
@@ -1725,6 +1767,7 @@ class _PromptInputState() extends State<PromptInput> {
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.emphasized,
+      overlay: null,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1751,6 +1794,7 @@ class _PromptInputState() extends State<PromptInput> {
                   ),
                 ),
               ),
+              transcribing: Center(child: _buildTranscribingShimmer(context)),
             ),
           ),
           _buildMicAndPrimaryActions(context),
@@ -1883,6 +1927,7 @@ class _PromptInputState() extends State<PromptInput> {
             _buildVoicePill(
               context,
               hint: _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
+              extraTrailingWidth: 0,
               trailing: _buildPrimaryActionButton(context),
             )
           else
@@ -2003,6 +2048,7 @@ class _PromptInputState() extends State<PromptInput> {
               child: _buildVoiceAwareSlot(
                 height: _actionButtonSize,
                 idle: const SizedBox(),
+                transcribing: Center(child: _buildTranscribingShimmer(context)),
               ),
             ),
             _buildMicAndPrimaryActions(context),
@@ -2435,10 +2481,10 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Shows [idle] normally, or the recording waveform / transcribing shimmer
-  /// in its place while a voice interaction is running. [height] pins the
-  /// slot to the resting pills' 44pt row.
-  Widget _buildVoiceAwareSlot({required double height, required Widget idle}) {
+  /// Shows [idle] normally, or the recording waveform or [transcribing] in its
+  /// place while a voice interaction is running. [height] pins the slot to the
+  /// resting pills' 44pt row.
+  Widget _buildVoiceAwareSlot({required double height, required Widget idle, required Widget transcribing}) {
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("voice-slot-idle"), child: idle),
       _VoicePresentation.recording => KeyedSubtree(
@@ -2447,7 +2493,7 @@ class _PromptInputState() extends State<PromptInput> {
       ),
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("voice-slot-transcribing"),
-        child: Center(child: _buildTranscribingShimmer(context)),
+        child: transcribing,
       ),
     };
 
