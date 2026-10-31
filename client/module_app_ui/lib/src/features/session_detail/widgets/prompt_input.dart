@@ -1994,13 +1994,8 @@ class _PromptInputState() extends State<PromptInput> {
   /// button in its top-right corner, and the action row below — a voice pill
   /// of its own in voice-first mode, the mic/send row in text-first mode.
   Widget _buildTypingComposer(BuildContext context) {
-    final prego = context.prego;
     final loc = context.loc;
     final voiceFirst = _isVoiceFirst;
-    final sendKeyPolicy = ComposerPresentationScope.of(context).sendKeyPolicy;
-    // A pointer shell grows the box for long prompts instead of offering the
-    // full-screen editor sheet.
-    final growsInPlace = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
 
     // Voice-first nests the fully-rounded hold pill along the bottom, so the
     // container's bottom corners wrap it: pill radius (22) + padding (6) = 28
@@ -2011,116 +2006,141 @@ class _PromptInputState() extends State<PromptInput> {
             bottom: Radius.circular(PregoRadius.x6l),
           )
         : BorderRadius.circular(PregoRadius.x3l);
+    final decoration = pregoComposerSurfaceDecoration(
+      prego: context.prego,
+      style: PregoComposerSurfaceStyle.emphasized,
+      borderRadius: borderRadius,
+    );
 
-    return Container(
-      padding: const EdgeInsets.all(PregoSpacing.sm),
-      decoration: pregoComposerSurfaceDecoration(
-        prego: prego,
-        style: PregoComposerSurfaceStyle.emphasized,
-        borderRadius: borderRadius,
+    // Not a Container, which adds its border to its padding: the controls below
+    // would rest 1 pt inside where the resting pills put theirs, and shift as the
+    // layouts cross-fade. Only the words keep clear of the border.
+    return DecoratedBox(
+      decoration: decoration,
+      child: Padding(
+        padding: const EdgeInsets.all(PregoSpacing.sm),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          spacing: PregoSpacing.md,
+          children: [
+            Padding(padding: decoration.padding, child: _buildTypingField(context)),
+            if (voiceFirst)
+              _buildVoicePill(
+                context,
+                hint: _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
+                extraTrailingWidth: 0,
+                trailing: _buildPrimaryActionButton(context),
+              )
+            else
+              _buildTypingActionRow(context),
+          ],
+        ),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        spacing: PregoSpacing.md,
-        children: [
-          if (_attachments.isNotEmpty) _buildAttachmentStrip(context),
-          Stack(
-            children: [
-              Padding(
-                // Clear the expand button on the trailing edge so text never
-                // runs underneath it.
-                padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, growsInPlace ? PregoSpacing.xs : 36, 0),
-                child: Actions(
-                  // Browser paste must remain synchronous with its DOM event;
-                  // deferring Flutter's text action behind an async Clipboard
-                  // API read can lose browser user activation.
-                  actions: kIsWeb ? const {} : {PasteTextIntent: _pasteAction},
-                  child: CallbackShortcuts(
-                    // Mobile retains Cmd/Ctrl+Enter with plain Enter as a
-                    // newline. Desktop additionally binds unmodified Enter;
-                    // Shift+Enter does not match it and reaches the multiline
-                    // field as a newline.
-                    bindings: <ShortcutActivator, VoidCallback>{
+    );
+  }
+
+  /// The typing container's staged images and multiline field, with the
+  /// fullscreen-editor button in the field's corner.
+  Widget _buildTypingField(BuildContext context) {
+    final prego = context.prego;
+    final loc = context.loc;
+    final sendKeyPolicy = ComposerPresentationScope.of(context).sendKeyPolicy;
+    // A pointer shell grows the box for long prompts instead of offering the
+    // full-screen editor sheet.
+    final growsInPlace = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      spacing: PregoSpacing.md,
+      children: [
+        if (_attachments.isNotEmpty) _buildAttachmentStrip(context),
+        Stack(
+          children: [
+            Padding(
+              // Clear the expand button on the trailing edge so text never
+              // runs underneath it.
+              padding: EdgeInsetsDirectional.fromSTEB(PregoSpacing.xs, 0, growsInPlace ? PregoSpacing.xs : 36, 0),
+              child: Actions(
+                // Browser paste must remain synchronous with its DOM event;
+                // deferring Flutter's text action behind an async Clipboard
+                // API read can lose browser user activation.
+                actions: kIsWeb ? const {} : {PasteTextIntent: _pasteAction},
+                child: CallbackShortcuts(
+                  // Mobile retains Cmd/Ctrl+Enter with plain Enter as a
+                  // newline. Desktop additionally binds unmodified Enter;
+                  // Shift+Enter does not match it and reaches the multiline
+                  // field as a newline.
+                  bindings: <ShortcutActivator, VoidCallback>{
+                    _ComposerSendShortcutActivator(
+                      controller: _controller,
+                      activator: const SingleActivator(LogicalKeyboardKey.enter, meta: true),
+                    ): _handleSend,
+                    _ComposerSendShortcutActivator(
+                      controller: _controller,
+                      activator: const SingleActivator(LogicalKeyboardKey.enter, control: true),
+                    ): _handleSend,
+                    if (sendKeyPolicy == ComposerSendKeyPolicy.enterSends)
                       _ComposerSendShortcutActivator(
                         controller: _controller,
-                        activator: const SingleActivator(LogicalKeyboardKey.enter, meta: true),
+                        activator: const SingleActivator(LogicalKeyboardKey.enter),
                       ): _handleSend,
-                      _ComposerSendShortcutActivator(
-                        controller: _controller,
-                        activator: const SingleActivator(LogicalKeyboardKey.enter, control: true),
-                      ): _handleSend,
-                      if (sendKeyPolicy == ComposerSendKeyPolicy.enterSends)
-                        _ComposerSendShortcutActivator(
-                          controller: _controller,
-                          activator: const SingleActivator(LogicalKeyboardKey.enter),
-                        ): _handleSend,
-                    },
-                    child: ComposerWordsBoxSlot(
-                      box: _wordsBox,
-                      child: TextField(
-                        controller: _controller,
-                        scrollController: _textScrollController,
-                        focusNode: _focusNode,
-                        minLines: 1,
-                        maxLines: growsInPlace ? 16 : 6,
-                        keyboardType: TextInputType.multiline,
-                        textInputAction: TextInputAction.newline,
-                        contextMenuBuilder: (_, editableTextState) =>
-                            _buildComposerContextMenu(editableTextState: editableTextState),
-                        // Material's default keeps focus on mobile touch taps;
-                        // this composer wants outside taps (e.g. the picker
-                        // pills above the region) to dismiss the keyboard — the
-                        // behaviour the TextFieldTapRegion grouping was built
-                        // around.
-                        onTapOutside: (_) => _focusNode.unfocus(),
-                        style: _fieldStyle(context),
-                        decoration: InputDecoration(
-                          isCollapsed: true,
-                          border: InputBorder.none,
-                          // Growing in place stops at a third of the window and
-                          // then scrolls, so a short window keeps the selectors
-                          // above the draft on screen.
-                          constraints: growsInPlace
-                              ? BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 3)
-                              : null,
-                          contentPadding: ComposerWordsBox.contentPadding,
-                          // Command-aware placeholder: the staged command's hint,
-                          // else the follow-up/default prompt hint.
-                          hintText: _hintText(context),
-                          hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
-                        ),
+                  },
+                  child: ComposerWordsBoxSlot(
+                    box: _wordsBox,
+                    child: TextField(
+                      controller: _controller,
+                      scrollController: _textScrollController,
+                      focusNode: _focusNode,
+                      minLines: 1,
+                      maxLines: growsInPlace ? 16 : 6,
+                      keyboardType: TextInputType.multiline,
+                      textInputAction: TextInputAction.newline,
+                      contextMenuBuilder: (_, editableTextState) =>
+                          _buildComposerContextMenu(editableTextState: editableTextState),
+                      // Material's default keeps focus on mobile touch taps;
+                      // this composer wants outside taps (e.g. the picker
+                      // pills above the region) to dismiss the keyboard — the
+                      // behaviour the TextFieldTapRegion grouping was built
+                      // around.
+                      onTapOutside: (_) => _focusNode.unfocus(),
+                      style: _fieldStyle(context),
+                      decoration: InputDecoration(
+                        isCollapsed: true,
+                        border: InputBorder.none,
+                        // Growing in place stops at a third of the window and
+                        // then scrolls, so a short window keeps the selectors
+                        // above the draft on screen.
+                        constraints: growsInPlace
+                            ? BoxConstraints(maxHeight: MediaQuery.sizeOf(context).height / 3)
+                            : null,
+                        contentPadding: ComposerWordsBox.contentPadding,
+                        // Command-aware placeholder: the staged command's hint,
+                        // else the follow-up/default prompt hint.
+                        hintText: _hintText(context),
+                        hintStyle: prego.textTheme.textSm.regular.copyWith(color: prego.colors.textSecondary),
                       ),
                     ),
                   ),
                 ),
               ),
-              if (!growsInPlace)
-                PositionedDirectional(
-                  top: 0,
-                  end: 0,
-                  child: Tooltip(
-                    message: loc.sessionDetailExpandEditor,
-                    child: PregoTappable(
-                      onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
-                      borderRadius: BorderRadius.circular(PregoRadius.full),
-                      containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
-                      child: Icon(TablerRegular.maximize, size: PregoIconSize.md, color: prego.colors.textSecondary),
-                    ),
+            ),
+            if (!growsInPlace)
+              PositionedDirectional(
+                top: 0,
+                end: 0,
+                child: Tooltip(
+                  message: loc.sessionDetailExpandEditor,
+                  child: PregoTappable(
+                    onTap: _voicePresentation == _VoicePresentation.idle ? _openEditorSheet : null,
+                    borderRadius: BorderRadius.circular(PregoRadius.full),
+                    containerBuilder: (Widget child) => SizedBox.square(dimension: 32, child: child),
+                    child: Icon(TablerRegular.maximize, size: PregoIconSize.md, color: prego.colors.textSecondary),
                   ),
                 ),
-            ],
-          ),
-          if (voiceFirst)
-            _buildVoicePill(
-              context,
-              hint: _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
-              extraTrailingWidth: 0,
-              trailing: _buildPrimaryActionButton(context),
-            )
-          else
-            _buildTypingActionRow(context),
-        ],
-      ),
+              ),
+          ],
+        ),
+      ],
     );
   }
 
