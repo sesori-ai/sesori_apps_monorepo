@@ -59,8 +59,9 @@ class const QueuedMessageBubble({
 }
 
 class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
-  /// How long a send runs before it shows a status at all. Until then its row is
-  /// as tall as the message's own that replaces it, so a fast send moves nothing.
+  /// How long a send runs before it shows a status at all. Until then its row has
+  /// no status line, the same height as the delivered message, so a fast send
+  /// moves nothing.
   static const _slowSendDelay = Duration(seconds: 2);
 
   Timer? _slowSendTimer;
@@ -241,8 +242,8 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       ),
     };
 
-    // Nothing at all without a status, padding included, so that the row is as
-    // tall as the message's own that takes its place.
+    // Nothing at all without a status, padding included, so that the row is the
+    // same height as the delivered message.
     final statusRail = status == null
         ? const SizedBox.shrink()
         : KeyedSubtree(
