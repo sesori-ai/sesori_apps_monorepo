@@ -1,3 +1,5 @@
+import "dart:math" as math;
+
 import "package:clock/clock.dart";
 import "package:material_ui/material_ui.dart";
 import "package:theme_prego/module_prego.dart";
@@ -152,6 +154,14 @@ class const TranscriptWorkingRow({
   /// part while no reply shows, since the first step's card brings that too.
   required final EdgeInsets padding,
 }) extends StatelessWidget {
+  /// How tall the row stands with its padding while no reply shows.
+  static double heightAsFirstRow({required BuildContext context}) {
+    final label = context.prego.textTheme.textSm.regular;
+    final labelHeight = MediaQuery.textScalerOf(context).scale(label.fontSize ?? 14) * (label.height ?? 1);
+    return math.max(labelHeight, TranscriptLiveSparkle.size) +
+        2 * (TranscriptStepRow.stepGap + TranscriptStepRow.verticalInset(context: context) + 4);
+  }
+
   @override
   Widget build(BuildContext context) {
     final prego = context.prego;

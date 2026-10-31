@@ -1649,6 +1649,7 @@ class _PromptInputState() extends State<PromptInput> {
       hintHeight: _releaseHintHeight,
       box: _wordsBox,
       boxStyle: _fieldStyle(context),
+      isBusy: widget.isBusy,
       child: body,
     );
   }
