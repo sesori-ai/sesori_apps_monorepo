@@ -203,39 +203,60 @@ class VoiceTranscriptionService({
     _startMaxDurationTimer(session: session);
   }
 
-  /// A microphone that refuses to stream may still record a file (D21). A denied
-  /// permission is not that, and goes up as itself.
+  /// The socket starts with the microphone, so first words come sooner by however
+  /// long the microphone takes. Whatever stops the dictation before the run takes
+  /// the socket closes it. A microphone that refuses to stream may still record a
+  /// file (D21). A denied permission is not that, and goes up as itself.
   Future<void> _startLiveCapture({
     required VoiceTranscriptionSession session,
     required int generation,
     required VoiceLivePresentation presentation,
   }) async {
     final captureSession = session._captureSession;
+    final connecting = _repository.openRealtime(
+      sampleRate: voiceCapturePcmSampleRate,
+      projectKey: session._interactionProjectGlossaryKey,
+    );
+    // A failure waits for the run or the close below, which is not an unhandled one.
+    connecting.ignore();
     final Stream<Uint8List> frames;
     try {
       frames = await captureSession.startPcmStream();
     } on VoiceCaptureFailed catch (error, stackTrace) {
       logw("Live capture could not start; recording instead", error, stackTrace);
+      unawaited(_closeUnusedSocket(connecting: connecting));
       await captureSession.cancel();
       await _startFileCapture(session: session, generation: generation, fellBackFromLive: true);
       return;
+    } on Object {
+      unawaited(_closeUnusedSocket(connecting: connecting));
+      rethrow;
     }
     if (!_ownsGeneration(session: session, generation: generation)) {
+      unawaited(_closeUnusedSocket(connecting: connecting));
       await captureSession.cancel();
       throw VoiceTranscriptionError.cancelled();
     }
 
     _logProjectGlossaryUse(session: session);
     final run = LiveDictationRun(
-      repository: _repository,
       capture: captureSession,
       onWords: ({required words}) => session._liveEventsController.add(VoiceLiveWordsChanged(words: words)),
       frames: frames,
-      projectKey: session._interactionProjectGlossaryKey,
+      connecting: connecting,
     );
     session._state = _VoiceSessionLiveRecording(run: run, presentation: presentation);
     _startMaxDurationTimer(session: session);
     unawaited(_handleLiveEndingWhileHolding(session: session, generation: generation, run: run));
+  }
+
+  Future<void> _closeUnusedSocket({required Future<VoiceRealtimeConnection> connecting}) async {
+    try {
+      final connection = await connecting;
+      await connection.cancel();
+    } on VoiceTranscriptionError catch (error, stackTrace) {
+      logw("A live socket that was no longer needed could not open", error, stackTrace);
+    }
   }
 
   /// A release hands the ending to [stopAndTranscribe], and a cancel takes the
