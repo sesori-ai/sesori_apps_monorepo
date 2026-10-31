@@ -916,6 +916,12 @@ class _PromptInputState() extends State<PromptInput> {
 
   bool get _isListening => _voiceInteraction is _VoiceStarting || _voiceInteraction is _VoiceRecording;
 
+  /// Whether a screen reader's tap on the hold surface or the mic does anything:
+  /// [_toggleRecording] has nothing to toggle while words are on their way or a
+  /// failed recording waits for its retry.
+  bool get _takesRecordingToggle =>
+      _isListening || (_voiceInteraction is _VoiceIdle && _renderedVoiceState is VoiceInputIdle);
+
   Future<bool> _startRecording() async {
     await _voiceCubit.startRecording();
     final state = _voiceCubit.state;
@@ -2725,10 +2731,11 @@ class _PromptInputState() extends State<PromptInput> {
       // A node of its own, which nothing else in the composer merges into.
       container: true,
       button: true,
+      enabled: _takesRecordingToggle,
       // The surface speaks for the pill, whose words it excludes.
       label: _voicePresentation == _VoicePresentation.transcribing ? _transcribingLabel(context) : hint,
       excludeSemantics: true,
-      onTap: _toggleRecording,
+      onTap: _takesRecordingToggle ? _toggleRecording : null,
       onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
       child: Listener(
         behavior: HitTestBehavior.opaque,
@@ -2822,23 +2829,26 @@ class _PromptInputState() extends State<PromptInput> {
     // [_ignoreTap]; the surrounding raw pointer listener drives recording.
     // Semantic taps toggle recording and a semantic dismiss cancels it, because
     // assistive technologies cannot express the hold or the slide out of it.
-    return Semantics(
-      button: true,
+    return PregoButtonSemantics(
       label: loc.voiceRecord,
-      excludeSemantics: true,
-      onTap: _toggleRecording,
-      onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
-      child: Listener(
-        onPointerDown: _handleRecordPointerDown,
-        onPointerMove: _handleRecordPointerMove,
-        onPointerUp: _handleRecordPointerEnd,
-        onPointerCancel: _handleRecordPointerEnd,
-        child: const PregoButtonsSolid.iconOnly(
-          leadingIcon: TablerRegular.microphone,
-          semanticLabel: null,
-          hierarchy: PregoButtonsSolidHierarchy.secondary,
-          size: PregoButtonsSolidSize.lg,
-          onPressed: _ignoreTap,
+      enabled: _takesRecordingToggle,
+      showsTooltip: false,
+      child: Semantics(
+        excludeSemantics: true,
+        onTap: _takesRecordingToggle ? _toggleRecording : null,
+        onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
+        child: Listener(
+          onPointerDown: _handleRecordPointerDown,
+          onPointerMove: _handleRecordPointerMove,
+          onPointerUp: _handleRecordPointerEnd,
+          onPointerCancel: _handleRecordPointerEnd,
+          child: const PregoButtonsSolid.iconOnly(
+            leadingIcon: TablerRegular.microphone,
+            semanticLabel: null,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: _ignoreTap,
+          ),
         ),
       ),
     );

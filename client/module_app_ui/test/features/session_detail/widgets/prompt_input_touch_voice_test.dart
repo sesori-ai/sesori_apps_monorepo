@@ -1173,7 +1173,17 @@ void main() {
         await emitVoice(tester: tester, state: state);
         await tester.pump(const Duration(milliseconds: 500));
 
-        expect(nodeNamed(label), isSemantics(label: label, tooltip: "", isButton: true, hasTapAction: true));
+        expect(
+          nodeNamed(label),
+          isSemantics(
+            label: label,
+            tooltip: "",
+            isButton: true,
+            hasEnabledState: true,
+            isEnabled: false,
+            hasTapAction: false,
+          ),
+        );
         expect(unnamedTaps, findsNothing);
         tester.semantics.tap(find.semantics.byLabel("Cancel transcription"));
         await tester.pump();
@@ -1276,6 +1286,58 @@ void main() {
       });
     }
 
+    for (final (mode, control) in [
+      (ChatInputMode.textFirst, "Record voice"),
+      (ChatInputMode.voiceFirst, "Hold to talk"),
+    ]) {
+      testWidgets("${mode.name}: $control says when it takes a tap", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+        expect(
+          nodeNamed(control),
+          isSemantics(label: control, isButton: true, hasEnabledState: true, isEnabled: true, hasTapAction: true),
+        );
+
+        tester.semantics.tap(find.semantics.byLabel(control));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(
+          nodeNamed(control),
+          isSemantics(
+            label: control,
+            isButton: true,
+            hasEnabledState: true,
+            isEnabled: true,
+            hasTapAction: true,
+            hasDismissAction: true,
+          ),
+          reason: "A second tap stops the recording, with the hint in a node of its own.",
+        );
+
+        tester.semantics.tap(find.semantics.byLabel(control));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        final whileTranscribing = switch (mode) {
+          ChatInputMode.textFirst => control,
+          ChatInputMode.voiceFirst => "Transcribing...",
+        };
+        expect(
+          nodeNamed(whileTranscribing),
+          isSemantics(
+            label: whileTranscribing,
+            isButton: true,
+            hasEnabledState: true,
+            isEnabled: false,
+            hasTapAction: false,
+          ),
+          reason: "A tap does nothing until the words have arrived.",
+        );
+
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+        semantics.dispose();
+      });
+    }
+
     testWidgets("a pointer shell's mic is a named button that starts recording", (tester) async {
       final semantics = tester.ensureSemantics();
       await _pumpComposer(
@@ -1285,7 +1347,10 @@ void main() {
         presentation: ComposerPresentation.pointer,
       );
 
-      expect(nodeNamed("Record voice"), isSemantics(label: "Record voice", tooltip: "", isButton: true));
+      expect(
+        nodeNamed("Record voice"),
+        isSemantics(label: "Record voice", tooltip: "", isButton: true, isEnabled: true),
+      );
       expect(unnamedTaps, findsNothing);
       tester.semantics.tap(find.semantics.byLabel("Record voice"));
       await tester.pump();
