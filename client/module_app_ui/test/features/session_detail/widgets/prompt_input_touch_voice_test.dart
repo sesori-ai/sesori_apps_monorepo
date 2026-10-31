@@ -207,6 +207,41 @@ void main() {
         await tester.pump();
       });
 
+      testWidgets("the hint centres over the composer while a trailing control fades in place", (tester) async {
+        final trailingFocus = FocusNode();
+        addTearDown(trailingFocus.dispose);
+        final trailing = Focus(
+          focusNode: trailingFocus,
+          child: const SizedBox(key: Key("trailing"), width: 90, height: 36),
+        );
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode, composerTrailing: trailing);
+        final trailingFinder = find.byKey(const Key("trailing"));
+        final restingLeft = tester.getTopLeft(trailingFinder).dx;
+        double trailingOpacity() => tester
+            .widget<AnimatedOpacity>(find.ancestor(of: trailingFinder, matching: find.byType(AnimatedOpacity)).first)
+            .opacity;
+
+        final gesture = await hold(tester: tester, mode: mode);
+        await tester.pump(const Duration(milliseconds: 300));
+        final hint = find.text("Release to send · slide up to cancel");
+        expect(tester.getCenter(hint).dx, closeTo(tester.getCenter(find.byType(PromptInput)).dx, 0.5));
+        expect(trailingOpacity(), 0);
+        expect(trailingFocus.canRequestFocus, isFalse, reason: "Tab must not land on a control nobody can see.");
+        expect(
+          tester.widget<AnimatedSize>(find.ancestor(of: hint, matching: find.byType(AnimatedSize)).first).clipBehavior,
+          Clip.none,
+          reason: "The hint reaches past the slot, so a slot growing for large text must not cut it off.",
+        );
+        expect(tester.getTopLeft(trailingFinder).dx, restingLeft, reason: "Nothing in the row moves.");
+
+        await gesture.up();
+        await tester.pump();
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(trailingOpacity(), 1);
+        expect(trailingFocus.canRequestFocus, isTrue);
+      });
+
       testWidgets("a hold under 200 ms sends nothing", (tester) async {
         final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
 
@@ -632,6 +667,7 @@ Future<_Composer> _pumpComposer({
   String initialText = "",
   bool canSend = true,
   CommandInfo? stagedCommand,
+  Widget? composerTrailing,
 }) async {
   final composer = _Composer();
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
@@ -677,7 +713,7 @@ Future<_Composer> _pumpComposer({
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
                 composerHeader: null,
-                composerTrailing: null,
+                composerTrailing: composerTrailing,
                 availableCommands: const [],
                 stagedCommand: stagedCommand,
                 onCommandSelected: (_) {},
