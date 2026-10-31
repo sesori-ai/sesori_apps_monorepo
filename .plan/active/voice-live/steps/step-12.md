@@ -142,7 +142,7 @@ Nothing here has been seen by the user yet, and none is decided.
 5. **OpenCode turn failed with 401 in the first try at row 2.** OpenCode with GPT-5.6 Sol Fast on this Mac:
    "OpenCode turn failed, Request failed: 401". The marker bubble and title were fine. It looks like that
    harness's own credentials here, not voice. Not investigated. Nor was a bridge log line from the same run,
-   `[V2MessageMapper] OpenCode v2 transcript contains an unsupported <message type>; omitting that message`.
+   `[V2MessageMapper] OpenCode v2 transcript contains an unsupported message variant; omitting that message`.
 6. **The phone app can't export logs.** `IoAppLogSink` writes to `<temp dir>/logs/app.log` and nothing in
    the UI shares it, which makes the connect-to-`ready` check below harder than it needs to be.
 7. **The hint's cross-fade overlaps for a moment.** "Release to send..." and "Release to edit" overlap for
