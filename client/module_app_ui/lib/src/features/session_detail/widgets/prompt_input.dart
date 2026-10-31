@@ -1388,11 +1388,14 @@ class _PromptInputState() extends State<PromptInput> {
       // Comes back once the hint over its place has mostly gone.
       curve: visible ? _trailingReturnCurve : _morphCurve,
       opacity: visible ? 1 : 0,
-      child: IgnorePointer(
-        ignoring: !visible,
-        child: Padding(
-          padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-          child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+      child: ExcludeFocus(
+        excluding: !visible,
+        child: IgnorePointer(
+          ignoring: !visible,
+          child: Padding(
+            padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+            child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+          ),
         ),
       ),
     );
