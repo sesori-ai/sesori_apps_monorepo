@@ -64,6 +64,8 @@ Fixed in this step: the bound is now 4 s. Run against the real server with a del
 complete and now loses its first words to the fallback. Step 8's table and its list still say 15 s, as history. The worst connect-to-`ready` is now compared
 with **4 s**.
 
+A later change replaced this 4 s fallback: audio now waits up to about 30 s, and at `ready` up to 4 s go at once and the rest follows at real time.
+
 ### Marker and title
 
 A new session held to talk, with Claude Code on Haiku 5.5, in the fixture project `voice12proj`.
@@ -186,9 +188,9 @@ About ten dictations each on Wi-Fi and cellular, including the first after a col
   token read.
 - Sources: `flutter run` or `flutter logs`, `adb logcat`, the Xcode device console, or `<temp dir>/logs/app.log`
   on the phone (no export in the app).
-- Fails if the worst value is near **4 s**, because a slightly slower start is close. Over 4 s, the dictation falls
-  back to recording and drops the audio it held, so the first 4 s or so are missing from what's sent. This Mac saw
-  about 1 s, which says nothing about a phone.
+- Over 4 s, nothing is lost: the words lag by the difference, and a release waits that long under Finishing. Only
+  over about 30 s does it fall back to recording. This Mac saw about 1 s, which says nothing about a phone.
+- Fails if the wait after a release is unbearable, or the lag in the words feels wrong, at the worst value seen.
 
 ### 4. Feel, in focus then panel (iPhone and Android)
 

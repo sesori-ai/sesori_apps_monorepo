@@ -425,6 +425,279 @@ void main() {
     });
   });
 
+  group("a start slower than the server allows", () {
+    const bytesPerSecond = 32000;
+    const tick = Duration(milliseconds: 100);
+    const bytesPerTick = 3200;
+
+    /// A tenth of a second of audio that says which one it is.
+    Uint8List numbered({required int index}) => Uint8List(bytesPerTick)..buffer.asByteData().setUint32(0, index);
+
+    List<Uint8List> sentAudio() => sentAfterStart().whereType<Uint8List>().toList();
+
+    List<int> sentNumbers() => sentAudio().map((frame) => frame.buffer.asByteData().getUint32(0)).toList();
+
+    /// Runs [body] in fake time, with a dictation held and its socket waiting for `ready`.
+    void whileHeld(void Function(FakeAsync async) body) {
+      fakeAsync((async) {
+        // A completer belongs to the zone that made it, so these have to be in fake time
+        // too. Without onCancel, cancelling the frames returns a future of the real zone,
+        // which never completes inside this synchronous body.
+        channel = FakeRealtimeVoiceChannel();
+        frames = StreamController<Uint8List>(onCancel: () async {});
+        unawaited(holdLive());
+        async.elapse(Duration.zero);
+        body(async);
+      });
+    }
+
+    /// The microphone delivering [count] frames at real time, from [from] on.
+    void speak(FakeAsync async, {required int from, required int count}) {
+      for (var index = from; index < from + count; index++) {
+        frames.add(numbered(index: index));
+        async.elapse(tick);
+      }
+    }
+
+    void becomeReady(FakeAsync async) {
+      hear(_ready);
+      async.elapse(Duration.zero);
+    }
+
+    test("every byte goes out in order, with what's new behind what's held", () {
+      whileHeld((async) {
+        speak(async, from: 0, count: 70);
+        expect(sentAudio(), isEmpty);
+        expect(events, isEmpty, reason: "Seven seconds is no reason to give up.");
+
+        becomeReady(async);
+        expect(sentNumbers(), List.generate(40, (index) => index), reason: "Four seconds go at once.");
+
+        speak(async, from: 70, count: 50);
+        expect(sentNumbers(), List.generate(90, (index) => index), reason: "The rest follows at real time.");
+
+        unawaited(service.stopAndTranscribe(session: session));
+        async.elapse(const Duration(seconds: 4));
+        expect(sentNumbers(), List.generate(120, (index) => index));
+        expect(sentAudio().every((frame) => frame.length == bytesPerTick), isTrue);
+      });
+    });
+
+    test("nothing is ever more than 4 s ahead of real time, however it is held and released", () {
+      for (final heldFrames in const [41, 70, 300]) {
+        whileHeld((async) {
+          speak(async, from: 0, count: heldFrames);
+          final readyAt = async.elapsed;
+          var sentBytes = 0;
+          var mostAhead = Duration.zero;
+          channel.onOutbound = ({required data}) {
+            if (data is! Uint8List) return;
+            sentBytes += data.length;
+            final sent = Duration(microseconds: sentBytes * 1000000 ~/ bytesPerSecond);
+            final ahead = sent - (async.elapsed - readyAt);
+            if (ahead > mostAhead) mostAhead = ahead;
+          };
+
+          becomeReady(async);
+          speak(async, from: heldFrames, count: 20);
+          unawaited(service.stopAndTranscribe(session: session));
+          async.elapse(const Duration(seconds: 40));
+
+          expect(sentNumbers(), List.generate(heldFrames + 20, (index) => index));
+          expect(mostAhead, const Duration(seconds: 4), reason: "It uses the whole allowance and never passes it.");
+        });
+      }
+    });
+
+    test("a frame that doesn't fit yet waits whole, so no sample is ever cut", () {
+      whileHeld((async) {
+        // Three frames of 1.5 s: the third would go past the 4 s.
+        for (var index = 0; index < 3; index++) {
+          frames.add(Uint8List(48000)..[0] = index);
+        }
+        async.elapse(Duration.zero);
+
+        becomeReady(async);
+        expect(sentAudio().map((frame) => frame.length), [48000, 48000]);
+
+        async.elapse(const Duration(milliseconds: 400));
+        expect(sentAudio(), hasLength(2));
+
+        async.elapse(tick);
+        expect(sentAudio().map((frame) => frame.length), [48000, 48000, 48000]);
+        expect(sentAudio().map((frame) => frame[0]), [0, 1, 2]);
+      });
+    });
+
+    test("a release mid-backlog finishes only after the last byte", () {
+      whileHeld((async) {
+        speak(async, from: 0, count: 60);
+        becomeReady(async);
+        late final VoiceDictationResult ended;
+        unawaited(service.stopAndTranscribe(session: session).then((result) => ended = result));
+        async.elapse(Duration.zero);
+        verify(capture.stopPcmStream).called(1);
+
+        async.elapse(const Duration(milliseconds: 1900));
+        expect(sentAudio(), hasLength(59));
+        expect(sentAfterStart(), isNot(contains(realtimeVoiceFinishFrame)));
+
+        async.elapse(tick);
+        expect(sentNumbers(), List.generate(60, (index) => index));
+        expect(sentAfterStart().last, realtimeVoiceFinishFrame);
+        expect(async.periodicTimerCount, 0);
+
+        hear(_words(confirmed: "every word", provisional: ""));
+        hear(_finished);
+        async.elapse(Duration.zero);
+        expect(ended.transcript, "every word");
+        expect(ended.outcome, VoiceDictationOutcome.finished);
+      });
+    });
+
+    test("a release before ready waits for the server, then paces what was held, then finishes", () {
+      whileHeld((async) {
+        speak(async, from: 0, count: 60);
+        unawaited(service.stopAndTranscribe(session: session));
+        async.elapse(const Duration(seconds: 3));
+        expect(sentAudio(), isEmpty);
+
+        becomeReady(async);
+        expect(sentAudio(), hasLength(40));
+        expect(sentAfterStart().last, isNot(realtimeVoiceFinishFrame));
+
+        async.elapse(const Duration(seconds: 2));
+        expect(sentNumbers(), List.generate(60, (index) => index));
+        expect(sentAfterStart().last, realtimeVoiceFinishFrame);
+      });
+    });
+
+    group("mid-backlog stops at once and leaves no timer", () {
+      void expectStops({required void Function() stop, required Object? lastSent}) {
+        whileHeld((async) {
+          speak(async, from: 0, count: 60);
+          becomeReady(async);
+          expect(async.periodicTimerCount, 1);
+
+          stop();
+          async.elapse(Duration.zero);
+
+          expect(async.periodicTimerCount, 0);
+          async.elapse(const Duration(seconds: 5));
+          expect(sentAudio(), hasLength(40));
+          expect(sentAfterStart().last, lastSent);
+        });
+      }
+
+      test("for a cancel with the finger down", () {
+        expectStops(
+          stop: () => unawaited(service.cancel(session: session)),
+          lastSent: realtimeVoiceCancelFrame,
+        );
+      });
+
+      test("for closing the session", () {
+        expectStops(
+          stop: () => unawaited(service.close(session: session)),
+          lastSent: realtimeVoiceCancelFrame,
+        );
+      });
+
+      test("for the socket dropping, which hands over the words", () {
+        expectStops(
+          stop: () {
+            hear(_words(confirmed: "kept", provisional: ""));
+            unawaited(channel.inbound.close());
+          },
+          lastSent: isA<Uint8List>(),
+        );
+        expect(
+          events.last,
+          isA<VoiceLiveEnded>()
+              .having((e) => e.transcript, "transcript", "kept")
+              .having((e) => e.outcome, "outcome", VoiceDictationOutcome.interrupted),
+        );
+      });
+
+      test("for the server's limit, which hands over the words", () {
+        expectStops(
+          stop: () {
+            hear(_words(confirmed: "early ", provisional: ""));
+            hear(_quotaLimit);
+          },
+          lastSent: isA<Uint8List>(),
+        );
+        expect(
+          events.last,
+          isA<VoiceLiveEnded>()
+              .having((e) => e.transcript, "transcript", "early")
+              .having((e) => e.outcome, "outcome", VoiceDictationOutcome.limitReached),
+        );
+      });
+
+      test("for the X after a release", () {
+        whileHeld((async) {
+          speak(async, from: 0, count: 60);
+          becomeReady(async);
+          Object? ended;
+          unawaited(service.stopAndTranscribe(session: session).then<void>((_) {}, onError: (Object e) => ended = e));
+          async.elapse(tick);
+          expect(sentAudio(), hasLength(41));
+
+          unawaited(service.cancel(session: session));
+          async.elapse(Duration.zero);
+
+          expect(ended, isA<TranscriptionCancelledError>());
+          expect(async.periodicTimerCount, 0);
+          async.elapse(const Duration(seconds: 5));
+          expect(sentAudio(), hasLength(41));
+        });
+      });
+    });
+
+    group("no backlog means no timer", () {
+      test("for a normal start, with frames forwarded as they come", () {
+        whileHeld((async) {
+          speak(async, from: 0, count: 10);
+          becomeReady(async);
+          expect(async.periodicTimerCount, 0);
+          expect(sentAudio(), hasLength(10));
+
+          frames.add(numbered(index: 10));
+          async.elapse(Duration.zero);
+          expect(sentNumbers().last, 10, reason: "No tick stands between the microphone and the socket.");
+          expect(async.periodicTimerCount, 0);
+        });
+      });
+
+      test("for exactly the allowance, all of it sent at ready", () {
+        whileHeld((async) {
+          speak(async, from: 0, count: 40);
+          becomeReady(async);
+
+          expect(sentAudio(), hasLength(40));
+          expect(async.periodicTimerCount, 0);
+        });
+      });
+
+      test("once a backlog has drained, frames go straight through again", () {
+        whileHeld((async) {
+          speak(async, from: 0, count: 45);
+          becomeReady(async);
+          expect(async.periodicTimerCount, 1);
+
+          async.elapse(const Duration(milliseconds: 500));
+          expect(sentAudio(), hasLength(45));
+          expect(async.periodicTimerCount, 0);
+
+          frames.add(numbered(index: 45));
+          async.elapse(Duration.zero);
+          expect(sentNumbers().last, 45);
+        });
+      });
+    });
+  });
+
   group("falling back to a recording", () {
     Future<void> expectRecordedResult() async {
       final result = await service.stopAndTranscribe(session: session);
@@ -480,7 +753,7 @@ void main() {
 
     test("when ready takes longer than the held audio may grow", () async {
       await holdLive();
-      for (var second = 0; second < 4; second++) {
+      for (var second = 0; second < 30; second++) {
         frames.add(Uint8List(32000));
       }
       await pumpEventQueue();

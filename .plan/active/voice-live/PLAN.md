@@ -81,7 +81,7 @@ decision.
 | D26 | A hold never waits on the switch. With no value yet, it uses after-recording. |
 | D27 | Desktop's focus view covers the chat pane only, with the words in a reading-width column. |
 | D28 | Planning decision: desktop values come from `DesktopReleaseChannel`: `internal` gets live with focus, `stable` gets after-recording. This is D12 applied to D11. Source builds default to `stable`, so testing live locally needs the define set. |
-| D29 | Planning decision: audio captured before the server's `ready` is held in memory and flushed on `ready`, so the first words aren't lost. See Proportionality. |
+| D29 | Audio captured before the server's `ready` is held in memory, up to about 30 s, so the first words aren't lost. At `ready` at most 4 s go at once, under the server's 5 s, and the rest follows at real time. See Proportionality. |
 | D30 | Planning decision: the client doesn't call `/voice/capabilities`. Remote config decides, and a disabled server fails the upgrade with 404, which is D21's fallback. |
 | D31 | Planning decision: live and send on finish apply to the composer only. The feedback sheet keeps after-recording and keeps its words in its field. |
 | D32 | Planning decision: a retried after-recording dictation lands in the box rather than sending, following D20. The attempt failed and the user has moved on, so a late send would surprise them. |
@@ -342,7 +342,7 @@ No other relevant cleanup was found. `voiceSpans` and `ChatInputMode` stay in us
 
 | Item | Evidence | Outcome |
 | --- | --- | --- |
-| Pre-`ready` buffer (D29) | Ordinary flow: people start speaking as soon as they press | One bounded buffer, sent as ordinary frames after `ready`, which the protocol allows. The auth plan's “no queue” design would clip first words. |
+| Pre-`ready` buffer (D29) | Ordinary flow: people start speaking as soon as they press | One bounded buffer, sent as ordinary frames after `ready` at the pace the server allows. The words lag by what is held, and a release waits for it. The auth plan's “no queue” design would clip first words. |
 | Wrong words sent | Ordinary flow | Accepted by the user (D14): Stop remains available. |
 | Thumb drifting up cancels | Plausible | Tune the distance on a device (D8). No extra confirmation. |
 | Live start fails after the user started speaking | Rare | Accepted: the words said during the failed attempt are lost, and capture continues as after-recording. D33 puts the result in the box with a notice, so a clipped prompt is never sent unseen. |
