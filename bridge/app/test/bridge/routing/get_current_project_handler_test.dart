@@ -4,6 +4,7 @@ import "package:sesori_bridge/src/api/database/database.dart";
 import "package:sesori_bridge/src/repositories/session_unseen_calculator.dart";
 import "package:sesori_bridge/src/routing/get_current_project_handler.dart";
 import "package:sesori_bridge/src/services/current_project_service.dart";
+import "package:sesori_bridge/src/services/project_glossary_scope_service.dart";
 import "package:sesori_bridge/src/services/project_glossary_scope_tracker.dart";
 import "package:sesori_plugin_interface/sesori_plugin_interface.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -35,6 +36,7 @@ void main() {
           filesystemApi: FakeFilesystemApi(),
         ),
         projectGlossaryScopeTracker: _NoGlossaryScopeTracker(),
+        projectGlossaryScopeService: _NoGlossaryScopeService(),
       );
       handler = GetCurrentProjectHandler(currentProjectService: currentProjectService);
     });
@@ -123,6 +125,14 @@ void main() {
 final class _NoGlossaryScopeTracker() implements ProjectGlossaryScopeTracker {
   @override
   ProjectGlossaryKey? projectKeyFor({required String projectPath}) => null;
+
+  @override
+  dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
+}
+
+final class _NoGlossaryScopeService() implements ProjectGlossaryScopeService {
+  @override
+  Future<ProjectGlossaryScope?> resolve({required String projectPath}) async => null;
 
   @override
   dynamic noSuchMethod(Invocation invocation) => super.noSuchMethod(invocation);
