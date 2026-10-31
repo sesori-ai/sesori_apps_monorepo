@@ -16,6 +16,10 @@ class FakeRealtimeVoiceChannel() extends Mock implements WebSocketChannel {
   final StreamController<Object?> inbound = StreamController<Object?>();
   final Completer<void> upgrade = Completer<void>();
   final List<Object?> outbound = [];
+
+  /// Sees each send as it happens, for a test that cares about the moment.
+  void Function({required Object? data})? onOutbound;
+
   final Completer<void> _sinkDone = Completer<void>();
   int? sinkCloseCode;
   int? serverCloseCode;
@@ -38,7 +42,10 @@ class FakeRealtimeVoiceChannel() extends Mock implements WebSocketChannel {
 
 class _FakeSink({required final FakeRealtimeVoiceChannel channel}) implements WebSocketSink {
   @override
-  void add(Object? data) => channel.outbound.add(data);
+  void add(Object? data) {
+    channel.outbound.add(data);
+    channel.onOutbound?.call(data: data);
+  }
 
   @override
   void addError(Object error, [StackTrace? stackTrace]) => throw UnimplementedError();

@@ -67,9 +67,13 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
   answer: until the mode has loaded and the host has said it can stream, a hold records first. The feedback sheet always
   records first.
 - A live dictation sends its audio as it is spoken. Audio spoken before the server is ready waits in memory, up to
-  4 seconds, and goes first. The server refuses more than 5 seconds ahead of real time, so a slower start falls back.
-  A release before then waits for the server, sends what was held, and then finishes. Only confirmed words are the
-  result; a blank result is the empty-transcript error.
+  30 seconds, and goes first, so a start that reaches `ready` within that loses nothing. The server refuses more than 5 seconds ahead of real time,
+  so up to 4 seconds go at once and the rest follows at real time, with new audio behind it. The words lag by that
+  backlog until the release, and a release sends what is left at the same pace, up to about 26 seconds under Finishing,
+  before it finishes. With the finger still down, 30 seconds without `ready` falls back and drops what was held. A
+  release before `ready` waits for the server with no client deadline, only the X, then sends what was held the same
+  way and finishes. Only confirmed words are the result; a blank result is the
+  empty-transcript error.
 - A live failure before any audio left while the user still holds continues as a recording, without losing the hold.
   Those words land in the box with a cut-off notice and are never sent. A denied microphone permission is not a failure
   of this kind and shows its own error. If the recorder cannot restart, or the user had already released, the dictation
@@ -138,7 +142,7 @@ Remote Config keys `voice_live_enabled` and `voice_live_presentation` control th
 | Level | Additional coverage |
 |---|---|
 | L1 Smoke | Not included because microphone and transcription setup is too expensive for a heartbeat. |
-| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word layer's focus and panel presentation, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, reduced motion, and the glide: the bubble's handover with one copy on every frame, the two-frame fallback above the composer, the screen or row going mid-glide, the box holding its text back, and no travel under reduced motion. The release hint centred over the composer with a trailing control that fades in place, takes no focus, and doesn't move. |
+| L2 Routine | Automated, mobile client and bridge, no plugin, fake recorder, HTTP client, Git, and filesystem: permission denial, concurrent-start rejection, zero-byte rejection, cancel invalidating an in-flight upload, authoritative true/false/omitted/malformed retryability mapping, retained-artifact Retry/Discard and retry cancellation, serialized send-time abandonment including an active retry, available/pending/invalid opaque project context, terminal/missing cleanup, max-duration signalling, deletion failure logging, draft voice-span and input-mode derivation, the dictated marker on sends with plain restored drafts and titles, the current-project glossary trigger, legacy `project_view` accepted and ignored, serialized bounded inference with common-word and fragment filtering, exact-scope reconciliation, shutdown cancellation, and live dictation over a fake socket: the mode decision at the hold, the held audio and a release before ready, the backlog's pace and its stops, every fallback, the cut-off and limit endings, and cancel and close at each stage. Automated, widget level with a fake cubit: the live-word layer's focus and panel presentation, a composer mounting mid-dictation, the slide-out fade, the cancel's fade and drop, reduced motion, and the glide: the bubble's handover with one copy on every frame, the two-frame fallback above the composer, the screen or row going mid-glide, the box holding its text back, and no travel under reduced motion. The release hint centred over the composer with a trailing control that fades in place, takes no focus, and doesn't move. |
 | L3 Release | Mobile and macOS desktop client E2E: [recording and preference navigation](#client-release-coverage-l3). |
 | L4 Extended | Client end to end on iOS: change harness availability from another surface while recording and while transcription is pending; no text or send lands after the block, and voice returns only after session prerequisites recover. Client end to end on the release-target client platform: background or system interruption, permission revoked between interactions, offline async upload failure followed by successful Retry without re-recording, explicit retryable and terminal server outcomes, older-server omission fallback, discard/disposal cleanup, wake lock released on every path. |
 | L5 Full | Real device microphone and live transcription endpoint on every supported mobile platform: audible speech yields usable text, a near-maximum recording auto-stops and still transcribes, iOS haptics and system sounds stay audible while recording, music from another app keeps playing when a chat opens, and live words keep up with speech with first words not clipped, on a real microphone. |
@@ -191,6 +195,9 @@ interruptions such as a call.
   message with surviving voice text is classified as typed.
 - A hold waits for the voice mode, a switch change alters a dictation already running, a live failure offers Retry, a
   fallback loses the hold, or audio or `finish` reaches the socket before ready.
+- A start slower than 4 seconds and under 30 loses or reorders audio, or ends in `invalid_audio`; `finish` goes before
+  the last byte; a cancel, a close, a socket failure or the X leaves the backlog sending; or a start with no backlog
+  runs a pacing timer.
 - While the user speaks, live words move, relayout or rebuild the chat or the composer, snap when they wrap, hide the
   release hint, or block the pill's gesture. Words stay on screen after their glide or fade ends.
 - A glide shows two copies of the words, or pops the text at its end: a change of weight, wrap or position when the
@@ -219,7 +226,8 @@ interruptions such as a call.
   no `ffmpeg`, live can start, and a failure before any audio leaves ends in the transcription-failed notice because the
   fallback cannot record. Leaving a desktop session while recording discards the recording, as on the phone.
 - Live has no client deadline for `ready` once the user has released: a dead network shows Finishing until the socket
-  gives up, and the X still stops it.
+  gives up, and the X still stops it. A slow start's backlog also has to drain under Finishing; it is lost if the socket
+  drops first, and the words so far land in the box with the cut-off notice.
 - A fallen-back recording that fails and is retried lands in the box without the cut-off notice.
 - A very long live dictation lays out its whole text once per update; no slowdown showed at about 100 words, and much
   longer text is unmeasured. A route pushed mid-dictation followed by a window resize can trip an assert while the live
