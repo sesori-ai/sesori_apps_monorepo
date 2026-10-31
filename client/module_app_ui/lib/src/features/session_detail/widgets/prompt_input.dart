@@ -1751,8 +1751,8 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// The composer's centred words, in a layer over its row: the slot beneath
-  /// widens as the trailing actions collapse, which would carry them sideways as
-  /// they fade. The insets match the row's at rest, so they sit centred between
+  /// widens as voice-first's trailing actions collapse, which would carry them
+  /// sideways as they fade. The insets match the row's at rest, so they sit centred between
   /// its actions. [extraTrailingWidth] is how much wider the trailing actions
   /// rest than the leading ones.
   Widget _buildVoiceCaption(BuildContext context, {required Widget idle, required double extraTrailingWidth}) {

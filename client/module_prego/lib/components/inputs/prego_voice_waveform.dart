@@ -216,6 +216,8 @@ class _VoiceWaveformPainter({
       final sampleIndex = samples.length - 1 - slot;
       final x = size.width - _barWidth - slot * _slotPitch + slideOffset;
       if (x + _barWidth < 0) break;
+      // The extra slot exists for the slide: at rest it would show a cut-off bar.
+      if (x < 0 && slideOffset == 0) break;
 
       final double height;
       final Paint paint;
