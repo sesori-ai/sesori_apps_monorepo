@@ -7,6 +7,7 @@ import "package:flutter/scheduler.dart" show SchedulerBinding, Ticker;
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
+import "package:sesori_shared/sesori_shared.dart" show wrapDictatedText;
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
@@ -89,8 +90,9 @@ final class const _Bubble({required final String text}) extends _Destination;
 final class const _Box({required final String text}) extends _Destination;
 
 /// A send whose bubble isn't being built, as when the list is scrolled away from
-/// its end. The words go where it would have been and fade there.
-final class const _Estimate({required final Rect rect}) extends _Destination;
+/// its end. The words go where it would have been and fade there. [text] is what
+/// it would show.
+final class const _Estimate({required final Rect rect, required final String text}) extends _Destination;
 
 /// Nowhere to go: the words fade where they stand.
 final class const _InPlace() extends _Destination;
@@ -182,9 +184,13 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   /// kept until it comes within the list's cache.
   static const int _bubbleFrames = 5;
 
-  /// From the composer's body up to where the list's last row ends, past the
-  /// selectors above the body.
-  static const double _estimatedSlotGap = 52;
+  /// From the composer's body up to the foot of a bubble still being sent: the
+  /// selectors above the body and their gap (52), the list's end padding (8), the
+  /// status caption and its padding (18 + xs), and the row's margin (xs).
+  static const double _estimatedSlotGap = 52 + 8 + 18 + PregoSpacing.xs * 2;
+
+  /// How far the composer keeps in from the sides of the list's rows.
+  static const double _composerSideInset = 16;
 
   final _portal = OverlayPortalController();
   final _wordsKey = GlobalKey();
@@ -386,17 +392,19 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
   }
 
   /// Right-aligned above the composer, where the bubble goes when the list is at
-  /// its end. The words are what there is to size it by.
+  /// its end. The words, with the marker a bubble adds, are what there is to size
+  /// it by.
   _Destination _estimatedSlot() {
     final layer = _layer;
     final composer = _composerRect;
     if (layer is! _Gliding || composer == null) return const _InPlace();
+    final text = wrapDictatedText(text: layer.last.words.text.trim());
     final painter = TextPainter(
-      text: TextSpan(text: layer.last.words.text, style: _bubbleLook().style),
+      text: TextSpan(text: text, style: _bubbleLook().style),
       textDirection: Directionality.of(context),
       textScaler: MediaQuery.textScalerOf(context),
-    )..layout(maxWidth: UserMessageBubble.maxContentWidth(rowWidth: composer.width));
-    final right = composer.right - UserMessageBubble.margin.right;
+    )..layout(maxWidth: UserMessageBubble.maxContentWidth(rowWidth: composer.width + _composerSideInset * 2));
+    final right = composer.right + _composerSideInset - UserMessageBubble.margin.right;
     final bottom = composer.top - _estimatedSlotGap;
     final rect = Rect.fromLTRB(
       right - painter.width - UserMessageBubble.padding * 2,
@@ -405,7 +413,7 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
       bottom,
     );
     painter.dispose();
-    return _Estimate(rect: rect);
+    return _Estimate(rect: rect, text: text);
   }
 
   @override
@@ -684,8 +692,8 @@ class _ComposerLiveWordsState() extends State<ComposerLiveWords> with TickerProv
     required bool grows,
   }) {
     final String? landed = switch (destination) {
-      _Bubble(:final text) || _Box(:final text) => text,
-      _Undecided() || _Estimate() || _InPlace() => null,
+      _Bubble(:final text) || _Box(:final text) || _Estimate(:final text) => text,
+      _Undecided() || _InPlace() => null,
     };
     final color = style.color ?? const Color(0xFF000000);
     if (landed == null) {
