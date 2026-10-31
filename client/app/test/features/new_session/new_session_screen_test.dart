@@ -255,7 +255,7 @@ Future<void> enterTypingMode(WidgetTester tester) async {
 Future<void> enterTextAndSend({required WidgetTester tester, required String text}) async {
   await tester.enterText(find.byType(EditableText), text);
   await tester.pump();
-  await tester.tap(find.byIcon(TablerRegular.arrow_up));
+  await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
 }
 
 void main() {

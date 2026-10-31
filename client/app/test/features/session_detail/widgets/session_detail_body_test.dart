@@ -3714,14 +3714,14 @@ void main() {
 
     // Focus retention here proves the tap itself didn't unfocus the field
     // (which is what produced the hide/re-show flicker).
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
     await tester.pump();
     expect(composerFocus(tester).hasFocus, isTrue, reason: "send must not dismiss the keyboard");
   });
 
   testWidgets("send stays disabled until the composer holds text", (tester) async {
     VoidCallback? sendAction() =>
-        tester.widget<PregoButtonsSolid>(find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up)).onPressed;
+        tester.widget<PregoButtonsSolid>(find.widgetWithIcon(PregoButtonsSolid, TablerRegular.arrow_up).last).onPressed;
 
     await tester.pumpWidget(_buildApp(cubit: cubit));
     await tester.pumpAndSettle();
@@ -4213,11 +4213,11 @@ void main() {
     await enterTypingMode(tester);
     await tester.enterText(find.byType(EditableText), "send instead");
     await tester.pump();
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
     await tester.pump();
     expect(calls, ["discard"]);
 
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
     await tester.pump();
     expect(calls, ["discard"], reason: "a second send must not bypass the in-flight discard");
 
@@ -4263,7 +4263,7 @@ void main() {
     await tester.enterText(find.byType(EditableText), "replace retry");
     await tester.tap(find.byKey(const Key("voice_saved_retry")));
     await tester.pump();
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
     await tester.pumpAndSettle();
 
     verifyInOrder([
@@ -5572,7 +5572,7 @@ void main() {
       find.descendant(of: find.byType(EditableText), matching: find.byType(RawGestureDetector)).first,
     );
     Actions.invoke(actionContext, const PasteTextIntent(SelectionChangedCause.keyboard));
-    await tester.tap(find.byIcon(TablerRegular.arrow_up));
+    await tester.tap(find.byIcon(TablerRegular.arrow_up).last);
     await tester.pump();
     imageRead.complete(_tinyPng);
     await tester.pumpAndSettle();

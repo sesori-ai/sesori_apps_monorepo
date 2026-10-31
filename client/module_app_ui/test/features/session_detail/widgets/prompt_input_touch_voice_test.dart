@@ -1438,9 +1438,10 @@ void main() {
         for (var ms = 16; ms <= 288; ms += 16) {
           await tester.pump(const Duration(milliseconds: 16));
           final returned = Curves.easeOutCubic.transform((ms / 220).clamp(0.0, 1.0));
-          expect(_shownOpacity(send), closeTo(returned, 0.01), reason: "the house fade, releasing, $ms ms");
+          // The last is the button itself: its disabled look may sit under it, mid-dissolve.
+          expect(_shownOpacity(send.last), closeTo(returned, 0.01), reason: "the house fade, releasing, $ms ms");
           expect(tester.getTopLeft(mic).dx, micLeft, reason: "mic moved releasing, $ms ms");
-          expect(tester.getTopLeft(send).dx, sendLeft, reason: "send moved releasing, $ms ms");
+          expect(tester.getTopLeft(send.last).dx, sendLeft, reason: "send moved releasing, $ms ms");
         }
         expect(_shownOpacity(send), 1);
         await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
@@ -1645,7 +1646,8 @@ void main() {
               await tester.pump(const Duration(milliseconds: 16));
               final t = (ms / 220).clamp(0.0, 1.0);
               expect(
-                _shownOpacity(action),
+                // The last is the button itself: send's disabled look may sit under it, mid-dissolve.
+                _shownOpacity(action.last),
                 closeTo(
                   Curves.easeOutCubic.transform(t) * const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t),
                   0.01,
@@ -2657,19 +2659,289 @@ void main() {
       await expectDissolve(tester: tester, stopArrives: false, sendEnabled: false);
     });
 
-    testWidgets("disabled send to enabled send stays one button, with no fade", (tester) async {
-      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
-      await tester.tap(find.text("Follow up..."));
-      await tester.pumpAndSettle();
-      final state = tester.state(send);
-      expect(tester.widget<PregoButtonsSolid>(send).onPressed, isNull);
+    group("send's disabled and enabled looks", () {
+      /// The button itself; while the looks dissolve, the disabled one sits first, under it.
+      final button = send.last;
+      final disabledLook = send.first;
 
-      await tester.enterText(box, "a");
-      await tester.pump();
+      double enabledShown({required WidgetTester tester}) =>
+          tester.widget<Opacity>(find.ancestor(of: button, matching: find.byType(Opacity)).first).opacity;
 
-      expect(tester.state(send), same(state));
-      expect(tester.widget<PregoButtonsSolid>(send).onPressed, isNotNull);
-      expect(stop, findsNothing);
+      Color fill({required WidgetTester tester, required Finder look}) {
+        final boxes = tester.widgetList<DecoratedBox>(find.descendant(of: look, matching: find.byType(DecoratedBox)));
+        final decorations = boxes.map((box) => box.decoration).whereType<BoxDecoration>();
+        return decorations.map((decoration) => decoration.color).nonNulls.first;
+      }
+
+      Matcher sendNode({required bool enabled}) =>
+          isSemantics(label: "Send", isButton: true, hasEnabledState: true, isEnabled: enabled, hasTapAction: enabled);
+
+      Future<_Composer> pumpTypingWithEmptyBox({required WidgetTester tester}) async {
+        final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
+        await tester.tap(find.text("Follow up..."));
+        await tester.pumpAndSettle();
+        expect(tester.widget<PregoButtonsSolid>(send).onPressed, isNull);
+        return composer;
+      }
+
+      Future<_Composer> pumpTypingWithDraft({required WidgetTester tester}) async {
+        final composer = await pumpTypingWithEmptyBox(tester: tester);
+        await tester.enterText(box, draft);
+        await tester.pumpAndSettle();
+        expect(tester.widget<PregoButtonsSolid>(send).onPressed, isNotNull);
+        return composer;
+      }
+
+      /// One dissolve per frame, the enabled look over a disabled one at full strength:
+      /// one node with the current state, the same button, the same spot, and the blended
+      /// colour moving one way.
+      Future<void> expectLooksDissolve({required WidgetTester tester, required bool enabling}) async {
+        final state = tester.state(button);
+        final spot = tester.getRect(button);
+        await tester.enterText(box, enabling ? "a" : "");
+        await tester.pump();
+        expect(enabledShown(tester: tester), enabling ? 0 : 1, reason: "Nothing moves on the frame of the change.");
+        final disabledFill = fill(tester: tester, look: disabledLook);
+        final enabledFill = fill(tester: tester, look: button);
+        expect(disabledFill, isNot(enabledFill));
+        var previous = Color.lerp(disabledFill, enabledFill, enabledShown(tester: tester));
+        for (var ms = 16; ms <= 208; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          final reason = "at $ms ms";
+          final shown = enabling ? arrived(ms) : 1 - arrived(ms);
+          expect(enabledShown(tester: tester), closeTo(shown, 0.01), reason: reason);
+          expect(send, findsNWidgets(2), reason: reason);
+          expect(tester.widget<PregoButtonsSolid>(disabledLook).onPressed, isNull, reason: reason);
+          expect(tester.widget<PregoButtonsSolid>(button).onPressed, isNotNull, reason: "The enabled look, $reason");
+          expect(
+            find.ancestor(of: disabledLook, matching: find.byType(Opacity)),
+            findsNothing,
+            reason: "The disabled look stays at full strength, so the spot never goes faint, $reason",
+          );
+          expect(tester.getRect(disabledLook), spot, reason: reason);
+          expect(tester.getRect(button), spot, reason: reason);
+          expect(tester.state(button), same(state), reason: reason);
+          expect(find.semantics.byLabel("Send"), findsOne, reason: reason);
+          expect(tester.getSemantics(button), sendNode(enabled: enabling), reason: reason);
+
+          final blended = Color.lerp(disabledFill, enabledFill, enabledShown(tester: tester));
+          expect(
+            blended?.r ?? 0,
+            enabling ? lessThan(previous?.r ?? 0) : greaterThan(previous?.r ?? 0),
+            reason: "The colour moves one way, $reason",
+          );
+          previous = blended;
+        }
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(send, findsOneWidget, reason: "Settled, send is one button again.");
+        expect(tester.state(send), same(state));
+        expect(enabledShown(tester: tester), 1, reason: "Settled, its own look shows whole.");
+        expect(tester.widget<PregoButtonsSolid>(send).onPressed != null, enabling);
+        expect(find.semantics.byLabel("Send"), findsOne);
+        expect(tester.getSemantics(send), sendNode(enabled: enabling));
+      }
+
+      testWidgets("dissolve per frame as typing starts and the box empties", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await pumpTypingWithEmptyBox(tester: tester);
+        await expectLooksDissolve(tester: tester, enabling: true);
+        await expectLooksDissolve(tester: tester, enabling: false);
+        expect(stop, findsNothing);
+        semantics.dispose();
+      });
+
+      testWidgets("a tap sends from the first enabled frame, and a disabled send never sends", (tester) async {
+        final semantics = tester.ensureSemantics();
+        final composer = await pumpTypingWithEmptyBox(tester: tester);
+        final spot = tester.getCenter(send);
+
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.sent, isEmpty, reason: "Disabled at rest.");
+
+        await tester.enterText(box, "typed");
+        await tester.pump();
+        expect(enabledShown(tester: tester), 0, reason: "The very first frame of the change.");
+        expect(tester.getSemantics(button), sendNode(enabled: true));
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.sent, [(text: "typed", command: null)]);
+
+        await tester.pumpAndSettle();
+        await tester.enterText(box, "more");
+        await tester.pumpAndSettle();
+        await tester.enterText(box, "");
+        await tester.pump();
+        expect(enabledShown(tester: tester), 1, reason: "Still in the enabled look on the frame it disables.");
+        expect(tester.getSemantics(button), sendNode(enabled: false));
+        await tester.tapAt(spot);
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(enabledShown(tester: tester), lessThan(1));
+        await tester.tapAt(spot);
+        await tester.pump();
+        await tester.pumpAndSettle();
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.sent, hasLength(1), reason: "Disabled through the fade and at rest.");
+        semantics.dispose();
+      }, variant: touchPlatforms);
+
+      for (final (name, flips) in [
+        ("once midway", const [96]),
+        ("three times", const [48, 96, 144]),
+        ("early and late", const [16, 208]),
+      ]) {
+        testWidgets("turned back $name retraces with no restart", (tester) async {
+          await pumpTypingWithEmptyBox(tester: tester);
+          final state = tester.state(send);
+          var enabled = true;
+          await tester.enterText(box, "a");
+          await tester.pump();
+          var previous = enabledShown(tester: tester);
+          for (var ms = 16; ms <= 480; ms += 16) {
+            final flipped = flips.contains(ms);
+            if (flipped) {
+              enabled = !enabled;
+              await tester.enterText(box, enabled ? "a" : "");
+            }
+            await tester.pump(const Duration(milliseconds: 16));
+            final reason = "at $ms ms";
+            expect(tester.state(button), same(state), reason: reason);
+            final now = enabledShown(tester: tester);
+            if (send.evaluate().length == 1) {
+              expect(now, 1, reason: "Settled, $reason");
+              previous = enabled ? 1 : 0;
+              continue;
+            }
+            expect(send, findsNWidgets(2), reason: reason);
+            // The frame of a flip ticks once more before the build turns it back.
+            if (!flipped) {
+              expect(now, enabled ? greaterThanOrEqualTo(previous) : lessThanOrEqualTo(previous), reason: reason);
+            }
+            // Never faster than a fade's own first frame: no restart from either end.
+            expect((now - previous).abs(), lessThanOrEqualTo(arrived(16) + 0.01), reason: reason);
+            previous = now;
+          }
+          expect(send, findsOneWidget);
+          expect(tester.widget<PregoButtonsSolid>(send).onPressed != null, enabled);
+        });
+      }
+
+      group("a press", () {
+        double scale({required WidgetTester tester}) => tester
+            .widget<Transform>(find.descendant(of: button, matching: find.byType(Transform)).first)
+            .transform
+            .getMaxScaleOnAxis();
+
+        /// Pressed well short of the tooltip's long press, which would take the gesture.
+        Future<TestGesture> holdSend({required WidgetTester tester}) async {
+          final press = await tester.startGesture(tester.getCenter(button));
+          await tester.pump();
+          await tester.pump(kPressTimeout);
+          await tester.pump(const Duration(milliseconds: 100));
+          expect(scale(tester: tester), greaterThan(1.05));
+          return press;
+        }
+
+        const iOS = TargetPlatformVariant({TargetPlatform.iOS});
+
+        testWidgets("keeps its scale as send disables, and lifted then sends nothing", (tester) async {
+          final composer = await pumpTypingWithDraft(tester: tester);
+          final state = tester.state(button);
+          final press = await holdSend(tester: tester);
+
+          await tester.enterText(box, "");
+          await tester.pump();
+          for (var ms = 16; ms <= 208; ms += 16) {
+            await tester.pump(const Duration(milliseconds: 16));
+            // A cancelled press would be back near 1 well inside its 150 ms release.
+            expect(scale(tester: tester), greaterThan(1.05), reason: "at $ms ms");
+            expect(tester.state(button), same(state), reason: "at $ms ms");
+          }
+          await press.up();
+          await tester.pumpAndSettle();
+          expect(composer.sent, isEmpty);
+          expect(tester.state(send), same(state));
+        }, variant: iOS);
+
+        testWidgets("turned back midway carries on, and lifted then sends", (tester) async {
+          final composer = await pumpTypingWithDraft(tester: tester);
+          final state = tester.state(button);
+          final press = await holdSend(tester: tester);
+
+          await tester.enterText(box, "");
+          await tester.pump(const Duration(milliseconds: 96));
+          await tester.enterText(box, "typed");
+          await tester.pump();
+          expect(scale(tester: tester), greaterThan(1.05));
+          expect(tester.state(button), same(state));
+
+          await press.up();
+          await tester.pump();
+          expect(composer.sent, [(text: "typed", command: null)]);
+          await tester.pumpAndSettle();
+        }, variant: iOS);
+
+        testWidgets("its pulse after a send has run out by the time the disabled look takes over", (tester) async {
+          final composer = await pumpTypingWithDraft(tester: tester);
+
+          await tester.tap(button);
+          await tester.pump();
+          expect(composer.sent, [(text: draft, command: null)]);
+          var ms = 0;
+          while (send.evaluate().length > 1) {
+            await tester.pump(const Duration(milliseconds: 16));
+            ms += 16;
+          }
+          expect(ms, lessThanOrEqualTo(224));
+          expect(scale(tester: tester), closeTo(1, 0.01), reason: "No visible jump as the look settles.");
+          await tester.pumpAndSettle();
+        }, variant: iOS);
+      });
+
+      testWidgets("a send fading out under an arriving stop carries on with no restart", (tester) async {
+        final composer = await pumpTypingWithDraft(tester: tester);
+
+        await tester.tap(button);
+        await tester.pump();
+        expect(composer.sent, hasLength(1));
+        await tester.pump(const Duration(milliseconds: 48));
+        var previous = enabledShown(tester: tester);
+        expect(previous, closeTo(1 - arrived(48), 0.05));
+
+        composer.busy.value = true;
+        await tester.pump();
+        expect(stop, findsOneWidget);
+        expect(find.semantics.byLabel("Send"), findsNothing);
+        for (var ms = 16; ms <= 144; ms += 16) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(enabledShown(tester: tester), lessThan(previous), reason: "at $ms ms");
+          previous = enabledShown(tester: tester);
+          expect(stopOpacity(tester: tester), closeTo(arrived(ms), 0.01), reason: "at $ms ms");
+        }
+        await tester.pumpAndSettle();
+        expect(send, findsNothing);
+        expect(stop, findsOneWidget);
+      });
+
+      for (final setting in _reducedMotionSettings) {
+        testWidgets("${setting.name} keeps the dissolve", (tester) async {
+          tester.platformDispatcher.accessibilityFeaturesTestValue = setting.features;
+          addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+          await pumpTypingWithEmptyBox(tester: tester);
+
+          await tester.enterText(box, "a");
+          await tester.pump();
+          final frameMs = setting.fadeMs < 220 ? 1 : 16;
+          for (var ms = frameMs; ms < setting.fadeMs; ms += frameMs) {
+            await tester.pump(Duration(milliseconds: frameMs));
+            final shown = Curves.easeOutCubic.transform(ms / setting.fadeMs);
+            expect(enabledShown(tester: tester), closeTo(shown, 0.01), reason: "at $ms ms");
+          }
+          await tester.pumpAndSettle();
+          expect(send, findsOneWidget);
+        });
+      }
     });
 
     for (final (name, flips) in [

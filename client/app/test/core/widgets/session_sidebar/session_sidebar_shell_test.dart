@@ -361,7 +361,7 @@ void main() {
       await tester.enterText(find.descendant(of: newSession, matching: find.byType(EditableText)), "do the thing");
       // Send only accepts taps once the composer has rebuilt around its text.
       await tester.pump();
-      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)));
+      await tester.tap(find.descendant(of: newSession, matching: find.byIcon(TablerRegular.arrow_up)).last);
       await tester.pump();
       expect(find.byType(QueuedMessageBubble), findsOneWidget);
 
