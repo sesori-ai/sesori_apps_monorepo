@@ -10,16 +10,11 @@ class FirebaseVoiceModeConfigSource({
   required final FirebaseRemoteConfigClient _remoteConfigClient,
 }) implements VoiceModeConfigSource {
   static const String liveEnabledKey = "voice_live_enabled";
-  static const String presentationKey = "voice_live_presentation";
 
-  /// Firebase reports an unset key as false or as an empty string.
+  /// Firebase reports an unset key as false.
   @override
-  Future<VoiceModeConfigValues> fetchValues() async {
+  Future<bool> fetchLiveEnabled() async {
     final remoteConfig = await _remoteConfigClient.activated();
-    final presentation = remoteConfig.getString(presentationKey);
-    return (
-      liveEnabled: remoteConfig.getBool(liveEnabledKey),
-      presentation: presentation.isEmpty ? null : presentation,
-    );
+    return remoteConfig.getBool(liveEnabledKey);
   }
 }

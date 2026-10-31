@@ -425,16 +425,15 @@ void main() {
       });
 
       group("live", () {
-        const panel = VoiceLivePresentation.panel;
         const cutOffNotice = "Dictation was cut off. Check your words before sending.";
 
         setUp(() {
           when(voiceCubit.startRecording).thenAnswer((_) async {
-            voiceStates.add(const VoiceInputState.liveRecording(words: LiveWords.none, presentation: panel));
+            voiceStates.add(const VoiceInputState.liveRecording(words: LiveWords.none));
             await Future<void>.delayed(Duration.zero);
           });
           when(() => voiceCubit.stopAndTranscribe(limitReached: false)).thenAnswer((_) async {
-            voiceStates.add(const VoiceInputState.liveFinishing(words: LiveWords.none, presentation: panel));
+            voiceStates.add(const VoiceInputState.liveFinishing(words: LiveWords.none));
           });
         });
 

@@ -15,90 +15,72 @@ void main() {
     repository = VoiceModeRepository(configApi: configApi);
   });
 
-  void answerValues({required bool liveEnabled, required String? presentation}) => when(
-    configApi.fetchValues,
-  ).thenAnswer((_) async => (liveEnabled: liveEnabled, presentation: presentation));
+  void answerLiveEnabled({required bool liveEnabled}) =>
+      when(configApi.fetchLiveEnabled).thenAnswer((_) async => liveEnabled);
 
-  Matcher isLive({required VoiceLivePresentation presentation}) =>
-      isA<VoiceModeLive>().having((mode) => mode.presentation, "presentation", presentation);
+  test("live on gives live", () async {
+    answerLiveEnabled(liveEnabled: true);
 
-  group("parsing", () {
-    test("live with panel gives the panel", () async {
-      answerValues(liveEnabled: true, presentation: "panel");
+    await repository.load();
 
-      await repository.load();
+    expect(repository.mode, isA<VoiceModeLive>());
+  });
 
-      expect(repository.mode, isLive(presentation: VoiceLivePresentation.panel));
-    });
+  test("live off gives after-recording", () async {
+    answerLiveEnabled(liveEnabled: false);
 
-    for (final (name, value) in [("focus", "focus"), ("missing", null), ("unknown", "sideways"), ("cased", "Panel")]) {
-      test("live with a $name presentation gives focus", () async {
-        answerValues(liveEnabled: true, presentation: value);
+    await repository.load();
 
-        await repository.load();
-
-        expect(repository.mode, isLive(presentation: VoiceLivePresentation.focus));
-      });
-    }
-
-    for (final value in ["panel", "focus", null]) {
-      test("live off gives after-recording with a presentation of $value", () async {
-        answerValues(liveEnabled: false, presentation: value);
-
-        await repository.load();
-
-        expect(repository.mode, isA<VoiceModeAfterRecording>());
-      });
-    }
+    expect(repository.mode, isA<VoiceModeAfterRecording>());
   });
 
   group("caching", () {
     test("reports after-recording before any load", () {
       expect(repository.mode, isA<VoiceModeAfterRecording>());
-      verifyNever(configApi.fetchValues);
+      verifyNever(configApi.fetchLiveEnabled);
     });
 
     test("reports after-recording while the first load is in flight", () async {
-      final values = Completer<VoiceModeConfigValues>();
-      when(configApi.fetchValues).thenAnswer((_) => values.future);
+      final values = Completer<bool>();
+      when(configApi.fetchLiveEnabled).thenAnswer((_) => values.future);
 
       final load = repository.load();
 
       expect(repository.mode, isA<VoiceModeAfterRecording>());
 
-      values.complete((liveEnabled: true, presentation: null));
+      values.complete(true);
       await load;
 
-      expect(repository.mode, isLive(presentation: VoiceLivePresentation.focus));
+      expect(repository.mode, isA<VoiceModeLive>());
     });
 
     test("keeps the loaded value without fetching again", () async {
-      answerValues(liveEnabled: true, presentation: "panel");
+      answerLiveEnabled(liveEnabled: true);
 
       await repository.load();
 
-      expect(repository.mode, isLive(presentation: VoiceLivePresentation.panel));
-      verify(configApi.fetchValues).called(1);
+      expect(repository.mode, isA<VoiceModeLive>());
+      verify(configApi.fetchLiveEnabled).called(1);
     });
 
     test("a later load replaces the value", () async {
-      answerValues(liveEnabled: true, presentation: "panel");
+      answerLiveEnabled(liveEnabled: true);
       await repository.load();
 
-      answerValues(liveEnabled: false, presentation: null);
+      answerLiveEnabled(liveEnabled: false);
       await repository.load();
 
       expect(repository.mode, isA<VoiceModeAfterRecording>());
     });
 
     test("a failed load reports its error and keeps the last value", () async {
-      answerValues(liveEnabled: true, presentation: "panel");
+      answerLiveEnabled(liveEnabled: true);
       await repository.load();
 
-      when(configApi.fetchValues).thenThrow(StateError("offline"));
+      when(configApi.fetchLiveEnabled).thenThrow(StateError("offline"));
 
       await expectLater(repository.load(), throwsStateError);
-      expect(repository.mode, isLive(presentation: VoiceLivePresentation.panel));
+      expect(repository.mode, isA<VoiceModeLive>());
     });
   });
 }

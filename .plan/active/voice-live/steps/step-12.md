@@ -97,7 +97,7 @@ A new session held to talk, with Claude Code on Haiku 5.5, in the fixture projec
 widget tests (steps 3 and 4) and fake-cubit feel runs (steps 9 and 10). #2231 was step 10.ii itself, and #2232
 only centred the hint.
 
-New, in the real app with real words, judged from recordings:
+New, in the real app with real words, judged from recordings. The focus rows predate the panel becoming the only view:
 
 | Case | Decision | Seen |
 | --- | --- | --- |
@@ -162,8 +162,7 @@ Run in this order. All with a dev account. Platform-only items are marked.
 
 ### 1. Setup
 
-- **Firebase Remote Config:** `voice_live_enabled=true`, `voice_live_presentation=focus`, and `panel` for the
-  second pass. It applies at each phone's next cold launch.
+- **Firebase Remote Config:** `voice_live_enabled=true`. It applies at each phone's next cold launch.
 - **Desktop:** build with `--dart-define=SESORI_DESKTOP_RELEASE_CHANNEL=internal`. Source builds default to
   `stable`, which is after-recording.
 
@@ -194,14 +193,14 @@ About ten dictations each on Wi-Fi and cellular, including the first after a col
   This Mac saw about 1 s, which says nothing about a phone.
 - Fails if the wait after a release is unbearable, or the lag in the words feels wrong, at the worst value seen.
 
-### 4. Feel, in focus then panel (iPhone and Android)
+### 4. Feel (iPhone and Android)
 
 | Do | Fails if |
 | --- | --- |
 | Dictate a long message | The wrap jumps, or a real server's rate feels restless |
 | Send and edit at real speed | A visible pop at the handover, or line ends that stay clipped after the rewrap |
 | Slide to the pencil and to cancel, slowly | The wash jumps at its 12 px detent, the snap on cancel feels abrupt, or the hint's cross-fade reads as a glitch |
-| Dictate for several minutes in focus | It slows down |
+| Dictate for several minutes | It slows down |
 
 ### 5. Real session (iPhone and Android)
 
@@ -231,8 +230,8 @@ If a stereo-only USB microphone is at hand: it must fall back, not produce noise
 - Real microphone: click, click, Enter, Shift+Enter, Esc all work, with words right and the last word kept.
 - Fails if text input gets a newline from any of these.
 - Merge feel, and tooltips over the moving Send.
-- The dim's hole against a real transcript, and in a window wider than the transcript.
-- Send and edit in the pointer shell. The 25 pt focus text has never been seen gliding. Fails if it pops at the landing.
+- The panel against a real transcript, and in a window wider than the transcript.
+- Send and edit in the pointer shell. Fails if it pops at the landing.
 
 ### 10. Linux only
 

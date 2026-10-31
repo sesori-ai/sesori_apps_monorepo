@@ -10,11 +10,8 @@ class ChannelVoiceModeConfigSource({
   required final InstalledDesktopBundleSource _bundleSource,
 }) implements VoiceModeConfigSource {
   @override
-  Future<VoiceModeConfigValues> fetchValues() async => (
-    liveEnabled: switch (_bundleSource.channel) {
-      DesktopReleaseChannel.internal => true,
-      DesktopReleaseChannel.stable => false,
-    },
-    presentation: null,
-  );
+  Future<bool> fetchLiveEnabled() async => switch (_bundleSource.channel) {
+    DesktopReleaseChannel.internal => true,
+    DesktopReleaseChannel.stable => false,
+  };
 }

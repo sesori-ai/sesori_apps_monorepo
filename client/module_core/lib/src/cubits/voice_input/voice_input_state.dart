@@ -2,7 +2,6 @@ import "package:freezed_annotation/freezed_annotation.dart";
 
 import "../../foundation/models/voice/voice_dictation_outcome.dart";
 import "../../foundation/models/voice/voice_live.dart";
-import "../../foundation/models/voice/voice_mode.dart";
 import "../../foundation/models/voice/voice_transcription_error.dart";
 
 part "voice_input_state.freezed.dart";
@@ -15,17 +14,11 @@ sealed class VoiceInputState with _$VoiceInputState {
 
   const factory recording() = VoiceInputRecording;
 
-  const factory liveRecording({
-    required LiveWords words,
-    required VoiceLivePresentation presentation,
-  }) = VoiceInputLiveRecording;
+  const factory liveRecording({required LiveWords words}) = VoiceInputLiveRecording;
 
   const factory transcribing({required bool limitReached}) = VoiceInputTranscribing;
 
-  const factory liveFinishing({
-    required LiveWords words,
-    required VoiceLivePresentation presentation,
-  }) = VoiceInputLiveFinishing;
+  const factory liveFinishing({required LiveWords words}) = VoiceInputLiveFinishing;
 
   const factory retryPending({required VoiceTranscriptionError error}) = VoiceInputRetryPending;
 

@@ -10,6 +10,9 @@ lives in `steps/step-NN.md`, written only by that step's own PR.
 D1–D27 are the user's, from review pages `voice-live-r1` and `voice-live-r2`
 (2026-10-30). D28–D33 are planning decisions. See [PLAN](PLAN.md#decisions).
 
+2026-10-31: after trying both on a phone, the user chose the panel as the only live view, on phone and desktop. Focus and
+the `voice_live_presentation` key are gone; mentions of them in the plan and the finished steps are history.
+
 ## Guardrails
 
 - No audio or transcript in logs or analytics.
@@ -21,8 +24,8 @@ D1–D27 are the user's, from review pages `voice-live-r1` and `voice-live-r2`
 
 ## User Actions
 
-- Before step 9 testing: set `voice_live_enabled` to `true` and
-  `voice_live_presentation` to `focus` in Firebase Remote Config.
+- Before step 9 testing: set `voice_live_enabled` to `true` in Firebase Remote
+  Config.
 - Before the first public release containing this code: set `voice_live_enabled`
   to `false`. It applies at each phone's next cold launch.
 - Step 12: run the real-microphone checks on an iPhone and an Android device, and the

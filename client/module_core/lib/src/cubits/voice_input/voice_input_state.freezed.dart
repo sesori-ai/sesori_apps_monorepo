@@ -143,11 +143,10 @@ String toString() {
 
 
 class VoiceInputLiveRecording implements VoiceInputState {
-  const VoiceInputLiveRecording({required this.words, required this.presentation});
+  const VoiceInputLiveRecording({required this.words});
   
 
  final  LiveWords words;
- final  VoiceLivePresentation presentation;
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
@@ -159,18 +158,18 @@ $VoiceInputLiveRecordingCopyWith<VoiceInputLiveRecording> get copyWith => _$Voic
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputLiveRecording&&(identical(other.words, words) || other.words == words)&&(identical(other.presentation, presentation) || other.presentation == presentation));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputLiveRecording&&(identical(other.words, words) || other.words == words));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,words,presentation);
+    return Object.hash(runtimeType,words);
 }
 
 @override
 String toString() {
-    return 'VoiceInputState.liveRecording(words: $words, presentation: $presentation)';
+    return 'VoiceInputState.liveRecording(words: $words)';
 }
 
 
@@ -181,7 +180,7 @@ abstract mixin class $VoiceInputLiveRecordingCopyWith<$Res> implements $VoiceInp
   factory $VoiceInputLiveRecordingCopyWith(VoiceInputLiveRecording value, $Res Function(VoiceInputLiveRecording) _then) = _$VoiceInputLiveRecordingCopyWithImpl;
 @useResult
 $Res call({
- LiveWords words, VoiceLivePresentation presentation
+ LiveWords words
 });
 
 
@@ -198,11 +197,10 @@ class _$VoiceInputLiveRecordingCopyWithImpl<$Res>
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? words = null,Object? presentation = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? words = null,}) {
   return _then(VoiceInputLiveRecording(
 words: null == words ? _self.words : words // ignore: cast_nullable_to_non_nullable
-as LiveWords,presentation: null == presentation ? _self.presentation : presentation // ignore: cast_nullable_to_non_nullable
-as VoiceLivePresentation,
+as LiveWords,
   ));
 }
 
@@ -281,11 +279,10 @@ as bool,
 
 
 class VoiceInputLiveFinishing implements VoiceInputState {
-  const VoiceInputLiveFinishing({required this.words, required this.presentation});
+  const VoiceInputLiveFinishing({required this.words});
   
 
  final  LiveWords words;
- final  VoiceLivePresentation presentation;
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
@@ -297,18 +294,18 @@ $VoiceInputLiveFinishingCopyWith<VoiceInputLiveFinishing> get copyWith => _$Voic
 
 @override
 bool operator ==(Object other) {
-    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputLiveFinishing&&(identical(other.words, words) || other.words == words)&&(identical(other.presentation, presentation) || other.presentation == presentation));
+    return identical(this, other) || (other.runtimeType == runtimeType&&other is VoiceInputLiveFinishing&&(identical(other.words, words) || other.words == words));
 }
 
 
 @override
 int get hashCode {
-    return Object.hash(runtimeType,words,presentation);
+    return Object.hash(runtimeType,words);
 }
 
 @override
 String toString() {
-    return 'VoiceInputState.liveFinishing(words: $words, presentation: $presentation)';
+    return 'VoiceInputState.liveFinishing(words: $words)';
 }
 
 
@@ -319,7 +316,7 @@ abstract mixin class $VoiceInputLiveFinishingCopyWith<$Res> implements $VoiceInp
   factory $VoiceInputLiveFinishingCopyWith(VoiceInputLiveFinishing value, $Res Function(VoiceInputLiveFinishing) _then) = _$VoiceInputLiveFinishingCopyWithImpl;
 @useResult
 $Res call({
- LiveWords words, VoiceLivePresentation presentation
+ LiveWords words
 });
 
 
@@ -336,11 +333,10 @@ class _$VoiceInputLiveFinishingCopyWithImpl<$Res>
 
 /// Create a copy of VoiceInputState
 /// with the given fields replaced by the non-null parameter values.
-@pragma('vm:prefer-inline') $Res call({Object? words = null,Object? presentation = null,}) {
+@pragma('vm:prefer-inline') $Res call({Object? words = null,}) {
   return _then(VoiceInputLiveFinishing(
 words: null == words ? _self.words : words // ignore: cast_nullable_to_non_nullable
-as LiveWords,presentation: null == presentation ? _self.presentation : presentation // ignore: cast_nullable_to_non_nullable
-as VoiceLivePresentation,
+as LiveWords,
   ));
 }
 

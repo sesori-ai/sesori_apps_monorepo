@@ -33,11 +33,10 @@ class VoiceInputCubit({
     try {
       await _service.start(session: _session);
       if (isClosed || state is! VoiceInputStarting) return;
-      final presentation = _service.livePresentation(session: _session);
       emit(
-        presentation == null
-            ? const VoiceInputState.recording()
-            : VoiceInputState.liveRecording(words: LiveWords.none, presentation: presentation),
+        _service.isLive(session: _session)
+            ? const VoiceInputState.liveRecording(words: LiveWords.none)
+            : const VoiceInputState.recording(),
       );
     } on VoiceTranscriptionError catch (error, stackTrace) {
       if (error is! MicrophonePermissionDeniedError) {
@@ -56,8 +55,8 @@ class VoiceInputCubit({
     final current = state;
     if (current is VoiceInputRecording) {
       emit(VoiceInputState.transcribing(limitReached: limitReached));
-    } else if (current case VoiceInputLiveRecording(:final words, :final presentation)) {
-      emit(VoiceInputState.liveFinishing(words: words, presentation: presentation));
+    } else if (current case VoiceInputLiveRecording(:final words)) {
+      emit(VoiceInputState.liveFinishing(words: words));
     } else {
       return;
     }
@@ -200,10 +199,10 @@ class VoiceInputCubit({
     final current = state;
     switch (event) {
       case VoiceLiveWordsChanged(:final words):
-        if (current case VoiceInputLiveRecording(:final presentation)) {
-          emit(VoiceInputState.liveRecording(words: words, presentation: presentation));
-        } else if (current case VoiceInputLiveFinishing(:final presentation)) {
-          emit(VoiceInputState.liveFinishing(words: words, presentation: presentation));
+        if (current is VoiceInputLiveRecording) {
+          emit(VoiceInputState.liveRecording(words: words));
+        } else if (current is VoiceInputLiveFinishing) {
+          emit(VoiceInputState.liveFinishing(words: words));
         }
       case VoiceLiveFellBack():
         if (current is VoiceInputLiveRecording) {
