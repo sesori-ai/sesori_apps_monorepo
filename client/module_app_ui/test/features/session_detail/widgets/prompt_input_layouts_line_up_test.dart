@@ -103,7 +103,9 @@ void main() {
     );
     if (typing) {
       await tester.tap(switch (shell.mode) {
-        ChatInputMode.voiceFirst => find.byTooltip("Type a message"),
+        ChatInputMode.voiceFirst => find.byWidgetPredicate(
+          (widget) => widget is Tooltip && widget.message == "Type a message",
+        ),
         ChatInputMode.textFirst => find.text("Follow up..."),
       }, warnIfMissed: false);
       await tester.pumpAndSettle();
@@ -130,7 +132,7 @@ void main() {
     final pointer = shell.presentation == ComposerPresentation.pointer;
     TestGesture? hold;
     if (pointer) {
-      await tester.tap(find.byTooltip("Record voice"));
+      await tester.tap(find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == "Record voice"));
     } else {
       final holdTarget = switch (shell.mode) {
         ChatInputMode.voiceFirst => find.textContaining("Hold to talk"),
