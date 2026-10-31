@@ -306,7 +306,22 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
         // moves nothing, and the row takes its height at once.
         // Cancelling a queued prompt must not dismiss an in-progress draft.
         TextFieldTapRegion(
-          child: AnimatedSwitcher(duration: _statusFade, child: statusRail),
+          child: AnimatedSwitcher(
+            duration: _statusFade,
+            // A line on its way out has been overtaken: its Cancel is for a state
+            // the message has left.
+            transitionBuilder: (child, animation) {
+              final outgoing = child.key != statusRail.key;
+              return ExcludeFocus(
+                excluding: outgoing,
+                child: IgnorePointer(
+                  ignoring: outgoing,
+                  child: FadeTransition(opacity: animation, child: child),
+                ),
+              );
+            },
+            child: statusRail,
+          ),
         ),
       ],
     );

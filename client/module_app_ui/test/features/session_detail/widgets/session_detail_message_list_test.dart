@@ -792,6 +792,29 @@ void main() {
       expect(heights.skip(15), everyElement(moreOrLessEquals(heights[15], epsilon: 0.01)));
     });
 
+    testWidgets("a Cancel fading out as its prompt is dispatched cancels nothing", (tester) async {
+      final harness = await sendAndList(tester);
+      await tester.pump(const Duration(seconds: 2));
+      await tester.pump(const Duration(milliseconds: 400));
+      final cancel = find.text("Cancel");
+      // Inside its 44 px target, above the text of the line taking over from it.
+      final tapAt = tester.getCenter(cancel).translate(0, -15);
+
+      harness.updateBridgeQueue(
+        prompts: [listed(state: QueuedPromptDispatchState.dispatched)],
+        attachments: const {},
+      );
+      await tester.pump();
+      for (final ms in const [16, 80, 64]) {
+        await tester.pump(Duration(milliseconds: ms));
+        expect(opacityOf(tester, cancel), greaterThan(0));
+        await tester.tapAt(tapAt);
+        await tester.pump();
+      }
+
+      expect(harness.cancelledBridgePromptIds, isEmpty);
+    });
+
     testWidgets("one still queued at two seconds fades in as the chat eases up, and Cancel comes with it", (
       tester,
     ) async {
