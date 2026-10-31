@@ -50,7 +50,7 @@ class _DesktopHomePaneState() extends State<DesktopHomePane> {
   /// background of its own, so neither moves or covers the other while they
   /// cross, and the one leaving takes no clicks, focus or announcements.
   Widget _buildBody(BuildContext context) => AnimatedSwitcher(
-    duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
+    duration: _homeMotionDuration,
     switchInCurve: Curves.easeOut,
     switchOutCurve: Curves.easeIn,
     // Unkeyed, unlike the default, so each switch gets an entry of its own: a
@@ -239,7 +239,7 @@ class _SlowStartLineState() extends State<_SlowStartLine> {
         // Left out of semantics while hidden; once shown, a live region.
         child: AnimatedOpacity(
           opacity: _shown ? 1 : 0,
-          duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
+          duration: _homeMotionDuration,
           curve: Curves.easeOut,
           child: Semantics(
             container: true,
@@ -429,7 +429,7 @@ class _DesktopHomeStartState() extends State<DesktopHomeStart> {
           (_projectId == null && previous.defaultProjectId != current.defaultProjectId),
       listener: (_, state) => setState(() => _projectId = state.defaultProjectId),
       child: AnimatedSwitcher(
-        duration: context.isReducedMotion ? Duration.zero : _homeMotionDuration,
+        duration: _homeMotionDuration,
         child: pane,
       ),
     );

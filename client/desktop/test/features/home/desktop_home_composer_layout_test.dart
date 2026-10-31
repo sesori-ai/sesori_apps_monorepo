@@ -545,7 +545,7 @@ void main() {
       );
     });
 
-    testWidgets("reduced motion swaps the card for the composer in one frame", (tester) async {
+    testWidgets("reduced motion cross-fades the card and the composer, the page moving once", (tester) async {
       tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
       addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
       final recheck = Completer<NewSessionOptionsLoadResult>();
@@ -562,14 +562,20 @@ void main() {
         NewSessionOptionsLoaded(options: _options, source: NewSessionOptionsSource.aggregate, isStale: false),
       );
       await tester.pump();
-      expect(card, findsNothing);
-      expect(opacityOf(tester, composer), 1);
       final settledTop = tester.getRect(title).top;
       expect(settledTop, greaterThan(titleTop + 10));
+      await tester.pump(_frame);
+      await tester.pump(_frame);
+      expect(card, findsOneWidget);
+      expect(opacityOf(tester, composer), inExclusiveRange(0, 1));
       for (var index = 0; index < 15; index++) {
         await tester.pump(_frame);
         expect(tester.getRect(title).top, settledTop);
       }
+      await tester.pumpAndSettle();
+      expect(card, findsNothing);
+      expect(opacityOf(tester, composer), 1);
+      expect(tester.getRect(title).top, settledTop);
     });
   });
 }
