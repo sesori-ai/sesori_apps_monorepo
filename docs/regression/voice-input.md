@@ -75,6 +75,8 @@ live on and the host can stream, the same gestures run over a realtime socket in
   with the finger still down.
 - Cancelling a live dictation at any point sends `cancel` when the socket is streaming, closes the socket, releases the
   microphone, and hands nothing over.
+- The release hint centres over the whole composer. A background tasks pill beside it fades where it stands while the
+  hint shows, and comes back afterwards; nothing in that row moves.
 - A live dictation's words show in a layer of their own while the user speaks, in the presentation remote config chose.
   Nothing under that layer moves or resizes for them, and they never take a touch away from the pill or the chat.
 - Focus dims the chat pane, and only that pane, from the first frame of listening, and shows the words large above the

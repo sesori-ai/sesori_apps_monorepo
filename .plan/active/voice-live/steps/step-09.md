@@ -50,9 +50,6 @@ already keeps the rect it last had in `_composerRect` while leaving, so it has a
 
 - A very long dictation lays its text out once per update, measuring included. No slowdown showed
   in the fixture run of about 100 words; the real server's rate and much longer text weren't tried.
-- With `composerTrailing` set, the composer's hint is centred beside the trailing control and the
-  layer's copy across the composer, so the two differ slightly during the dim's fade. Not seen on
-  screen.
 - A portal left open under a pushed route can assert on a window resize (flutter/flutter#192030).
   The portal closes when the exit ends, so this takes a route pushed mid-dictation and a resize.
 

@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter/foundation.dart" show kIsWeb;
 import "package:flutter/gestures.dart" show kPrimaryButton;
+import "package:flutter/rendering.dart" show OverflowBoxFit;
 import "package:flutter/scheduler.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
@@ -1214,6 +1215,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// House transition timing for the composer's state morphs.
   static const Duration _morphDuration = Duration(milliseconds: 220);
   static const Curve _morphCurve = Curves.easeOutCubic;
+  static const Curve _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
 
   /// Eases [child]'s size changes in the house timing. Reduced motion resizes
   /// at once: a zero-duration [AnimatedSize] would re-dirty itself mid-layout.
@@ -1285,17 +1287,16 @@ class _PromptInputState() extends State<PromptInput> {
                 if (!didPop && shouldDismissKeyboardBeforePop) _focusNode.unfocus();
               },
               child: switch (widget.composerTrailing) {
-                null => _buildComposerTopSlot(context),
-                final trailing => Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  spacing: 8,
-                  children: [
-                    Expanded(child: _buildComposerTopSlot(context)),
-                    Padding(
-                      padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-                      child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
-                    ),
-                  ],
+                null => _buildComposerTopSlot(context: context, hintWidth: null),
+                final trailing => LayoutBuilder(
+                  builder: (context, constraints) => Row(
+                    crossAxisAlignment: CrossAxisAlignment.end,
+                    spacing: 8,
+                    children: [
+                      Expanded(child: _buildComposerTopSlot(context: context, hintWidth: constraints.maxWidth)),
+                      _buildComposerTrailing(context: context, trailing: trailing),
+                    ],
+                  ),
                 ),
               },
             );
@@ -1378,10 +1379,32 @@ class _PromptInputState() extends State<PromptInput> {
   // Header slot
   // ---------------------------------------------------------------------------
 
+  /// Fades where it stands while the release hint shows over its place. It stays
+  /// mounted and keeps its room, so nothing in the row moves.
+  Widget _buildComposerTrailing({required BuildContext context, required Widget trailing}) {
+    final visible = _voicePresentation != _VoicePresentation.recording;
+    return AnimatedOpacity(
+      duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+      // Comes back once the hint over its place has mostly gone.
+      curve: visible ? _trailingReturnCurve : _morphCurve,
+      opacity: visible ? 1 : 0,
+      child: IgnorePointer(
+        ignoring: !visible,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+          child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+        ),
+      ),
+    );
+  }
+
   /// The strip above the input container: the composer header (agent/model
   /// pills) or the staged-command chip normally, replaced by the floating
   /// recording helper or persistent saved-recording actions.
-  Widget _buildComposerTopSlot(BuildContext context) {
+  ///
+  /// [hintWidth] is the composer's whole width when a trailing control shares the
+  /// row. The helper still centres over all of it, reaching past this slot.
+  Widget _buildComposerTopSlot({required BuildContext context, required double? hintWidth}) {
     final Widget child;
     if (_renderedVoiceState is VoiceInputRetryPending) {
       child = KeyedSubtree(
@@ -1389,7 +1412,20 @@ class _PromptInputState() extends State<PromptInput> {
         child: _buildSavedRecordingActions(context),
       );
     } else if (_voicePresentation == _VoicePresentation.recording) {
-      child = KeyedSubtree(key: const ValueKey("release-hint"), child: _buildReleaseHint(context));
+      final hint = _buildReleaseHint(context);
+      child = KeyedSubtree(
+        key: const ValueKey("release-hint"),
+        child: switch (hintWidth) {
+          null => hint,
+          final width => OverflowBox(
+            fit: OverflowBoxFit.deferToChild,
+            minWidth: width,
+            maxWidth: width,
+            alignment: AlignmentDirectional.centerStart,
+            child: hint,
+          ),
+        },
+      );
     } else {
       final headerChild = switch (widget.stagedCommand) {
         null => widget.composerHeader,
@@ -1422,6 +1458,8 @@ class _PromptInputState() extends State<PromptInput> {
       duration: _morphDuration,
       curve: _morphCurve,
       alignment: Alignment.bottomCenter,
+      // Growing for large text must not cut off a hint reaching past this slot.
+      clipBehavior: hintWidth == null ? Clip.hardEdge : Clip.none,
       child: AnimatedSwitcher(
         duration: _morphDuration,
         transitionBuilder: (transitionChild, animation) {
