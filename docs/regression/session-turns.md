@@ -644,7 +644,11 @@ defaults and queued client sends coherent.
   bridge) → queued (bridge-owned) → sent (the
   transcript message). The dispatched message carries the prompt id and
   replaces the queued entry in the same client state emission, so no frame
-  shows the prompt twice or not at all. Client-staged sends preserve order,
+  shows the prompt twice or not at all. A status line showing as its prompt is
+  delivered fades out as the row's height eases, with the motion of the line's
+  other transitions, on every path to delivery: it takes no tap or focus and is
+  gone for a screen reader from that frame, and scrolling away and back doesn't
+  replay it. Reduced motion keeps the fade and takes the height at once. Client-staged sends preserve order,
   survive a transient disconnection while the session-detail cubit is alive,
   retain the agent, model, and variant selected at submission, and drain with
   the same prompt id so retries stay idempotent.
@@ -863,6 +867,7 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   rendered content, drops buffered events, or allows pagination to trigger a
   backend read while blocked.
 - A normal send shows a status line, or the chat moves when its message lands.
+- A status line vanishes in one frame as its message is delivered, or fades again after scrolling back.
 - "Queued" or Cancel flashes on a prompt the harness takes promptly, on any harness; the chat rises and drops 48 px
   for it; Cancel can be tapped, focused or read while hidden; the two seconds restart or the line blinks on a rebuild
   or after scrolling away and back; a gap shows between Sending and Queued; a row listed as the transcript opens rises

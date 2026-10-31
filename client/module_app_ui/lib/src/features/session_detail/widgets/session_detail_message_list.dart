@@ -285,7 +285,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// was dropped before it had opened.
   final Set<String> _easedInRowIds = {};
 
-  /// The row that replaced the launch bubble. It keeps the bubble's key, so
+  /// The row that replaced the launch bubble. It keeps the launch row's key, so
   /// the swap eases in place like a queued prompt turning into its message.
   String? _launchSlotRowId;
 
@@ -1311,7 +1311,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
-            key: const ValueKey(_kLaunchRowId),
             displayText: submission.displayText,
             isCommand: submission is NewSessionCommandSubmissionSnapshot,
             attachmentCount: attachments.length,
@@ -1335,7 +1334,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         final message = messages[index];
         return _revealable(
           createdAtMs: message.info.time?.created,
-          child: _animatedPromptRow(child: _userMessage(message: message)),
+          child: _deliveredPromptRow(message: message),
         );
       }
       final promptId = entryId.substring(_kPromptRowPrefix.length);
@@ -1346,8 +1345,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
           createdAtMs: prompt.createdAt,
           child: _animatedPromptRow(
             child: QueuedMessageBubble(
-              // The row that replaced the launch bubble carries on from it.
-              key: ValueKey(entryId == _launchSlotRowId ? _kLaunchRowId : entryId),
               displayText: _bridgePromptDisplayText(prompt),
               isCommand: prompt.command != null,
               attachmentCount: prompt.attachmentCount,
@@ -1379,7 +1376,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
-            key: ValueKey(entryId),
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
@@ -1402,7 +1398,6 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
         createdAtMs: null,
         child: _animatedPromptRow(
           child: QueuedMessageBubble(
-            key: ValueKey(entryId),
             displayText: submission.displayText,
             isCommand: submission.isCommand,
             attachmentCount: submission.attachments.length,
@@ -1448,7 +1443,7 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     final createdAtMs = message.info.time?.created;
     final card = switch (message.info) {
       // The launch bubble's echo keeps easing like the bubble it replaced.
-      MessageUser() when entryId == _launchSlotRowId => _animatedPromptRow(child: _userMessage(message: message)),
+      MessageUser() when entryId == _launchSlotRowId => _deliveredPromptRow(message: message),
       MessageUser() => _userMessage(message: message),
       MessageAssistant(sender: MessageSender.agent, :final id) => AssistantMessageCard(
         projectId: widget.projectId,
@@ -1474,6 +1469,19 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     openerId: message.info.id,
     registry: _promptSlots,
     child: UserMessageCard(message: message),
+  );
+
+  /// A delivered prompt's row. It carries on from the bubble that waited, the row's
+  /// key keeping them one, so a line that showed sees out its fade, and a row built
+  /// later has none to replay.
+  Widget _deliveredPromptRow({required MessageWithParts message}) => _animatedPromptRow(
+    child: QueuedMessageBubble(
+      displayText: null,
+      isCommand: false,
+      attachmentCount: 0,
+      localAttachments: const [],
+      presentation: QueuedMessageBubblePresentation.delivered(message: _userMessage(message: message)),
+    ),
   );
 
   void _cancelQueuedSubmission({required QueuedSessionSubmission submission}) {

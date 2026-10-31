@@ -26,6 +26,10 @@ sealed class const QueuedMessageBubblePresentation() {
   /// A send that failed. The callbacks are null on a read-only surface.
   const factory failed({required VoidCallback? onRetry, required VoidCallback? onRemove}) =
       FailedMessageBubblePresentation;
+
+  /// A message that has arrived: [message] takes the bubble's place, under the
+  /// line it had while it waited, if any, on its way out.
+  const factory delivered({required Widget message}) = DeliveredMessageBubblePresentation;
 }
 
 final class const SendingMessageBubblePresentation({
@@ -48,6 +52,9 @@ final class const FailedMessageBubblePresentation({
   required final VoidCallback? onRetry,
   required final VoidCallback? onRemove,
 }) extends QueuedMessageBubblePresentation;
+
+final class const DeliveredMessageBubblePresentation({required final Widget message})
+    extends QueuedMessageBubblePresentation;
 
 class const QueuedMessageBubble({
   super.key,
@@ -82,14 +89,18 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
     SendingMessageBubblePresentation() ||
     PendingMessageBubblePresentation() ||
     ReadOnlyPendingMessageBubblePresentation() => true,
-    UnavailableCommandBubblePresentation() || FailedMessageBubblePresentation() => false,
+    UnavailableCommandBubblePresentation() ||
+    FailedMessageBubblePresentation() ||
+    DeliveredMessageBubblePresentation() => false,
   };
 
   static DateTime? _statusClock(QueuedMessageBubblePresentation presentation) => switch (presentation) {
     SendingMessageBubblePresentation(:final sendingSince) => sendingSince,
     PendingMessageBubblePresentation(:final sentAt) => sentAt,
     ReadOnlyPendingMessageBubblePresentation(:final sentAt) => sentAt,
-    UnavailableCommandBubblePresentation() || FailedMessageBubblePresentation() => null,
+    UnavailableCommandBubblePresentation() ||
+    FailedMessageBubblePresentation() ||
+    DeliveredMessageBubblePresentation() => null,
   };
 
   @override
@@ -268,6 +279,7 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
             _action(prego: prego, icon: TablerRegular.x, label: loc.sessionDetailRemoveQueued, onPressed: onRemove),
         ],
       ),
+      DeliveredMessageBubblePresentation() => null,
     };
 
     // Nothing at all without a status, padding included, so that the row is the
@@ -289,17 +301,20 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
       crossAxisAlignment: .end,
       mainAxisSize: MainAxisSize.min,
       children: [
-        UserMessageBubble(
-          markdown: displayText,
-          attachments: [
-            if (localAttachments.isNotEmpty) _QueuedAttachmentPreviews(attachments: localAttachments),
-            if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
-              _QueuedAttachmentCount(count: attachmentCount),
-          ],
-          // Nothing says it is queued before its line does.
-          outlined: status != null && presentation is! SendingMessageBubblePresentation,
-          transitionDuration: duration,
-        ),
+        if (presentation case DeliveredMessageBubblePresentation(:final message))
+          message
+        else
+          UserMessageBubble(
+            markdown: displayText,
+            attachments: [
+              if (localAttachments.isNotEmpty) _QueuedAttachmentPreviews(attachments: localAttachments),
+              if (attachmentCount > 0 && (localAttachments.isEmpty || displayText == null))
+                _QueuedAttachmentCount(count: attachmentCount),
+            ],
+            // Nothing says it is queued before its line does.
+            outlined: status != null && presentation is! SendingMessageBubblePresentation,
+            transitionDuration: duration,
+          ),
         // Cross-fade the status rail between its states, a line's arrival among
         // them, so the swap reads as one row changing state; the enclosing prompt
         // row eases the height difference. Reduced motion keeps the fade, which
@@ -318,7 +333,14 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
                   excluding: outgoing,
                   child: IgnorePointer(
                     ignoring: outgoing,
-                    child: FadeTransition(opacity: animation, child: child),
+                    // Delivery takes the line's room at once, for the prompt row to
+                    // ease, and the line rides on below the message as it fades.
+                    child: Align(
+                      alignment: Alignment.topCenter,
+                      widthFactor: 1,
+                      heightFactor: outgoing && presentation is DeliveredMessageBubblePresentation ? 0 : 1,
+                      child: FadeTransition(opacity: animation, child: child),
+                    ),
                   ),
                 ),
               );

@@ -267,6 +267,10 @@ List<Object?> _captureHapticFeedback({required bool throwsPlatformException}) {
 /// tree, which is what `find.byTooltip` reads.
 Finder _tooltip(String message) => find.byWidgetPredicate((widget) => widget is Tooltip && widget.message == message);
 
+final _waitingBubble = find.byWidgetPredicate(
+  (widget) => widget is QueuedMessageBubble && widget.presentation is! DeliveredMessageBubblePresentation,
+);
+
 void main() {
   late MockSessionDetailCubit cubit;
   late MockVoiceTranscriptionService voiceTranscriptionService;
@@ -953,9 +957,41 @@ void main() {
 
       states.add(loaded().copyWith(messages: const [echo]));
       await tester.pump();
+      await tester.pump();
 
-      expect(await largestStep(tester, bubble), lessThan(8));
+      var opacity = 1.0;
+      var position = top;
+      for (var i = 0; i < 15; i++) {
+        expect(find.text(sendingLine), findsOneWidget, reason: "Frame $i");
+        final next = opacityOf(tester, find.text(sendingLine));
+        expect(next, inInclusiveRange(opacity - 0.07, opacity), reason: "Frame $i");
+        expect(tester.getTopLeft(bubble).dy - position, inInclusiveRange(0, 8), reason: "Frame $i");
+        opacity = next;
+        position = tester.getTopLeft(bubble).dy;
+        await tester.pump(frame);
+      }
+      await tester.pump(frame);
+      await tester.pump(frame);
+      expect(find.text(sendingLine), findsNothing);
       expect(tester.getTopLeft(bubble).dy, moreOrLessEquals(top + 22, epsilon: 0.01));
+    });
+
+    testWidgets("under reduced motion the echo's row takes its height at once and the line still fades", (
+      tester,
+    ) async {
+      tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(reduceMotion: true);
+      addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+      final states = await showLaunchView(tester, age: const Duration(seconds: 3));
+      final top = tester.getTopLeft(bubble).dy;
+
+      states.add(loaded().copyWith(messages: const [echo]));
+      await tester.pump();
+      await tester.pump(frame);
+      await tester.pump(frame);
+      await tester.pump(const Duration(milliseconds: 96));
+
+      expect(tester.getTopLeft(bubble).dy, moreOrLessEquals(top + 22, epsilon: 0.01));
+      expect(opacityOf(tester, find.text(sendingLine)), inExclusiveRange(0, 1));
     });
 
     testWidgets("a first load finding the session at work eases the working row in", (tester) async {
@@ -1018,7 +1054,7 @@ void main() {
       states.add(loaded().copyWith(messages: const [echo]));
       for (var i = 0; i < 6; i++) {
         await tester.pump(frame);
-        expect(find.byType(QueuedMessageBubble), findsNothing);
+        expect(_waitingBubble, findsNothing);
       }
       expect(find.text(firstText), findsOneWidget);
     });
@@ -6182,7 +6218,7 @@ void main() {
     states.add(state);
     await tester.idle();
     await tester.pump();
-    expect(find.byType(QueuedMessageBubble), findsNothing);
+    expect(_waitingBubble, findsNothing);
     expect(find.text("Follow-up prompt"), findsOneWidget);
     expect(find.byType(UserMessageCard), findsOneWidget);
   });
@@ -6319,7 +6355,7 @@ void main() {
     await tester.pumpAndSettle();
 
     final submissionFinder = find.byWidgetPredicate(
-      (widget) => widget is QueuedMessageBubble && widget.key == const ValueKey("session-detail-prompt-prompt-1"),
+      (widget) => widget is QueuedMessageBubble && widget.displayText == "Cold-start prompt",
     );
     final before = tester.element(submissionFinder);
     expect(
