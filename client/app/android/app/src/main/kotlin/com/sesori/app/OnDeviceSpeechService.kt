@@ -9,8 +9,6 @@ import android.os.Handler
 import android.os.Looper
 import android.os.ParcelFileDescriptor
 import android.speech.RecognitionListener
-import android.speech.RecognitionSupport
-import android.speech.RecognitionSupportCallback
 import android.speech.RecognizerIntent
 import android.speech.SpeechRecognizer
 import android.util.Log
@@ -18,7 +16,6 @@ import androidx.annotation.RequiresApi
 import io.flutter.plugin.common.MethodCall
 import io.flutter.plugin.common.MethodChannel
 import java.io.IOException
-import java.util.Locale
 import java.util.concurrent.ExecutorService
 import java.util.concurrent.Executors
 
@@ -104,47 +101,25 @@ internal class OnDeviceSpeechService(
     }
 
     /**
-     * True when the device has the model for its language. A model it can get is
-     * requested in the background for a later dictation.
+     * True when the device has an on-device recognizer, whatever its language. A
+     * recognizer that can't serve a dictation rejects it, which falls back to the server.
      */
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun prepare(result: MethodChannel.Result) {
-        if (!SpeechRecognizer.isOnDeviceRecognitionAvailable(context)) {
-            result.success(false)
-            return
-        }
+        result.success(SpeechRecognizer.isOnDeviceRecognitionAvailable(context))
+    }
 
+    /** Requested in the background, for a later dictation. */
+    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
+    private fun downloadModel() {
         val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-        val intent = recognitionIntent()
-        val language = Locale.getDefault().toLanguageTag()
-        recognizer.checkRecognitionSupport(
-            intent,
-            { command -> mainHandler.post(command) },
-            object : RecognitionSupportCallback {
-                override fun onSupportResult(support: RecognitionSupport) {
-                    val installed = support.installedOnDeviceLanguages.contains(language)
-                    if (!installed &&
-                        support.supportedOnDeviceLanguages.contains(language) &&
-                        !support.pendingOnDeviceLanguages.contains(language)
-                    ) {
-                        recognizer.triggerModelDownload(intent)
-                    }
-                    // Android 13 only queues that request, and crashes on it if destroyed first.
-                    mainHandler.post { recognizer.destroy() }
-                    result.success(installed)
-                }
-
-                override fun onError(error: Int) {
-                    recognizer.destroy()
-                    result.success(false)
-                }
-            },
-        )
+        recognizer.triggerModelDownload(recognitionIntent())
+        // Android 13 only queues that request, and crashes on it if destroyed first.
+        mainHandler.post { recognizer.destroy() }
     }
 
     private fun recognitionIntent(): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
         putExtra(RecognizerIntent.EXTRA_LANGUAGE_MODEL, RecognizerIntent.LANGUAGE_MODEL_FREE_FORM)
-        putExtra(RecognizerIntent.EXTRA_LANGUAGE, Locale.getDefault().toLanguageTag())
     }
 
     /**
@@ -248,6 +223,8 @@ internal class OnDeviceSpeechService(
         }
 
         override fun onError(error: Int) {
+            Log.i("OnDeviceSpeechService", "Recognizer error $error")
+            if (error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE) downloadModel()
             if (pendingStart != null) {
                 rejectStart("recognizer error $error")
                 return

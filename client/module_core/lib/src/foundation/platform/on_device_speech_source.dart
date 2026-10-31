@@ -4,8 +4,8 @@ import "../models/voice/voice_realtime.dart";
 
 /// The operating system's own speech engine, which keeps audio on the device.
 abstract interface class OnDeviceSpeechSource() {
-  /// Whether a dictation can run on the device right now. When only the language
-  /// model is missing, this starts its download in the background and answers
+  /// Whether to try a dictation on the device. When iOS is only missing the
+  /// language model, this starts its download in the background and answers
   /// false, so a later dictation can use it.
   Future<bool> prepare();
 
