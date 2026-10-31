@@ -338,6 +338,42 @@ void main() {
         }
       });
 
+      testWidgets("a settled hold's return has no step in it at 60 Hz", (tester) async {
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          isBusy: true,
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
+          composerTrailing: const SizedBox(key: Key("trailing"), width: 90, height: 36),
+        );
+        final watched = <String, Finder>{
+          "tasks pill": find.byKey(const Key("trailing")),
+          "header": find.byKey(const Key("model row")),
+          "resting words": _restingWords(mode: mode),
+          if (mode == ChatInputMode.voiceFirst) ...{
+            "keyboard": find.byIcon(TablerRegular.keyboard),
+            "stop": find.byIcon(TablerSolid.player_stop),
+          },
+        };
+
+        final gesture = await hold(tester: tester, mode: mode);
+        await gesture.moveTo(abovePill(tester: tester, by: 64));
+        await tester.pump();
+        await gesture.up();
+        await tester.pump();
+        final previous = <String, double>{};
+        for (var frame = 1; frame <= 16; frame++) {
+          await tester.pump(const Duration(microseconds: 16667));
+          for (final MapEntry(:key, :value) in watched.entries) {
+            final shown = _shownOpacity(value);
+            expect(shown - (previous[key] ?? 0), lessThan(0.25), reason: "$key stepped at frame $frame");
+            previous[key] = shown;
+          }
+        }
+        expect(previous.values, everyElement(1));
+      });
+
       testWidgets("pressing again and again mid-fade holds together", (tester) async {
         await _pumpComposer(
           tester: tester,
@@ -525,7 +561,7 @@ void main() {
           for (var ms = 16; ms <= 240; ms += 16) {
             await tester.pump(const Duration(milliseconds: 16));
             final leaving = 1 - Curves.easeOutCubic.transform(progress(ms));
-            final returning = const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
+            final returning = const Interval(0.6, 1).transform(progress(ms));
             expect(_shownOpacity(hint), closeTo(leaving, 0.01), reason: "hint at $ms ms");
             expect(_shownOpacity(header), closeTo(returning, 0.01), reason: "header at $ms ms");
             expect(_shownOpacity(resting), closeTo(returning, 0.01), reason: "resting words at $ms ms");
@@ -1137,7 +1173,17 @@ void main() {
         await emitVoice(tester: tester, state: state);
         await tester.pump(const Duration(milliseconds: 500));
 
-        expect(nodeNamed(label), isSemantics(label: label, tooltip: "", isButton: true, hasTapAction: true));
+        expect(
+          nodeNamed(label),
+          isSemantics(
+            label: label,
+            tooltip: "",
+            isButton: true,
+            hasEnabledState: true,
+            isEnabled: false,
+            hasTapAction: false,
+          ),
+        );
         expect(unnamedTaps, findsNothing);
         tester.semantics.tap(find.semantics.byLabel("Cancel transcription"));
         await tester.pump();
@@ -1187,6 +1233,111 @@ void main() {
       semantics.dispose();
     });
 
+    final holdWords = find.semantics.byPredicate((node) {
+      final label = node.getSemanticsData().label;
+      return label.contains("Release to") || label.contains("Put the words in the box");
+    });
+
+    for (final mode in ChatInputMode.values) {
+      final holdControl = find.semantics.byPredicate((node) {
+        final data = node.getSemanticsData();
+        return data.hasAction(SemanticsAction.tap) && RegExp("Hold to talk|Record voice").hasMatch(data.label);
+      });
+
+      for (final (ending, slidesOut) in [("a release", false), ("a cancel", true)]) {
+        testWidgets("${mode.name}: the hold's words end with the hold, on $ending", (tester) async {
+          final semantics = tester.ensureSemantics();
+          await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+          final gesture = await hold(tester: tester, mode: mode);
+          if (slidesOut) {
+            await gesture.moveTo(abovePill(tester: tester, by: 64));
+            await tester.pump();
+            await tester.pump(const Duration(milliseconds: 300));
+          }
+          expect(holdWords, findsAny);
+
+          await gesture.up();
+          await tester.pump();
+          for (var ms = 0; ms <= 240; ms += 16) {
+            expect(holdWords, findsNothing, reason: "$ms ms after the release");
+            await tester.pump(const Duration(milliseconds: 16));
+          }
+          semantics.dispose();
+        });
+      }
+
+      testWidgets("${mode.name}: the hold's words end with a screen reader's stop", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+
+        tester.semantics.tap(holdControl);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(holdWords, findsAny);
+
+        tester.semantics.tap(holdControl);
+        await tester.pump();
+        for (var ms = 0; ms <= 240; ms += 16) {
+          expect(holdWords, findsNothing, reason: "$ms ms after the stop");
+          await tester.pump(const Duration(milliseconds: 16));
+        }
+        semantics.dispose();
+      });
+    }
+
+    for (final (mode, control) in [
+      (ChatInputMode.textFirst, "Record voice"),
+      (ChatInputMode.voiceFirst, "Hold to talk"),
+    ]) {
+      testWidgets("${mode.name}: $control says when it takes a tap", (tester) async {
+        final semantics = tester.ensureSemantics();
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
+        expect(
+          nodeNamed(control),
+          isSemantics(label: control, isButton: true, hasEnabledState: true, isEnabled: true, hasTapAction: true),
+        );
+
+        tester.semantics.tap(find.semantics.byLabel(control));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(
+          nodeNamed(control),
+          isSemantics(
+            label: control,
+            isButton: true,
+            hasEnabledState: true,
+            isEnabled: true,
+            hasTapAction: true,
+            hasDismissAction: true,
+          ),
+          reason: "A second tap stops the recording, with the hint in a node of its own.",
+        );
+
+        tester.semantics.tap(find.semantics.byLabel(control));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 300));
+        final whileTranscribing = switch (mode) {
+          ChatInputMode.textFirst => control,
+          ChatInputMode.voiceFirst => "Transcribing...",
+        };
+        expect(
+          nodeNamed(whileTranscribing),
+          isSemantics(
+            label: whileTranscribing,
+            isButton: true,
+            hasEnabledState: true,
+            isEnabled: false,
+            hasTapAction: false,
+          ),
+          reason: "A tap does nothing until the words have arrived.",
+        );
+
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+        semantics.dispose();
+      });
+    }
+
     testWidgets("a pointer shell's mic is a named button that starts recording", (tester) async {
       final semantics = tester.ensureSemantics();
       await _pumpComposer(
@@ -1196,7 +1347,10 @@ void main() {
         presentation: ComposerPresentation.pointer,
       );
 
-      expect(nodeNamed("Record voice"), isSemantics(label: "Record voice", tooltip: "", isButton: true));
+      expect(
+        nodeNamed("Record voice"),
+        isSemantics(label: "Record voice", tooltip: "", isButton: true, isEnabled: true),
+      );
       expect(unnamedTaps, findsNothing);
       tester.semantics.tap(find.semantics.byLabel("Record voice"));
       await tester.pump();
@@ -1649,7 +1803,7 @@ void main() {
                 // The last is the button itself: send's disabled look may sit under it, mid-dissolve.
                 _shownOpacity(action.last),
                 closeTo(
-                  Curves.easeOutCubic.transform(t) * const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t),
+                  Curves.easeOutCubic.transform(t) * const Interval(0.6, 1).transform(t),
                   0.01,
                 ),
                 reason: "the tasks pill's return, $ms ms",
@@ -1696,8 +1850,7 @@ void main() {
           double progress(int ms) => (ms / setting.fadeMs).clamp(0.0, 1.0);
           double leaving(int ms) => 1 - Curves.easeOutCubic.transform(progress(ms));
           double returning(int ms) =>
-              Curves.easeOutCubic.transform(progress(ms)) *
-              const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
+              Curves.easeOutCubic.transform(progress(ms)) * const Interval(0.6, 1).transform(progress(ms));
 
           final gesture = await tester.startGesture(tester.getCenter(holdLabel));
           await tester.pump();
@@ -2018,7 +2171,7 @@ void main() {
 
     double progress(int ms) => (ms / 220).clamp(0.0, 1.0);
     double glided(int ms) => Curves.easeOutCubic.transform(progress(ms));
-    double waited(int ms) => const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
+    double waited(int ms) => const Interval(0.6, 1).transform(progress(ms));
     double arrived(int ms) => glided(ms) * waited(ms);
     double leftBehind(int ms) => (1 - glided(ms)) * (1 - waited(ms));
 
@@ -2282,8 +2435,7 @@ void main() {
           await tester.pump(const Duration(milliseconds: 16));
           final t = fadeProgress(ms);
           final shows = t >= 0.6;
-          final arrives =
-              Curves.easeOutCubic.transform(t) * const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t);
+          final arrives = Curves.easeOutCubic.transform(t) * const Interval(0.6, 1).transform(t);
           expect(_shownOpacity(stopIcon), closeTo(arrives, 0.01), reason: "arriving, $ms ms");
           expect(stop.hitTestable(), shows ? findsOne : findsNothing, reason: "arriving, $ms ms");
           expect(excludesFocus(tester: tester), !shows, reason: "arriving, $ms ms");
@@ -2300,9 +2452,7 @@ void main() {
         for (var ms = 16; ms <= 240; ms += 16) {
           await tester.pump(const Duration(milliseconds: 16));
           final t = fadeProgress(ms);
-          final leaves =
-              (1 - Curves.easeOutCubic.transform(t)) *
-              (1 - const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t));
+          final leaves = (1 - Curves.easeOutCubic.transform(t)) * (1 - const Interval(0.6, 1).transform(t));
           expect(_shownOpacity(stopIcon), closeTo(leaves, 0.01), reason: "leaving, $ms ms");
           expect(stop.hitTestable(), findsNothing, reason: "leaving, $ms ms");
           expect(tester.getRect(keyboard).left, keyboardRest, reason: "leaving, $ms ms");
@@ -2323,7 +2473,7 @@ void main() {
     );
     double progress(int ms) => (ms / 220).clamp(0.0, 1.0);
     double leaving(int ms) => 1 - Curves.easeOutCubic.transform(progress(ms));
-    double returning(int ms) => const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(progress(ms));
+    double returning(int ms) => const Interval(0.6, 1).transform(progress(ms));
 
     Future<void> release({
       required WidgetTester tester,
@@ -2512,7 +2662,7 @@ void main() {
             await tester.pump(const Duration(milliseconds: 16));
             final t = (ms / setting.fadeMs).clamp(0.0, 1.0);
             final leaving = 1 - Curves.easeOutCubic.transform(t);
-            final returning = const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t);
+            final returning = const Interval(0.6, 1).transform(t);
             expect(_shownOpacity(shimmer), closeTo(leaving, 0.01), reason: "words at $ms ms");
             expect(_shownOpacity(resting), closeTo(returning, 0.01), reason: "resting at $ms ms");
           }

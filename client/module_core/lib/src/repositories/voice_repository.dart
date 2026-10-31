@@ -153,6 +153,11 @@ final class _ServerVoiceConnection({required final RealtimeVoiceSession _session
 /// always ends with exactly one terminal event unless [cancel] came first.
 final class _OnDeviceVoiceConnection({required final OnDeviceSpeechSession _session})
     implements VoiceRealtimeConnection {
+  static final RegExp _startsWithUnspacedScript = RegExp(
+    r"^[\p{Script=Han}\p{Script=Hiragana}\p{Script=Katakana}]",
+    unicode: true,
+  );
+
   final StreamController<VoiceRealtimeEvent> _events = StreamController<VoiceRealtimeEvent>();
   late final StreamSubscription<OnDeviceSpeechEvent> _subscription;
   Timer? _finishTimeout;
@@ -209,15 +214,17 @@ final class _OnDeviceVoiceConnection({required final OnDeviceSpeechSession _sess
         );
       case OnDeviceSpeechCompleted():
         unawaited(_endWith(event: const VoiceRealtimeCompleted(outcome: VoiceDictationOutcome.finished)));
-      case OnDeviceSpeechFailed(:final reason):
-        _fail(cause: reason);
+      case OnDeviceSpeechFailed(:final cause):
+        _fail(cause: cause);
     }
   }
 
-  /// The run joins words as they come, and engines report them bare.
+  /// The run joins words as they come, and engines report them bare. Chinese and
+  /// Japanese don't put spaces between words.
   String _spaced({required String words}) {
     final trimmed = words.trim();
-    return trimmed.isNotEmpty && _hasConfirmedWords ? " $trimmed" : trimmed;
+    final needsSpace = trimmed.isNotEmpty && _hasConfirmedWords && !_startsWithUnspacedScript.hasMatch(trimmed);
+    return needsSpace ? " $trimmed" : trimmed;
   }
 
   // ignore: no_slop_linter/prefer_specific_type, causes can be any object

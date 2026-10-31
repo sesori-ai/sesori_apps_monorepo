@@ -916,6 +916,12 @@ class _PromptInputState() extends State<PromptInput> {
 
   bool get _isListening => _voiceInteraction is _VoiceStarting || _voiceInteraction is _VoiceRecording;
 
+  /// Whether a screen reader's tap on the hold surface or the mic does anything:
+  /// [_toggleRecording] has nothing to toggle while words are on their way or a
+  /// failed recording waits for its retry.
+  bool get _takesRecordingToggle =>
+      _isListening || (_voiceInteraction is _VoiceIdle && _renderedVoiceState is VoiceInputIdle);
+
   Future<bool> _startRecording() async {
     await _voiceCubit.startRecording();
     final state = _voiceCubit.state;
@@ -1235,7 +1241,10 @@ class _PromptInputState() extends State<PromptInput> {
   /// House transition timing for the composer's state morphs.
   static const Duration _morphDuration = Duration(milliseconds: 220);
   static const Curve _morphCurve = Curves.easeOutCubic;
-  static const Interval _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
+
+  /// Even through its stretch: the house ease squeezed into these 88 ms would show
+  /// half of what returns in a single 60 Hz frame.
+  static const Interval _trailingReturnCurve = Interval(0.6, 1);
   static const Curve _heldLeaveCurve = FlippedCurve(_morphCurve);
 
   /// The latest fade in of what covers the resting words, a hold's and then its
@@ -1261,6 +1270,13 @@ class _PromptInputState() extends State<PromptInput> {
   /// framework refuses. Unkeyed, every entry finishes its own fade.
   static AnimatedSwitcherTransitionBuilder get _fadeEachEntry =>
       (child, animation) => FadeTransition(opacity: animation, child: child);
+
+  /// What a hold shows a screen reader ends with the hold, not with its fade, whose
+  /// instructions and pencil no longer apply. A switcher reaches an outgoing entry
+  /// only through a transition builder that differs from the last build's, so pass
+  /// a closure rather than a method's tear-off.
+  Widget _holdOnlyForScreenReaders({required Widget child}) =>
+      ExcludeSemantics(excluding: _voicePresentation != _VoicePresentation.recording, child: child);
 
   /// Eases [child]'s size changes. Reduced motion resizes at once: a
   /// zero-duration [AnimatedSize] would re-dirty itself mid-layout.
@@ -1594,7 +1610,8 @@ class _PromptInputState() extends State<PromptInput> {
           if (transitionChild.key == const ValueKey("staged-command")) {
             return GlassMaterializeTransition(animation: animation, child: transitionChild);
           }
-          return _fadeEachEntry(transitionChild, animation);
+          final fade = _fadeEachEntry(transitionChild, animation);
+          return transitionChild.key == const ValueKey("release-hint") ? _holdOnlyForScreenReaders(child: fade) : fade;
         },
         // Sat on the pill: centred, a taller hint at large text would lift the
         // fading header off it by half the difference in one frame.
@@ -2693,7 +2710,10 @@ class _PromptInputState() extends State<PromptInput> {
       clipBehavior: Clip.none,
       child: AnimatedSwitcher(
         duration: _morphDuration,
-        transitionBuilder: _fadeEachEntry,
+        transitionBuilder: (transitionChild, animation) {
+          final fade = _fadeEachEntry(transitionChild, animation);
+          return transitionChild.key == const ValueKey("edit-target") ? _holdOnlyForScreenReaders(child: fade) : fade;
+        },
         // Pinned to the leading edge: centred, the narrower child would jump
         // sideways when the wider one leaves at the fade's end.
         layoutBuilder: (currentChild, previousChildren) => Stack(
@@ -2717,10 +2737,11 @@ class _PromptInputState() extends State<PromptInput> {
       // A node of its own, which nothing else in the composer merges into.
       container: true,
       button: true,
+      enabled: _takesRecordingToggle,
       // The surface speaks for the pill, whose words it excludes.
       label: _voicePresentation == _VoicePresentation.transcribing ? _transcribingLabel(context) : hint,
       excludeSemantics: true,
-      onTap: _toggleRecording,
+      onTap: _takesRecordingToggle ? _toggleRecording : null,
       onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
       child: Listener(
         behavior: HitTestBehavior.opaque,
@@ -2814,23 +2835,26 @@ class _PromptInputState() extends State<PromptInput> {
     // [_ignoreTap]; the surrounding raw pointer listener drives recording.
     // Semantic taps toggle recording and a semantic dismiss cancels it, because
     // assistive technologies cannot express the hold or the slide out of it.
-    return Semantics(
-      button: true,
+    return PregoButtonSemantics(
       label: loc.voiceRecord,
-      excludeSemantics: true,
-      onTap: _toggleRecording,
-      onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
-      child: Listener(
-        onPointerDown: _handleRecordPointerDown,
-        onPointerMove: _handleRecordPointerMove,
-        onPointerUp: _handleRecordPointerEnd,
-        onPointerCancel: _handleRecordPointerEnd,
-        child: const PregoButtonsSolid.iconOnly(
-          leadingIcon: TablerRegular.microphone,
-          semanticLabel: null,
-          hierarchy: PregoButtonsSolidHierarchy.secondary,
-          size: PregoButtonsSolidSize.lg,
-          onPressed: _ignoreTap,
+      enabled: _takesRecordingToggle,
+      showsTooltip: false,
+      child: Semantics(
+        excludeSemantics: true,
+        onTap: _takesRecordingToggle ? _toggleRecording : null,
+        onDismiss: _isListening ? _cancelVoiceInteractionWithFeedback : null,
+        child: Listener(
+          onPointerDown: _handleRecordPointerDown,
+          onPointerMove: _handleRecordPointerMove,
+          onPointerUp: _handleRecordPointerEnd,
+          onPointerCancel: _handleRecordPointerEnd,
+          child: const PregoButtonsSolid.iconOnly(
+            leadingIcon: TablerRegular.microphone,
+            semanticLabel: null,
+            hierarchy: PregoButtonsSolidHierarchy.secondary,
+            size: PregoButtonsSolidSize.lg,
+            onPressed: _ignoreTap,
+          ),
         ),
       ),
     );

@@ -74,6 +74,11 @@ final class OnDeviceSpeechService {
         try await engine.start()
         result(nil)
       } catch {
+        engine.cancel()
+        if self.sessionId == sessionId {
+          session = nil
+          self.sessionId = nil
+        }
         result(FlutterError(code: "start_failed", message: "\(error)", details: nil))
       }
     }
@@ -169,7 +174,7 @@ final class OnDeviceSpeechEngine {
         }
         self?.endWith(["type": "completed"])
       } catch {
-        self?.endWith(["type": "failed", "reason": "\(error)"])
+        self?.fail(reason: "\(error)")
       }
     }
     try await analyzer.start(inputSequence: stream)
@@ -214,7 +219,7 @@ final class OnDeviceSpeechEngine {
       return source
     }
     if status == .error {
-      endWith(["type": "failed", "reason": "\(String(describing: conversionError))"])
+      fail(reason: "\(String(describing: conversionError))")
       return
     }
     input.yield(AnalyzerInput(buffer: converted))
@@ -227,7 +232,7 @@ final class OnDeviceSpeechEngine {
       do {
         try await analyzer.finalizeAndFinishThroughEndOfInput()
       } catch {
-        self?.endWith(["type": "failed", "reason": "\(error)"])
+        self?.fail(reason: "\(error)")
       }
     }
   }
@@ -248,6 +253,12 @@ final class OnDeviceSpeechEngine {
   private func endWith(_ event: [String: Any]) {
     emit(event)
     ended = true
+  }
+
+  /// A failed session gets no `cancel` from Dart, so it stops the analyzer itself.
+  private func fail(reason: String) {
+    endWith(["type": "failed", "reason": reason])
+    cancel()
   }
 
   private nonisolated static func makeTranscriber(locale: Locale) -> SpeechTranscriber {

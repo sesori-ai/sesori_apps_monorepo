@@ -268,6 +268,24 @@ void main() {
       verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
     });
 
+    test("a model that finishes downloading is used from the next hold", () async {
+      onDeviceReady = false;
+      mode = const VoiceModeAfterRecording();
+      session = await createSession();
+      onDeviceReady = true;
+
+      await service.start(session: session);
+      await pumpEventQueue();
+
+      verify(capture.start).called(1);
+      verifyNever(() => repository.openOnDevice(sampleRate: any(named: "sampleRate")));
+
+      await service.cancel(session: session);
+      await service.start(session: session);
+
+      verify(() => repository.openOnDevice(sampleRate: any(named: "sampleRate"))).called(1);
+    });
+
     test("a session that doesn't allow live keeps recording first", () async {
       session = service.createSession(projectId: null, allowLive: false);
       await pumpEventQueue();
