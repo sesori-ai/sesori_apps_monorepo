@@ -654,6 +654,8 @@ class _PromptInputState() extends State<PromptInput> {
     _minimumRecordingDurationTimer = null;
     _cancelDragProgress.value = 0;
     _editDragProgress.value = 0;
+    // This hold's pencil gets its own key: the last hold's may still be fading out.
+    _editTargetKey = GlobalKey();
     _updateComposerState(
       update: () => _voiceInteraction = _VoiceStarting(
         id: interactionId,
@@ -2390,8 +2392,6 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildLeadingSlot(BuildContext context) {
     final loc = context.loc;
     final pointer = ComposerPresentationScope.of(context).presentation == ComposerPresentation.pointer;
-    // The next hold's pencil gets its own key: this hold's may still be fading out.
-    if (_voicePresentation != _VoicePresentation.recording) _editTargetKey = GlobalKey();
 
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("accordion"), child: _buildOptionsAccordion()),
