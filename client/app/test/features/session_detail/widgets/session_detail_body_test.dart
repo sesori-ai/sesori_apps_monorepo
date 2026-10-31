@@ -1,10 +1,11 @@
 import "dart:async";
+import "dart:math" as math;
 import "dart:ui" show GestureSettings, PointerDeviceKind;
 
 import "package:bloc_test/bloc_test.dart";
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart" show kSecondaryButton;
-import "package:flutter/rendering.dart" show RenderRepaintBoundary;
+import "package:flutter/rendering.dart" show RenderBox, RenderRepaintBoundary;
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_keyboard_visibility/flutter_keyboard_visibility.dart";
@@ -19,6 +20,7 @@ import "package:rxdart/rxdart.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/session_harness_unavailable_notice.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/transcript_row_reporter.dart";
 import "package:sesori_app_ui/src/features/session_prompts/session_prompts_view.dart";
 import "package:sesori_app_ui/src/features/session_prompts/widgets/prompt_spine_row.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
@@ -68,6 +70,7 @@ Widget _buildApp({
   bool readOnly = false,
   SessionExternalActionCubitFactory? createExternalActionCubit,
   PendingFormCubitFactory? createPendingFormCubit,
+  SessionDetailPageChrome? pageChrome,
 }) {
   final imageClipboard = GetIt.instance<ImageClipboard>();
   final router = GoRouter(
@@ -116,7 +119,7 @@ Widget _buildApp({
               banner: null,
               onBack: context.pop,
               onShowDiffs: () => context.push("/projects/project-1/sessions/session-1/diffs"),
-              pageChrome: null,
+              pageChrome: pageChrome,
               menuEntriesBuilder: menuEntriesBuilder,
               bottomControlsBuilder: ({required context, required projectId, required sessionId, required source}) =>
                   MobileSessionDetailComposerControls(
@@ -6205,6 +6208,182 @@ void main() {
 
     expect(find.text("Cold-start prompt"), findsOneWidget);
     expect(find.text("Cancel"), findsNothing);
+  });
+
+  group("the transcript under a composer changing height", () {
+    final panes = {
+      "on a phone": (size: const Size(393, 852), pageChrome: null),
+      "on a wide pane": (
+        size: const Size(1400, 1000),
+        pageChrome: SessionDetailPageChrome(
+          headerBuilder: ({
+            required context,
+            required title,
+            required isBusy,
+            required onShowDiffs,
+            required session,
+            required onShowPrompts,
+          }) => const SizedBox(height: 56),
+          columnWidths: const SessionDetailColumnWidths(transcript: 760, composer: 680),
+        ),
+      ),
+    };
+    final transcript = [
+      for (var i = 0; i < 12; i++)
+        MessageWithParts(
+          info: Message.user(promptId: null, id: "user-$i", sessionID: "session-1", agent: null, time: null),
+          parts: [MessagePart.text(id: "part-$i", sessionID: "session-1", messageID: "user-$i", text: "Prompt $i")],
+        ),
+    ];
+    const sixLines = "line 1\nline 2\nline 3\nline 4\nline 5\nline 6";
+
+    /// The composer's height and how far its top stands above the newest row.
+    ({double height, double gap}) measure({required WidgetTester tester}) {
+      final controls = find.ancestor(of: find.byType(PromptInput), matching: find.byType(PregoPageHaloLayer));
+      final newestRowBottom = [
+        for (final row in find.byType(TranscriptRowReporter).evaluate())
+          if (row.renderObject case final RenderBox box when box.hasSize)
+            box.localToGlobal(Offset(0, box.size.height)).dy,
+      ].reduce(math.max);
+      return (height: tester.getSize(controls).height, gap: tester.getTopLeft(controls).dy - newestRowBottom);
+    }
+
+    Future<StreamController<SessionDetailState>> pumpSession({
+      required WidgetTester tester,
+      required String draft,
+      required ChatInputMode mode,
+      required Size size,
+      required SessionDetailPageChrome? pageChrome,
+    }) async {
+      tester.view.physicalSize = size;
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: transcript);
+      final states = StreamController<SessionDetailState>.broadcast();
+      addTearDown(states.close);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, states.stream, initialState: state);
+      when(() => cubit.composerDraft).thenReturn(ComposerDraft.typed(text: draft));
+      await tester.pumpWidget(_buildApp(cubit: cubit, chatInputMode: mode, pageChrome: pageChrome));
+      await tester.pumpAndSettle();
+      return states;
+    }
+
+    panes.forEach((pane, config) {
+      for (final (cadence, slowFrame) in const [
+        ("at 60 Hz", null),
+        ("past a slow frame", Duration(milliseconds: 50)),
+      ]) {
+        testWidgets("a send keeps the newest row's gap on every frame, $pane, $cadence", (tester) async {
+          final states = await pumpSession(
+            tester: tester,
+            draft: sixLines,
+            mode: ChatInputMode.voiceFirst,
+            size: config.size,
+            pageChrome: config.pageChrome,
+          );
+          when(
+            () => cubit.sendMessage(
+              text: any(named: "text"),
+              command: any(named: "command"),
+              inputMode: any(named: "inputMode"),
+              attachments: any(named: "attachments"),
+            ),
+          ).thenAnswer((_) async {
+            final current = cubit.state;
+            if (current is! SessionDetailLoaded) return;
+            states.add(
+              current.copyWith(
+                localSend: const LocalSendPhase.sending(
+                  submission: QueuedSessionSubmission.text(
+                    promptId: "prompt-1",
+                    text: sixLines,
+                    inputMode: ComposerInputMode.typed,
+                    attachments: [],
+                    agent: "coder",
+                    agentModel: null,
+                    fastMode: false,
+                  ),
+                ),
+              ),
+            );
+          });
+          final before = measure(tester: tester);
+
+          await tester.tap(find.byIcon(TablerRegular.arrow_up));
+          for (var frame = 0; frame < 40; frame++) {
+            await tester.pump(
+              frame == 1 ? slowFrame ?? const Duration(milliseconds: 16) : const Duration(milliseconds: 16),
+            );
+            expect(measure(tester: tester).gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
+          }
+
+          expect(measure(tester: tester).height, lessThan(before.height), reason: "The composer has shrunk.");
+        });
+      }
+
+      testWidgets("a composer growing as text wraps keeps the newest row's gap on every frame, $pane", (tester) async {
+        await pumpSession(
+          tester: tester,
+          draft: "draft",
+          mode: ChatInputMode.textFirst,
+          size: config.size,
+          pageChrome: config.pageChrome,
+        );
+        final before = measure(tester: tester);
+
+        tester.widget<EditableText>(find.byType(EditableText)).controller.text = sixLines;
+        for (var frame = 0; frame < 30; frame++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expect(measure(tester: tester).gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
+        }
+
+        expect(measure(tester: tester).height, greaterThan(before.height), reason: "The composer has grown.");
+      });
+
+      testWidgets("a needs-you card coming and going keeps the newest row's gap on every frame, $pane", (tester) async {
+        final states = await pumpSession(
+          tester: tester,
+          draft: "draft",
+          mode: ChatInputMode.textFirst,
+          size: config.size,
+          pageChrome: config.pageChrome,
+        );
+        final loaded = cubit.state;
+        if (loaded is! SessionDetailLoaded) fail("The session should be loaded.");
+        final before = measure(tester: tester);
+
+        Future<void> expectGapHeld() async {
+          for (var frame = 0; frame < 30; frame++) {
+            await tester.pump(const Duration(milliseconds: 16));
+            expect(measure(tester: tester).gap, moreOrLessEquals(before.gap, epsilon: 0.01), reason: "frame $frame");
+          }
+        }
+
+        states.add(loaded.copyWith(pendingQuestions: [_question]));
+        await expectGapHeld();
+        expect(measure(tester: tester).height, greaterThan(before.height), reason: "The card has arrived.");
+
+        states.add(loaded);
+        await expectGapHeld();
+        expect(measure(tester: tester).height, moreOrLessEquals(before.height), reason: "The card has gone.");
+      });
+    });
+
+    testWidgets("the first frame already clears the composer", (tester) async {
+      tester.view.physicalSize = const Size(393, 852);
+      tester.view.devicePixelRatio = 1;
+      addTearDown(tester.view.reset);
+      final state = _loadedState(pendingQuestions: const [], pendingPermissions: const [], messages: transcript);
+      when(() => cubit.state).thenReturn(state);
+      whenListen(cubit, const Stream<SessionDetailState>.empty(), initialState: state);
+
+      await tester.pumpWidget(_buildApp(cubit: cubit));
+
+      final firstFrame = measure(tester: tester).gap;
+      await tester.pumpAndSettle();
+      expect(firstFrame, measure(tester: tester).gap);
+    });
   });
 
   group("failed send actions", () {

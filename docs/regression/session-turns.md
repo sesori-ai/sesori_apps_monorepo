@@ -92,6 +92,8 @@ defaults and queued client sends coherent.
   empty transcript shows at once, with nothing to move. A row that has fully eased in, or was there when the list opened,
   doesn't ease in again when scrolling brings it back; one dropped before it had opened does. A dictated send's words glide
   down as it rises, and its bubble is held hidden until they land (see `voice-input.md`).
+- The newest row keeps its gap to the composer on every frame the bottom controls change height: through a send, a
+  composer growing or shrinking with its text, a needs-you card coming or going, and the first frame of the transcript.
 - DeepSeek preserves that bridge-facing acceptance contract: the shared ACP
   plugin enqueues and returns while the adapter's `session/prompt` response
   remains pending through owned work, projected output, and durability quiesce.
@@ -992,6 +994,8 @@ and require authoritative lifecycle plus plugin settlement before claiming pass.
   prompt blanks or duplicates during its sending-to-sent transition, keyboard
   and composer insets obscure newest content, or the keyboard reveals a black
   background around its rounded or translucent edges.
+- The transcript trails the composer's height by a frame: the newest row steps too far on a send, then back after a
+  slow frame, or the composer closes over it for a frame as it grows.
 - A timestamp peek responds from a reserved system-back edge, detaches or
   vertically scrolls the transcript, captures a mouse selection drag, or moves
   while a fenced code block is handling the horizontal drag.

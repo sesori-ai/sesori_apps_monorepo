@@ -1036,7 +1036,6 @@ Future<void Function(SessionDetailLoaded Function(SessionDetailLoaded sent) next
                     currentPromptId: currentPromptId,
                     jumpNotifier: jumpNotifier,
                     onPinchIn: ({required focalPoint}) {},
-                    initialBottomControlsHeight: 120,
                   );
                 },
               ),
