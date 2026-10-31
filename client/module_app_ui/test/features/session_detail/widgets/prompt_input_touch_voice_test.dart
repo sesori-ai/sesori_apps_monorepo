@@ -2423,6 +2423,36 @@ void main() {
         }
       });
 
+      testWidgets("the tasks pill takes no tap until it shows again after a hold, ${mode.name}", (tester) async {
+        var tapped = 0;
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
+          composerTrailing: GestureDetector(
+            key: const Key("tasks"),
+            behavior: HitTestBehavior.opaque,
+            onTap: () => tapped++,
+            child: const SizedBox(width: 44, height: 44),
+          ),
+        );
+        final pill = find.byKey(const Key("tasks"));
+        await tester.pump(const Duration(milliseconds: 300));
+        final center = tester.getCenter(pill);
+
+        await release(tester: tester, mode: mode, state: transcribing);
+        await tester.pump(const Duration(milliseconds: 64));
+        expect(_shownOpacity(pill), 0);
+        await tester.tapAt(center);
+        expect(tapped, 0);
+
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(_shownOpacity(pill), 1);
+        await tester.tapAt(center);
+        expect(tapped, 1);
+      });
+
       testWidgets("a failure's Retry shows at once rather than waiting unseen, ${mode.name}", (tester) async {
         await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: mode);
         final retry = find.text("Retry");

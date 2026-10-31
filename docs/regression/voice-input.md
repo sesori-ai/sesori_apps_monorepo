@@ -91,7 +91,8 @@ and `stable` records first.
 - Cancelling a live dictation at any point sends `cancel` when the socket is streaming, closes the socket, releases the
   microphone, and hands nothing over.
 - The release hint centres over the whole composer. A background tasks pill beside it fades where it stands and takes
-  no touches or keyboard focus while the hint shows, and comes back afterwards; nothing in that row moves.
+  no touches or keyboard focus while the hint shows, and comes back afterwards, taking neither until it shows again;
+  nothing in that row moves.
 - A press dissolves: the header and the hint cross over each other, and so do the composer's resting words and the
   waveform. A release is clean: the hint and the waveform leave first, then the header and the words or shimmer return
   in the same place, for a send, a cancel, and a pointer shell's Send or X. A tap released before the press's fade ends

@@ -1456,11 +1456,16 @@ class _PromptInputState() extends State<PromptInput> {
   /// Fades where it stands while the release hint shows over its place. It stays
   /// mounted and keeps its room, so nothing in the row moves.
   Widget _buildComposerTrailing({required Widget trailing}) {
+    final visible = _voicePresentation != _VoicePresentation.recording;
     return _fadeInPlace(
-      visible: _voicePresentation != _VoicePresentation.recording,
-      child: Padding(
-        padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-        child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+      visible: visible,
+      child: _inertUntilShowing(
+        visible: visible,
+        waitsOnArrival: false,
+        child: Padding(
+          padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+          child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+        ),
       ),
     );
   }
