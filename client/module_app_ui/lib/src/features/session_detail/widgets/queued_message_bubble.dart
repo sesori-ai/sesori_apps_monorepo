@@ -312,11 +312,14 @@ class _QueuedMessageBubbleState() extends State<QueuedMessageBubble> {
             // the message has left.
             transitionBuilder: (child, animation) {
               final outgoing = child.key != statusRail.key;
-              return ExcludeFocus(
+              return ExcludeSemantics(
                 excluding: outgoing,
-                child: IgnorePointer(
-                  ignoring: outgoing,
-                  child: FadeTransition(opacity: animation, child: child),
+                child: ExcludeFocus(
+                  excluding: outgoing,
+                  child: IgnorePointer(
+                    ignoring: outgoing,
+                    child: FadeTransition(opacity: animation, child: child),
+                  ),
                 ),
               );
             },

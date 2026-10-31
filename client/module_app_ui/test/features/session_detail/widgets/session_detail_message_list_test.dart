@@ -792,8 +792,9 @@ void main() {
       expect(heights.skip(15), everyElement(moreOrLessEquals(heights[15], epsilon: 0.01)));
     });
 
-    testWidgets("a Cancel fading out as its prompt is dispatched cancels nothing", (tester) async {
+    testWidgets("a Cancel fading out as its prompt is dispatched cancels nothing and is gone for a screen reader", (tester) async {
       final harness = await sendAndList(tester);
+      final semantics = tester.ensureSemantics();
       await tester.pump(const Duration(seconds: 2));
       await tester.pump(const Duration(milliseconds: 400));
       final cancel = find.text("Cancel");
@@ -808,11 +809,13 @@ void main() {
       for (final ms in const [16, 80, 64]) {
         await tester.pump(Duration(milliseconds: ms));
         expect(opacityOf(tester, cancel), greaterThan(0));
+        expect(find.semantics.byLabel("Cancel"), findsNothing);
         await tester.tapAt(tapAt);
         await tester.pump();
       }
 
       expect(harness.cancelledBridgePromptIds, isEmpty);
+      semantics.dispose();
     });
 
     testWidgets("one still queued at two seconds fades in as the chat eases up, and Cancel comes with it", (

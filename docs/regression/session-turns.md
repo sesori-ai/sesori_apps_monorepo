@@ -623,7 +623,8 @@ defaults and queued client sends coherent.
   it was sent, the same rule and motion as a slow send's line, so a prompt the
   harness takes promptly never moves the chat on any harness. Until then Cancel
   is not in the tree, so it cannot be tapped, focused or read by a screen reader,
-  and one fading out because the entry has moved on takes no tap or focus.
+  and one fading out because the entry has moved on takes no tap or focus and is
+  gone for a screen reader.
   A message already showing Sending goes straight to Queued, and one showing
   Queued keeps it through rebuilds and scrolling away and back. A waiting entry
   with no local send time shows Queued at once when it was already listed as the
