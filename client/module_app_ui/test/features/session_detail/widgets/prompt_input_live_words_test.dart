@@ -8,6 +8,7 @@ import "package:material_ui/material_ui.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/composer_live_words.dart";
+import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:theme_prego/module_prego.dart";
 
@@ -527,11 +528,13 @@ void main() {
       expect(tester.widget<OverlayPortal>(portal).controller.isShowing, isFalse);
     });
 
-    testWidgets("sent words fade where they stand", (tester) async {
+    testWidgets("words with no box or bubble to land in fade where they stand", (tester) async {
       await _pumpComposer(tester: tester, voiceCubit: voiceCubit);
       await live(tester: tester, presentation: _focus, confirmed: "words");
       await settle(tester);
       final top = _paragraphTop(tester);
+      final glideOpacity = find.descendant(of: find.byKey(composerLiveWordsGlideKey), matching: find.byType(Opacity));
+      final glideWords = find.descendant(of: find.byKey(composerLiveWordsGlideKey), matching: find.byType(RichText));
 
       await emit(
         tester: tester,
@@ -542,12 +545,11 @@ void main() {
         ),
       );
       await tester.pump(const Duration(milliseconds: 120));
-      expect(_wordsPresence(tester), inExclusiveRange(0, 1));
-      expect(_wordsTravel(tester), 0);
-      expect(_paragraphTop(tester), top);
+      expect(tester.widget<Opacity>(glideOpacity).opacity, inExclusiveRange(0, 1));
+      expect(tester.getTopLeft(glideWords), top);
 
-      await tester.pump(const Duration(milliseconds: 240));
-      expect(_words, findsNothing);
+      await tester.pump(const Duration(milliseconds: 400));
+      expect(find.byKey(composerLiveWordsGlideKey), findsNothing);
     });
 
     testWidgets("a fallback to recording takes the words away", (tester) async {
@@ -662,7 +664,7 @@ class const _ComposerApp({
       supportedLocales: AppLocalizations.supportedLocales,
       builder: (context, child) => MediaQuery(
         data: MediaQuery.of(context).copyWith(disableAnimations: disableAnimations),
-        child: child ?? const SizedBox.shrink(),
+        child: SentBubbleLanding(child: child ?? const SizedBox.shrink()),
       ),
       home: BlocProvider<VoiceInputCubit>.value(
         value: voiceCubit,

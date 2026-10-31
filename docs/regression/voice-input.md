@@ -81,11 +81,18 @@ live on and the host can stream, the same gestures run over a realtime socket in
   composer: 23 pt on a touch shell, 25 pt on a pointer shell. The panel leaves the chat in view and opens at the first
   word, growing to five lines. In both, the newest words stay at the bottom, a new line rises smoothly, and older lines
   fade away at the top once the words run out of room.
-- A tentative word fades in dim and brightens where it stands when it turns final or when the user releases. A word the
+- A tentative word fades in dim and brightens where it stands when it turns final or when the user releases, and on its way to the box when a dictation is
+  cut off. A word the
   server changes keeps its place and brightness.
 - Sliding up to cancel fades the words with the finger, to 40% at the arm line, and coming back restores them. A cancel
-  fades them with a 12 px drop; a send, an edit, a fallback or a failure fades them where they stand. Reduced motion
-  removes the movement, and word fades and brightening become instant.
+  fades them with a 12 px drop. Reduced motion removes the movement, and word fades and
+  brightening become instant.
+- A sent dictation's words glide to its bubble, in session detail and in a new session's launch view. The bubble is built
+  hidden, the list rises for its row as the words come down, and the bubble shows under the words once they have landed
+  on it, so there is one copy throughout. If no bubble is built within two frames, the words glide to where it would
+  have been, right-aligned above the composer, and fade. If the screen goes mid-glide, they go with it.
+- Live words that land in the box (the pencil or a cut-off) glide to the field, which holds its text back
+  until they arrive. A dictation with nothing to land in, or under reduced motion, fades where it stands.
 - Successful transcription reports one content-free analytics event whose closed `finish` says how it ended: `sent`,
   `edited` or `cut_off`, and whose closed `mode` says how it actually ran: `live` or `after_recording`, which a fallback
   counts as. No audio, transcript, or prompt text reaches logs or analytics.
@@ -174,6 +181,9 @@ interruptions such as a call.
   fallback loses the hold, or audio or `finish` reaches the socket before ready.
 - Live words move, relayout or rebuild the chat or the composer, snap when they wrap, hide the release hint, block the
   pill's gesture, or stay on screen after the dictation ends.
+- A glide shows two copies of the words, or pops the text at its end: a change of weight, wrap or position when the
+  bubble or the box takes over. The list jumps instead of rising for a dictated send's row, a word lands on an older
+  row or a pinned copy, the panel's shadow shows as a plate under a clear surface, or reduced motion travels.
 - A desktop dictation sends the box and the words as two messages, Enter inserts a newline while listening, or the
   second click misses because the control moved.
 - A dictated message reaches the agent unmarked, a typed message or slash command is marked, or the marker appears in a

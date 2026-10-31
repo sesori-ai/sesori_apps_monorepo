@@ -27,7 +27,7 @@ D1–D27 are the user's, from review pages `voice-live-r1` and `voice-live-r2`
   to `false`. It applies at each phone's next cold launch.
 - Step 12: run the real-microphone checks on an iPhone and an Android device, and the
   connect-to-`ready` measurement. The exact list is in `steps/step-07.md`, plus
-  `steps/step-08.md` and `steps/step-09.md`.
+  `steps/step-08.md`, `steps/step-09.md` and `steps/step-10.md`.
 
 ## PR Titles
 
@@ -43,6 +43,7 @@ D1–D27 are the user's, from review pages `voice-live-r1` and `voice-live-r2`
 | 8.i | `🚧 [voice-live] Run dictation over the live session [step 8.i/12]` |
 | 8.ii | `🚧 [voice-live] Run dictation over the live session [step 8.ii/12]` |
 | 9 | `🚧 [voice-live] Show live words in focus and panel [step 9/12]` |
-| 10 | `⚙️ [voice-live] Glide live words to the bubble or box [step 10/12]` |
+| 10.i | `🌿 [voice-live] Let a sent dictation's words find their bubble [step 10.i/12]` |
+| 10.ii | `⚙️ [voice-live] Glide live words to the bubble or box [step 10.ii/12]` |
 | 11 | `🌱 [voice-live] Reconcile the voice regression docs [step 11/12]` |
 | 12 | `🌿 [voice-live] Run coverage and retire the plan [step 12/12]` |
