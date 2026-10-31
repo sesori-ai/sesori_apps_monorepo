@@ -11,6 +11,7 @@ import "package:sesori_app_ui/sesori_app_ui.dart";
 import "package:sesori_app_ui/src/features/session_detail/widgets/sent_bubble_landing.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
+import "package:theme_prego/components/buttons/prego_buttons_solid.dart";
 import "package:theme_prego/module_prego.dart";
 
 class _MockVoiceInputCubit() extends MockCubit<VoiceInputState> implements VoiceInputCubit;
@@ -21,6 +22,7 @@ class _Composer() {
   final List<AnalyticsVoiceFinish> finishes = [];
   final List<AnalyticsVoiceMode> modes = [];
   int commandsCleared = 0;
+  int aborts = 0;
 }
 
 void main() {
@@ -293,6 +295,7 @@ void main() {
             ChatInputMode.voiceFirst => find.textContaining("Hold to talk"),
             ChatInputMode.textFirst => find.text("Follow up..."),
           },
+          if (mode == ChatInputMode.voiceFirst) "keyboard": find.byIcon(TablerRegular.keyboard),
         };
         final previous = {for (final MapEntry(:key, :value) in watched.entries) key: _shownOpacity(value)};
         void expectNoSnap({required String frame}) {
@@ -1027,7 +1030,7 @@ void main() {
       semantics.dispose();
     });
 
-    testWidgets("voice-first's send still leaves its room to the waveform", (tester) async {
+    testWidgets("voice-first's send stays and fades, and still leaves its room to the waveform", (tester) async {
       setPhone(tester: tester, width: 390);
       await _pumpComposer(
         tester: tester,
@@ -1035,17 +1038,458 @@ void main() {
         mode: ChatInputMode.voiceFirst,
         initialText: "draft words",
       );
-      final sendRight = tester.getTopRight(send).dx;
+      final sendRect = tester.getRect(send);
 
       final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
-      expect(send, findsNothing);
-      expect(tester.getTopRight(waveform).dx, greaterThan(sendRight - 44));
+      expect(tester.getRect(send), sendRect);
+      expect(_shownOpacity(send), 0);
+      expect(tester.getTopRight(waveform).dx, greaterThan(sendRect.right - 44));
 
       await gesture.up();
       await tester.pump();
       await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
     });
   });
+
+  for (final (name, icon, draft, tooltip, offersTap)
+      in <(String, IconData, String, String, bool Function(SemanticsNode))>[
+        // The keyboard button's tap merges into the node it shares with the pill's
+        // others, so only that node's own actions say anything about it.
+        (
+          "keyboard",
+          TablerRegular.keyboard,
+          "",
+          "Type a message",
+          (node) => node.getSemanticsData().hasAction(SemanticsAction.tap),
+        ),
+        ("send", TablerRegular.arrow_up, "draft words", "Send", _offersTap),
+      ]) {
+    group("voice-first's $name button fades where it rests", () {
+      final action = find.byIcon(icon);
+      final button = find.ancestor(of: action, matching: find.byType(Tooltip)).first;
+      final stop = find.byIcon(TablerSolid.player_stop);
+      final waveform = find.byType(PregoVoiceWaveform);
+      final holdLabel = find.textContaining("Hold to talk");
+
+      void setPhone({required WidgetTester tester, required double width}) {
+        tester.view.physicalSize = Size(width * 3, 844 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+      }
+
+      for (final (screen, width, textScale, isBusy) in [
+        ("phone", 390.0, 1.0, false),
+        ("while busy", 390.0, 1.0, true),
+        ("small and large text", 320.0, 2.0, false),
+      ]) {
+        for (final cancels in [false, true]) {
+          testWidgets("through a whole hold ending in ${cancels ? "a cancel" : "a release"}, $screen", (tester) async {
+            setPhone(tester: tester, width: width);
+            tester.platformDispatcher.textScaleFactorTestValue = textScale;
+            addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+            await _pumpComposer(
+              tester: tester,
+              voiceCubit: voiceCubit,
+              mode: ChatInputMode.voiceFirst,
+              initialText: draft,
+              isBusy: isBusy,
+            );
+            final rect = tester.getRect(button);
+            final stopLeft = stop.evaluate().isEmpty ? null : tester.getTopLeft(stop).dx;
+            final composerHeight = tester.getSize(find.byType(PromptInput)).height;
+
+            void expectAtRest({required String frame}) {
+              final now = tester.getRect(button);
+              expect(now.left, rect.left, reason: "moved at $frame");
+              expect(now.top, closeTo(rect.top, 0.01), reason: "rose at $frame");
+              expect(
+                _shownRect(tester: tester, finder: button).width,
+                rect.width,
+                reason: "clipped at $frame",
+              );
+              if (stopLeft != null) expect(tester.getTopLeft(stop).dx, stopLeft, reason: "stop moved at $frame");
+            }
+
+            final gesture = await tester.startGesture(tester.getCenter(holdLabel));
+            await tester.pump();
+            expectAtRest(frame: "press");
+            var waveformRight = tester.getRect(waveform).right;
+            final waveformRestingRight = waveformRight;
+            for (var ms = 16; ms <= 288; ms += 16) {
+              await tester.pump(const Duration(milliseconds: 16));
+              final faded = Curves.easeOutCubic.transform((ms / 220).clamp(0.0, 1.0));
+              expect(_shownOpacity(action), closeTo(1 - faded, 0.03), reason: "the house fade, holding, $ms ms");
+              expectAtRest(frame: "holding, $ms ms");
+              final right = tester.getRect(waveform).right;
+              expect(right, greaterThanOrEqualTo(waveformRight), reason: "The waveform opens into the room.");
+              waveformRight = right;
+            }
+            expect(_shownOpacity(action), 0);
+            expect(
+              waveformRight,
+              greaterThan(waveformRestingRight + rect.width),
+              reason: "It takes the button's room.",
+            );
+
+            if (cancels) {
+              await gesture.moveTo(abovePill(tester: tester, by: 64));
+              await tester.pump();
+            }
+            await gesture.up();
+            await tester.pump();
+            expectAtRest(frame: "release");
+            for (var ms = 16; ms <= 288; ms += 16) {
+              await tester.pump(const Duration(milliseconds: 16));
+              final t = (ms / 220).clamp(0.0, 1.0);
+              expect(
+                _shownOpacity(action),
+                closeTo(
+                  Curves.easeOutCubic.transform(t) * const Interval(0.6, 1, curve: Curves.easeOutCubic).transform(t),
+                  0.01,
+                ),
+                reason: "the tasks pill's return, $ms ms",
+              );
+              expectAtRest(frame: "releasing, $ms ms");
+              if (waveform.evaluate().isEmpty) continue;
+              final right = tester.getRect(waveform).right;
+              expect(right, lessThanOrEqualTo(waveformRight), reason: "The waveform gives the room back.");
+              waveformRight = right;
+              if (right > rect.left) {
+                expect(_shownOpacity(action), 0, reason: "It would show over the waveform's end, $ms ms");
+              }
+            }
+            expect(_shownOpacity(action), 1);
+            if (!cancels) {
+              await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+            }
+            await tester.pump(const Duration(milliseconds: 500));
+            // A release sends the draft, and an empty box has no send button.
+            if (draft.isEmpty || cancels) {
+              expect(tester.getSize(find.byType(PromptInput)).height, composerHeight);
+              expectAtRest(frame: "after");
+            }
+          });
+        }
+      }
+
+      testWidgets("reduced motion swaps the button and its room at once", (tester) async {
+        setPhone(tester: tester, width: 390);
+        tester.platformDispatcher.accessibilityFeaturesTestValue = const FakeAccessibilityFeatures(
+          disableAnimations: true,
+        );
+        addTearDown(tester.platformDispatcher.clearAccessibilityFeaturesTestValue);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, initialText: draft);
+        final rect = tester.getRect(button);
+
+        final gesture = await tester.startGesture(tester.getCenter(holdLabel));
+        await tester.pump();
+        expect(_shownOpacity(action), 0);
+        final openRight = tester.getRect(waveform).right;
+        expect(openRight, greaterThan(rect.left + rect.width / 2), reason: "The room is the waveform's already.");
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(tester.getRect(waveform).right, openRight, reason: "Nothing eases on afterwards.");
+
+        await gesture.up();
+        await tester.pump();
+        expect(_shownOpacity(action), 1);
+        expect(tester.getRect(button), rect);
+        expect(button.hitTestable(), findsOne, reason: "Nothing holds it back once it shows.");
+        expect(tester.getRect(waveform).right, lessThanOrEqualTo(rect.left), reason: "The room comes back as fast.");
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+      });
+
+      testWidgets("a hidden button takes no touch, focus or screen reader tap, then comes back", (tester) async {
+        setPhone(tester: tester, width: 390);
+        final semantics = tester.ensureSemantics();
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, initialText: draft);
+        bool excludesFocus() => tester
+            .widgetList<ExcludeFocus>(find.ancestor(of: action, matching: find.byType(ExcludeFocus)))
+            .any((exclude) => exclude.excluding);
+        final forScreenReader = find.semantics.byPredicate(
+          (node) => node.getSemanticsData().tooltip == tooltip,
+        );
+        bool screenReaderCanTap() => offersTap(tester.getSemantics(action));
+        expect(button.hitTestable(), findsOne);
+        expect(screenReaderCanTap(), isTrue);
+        expect(excludesFocus(), isFalse);
+
+        final gesture = await tester.startGesture(tester.getCenter(holdLabel));
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(_shownOpacity(action), greaterThan(0.5), reason: "Still mostly visible, and already dead.");
+        expect(button.hitTestable(), findsNothing);
+        expect(screenReaderCanTap(), isFalse);
+        expect(excludesFocus(), isTrue);
+
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(forScreenReader, findsNothing, reason: "Nothing to read out once it has gone.");
+        expect(button.hitTestable(), findsNothing);
+
+        await gesture.moveTo(abovePill(tester: tester, by: 64));
+        await tester.pump();
+        await gesture.up();
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 128));
+        expect(_shownOpacity(action), 0);
+        expect(button.hitTestable(), findsNothing, reason: "Back in its place, but nothing shows yet.");
+        expect(screenReaderCanTap(), isFalse);
+        expect(excludesFocus(), isTrue);
+
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(_shownOpacity(action), greaterThan(0));
+        expect(button.hitTestable(), findsOne, reason: "Tappable as soon as it shows.");
+        expect(excludesFocus(), isFalse);
+
+        await tester.pump(const Duration(milliseconds: 100));
+        expect(screenReaderCanTap(), isTrue);
+        semantics.dispose();
+      });
+    });
+  }
+
+  group("voice-first's trailing room", () {
+    final room = find.byWidgetPredicate((widget) => widget is AnimatedSize && widget.child is SizedBox);
+    final keyboard = find.byIcon(TablerRegular.keyboard);
+    final stop = find.byIcon(TablerSolid.player_stop);
+    final send = find.byIcon(TablerRegular.arrow_up);
+
+    Rect actionRect({required WidgetTester tester, required Finder icon}) =>
+        tester.getRect(find.ancestor(of: icon, matching: find.byType(Tooltip)).first);
+
+    VoidCallback? sendCallback({required WidgetTester tester}) =>
+        tester.widget<PregoButtonsSolid>(find.ancestor(of: send, matching: find.byType(PregoButtonsSolid))).onPressed;
+
+    void expectRoomFits({required WidgetTester tester, required Finder first, required Finder last}) {
+      final shown = tester.getRect(room);
+      expect(shown.left, actionRect(tester: tester, icon: first).left);
+      expect(shown.right, actionRect(tester: tester, icon: last).right);
+    }
+
+    for (final (screen, width, textScale) in [("phone", 390.0, 1.0), ("small and large text", 320.0, 2.0)]) {
+      void setScreen({required WidgetTester tester}) {
+        tester.view.physicalSize = Size(width * 3, 844 * 3);
+        tester.view.devicePixelRatio = 3;
+        addTearDown(tester.view.reset);
+        tester.platformDispatcher.textScaleFactorTestValue = textScale;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+      }
+
+      testWidgets("matches the keyboard button, $screen", (tester) async {
+        setScreen(tester: tester);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+        expectRoomFits(tester: tester, first: keyboard, last: keyboard);
+      });
+
+      testWidgets("matches the keyboard and stop buttons, $screen", (tester) async {
+        setScreen(tester: tester);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, isBusy: true);
+        expectRoomFits(tester: tester, first: keyboard, last: stop);
+      });
+
+      for (final presentation in ComposerPresentation.values) {
+        testWidgets("matches send, enabled, ${presentation.name}, $screen", (tester) async {
+          setScreen(tester: tester);
+          await _pumpComposer(
+            tester: tester,
+            voiceCubit: voiceCubit,
+            mode: ChatInputMode.voiceFirst,
+            initialText: "draft words",
+            presentation: presentation,
+          );
+          expect(find.byType(PregoVoiceSendButton), findsNothing, reason: "Its wide form isn't this pill's.");
+          expectRoomFits(tester: tester, first: send, last: send);
+        });
+      }
+
+      testWidgets("matches send while it can't send, $screen", (tester) async {
+        setScreen(tester: tester);
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: ChatInputMode.voiceFirst,
+          initialText: "draft words",
+          canSend: false,
+        );
+        expect(sendCallback(tester: tester), isNull);
+        expectRoomFits(tester: tester, first: send, last: send);
+      });
+
+      testWidgets("matches send while it waits for dictated words, and send stays disabled, $screen", (tester) async {
+        setScreen(tester: tester);
+        final composer = await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: ChatInputMode.voiceFirst,
+          initialText: "draft words",
+        );
+        final rect = actionRect(tester: tester, icon: send);
+
+        final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
+        await gesture.up();
+        await tester.pump();
+        for (final ms in [16, 128, 16, 64, 300]) {
+          await tester.pump(Duration(milliseconds: ms));
+          await tester.tapAt(rect.center);
+          await tester.pump();
+          expect(composer.sent, isEmpty, reason: "The box waits for the words on their way.");
+        }
+        expect(sendCallback(tester: tester), isNull);
+        expect(actionRect(tester: tester, icon: send), rect);
+        expectRoomFits(tester: tester, first: send, last: send);
+
+        await complete(tester: tester, transcript: "spoken", outcome: VoiceDictationOutcome.finished);
+        expect(composer.sent, [(text: "draft words spoken", command: null)]);
+      });
+    }
+  });
+
+  group("voice-first's actions take no tap until they start to show", () {
+    final keyboard = find.byIcon(TablerRegular.keyboard);
+    final stop = find.byIcon(TablerSolid.player_stop);
+    final send = find.byIcon(TablerRegular.arrow_up);
+
+    void setPhone({required WidgetTester tester}) {
+      tester.view.physicalSize = const Size(390 * 3, 844 * 3);
+      tester.view.devicePixelRatio = 3;
+      addTearDown(tester.view.reset);
+    }
+
+    Future<void> cancelHold({required WidgetTester tester}) async {
+      final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
+      await gesture.moveTo(abovePill(tester: tester, by: 64));
+      await tester.pump();
+      await gesture.up();
+      await tester.pump();
+    }
+
+    /// A tap that started a hold has only ended it once the first pump's time
+    /// has passed, and the buttons' return runs from there.
+    Future<void> settleAfterTap({required WidgetTester tester}) async {
+      await tester.pump();
+      await tester.pump(const Duration(milliseconds: 300));
+      await tester.pump(const Duration(milliseconds: 300));
+    }
+
+    // 132 ms is where the fade back in starts. At 0 and 16 ms the room hasn't
+    // closed, so the tap lands on the hold surface as it always has.
+    for (final delay in const [0, 16, 48, 96, 128]) {
+      testWidgets("send, $delay ms after a cancel, keeps the draft", (tester) async {
+        setPhone(tester: tester);
+        final composer = await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: ChatInputMode.voiceFirst,
+          initialText: "draft words",
+        );
+        final spot = tester.getCenter(send);
+
+        await cancelHold(tester: tester);
+        await tester.pump(Duration(milliseconds: delay));
+        await tester.tapAt(spot);
+        await settleAfterTap(tester: tester);
+        expect(composer.sent, isEmpty);
+        expect(find.text("draft words"), findsOneWidget);
+
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.sent, [(text: "draft words", command: null)]);
+      });
+
+      testWidgets("send, $delay ms after words reach the box, keeps them there", (tester) async {
+        setPhone(tester: tester);
+        final composer = await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: ChatInputMode.voiceFirst,
+          initialText: "draft words",
+        );
+        final spot = tester.getCenter(send);
+
+        final gesture = await hold(tester: tester, mode: ChatInputMode.voiceFirst);
+        await slideOntoPencil(tester: tester, gesture: gesture);
+        await gesture.up();
+        await tester.pump();
+        await emitVoice(
+          tester: tester,
+          state: const VoiceInputState.completed(
+            transcript: "spoken",
+            outcome: VoiceDictationOutcome.finished,
+            mode: VoiceDictationMode.afterRecording,
+          ),
+        );
+        await emitVoice(tester: tester, state: const VoiceInputState.idle());
+        await tester.pump(Duration(milliseconds: delay));
+        await tester.tapAt(spot);
+        await settleAfterTap(tester: tester);
+        expect(composer.sent, isEmpty);
+
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.sent, [(text: "draft words spoken", command: null)]);
+      });
+
+      testWidgets("stop, $delay ms after a cancel, doesn't stop the work", (tester) async {
+        setPhone(tester: tester);
+        final composer = await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: ChatInputMode.voiceFirst,
+          isBusy: true,
+        );
+        final spot = tester.getCenter(stop);
+
+        await cancelHold(tester: tester);
+        await tester.pump(Duration(milliseconds: delay));
+        await tester.tapAt(spot);
+        await settleAfterTap(tester: tester);
+        expect(composer.aborts, 0);
+
+        await tester.tapAt(spot);
+        await tester.pump();
+        expect(composer.aborts, 1);
+      });
+
+      testWidgets("keyboard, $delay ms after a cancel, stays the resting pill", (tester) async {
+        setPhone(tester: tester);
+        await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst);
+        final spot = tester.getCenter(keyboard);
+
+        await cancelHold(tester: tester);
+        await tester.pump(Duration(milliseconds: delay));
+        await tester.tapAt(spot);
+        await settleAfterTap(tester: tester);
+        expect(keyboard, findsOneWidget);
+
+        await tester.tapAt(spot);
+        await tester.pump();
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(keyboard, findsNothing);
+      });
+    }
+  });
+}
+
+/// Whether a screen reader can tap [node] or, as with a button in its tooltip, a node under it.
+bool _offersTap(SemanticsNode node) {
+  if (node.getSemanticsData().hasAction(SemanticsAction.tap)) return true;
+  var found = false;
+  node.visitChildren((child) {
+    found = _offersTap(child);
+    return !found;
+  });
+  return found;
+}
+
+/// What of [finder] shows once the clipping ancestors have had their way.
+Rect _shownRect({required WidgetTester tester, required Finder finder}) {
+  var shown = tester.getRect(finder);
+  RenderObject? render = finder.evaluate().first.renderObject?.parent;
+  while (render != null) {
+    final clips = render is RenderClipRect || (render is RenderAnimatedSize && render.clipBehavior != Clip.none);
+    if (clips && render is RenderBox) shown = shown.intersect(render.localToGlobal(Offset.zero) & render.size);
+    render = render.parent;
+  }
+  return shown;
 }
 
 /// The rest of the composer's chrome differs by mode; the hold starts on the
@@ -1080,6 +1524,7 @@ Future<_Composer> _pumpComposer({
   Widget? composerHeader,
   Widget? composerTrailing,
   bool isBusy = false,
+  ComposerPresentation presentation = ComposerPresentation.touch,
 }) async {
   final composer = _Composer();
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
@@ -1100,7 +1545,7 @@ Future<_Composer> _pumpComposer({
           inputMode: mode,
           isKeyboardVisible: false,
           sendKeyPolicy: ComposerSendKeyPolicy.enterSends,
-          presentation: ComposerPresentation.touch,
+          presentation: presentation,
           attachmentDispatcher: () => attachmentDispatcher,
           imageClipboard: () => imageClipboard,
           child: Scaffold(
@@ -1122,7 +1567,7 @@ Future<_Composer> _pumpComposer({
                 },
                 onDraftChanged: (_) {},
                 onDraftCleared: () {},
-                onAbort: () {},
+                onAbort: () => composer.aborts++,
                 surfaceStyleController: surfaceStyle,
                 composerHeader: composerHeader,
                 composerTrailing: composerTrailing,

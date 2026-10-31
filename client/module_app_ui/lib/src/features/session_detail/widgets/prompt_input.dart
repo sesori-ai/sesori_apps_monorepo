@@ -1234,7 +1234,7 @@ class _PromptInputState() extends State<PromptInput> {
   /// House transition timing for the composer's state morphs.
   static const Duration _morphDuration = Duration(milliseconds: 220);
   static const Curve _morphCurve = Curves.easeOutCubic;
-  static const Curve _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
+  static const Interval _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
 
   /// [AnimatedSwitcher.defaultTransitionBuilder] keys a fade by its child's key,
   /// and the switcher drops an outgoing fade sharing the incoming one's key, so a
@@ -1450,12 +1450,24 @@ class _PromptInputState() extends State<PromptInput> {
   /// Fades where it stands while the release hint shows over its place. It stays
   /// mounted and keeps its room, so nothing in the row moves.
   Widget _buildComposerTrailing({required BuildContext context, required Widget trailing}) {
-    final visible = _voicePresentation != _VoicePresentation.recording;
+    return _fadeInPlace(
+      context: context,
+      visible: _voicePresentation != _VoicePresentation.recording,
+      child: Padding(
+        padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+        child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+      ),
+    );
+  }
+
+  /// Fades [child] where it stands, inert from the moment it starts to go.
+  Widget _fadeInPlace({required BuildContext context, required bool visible, required Widget child}) {
     final duration = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
     final opacity = visible ? 1.0 : 0.0;
-    // Leaves on the house curve and comes back once the hint over its place has
-    // mostly gone: each fade holds one curve, as an implicit animation given a
-    // new curve restarts from the wrong value when a quick tap turns it back.
+    // Leaves on the house curve and comes back once what is over its place (the
+    // release hint, the waveform's end) has mostly gone: each fade holds one
+    // curve, as an implicit animation given a new curve restarts from the wrong
+    // value when a quick tap turns it back.
     return AnimatedOpacity(
       duration: duration,
       curve: _morphCurve,
@@ -1466,15 +1478,27 @@ class _PromptInputState() extends State<PromptInput> {
         opacity: opacity,
         child: ExcludeFocus(
           excluding: !visible,
-          child: IgnorePointer(
-            ignoring: !visible,
-            child: Padding(
-              padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-              child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
-            ),
-          ),
+          child: IgnorePointer(ignoring: !visible, child: child),
         ),
       ),
+    );
+  }
+
+  /// Keeps [child] inert for the first stretch of its return, while [_fadeInPlace]
+  /// still shows nothing: a tap on that empty spot must not send the draft a hold
+  /// left in the box, or stop the running work.
+  Widget _inertUntilShowing({required BuildContext context, required bool visible, required Widget child}) {
+    final target = visible ? 1.0 : 0.0;
+    return TweenAnimationBuilder<double>(
+      tween: Tween(begin: target, end: target),
+      duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
+      builder: (context, progress, _) {
+        final inert = progress < _trailingReturnCurve.begin;
+        return ExcludeFocus(
+          excluding: inert,
+          child: IgnorePointer(ignoring: inert, child: child),
+        );
+      },
     );
   }
 
@@ -1693,19 +1717,20 @@ class _PromptInputState() extends State<PromptInput> {
   /// between its background and [child]. The wash layer is always mounted (invisible at zero progress) so entering the recording
   /// state never restructures the tree around an in-flight hold.
   ///
-  /// [tightensTrailingWhileRecording] is set by the pills whose trailing
-  /// actions fully collapse during recording: with only the row gap left, the
-  /// end inset eases down so the waveform ends the spec's 12pt from the edge.
+  /// [restingActions] sit in a layer over the row at the row's resting inset.
+  /// Their room in the row closes during recording: with only the row gap left,
+  /// the end inset eases down so the waveform ends the spec's 12pt from the edge.
+  /// Neither that nor the room reopening beneath them ever moves them.
   Widget _buildVoicePillSurface(
     BuildContext context, {
     required PregoComposerSurfaceStyle surfaceStyle,
     required Widget child,
     required Widget? overlay,
-    bool tightensTrailingWhileRecording = false,
+    required Widget? restingActions,
   }) {
     final prego = context.prego;
     const radius = BorderRadius.all(Radius.circular(PregoRadius.full));
-    final tightenEnd = tightensTrailingWhileRecording && _voicePresentation == _VoicePresentation.recording;
+    final tightenEnd = restingActions != null && _voicePresentation == _VoicePresentation.recording;
 
     return DecoratedBox(
       decoration: pregoComposerSurfaceDecoration(
@@ -1717,7 +1742,7 @@ class _PromptInputState() extends State<PromptInput> {
         children: [
           Positioned.fill(child: _buildCancelWash(context)),
           AnimatedPadding(
-            duration: _morphDuration,
+            duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
             curve: _morphCurve,
             padding: EdgeInsetsDirectional.only(
               start: PregoSpacing.sm,
@@ -1728,6 +1753,13 @@ class _PromptInputState() extends State<PromptInput> {
             child: child,
           ),
           if (overlay != null) Positioned.fill(child: overlay),
+          if (restingActions != null)
+            PositionedDirectional(
+              top: PregoSpacing.sm,
+              bottom: PregoSpacing.sm,
+              end: PregoSpacing.sm,
+              child: restingActions,
+            ),
         ],
       ),
     );
@@ -1763,11 +1795,11 @@ class _PromptInputState() extends State<PromptInput> {
     required Widget trailing,
   }) {
     final prego = context.prego;
+    final trailingVisible = _voicePresentation != _VoicePresentation.recording;
 
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.subtle,
-      tightensTrailingWhileRecording: true,
       // The hold surface beneath takes the touches and speaks for the pill.
       overlay: ExcludeSemantics(
         child: _buildVoiceCaption(
@@ -1781,6 +1813,20 @@ class _PromptInputState() extends State<PromptInput> {
           extraTrailingWidth: extraTrailingWidth,
         ),
       ),
+      restingActions: _fadeInPlace(
+        context: context,
+        visible: trailingVisible,
+        child: _inertUntilShowing(
+          context: context,
+          visible: trailingVisible,
+          child: _morphSize(
+            alignment: AlignmentDirectional.centerStart,
+            duration: _morphDuration,
+            curve: _morphCurve,
+            child: trailing,
+          ),
+        ),
+      ),
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1791,9 +1837,14 @@ class _PromptInputState() extends State<PromptInput> {
               child: _buildVoiceAwareSlot(height: _actionButtonSize, idle: const SizedBox()),
             ),
           ),
-          _buildCollapsibleTrailing(
-            visible: _voicePresentation != _VoicePresentation.recording,
-            child: trailing,
+          // The room held for the actions in the layer above. It closes while the
+          // waveform needs it, and the row's child list never changes: gesture
+          // owners elsewhere in the row must keep their elements.
+          _morphSize(
+            alignment: AlignmentDirectional.centerStart,
+            duration: _morphDuration,
+            curve: _morphCurve,
+            child: SizedBox(width: trailingVisible ? _actionButtonSize + extraTrailingWidth : 0),
           ),
         ],
       ),
@@ -1801,8 +1852,8 @@ class _PromptInputState() extends State<PromptInput> {
   }
 
   /// The composer's centred words, in a layer over its row: the slot beneath
-  /// widens as voice-first's trailing actions collapse, which would carry them
-  /// sideways as they fade. The insets match the row's at rest, so they sit centred between
+  /// widens as the room for voice-first's trailing actions closes, which would
+  /// carry them sideways as they fade. The insets match the row's at rest, so they sit centred between
   /// its actions. [extraTrailingWidth] is how much wider the trailing actions
   /// rest than the leading ones.
   Widget _buildVoiceCaption(BuildContext context, {required Widget idle, required double extraTrailingWidth}) {
@@ -1885,6 +1936,7 @@ class _PromptInputState() extends State<PromptInput> {
         context,
         idle: hintInCaption ? _buildPointerCaptionHint(context, hint: hint) : const SizedBox.shrink(),
       ),
+      restingActions: null,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -2591,20 +2643,6 @@ class _PromptInputState() extends State<PromptInput> {
         onPointerUp: _handleRecordPointerEnd,
         onPointerCancel: _handleRecordPointerEnd,
         child: child,
-      ),
-    );
-  }
-
-  /// Animates trailing actions out of the pill while the waveform needs their
-  /// width, without ever changing the surrounding row's child list — gesture
-  /// owners elsewhere in the row must keep their elements.
-  Widget _buildCollapsibleTrailing({required bool visible, required Widget child}) {
-    return ClipRect(
-      child: _morphSize(
-        alignment: AlignmentDirectional.centerStart,
-        duration: _morphDuration,
-        curve: _morphCurve,
-        child: visible ? child : const SizedBox.shrink(),
       ),
     );
   }
