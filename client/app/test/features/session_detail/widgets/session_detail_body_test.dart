@@ -5030,8 +5030,8 @@ void main() {
 
     // The platform cancel is still in flight: the service would silently
     // ignore a start, so the composer must not enter a recording that never
-    // began.
-    final second = await tester.startGesture(tester.getCenter(find.text("Hold to talk")));
+    // began. The label is still cross-fading back, so two copies stand here.
+    final second = await tester.startGesture(tester.getCenter(find.text("Hold to talk").last));
     await tester.pump(const Duration(milliseconds: 600));
     await second.up();
     await tester.pump();

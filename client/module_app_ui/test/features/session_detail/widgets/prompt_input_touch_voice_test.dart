@@ -1,7 +1,7 @@
 import "dart:async";
-import "dart:ui" show SemanticsAction;
 
 import "package:bloc_test/bloc_test.dart";
+import "package:flutter/rendering.dart";
 import "package:flutter/services.dart";
 import "package:flutter_bloc/flutter_bloc.dart";
 import "package:flutter_test/flutter_test.dart";
@@ -240,6 +240,108 @@ void main() {
         await tester.pump(const Duration(milliseconds: 300));
         expect(trailingOpacity(), 1);
         expect(trailingFocus.canRequestFocus, isTrue);
+      });
+
+      testWidgets("at large text a taller hint leaves the fading header where it sits", (tester) async {
+        tester.platformDispatcher.textScaleFactorTestValue = 1.3;
+        addTearDown(tester.platformDispatcher.clearTextScaleFactorTestValue);
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("model row"), height: 44),
+        );
+        final header = find.byKey(const Key("model row"));
+        final hint = find.textContaining("Release");
+        final restingTop = tester.getTopLeft(header).dy;
+
+        final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+        await tester.pump();
+        for (var i = 0; i < 16; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          for (var copy = 0; copy < header.evaluate().length; copy++) {
+            expect(tester.getTopLeft(header.at(copy)).dy, restingTop, reason: "moved holding, frame $i");
+          }
+        }
+        await tester.pump(const Duration(milliseconds: 300));
+        expect(hint, findsOneWidget);
+
+        await gesture.up();
+        await tester.pump();
+        for (var i = 0; i < 16; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          for (var copy = 0; copy < header.evaluate().length; copy++) {
+            expect(tester.getTopLeft(header.at(copy)).dy, restingTop, reason: "moved releasing, frame $i");
+          }
+        }
+        await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+      });
+
+      testWidgets("a quick tap turns every fade back from where it had reached", (tester) async {
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("header"), height: 44),
+          composerTrailing: const SizedBox(key: Key("trailing"), width: 90, height: 36),
+        );
+        final watched = <String, Finder>{
+          "header": find.byKey(const Key("header")),
+          "trailing": find.byKey(const Key("trailing")),
+          "accordion": find.byIcon(TablerRegular.chevron_right),
+          "idle slot": switch (mode) {
+            ChatInputMode.voiceFirst => find.textContaining("Hold to talk"),
+            ChatInputMode.textFirst => find.text("Follow up..."),
+          },
+        };
+        final previous = {for (final MapEntry(:key, :value) in watched.entries) key: _shownOpacity(value)};
+        void expectNoSnap({required String frame}) {
+          for (final MapEntry(:key, :value) in watched.entries) {
+            final shown = _shownOpacity(value);
+            // The steepest honest step is the house ease leaving its start.
+            expect((shown - (previous[key] ?? 0)).abs(), lessThan(0.3), reason: "$key snapped at $frame");
+            previous[key] = shown;
+          }
+        }
+
+        final gesture = await tester.startGesture(tester.getCenter(_holdTarget(mode: mode)));
+        await tester.pump();
+        for (var i = 0; i < 8; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expectNoSnap(frame: "down+$i");
+        }
+        await gesture.up();
+        await tester.pump();
+        expectNoSnap(frame: "release");
+        for (var i = 0; i < 20; i++) {
+          await tester.pump(const Duration(milliseconds: 16));
+          expectNoSnap(frame: "up+$i");
+        }
+        await tester.pump(const Duration(milliseconds: 300));
+        for (final MapEntry(:key, :value) in watched.entries) {
+          expect(_shownOpacity(value), 1, reason: "$key must come back");
+        }
+      });
+
+      testWidgets("pressing again and again mid-fade holds together", (tester) async {
+        await _pumpComposer(
+          tester: tester,
+          voiceCubit: voiceCubit,
+          mode: mode,
+          composerHeader: const SizedBox(key: Key("header"), height: 44),
+        );
+        final target = tester.getCenter(_holdTarget(mode: mode));
+        for (var press = 0; press < 3; press++) {
+          final gesture = await tester.startGesture(target);
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 60));
+          await gesture.up();
+          await tester.pump();
+          await tester.pump(const Duration(milliseconds: 40));
+        }
+        verify(voiceCubit.startRecording).called(3);
+        await tester.pump(const Duration(milliseconds: 500));
+        expect(_shownOpacity(find.byKey(const Key("header"))), 1);
       });
 
       testWidgets("a hold under 200 ms sends nothing", (tester) async {
@@ -583,6 +685,45 @@ void main() {
     });
   }
 
+  for (final isBusy in [false, true]) {
+    testWidgets("the hold to talk label and shimmer fade where they stand, busy: $isBusy", (tester) async {
+      await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.voiceFirst, isBusy: isBusy);
+      final label = find.textContaining("Hold to talk");
+      final shimmer = find.byType(PregoShimmer);
+      final restingCentre = tester.getCenter(label).dx;
+      // Centred between the actions, with or without the stop button beside the
+      // keyboard one: the distance from each button's centre to the gap is equal.
+      final firstAction = tester.getCenter(find.byIcon(TablerRegular.chevron_right)).dx;
+      final lastAction = tester.getCenter(find.byIcon(TablerRegular.keyboard)).dx;
+      expect(restingCentre, closeTo((firstAction + lastAction) / 2, 0.5));
+
+      void expectInPlace({required Finder finder, required String frame}) {
+        for (var i = 0; i < finder.evaluate().length; i++) {
+          expect(tester.getCenter(finder.at(i)).dx, closeTo(restingCentre, 0.01), reason: "moved at $frame");
+        }
+      }
+
+      final gesture = await tester.startGesture(tester.getCenter(label));
+      await tester.pump();
+      for (var i = 0; i < 16; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expectInPlace(finder: label, frame: "fading out, $i");
+      }
+      await tester.pump(const Duration(milliseconds: 300));
+      expect(label, findsNothing);
+
+      await gesture.up();
+      await tester.pump();
+      for (var i = 0; i < 16; i++) {
+        await tester.pump(const Duration(milliseconds: 16));
+        expect(shimmer, findsOneWidget);
+        expectInPlace(finder: shimmer, frame: "transcribing, $i");
+      }
+      await complete(tester: tester, transcript: "spoken words", outcome: VoiceDictationOutcome.finished);
+      expect(tester.getCenter(label).dx, restingCentre);
+    });
+  }
+
   testWidgets("a field that had the keyboard keeps it across a dictated send", (tester) async {
     final composer = await _pumpComposer(tester: tester, voiceCubit: voiceCubit, mode: ChatInputMode.textFirst);
     await tester.tap(find.text("Follow up..."));
@@ -660,6 +801,21 @@ Finder _holdTarget({required ChatInputMode mode}) => switch (mode) {
   ChatInputMode.textFirst => find.byIcon(TablerRegular.microphone),
 };
 
+/// How opaque [finder] looks on screen, across every copy of it still fading.
+double _shownOpacity(Finder finder) {
+  var hidden = 1.0;
+  for (final element in finder.evaluate()) {
+    var opacity = 1.0;
+    RenderObject? render = element.renderObject;
+    while (render != null) {
+      if (render is RenderAnimatedOpacity) opacity *= render.opacity.value;
+      render = render.parent;
+    }
+    hidden *= 1 - opacity;
+  }
+  return 1 - hidden;
+}
+
 Future<_Composer> _pumpComposer({
   required WidgetTester tester,
   required VoiceInputCubit voiceCubit,
@@ -667,7 +823,9 @@ Future<_Composer> _pumpComposer({
   String initialText = "",
   bool canSend = true,
   CommandInfo? stagedCommand,
+  Widget? composerHeader,
   Widget? composerTrailing,
+  bool isBusy = false,
 }) async {
   final composer = _Composer();
   final surfaceStyle = ValueNotifier(PregoComposerSurfaceStyle.emphasized);
@@ -698,7 +856,7 @@ Future<_Composer> _pumpComposer({
                 initialSelection: null,
                 onBusyChanged: null,
                 onSelectionChanged: null,
-                isBusy: false,
+                isBusy: isBusy,
                 hasMessages: true,
                 canSend: canSend,
                 onSend: ({required draft, required command, required attachments}) {
@@ -712,7 +870,7 @@ Future<_Composer> _pumpComposer({
                 onDraftCleared: () {},
                 onAbort: () {},
                 surfaceStyleController: surfaceStyle,
-                composerHeader: null,
+                composerHeader: composerHeader,
                 composerTrailing: composerTrailing,
                 availableCommands: const [],
                 stagedCommand: stagedCommand,

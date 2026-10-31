@@ -277,7 +277,7 @@ class _PromptInputState() extends State<PromptInput> {
   final ValueNotifier<double> _editDragProgress = ValueNotifier<double>(0);
 
   /// Locates the pencil, which both drag measurements are taken from.
-  final GlobalKey _editTargetKey = GlobalKey();
+  GlobalKey _editTargetKey = GlobalKey();
 
   /// Carries the composer's layouts, and the input's focus, across the
   /// [AnimatedSize] that [_morphSize] adds or drops as reduced motion toggles.
@@ -654,6 +654,8 @@ class _PromptInputState() extends State<PromptInput> {
     _minimumRecordingDurationTimer = null;
     _cancelDragProgress.value = 0;
     _editDragProgress.value = 0;
+    // This hold's pencil gets its own key: the last hold's may still be fading out.
+    _editTargetKey = GlobalKey();
     _updateComposerState(
       update: () => _voiceInteraction = _VoiceStarting(
         id: interactionId,
@@ -1222,6 +1224,14 @@ class _PromptInputState() extends State<PromptInput> {
   static const Curve _morphCurve = Curves.easeOutCubic;
   static const Curve _trailingReturnCurve = Interval(0.6, 1, curve: _morphCurve);
 
+  /// [AnimatedSwitcher.defaultTransitionBuilder] keys a fade by its child's key,
+  /// and the switcher drops an outgoing fade sharing the incoming one's key, so a
+  /// child coming back mid-fade after a quick tap restarts from nothing. Pressing
+  /// again before it finishes leaves two outgoing fades with one key, which the
+  /// framework refuses. Unkeyed, every entry finishes its own fade.
+  static AnimatedSwitcherTransitionBuilder get _fadeEachEntry =>
+      (child, animation) => FadeTransition(opacity: animation, child: child);
+
   /// Eases [child]'s size changes in the house timing. Reduced motion resizes
   /// at once: a zero-duration [AnimatedSize] would re-dirty itself mid-layout.
   Widget _morphSize({required AlignmentGeometry alignment, required Widget child}) => prefersReducedMotion(context)
@@ -1350,6 +1360,8 @@ class _PromptInputState() extends State<PromptInput> {
                         ComposerSurfaceLayout.holdToTalk => _buildVoicePill(
                           context,
                           hint: context.loc.sessionDetailHoldToTalk,
+                          // The stop button beside the keyboard one.
+                          extraTrailingWidth: widget.isBusy ? _actionButtonSize + PregoSpacing.sm : 0,
                           trailing: Row(
                             spacing: PregoSpacing.sm,
                             children: [
@@ -1388,18 +1400,27 @@ class _PromptInputState() extends State<PromptInput> {
   /// mounted and keeps its room, so nothing in the row moves.
   Widget _buildComposerTrailing({required BuildContext context, required Widget trailing}) {
     final visible = _voicePresentation != _VoicePresentation.recording;
+    final duration = prefersReducedMotion(context) ? Duration.zero : _morphDuration;
+    final opacity = visible ? 1.0 : 0.0;
+    // Leaves on the house curve and comes back once the hint over its place has
+    // mostly gone: each fade holds one curve, as an implicit animation given a
+    // new curve restarts from the wrong value when a quick tap turns it back.
     return AnimatedOpacity(
-      duration: prefersReducedMotion(context) ? Duration.zero : _morphDuration,
-      // Comes back once the hint over its place has mostly gone.
-      curve: visible ? _trailingReturnCurve : _morphCurve,
-      opacity: visible ? 1 : 0,
-      child: ExcludeFocus(
-        excluding: !visible,
-        child: IgnorePointer(
-          ignoring: !visible,
-          child: Padding(
-            padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
-            child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+      duration: duration,
+      curve: _morphCurve,
+      opacity: opacity,
+      child: AnimatedOpacity(
+        duration: duration,
+        curve: _trailingReturnCurve,
+        opacity: opacity,
+        child: ExcludeFocus(
+          excluding: !visible,
+          child: IgnorePointer(
+            ignoring: !visible,
+            child: Padding(
+              padding: const EdgeInsetsDirectional.only(top: 6, bottom: 2),
+              child: PregoPageHalo(radius: PregoRadius.full, reachesLayerBottom: false, child: trailing),
+            ),
           ),
         ),
       ),
@@ -1476,8 +1497,14 @@ class _PromptInputState() extends State<PromptInput> {
           if (transitionChild.key == const ValueKey("staged-command")) {
             return GlassMaterializeTransition(animation: animation, child: transitionChild);
           }
-          return AnimatedSwitcher.defaultTransitionBuilder(transitionChild, animation);
+          return _fadeEachEntry(transitionChild, animation);
         },
+        // Sat on the pill: centred, a taller hint at large text would lift the
+        // fading header off it by half the difference in one frame.
+        layoutBuilder: (currentChild, previousChildren) => Stack(
+          alignment: Alignment.bottomCenter,
+          children: [...previousChildren, ?currentChild],
+        ),
         child: child,
       ),
     );
@@ -1567,6 +1594,7 @@ class _PromptInputState() extends State<PromptInput> {
                 liveRegion: true,
                 child: AnimatedSwitcher(
                   duration: const Duration(milliseconds: 150),
+                  transitionBuilder: _fadeEachEntry,
                   child: Text(
                     switch (arm) {
                       _VoiceDragArm.none => restingHint,
@@ -1605,6 +1633,7 @@ class _PromptInputState() extends State<PromptInput> {
     BuildContext context, {
     required PregoComposerSurfaceStyle surfaceStyle,
     required Widget child,
+    required Widget? overlay,
     bool tightensTrailingWhileRecording = false,
   }) {
     final prego = context.prego;
@@ -1631,6 +1660,7 @@ class _PromptInputState() extends State<PromptInput> {
             ),
             child: child,
           ),
+          if (overlay != null) Positioned.fill(child: overlay),
         ],
       ),
     );
@@ -1662,14 +1692,14 @@ class _PromptInputState() extends State<PromptInput> {
   Widget _buildVoicePill(
     BuildContext context, {
     required String hint,
+    required double extraTrailingWidth,
     required Widget trailing,
   }) {
-    final prego = context.prego;
-
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.subtle,
       tightensTrailingWhileRecording: true,
+      overlay: _buildVoicePillCaption(context, hint: hint, extraTrailingWidth: extraTrailingWidth),
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1679,14 +1709,8 @@ class _PromptInputState() extends State<PromptInput> {
               context,
               child: _buildVoiceAwareSlot(
                 height: _actionButtonSize,
-                idle: Center(
-                  child: Text(
-                    hint,
-                    maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
-                  ),
-                ),
+                idle: const SizedBox(),
+                transcribing: const SizedBox(),
               ),
             ),
           ),
@@ -1699,6 +1723,50 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
+  /// The pill's words, in a layer over its row: the slot beneath widens as the
+  /// trailing actions collapse, which would carry them sideways as they fade.
+  /// The insets match the row's at rest, so they sit centred between its actions.
+  /// [extraTrailingWidth] is how much wider the trailing actions rest than the
+  /// leading ones.
+  Widget _buildVoicePillCaption(
+    BuildContext context, {
+    required String hint,
+    required double extraTrailingWidth,
+  }) {
+    final prego = context.prego;
+    final Widget child = switch (_voicePresentation) {
+      _VoicePresentation.idle => Text(
+        hint,
+        key: const ValueKey("voice-caption-idle"),
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        style: prego.textTheme.textMd.regular.copyWith(color: prego.colors.textSecondary),
+      ),
+      _VoicePresentation.recording => const SizedBox.shrink(key: ValueKey("voice-caption-recording")),
+      _VoicePresentation.transcribing => KeyedSubtree(
+        key: const ValueKey("voice-caption-transcribing"),
+        child: _buildTranscribingShimmer(context),
+      ),
+    };
+
+    // The hold surface beneath takes the touches and speaks for the pill.
+    return IgnorePointer(
+      child: ExcludeSemantics(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: PregoSpacing.sm + _actionButtonSize + PregoSpacing.md),
+          child: AnimatedPadding(
+            duration: _morphDuration,
+            curve: _morphCurve,
+            padding: EdgeInsetsDirectional.only(end: extraTrailingWidth),
+            child: Center(
+              child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
   /// Resting state for text-first mode: a compact pill whose field area
   /// invites typing, with mic and send/stop alongside.
   Widget _buildCompactComposer(BuildContext context) {
@@ -1707,6 +1775,7 @@ class _PromptInputState() extends State<PromptInput> {
     return _buildVoicePillSurface(
       context,
       surfaceStyle: PregoComposerSurfaceStyle.emphasized,
+      overlay: null,
       child: Row(
         spacing: PregoSpacing.md,
         children: [
@@ -1733,6 +1802,7 @@ class _PromptInputState() extends State<PromptInput> {
                   ),
                 ),
               ),
+              transcribing: Center(child: _buildTranscribingShimmer(context)),
             ),
           ),
           _buildMicAndPrimaryActions(context),
@@ -1865,6 +1935,7 @@ class _PromptInputState() extends State<PromptInput> {
             _buildVoicePill(
               context,
               hint: _hasText ? loc.sessionDetailHoldToTalkMore : loc.sessionDetailHoldToTalk,
+              extraTrailingWidth: 0,
               trailing: _buildPrimaryActionButton(context),
             )
           else
@@ -1985,6 +2056,7 @@ class _PromptInputState() extends State<PromptInput> {
               child: _buildVoiceAwareSlot(
                 height: _actionButtonSize,
                 idle: const SizedBox(),
+                transcribing: Center(child: _buildTranscribingShimmer(context)),
               ),
             ),
             _buildMicAndPrimaryActions(context),
@@ -2354,6 +2426,7 @@ class _PromptInputState() extends State<PromptInput> {
 
     final switcher = AnimatedSwitcher(
       duration: _morphDuration,
+      transitionBuilder: _fadeEachEntry,
       // Pinned to the leading edge: centred, the narrower child would jump
       // sideways when the wider one leaves at the fade's end.
       layoutBuilder: (currentChild, previousChildren) => Stack(
@@ -2414,10 +2487,10 @@ class _PromptInputState() extends State<PromptInput> {
     );
   }
 
-  /// Shows [idle] normally, or the recording waveform / transcribing shimmer
-  /// in its place while a voice interaction is running. [height] pins the
-  /// slot to the resting pills' 44pt row.
-  Widget _buildVoiceAwareSlot({required double height, required Widget idle}) {
+  /// Shows [idle] normally, or the recording waveform or [transcribing] in its
+  /// place while a voice interaction is running. [height] pins the slot to the
+  /// resting pills' 44pt row.
+  Widget _buildVoiceAwareSlot({required double height, required Widget idle, required Widget transcribing}) {
     final Widget child = switch (_voicePresentation) {
       _VoicePresentation.idle => KeyedSubtree(key: const ValueKey("voice-slot-idle"), child: idle),
       _VoicePresentation.recording => KeyedSubtree(
@@ -2426,13 +2499,13 @@ class _PromptInputState() extends State<PromptInput> {
       ),
       _VoicePresentation.transcribing => KeyedSubtree(
         key: const ValueKey("voice-slot-transcribing"),
-        child: Center(child: _buildTranscribingShimmer(context)),
+        child: transcribing,
       ),
     };
 
     return SizedBox(
       height: height,
-      child: AnimatedSwitcher(duration: _morphDuration, child: child),
+      child: AnimatedSwitcher(duration: _morphDuration, transitionBuilder: _fadeEachEntry, child: child),
     );
   }
 

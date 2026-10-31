@@ -471,6 +471,7 @@ void main() {
     await tester.pump();
     await tester.pump(_flight ~/ 2);
 
+    await tester.startGesture(tester.getCenter(find.textContaining("Hold to talk").last));
     voiceStates.add(
       const VoiceInputState.liveRecording(words: LiveWords.none, presentation: VoiceLivePresentation.focus),
     );

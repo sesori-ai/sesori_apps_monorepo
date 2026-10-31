@@ -585,6 +585,7 @@ void main() {
       await emit(tester: tester, state: const VoiceInputState.idle());
       await tester.pump(const Duration(milliseconds: 50));
 
+      await tester.startGesture(tester.getCenter(find.textContaining("Hold to talk").last));
       await live(tester: tester, presentation: _panel);
       await settle(tester);
       await emit(tester: tester, state: const VoiceInputState.idle());
