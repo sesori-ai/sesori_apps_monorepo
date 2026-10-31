@@ -73,7 +73,8 @@ const double transcriptStickyGap = 8;
 const double transcriptStickyHaloReach = 42;
 
 /// The tallest bubble that pins its start. A fixed height, so opening the
-/// keyboard never swaps which part a pin shows.
+/// keyboard swaps which part a pin shows only when the rows left are shorter
+/// than the bubble.
 const double transcriptStickyMaxStartHeight = 320;
 
 /// The index in [openers] of the prompt being read: the last one at or above
