@@ -2,6 +2,7 @@ import "dart:async";
 
 import "package:flutter/foundation.dart";
 import "package:flutter/gestures.dart";
+import "package:flutter/rendering.dart";
 import "package:material_ui/material_ui.dart";
 import "package:sesori_dart_core/sesori_dart_core.dart";
 import "package:sesori_shared/sesori_shared.dart";
@@ -668,6 +669,10 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
   /// while the transcript lays out, once the rows have and once the pins
   /// have, so whichever lays out last places them with both current.
   void _layOutSticky() {
+    // The pins lay out before the list when both have to, and a rebuild that
+    // moved the rows has them out of place until the list does. Its pass, later
+    // in this frame, places the pins.
+    if (_rowContexts.values.any((rowContext) => _awaitsPlacing(rowContext: rowContext))) return;
     final openers = _stickyOpeners();
     final pinTop = widget.topInset + _kPinGap;
     // The message the pin names, else, before any has reached the pin line,
@@ -700,6 +705,19 @@ class _SessionDetailMessageListState() extends State<SessionDetailMessageList> w
     WidgetsBinding.instance.addPostFrameCallback((_) {
       if (mounted) _stickyOpenerIds.value = stickyOpenerIds;
     });
+  }
+
+  /// Whether the list has yet to place [rowContext]'s row. A row kept alive out
+  /// of view has no place, and the list will not give it one.
+  static bool _awaitsPlacing({required BuildContext rowContext}) {
+    RenderObject? node = rowContext.findRenderObject();
+    while (node != null) {
+      if (node.parentData case SliverMultiBoxAdaptorParentData(:final layoutOffset, :final keptAlive)) {
+        return layoutOffset == null && !keptAlive;
+      }
+      node = node.parent;
+    }
+    return false;
   }
 
   /// Every rendered user message in order, with where its bubble is. A built
