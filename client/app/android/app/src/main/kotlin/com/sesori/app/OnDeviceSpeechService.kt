@@ -38,6 +38,7 @@ internal class OnDeviceSpeechService(
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var session: Session? = null
+    private var modelRequested = false
 
     init {
         channel.setMethodCallHandler { call, result ->
@@ -107,15 +108,6 @@ internal class OnDeviceSpeechService(
     @RequiresApi(Build.VERSION_CODES.TIRAMISU)
     private fun prepare(result: MethodChannel.Result) {
         result.success(SpeechRecognizer.isOnDeviceRecognitionAvailable(context))
-    }
-
-    /** Requested in the background, for a later dictation. */
-    @RequiresApi(Build.VERSION_CODES.TIRAMISU)
-    private fun downloadModel() {
-        val recognizer = SpeechRecognizer.createOnDeviceSpeechRecognizer(context)
-        recognizer.triggerModelDownload(recognitionIntent())
-        // Android 13 only queues that request, and crashes on it if destroyed first.
-        mainHandler.post { recognizer.destroy() }
     }
 
     private fun recognitionIntent(): Intent = Intent(RecognizerIntent.ACTION_RECOGNIZE_SPEECH).apply {
@@ -224,7 +216,11 @@ internal class OnDeviceSpeechService(
 
         override fun onError(error: Int) {
             Log.i("OnDeviceSpeechService", "Recognizer error $error")
-            if (error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE) downloadModel()
+            if (error == SpeechRecognizer.ERROR_LANGUAGE_UNAVAILABLE && !modelRequested) {
+                // Goes through this recognizer because it is already connected to its service.
+                modelRequested = true
+                recognizer.triggerModelDownload(recognitionIntent())
+            }
             if (pendingStart != null) {
                 rejectStart("recognizer error $error")
                 return
@@ -270,7 +266,8 @@ internal class OnDeviceSpeechService(
         }
 
         private fun release() {
-            recognizer.destroy()
+            // Android 13 only queues a model request, and crashes on it if destroyed first.
+            mainHandler.post { recognizer.destroy() }
             writer.execute {
                 try {
                     output.close()
