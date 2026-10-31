@@ -172,6 +172,41 @@ void main() {
     expect(forwardedKeys, [null, glossaryKey]);
   });
 
+  test("a key that arrives during the recording reaches the upload", () async {
+    final glossaryKey = ProjectGlossaryKey.parse(
+      value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",
+    );
+    final projectResponse = Completer<ApiResponse<Project>>();
+    when(
+      () => projectRepository.getProject(projectId: "project-1"),
+    ).thenAnswer((_) => projectResponse.future);
+    final scopedSession = service.createSession(projectId: "project-1", allowLive: false);
+    await untilCalled(() => projectRepository.getProject(projectId: "project-1"));
+
+    await service.start(session: scopedSession);
+    projectResponse.complete(
+      ApiResponse.success(
+        Project(
+          id: "project-1",
+          name: "Project",
+          path: "/project",
+          time: null,
+          voiceGlossaryKey: glossaryKey,
+        ),
+      ),
+    );
+    await Future<void>.delayed(Duration.zero);
+    await service.stopAndTranscribe(session: scopedSession);
+
+    verify(
+      () => repository.transcribe(
+        audioFilePath: artifact.path,
+        mimeType: artifact.mimeType,
+        projectGlossaryKey: glossaryKey,
+      ),
+    ).called(1);
+  });
+
   test("refreshes missing context for a later interaction without delaying capture", () async {
     final glossaryKey = ProjectGlossaryKey.parse(
       value: "prj_v1_1yuLLmK3NKRJfpiX26q507WHb9ZxINRCpBKCBTgnGlQ",

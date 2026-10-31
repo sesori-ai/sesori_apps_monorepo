@@ -87,6 +87,11 @@ class VoiceTranscriptionService({
     }
   }
 
+  void _logProjectGlossaryUse({required VoiceTranscriptionSession session}) {
+    final glossary = session._interactionProjectGlossaryKey == null ? "no project glossary" : "the project glossary";
+    logi("Transcribing with $glossary");
+  }
+
   Stream<double> amplitudeStream({required VoiceTranscriptionSession session}) =>
       session._captureSession.amplitudeStream;
 
@@ -220,6 +225,7 @@ class VoiceTranscriptionService({
       throw VoiceTranscriptionError.cancelled();
     }
 
+    _logProjectGlossaryUse(session: session);
     final run = LiveDictationRun(
       repository: _repository,
       capture: captureSession,
@@ -347,6 +353,9 @@ class VoiceTranscriptionService({
       throw VoiceTranscriptionError.cancelled();
     }
 
+    // The upload has not started, so a key that arrived during the recording
+    // still counts. A retry keeps whatever this attempt sent.
+    session._interactionProjectGlossaryKey ??= session._availableProjectGlossaryKey;
     session._state = _VoiceSessionInitialTranscribing(artifact: artifact);
     final transcript = await _transcribeArtifact(
       session: session,
@@ -398,6 +407,7 @@ class VoiceTranscriptionService({
     required bool releaseCaptureOperation,
   }) async {
     VoiceTranscriptionError? retainedFailure;
+    _logProjectGlossaryUse(session: session);
     try {
       final outcome = await _repository.transcribe(
         audioFilePath: artifact.path,
