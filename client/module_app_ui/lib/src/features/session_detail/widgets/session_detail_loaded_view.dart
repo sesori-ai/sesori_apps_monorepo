@@ -8,7 +8,6 @@ import "package:sesori_shared/sesori_shared.dart";
 import "package:theme_prego/module_prego.dart";
 
 import "../../../extensions/build_context_x.dart";
-import "floating_bottom_controls_layout.dart";
 import "sent_bubble_landing.dart";
 import "session_auto_continuation_notice.dart";
 import "session_detail_message_list.dart";
@@ -176,7 +175,7 @@ class SessionDetailLoadedView extends StatelessWidget {
     // indicator and archived notice — come from PregoTopBarInsetBuilder so
     // they clear the bar at rest and ride the top-nav connection banner's height
     // animation frame-by-frame.
-    return FloatingBottomControlsLayout(
+    return PregoFloatingBottomControlsLayout(
       contentBuilder: (context, bottomControlsHeight) => Stack(
         children: [
           Column(

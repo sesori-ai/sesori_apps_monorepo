@@ -9,7 +9,7 @@ import "package:material_ui/material_ui.dart";
 /// measurement would trail them by one. It therefore builds during layout, as
 /// under a [LayoutBuilder]. Painting and touches go by the usual order, with the
 /// controls on top.
-class const FloatingBottomControlsLayout({
+class const PregoFloatingBottomControlsLayout({
   super.key,
   required final Widget Function(BuildContext context, double controlsHeight) contentBuilder,
   required final Widget? controls,

@@ -1,6 +1,6 @@
 import "package:flutter_test/flutter_test.dart";
 import "package:material_ui/material_ui.dart";
-import "package:sesori_app_ui/src/features/session_detail/widgets/floating_bottom_controls_layout.dart";
+import "package:theme_prego/components/prego_floating_bottom_controls_layout.dart";
 
 void main() {
   const paneSize = Size(400, 600);
@@ -13,7 +13,7 @@ void main() {
       child: Center(
         child: SizedBox.fromSize(
           size: paneSize,
-          child: FloatingBottomControlsLayout(
+          child: PregoFloatingBottomControlsLayout(
             contentBuilder: (context, controlsHeight) {
               heights.add(controlsHeight);
               return const SizedBox.expand(key: Key("content"));
@@ -28,7 +28,7 @@ void main() {
   testWidgets("the content fills the pane, and the controls sit at its bottom over the full width", (tester) async {
     await tester.pumpWidget(pane(height: 100, heights: []));
 
-    final origin = tester.getTopLeft(find.byType(FloatingBottomControlsLayout));
+    final origin = tester.getTopLeft(find.byType(PregoFloatingBottomControlsLayout));
     expect(tester.getSize(find.byKey(const Key("content"))), paneSize);
     expect(tester.getRect(find.byKey(const Key("controls"))), (origin + const Offset(0, 500)) & const Size(400, 100));
   });
@@ -63,7 +63,7 @@ void main() {
     await tester.pumpWidget(
       Directionality(
         textDirection: TextDirection.ltr,
-        child: FloatingBottomControlsLayout(
+        child: PregoFloatingBottomControlsLayout(
           contentBuilder: (context, controlsHeight) {
             heights.add(controlsHeight);
             return const SizedBox.expand();
@@ -93,7 +93,7 @@ void main() {
         child: Center(
           child: SizedBox.fromSize(
             size: paneSize,
-            child: FloatingBottomControlsLayout(
+            child: PregoFloatingBottomControlsLayout(
               contentBuilder: (context, controlsHeight) => GestureDetector(
                 key: const Key("content"),
                 behavior: HitTestBehavior.opaque,
@@ -117,7 +117,7 @@ void main() {
     await tester.tap(find.byKey(const Key("controls")));
     expect((controlsTaps, contentTaps), (1, 0));
 
-    final pane = tester.getRect(find.byType(FloatingBottomControlsLayout));
+    final pane = tester.getRect(find.byType(PregoFloatingBottomControlsLayout));
     await tester.tapAt(pane.bottomLeft + const Offset(10, -10));
     expect((controlsTaps, contentTaps), (1, 1));
 
