@@ -3,6 +3,7 @@ import "package:flutter_test/flutter_test.dart";
 import "package:mocktail/mocktail.dart";
 import "package:sesori_mobile/core/platform/firebase_founder_call_config_source.dart";
 import "package:sesori_mobile/core/platform/firebase_remote_config_client.dart";
+import "package:sesori_mobile/core/platform/remote_config_flags.dart";
 
 class _MockFirebaseRemoteConfig() extends Mock implements FirebaseRemoteConfig;
 
@@ -24,37 +25,24 @@ void main() {
     source = FirebaseFounderCallConfigSource(
       remoteConfigClient: FirebaseRemoteConfigClient(remoteConfig: remoteConfig),
     );
+    when(() => remoteConfig.setDefaults(any())).thenAnswer((_) async {});
     when(() => remoteConfig.setConfigSettings(any())).thenAnswer((_) async {});
     when(() => remoteConfig.fetchAndActivate()).thenAnswer((_) async => true);
-    when(() => remoteConfig.getValue(any())).thenReturn(RemoteConfigValue(null, ValueSource.valueStatic));
+    when(() => remoteConfig.getValue(any())).thenReturn(RemoteConfigValue("".codeUnits, ValueSource.valueRemote));
+    when(() => remoteConfig.getString(any())).thenReturn("");
   });
 
-  void setRemote(String key, String value) {
-    when(() => remoteConfig.getValue(key)).thenReturn(RemoteConfigValue(value.codeUnits, ValueSource.valueRemote));
-  }
-
-  test("reads unset keys as null so the built-in defaults apply", () async {
-    expect(await source.fetchValues(), (
-      enabled: null,
-      afterComputer: null,
-      bookingUrl: null,
-      title: null,
-      message: null,
-      buttonLabel: null,
-    ));
-  });
-
-  test("reads the console values and treats an empty value as unset", () async {
-    setRemote(FirebaseFounderCallConfigSource.enabledKey, "false");
-    setRemote(FirebaseFounderCallConfigSource.afterComputerKey, "");
-    setRemote(FirebaseFounderCallConfigSource.bookingUrlKey, "https://cal.com/example");
-    setRemote(FirebaseFounderCallConfigSource.titleKey, "Talk to the founder");
-    setRemote(FirebaseFounderCallConfigSource.messageKey, "");
-    setRemote(FirebaseFounderCallConfigSource.buttonLabelKey, "Pick a time");
+  test("reads the console values, and blank ones as the default or no text", () async {
+    when(
+      () => remoteConfig.getValue(BoolRemoteConfig.founderCallEnabled.key),
+    ).thenReturn(RemoteConfigValue("false".codeUnits, ValueSource.valueRemote));
+    when(() => remoteConfig.getString(StringRemoteConfig.founderCallUrl.key)).thenReturn("https://cal.com/example");
+    when(() => remoteConfig.getString(StringRemoteConfig.founderCallTitle.key)).thenReturn("Talk to the founder");
+    when(() => remoteConfig.getString(StringRemoteConfig.founderCallButton.key)).thenReturn("Pick a time");
 
     expect(await source.fetchValues(), (
       enabled: false,
-      afterComputer: null,
+      afterComputer: true,
       bookingUrl: "https://cal.com/example",
       title: "Talk to the founder",
       message: null,
