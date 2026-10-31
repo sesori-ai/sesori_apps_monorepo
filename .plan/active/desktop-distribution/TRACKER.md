@@ -542,7 +542,7 @@ The user chose macOS-first delivery, Windows direct download, DEB/RPM for Linux,
 installation on normal application quit for app-managed updates, all six native
 OS/CPU targets, and GitHub installer downloads plus static GCS feeds/repositories.
 The user subsequently authorized automatic implementation after the plan PR merges.
-Start step 2 on the merge notification using `sesori-plan-worker`; thereafter keep
+Start step 2 on the merge notification using `plan-worker`; thereafter keep
 one series PR open and at most one successor step local. This supersedes the earlier
 plan-only hold. Material scope/security decisions, missing credentials/infrastructure,
 and the recorded public-release prerequisites remain gates; do not silently waive

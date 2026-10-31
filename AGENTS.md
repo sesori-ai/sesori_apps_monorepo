@@ -66,7 +66,7 @@ eagerly "just in case."
 
 - Prefer the smallest change that fully solves the demonstrated problem. Do not
   add machinery for hypothetical consumers, rare timing windows, or future work.
-- Load and use `sesori-plan-maker` before every substantial change. Skip it only
+- Load and use `plan-maker` before every substantial change. Skip it only
   for a clearly targeted simple bug fix or clearly targeted simple UI change.
   Treat new features, meaningful refactors, cross-layer/package work, and
   persistence, transport, lifecycle, concurrency, security, or material

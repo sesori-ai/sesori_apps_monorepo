@@ -184,7 +184,7 @@ Do not interpret update authorization as permission to access live accounts or
 publish an adapter other than DeepSeek's routine release. Keep unapproved optional
 work decision-pending.
 
-Use [sesori-plan-maker](../sesori-plan-maker/SKILL.md) to create/update a durable
+Use [plan-maker](../plan-maker/SKILL.md) to create/update a durable
 plan under `.plan/active/<slug>/`. It must contain:
 
 - one row per registered harness with current/candidate target, unchanged floor
@@ -206,7 +206,7 @@ plan under `.plan/active/<slug>/`. It must contain:
 
 Do not pin production versions, publish adapters, or implement optional findings
 merely to finish planning. An explicit implementation request authorizes its
-stated scope; execute through [sesori-plan-worker](../sesori-plan-worker/SKILL.md)
+stated scope; execute through [plan-worker](../plan-worker/SKILL.md)
 after planning and applicable gates. Follow the repository-wide `PR Sizing And
 Review Convergence` policy in `AGENTS.md`; execution-specific step sequencing
 remains in the plan worker. Splitting never needs another permission request;
