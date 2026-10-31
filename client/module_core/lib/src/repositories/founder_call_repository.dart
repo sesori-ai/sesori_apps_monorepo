@@ -4,6 +4,7 @@ import "../api/founder_call_config_api.dart";
 import "../api/storage/founder_call_storage.dart";
 import "../foundation/models/founder_call/founder_call_config.dart";
 import "../foundation/models/founder_call/founder_call_progress.dart";
+import "../foundation/platform/founder_call_config_source.dart";
 import "../logging/logging.dart";
 
 @lazySingleton
@@ -11,7 +12,7 @@ class FounderCallRepository({
   required final FounderCallConfigApi _configApi,
   required final FounderCallStorage _storage,
 }) {
-  static final Uri defaultBookingUrl = Uri.parse("https://cal.com/vespr/sesori-walkthrough");
+  static final Uri defaultBookingUrl = Uri.parse(defaultFounderCallBookingUrl);
 
   /// The remote rule, with the built-in default for every missing value: the
   /// invitation and its computer-connected sheet are on, and it books at
